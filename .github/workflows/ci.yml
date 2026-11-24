@@ -25,6 +25,8 @@ jobs:
   #                       test:e2e subsets and sandbox-to-byoc), then studio:scorecard, which reads
   #                       its JSON report.
   #   gates             - `pnpm ci:gates`: lints, typecheck, catalog, evidence, story and MCP gates.
+  #                       Then the live-canary fetch (continue-on-error) and `pnpm ci:tiers`
+  #                       (catalog:tiers), so evidence:check sees only committed evidence.
   #   proof             - `pnpm ci:proof`: boot, proof, restore drill and the studio/beta/sandbox gates.
   # `cp0` aggregates them. Branch protection requires a check named `cp0`; this job fails unless
   # every job above succeeded (cancelled or skipped counts as failure), so the required check
@@ -112,15 +114,19 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
-      # Must precede catalog:tiers (inside ci:gates), which reads evidence/live-canary/.
+      # Runs first so evidence:check validates only the committed evidence/ files.
+      - name: Run lint, typecheck, catalog, evidence, story and MCP gates
+        run: pnpm ci:gates
+
+      # Must precede catalog:tiers (ci:tiers), which reads evidence/live-canary/.
       - name: Fetch live canary evidence
         run: |
           git fetch origin evidence/live-canary:evidence/live-canary 2>/dev/null || true
           git checkout evidence/live-canary -- evidence/live-canary/ 2>/dev/null || true
         continue-on-error: true
 
-      - name: Run lint, typecheck, catalog, evidence, story and MCP gates
-        run: pnpm ci:gates
+      - name: Run catalog tiers gate
+        run: pnpm ci:tiers
 
   proof:
     runs-on: ubuntu-latest
