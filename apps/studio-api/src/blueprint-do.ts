@@ -85,6 +85,8 @@ export interface StudioApiEnv {
   PX_TOKEN_KEK_VERSION?: string;
   PX_TOKEN_KEK_MAP?: Record<number, string>;
   PX_TELEMETRY_SECRET?: string;
+  /** Story 0.21: per-bucket rate-limit overrides, JSON `{ "<bucket>": { "limit": n, "windowSeconds": n } }` (see @poc/sdk rateLimit). */
+  PX_RATE_LIMITS?: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
   __OAUTH_FETCHER?: typeof fetch;
