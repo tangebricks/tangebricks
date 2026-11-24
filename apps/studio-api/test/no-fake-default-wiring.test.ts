@@ -50,7 +50,7 @@ describe("BUILD_MODE: studio-api default runtime executors", () => {
       },
       buildRegistryFromCatalog(catalog),
       defaultStudioRuntimeExecutors,
-      { payload: { balance: 120, workspaceId: "ws_build_mode" } },
+      { workspaceId: "ws_test", payload: { balance: 120, workspaceId: "ws_build_mode" } },
     );
     expect(result.ok).toBe(false);
     expect(result.outputs.debit).toBeUndefined();
@@ -101,6 +101,7 @@ describe("BUILD_MODE: brick package executors an isolated brick worker would wir
     await expect(
       creditWallet.executeWalletDebit({
         nodeId: "cw",
+        workspaceId: "ws_a",
         data: { amount: 5 },
         inputs: { in: { workspaceId: "ws_a", userId: "usr_a", balance: 100 } },
         binding: () => {

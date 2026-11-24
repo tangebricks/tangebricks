@@ -2,7 +2,8 @@ import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import { assemble } from "@poc/assembler";
-import { runGraph } from "@poc/runtime";
+import { TELEMETRY_SIGNATURE_HEADER, runGraph, signTelemetryPayload } from "@poc/runtime";
+import { SIGNED_AT_HEADER, signControlPlaneRequest } from "../src/worker/proof-routes.ts";
 import type { Graph, RunResult } from "@poc/runtime";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
@@ -13,7 +14,7 @@ import { bundleWorker } from "../src/bundle.ts";
 import type { WorkerBundle } from "../src/bundle.ts";
 import { APP_WORKSPACE, GRAPH_MIGRATIONS, GRAPH_TABLE, LATENCY_TABLE, WORKFLOW_BINDING, WORKFLOW_CLASS } from "../src/worker/graph-run.ts";
 import { proofExecutors, proofRegistry } from "../src/worker/proof-bricks.ts";
-import { LATENCY_ROW } from "../src/worker/proof-routes.ts";
+import { LATENCY_ROW, WORKFLOW_RUNS_PATH } from "../src/worker/proof-routes.ts";
 
 // Story 5.3: the Workflow class, run by the real Workflow engine inside a real workerd (Miniflare 5), from the same bundle
 // that gets uploaded. Nothing here imports the Workflow's code: the bundle's text is all the runtime is given.
@@ -24,6 +25,10 @@ import { LATENCY_ROW } from "../src/worker/proof-routes.ts";
 // message, not the validator's reasons; and it never pauses and replays a run (the Node tests in graph-run.node.test.ts
 // do that with a stand-in step). The real account (stories 5.5-5.6) is where those are read from Cloudflare itself.
 const KEY = "workflow-test-key-0123456789abcdef";
+/** The Worker's control-plane signing secret (PX_TELEMETRY_SECRET). Since story 1.1 a run starts only from a signed request naming its workspace. */
+const SIGNING_SECRET = "workflow-test-signing-secret-0123456789";
+const WS_A = "ws-a";
+const WS_B = "ws-b";
 const node = (id: string, type: string, data: Record<string, unknown> = {}) => ({ id, type, data });
 const wire = (source: string, sourceHandle: string, target: string, targetHandle: string) => ({ id: `${source}.${sourceHandle}-${target}.${targetHandle}`, source, target, sourceHandle, targetHandle });
 const pick = (id: string, path: string) => node(id, "transform.pick", { path });
@@ -74,12 +79,19 @@ const graphRows = async () => {
   const db = (await mf.getD1Database("DB")) as unknown as D1Like;
   return (await db.prepare(`SELECT workspace_id, id, graph, updated_at FROM ${GRAPH_TABLE} ORDER BY workspace_id, id`).all()).results;
 };
-const start = async (graphId: string, payload: unknown = PAYLOAD) => {
-  const created = await api("POST", "/poc/runs", { graphId, payload });
+/** Starts a run the authenticated way: a body naming the verified workspace, HMAC-signed with PX_TELEMETRY_SECRET. */
+const signedRun = async (body: Record<string, unknown>, secret = SIGNING_SECRET) => {
+  const text = JSON.stringify({ requestId: crypto.randomUUID(), ...body });
+  return api("POST", WORKFLOW_RUNS_PATH, text, { "x-poc-key": KEY, "content-type": "application/json", ...(await signControlPlaneRequest(secret, "POST", WORKFLOW_RUNS_PATH, text)) });
+};
+/** A signed GET: since story 1.1 a run's status needs the control-plane signature as well as the key. */
+const signedGet = async (path: string) => api("GET", path, undefined, { "x-poc-key": KEY, ...(await signControlPlaneRequest(SIGNING_SECRET, "GET", path)) });
+const start = async (graphId: string, payload: unknown = PAYLOAD, workspaceId = WS_A) => {
+  const created = await signedRun({ graphId, workspaceId, payload });
   expect(created.status).toBe(202);
   return String(created.json!.id);
 };
-const status = async (id: string) => (await api("GET", `/poc/runs/${id}`)).json as unknown as Finished;
+const status = async (id: string) => (await signedGet(`/poc/runs/${id}`)).json as unknown as Finished;
 async function finish(id: string, timeoutMs = 20_000): Promise<Finished> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -90,7 +102,7 @@ async function finish(id: string, timeoutMs = 20_000): Promise<Finished> {
   }
 }
 const runAndFinish = async (graphId: string, payload?: unknown) => finish(await start(graphId, payload));
-const local = (graph: Graph) => runGraph(graph, proofRegistry, proofExecutors, { payload: PAYLOAD });
+const local = (graph: Graph) => runGraph(graph, proofRegistry, proofExecutors, { payload: PAYLOAD, workspaceId: WS_A });
 const sorted = (values: unknown[]) => values.map((v) => JSON.stringify(v)).sort();
 
 beforeAll(async () => {
@@ -99,14 +111,15 @@ beforeAll(async () => {
   files = assembled.files;
   const projectDir = join(OUT_DIR, "deploy-test", "workflow");
   await writeProject(projectDir, files);
-  bundle = await bundleWorker({ projectDir });
+  // The proof bricks are test fixtures (story 1.1): injected into this test's bundle, never into the shipped one.
+  bundle = await bundleWorker({ projectDir, fixtureBricksModule: resolve(import.meta.dirname, "..", "src", "worker", "proof-bricks.ts") });
   mf = new Miniflare(
     convertV4MiniflareOptions({
       modules: true,
       script: bundle.code,
       compatibilityDate: "2026-10-01",
       d1Databases: ["DB"],
-      bindings: { POC_ACCESS_KEY: KEY },
+      bindings: { POC_ACCESS_KEY: KEY, PX_TELEMETRY_SECRET: SIGNING_SECRET },
       workflows: { [WORKFLOW_BINDING]: { name: "projectx-poc-test-graphs", className: WORKFLOW_CLASS } },
     } as never),
   );
@@ -269,20 +282,22 @@ describe("a graph the validator rejects ends the run before any node", () => {
 
 describe("the routes the deploy adds", () => {
   test("every one needs the access key, and without it the Workflow is not started", async () => {
-    for (const [method, path, body] of [["PUT", "/poc/graphs/x", "{}"], ["GET", "/poc/graphs/x", undefined], ["POST", "/poc/runs", { graphId: "x" }], ["GET", "/poc/runs/abc", undefined], ["POST", "/poc/write-latency", undefined]] as const) {
+    for (const [method, path, body] of [["PUT", "/poc/graphs/x", "{}"], ["GET", "/poc/graphs/x", undefined], ["POST", "/poc/runs", { graphId: "x" }], ["POST", WORKFLOW_RUNS_PATH, { graphId: "x", workspaceId: WS_A }], ["GET", "/poc/runs/abc", undefined], ["POST", "/poc/write-latency", undefined]] as const) {
       expect((await api(method, path, body, {})).status, `${method} ${path}`).toBe(401);
       expect((await api(method, path, body, { "x-poc-key": "wrong-key-wrong-key-wrong-key" })).status, `${method} ${path} wrong`).toBe(401);
     }
   });
 
   test("bad requests are refused with a reason, not started", async () => {
-    expect((await api("POST", "/poc/runs", "not json")).status).toBe(400);
-    expect((await api("POST", "/poc/runs", { graphId: "a/b" })).status).toBe(400);
-    expect((await api("POST", "/poc/runs", {})).status).toBe(400);
+    expect((await signedRun({ graphId: "a/b", workspaceId: WS_A })).status).toBe(400);
+    expect((await signedRun({ workspaceId: WS_A })).status).toBe(400);
+    const notJson = await api("POST", WORKFLOW_RUNS_PATH, "not json", { "x-poc-key": KEY, "content-type": "application/json", ...(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, "not json")) });
+    expect(notJson.status).toBe(400);
     expect((await api("PUT", "/poc/graphs/a%20b", "{}")).status).toBe(400);
     expect((await api("PUT", "/poc/graphs/x".padEnd(80, "x"), "{}")).status).toBe(400);
-    expect((await api("GET", "/poc/runs/no-such-run-id")).status).toBe(404);
-    expect((await api("GET", "/poc/runs/bad.id")).status).toBe(400);
+    expect((await signedGet("/poc/runs/no-such-run-id")).status).toBe(404);
+    expect((await signedGet("/poc/runs/bad.id")).status).toBe(400);
+    expect((await signedRun({ graphId: "x", workspaceId: WS_A, requestId: "not-a-uuid" })).status).toBe(400);
     expect((await api("DELETE", "/poc/graphs/x")).status).toBe(405);
     expect((await api("GET", "/poc/nothing")).status).toBe(404);
     expect((await api("GET", "/poc/graphs/never-written")).status).toBe(404);
@@ -297,15 +312,15 @@ describe("the routes the deploy adds", () => {
     expect(await graphRows()).toEqual(before);
   });
 
-  test("a graph stored only for one workspace is invisible here: the route reads and runs app-wide graphs only", async () => {
-    await editRow("ws-only", ADD_THEN_MULTIPLY, "ws-a");
+  test("a graph stored only for one workspace is invisible to GET /poc/graphs, and runs only for that workspace", async () => {
+    await editRow("ws-only", ADD_THEN_MULTIPLY, WS_A);
     expect((await api("GET", "/poc/graphs/ws-only")).status).toBe(404);
-    // the body cannot name a workspace: the run is for APP_WORKSPACE whatever it says
-    const created = await api("POST", "/poc/runs", { graphId: "ws-only", workspaceId: "ws-a", payload: PAYLOAD });
-    expect(created.status).toBe(202);
-    const done = await finish(String(created.json!.id));
-    expect(done.status).toBe("errored");
-    expect(done.__LOCAL_DEV_STEP_OUTPUTS).toEqual([]);
+    // POST /poc/runs cannot start it whatever the body names; a signed run for B does not see A's row; one for A runs it
+    expect((await api("POST", "/poc/runs", { graphId: "ws-only", workspaceId: WS_A, payload: PAYLOAD })).status).toBe(403);
+    const forB = await finish(await start("ws-only", PAYLOAD, WS_B));
+    expect(forB.status).toBe("errored");
+    expect(forB.__LOCAL_DEV_STEP_OUTPUTS).toEqual([]);
+    expect((await runAndFinish("ws-only")).output!.outputs.mul).toEqual({ out: 20 });
   });
 
   test("the project's own routes are untouched by the extra ones", async () => {
@@ -336,5 +351,118 @@ describe("the routes the deploy adds", () => {
     expect(JSON.parse(row!.body)).toEqual({ write: 9 });
     expect(await graphRows()).toEqual(before);
     expect((await api("GET", `/poc/graphs/${LATENCY_ROW}`)).status).toBe(404);
+  });
+});
+
+// Story 1.1 (R52): the deployed Workflow runs the real catalog executors for a verified workspace, and only an authenticated
+// trigger starts it. The wallet below is the credit-wallet brick's own D1 table in the same local database the Worker uses.
+describe("real executors and a verified workspace", () => {
+  const DEBIT: Graph = {
+    nodes: [node("t", "trigger.manual"), node("pay", "credit-wallet.debit", { amount: 5 })],
+    edges: [wire("t", "out", "pay", "in")],
+  };
+  const db = async () => (await mf.getD1Database("DB")) as unknown as D1Like;
+  const openWallets = async (balances: Record<string, number>) => {
+    const d = await db();
+    for (const [workspaceId, balance] of Object.entries(balances)) {
+      await d.prepare("INSERT INTO credit_wallets (workspace_id, balance) VALUES (?1, ?2) ON CONFLICT(workspace_id) DO UPDATE SET balance = excluded.balance").bind(workspaceId, balance).run();
+    }
+  };
+  const balance = async (workspaceId: string) => (await (await db()).prepare("SELECT balance FROM credit_wallets WHERE workspace_id = ?1").bind(workspaceId).first<{ balance: number }>())?.balance ?? null;
+  const ledger = async (workspaceId: string) => (await (await db()).prepare("SELECT workspace_id, user_id, amount, balance_after FROM credit_ledger WHERE workspace_id = ?1").bind(workspaceId).all()).results;
+
+  test("BUNDLE_REAL_DEBIT: a signed run for workspace A debits A's wallet with the real executor; B's is untouched", async () => {
+    await openWallets({ [WS_A]: 50, [WS_B]: 50 });
+    await store("debit", DEBIT);
+    const done = await finish(await start("debit", { userId: "u1" }, WS_A));
+    expect(done.status).toBe("complete");
+    expect(done.output!.ok).toBe(true);
+    expect(done.output!.outputs.pay).toEqual({ out: { charged: 5, balanceAfter: 45, duplicate: false } });
+    expect(await balance(WS_A)).toBe(45);
+    expect(await ledger(WS_A)).toEqual([{ workspace_id: WS_A, user_id: "u1", amount: -5, balance_after: 45 }]);
+    expect(await balance(WS_B)).toBe(50);
+    expect(await ledger(WS_B)).toEqual([]);
+  });
+
+  test("PAYLOAD_SPOOF: a run for A whose payload names B fails WORKSPACE_MISMATCH and debits neither wallet", async () => {
+    await openWallets({ [WS_A]: 50, [WS_B]: 50 });
+    await store("debit-spoof", DEBIT);
+    const before = [await ledger(WS_A), await ledger(WS_B)];
+    const done = await finish(await start("debit-spoof", { userId: "u1", workspaceId: WS_B }, WS_A));
+    expect(done.status).toBe("complete");
+    expect(done.output!.ok).toBe(false);
+    expect(done.output!.failed.pay).toMatch(/WORKSPACE_MISMATCH: /); // the engine names the error class first
+    expect([await balance(WS_A), await balance(WS_B)]).toEqual([50, 50]);
+    expect([await ledger(WS_A), await ledger(WS_B)]).toEqual(before);
+  });
+
+  test("POC_RUNS_UNVERIFIED: POST /poc/runs with only the shared key is refused 403 and starts nothing", async () => {
+    await openWallets({ [WS_A]: 50 });
+    await store("debit-unverified", DEBIT);
+    const ledgerBefore = await ledger(WS_A);
+    for (const body of [{ graphId: "debit-unverified", payload: { userId: "u1" } }, { graphId: "debit-unverified", workspaceId: WS_A, payload: { userId: "u1", workspaceId: WS_A } }]) {
+      const refused = await api("POST", "/poc/runs", body);
+      expect(refused.status).toBe(403);
+      expect(refused.json).toEqual({ error: expect.objectContaining({ code: "NO_VERIFIED_WORKSPACE" }) });
+      expect(refused.json!.id).toBeUndefined();
+    }
+    // nothing ran: had a Workflow instance been created, its debit would have landed by now
+    await new Promise((r) => setTimeout(r, 500));
+    expect(await balance(WS_A)).toBe(50);
+    expect(await ledger(WS_A)).toEqual(ledgerBefore);
+  });
+
+  test("SIGNED_NO_WORKSPACE: a signed run without a workspace is 400; the reserved app workspace and bad ids are refused", async () => {
+    const missing = await signedRun({ graphId: "debit" });
+    expect(missing.status).toBe(400);
+    expect((missing.json!.error as { code: string }).code).toBe("NO_WORKSPACE");
+    for (const workspaceId of [APP_WORKSPACE, "ws__x", "a/b", 7]) expect((await signedRun({ graphId: "debit", workspaceId })).status, String(workspaceId)).toBe(400);
+  });
+
+  test("the run route accepts only a PX_TELEMETRY_SECRET signature: none, a wrong one, or one made with the access key is 401", async () => {
+    const body = JSON.stringify({ requestId: crypto.randomUUID(), graphId: "debit", workspaceId: WS_A, payload: { userId: "u1" } });
+    const send = async (headers: Record<string, string> = {}) => api("POST", WORKFLOW_RUNS_PATH, body, { "x-poc-key": KEY, "content-type": "application/json", ...headers });
+    expect((await send()).status).toBe(401);
+    expect((await send(await signControlPlaneRequest("some-other-secret-0123456789", "POST", WORKFLOW_RUNS_PATH, body))).status).toBe(401);
+    expect((await send(await signControlPlaneRequest(KEY, "POST", WORKFLOW_RUNS_PATH, body))).status).toBe(401);
+    // the old body-only signature is not enough on this route
+    expect((await send({ [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(body, SIGNING_SECRET) })).status).toBe(401);
+  });
+
+  test("REPLAY: the same signed request sent twice is 409 DUPLICATE_REQUEST the second time, and the wallet is debited once", async () => {
+    await openWallets({ [WS_A]: 50 });
+    await store("debit-replay", DEBIT);
+    const before = (await ledger(WS_A)).length;
+    const body = JSON.stringify({ requestId: crypto.randomUUID(), graphId: "debit-replay", workspaceId: WS_A, payload: { userId: "u1" } });
+    const headers = { "x-poc-key": KEY, "content-type": "application/json", ...(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, body)) };
+    const first = await api("POST", WORKFLOW_RUNS_PATH, body, headers);
+    expect(first.status).toBe(202);
+    expect((await finish(String(first.json!.id))).status).toBe("complete");
+    const replay = await api("POST", WORKFLOW_RUNS_PATH, body, headers);
+    expect(replay.status).toBe(409);
+    expect((replay.json!.error as { code: string }).code).toBe("DUPLICATE_REQUEST");
+    await new Promise((r) => setTimeout(r, 300));
+    expect(await balance(WS_A)).toBe(45);
+    expect((await ledger(WS_A)).length).toBe(before + 1);
+  });
+
+  test("a stale or future signing time is 401, and a signature made for another route's path or body does not verify", async () => {
+    const body = JSON.stringify({ requestId: crypto.randomUUID(), graphId: "debit", workspaceId: WS_A, payload: { userId: "u1" } });
+    const send = async (headers: Record<string, string>) => api("POST", WORKFLOW_RUNS_PATH, body, { "x-poc-key": KEY, "content-type": "application/json", ...headers });
+    expect((await send(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, body, Date.now() - 400_000))).status).toBe(401);
+    expect((await send(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, body, Date.now() + 400_000))).status).toBe(401);
+    expect((await send({ [SIGNED_AT_HEADER]: "not-a-time", [TELEMETRY_SIGNATURE_HEADER]: "sha256=00" })).status).toBe(401);
+    expect((await send(await signControlPlaneRequest(SIGNING_SECRET, "POST", "/__px/runs", body))).status).toBe(401);
+    expect((await send(await signControlPlaneRequest(SIGNING_SECRET, "GET", WORKFLOW_RUNS_PATH, body))).status).toBe(401);
+    expect((await send(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, body.replace(WS_A, WS_B)))).status).toBe(401);
+  });
+
+  test("GET /poc/runs/:id needs the control-plane signature: the shared key alone, or a signature for another run, is 401", async () => {
+    await store("debit-read", DEBIT);
+    const id = await start("debit-read", { userId: "u1" });
+    await finish(id);
+    expect((await api("GET", `/poc/runs/${id}`)).status).toBe(401);
+    expect((await api("GET", `/poc/runs/${id}`, undefined, { "x-poc-key": KEY, ...(await signControlPlaneRequest(SIGNING_SECRET, "GET", "/poc/runs/other")) })).status).toBe(401);
+    expect((await signedGet(`/poc/runs/${id}`)).status).toBe(200);
   });
 });

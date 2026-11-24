@@ -352,12 +352,11 @@ export async function executeBatchNode(ctx: ExecutionContext): Promise<Record<st
   const targetOperation = String(ctx.data.targetOperation ?? ctx.data.target ?? "integration.send");
   const plan = String(ctx.data.plan ?? "free").toLowerCase();
   const retries = Number(ctx.data.retries ?? 0);
-  const workspaceId = String(
-    ctx.data.workspaceId ??
-      (ctx.inputs.in as Record<string, unknown> | undefined)?.workspaceId ??
-      (ctx.payload as Record<string, unknown> | undefined)?.workspaceId ??
-      "ws_default",
-  );
+  // The run's verified workspace only (AD-S19): config, inputs and payload never choose where the jobs are written.
+  const workspaceId = ctx.workspaceId;
+  if (typeof workspaceId !== "string" || workspaceId.length === 0) {
+    throw new Error("NO_WORKSPACE: core.batch has no verified run workspace, so no jobs were written");
+  }
 
   // 1. Resolve raw items
   let rawItems: unknown[] = [];

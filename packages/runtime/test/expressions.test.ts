@@ -210,7 +210,7 @@ describe("packages/runtime step-output expression resolver & validator", () => {
       ],
     };
 
-    const res = await runGraph(graph, registry, executors, {
+    const res = await runGraph(graph, registry, executors, { workspaceId: "ws_test",
       payload: {
         id: "inv_42",
         amount: 99,

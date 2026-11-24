@@ -67,7 +67,7 @@ describe("UC1.4 / F-SEC-3: Integration Retry Policy", () => {
     },
   };
 
-  const createContext = (overrides?: Partial<ExecutionContext>): ExecutionContext => ({
+  const createContext = (overrides?: Partial<ExecutionContext>): ExecutionContext => ({ workspaceId: "ws_test",
     nodeId: "test_retry_node",
     runId: "run_retry_test",
     idempotencyKey: "run_retry_test:test_retry_node",

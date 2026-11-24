@@ -55,7 +55,7 @@ describe("UC7.7 — Refactor sweep (UC7)", () => {
       edges: [{ id: "e1", source: "t", target: "w", sourceHandle: "out", targetHandle: "in" }],
     };
 
-    const res = await runGraph(graph, registry, executors, {
+    const res = await runGraph(graph, registry, executors, { workspaceId: "ws_test",
       telemetry: {
         stepRetries: { limit: 3, delayMs: 0 },
       },
@@ -110,7 +110,7 @@ describe("UC7.7 — Refactor sweep (UC7)", () => {
       edges: [{ id: "e1", source: "t", target: "r", sourceHandle: "out", targetHandle: "in" }],
     };
 
-    const res = await runGraph(graph, registry, executors, {
+    const res = await runGraph(graph, registry, executors, { workspaceId: "ws_test",
       telemetry: {
         stepRetries: { limit: 10, delayMs: 0 },
       },
@@ -168,7 +168,7 @@ describe("UC7.7 — Refactor sweep (UC7)", () => {
       edges: [{ id: "e1", source: "t", target: "r", sourceHandle: "out", targetHandle: "in" }],
     };
 
-    const res = await runGraph(graph, registry, executors, {
+    const res = await runGraph(graph, registry, executors, { workspaceId: "ws_test",
       telemetry: {
         stepRetries: true,
       },

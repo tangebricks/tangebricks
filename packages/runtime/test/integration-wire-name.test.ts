@@ -116,7 +116,7 @@ describe("UC2.3 runtime executor wireName handling", () => {
       { fetcher, resolveHost: undefined },
     );
 
-    const ctx: ExecutionContext = {
+    const ctx: ExecutionContext = { workspaceId: "ws_test",
       nodeId: "test_node_cashfree",
       runId: "run_cashfree_test",
       idempotencyKey: "run_cashfree_test:test_node_cashfree",
@@ -172,7 +172,7 @@ describe("UC2.3 runtime executor wireName handling", () => {
       { fetcher, resolveHost: undefined },
     );
 
-    const ctx: ExecutionContext = {
+    const ctx: ExecutionContext = { workspaceId: "ws_test",
       nodeId: "test_node_cashfree_form",
       runId: "run_cashfree_test",
       idempotencyKey: "run_cashfree_test:test_node_cashfree_form",

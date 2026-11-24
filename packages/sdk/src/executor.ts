@@ -33,6 +33,11 @@ export interface ExecutionContext {
   nodeId: string;
   readonly runId: string;
   readonly idempotencyKey: string;
+  /**
+   * The run's verified workspace (AD-S19); never from inputs, payload or config. The runtime sets it from the run's
+   * authenticated trigger and refuses a run without one, so an executor that acts for a tenant uses this and nothing else.
+   */
+  readonly workspaceId: string;
   /** The node's own settings, already checked against the brick's config schema by the validator. */
   data: Record<string, unknown>;
   /** One value per input port; a port fed by several edges gets an array in edge order. */

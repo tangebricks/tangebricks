@@ -136,7 +136,7 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     };
 
     const workflow = new GraphWorkflow(testRegistry, executors);
-    const runResult = await workflow.start({
+    const runResult = await workflow.start({ workspaceId: "ws_test",
       graph,
       payload: { orderId: "ord_101", amount: 2500 },
       env: {
@@ -252,7 +252,7 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     };
 
     const workflow = new GraphWorkflow(testRegistry, executors);
-    const result = await workflow.start({
+    const result = await workflow.start({ workspaceId: "ws_test",
       graph,
       payload: { test: "retry-failure" },
       env: {

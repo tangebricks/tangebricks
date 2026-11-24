@@ -105,6 +105,9 @@
           "default": 1
         }
       },
+      "bindings": [
+        "DB"
+      ],
       "executor": "executeWalletDebit",
       "durable": true,
       "sideEffects": "write"

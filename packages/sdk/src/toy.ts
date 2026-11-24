@@ -126,8 +126,14 @@ export class GraphWorkflow {
     env?: Readonly<Record<string, unknown>>;
     runStep?: GraphWorkflowStepRunner;
     runId?: string;
+    /** The run's verified workspace (AD-S19), handed to every executor as `ctx.workspaceId`. Required: no default. */
+    workspaceId: string;
   }): Promise<GraphWorkflowRunResult> {
     const { graph, payload, env, runStep } = options;
+    const workspaceId = options.workspaceId;
+    if (typeof workspaceId !== "string" || !/^[A-Za-z0-9_.:-]{1,200}$/.test(workspaceId)) {
+      throw new Error("NO_WORKSPACE: the run has no verified workspace, so nothing was run");
+    }
     const runId = options.runId ?? `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const { issues, order } = validateGraph(graph.nodes, graph.edges, this.registry);
     const errors = issues.filter((i) => i.severity === "error");
@@ -181,6 +187,7 @@ export class GraphWorkflow {
                 nodeId: id,
                 runId,
                 idempotencyKey: `${runId}:${id}`,
+                workspaceId,
                 data: node.data,
                 inputs,
                 payload,

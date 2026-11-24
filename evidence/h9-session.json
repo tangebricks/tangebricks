@@ -10,11 +10,11 @@
     "toolCalls": 4,
     "conversationTokens": 2114,
     "modelVisibleTokens": 1737,
-    "firstPartySourceTokens": 25267,
+    "firstPartySourceTokens": 25495,
     "generatedFilesOnlyTokens": 8837,
-    "ratioPercent": 8.4,
+    "ratioPercent": 8.3,
     "ratioAgainstGeneratedFilesOnlyPercent": 23.9,
-    "modelVisibleRatioPercent": 6.9,
+    "modelVisibleRatioPercent": 6.8,
     "projectHash": "efa99a86cedb1c39e9645300cc04b8d6a33a26afafbf82440cc2ccd50fb144bc",
     "files": 13,
     "byMessage": [
@@ -81,7 +81,7 @@
       },
       {
         "path": "bricks/credit-wallet/src/brick.ts",
-        "tokens": 974
+        "tokens": 1177
       },
       {
         "path": "bricks/credit-wallet/src/d1.ts",
@@ -93,7 +93,7 @@
       },
       {
         "path": "bricks/credit-wallet/src/index.ts",
-        "tokens": 369
+        "tokens": 383
       },
       {
         "path": "bricks/credit-wallet/src/migrate.ts",
@@ -117,7 +117,7 @@
       },
       {
         "path": "bricks/credit-wallet/brick.manifest.json",
-        "tokens": 1210
+        "tokens": 1221
       },
       {
         "path": "bricks/dynamic-entities/src/index.ts",
@@ -193,14 +193,14 @@
       "session": "the whole invoices project with filtered list_bricks ({ query: 'workspace' })",
       "toolCalls": 4,
       "conversationTokens": 2002,
-      "firstPartySourceTokens": 25267,
+      "firstPartySourceTokens": 25495,
       "ratioPercent": 7.9
     },
     "tenBricks": {
       "session": "ten bricks and the invoices table in four calls",
       "toolCalls": 4,
       "conversationTokens": 2230,
-      "firstPartySourceTokens": 60027,
+      "firstPartySourceTokens": 60255,
       "filesBuilt": 20,
       "ratioPercent": 3.7
     },
@@ -225,12 +225,12 @@
       "toolCalls": 6,
       "conversationTokens": 2299,
       "toolListTokens": 1216,
-      "ratioPercent": 9.1
+      "ratioPercent": 9
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-24T16:34:36.320Z",
-    "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
+    "generatedAt": "2026-11-24T17:55:53.777Z",
+    "gitSha": "124611e8615be111fffda0f8edb5f2a4b404dfd7",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

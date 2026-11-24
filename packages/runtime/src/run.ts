@@ -62,7 +62,10 @@ export interface TelemetryRunOptions {
   revision?: number;
   /** Trigger type (defaults to "manual"). */
   triggerType?: string;
-  /** Workspace ID (defaults to "ws_default"). */
+  /**
+   * The run's workspace as telemetry records it. Optional and never a source of the run's workspace: when given it must
+   * equal `RunGraphOptions.workspaceId`, or the run is refused (WORKSPACE_MISMATCH).
+   */
   workspaceId?: string;
   /** Project slug used in webhook payloads (optional). */
   project?: string;
@@ -117,6 +120,35 @@ export interface RunResult {
  */
 export type RunStep = (nodeId: string, run: () => Promise<Record<string, unknown>>) => Promise<Record<string, unknown>>;
 
+/** A workspace id a run may carry: non-empty, at most 200 characters of letters, digits, `_`, `-`, `.` and `:`. */
+const RUN_WORKSPACE_ID = /^[A-Za-z0-9_.:-]{1,200}$/;
+export function isValidRunWorkspaceId(value: unknown): value is string {
+  return typeof value === "string" && RUN_WORKSPACE_ID.test(value);
+}
+
+/**
+ * The workspace a signed trigger (run, re-run, rehearsal, deployed Workflow run) may name: letters, digits, `_` and `-`, at
+ * most 64 characters, with no double underscore, so the reserved app workspace (`__app__`) and any other reserved id are
+ * refused. One rule for every signed route (story 1.1).
+ */
+const TENANT_WORKSPACE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+export function isTenantWorkspaceId(value: unknown): value is string {
+  return typeof value === "string" && TENANT_WORKSPACE_ID.test(value) && !value.includes("__");
+}
+
+/**
+ * Thrown by `runGraph` before any node runs when the run has no verified workspace (`NO_WORKSPACE`), or when a
+ * telemetry option names a different workspace than the run's (`WORKSPACE_MISMATCH`). There is no default workspace.
+ */
+export class RunRefusedError extends Error {
+  readonly code: "NO_WORKSPACE" | "WORKSPACE_MISMATCH";
+  constructor(code: "NO_WORKSPACE" | "WORKSPACE_MISMATCH", message: string) {
+    super(`${code}: ${message}`);
+    this.name = "RunRefusedError";
+    this.code = code;
+  }
+}
+
 export class GraphInvalidError extends Error {
   issues: ValidationIssue[];
   constructor(issues: ValidationIssue[]) {
@@ -129,8 +161,12 @@ export interface RunGraphOptions {
   /** Explicit stable runId (e.g. from Workflow instanceId). */
   runId?: string;
   payload?: unknown;
-  /** Immutable workspace ID established at workflow run start from the authenticated trigger context (AD-S19). */
-  workspaceId?: string;
+  /**
+   * Required. The run's verified workspace, established at run start from the authenticated trigger (AD-S19). Every
+   * executor gets it as `ctx.workspaceId`; a run without a valid one is refused (`RunRefusedError`, NO_WORKSPACE) before
+   * any node runs. There is no default.
+   */
+  workspaceId: string;
   env?: Readonly<Record<string, unknown>>;
   connections?: Readonly<Record<string, Record<string, unknown>>>;
   runStep?: RunStep;
@@ -318,8 +354,15 @@ export async function runGraph(
   registry: Registry,
   executors: Executors,
   /** `env` is the host's secrets and bindings. Executors never receive it; they get `ctx.secret()` for declared names only. */
-  options: RunGraphOptions = {},
+  options: RunGraphOptions,
 ): Promise<RunResult> {
+  if (!isValidRunWorkspaceId(options.workspaceId)) {
+    throw new RunRefusedError("NO_WORKSPACE", "the run has no verified workspace, so nothing was run");
+  }
+  if (options.telemetry?.workspaceId !== undefined && options.telemetry.workspaceId !== options.workspaceId) {
+    throw new RunRefusedError("WORKSPACE_MISMATCH", "the telemetry option names a different workspace than the run's, so nothing was run");
+  }
+  const workspaceId: string = options.workspaceId;
   const { issues, order } = validateGraph(graph.nodes, graph.edges, registry);
   const errors = issues.filter((i) => i.severity === "error");
   if (errors.length > 0) throw new GraphInvalidError(errors);
@@ -430,8 +473,6 @@ export async function runGraph(
   const workflowId = telemetryCfg?.workflowId ?? "wf_default";
   const revision = telemetryCfg?.revision ?? 0;
   const triggerType = telemetryCfg?.triggerType ?? "manual";
-  const explicitRunWorkspaceId = options.workspaceId ?? telemetryCfg?.workspaceId;
-  const workspaceId = explicitRunWorkspaceId ?? "ws_default";
   const telemetrySecret =
     telemetryCfg?.telemetrySecret ??
     (typeof options.env?.PX_TELEMETRY_SECRET === "string"
@@ -749,10 +790,8 @@ export async function runGraph(
                 return candidate as T;
               }
             } else if (options.connections) {
-              const wsId =
-                explicitRunWorkspaceId !== undefined || connectionDb !== undefined
-                  ? workspaceId
-                  : (nameOrSelector.workspaceId ?? workspaceId);
+              // The run's workspace only: a selector's own workspaceId is never used.
+              const wsId = workspaceId;
               const keysToTry = [
                 ...(nameOrSelector.scope === "workspace" && nameOrSelector.app
                   ? [`workspace:${wsId}:${nameOrSelector.app}`, `workspace:${nameOrSelector.app}`]
@@ -840,13 +879,6 @@ export async function runGraph(
               : node.type.includes(".")
                 ? node.type.split(".")[0]!
                 : node.type;
-          const inferredWorkspaceId =
-            typeof (inputs.in as Record<string, unknown> | undefined)?.workspaceId === "string"
-              ? ((inputs.in as Record<string, unknown>).workspaceId as string)
-              : typeof (options.payload as Record<string, unknown> | undefined)?.workspaceId === "string"
-                ? ((options.payload as Record<string, unknown>).workspaceId as string)
-                : workspaceId;
-
           const nodeLogger = createStructuredLogger({
             db: telemetryDb,
             context: {
@@ -855,7 +887,7 @@ export async function runGraph(
               revision,
               nodeId: id,
               brickId: inferredBrickId,
-              workspaceId: inferredWorkspaceId,
+              workspaceId,
             },
             redactOptions: {
               secretValues: trackedSecrets,
@@ -908,11 +940,12 @@ export async function runGraph(
                 if (!service || typeof service.execute !== "function") {
                   throw new Error(`service binding "${bindingName}" for isolated node ${node.type} is not available`);
                 }
-                const optAny = options as Record<string, unknown> | undefined;
+                const optAny = options as unknown as Record<string, unknown> | undefined;
                 const ctxSnapshot = {
                   nodeId: id,
                   runId,
                   idempotencyKey: (optAny?.idempotencyKey as string | undefined) ?? idempotencyKey,
+                  workspaceId,
                   data: resolvedData,
                   inputs,
                   payload: options.payload,
@@ -923,12 +956,15 @@ export async function runGraph(
                   nodeId: id,
                   runId,
                   idempotencyKey,
+                  workspaceId,
                   data: resolvedData,
                   inputs,
                   payload: options.payload,
                   secret,
                   binding,
                 };
+                // The run's workspace cannot be reassigned by an executor (AD-S19).
+                Object.defineProperty(execCtx, "workspaceId", { value: workspaceId, enumerable: true, writable: false, configurable: false });
                 Object.defineProperty(execCtx, "connection", {
                   value: connection,
                   enumerable: false,
@@ -994,12 +1030,6 @@ export async function runGraph(
                   : node.type.includes(".")
                     ? node.type.split(".")[0]!
                     : node.type;
-              const inferredWorkspaceId =
-                typeof (inputs.in as Record<string, unknown> | undefined)?.workspaceId === "string"
-                  ? ((inputs.in as Record<string, unknown>).workspaceId as string)
-                  : typeof (options.payload as Record<string, unknown> | undefined)?.workspaceId === "string"
-                    ? ((options.payload as Record<string, unknown>).workspaceId as string)
-                    : workspaceId;
               const autoErrEntry = telemetryDb
                 ? await insertStructuredLog(
                     telemetryDb,
@@ -1011,7 +1041,7 @@ export async function runGraph(
                       revision,
                       nodeId: id,
                       brickId: inferredBrickId,
-                      workspaceId: inferredWorkspaceId,
+                      workspaceId,
                       fields: {
                         nodeType: node.type,
                         durationMs,
@@ -1107,9 +1137,12 @@ export class RuntimeGraphWorkflow {
     seededOutputs?: Readonly<Record<string, unknown>>;
     reusedNodeIds?: ReadonlySet<string>;
     fromNodeId?: string;
+    /** The run's verified workspace (required; see RunGraphOptions.workspaceId). */
+    workspaceId: string;
   }): Promise<RunResult> {
     return runGraph(options.graph, this.registry, this.executors, {
       payload: options.payload,
+      workspaceId: options.workspaceId,
       env: options.env,
       connections: options.connections,
       runStep: options.runStep,

@@ -28,7 +28,7 @@ describe("brick action executors: no placeholder default", () => {
       },
       buildRegistryFromCatalog(catalog),
       executors,
-      { payload: { balance: 250, workspaceId: "ws_a" } },
+      { workspaceId: "ws_test", payload: { balance: 250, workspaceId: "ws_a" } },
     );
     expect(result.ok).toBe(false);
     expect(result.outputs.debit).toBeUndefined();
@@ -87,7 +87,7 @@ describe("brick action executors: no placeholder default", () => {
       },
       buildRegistryFromCatalog(catalog),
       executors,
-      { payload: { id: "rec_1" } },
+      { workspaceId: "ws_test", payload: { id: "rec_1" } },
     );
     expect(result.ok).toBe(true);
     expect(result.outputs.tr?.out).toEqual({ entity: "tasks", record: { id: "rec_1" } });

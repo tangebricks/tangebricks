@@ -345,6 +345,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
 
     // 3. Run a single-node Test Step rehearsal (both pass and fail) via POST /__px/rehearse
     const rehearsePassPayload = JSON.stringify({
+      workspaceId: "ws_canary",
       workflowId: "wf_canary",
       revision: 1,
       nodeId: "step_probe",
@@ -383,6 +384,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
     const rehearsePassHttpText = await rehearsePassRes!.text();
 
     const rehearseFailPayload = JSON.stringify({
+      workspaceId: "ws_canary",
       workflowId: "wf_canary",
       revision: 1,
       nodeId: "step_probe",
@@ -420,6 +422,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
 
     // 4. Re-run the failed run from `step_probe` via POST /__px/runs/rerun
     const rerunPayload = JSON.stringify({
+      workspaceId: "ws_canary",
       runId: "run_canary_rerun_ok",
       sourceRunId: "run_canary_fail",
       fromNodeId: "step_probe",

@@ -51,7 +51,8 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
       extraEnv?: Record<string, unknown>;
     },
   ): Promise<Response> {
-    const rawBody = JSON.stringify(payload);
+    // The signer always names the verified workspace (story 1.1); a call that names none uses the test's preview workspace.
+    const rawBody = JSON.stringify({ workspaceId: "ws_test", ...payload });
     const sig =
       opts?.signatureOverride !== undefined
         ? opts.signatureOverride
@@ -155,7 +156,7 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
     expect(rehearseBrickBody.status).toBe("succeeded");
     expect(rehearseBrickBody.runId.startsWith("rehearsal:")).toBe(true);
 
-    const prodBrickRun = await workflow.start({
+    const prodBrickRun = await workflow.start({ workspaceId: "ws_acme_tenant",
       graph: {
         nodes: [
           { id: "trig", type: "trigger.manual", data: {} },
@@ -197,7 +198,7 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
     const rehearseLogicBody = (await rehearseLogicRes.json()) as StepRehearsalResult;
     expect(rehearseLogicBody.status).toBe("succeeded");
 
-    const prodLogicRun = await workflow.start({
+    const prodLogicRun = await workflow.start({ workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "trig", type: "trigger.manual", data: {} },
@@ -234,7 +235,7 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
     const rehearseHttpBody = (await rehearseHttpRes.json()) as StepRehearsalResult;
     expect(rehearseHttpBody.status).toBe("succeeded");
 
-    const prodHttpRun = await workflow.start({
+    const prodHttpRun = await workflow.start({ workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "trig", type: "trigger.manual", data: {} },
@@ -291,6 +292,7 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
       nodeType: "action.secret_rehearsal_probe",
       config: { apiSecretWidget: "whsec_widget_canary_554433" },
       input: { userId: "u_1" },
+      workspaceId: "ws_test",
     });
     const sig = await signTelemetryPayload(payload, TELEMETRY_SECRET);
 

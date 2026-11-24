@@ -248,7 +248,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
 
     // 1. Trigger core.webhook -> core.field_map -> core.rename_keys -> core.format_template -> core.json_transform -> core.noop
     const wf1Runner = new GraphWorkflow(registry, executors);
-    const res1 = await wf1Runner.start({
+    const res1 = await wf1Runner.start({ workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "t1", type: "core.webhook", data: { method: "post" } },
@@ -320,7 +320,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
       },
       registry,
       executors,
-      {
+      { workspaceId: "ws_test",
         payload: {
           items: [
             { active: true, points: 10 },
@@ -382,7 +382,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
       },
       registry,
       executors,
-      {
+      { workspaceId: "ws_test",
         payload: { severity: "high", channel: "email" },
       },
     );
@@ -422,7 +422,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
         ...BRICK_EXPORTS,
         "@poc/credit-wallet": PLACEHOLDER_BRICK_EXECUTOR_MODULES["@poc/credit-wallet"]!,
       }),
-      {
+      { workspaceId: "ws_test",
         payload: { invoiceId: "inv_1" },
       },
     );
@@ -458,7 +458,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
         ...BRICK_EXPORTS,
         "@poc/omnichannel-outbound": PLACEHOLDER_BRICK_EXECUTOR_MODULES["@poc/omnichannel-outbound"]!,
       }),
-      { payload: { invoiceId: "inv_1" } },
+      { workspaceId: "ws_test", payload: { invoiceId: "inv_1" } },
     );
     expect(wfBricksFake.ok).toBe(true);
     expect(wfBricksFake.outputs.oo?.out).toMatchObject({ dispatched: true, channel: "slack" });
@@ -476,7 +476,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
       },
       registry,
       executors,
-      {
+      { workspaceId: "ws_test",
         payload: { id: "rec_1", title: "Ship CP3" },
       },
     );

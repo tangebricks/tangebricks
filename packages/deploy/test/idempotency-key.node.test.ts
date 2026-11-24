@@ -143,7 +143,7 @@ describe("UC7.1 — Tracer: stable run id and idempotency key runId:nodeId on Ex
     const result1 = await runStoredGraph({
       step: stepper1.step,
       db: world.d1,
-      params: { graphId: "g_idemp", workspaceId: APP_WORKSPACE, payload: { ping: true }, runId: instanceId },
+      params: { graphId: "g_idemp", workspaceId: "ws_test", payload: { ping: true }, runId: instanceId },
       env: {},
       registry: testRegistry,
       executors: testExecutors,
@@ -156,7 +156,7 @@ describe("UC7.1 — Tracer: stable run id and idempotency key runId:nodeId on Ex
     const result2 = await runStoredGraph({
       step: stepper2.step,
       db: world.d1,
-      params: { graphId: "g_idemp", workspaceId: APP_WORKSPACE, payload: { ping: true }, runId: instanceId },
+      params: { graphId: "g_idemp", workspaceId: "ws_test", payload: { ping: true }, runId: instanceId },
       env: {},
       registry: testRegistry,
       executors: testExecutors,
@@ -188,7 +188,7 @@ describe("UC7.1 — Tracer: stable run id and idempotency key runId:nodeId on Ex
     const result3 = await runStoredGraph({
       step: stepper3.step,
       db: world.d1,
-      params: { graphId: "g_idemp", workspaceId: APP_WORKSPACE, payload: { ping: true }, runId: differentInstanceId },
+      params: { graphId: "g_idemp", workspaceId: "ws_test", payload: { ping: true }, runId: differentInstanceId },
       env: {},
       registry: testRegistry,
       executors: testExecutors,
@@ -229,7 +229,7 @@ describe("UC7.1 — Tracer: stable run id and idempotency key runId:nodeId on Ex
       db: world.d1,
       params: {
         graphId: "g_telemetry_idemp",
-        workspaceId: APP_WORKSPACE,
+        workspaceId: "ws_test",
         payload: {},
         runId: instanceId,
         telemetry: {

@@ -209,7 +209,7 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
       edges: [{ id: "e1", source: "n_trig", target: "n_work" }],
     };
 
-    const prodRun = await runGraph(graph, registry, executors, {
+    const prodRun = await runGraph(graph, registry, executors, { workspaceId: "ws_test",
       payload: { rawCustomerPayload: sensitiveInput },
       env: { DB: db, PX_ENV: "production" },
       telemetry: {
@@ -245,7 +245,7 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
     }
 
     // Preview environment still captures step I/O even when captureStepIoInProd is false
-    await runGraph(graph, registry, executors, {
+    await runGraph(graph, registry, executors, { workspaceId: "ws_test",
       payload: { rawCustomerPayload: sensitiveInput },
       env: { DB: db, PX_ENV: "preview" },
       telemetry: {
@@ -351,7 +351,7 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
       edges: [{ id: "e1", source: "t1", target: "a1" }],
     };
 
-    const res = await runGraph(graph, registry, executors, {
+    const res = await runGraph(graph, registry, executors, { workspaceId: "ws_test",
       payload: {
         authorization: canaryDefaultKeyHeader,
         ssn: canaryCustomSsn,

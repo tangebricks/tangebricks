@@ -41,7 +41,7 @@ export interface Exemption {
 }
 
 const SERVICE_INPUT = "service-layer argument: `input` is the typed object the route handler built from c.get(\"ctx\"), not request data";
-const WORKFLOW_INPUT = "workflow node input, story 1.1: the runtime feeds it from the trigger, not from an HTTP request";
+const WORKFLOW_INPUT = "workflow node input, story 1.1: the step debits ctx.workspaceId (the run's verified workspace); an input workspaceId is only compared with it and a mismatch fails WORKSPACE_MISMATCH";
 
 export const EXEMPTIONS: readonly Exemption[] = [
   {

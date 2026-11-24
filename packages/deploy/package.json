@@ -10,6 +10,8 @@
     "./migration-lint": "./src/migration-lint.ts"
   },
   "dependencies": {
+    "@poc/assembler": "workspace:*",
+    "@poc/credit-wallet": "workspace:*",
     "@poc/harness": "workspace:*",
     "@poc/runtime": "workspace:*",
     "@poc/sdk": "workspace:*",
@@ -17,7 +19,6 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@poc/assembler": "workspace:*",
     "miniflare": "5.20261019.0-beta"
   }
 }

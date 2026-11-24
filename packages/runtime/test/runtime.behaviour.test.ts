@@ -14,7 +14,7 @@ describe("runGraph behaviour", () => {
       ],
       edges: [wire("t", "bad"), wire("bad", "after"), wire("t", "fine")],
     };
-    const result = await runGraph(graph, toyRegistry, toyExecutors, { payload: { x: 1 } });
+    const result = await runGraph(graph, toyRegistry, toyExecutors, { workspaceId: "ws_test", payload: { x: 1 } });
     expect(result.ok).toBe(false);
     expect(result.failed).toEqual({ bad: "boom" });
     expect(result.skipped).toEqual(["after"]);
@@ -28,7 +28,7 @@ describe("runGraph behaviour", () => {
       nodes: [node("t", "trigger.manual"), node("p1", "transform.pick", { path: "a" }), node("p2", "transform.pick", { path: "a" })],
       edges: [wire("t", "p1"), wire("p1", "p2"), wire("p2", "p1")],
     };
-    const error = await runGraph(cyclic, toyRegistry, spy).catch((e: unknown) => e);
+    const error = await runGraph(cyclic, toyRegistry, spy, { workspaceId: "ws_test" }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(GraphInvalidError);
     expect((error as GraphInvalidError).issues.map((i) => i.code)).toContain("cycle");
     expect(called).toBe(false);
@@ -39,7 +39,7 @@ describe("runGraph behaviour", () => {
       nodes: [node("t", "trigger.manual"), node("p", "transform.pick", { path: "x" }), node("lonely", "transform.pick", { path: "x" })],
       edges: [wire("t", "p")],
     };
-    const result = await runGraph(graph, toyRegistry, toyExecutors, { payload: { x: 2 } });
+    const result = await runGraph(graph, toyRegistry, toyExecutors, { workspaceId: "ws_test", payload: { x: 2 } });
     expect(result.ok).toBe(true);
     expect(result.skipped).toEqual(["lonely"]);
     expect(result.outputs.p?.out).toBe(2);
@@ -51,7 +51,7 @@ describe("runGraph behaviour", () => {
       nodes: [node("t", "trigger.manual"), node("p", "transform.pick", { path: "x" })],
       edges: [wire("t", "p")],
     };
-    const result = await runGraph(graph, toyRegistry, withoutPick, { payload: {} });
+    const result = await runGraph(graph, toyRegistry, withoutPick, { workspaceId: "ws_test", payload: {} });
     expect(result.failed).toEqual({ p: "no executor registered for transform.pick" });
   });
 
@@ -71,14 +71,14 @@ describe("runGraph behaviour", () => {
       nodes: [node("t", "trigger.manual"), node("a", "transform.pick", { path: "v" }), node("b", "transform.pick", { path: "v" }), node("c", "transform.pick", { path: "v" })],
       edges: [wire("t", "a"), wire("t", "b"), wire("a", "c"), wire("b", "c")],
     };
-    await runGraph(graph, toyRegistry, executors, { payload: {} });
+    await runGraph(graph, toyRegistry, executors, { workspaceId: "ws_test", payload: {} });
     expect(seen).toEqual(["a", "b"]);
   });
 
   test("an executor that returns a rejected promise is a failure, not an unhandled rejection", async () => {
     const rejecting = new Map([...toyExecutors, ["util.boom", () => Promise.reject(new Error("async boom"))]]);
     const graph = { nodes: [node("t", "trigger.manual"), node("x", "util.boom")], edges: [wire("t", "x")] };
-    const result = await runGraph(graph, toyRegistry, rejecting, { payload: {} });
+    const result = await runGraph(graph, toyRegistry, rejecting, { workspaceId: "ws_test", payload: {} });
     expect(result.failed).toEqual({ x: "async boom" });
   });
 });

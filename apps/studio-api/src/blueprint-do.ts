@@ -1,4 +1,5 @@
 import type { DurableObject as CfDurableObject } from "cloudflare:workers";
+import { STUDIO_PREVIEW_WORKSPACE } from "./preview-workspace.ts";
 import { catalog } from "@poc/assembler/catalog";
 
 const DurableObjectBase = (await import("cloudflare:workers")
@@ -3177,7 +3178,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
         run.workflowId,
         run.revision,
         run.triggerType ?? "manual",
-        run.workspaceId ?? "ws_default",
+        run.workspaceId ?? STUDIO_PREVIEW_WORKSPACE,
         run.status,
         run.durationMs,
         run.retries ?? 0,

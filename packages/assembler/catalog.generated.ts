@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "0f9bdc5e53e7dfc86073528e861110e35c3c6b5f22e9d2c84ec840f43d31cbdc",
+  "catalogVersion": "6a6e87aa5db159101c49458dcd776fcb48af16c9f66e3e94b2ad6a48077a7cca",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -633,6 +633,9 @@ export const catalog: Catalog = {
                 "default": 1
               }
             },
+            "bindings": [
+              "DB"
+            ],
             "executor": "executeWalletDebit",
             "durable": true,
             "sideEffects": "write"

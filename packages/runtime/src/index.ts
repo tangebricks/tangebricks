@@ -106,6 +106,9 @@ export type {
 
 export {
   GraphInvalidError,
+  RunRefusedError,
+  isValidRunWorkspaceId,
+  isTenantWorkspaceId,
   RuntimeGraphWorkflow,
   RuntimeGraphWorkflow as GraphWorkflow,
   computeDownstreamSubgraph,
@@ -168,6 +171,7 @@ export {
   recordHttpRequestSamples,
   redactStructuredLogEntry,
   signTelemetryPayload,
+  verifyTelemetrySignature,
   toMinuteBucketIso,
   upsertHttpRollup,
   upsertQueueMetrics,
@@ -226,7 +230,7 @@ const placeholderBrickExecutorModules: Readonly<Record<string, Readonly<Record<s
           ? (ctx.inputs.in as Record<string, unknown>)
           : {};
       const balanceBefore = typeof input.balance === "number" ? input.balance : 100;
-      const workspaceId = typeof input.workspaceId === "string" ? input.workspaceId : "default";
+      const workspaceId = ctx.workspaceId;
       if (balanceBefore < amount) {
         throw new Error(`credit-wallet.debit (${ctx.nodeId}): insufficient balance (${balanceBefore} < ${amount})`);
       }
@@ -254,7 +258,7 @@ const placeholderBrickExecutorModules: Readonly<Record<string, Readonly<Record<s
           ? (ctx.inputs.in as Record<string, unknown>)
           : {};
       const balanceBefore = typeof input.balance === "number" ? input.balance : 0;
-      const workspaceId = typeof input.workspaceId === "string" ? input.workspaceId : "default";
+      const workspaceId = ctx.workspaceId;
       await ctx.log?.info(`Credited ${amount} credits to workspace wallet`, {
         operation: "credit",
         credited: amount,

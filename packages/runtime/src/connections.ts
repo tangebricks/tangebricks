@@ -392,7 +392,11 @@ function buildLookupCandidates(
   nameOrSelector: string | ConnectionLookupSelector,
   options: ResolveCaseAConnectionOptions,
 ): { candidates: string[]; targetApp?: string; targetWorkspaceId: string } {
-  const defaultWs = options.workspaceId ?? "default";
+  // The run's workspace is required (story 1.1): there is no default to fall back to.
+  const defaultWs = options.workspaceId?.trim() ?? "";
+  if (!defaultWs) {
+    throw new Error("NO_WORKSPACE: the run has no verified workspace, so no connection is resolved");
+  }
   if (typeof nameOrSelector === "string") {
     const trimmed = nameOrSelector.trim();
     const candidates = [trimmed];
@@ -409,7 +413,8 @@ function buildLookupCandidates(
   const scope = nameOrSelector.scope ?? "project";
   const ref = nameOrSelector.ref?.trim();
   const app = nameOrSelector.app?.trim() ?? options.defaultApp;
-  const wsId = nameOrSelector.workspaceId?.trim() || defaultWs;
+  // The run's workspace only (AD-S19): a selector's own workspaceId is never used to pick another tenant's connection.
+  const wsId = defaultWs;
   const candidates: string[] = [];
 
   if (scope === "workspace") {
@@ -506,7 +511,7 @@ async function emitConnectionExpiredTelemetry(
         revision: options.revision ?? null,
         nodeId: options.nodeId ?? null,
         brickId: `int:${row.app}`,
-        workspaceId: row.workspace_id || options.workspaceId || "ws_default",
+        workspaceId: options.workspaceId || row.workspace_id,
         fields: {
           event: "connection.expired",
           ref: row.ref,
@@ -608,7 +613,12 @@ export async function resolveCaseBWorkspaceConnection(
   const db = options.db;
   const provider = providerRaw.trim().toLowerCase();
   // Immutable RunContext.workspaceId: never trust caller-supplied selector/node/payload workspaceId
-  const workspaceId = (options.workspaceId ?? "ws_default").trim() || "ws_default";
+  const workspaceId = (options.workspaceId ?? "").trim();
+  if (!workspaceId) {
+    throw new Error(
+      `NO_WORKSPACE: the run has no verified workspace, so no workspace connection for provider "${provider}" is resolved`,
+    );
+  }
 
   if (!db) {
     throw new Error(

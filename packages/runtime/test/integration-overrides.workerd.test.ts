@@ -7,7 +7,7 @@ import {
 } from "../src/index.ts";
 
 function createDummyContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
-  return {
+  return { workspaceId: "ws_test",
     nodeId: "node_1",
     runId: "run_dummy",
     idempotencyKey: "run_dummy:node_1",

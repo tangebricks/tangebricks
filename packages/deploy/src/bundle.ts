@@ -71,22 +71,43 @@ export async function buildDemoPage(): Promise<string> {
  * import itself, so the result has none left except `cloudflare:*`, which the Workers runtime provides. A Node-only
  * import in the project makes the build fail here rather than at the upload.
  */
-export async function bundleWorker(options: { projectDir: string; demoHtml?: string }): Promise<WorkerBundle> {
+export interface BundleWorkerOptions {
+  projectDir: string;
+  demoHtml?: string;
+  /** The deploy environment switch (PX_ENVIRONMENT) baked into the executors: "production" refuses placeholder executors at load. */
+  environment?: string;
+  /**
+   * Test fixtures only: an absolute path to a module exporting `fixtureManifests` and `fixtureExecutors` (for example
+   * src/worker/proof-bricks.ts for the H10/H11 protocol rehearsals), added on top of the real catalog bricks. The shipped
+   * bundle never sets this, so the deployed Workflow runs only the catalog's real executors.
+   */
+  fixtureBricksModule?: string;
+}
+
+export async function bundleWorker(options: BundleWorkerOptions): Promise<WorkerBundle> {
   const { build } = await import("esbuild");
   const projectDir = resolve(options.projectDir);
   if (!existsSync(join(projectDir, "src", "index.ts"))) throw new Error(`${projectDir} has no src/index.ts: assemble the project first`);
   const demoHtml = options.demoHtml ?? (await buildDemoPage());
   const gate = slash(join(repoRoot, "packages", "deploy", "src", "worker", "gate.ts"));
   const worker = (file: string) => JSON.stringify(slash(join(repoRoot, "packages", "deploy", "src", "worker", file)));
+  // The Workflow and the routes run the real catalog registry and executors (story 1.1); fixtures only when a test asks.
+  const fixtures = options.fixtureBricksModule ? JSON.stringify(slash(resolve(options.fixtureBricksModule))) : null;
+  const deployOptions = [
+    ...(options.environment !== undefined ? [`environment: ${JSON.stringify(options.environment)}`] : []),
+    ...(fixtures ? ["fixtures: { manifests: fixtureManifests, executors: fixtureExecutors }"] : []),
+  ].join(", ");
   // The Workflow class has to be a top-level export of the script under the name the upload's binding gives, so it is declared here.
   const entry = [
     `import app from "./src/index.ts";`,
     `import { createGatedWorker } from ${JSON.stringify(gate)};`,
     `import { createGraphRunner } from ${worker("graph-workflow.ts")};`,
     `import { createProofRoutes } from ${worker("proof-routes.ts")};`,
-    `import { proofExecutors, proofRegistry } from ${worker("proof-bricks.ts")};`,
-    `export class ${WORKFLOW_CLASS} extends createGraphRunner({ registry: proofRegistry, executors: proofExecutors }) {}`,
-    `export default createGatedWorker({ app, demoHtml: ${JSON.stringify(demoHtml)}, extra: createProofRoutes() });`,
+    `import { createDeployBricks } from ${worker("catalog-bricks.ts")};`,
+    ...(fixtures ? [`import { fixtureExecutors, fixtureManifests } from ${fixtures};`] : []),
+    `const bricks = createDeployBricks({ ${deployOptions} });`,
+    `export class ${WORKFLOW_CLASS} extends createGraphRunner(bricks) {}`,
+    `export default createGatedWorker({ app, demoHtml: ${JSON.stringify(demoHtml)}, extra: createProofRoutes({ registry: bricks.registry, executors: bricks.executors }) });`,
   ].join("\n");
 
   const result = await build({

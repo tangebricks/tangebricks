@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { beforeEach, describe, expect, test } from "vitest";
 import { z } from "zod";
-import { runGraph } from "@poc/runtime";
+import { RunRefusedError, TELEMETRY_SIGNATURE_HEADER, runGraph, signTelemetryPayload } from "@poc/runtime";
 import type { Graph } from "@poc/runtime";
 import { applyMigration, createRegistry } from "@poc/sdk";
 import type { BrickManifest, D1Like, Executor } from "@poc/sdk";
@@ -19,7 +19,7 @@ import {
 } from "../src/worker/graph-run.ts";
 import type { StepLike } from "../src/worker/graph-run.ts";
 import { proofExecutors, proofRegistry } from "../src/worker/proof-bricks.ts";
-import { createProofRoutes } from "../src/worker/proof-routes.ts";
+import { WORKFLOW_RUNS_PATH, createProofRoutes, signControlPlaneRequest } from "../src/worker/proof-routes.ts";
 import { isExcludedDataBrowserTable } from "../src/worker/data-browser.ts";
 import { lintMigration } from "../src/migration-lint.ts";
 import {
@@ -82,7 +82,15 @@ describe("which graph a run loads", () => {
     store(APP_WORKSPACE, "g", MULTIPLY);
     expect((await runAs(WS_A)).outputs.mul).toEqual({ out: 20 });
     expect((await runAs(WS_B)).outputs.mul).toEqual({ out: 20 });
-    expect((await runAs(APP_WORKSPACE)).outputs.mul).toEqual({ out: 20 });
+  });
+
+  test("RUN_NO_WORKSPACE (story 1.1): the reserved app workspace is nobody's, so a run for it is refused before the table is read", async () => {
+    store(APP_WORKSPACE, "g", MULTIPLY);
+    world.statements.length = 0;
+    const error = await refusal(runAs(APP_WORKSPACE));
+    expect(error?.message).toMatch(/^NO_WORKSPACE: /);
+    expect(error?.nonRetryable).toBe(true);
+    expect(world.statements).toEqual([]);
   });
 
   test("OWN_OVER_APP: with g under both A and the app, A runs its own row and B gets the app's", async () => {
@@ -97,11 +105,17 @@ describe("which graph a run loads", () => {
     expect((await runAs(WS_A)).outputs.mul).toEqual({ out: 9 });
   });
 
-  test("a run started before workspaces existed (params {graphId, payload}) is an app-wide run, not refused on replay", async () => {
+  test("RUN_NO_WORKSPACE (story 1.1): a run with no workspace (params {graphId, payload}) is refused NO_WORKSPACE, never retried, and no node runs", async () => {
     store(APP_WORKSPACE, "g", MULTIPLY);
     store(WS_A, "g", ADD);
-    const result = await runStoredGraph({ step, db: world.d1, params: { graphId: "g", payload: PAYLOAD }, env: {}, registry: proofRegistry, executors: proofExecutors, nonRetryable });
-    expect(result.outputs.mul).toEqual({ out: 20 });
+    const ran: string[] = [];
+    const watching = new Map<string, Executor>([...proofExecutors].map(([type, exec]): [string, Executor] => [type, (ctx) => (ran.push(ctx.nodeId), exec(ctx))]));
+    world.statements.length = 0;
+    const error = await refusal(runStoredGraph({ step, db: world.d1, params: { graphId: "g", payload: PAYLOAD }, env: {}, registry: proofRegistry, executors: watching, nonRetryable }));
+    expect(error?.message).toMatch(/^NO_WORKSPACE: /);
+    expect(error?.nonRetryable).toBe(true);
+    expect(ran).toEqual([]);
+    expect(world.statements).toEqual([]);
   });
 
   test.each([
@@ -137,7 +151,7 @@ describe("which graph a run loads", () => {
     expect(isRunWorkspaceId("app__")).toBe(false);
   });
 
-  test("an app-wide run resolves a workspace connection exactly as before; a workspace's run resolves it in that workspace", async () => {
+  test("a workspace's run resolves a workspace connection in that workspace, and every executor sees ctx.workspaceId", async () => {
     const connManifest: BrickManifest = { type: "x.conn", category: "action", inputs: [{ id: "in", dataType: "json" }], outputs: [{ id: "out", dataType: "json" }], configSchema: z.object({}), secrets: [] };
     const registry = createRegistry([...proofRegistry.values(), connManifest]);
     const tryConnection: Executor = async (ctx) => {
@@ -147,19 +161,21 @@ describe("which graph a run loads", () => {
         return { out: error instanceof Error ? error.message : String(error) };
       }
     };
-    const executors = new Map<string, Executor>([...proofExecutors, ["x.conn", tryConnection]]);
+    const seen: string[] = [];
+    const executors = new Map<string, Executor>([...proofExecutors, ["x.conn", async (ctx) => (seen.push(ctx.workspaceId), tryConnection(ctx))]]);
     const graph: Graph = { nodes: [node("t", "trigger.manual"), node("c", "x.conn")], edges: [wire("t", "out", "c", "in")] };
     store(APP_WORKSPACE, "conn", graph);
-    store(WS_A, "conn", graph);
     const env = { DB: world.d1 };
     const runFor = async (workspaceId: string) =>
-      (await runStoredGraph({ step, db: world.d1, params: { graphId: "conn", workspaceId, payload: PAYLOAD }, env, registry, executors, nonRetryable })).outputs.c;
-    const before = (await runGraph(graph, registry, executors, { payload: PAYLOAD, env, runId: "r" })).outputs.c;
-    expect(String(before?.out)).toMatch(/ws_default/);
-    const app = await runFor(APP_WORKSPACE);
-    expect(app).toEqual(before);
-    expect(String(app?.out)).not.toContain(APP_WORKSPACE);
-    expect(String((await runFor(WS_A))?.out)).toContain(WS_A);
+      (await runStoredGraph({ step, db: world.d1, params: { graphId: "conn", workspaceId, payload: { ...PAYLOAD, workspaceId: WS_B } }, env, registry, executors, nonRetryable })).outputs.c;
+    const direct = (await runGraph(graph, registry, executors, { payload: PAYLOAD, env, runId: "r", workspaceId: WS_A })).outputs.c;
+    expect(String(direct?.out)).toContain(WS_A);
+    const stored = await runFor(WS_A);
+    expect(stored).toEqual(direct);
+    expect(String(stored?.out)).not.toContain(WS_B); // the payload's workspace is never used
+    expect(seen).toEqual([WS_A, WS_A]);
+    // without a workspace the runtime refuses the run itself: there is no ws_default
+    await expect(runGraph(graph, registry, executors, { payload: PAYLOAD, env, runId: "r" } as never)).rejects.toThrow(RunRefusedError);
   });
 
   test("the run record carries its workspace, whatever telemetry option it is given", async () => {
@@ -180,17 +196,24 @@ describe("which graph a run loads", () => {
   });
 });
 
-/** A Workflow binding that remembers what it was asked to start. */
-function workflowBinding() {
+/** A Workflow binding that remembers what it was asked to start; like the engine, an instance id can be used once. */
+function workflowBinding(shared?: Map<string, unknown>) {
   const created: unknown[] = [];
+  const ids = shared ?? new Map<string, unknown>();
   return {
     created,
     binding: {
-      create: async (options: { params: unknown }) => {
+      create: async (options: { id?: string; params: unknown }) => {
+        const id = options.id ?? `inst-${ids.size + 1}`;
+        if (ids.has(id)) throw new Error(`instance ${id} already exists`);
+        ids.set(id, options.params);
         created.push(options.params);
-        return { id: `inst-${created.length}`, status: async () => ({ status: "queued" }) };
+        return { id, status: async () => ({ status: "queued" }) };
       },
-      get: async (id: string) => ({ id, status: async () => ({ status: "queued" }) }),
+      get: async (id: string) => {
+        if (!ids.has(id)) throw new Error("not found");
+        return { id, status: async () => ({ status: "queued" }) };
+      },
     },
   };
 }
@@ -250,13 +273,93 @@ describe("the routes behind the shared access key", () => {
     expect(JSON.parse(shared.json!.graph as string)).toEqual(ADD);
   });
 
-  test("POST /poc/runs starts a run for the app workspace, and a workspace named in the body is ignored", async () => {
-    const plain = await call("POST", "/poc/runs", JSON.stringify({ graphId: "g", payload: PAYLOAD }));
-    expect(plain.status).toBe(202);
-    expect(plain.created).toEqual([{ graphId: "g", workspaceId: APP_WORKSPACE, payload: PAYLOAD }]);
-    const sneaky = await call("POST", "/poc/runs", JSON.stringify({ graphId: "g", workspaceId: WS_A, payload: PAYLOAD }));
-    expect(sneaky.status).toBe(202);
-    expect(sneaky.created).toEqual([{ graphId: "g", workspaceId: APP_WORKSPACE, payload: PAYLOAD }]);
+  test("POC_RUNS_UNVERIFIED (story 1.1): POST /poc/runs is refused 403 NO_VERIFIED_WORKSPACE and no Workflow instance is created, whatever the body names", async () => {
+    for (const body of [JSON.stringify({ graphId: "g", payload: PAYLOAD }), JSON.stringify({ graphId: "g", workspaceId: WS_A, payload: PAYLOAD }), "not json", "{}"]) {
+      const refused = await call("POST", "/poc/runs", body);
+      expect(refused.status, body).toBe(403);
+      expect((refused.json!.error as { code: string }).code).toBe("NO_VERIFIED_WORKSPACE");
+      expect(refused.created).toEqual([]);
+    }
+  });
+
+  describe("POST /__px/workflow-runs, the signed trigger (story 1.1)", () => {
+    const SECRET = "control-plane-secret-0123456789";
+    const ACCESS_KEY = "shared-access-key-0123456789";
+    const REQUEST_ID = "6f1c2d3e-4a5b-4c6d-8e7f-90a1b2c3d4e5";
+    const signed = async (body: unknown, secret = SECRET, env: Record<string, unknown> = { PX_TELEMETRY_SECRET: SECRET, POC_ACCESS_KEY: ACCESS_KEY }, instances?: Map<string, unknown>) => {
+      const wf = workflowBinding(instances);
+      const text = typeof body === "string" ? body : JSON.stringify({ requestId: crypto.randomUUID(), ...(body as object) });
+      const response = await routes(
+        new Request(`http://deployed.invalid${WORKFLOW_RUNS_PATH}`, { method: "POST", body: text, headers: { "content-type": "application/json", ...(await signControlPlaneRequest(secret, "POST", WORKFLOW_RUNS_PATH, text)) } }),
+        { DB: world.d1, GRAPH_RUNNER: wf.binding, ...env },
+      );
+      return { status: response?.status ?? null, json: response ? ((await response.json()) as Record<string, unknown>) : null, created: wf.created };
+    };
+
+    test("starts the Workflow with the signed body's workspace as the run's verified workspace, under the requestId", async () => {
+      const ok = await signed({ requestId: REQUEST_ID, graphId: "g", workspaceId: WS_A, payload: PAYLOAD });
+      expect(ok.status).toBe(202);
+      expect(ok.created).toEqual([{ graphId: "g", workspaceId: WS_A, payload: PAYLOAD }]);
+      expect(ok.json).toEqual({ id: REQUEST_ID, workspaceId: WS_A });
+    });
+
+    test("REPLAY: the same signed request again is 409 DUPLICATE_REQUEST and starts nothing; a missing or malformed requestId is 400", async () => {
+      const instances = new Map<string, unknown>();
+      const text = JSON.stringify({ requestId: REQUEST_ID, graphId: "g", workspaceId: WS_A, payload: PAYLOAD });
+      expect((await signed(text, SECRET, undefined, instances)).status).toBe(202);
+      const replay = await signed(text, SECRET, undefined, instances);
+      expect(replay.status).toBe(409);
+      expect((replay.json!.error as { code: string }).code).toBe("DUPLICATE_REQUEST");
+      expect(replay.created).toEqual([]);
+      expect(instances.size).toBe(1);
+      for (const requestId of [undefined, "", "abc", 7]) {
+        const bad = await signed(JSON.stringify({ ...(requestId === undefined ? {} : { requestId }), graphId: "g", workspaceId: WS_A }));
+        expect(bad.status, String(requestId)).toBe(400);
+        expect(bad.created).toEqual([]);
+      }
+    });
+
+    test("a stale signing time, or a signature made for another path, is 401 and starts nothing", async () => {
+      const text = JSON.stringify({ requestId: REQUEST_ID, graphId: "g", workspaceId: WS_A });
+      const send = async (headers: Record<string, string>) => {
+        const wf = workflowBinding();
+        const response = await routes(new Request(`http://deployed.invalid${WORKFLOW_RUNS_PATH}`, { method: "POST", body: text, headers }), { DB: world.d1, GRAPH_RUNNER: wf.binding, PX_TELEMETRY_SECRET: SECRET, POC_ACCESS_KEY: ACCESS_KEY });
+        return { status: response?.status, created: wf.created };
+      };
+      for (const headers of [
+        await signControlPlaneRequest(SECRET, "POST", WORKFLOW_RUNS_PATH, text, Date.now() - 301_000),
+        await signControlPlaneRequest(SECRET, "POST", "/__px/runs", text),
+        { [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(text, SECRET) },
+      ]) {
+        const result = await send(headers);
+        expect(result.status).toBe(401);
+        expect(result.created).toEqual([]);
+      }
+    });
+
+    test("SIGNED_NO_WORKSPACE: a signed body without a workspace is 400 NO_WORKSPACE; the app workspace or a bad id is 400; nothing is created", async () => {
+      const missing = await signed({ graphId: "g", payload: PAYLOAD });
+      expect(missing.status).toBe(400);
+      expect((missing.json!.error as { code: string }).code).toBe("NO_WORKSPACE");
+      expect(missing.created).toEqual([]);
+      for (const workspaceId of [APP_WORKSPACE, "ws__a", "a/b", 42, ""]) {
+        const bad = await signed({ graphId: "g", workspaceId });
+        expect(bad.status, String(workspaceId)).toBe(400);
+        expect(bad.created).toEqual([]);
+      }
+    });
+
+    test("only a PX_TELEMETRY_SECRET signature counts: one made with the access key, or with no distinct secret configured, starts nothing", async () => {
+      const withKey = await signed({ graphId: "g", workspaceId: WS_A }, ACCESS_KEY);
+      expect(withKey.status).toBe(401);
+      expect(withKey.created).toEqual([]);
+      const sameAsKey = await signed({ graphId: "g", workspaceId: WS_A }, ACCESS_KEY, { PX_TELEMETRY_SECRET: ACCESS_KEY, POC_ACCESS_KEY: ACCESS_KEY });
+      expect(sameAsKey.status).toBe(503);
+      expect(sameAsKey.created).toEqual([]);
+      const none = await signed({ graphId: "g", workspaceId: WS_A }, ACCESS_KEY, { POC_ACCESS_KEY: ACCESS_KEY });
+      expect(none.status).toBe(503);
+      expect(none.created).toEqual([]);
+    });
   });
 
   test("LATENCY_NO_GRAPHS: POST /poc/write-latency writes its scratch table ten times and leaves poc_graphs unchanged", async () => {

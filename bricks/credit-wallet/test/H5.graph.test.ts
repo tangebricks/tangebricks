@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import { record } from "@poc/harness";
-import { GraphInvalidError, runGraph, toyExecutors } from "@poc/runtime";
+import { GraphInvalidError, RunRefusedError, runGraph, toyExecutors } from "@poc/runtime";
 import { createRegistry, toyRegistry } from "@poc/sdk";
 import type { BrickManifest, ExecutionContext, Executor, GraphEdge, GraphNode } from "@poc/sdk";
 import { applyMigration, creditWalletBricks, creditWalletExecutors, createFakeGateway, createWallet } from "../src/index.ts";
@@ -53,8 +53,9 @@ const paidGraph = (amount: number, data: Record<string, unknown> = {}) => ({
   nodes: [node("t", "trigger.manual"), node("pay", "credit-wallet.deduct", { amount, ...data }), node("work", "test.paid-work")],
   edges: [wire("t", "pay"), wire("pay", "work")],
 });
-const runPaid = (amount: number, payload: unknown, data: Record<string, unknown> = {}) =>
-  runGraph(paidGraph(amount, data), registry, executors(), { payload, env: { DB: db } });
+/** `workspaceId` is the run's verified workspace (story 1.1): the caller's, set by the host, never read from the payload. */
+const runPaid = (amount: number, payload: unknown, data: Record<string, unknown> = {}, workspaceId: unknown = WS) =>
+  runGraph(paidGraph(amount, data), registry, executors(), { payload, env: { DB: db }, workspaceId: workspaceId as string });
 
 describe("a deduct-credits step in a graph", () => {
   test("changes the balance once, writes one ledger row, and lets the paid work run", async () => {
@@ -118,10 +119,49 @@ describe("a deduct-credits step in a graph", () => {
     expect(await ledgerRows("ws-other")).toBe(0);
   });
 
+  test("the workspace is the run's, not the payload's: an input that names no workspace is charged to the run's", async () => {
+    await reset();
+    await createWallet(db, undefined).openWallet(WS, 10);
+    const result = await runPaid(3, { userId: "u1" });
+    expect(result.ok).toBe(true);
+    expect(await balanceOf(WS)).toBe(7);
+  });
+
   test.each([
-    ["no workspace", { userId: "u1" }, "invalid input: workspaceId: Invalid input: expected string, received undefined"],
-    ["an empty workspace", { workspaceId: "", userId: "u1" }, "invalid input: workspaceId: Too small: expected string to have >=1 characters"],
-    ["a workspace that is not text", { workspaceId: 7, userId: "u1" }, "invalid input: workspaceId: Invalid input: expected string, received number"],
+    ["no run workspace", undefined],
+    ["an empty run workspace", ""],
+    ["a run workspace that is not text", 7],
+  ])("%s: the run is refused NO_WORKSPACE before any step, and nothing changes", async (_name, workspaceId) => {
+    await reset();
+    paidWorkRuns = 0;
+    await createWallet(db, undefined).openWallet(WS, 10);
+    const options = { payload: { workspaceId: WS, userId: "u1" }, env: { DB: db }, ...(workspaceId === undefined ? {} : { workspaceId: workspaceId as string }) };
+    const refused = await runGraph(paidGraph(3), registry, executors(), options as never).then(() => null, (e: unknown) => e);
+    expect(refused).toBeInstanceOf(RunRefusedError);
+    expect((refused as RunRefusedError).code).toBe("NO_WORKSPACE");
+    expect(paidWorkRuns).toBe(0);
+    expect(await balanceOf(WS)).toBe(10);
+    expect(await ledgerRows(WS)).toBe(0);
+  });
+
+  test("PAYLOAD_SPOOF: an input naming another workspace fails WORKSPACE_MISMATCH, and neither wallet is debited", async () => {
+    await reset();
+    const wallet = createWallet(db, undefined);
+    await wallet.openWallet(WS, 10);
+    await wallet.openWallet("ws-other", 10);
+    const result = await runPaid(3, { workspaceId: "ws-other", userId: "u1" });
+    expect(result.ok).toBe(false);
+    expect(result.failed.pay).toMatch(/^WORKSPACE_MISMATCH: /);
+    expect(result.skipped).toContain("work");
+    expect(await balanceOf(WS)).toBe(10);
+    expect(await balanceOf("ws-other")).toBe(10);
+    expect(await ledgerRows(WS)).toBe(0);
+    expect(await ledgerRows("ws-other")).toBe(0);
+  });
+
+  test.each([
+    ["an empty workspace in the input", { workspaceId: "", userId: "u1" }, "invalid input: workspaceId: Too small: expected string to have >=1 characters"],
+    ["a workspace in the input that is not text", { workspaceId: 7, userId: "u1" }, "invalid input: workspaceId: Invalid input: expected string, received number"],
     ["no user", { workspaceId: WS }, "invalid input: userId: Invalid input: expected string, received undefined"],
     ["no payload at all", undefined, "invalid input: (value): Invalid input: expected object, received undefined"],
   ])("%s: the step fails with a readable reason and nothing changes", async (_name, payload, message) => {
@@ -136,7 +176,7 @@ describe("a deduct-credits step in a graph", () => {
 
   test("a workspace with no wallet fails the step and creates nothing", async () => {
     await reset();
-    const result = await runPaid(3, { workspaceId: "ghost", userId: "u1" });
+    const result = await runPaid(3, { workspaceId: "ghost", userId: "u1" }, {}, "ghost");
     expect(result.failed.pay).toBe("no wallet for workspace ghost");
     expect(await balanceOf("ghost")).toBeNull();
     expect(await ledgerRows("ghost")).toBe(0);
@@ -152,7 +192,7 @@ describe("a deduct-credits step in a graph", () => {
 
 describe("bindings are scoped by the manifest, as secrets are", () => {
   const run = (type: string, exec: Executor, hostEnv: Record<string, unknown> = { DB: db, POC_TEST_DECLARED: String(env.POC_TEST_DECLARED) }) =>
-    runGraph({ nodes: [node("t", "trigger.manual"), node("x", type)], edges: [wire("t", "x")] }, registry, executors({ [type]: exec }), { payload: {}, env: hostEnv });
+    runGraph({ nodes: [node("t", "trigger.manual"), node("x", type)], edges: [wire("t", "x")] }, registry, executors({ [type]: exec }), { payload: {}, env: hostEnv, workspaceId: WS });
 
   test("a brick receives the binding its manifest declares", async () => {
     const result = await run("test.binding-db", (ctx) => ({ out: ctx.binding("DB") === db }));
@@ -186,7 +226,7 @@ describe("bindings are scoped by the manifest, as secrets are", () => {
   test("the deduct brick cannot be pointed at a database under another name", async () => {
     await reset();
     await createWallet(db, undefined).openWallet(WS, 10);
-    const result = await runGraph(paidGraph(3), registry, executors(), { payload: { workspaceId: WS, userId: "u1" }, env: { OTHER: db } });
+    const result = await runGraph(paidGraph(3), registry, executors(), { payload: { workspaceId: WS, userId: "u1" }, env: { OTHER: db }, workspaceId: WS });
     expect(result.failed.pay).toBe('binding "DB" is declared by credit-wallet.deduct but was not provided');
     expect(await balanceOf(WS)).toBe(10);
   });
@@ -206,7 +246,8 @@ describe("bindings are scoped by the manifest, as secrets are", () => {
     visit(seen);
     expect(objects.has(env)).toBe(false);
     expect(objects.has(db as unknown as object)).toBe(false);
-    expect(Object.keys(seen!).sort()).toEqual(["binding", "data", "idempotencyKey", "inputs", "nodeId", "payload", "runId", "secret"]);
+    expect(Object.keys(seen!).sort()).toEqual(["binding", "data", "idempotencyKey", "inputs", "nodeId", "payload", "runId", "secret", "workspaceId"]);
+    expect(seen!.workspaceId).toBe(WS);
   });
 });
 
