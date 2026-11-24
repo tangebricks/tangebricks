@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Phase 0 (trust fixes) stories merged so far:
+## [0.3.0] - 2026-11-24
+
+Phase 0 (trust fixes) is complete. The exit check is recorded in [docs/phase-0-exit.md](docs/phase-0-exit.md).
 
 - 0.2: Apache-2.0 licence, SECURITY.md and secret and dependency scanners.
 - 0.3: Threat model and a security sweep of the code the audit had not read.
@@ -24,6 +26,11 @@ Phase 0 (trust fixes) stories merged so far:
 - 0.18: `poc_graphs` is workspace-scoped; no shared-key graph writes.
 - 0.12: Honest README with an evidence-generated "What works today" section, live-evidence integrity record and check, `release:check`, and this changelog.
 - 0.14: Hardened auth sessions: secure cookies, hashed session tokens, stricter JWT checks, CSRF, CORS and WebSocket origin checks.
+- 0.1: CI green on GitHub Actions and required on `main` (branch protection, admins included).
+- 0.22: CI split into parallel jobs behind one required `cp0` check; about 3.5 minutes instead of about 28.
+- 0.19: rbac-policy blocks grant escalation: no granting beyond your own permissions, no self-assignment, members only.
+- 0.20: cron-alarms starts only Workflow bindings listed in `CRON_WORKFLOW_TARGETS`.
+- 0.21: Rate limiting on login, signup, password reset, wallet, checkout and inbound webhooks; cron catch-up capped at 10 per tick.
 
 Public repository:
 
@@ -36,4 +43,5 @@ Public repository:
 
 - Proof of concept merged to `main` in the private pre-public repository (story 0.1): the hypothesis register, its evidence and `PROOF.md`, the bricks, assembler, runtime, deploy tooling, MCP endpoint and studio, with a green CI gate.
 
-[Unreleased]: https://github.com/tangebricks/tangebricks/commits/main
+[Unreleased]: https://github.com/tangebricks/tangebricks/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/tangebricks/tangebricks/releases/tag/v0.3.0
