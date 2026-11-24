@@ -16,6 +16,7 @@ import type { H11Calls, H11Deps, H11Result } from "../src/h11.ts";
 import { APP_WORKSPACE, GRAPH_MIGRATIONS, GRAPH_TABLE, WORKFLOW_BINDING, WORKFLOW_CLASS } from "../src/worker/graph-run.ts";
 import { createClient, createRedactor, findSecrets, migrationsFrom, resourceNames } from "../src/provisioner/index.ts";
 import { createFakeCloudflare } from "./support/fake-cloudflare.ts";
+import { WORKFLOW_RUNS_PATH, signControlPlaneRequest } from "../src/worker/proof-routes.ts";
 
 // Story 5.6, rehearsed. The H11 protocol runs against a real workerd that runs the real bundle and the real local Workflow
 // engine; Cloudflare's REST side is the fake, with two bridges so the rehearsal is coherent: D1 REST queries are carried out
@@ -25,6 +26,8 @@ const root = resolve(import.meta.dirname, "..", "..", "..");
 const TOKEN = "cfut_Zq8rLm3VxN2pTb7YkWd4HsJc9GaE5uRo6QiXf1BvPn0AyMt";
 const ACCOUNT = "0123456789abcdef0123456789abcdef";
 const KEY = "9f".repeat(32);
+/** The Worker's control-plane signing secret: runs start only from a signed POST /__px/workflow-runs since story 1.1. */
+const SIGNING_SECRET = "h11-rehearsal-signing-secret-0123456789";
 const SUFFIX = "0a1b2c3d";
 const names = resourceNames(SUFFIX);
 const URL_BASE = `https://${names.script}.fake-subdomain.workers.dev`;
@@ -42,14 +45,15 @@ beforeAll(async () => {
   if (!assembled.ok) throw new Error(assembled.errors.join("; "));
   const projectDir = join(OUT_DIR, "deploy-test", "h11");
   await writeProject(projectDir, assembled.files);
-  const bundle = await bundleWorker({ projectDir });
+  // The proof bricks are test fixtures (story 1.1): injected here, never in the shipped bundle.
+  const bundle = await bundleWorker({ projectDir, fixtureBricksModule: join(root, "packages", "deploy", "src", "worker", "proof-bricks.ts") });
   mf = new Miniflare(
     convertV4MiniflareOptions({
       modules: true,
       script: bundle.code,
       compatibilityDate: "2026-10-01",
       d1Databases: ["DB"],
-      bindings: { POC_ACCESS_KEY: KEY },
+      bindings: { POC_ACCESS_KEY: KEY, PX_TELEMETRY_SECRET: SIGNING_SECRET },
       workflows: { [WORKFLOW_BINDING]: { name: names.workflow, className: WORKFLOW_CLASS } },
     } as never),
   );
@@ -62,7 +66,9 @@ afterAll(async () => {
 });
 
 const fromWorker = async (path: string, init: { method?: string; body?: string } = {}) => {
-  const response = (await mf.dispatchFetch(`http://deployed.invalid${path}`, { method: init.method ?? "GET", headers: { "x-poc-key": KEY, "content-type": "application/json" }, body: init.body } as never)) as unknown as Response;
+  // reading a run's status needs the control-plane signature as well as the key (story 1.1)
+  const signed = await signControlPlaneRequest(SIGNING_SECRET, init.method ?? "GET", path, init.body ?? "");
+  const response = (await mf.dispatchFetch(`http://deployed.invalid${path}`, { method: init.method ?? "GET", headers: { "x-poc-key": KEY, "content-type": "application/json", ...signed }, body: init.body } as never)) as unknown as Response;
   return response;
 };
 
@@ -118,7 +124,7 @@ async function world(options: WorldOptions = {}) {
   });
   fake.seedScript(names.script, `export class ${WORKFLOW_CLASS} {}`);
   await fake.fetch(new Request(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/workflows/${names.workflow}`, { method: "PUT", headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" }, body: JSON.stringify({ class_name: WORKFLOW_CLASS, script_name: names.script }) }));
-  const hide = createRedactor([TOKEN, ACCOUNT, KEY]);
+  const hide = createRedactor([TOKEN, ACCOUNT, KEY, SIGNING_SECRET]);
   const lines: string[] = [];
   // D1 REST queries go to the local database the Worker reads; everything else goes to the fake
   const bridge = async (request: Request): Promise<Response> => {
@@ -144,12 +150,13 @@ async function world(options: WorldOptions = {}) {
     databaseId: "db-1",
     url: URL_BASE,
     accessKey: KEY,
+    signingSecret: SIGNING_SECRET,
     fetchUrl: async (request) => {
       options.onFetch?.(request);
       const url = new URL(request.url);
       const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
       const response = (await mf.dispatchFetch(`http://deployed.invalid${url.pathname}${url.search}`, { method: request.method, headers: Object.fromEntries(request.headers), body } as never)) as unknown as Response;
-      if (request.method === "POST" && url.pathname === "/poc/runs" && response.status === 202) {
+      if (request.method === "POST" && url.pathname === WORKFLOW_RUNS_PATH && response.status === 202) {
         const created = (await response.clone().json()) as { id: string };
         startedAt.set(created.id, Date.now());
       }
@@ -232,7 +239,7 @@ describe("a complete rehearsal", () => {
   });
 
   test("neither the token, the account id nor the access key is in the files or the lines printed", () => {
-    expect(findSecrets(canonical11(complete.calls) + JSON.stringify(complete.result) + complete.lines.join("\n"), { token: TOKEN, accountId: ACCOUNT, accessKey: KEY })).toEqual([]);
+    expect(findSecrets(canonical11(complete.calls) + JSON.stringify(complete.result) + complete.lines.join("\n"), { token: TOKEN, accountId: ACCOUNT, accessKey: KEY, signingSecret: SIGNING_SECRET })).toEqual([]);
   });
 });
 
@@ -424,7 +431,7 @@ describe("when something goes wrong during the run", () => {
     w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/versions"), respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: `no for ${TOKEN} ${ACCOUNT} ${KEY}` }] } } });
     const { calls, result } = await runH11(w.deps);
     expect(result.stoppedBecause).toContain("[hidden]");
-    expect(findSecrets(canonical11(calls) + JSON.stringify(result) + w.lines.join("\n"), { token: TOKEN, accountId: ACCOUNT, accessKey: KEY })).toEqual([]);
+    expect(findSecrets(canonical11(calls) + JSON.stringify(result) + w.lines.join("\n"), { token: TOKEN, accountId: ACCOUNT, accessKey: KEY, signingSecret: SIGNING_SECRET })).toEqual([]);
   });
 });
 

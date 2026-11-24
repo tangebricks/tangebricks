@@ -62,7 +62,14 @@ if (!url || !databaseId || !ledger || ledger.suffix !== names.suffix || ledger.e
 const accessKey = loadOrCreateAccessKey(fileKeyStore(join(stateDir, "access-key.txt")), () => {
   throw new Error("the access key is missing: this Worker cannot be reached");
 });
-const hide = createRedactor([credentials.token, credentials.accountId, accessKey]);
+// Story 1.1: a deployed run starts only from the signed control-plane route, signed with the Worker's PX_TELEMETRY_SECRET
+// (distinct from the access key). The Worker must have that secret set; this script reads the same value from the environment.
+const signingSecret = process.env.PX_TELEMETRY_SECRET?.trim() ?? "";
+if (signingSecret.length < 16 || signingSecret === accessKey) {
+  console.error("PX_TELEMETRY_SECRET is not set (16+ characters, not the access key): runs can only be started with a signed request since story 1.1");
+  process.exit(2);
+}
+const hide = createRedactor([credentials.token, credentials.accountId, accessKey, signingSecret]);
 
 out(`H11 against ${names.script}; no upload will be made`);
 const { calls, result: first } = await runH11({
@@ -74,6 +81,7 @@ const { calls, result: first } = await runH11({
   databaseId,
   url,
   accessKey,
+  signingSecret,
   fetchUrl: (request) => fetch(new Request(request, { signal: AbortSignal.timeout(30_000) })),
   hide,
   nowIso: () => new Date().toISOString(),
@@ -82,7 +90,7 @@ const { calls, result: first } = await runH11({
 });
 
 // ---- the evidence: through the secret scan in memory, then to disk, then the repositories are scanned
-const secrets = { token: credentials.token, accountId: credentials.accountId, accessKey };
+const secrets = { token: credentials.token, accountId: credentials.accountId, accessKey, signingSecret };
 const callsText = canonical11(calls);
 for (const [name, text] of [["h11-calls.json", callsText], ["h11-result.json", JSON.stringify(first, null, 2)]] as const) {
   const hits = findSecrets(text, secrets);

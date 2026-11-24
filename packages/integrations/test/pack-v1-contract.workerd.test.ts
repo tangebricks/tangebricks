@@ -256,7 +256,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // A) Discord createMessage + getChannelMessages pagination
     const discordCreateRehearsal = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_discord_msg",
         nodeType: "int:discord.createMessage",
         config: { },
@@ -282,7 +282,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
       },
       registry,
       executors,
-      {
+      { workspaceId: "ws_test",
         payload: {
           channelId: "ch_101",
           content: "Build succeeded!",
@@ -296,7 +296,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     expect(discordCreateRehearsal.output).toEqual(discordCreateGraph.outputs.n_discord_msg);
 
     const discordListRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_discord_list",
         nodeType: "int:discord.getChannelMessages",
         config: { },
@@ -309,7 +309,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // B) Stripe form-urlencoded createCustomer + cursor-paginated listCustomers
     const stripeCustomerRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_stripe_cus",
         nodeType: "int:stripe.createCustomer",
         config: { },
@@ -326,7 +326,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     expect(stripePostReq?.body).toContain("email=billing%40acme.dev");
 
     const stripeListRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_stripe_list",
         nodeType: "int:stripe.listCustomers",
         config: { },
@@ -339,7 +339,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // C) Slack chat_postMessage + conversations_list cursor pagination
     const slackPostRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_slack_post",
         nodeType: "int:slack.chat_postMessage",
         config: { },
@@ -351,7 +351,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     expect(slackPostRes.output.ts).toBe("1730000100.0001");
 
     const slackListRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_slack_list",
         nodeType: "int:slack.conversations_list",
         config: { },
@@ -364,7 +364,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // D) Google Calendar list (Discovery imported) + Sheets append + Gmail send
     const googleCalRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_gcal_list",
         nodeType: "int:google.calendar_events_list",
         config: { },
@@ -376,7 +376,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     expect(googleCalRes.output.items).toHaveLength(2);
 
     const googleSheetsRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_gsheets_append",
         nodeType: "int:google.sheets_values_append",
         config: { },
@@ -391,7 +391,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     expect(googleSheetsRes.ok).toBe(true);
 
     const googleGmailRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_gmail_send",
         nodeType: "int:google.gmail_messages_send",
         config: { },
@@ -404,7 +404,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // E) GitHub createIssue + RFC 5988 Link-header pagination on listIssues
     const githubIssueRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_gh_issue",
         nodeType: "int:github.createIssue",
         config: { },
@@ -416,7 +416,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     expect(githubIssueRes.output.number).toBe(42);
 
     const githubListRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_gh_list",
         nodeType: "int:github.listIssues",
         config: { },
@@ -481,7 +481,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
         integration: { fetcher: retryFetcher, sleep: sleepSpy },
       });
       const retryRes = await rehearseStep(
-        {
+        { workspaceId: "ws_test",
           nodeId: `n_${item.app}_retry`,
           nodeType: item.nodeType,
           config: {},
@@ -501,7 +501,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
         integration: { fetcher: unauthorizedFetcher },
       });
       const unauthRes = await rehearseStep(
-        {
+        { workspaceId: "ws_test",
           nodeId: `n_${item.app}_401`,
           nodeType: item.nodeType,
           config: {},
@@ -729,7 +729,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     });
 
     const workflow = new GraphWorkflow(registry, executors);
-    const result = await workflow.start({
+    const result = await workflow.start({ workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "t", type: "trigger.manual", data: {} },

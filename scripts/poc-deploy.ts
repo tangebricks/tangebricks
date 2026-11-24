@@ -73,7 +73,7 @@ async function build(variant: "base" | "changed") {
   if (!assembled.ok) throw new Error(`assembly failed: ${assembled.errors.join("; ")}`);
   const projectDir = join(OUT_DIR, "deploy", `invoice-flow-${variant}`);
   await writeProject(projectDir, assembled.files);
-  const bundle = await bundleWorker({ projectDir });
+  const bundle = await bundleWorker({ projectDir, environment });
   return { bundle: { code: bundle.code, sha256: bundle.sha256, bytes: bundle.bytes }, migrations: migrationsFrom(assembled.files), lock: JSON.parse(assembled.files["project.json"]!) as ProjectLock };
 }
 

@@ -30,8 +30,10 @@ import {
   getRegisteredTokenUrlsByApp,
 } from "./integration-executor.ts";
 import {
+  RunRefusedError,
   RuntimeGraphWorkflow,
   computeStrictUpstreamAncestors,
+  isTenantWorkspaceId,
 } from "./run.ts";
 import type { TelemetryRunOptions } from "./run.ts";
 
@@ -42,7 +44,8 @@ export const StepRehearsalRequestSchema = z.object({
   nodeType: z.string().min(1),
   config: z.record(z.string(), z.unknown()).default({}),
   input: z.unknown().default({}),
-  workspaceId: z.string().min(1).default("ws_default"),
+  /** The workspace the signer verified for this request. Required: there is no default workspace. */
+  workspaceId: z.string().min(1).max(200),
   upstreamSteps: z
     .record(z.string(), z.record(z.string(), z.unknown()))
     .optional(),
@@ -219,6 +222,9 @@ export async function rehearseStep(
   }
 
   const request = StepRehearsalRequestSchema.parse(rawRequest);
+  if (!isTenantWorkspaceId(request.workspaceId)) {
+    throw new RunRefusedError("NO_WORKSPACE", "the rehearsal names no usable workspace, so nothing was run");
+  }
   const runId = options.runId ?? generateRehearsalRunId();
   const db =
     options.db ??
@@ -367,10 +373,8 @@ export async function rehearseStep(
           return candidate as T;
         }
       } else if (options.connections) {
-        const wsId =
-          connectionDb !== undefined
-            ? request.workspaceId
-            : (nameOrSelector.workspaceId ?? request.workspaceId);
+        // The request's workspace only: a selector's own workspaceId is never used.
+        const wsId = request.workspaceId;
         const keysToTry = [
           ...(nameOrSelector.scope === "workspace" && nameOrSelector.app
             ? [`workspace:${wsId}:${nameOrSelector.app}`, `workspace:${nameOrSelector.app}`]
@@ -419,6 +423,7 @@ export async function rehearseStep(
       nodeId: request.nodeId,
       runId,
       idempotencyKey: `${runId}:${request.nodeId}`,
+      workspaceId: request.workspaceId,
       data: resolvedData,
       inputs,
       payload,
@@ -578,6 +583,33 @@ export async function rehearseStep(
   }
 }
 
+/**
+ * A signed request names the workspace its signer verified; one that names none is refused with 400 NO_WORKSPACE before
+ * anything runs. There is no default workspace (AD-S19).
+ */
+export function refuseMissingWorkspace(parsedJson: unknown): Response | null {
+  const ws = (parsedJson as { workspaceId?: unknown } | null)?.workspaceId;
+  if (ws === undefined || ws === null || ws === "") {
+    return Response.json(
+      { error: { code: "NO_WORKSPACE", message: "The signed request names no workspaceId; a run without a verified workspace is refused." } },
+      { status: 400 },
+    );
+  }
+  if (!isTenantWorkspaceId(ws)) {
+    return Response.json(
+      { error: { code: "BAD_WORKSPACE", message: "workspaceId must be a tenant workspace id (letters, digits, _ and -, up to 64, no double underscore)." } },
+      { status: 400 },
+    );
+  }
+  return null;
+}
+
+/** A run the runtime refused (no or mismatched workspace) is the caller's fault: 400 with its code, nothing ran. */
+function refusedRunResponse(err: unknown): Response | null {
+  if (!(err instanceof RunRefusedError)) return null;
+  return Response.json({ error: { code: err.code, message: err.message } }, { status: 400 });
+}
+
 export async function handleStepRehearsalRequest(
   request: Request,
   options: RehearseStepOptions & {
@@ -639,6 +671,9 @@ export async function handleStepRehearsalRequest(
     );
   }
 
+  const noWorkspace = refuseMissingWorkspace(parsedJson);
+  if (noWorkspace) return noWorkspace;
+
   const validated = StepRehearsalRequestSchema.safeParse(parsedJson);
   if (!validated.success) {
     return Response.json(
@@ -653,8 +688,14 @@ export async function handleStepRehearsalRequest(
     );
   }
 
-  const result = await rehearseStep(validated.data, options);
-  return Response.json(result, { status: 200 });
+  try {
+    const result = await rehearseStep(validated.data, options);
+    return Response.json(result, { status: 200 });
+  } catch (err) {
+    const refused = refusedRunResponse(err);
+    if (refused) return refused;
+    throw err;
+  }
 }
 
 export const WorkflowRunRequestSchema = z.object({
@@ -664,7 +705,8 @@ export const WorkflowRunRequestSchema = z.object({
   revision: z.number().int().min(0).default(0),
   triggerType: z.string().min(1).max(60).default("manual"),
   triggerPayload: z.unknown().default({}),
-  workspaceId: z.string().min(1).max(120).default("ws_default"),
+  /** The workspace the signer verified for this run (AD-S19). Required: a run without one is refused with 400. */
+  workspaceId: z.string().min(1).max(120),
   retryOfRunId: z.string().nullable().optional(),
   usePinnedOutputs: z.boolean().optional(),
   pinnedOutputs: z.record(z.string(), z.unknown()).optional(),
@@ -788,6 +830,7 @@ export async function executeWorkflowRun(
   const wf = new RuntimeGraphWorkflow(registry, executors);
   const runResult = await wf.start({
     graph: request.graph,
+    workspaceId: request.workspaceId,
     payload: request.triggerPayload,
     env: options.env,
     connections: options.connections,
@@ -893,6 +936,9 @@ export async function handleWorkflowRunRequest(
     );
   }
 
+  const noWorkspace = refuseMissingWorkspace(parsedJson);
+  if (noWorkspace) return noWorkspace;
+
   const validated = WorkflowRunRequestSchema.safeParse(parsedJson);
   if (!validated.success) {
     return Response.json(
@@ -907,8 +953,14 @@ export async function handleWorkflowRunRequest(
     );
   }
 
-  const result = await executeWorkflowRun(validated.data, options);
-  return Response.json(result, { status: 200 });
+  try {
+    const result = await executeWorkflowRun(validated.data, options);
+    return Response.json(result, { status: 200 });
+  } catch (err) {
+    const refused = refusedRunResponse(err);
+    if (refused) return refused;
+    throw err;
+  }
 }
 
 export const WorkflowRerunRequestSchema = WorkflowRunRequestSchema.extend({
@@ -1079,6 +1131,9 @@ export async function handleWorkflowRerunRequest(
     );
   }
 
+  const noWorkspace = refuseMissingWorkspace(parsedJson);
+  if (noWorkspace) return noWorkspace;
+
   const validated = WorkflowRerunRequestSchema.safeParse(parsedJson);
   if (!validated.success) {
     return Response.json(
@@ -1097,6 +1152,8 @@ export async function handleWorkflowRerunRequest(
     const result = await executeWorkflowRerun(validated.data, options);
     return Response.json(result, { status: 200 });
   } catch (err) {
+    const refused = refusedRunResponse(err);
+    if (refused) return refused;
     if (err instanceof UpstreamOutputUnavailableError) {
       return Response.json(
         {

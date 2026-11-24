@@ -233,7 +233,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     };
 
     const happyWorkflow = new GraphWorkflow(workflowRegistry, happyExecutors);
-    const happyResult = await happyWorkflow.start({
+    const happyResult = await happyWorkflow.start({ workspaceId: "ws_test",
       graph,
       payload: { customer: "cust_42", totalCents: 4900 },
       env: {
@@ -287,7 +287,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     ]);
 
     const failingWorkflow = new GraphWorkflow(workflowRegistry, failingExecutors);
-    const failResult = await failingWorkflow.start({
+    const failResult = await failingWorkflow.start({ workspaceId: "ws_test",
       graph,
       payload: { customer: "cust_fail", totalCents: 9900 },
       env: {
@@ -392,7 +392,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
       ["action.notify_slack", ({ inputs }) => ({ out: inputs.in })],
     ]));
 
-    await workflow.start({
+    await workflow.start({ workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "n1", type: "trigger.manual", data: {} },

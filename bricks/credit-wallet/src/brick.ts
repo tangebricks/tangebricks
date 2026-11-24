@@ -15,11 +15,12 @@ const ConfigSchema = z.object({
 });
 
 /**
- * What the step is fed on its input port. The workspace comes from the caller's identity (in the proof, the trigger
- * payload), never from the graph's stored data, so a graph author cannot point a deduction at another tenant.
+ * What the step is fed on its input port. The workspace is NOT taken from here: it is the run's verified workspace
+ * (`ctx.workspaceId`, AD-S19). An input that still names a workspace must name that same one, or the step fails with
+ * WORKSPACE_MISMATCH and nothing is debited, so neither a payload nor a graph author can point a deduction at another tenant.
  */
 const InputSchema = z.object({
-  workspaceId: z.string().min(1).max(200),
+  workspaceId: z.string().min(1).max(200).optional(),
   userId: z.string().min(1).max(200),
   /** Supplied by a host that may retry the step: the same key charges only once. */
   idempotencyKey: z.string().min(1).max(200).optional(),
@@ -48,12 +49,29 @@ function parseOrThrow<T extends z.ZodType>(schema: T, value: unknown, label: str
   throw new Error(`invalid ${label}: ${parsed.error.issues.map((i) => `${i.path.join(".") || "(value)"}: ${i.message}`).join("; ")}`);
 }
 
+/** Thrown when the step's input names a workspace other than the run's own. Nothing is debited. */
+export class WorkspaceMismatchError extends Error {
+  readonly code = "WORKSPACE_MISMATCH" as const;
+  readonly retryable = false;
+  constructor(message: string) {
+    super(`WORKSPACE_MISMATCH: ${message}`);
+    this.name = "WorkspaceMismatchError";
+  }
+}
+
 export const deductCreditsExecutor: Executor = async (ctx) => {
+  const workspaceId = ctx.workspaceId;
+  if (typeof workspaceId !== "string" || workspaceId.length === 0) {
+    throw new Error("NO_WORKSPACE: the run has no verified workspace, so nothing was debited");
+  }
   const config = parseOrThrow(ConfigSchema, ctx.data, "config");
   const input = parseOrThrow(InputSchema, ctx.inputs.in, "input");
+  if (input.workspaceId !== undefined && input.workspaceId !== workspaceId) {
+    throw new WorkspaceMismatchError("the step's input names a different workspace than the run's; nothing was debited");
+  }
   const wallet = createWallet(ctx.binding<D1Like>(WALLET_DB_BINDING), undefined);
   const result = await wallet.deduct({
-    workspaceId: input.workspaceId,
+    workspaceId,
     userId: input.userId,
     amount: config.amount,
     reason: config.reason,
@@ -64,10 +82,10 @@ export const deductCreditsExecutor: Executor = async (ctx) => {
     const errMsg =
       result.reason === "insufficient_balance"
         ? `insufficient balance: need ${config.amount}, have ${result.balance ?? 0}`
-        : `no wallet for workspace ${input.workspaceId}`;
+        : `no wallet for workspace ${workspaceId}`;
     await ctx.log?.error(errMsg, {
       brickId: "credit-wallet",
-      workspaceId: input.workspaceId,
+      workspaceId,
       userId: input.userId,
       amount: config.amount,
       reason: config.reason,
@@ -77,7 +95,7 @@ export const deductCreditsExecutor: Executor = async (ctx) => {
   }
   await ctx.log?.info("Deducted workspace credits", {
     brickId: "credit-wallet",
-    workspaceId: input.workspaceId,
+    workspaceId,
     userId: input.userId,
     charged: config.amount,
     balanceAfter: result.balanceAfter,

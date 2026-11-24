@@ -7,7 +7,7 @@ import { executeHttpRequestNode } from "../src/index.ts";
 const originalFetch = globalThis.fetch;
 
 function ctxFor(data: Record<string, unknown>): ExecutionContext {
-  return {
+  return { workspaceId: "ws_test",
     nodeId: "n_http",
     runId: "run_ssrf",
     idempotencyKey: "idem_ssrf",
@@ -74,7 +74,7 @@ describe("core.http_request live path SSRF guard", () => {
       },
       buildRegistryFromCatalog(catalog),
       buildExecutorsFromCatalog(catalog),
-      { payload: {} },
+      { workspaceId: "ws_test", payload: {} },
     );
     expect(result.ok).toBe(false);
     expect(result.failed.http).toMatch(/EGRESS_FORBIDDEN/);
@@ -134,7 +134,7 @@ describe("core.http_request live path SSRF guard", () => {
       },
       buildRegistryFromCatalog(catalog),
       buildExecutorsFromCatalog(catalog),
-      { payload: {} },
+      { workspaceId: "ws_test", payload: {} },
     );
     expect(result.ok).toBe(false);
     expect(result.outputs.http).toBeUndefined();

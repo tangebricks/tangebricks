@@ -25,7 +25,7 @@ const charge = (amount: number) =>
     { nodes: [node("t", "trigger.manual"), node("pay", "credit-wallet.deduct", { amount })], edges: [edge("t", "pay")] },
     registry,
     executors,
-    { payload: { workspaceId: WS, userId: "user-123" }, env: { DB: db } },
+    { payload: { workspaceId: WS, userId: "user-123" }, env: { DB: db }, workspaceId: WS },
   );
 const ledger = async () =>
   (await db.prepare("SELECT type, amount, balance_after FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid").bind(WS).all<{ type: string; amount: number; balance_after: number }>()).results;

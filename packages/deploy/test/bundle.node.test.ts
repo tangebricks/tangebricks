@@ -71,6 +71,18 @@ describe("the bundle is one self-contained module", () => {
     expect(bundle.warnings).toEqual([]);
   });
 
+  test("story 1.1: the shipped bundle wires the real catalog executors (credit-wallet's D1 debit) and carries no proof stubs", () => {
+    // the bundle entry builds its bricks from the catalog with credit-wallet's package exports
+    expect(bundle.code).toContain("credit-wallet.debit");
+    expect(bundle.code).toContain("executeWalletDebit");
+    // text only the real deduction executor has (the test-only placeholder says "insufficient balance (")
+    expect(bundle.code).toContain("insufficient balance: need ");
+    expect(bundle.code).toContain("WORKSPACE_MISMATCH: ");
+    // the H10/H11 proof bricks are test fixtures, never shipped
+    expect(bundle.code).not.toContain("proof.add");
+    expect(bundle.code).not.toContain("proof.multiply");
+  });
+
   test("is built from the project's files and the bricks' source, a few dozen inputs and not thousands", () => {
     expect(bundle.inputs).toBeGreaterThan(15);
     expect(bundle.inputs).toBeLessThan(400);

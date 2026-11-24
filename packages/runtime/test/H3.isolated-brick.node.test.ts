@@ -90,6 +90,9 @@ describe("H3 untrusted brick isolation (UC6.7)", () => {
     expect(assembled.files["bricks/fixture-isolated/wrangler.jsonc"]).toBeDefined();
     expect(assembled.files["bricks/fixture-isolated/src/index.ts"]).toBeDefined();
     expect(assembled.files["src/index.ts"]).toContain("BRICK_FIXTURE_ISOLATED");
+    // story 1.1: the generated isolated entry hands the run's workspace and run id to the executor
+    expect(assembled.files["bricks/fixture-isolated/src/index.ts"]).toContain("workspaceId: ctxSnapshot.workspaceId,");
+    expect(assembled.files["bricks/fixture-isolated/src/index.ts"]).toContain("runId: ctxSnapshot.runId,");
 
     // Miniflare multi-worker setup
     const hostSecrets = {
@@ -211,7 +214,7 @@ describe("H3 untrusted brick isolation (UC6.7)", () => {
       },
       registry,
       toyExecutors,
-      {
+      { workspaceId: "ws_test",
         env: {
           BRICK_FIXTURE_ISOLATED: isolatedBinding,
           UNDECLARED_HOST_SECRET: "host_token",
@@ -225,6 +228,9 @@ describe("H3 untrusted brick isolation (UC6.7)", () => {
     expect(nodeOut.keys).toEqual(["DECLARED_BINDING", "DECLARED_SECRET"].sort());
     expect(nodeOut.hostSecret).toBeUndefined();
     expect(nodeOut.declaredSecret).toBe("brick_secret_value");
+    // story 1.1: the run's verified workspace (and run id) arrive in the isolated brick
+    expect(nodeOut.snapshot.workspaceId).toBe("ws_test");
+    expect(typeof nodeOut.snapshot.runId).toBe("string");
   });
 
   test("AC2: host tenant guard runs before proxy, refusing unauthorized requests before forwarding", async () => {

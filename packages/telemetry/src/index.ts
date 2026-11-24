@@ -1939,12 +1939,10 @@ export function createStructuredLogger(
           brickId:
             ctx.brickId ??
             (typeof fields?.brickId === "string" ? fields.brickId : null),
+          // A logger bound to a run carries the run's workspace, and a log field cannot replace it (AD-S19).
           workspaceId:
-            (ctx.workspaceId && ctx.workspaceId !== "ws_default"
-              ? ctx.workspaceId
-              : typeof fields?.workspaceId === "string"
-                ? fields.workspaceId
-                : ctx.workspaceId) ?? null,
+            ctx.workspaceId ??
+            (typeof fields?.workspaceId === "string" ? fields.workspaceId : null),
           requestId:
             ctx.requestId ??
             (typeof fields?.requestId === "string" ? fields.requestId : null),

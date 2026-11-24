@@ -134,6 +134,29 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
     });
   });
 
+  test("story 1.1: a signed POST /__px/runs naming a malformed workspace is 400, and nothing runs", async () => {
+    const registry = buildRegistryFromCatalog(catalog);
+    const executors = buildExecutorsFromCatalog(catalog, PLACEHOLDER_BRICK_EXECUTOR_MODULES);
+    for (const [workspaceId, code] of [["ws a", "BAD_WORKSPACE"], ["__app__", "BAD_WORKSPACE"], [undefined, "NO_WORKSPACE"]] as const) {
+      const rawBody = JSON.stringify({
+        runId: `run_bad_ws_${code}`,
+        workflowId: "wf_bad_ws",
+        ...(workspaceId === undefined ? {} : { workspaceId }),
+        graph: { nodes: [{ id: "n_trig", type: "core.webhook", data: { method: "post" } }], edges: [] },
+      });
+      const res = await handleWorkflowRunRequest(
+        new Request("http://preview.worker/__px/runs", {
+          method: "POST",
+          headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(rawBody, TEST_ENV.PX_TELEMETRY_SECRET!) },
+          body: rawBody,
+        }),
+        { registry, executors, db: studioDb, telemetrySecret: TEST_ENV.PX_TELEMETRY_SECRET },
+      );
+      expect(res?.status, String(workspaceId)).toBe(400);
+      expect(((await res!.json()) as { error: { code: string } }).error.code).toBe(code);
+    }
+  });
+
   test("POST /api/projects/:projectId/workflows/:workflowId/runs enforces role >= editor, broadcasts live WebSocket telemetry (queued -> running -> succeeded/skipped/failed), and persists run events", async () => {
     const project = "wf-runs-studio-proj";
     const { headers: ownerHeaders } = await ensureTestProjectToken(TEST_ENV, project);
@@ -299,6 +322,8 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
             "content-type": "application/json",
           },
           body: JSON.stringify({
+            // the workspace is the request's (Studio names it), not the payload's (story 1.1)
+            workspaceId: "ws_vip_1",
             triggerPayload: {
               tier: "vip",
               balance: 100,
@@ -373,6 +398,18 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
 
     expect(run2StatusesFor("step_debit")).toEqual(["queued", "running", "failed"]);
     expect(run2StatusesFor("step_notify")).toEqual(["queued", "skipped"]);
+
+    // story 1.1: a Studio test run naming a malformed workspace is refused 400 before anything runs
+    const badWsRes = await app.fetch(
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_branching/runs`, {
+        method: "POST",
+        headers: { ...ownerHeaders, "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: "ws a", triggerPayload: { tier: "vip", balance: 100 } }),
+      }),
+      TEST_ENV,
+    );
+    expect(badWsRes.status).toBe(400);
+    expect(((await badWsRes.json()) as { error: { code: string } }).error.code).toBe("BAD_WORKSPACE");
 
     wsClient.close();
   });

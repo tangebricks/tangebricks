@@ -15,7 +15,7 @@ const sources = import.meta.glob(["../src/**/*.ts", "../../sdk/src/**/*.ts", "..
 
 const timed = async (graph: Graph) => {
   const start = performance.now();
-  const result = await runGraph(graph, toyRegistry, toyExecutors, { payload: { value: 7 } });
+  const result = await runGraph(graph, toyRegistry, toyExecutors, { workspaceId: "ws_test", payload: { value: 7 } });
   return { ms: performance.now() - start, result };
 };
 
@@ -42,7 +42,7 @@ describe("H2 inputs", () => {
   });
 
   test("the chain graph digs the payload down to 5", async () => {
-    const result = await runGraph(chainGraph, toyRegistry, toyExecutors, { payload: chainPayload });
+    const result = await runGraph(chainGraph, toyRegistry, toyExecutors, { workspaceId: "ws_test", payload: chainPayload });
     expect(result.ok).toBe(true);
     expect(result.outputs.p2?.out).toBe(5);
   });
@@ -55,7 +55,7 @@ describe("H2 inputs", () => {
 });
 
 test("H2 report", async ({ task }) => {
-  const chain = await runGraph(chainGraph, toyRegistry, toyExecutors, { payload: chainPayload });
+  const chain = await runGraph(chainGraph, toyRegistry, toyExecutors, { workspaceId: "ws_test", payload: chainPayload });
   // Same timer, same test: the diamond against branch A alone plus branch B alone.
   const a = await timed(branchOnly("a"));
   const b = await timed(branchOnly("b"));
@@ -88,7 +88,7 @@ describe("H2 concurrency, shown by order of events rather than by a clock", () =
       return { out: inputs.in };
     };
     const executors = new Map([...toyExecutors, ["util.delay", logging]]);
-    await runGraph(diamondGraph, toyRegistry, executors, { payload: 1 });
+    await runGraph(diamondGraph, toyRegistry, executors, { workspaceId: "ws_test", payload: 1 });
     expect(log.slice(0, 2).sort()).toEqual(["start a", "start b"]);
     expect(log.slice(2).sort()).toEqual(["end a", "end b"]);
   });

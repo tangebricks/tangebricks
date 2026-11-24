@@ -51,7 +51,7 @@ function reachable(root: unknown): { values: unknown[]; objects: Set<object> } {
 
 const executors = (extra: Record<string, Executor>): Map<string, Executor> => new Map([...toyExecutors, ...Object.entries(extra)]);
 const run = (type: string, exec: Executor, payload: unknown = {}) =>
-  runGraph({ nodes: [node("t", "trigger.manual"), node("x", type)], edges: [wire("t", "x")] }, registry, executors({ [type]: exec }), {
+  runGraph({ nodes: [node("t", "trigger.manual"), node("x", type)], edges: [wire("t", "x")] }, registry, executors({ [type]: exec }), { workspaceId: "ws_test",
     payload,
     env,
   });
@@ -90,7 +90,7 @@ describe("H3 undeclared secrets", () => {
       return { out: 1 };
     });
     const { values, objects } = reachable(seen);
-    expect(Object.keys(seen!).sort()).toEqual(["binding", "data", "idempotencyKey", "inputs", "nodeId", "payload", "runId", "secret"]);
+    expect(Object.keys(seen!).sort()).toEqual(["binding", "data", "idempotencyKey", "inputs", "nodeId", "payload", "runId", "secret", "workspaceId"]);
     expect(objects.has(env)).toBe(false);
     expect(values).not.toContain(DECLARED_VALUE);
     expect(values).not.toContain(UNDECLARED_VALUE);
@@ -107,7 +107,7 @@ describe("H3 attacks through graph data", () => {
       },
       registry,
       toyExecutors,
-      { payload, env },
+      { workspaceId: "ws_test", payload, env },
     );
     expect(result.outputs.p?.out).toBe(`{{$env.${UNDECLARED}}}`);
     expect(JSON.stringify(result)).not.toContain(UNDECLARED_VALUE);
@@ -121,7 +121,7 @@ describe("H3 attacks through graph data", () => {
         { nodes: [node("t", "trigger.manual"), node("p", "transform.pick", { path })], edges: [wire("t", "p")] },
         registry,
         toyExecutors,
-        { payload: { a: 1 }, env },
+        { workspaceId: "ws_test", payload: { a: 1 }, env },
       );
       expect(result.outputs.p?.out).toBeUndefined();
     },

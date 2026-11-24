@@ -258,6 +258,8 @@ export class WorkflowService {
       const workflow = new GraphWorkflow(this.registry, this.executors);
       const result = await workflow.start({
         graph: wf.graph,
+        // the workspace this run was started in (the route's verified context), never one from the payload
+        workspaceId,
         payload: inputPayload,
         env: { DB: this.db },
         runStep,

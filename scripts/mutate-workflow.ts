@@ -56,11 +56,10 @@ const cases: Case[] = [
   // ---- whose graph a run may load (story 0.18)
   one("a run loads a graph stored for any workspace", RUN, ` AND workspace_id IN (?2, '\${APP_WORKSPACE}')`, ""),
   one("the app-wide graph wins over the workspace's own", RUN, "CASE WHEN workspace_id = ?2 THEN 0 ELSE 1 END", "CASE WHEN workspace_id = ?2 THEN 1 ELSE 0 END"),
-  one("a run with no usable workspace is started anyway", RUN, "&& !isRunWorkspaceId(params.workspaceId)) throw", "&& false) throw"),
+  one("a run with no usable workspace is started anyway", RUN, "if (!isTenantWorkspaceId(params.workspaceId)) throw", "if (false as boolean) throw"),
   one("a reserved workspace id other than the app's is accepted", RUN, ' && !value.includes("__")', ""),
-  one("the run's workspace is not handed to the interpreter, so telemetry records another", RUN, "...(workspaceId === APP_WORKSPACE ? {} : { workspaceId }),", ""),
-  one("an app-wide run hands __app__ to the interpreter as its workspace", RUN, "...(workspaceId === APP_WORKSPACE ? {} : { workspaceId }),", "workspaceId,"),
-  one("a run with no workspace (started before workspaces existed) is refused", RUN, "if (params.workspaceId !== undefined && !isRunWorkspaceId", "if (!isRunWorkspaceId"),
+  one("the run's workspace is not handed to the interpreter (story 1.1)", RUN, "    workspaceId,\n    runStep:", "    runStep:"),
+  one("a run with no workspace, or the app's, is started anyway (story 1.1)", RUN, "if (params.workspaceId === undefined || params.workspaceId === APP_WORKSPACE) throw", "if (false as boolean) throw"),
   one("warnings count as errors, so a graph with an unconnected node is refused", RUN, '.filter((i) => i.severity === "error");\n  if (errors.length > 0) return', ".filter(() => true);\n  if (errors.length > 0) return"),
   one("the shape of the nodes is not checked", RUN, 'if (typeof n?.id !== "string" || typeof n.type !== "string" || typeof n.data !== "object" || n.data === null || Array.isArray(n.data)) return', "if (false as boolean) return"),
   one("the shape of the edges is not checked", RUN, 'if (typeof e?.id !== "string" || typeof e.source !== "string" || typeof e.target !== "string") return', "if (false as boolean) return"),
@@ -85,7 +84,9 @@ const cases: Case[] = [
   one("the slowest write is the fastest", ROUTES, "slowestMs: Math.max(...timings)", "slowestMs: Math.min(...timings)"),
   one("the timed writes are not written", ROUTES, "await writeScratch(env.DB, LATENCY_ROW, JSON.stringify({ write: i }));", "await Promise.resolve(JSON.stringify({ write: i }));"),
   one("the route shows a graph stored for any workspace", ROUTES, "WHERE workspace_id = ?1 AND id = ?2`).bind(APP_WORKSPACE, id)", "WHERE id = ?2`).bind(APP_WORKSPACE, id)"),
-  one("a run is started for the workspace the body names", ROUTES, "workspaceId: APP_WORKSPACE, payload: body.payload", "workspaceId: (body as { workspaceId?: string }).workspaceId ?? APP_WORKSPACE, payload: body.payload"),
+  one("POST /poc/runs starts a run with the shared key alone (story 1.1)", ROUTES, 'return json(403, { error: { code: "NO_VERIFIED_WORKSPACE"', 'if (workflow) await workflow.create({ params: { graphId: "x", workspaceId: "ws-a" } });\n      return json(403, { error: { code: "NO_VERIFIED_WORKSPACE"'),
+  one("the signed run route does not check the signature (story 1.1)", ROUTES, "if (!(await verifyTelemetrySignature(rawBody, request.headers.get(TELEMETRY_SIGNATURE_HEADER), secret))) {", "if (false as boolean) {"),
+  one("the access key alone can sign a run (story 1.1)", ROUTES, 'if (typeof env.POC_ACCESS_KEY === "string" && secret === env.POC_ACCESS_KEY) return null;', ""),
   one("any graph id is accepted when reading", ROUTES, 'if (!ID_PATTERN.test(id)) return json(400, { error: "graph ids', 'if (false as boolean) return json(400, { error: "graph ids'),
   one("any graph id is accepted when starting a run", ROUTES, 'if (typeof body?.graphId !== "string" || !ID_PATTERN.test(body.graphId))', 'if (typeof body?.graphId !== "string")'),
   one("any run id is looked up", ROUTES, 'if (!INSTANCE_ID.test(id)) return json(400, { error: "not a run id" });', ""),
@@ -97,8 +98,9 @@ const cases: Case[] = [
     ],
   },
   // ---- the bundle
-  one("the bundle does not export the Workflow class", BUNDLE, "    `export class ${WORKFLOW_CLASS} extends createGraphRunner({ registry: proofRegistry, executors: proofExecutors }) {}`,\n", ""),
-  one("the bundle does not wire the extra routes", BUNDLE, "extra: createProofRoutes() });", "});"),
+  one("the bundle does not export the Workflow class", BUNDLE, "    `export class ${WORKFLOW_CLASS} extends createGraphRunner(bricks) {}`,\n", ""),
+  one("the bundle does not wire the extra routes", BUNDLE, "extra: createProofRoutes({ registry: bricks.registry, executors: bricks.executors }) });", "});"),
+  one("the shipped bundle runs no real executors (story 1.1)", BUNDLE, "`const bricks = createDeployBricks({ ${deployOptions} });`", "`const bricks = { registry: new Map(), executors: new Map() };`"),
 ];
 
 const suites = ["packages/deploy/test/graph-run", "packages/deploy/test/graph-workflow", "packages/deploy/test/poc-graphs-workspace", "packages/deploy/test/bundle", "packages/deploy/test/gate"];

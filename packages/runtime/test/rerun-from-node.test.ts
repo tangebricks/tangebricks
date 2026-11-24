@@ -363,6 +363,7 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
       sourceRunId: "run_truncated_upstream",
       fromNodeId: "node_b",
       workflowId: "wf_trunc",
+      workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "node_a", type: "core.webhook", data: { method: "post" } },
@@ -415,7 +416,7 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
     });
 
     const res = await executeWorkflowRun(
-      {
+      { workspaceId: "ws_test",
         workflowId: "wf_pinned_preview",
         usePinnedOutputs: true,
         pinnedOutputs: {

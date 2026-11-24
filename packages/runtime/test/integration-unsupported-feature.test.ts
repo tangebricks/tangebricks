@@ -94,7 +94,7 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
       { fetcher: mockFetcher as any },
     );
 
-    const ctx: ExecutionContext = {
+    const ctx: ExecutionContext = { workspaceId: "ws_test",
       nodeId: "n_create_link",
       runId: "run_test",
       idempotencyKey: "run_test:n_create_link",
@@ -133,7 +133,7 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
       { fetcher: mockFetcher as any },
     );
 
-    const ctx: ExecutionContext = {
+    const ctx: ExecutionContext = { workspaceId: "ws_test",
       nodeId: "n_get_balance",
       runId: "run_test",
       idempotencyKey: "run_test:n_get_balance",
@@ -179,7 +179,7 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
       { fetcher: mockFetcher as any },
     );
 
-    const ctx: ExecutionContext = {
+    const ctx: ExecutionContext = { workspaceId: "ws_test",
       nodeId: "n_balance",
       runId: "run_test",
       idempotencyKey: "run_test:n_balance",
@@ -227,7 +227,7 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
       multiBlockingManifest.operations[0]!,
     );
 
-    const ctx: ExecutionContext = {
+    const ctx: ExecutionContext = { workspaceId: "ws_test",
       nodeId: "n_multi",
       runId: "run_test",
       idempotencyKey: "run_test:n_multi",

@@ -656,7 +656,7 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
       },
       registry,
       executors,
-      {
+      { workspaceId: "ws_canary",
         payload: {
           channel: "#alerts",
           text: "Hello world",
@@ -689,7 +689,7 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
 
     // Also run rehearseStep on the failing node and record a log event attempting to log canary values
     const rehearseRes = await rehearseStep(
-      {
+      { workspaceId: "ws_canary",
         nodeId: "resend_fail",
         nodeType: "int:resend.send_email",
         config: {

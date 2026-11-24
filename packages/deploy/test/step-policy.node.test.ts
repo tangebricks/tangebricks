@@ -90,7 +90,7 @@ async function run(type: string, failures: number) {
   const result = await runStoredGraph({
     step: stepper.step,
     db: world.d1,
-    params: { graphId: "g", workspaceId: APP_WORKSPACE, payload: {} },
+    params: { graphId: "g", workspaceId: "ws_test", payload: {} },
     env: {},
     registry,
     executors,
@@ -150,7 +150,7 @@ describe("UC7.2 step policy from sideEffects", () => {
     const result = await runStoredGraph({
       step: stepper.step,
       db: world.d1,
-      params: { graphId: "g", workspaceId: APP_WORKSPACE, payload: {} },
+      params: { graphId: "g", workspaceId: "ws_test", payload: {} },
       env: {},
       registry,
       executors: new Map<string, Executor>([...toyExecutors, ["t.read", flaky(1, counter)]]),
@@ -175,7 +175,7 @@ describe("UC7.2 step policy from sideEffects", () => {
     const result = await runStoredGraph({
       step: stepper.step,
       db: world.d1,
-      params: { graphId: "g", workspaceId: APP_WORKSPACE, payload: {} },
+      params: { graphId: "g", workspaceId: "ws_test", payload: {} },
       env: {},
       registry,
       executors: new Map<string, Executor>([...toyExecutors, ["t.write", flaky(5, counter)]]),

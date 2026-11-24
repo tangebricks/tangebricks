@@ -29,6 +29,18 @@ The deploy sequence in `packages/deploy/src/provisioner/deploy.ts` enforces cras
 
 `node scripts/poc-deploy.ts --state-dir <dir> --plan [--variant changed]` prints the plan as JSON and exits 0; it reads the account and the ledger and writes neither.
 
+## Deployed runs: real executors and a verified workspace (story 1.1)
+
+The bundled Worker's `GraphRunner` Workflow and its `/__px/*` routes run the real catalog: `buildRegistryFromCatalog(catalog)` and `buildExecutorsFromCatalog(catalog, DEPLOY_PACKAGE_EXPORTS, { environment })` (`src/worker/catalog-bricks.ts`). `DEPLOY_PACKAGE_EXPORTS` wires `@poc/credit-wallet` (debit is the D1-backed deduction; it needs the `DB` binding, which its catalog node declares). A brick action whose package executor would only report success without doing anything is left NOT_CONFIGURED. The proof bricks (`proof.add`, `proof.multiply`, `src/worker/proof-bricks.ts`) are test fixtures: a test injects them with `bundleWorker({ fixtureBricksModule })`; the shipped bundle never does.
+
+Trigger rule: **a run without a verified workspace is refused.**
+
+- `POST /poc/runs` (shared access key only) never starts a run: it answers `403 NO_VERIFIED_WORKSPACE` and creates no Workflow instance.
+- `POST /__px/workflow-runs` is the authenticated trigger. Body `{ requestId, graphId, workspaceId, payload? }`, signed with `PX_TELEMETRY_SECRET`, which must be set and must differ from the access key (with no such secret the route answers 503). The signature is two headers: `x-px-signed-at` (epoch seconds, refused when more than 300 s from the Worker's clock) and `x-px-signature`, the HMAC-SHA256 of `${method}\n${path}\n${signedAt}\n${body}`, so a signature made with the access key, for another route, or for another body is refused (401). `requestId` (a UUID) becomes the Workflow instance id: a replayed request finds it taken and gets `409 DUPLICATE_REQUEST`, and nothing runs twice. The signed body's `workspaceId` is the run's workspace: it is whatever the signer put there. Studio authorises its caller for the project before signing; the workspace inside that project's preview data is the one the Studio client names. A body without one gets `400 NO_WORKSPACE`; the reserved `__app__` workspace or a malformed id gets 400. On success it starts the Workflow with `params { graphId, workspaceId, payload }` and answers `202 { id, workspaceId }`.
+- `GET /poc/runs/:id` returns a run's status and output, which can hold a tenant's balances, so it takes the same signature (empty body) as well as the access key; the key alone is 401.
+- The routes that execute bricks inline (`/__px/rehearse`, `/__px/runs`, `/__px/runs/rerun`) take a `PX_TELEMETRY_SECRET`-only signature over the body (they do not yet carry the timestamp, path or request id; deferred), and their signed body must name a tenant `workspaceId` (400 `NO_WORKSPACE` or `BAD_WORKSPACE` otherwise). The read-only pulls keep their existing secret handling.
+- The Workflow hands that workspace to `runGraph`, which gives it to every executor as the read-only `ctx.workspaceId`. The runtime has no default workspace: `runGraph` refuses a run without one (`RunRefusedError`, `NO_WORKSPACE`) before any node runs, and a run whose params carry none (or `__app__`) ends non-retryably before its graph is read. Executors never take a workspace from inputs, payload or config: `credit-wallet.debit` fails `WORKSPACE_MISMATCH` and debits nothing when its input names another workspace.
+
 ## Verification
 
 The fault matrix is continuously verified by:

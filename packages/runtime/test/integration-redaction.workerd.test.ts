@@ -102,7 +102,7 @@ describe("UC1.5 — Manifest-derived redaction plus value-pattern scrubbing", ()
     );
 
     const emittedLogs: Array<{ level: string; message: string; fields?: Record<string, unknown> }> = [];
-    const ctx: ExecutionContext = {
+    const ctx: ExecutionContext = { workspaceId: "ws_test",
       nodeId: "test_node_redaction",
       runId: "run_redaction_test",
       idempotencyKey: "run_redaction_test:test_node_redaction",

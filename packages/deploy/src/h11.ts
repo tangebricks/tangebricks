@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { runGraph } from "@poc/runtime";
 import type { Graph, RunResult } from "@poc/runtime";
 import { APP_WORKSPACE, GRAPH_TABLE, LOAD_STEP, nodeStepName } from "./worker/graph-run.ts";
+import { WORKFLOW_RUNS_PATH, signControlPlaneRequest } from "./worker/proof-routes.ts";
 import { proofExecutors, proofRegistry } from "./worker/proof-bricks.ts";
 import type { Attempt, ClientLog, UrlEvent } from "./h10.ts";
 import type { CallRecord, Client, WorkflowInstance } from "./provisioner/cloudflare.ts";
@@ -44,6 +45,11 @@ const CYCLIC: Graph = { nodes: [node("t", "trigger.manual"), node("x", "proof.ad
 export const H11_GRAPHS = { sum: SUM_PRODUCT, sumEdited: SUM_SUM, slow: SLOW, slowEdited: SLOW_EDITED, diamond: DIAMOND, bad: CYCLIC } as const;
 export const H11_IDS = { sum: "h11-sum", slow: "h11-slow", diamond: "h11-diamond", bad: "h11-bad", latency: "__latency_rest__" } as const;
 export const H11_PAYLOAD = { a: 2, b: 3, c: 4 };
+/**
+ * The workspace H11's runs are started for (story 1.1: a deployed run needs a verified workspace). The graphs stay app-wide
+ * rows, which every workspace's run can load, so the workspace changes no answer.
+ */
+export const H11_WORKSPACE = "ws_h11";
 
 /** What each named run is supposed to have run. */
 const EXPECTED_GRAPH: Record<string, Graph> = { "sum-first": SUM_PRODUCT, "sum-edited": SUM_SUM, "slow-midrun": SLOW, "slow-after": SLOW_EDITED, diamond: DIAMOND };
@@ -112,6 +118,11 @@ export interface H11Deps {
   databaseId: string;
   url: string;
   accessKey: string;
+  /**
+   * The control-plane signing secret (the Worker's PX_TELEMETRY_SECRET). Runs are started with a signed
+   * POST /__px/workflow-runs naming H11_WORKSPACE; the shared-key POST /poc/runs is refused since story 1.1.
+   */
+  signingSecret: string;
   fetchUrl(request: Request): Promise<Response>;
   hide(text: string): string;
   nowIso(): string;
@@ -166,8 +177,8 @@ export async function runH11(deps: H11Deps): Promise<{ calls: H11Calls; result: 
     }
   };
   /** A request to the deployed Worker with the access key; returns the status and the JSON body if there is one. */
-  const worker = async (phase: string, method: string, path: string, body?: string, note?: string) => {
-    const response = await sendFor(phase, note)(new Request(`${deps.url}${path}`, { method, headers: { "x-poc-key": deps.accessKey, ...(body === undefined ? {} : { "content-type": "application/json" }) }, body: body ?? null }));
+  const worker = async (phase: string, method: string, path: string, body?: string, note?: string, extraHeaders: Record<string, string> = {}) => {
+    const response = await sendFor(phase, note)(new Request(`${deps.url}${path}`, { method, headers: { "x-poc-key": deps.accessKey, ...(body === undefined ? {} : { "content-type": "application/json" }), ...extraHeaders }, body: body ?? null }));
     const text = await response.text();
     let json: Record<string, unknown> | null = null;
     try {
@@ -210,7 +221,10 @@ export async function runH11(deps: H11Deps): Promise<{ calls: H11Calls; result: 
 
     // ---- start a run, wait for the Worker's answer, then read Cloudflare's own record of it
     const startRun = async (key: string, graphId: string, rowText: string | null): Promise<H11Run> => {
-      const created = await worker("start-run", "POST", "/poc/runs", JSON.stringify({ graphId, payload: H11_PAYLOAD }), key);
+      // A run is started the authenticated way (story 1.1): a signed, timestamped body naming its workspace, with a fresh
+      // requestId that becomes the run's id, so a replay of the same request cannot start a second run.
+      const body = JSON.stringify({ requestId: crypto.randomUUID(), graphId, workspaceId: H11_WORKSPACE, payload: H11_PAYLOAD });
+      const created = await worker("start-run", "POST", WORKFLOW_RUNS_PATH, body, key, await signControlPlaneRequest(deps.signingSecret, "POST", WORKFLOW_RUNS_PATH, body));
       const run: H11Run = { key, graphId, instanceId: created.status === 202 && typeof created.json?.id === "string" ? created.json.id : null, rowText, workerStatus: null, details: null };
       facts.runs.push(run);
       if (!run.instanceId) attempt(`start ${key}`, "failed", `HTTP ${created.status}`);
@@ -220,7 +234,8 @@ export async function runH11(deps: H11Deps): Promise<{ calls: H11Calls; result: 
       if (!run.instanceId) return;
       const deadline = rel() + (deps.runTimeoutMs ?? 120_000);
       while (rel() < deadline) {
-        const status = await worker("poll-run", "GET", `/poc/runs/${run.instanceId}`, undefined, run.key);
+        const pollPath = `/poc/runs/${run.instanceId}`;
+        const status = await worker("poll-run", "GET", pollPath, undefined, run.key, await signControlPlaneRequest(deps.signingSecret, "GET", pollPath));
         if (status.json && terminal(String(status.json.status))) {
           run.workerStatus = { status: String(status.json.status), ...(status.json.error ? { error: status.json.error } : {}), ...(status.json.output !== undefined ? { output: status.json.output } : {}) };
           break;
@@ -352,7 +367,7 @@ const same = (a: unknown, b: unknown) => canon(a) === canon(b);
 export async function localAnswer(graph: Graph): Promise<RunResult> {
   const executors = new Map(proofExecutors);
   executors.set("util.delay", ({ inputs }) => ({ out: inputs.in }));
-  return runGraph(graph, proofRegistry, executors, { payload: H11_PAYLOAD });
+  return runGraph(graph, proofRegistry, executors, { payload: H11_PAYLOAD, workspaceId: H11_WORKSPACE });
 }
 
 export interface H11EvaluationInput {

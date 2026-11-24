@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { STUDIO_PREVIEW_WORKSPACE } from "./preview-workspace.ts";
 import { z } from "zod";
 import {
   allowedOriginsFromEnv,
@@ -6736,7 +6737,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         workspaceId:
           typeof rawBody.workspaceId === "string"
             ? rawBody.workspaceId
-            : "ws_default",
+            : STUDIO_PREVIEW_WORKSPACE,
         ...(Object.keys(mergedUpstreamSteps).length > 0
           ? { upstreamSteps: mergedUpstreamSteps }
           : {}),
@@ -7093,7 +7094,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         workspaceId:
           typeof rawBody.workspaceId === "string"
             ? rawBody.workspaceId
-            : "ws_default",
+            : STUDIO_PREVIEW_WORKSPACE,
         ...(usePinnedOutputs
           ? { usePinnedOutputs: true, pinnedOutputs: pinnedOutputsMap }
           : {}),
@@ -7913,7 +7914,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       revision: targetStatePayload.revision,
       triggerType: sourceRun.triggerType ?? "manual",
       triggerPayload: rawBody.triggerPayload ?? {},
-      workspaceId: sourceRun.workspaceId ?? "ws_default",
+      workspaceId: sourceRun.workspaceId ?? STUDIO_PREVIEW_WORKSPACE,
       sourceRunId,
       fromNodeId,
       seededStepEvents: sourceStepEvents,

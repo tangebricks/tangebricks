@@ -228,6 +228,8 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
             "content-type": "application/json",
           },
           body: JSON.stringify({
+            // the workspace is the request's (Studio names it), not the input's (story 1.1)
+            workspaceId: "ws_preview_1",
             input: { balance: 120, workspaceId: "ws_preview_1" },
           }),
         },

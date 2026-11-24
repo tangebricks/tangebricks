@@ -349,7 +349,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     };
 
     const slackRehearsal = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_slack",
         nodeType: "int:slack.post_message",
         config: slackConfig,
@@ -370,7 +370,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       },
       registry,
       executors,
-      {
+      { workspaceId: "ws_test",
         runId: "run_slack_integration",
         payload: slackInput,
         connections,
@@ -409,7 +409,8 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     };
 
     const resendRehearsal = await rehearseStep(
-      {
+      // the run's workspace is the tenant's; the selector's own workspaceId is never used (story 1.1)
+      { workspaceId: "ws_tenant_1",
         nodeId: "n_resend",
         nodeType: "int:resend.send_email",
         config: resendConfig,
@@ -427,7 +428,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       },
       registry,
       executors,
-      {
+      { workspaceId: "ws_tenant_1",
         runId: "run_resend_integration",
         payload: resendInput,
         connections,
@@ -457,7 +458,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     };
 
     const twilioRehearsal = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_twilio",
         nodeType: "int:twilio.send_sms",
         config: twilioConfig,
@@ -475,7 +476,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       },
       registry,
       executors,
-      {
+      { workspaceId: "ws_test",
         runId: "run_twilio_integration",
         payload: twilioInput,
         connections,
@@ -520,7 +521,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
 
     // 1. Protocol-relative metadata IP injection: //169.254.169.254/latest
     const metadataAttempt = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n1",
         nodeType: "int:slack.metadata_ip_test",
         config: {
@@ -544,7 +545,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       integration: { fetcher: urlParamFetcher },
     });
     const evilHostAttempt = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n1",
         nodeType: "int:slack.post_message",
         config: {
@@ -562,7 +563,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
 
     // 3. Path parameter traversal (../)
     const traversalAttempt = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n2",
         nodeType: "int:resend.send_email",
         config: {
@@ -579,7 +580,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
 
     // 4. Cross-app connection mismatch (passing Slack connection to Resend node)
     const mismatchAttempt = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n2",
         nodeType: "int:resend.send_email",
         config: {
@@ -654,7 +655,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       },
       registry,
       retryExecutors,
-      {
+      { workspaceId: "ws_test",
         connections,
         telemetry: {
           runId: "run_int_retry_1",
@@ -684,7 +685,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     });
 
     const expiredRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_post",
         nodeType: "int:slack.post_message",
         config: {
@@ -721,7 +722,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     });
 
     const pageRes = await rehearseStep(
-      {
+      { workspaceId: "ws_test",
         nodeId: "n_list",
         nodeType: "int:slack.list_channels",
         config: {

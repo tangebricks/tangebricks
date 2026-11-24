@@ -17,7 +17,7 @@ export interface GraphRunnerEnv {
 export function createGraphRunner(options: { registry: Registry; executors: Executors }) {
   return class GraphRunnerBase extends WorkflowEntrypoint<GraphRunnerEnv, RunParams> {
     async run(event: Readonly<WorkflowEvent<RunParams>>, step: WorkflowStep) {
-      return runStoredGraph({
+      const result = await runStoredGraph({
         step,
         db: this.env.DB,
         params: {
@@ -30,6 +30,9 @@ export function createGraphRunner(options: { registry: Registry; executors: Exec
         executors: options.executors,
         nonRetryable: (message) => new NonRetryableError(message),
       });
+      // The instance's output is the run's answer only. When telemetry is on (PX_TELEMETRY_SECRET), the run record, step
+      // events and logs are already written to D1 and sent to the webhook; they are not repeated in the Workflow's output.
+      return { ok: result.ok, outputs: result.outputs, failed: result.failed, skipped: result.skipped };
     }
   };
 }

@@ -1,4 +1,4 @@
-import { PX_TELEMETRY_MIGRATION_SQL, runGraph, stepPolicyFor } from "@poc/runtime";
+import { PX_TELEMETRY_MIGRATION_SQL, isTenantWorkspaceId as isRuntimeTenantWorkspaceId, runGraph, stepPolicyFor } from "@poc/runtime";
 import type { Graph, RunResult, TelemetryRunOptions } from "@poc/runtime";
 import { checkGraphBudget, validateGraph } from "@poc/sdk";
 import type { D1Like, Executors, Registry } from "@poc/sdk";
@@ -57,9 +57,17 @@ CREATE TABLE IF NOT EXISTS ${LATENCY_TABLE} (
 /** Every migration the graph table needs, in order. A deploy appends these after the project's own. */
 export const GRAPH_MIGRATIONS = [GRAPH_MIGRATION, GRAPH_WORKSPACE_MIGRATION] as const;
 
-/** A workspace a run may carry: the reserved app workspace, or an id that is not reserved (no double underscore). */
+/** A workspace a graph row may be stored under: the reserved app workspace, or an id that is not reserved (no double underscore). */
 export function isRunWorkspaceId(value: unknown): value is string {
   return typeof value === "string" && (value === APP_WORKSPACE || (ID_PATTERN.test(value) && !value.includes("__")));
+}
+
+/**
+ * A workspace a run can execute for: a real tenant's id, never the reserved APP_WORKSPACE (which only chooses which graph
+ * rows are visible and is nobody's wallet or data).
+ */
+export function isTenantWorkspaceId(value: unknown): value is string {
+  return isRunWorkspaceId(value) && value !== APP_WORKSPACE && isRuntimeTenantWorkspaceId(value);
 }
 
 export const TELEMETRY_MIGRATION = {
@@ -84,8 +92,9 @@ export interface StepLike {
 export interface RunParams {
   graphId: string;
   /**
-   * The workspace the run is for. It loads that workspace's graph, or the app-wide one under APP_WORKSPACE. Runs started
-   * before workspaces existed carry none and are app-wide runs.
+   * The run's verified workspace (AD-S19), set only by an authenticated trigger (the signed `/__px/workflow-runs` route).
+   * It loads that workspace's graph, or the app-wide one under APP_WORKSPACE, and is every executor's `ctx.workspaceId`.
+   * A run without one, or with APP_WORKSPACE, is refused before any node runs: there is no default workspace.
    */
   workspaceId?: string;
   payload?: unknown;
@@ -163,10 +172,11 @@ export async function runStoredGraph(run: StoredGraphRun): Promise<RunResult> {
       ? `run_${crypto.randomUUID()}`
       : `run_${Date.now()}`);
   if (typeof params?.graphId !== "string" || !ID_PATTERN.test(params.graphId)) throw run.nonRetryable("the run was started without a usable graph id");
-  // A run started before workspaces existed has no workspaceId (its Workflow params were {graphId, payload}): it is app-wide.
-  // A workspaceId that is present but not usable is refused.
-  if (params.workspaceId !== undefined && !isRunWorkspaceId(params.workspaceId)) throw run.nonRetryable("the run was started without a usable workspace id");
-  const workspaceId = params.workspaceId ?? APP_WORKSPACE;
+  // A run executes for one verified tenant workspace. With none, or with the reserved APP_WORKSPACE (nobody's workspace),
+  // it is refused before the table is read and before any node runs. There is no default workspace (AD-S19).
+  if (params.workspaceId === undefined || params.workspaceId === APP_WORKSPACE) throw run.nonRetryable("NO_WORKSPACE: the run was started without a verified workspace");
+  if (!isTenantWorkspaceId(params.workspaceId)) throw run.nonRetryable("the run was started without a usable workspace id");
+  const workspaceId = params.workspaceId;
 
   // Only the run's own workspace and the app-wide graphs are visible; the workspace's own row wins over the app's.
   const graph = await step.do(LOAD_STEP, async () => {
@@ -200,6 +210,8 @@ export async function runStoredGraph(run: StoredGraphRun): Promise<RunResult> {
           ...(envTelemetrySecret ? { telemetrySecret: envTelemetrySecret } : {}),
           ...(envWebhookUrl ? { webhookUrl: envWebhookUrl } : {}),
           ...explicitTelemetry,
+          // no telemetry option moves the run's workspace
+          workspaceId,
         }
       : undefined;
 
@@ -207,10 +219,9 @@ export async function runStoredGraph(run: StoredGraphRun): Promise<RunResult> {
     payload: params.payload,
     env: run.env,
     runId,
-    // A run for a real workspace carries it, fixed when it started: connections, logs, the run record and telemetry use it,
-    // and no telemetry option moves it. APP_WORKSPACE only chooses which graph row is loaded; an app-wide run keeps the
-    // runtime's own workspace (the telemetry option's, else ws_default), as before.
-    ...(workspaceId === APP_WORKSPACE ? {} : { workspaceId }),
+    // The run's workspace, fixed when it started: executors (ctx.workspaceId), connections, logs, the run record and
+    // telemetry use it, and no telemetry option moves it.
+    workspaceId,
     runStep: (nodeId, nodeCall) => {
       const node = graph.nodes.find((n) => n.id === nodeId);
       const manifest = node ? registry.get(node.type) : undefined;

@@ -62,7 +62,7 @@ describe("UC7.5 — Queue-backed batch/chunk primitive for bulk sends", () => {
     };
 
     // 1. Run the graph with core.batch
-    const runResult = await runGraph(graph, coreNodeRegistry, coreNodeExecutors, {
+    const runResult = await runGraph(graph, coreNodeRegistry, coreNodeExecutors, { workspaceId: WS_TEST,
       payload: {},
       runId: "run_bulk_123",
       env: {
@@ -239,5 +239,28 @@ describe("UC7.5 — Queue-backed batch/chunk primitive for bulk sends", () => {
 
     const passingIssues = checkGraphBudget({ nodes: nodesPassing, edges: edgesPassing }, coreNodeRegistry, "free");
     expect(passingIssues.filter((i) => i.code === "BUDGET_SUBREQUESTS_EXCEEDED")).toHaveLength(0);
+  });
+
+  it("story 1.1: core.batch writes its jobs under the run's verified workspace even when config, input and payload name another", async () => {
+    const OTHER = "ws_batch_other";
+    const graph = {
+      nodes: [
+        { id: "trig", type: "core.webhook", data: { method: "post" } },
+        { id: "bulk_send", type: "core.batch", data: { items: 3, chunkSize: 1, target: "integration.send", plan: "free", workspaceId: OTHER } },
+      ],
+      edges: [{ id: "e1", source: "trig", target: "bulk_send", sourceHandle: "out", targetHandle: "in" }],
+    };
+    const runResult = await runGraph(graph, coreNodeRegistry, coreNodeExecutors, {
+      workspaceId: WS_TEST,
+      payload: { workspaceId: OTHER, in: { workspaceId: OTHER } },
+      runId: "run_batch_ws",
+      env: { DB: db, workspaceId: OTHER },
+    });
+    expect(runResult.ok).toBe(true);
+    const service = new JobQueueService(db);
+    expect(await service.list(WS_TEST, { limit: 100 })).toHaveLength(3);
+    expect(await service.list(OTHER, { limit: 100 })).toHaveLength(0);
+    const rows = await db.prepare("SELECT DISTINCT workspace_id FROM job_queues").all<{ workspace_id: string }>();
+    expect(rows.results.map((r) => r.workspace_id)).toEqual([WS_TEST]);
   });
 });

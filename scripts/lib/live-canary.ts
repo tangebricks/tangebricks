@@ -17,6 +17,9 @@ import {
   writeEvidence,
 } from "./evidence-stamp.ts";
 
+/** The named workspace these out-of-band smoke runs use: the runtime has no default workspace (story 1.1). */
+const LIVE_SMOKE_WORKSPACE = "ws_live_smoke";
+
 const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
 export interface CanaryOperationSpec {
@@ -263,6 +266,7 @@ export async function runAppCanary(
       const res = await rehearseStep(
         {
           nodeId: `canary_${app}_${op.operationId}`,
+          workspaceId: LIVE_SMOKE_WORKSPACE,
           nodeType,
           config: {},
           input: op.inputs ?? {},

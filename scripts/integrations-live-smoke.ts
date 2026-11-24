@@ -40,6 +40,9 @@ export interface IntegrationsPackV1Evidence {
   readonly apps: Record<string, AppSmokeEntry>;
 }
 
+/** The named workspace these out-of-band smoke runs use: the runtime has no default workspace (story 1.1). */
+const LIVE_SMOKE_WORKSPACE = "ws_live_smoke";
+
 const SMOKE_OPS: Record<
   string,
   {
@@ -120,6 +123,7 @@ export async function runIntegrationsSmokeSuite(): Promise<IntegrationsPackV1Evi
     const res = await rehearseStep(
       {
         nodeId: `smoke_${app}`,
+        workspaceId: LIVE_SMOKE_WORKSPACE,
         nodeType,
         config: {},
         input: smokeSpec.input,

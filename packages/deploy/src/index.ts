@@ -7,9 +7,11 @@ export type { R2BucketLike, R2BlobStoreOptions } from "./worker/blob-store.ts";
 export { createGatedWorker, sameSecret, KEY_HEADER, DEMO_PATH, MIN_KEY_LENGTH } from "./worker/gate.ts";
 export { runScriptedCheck, scriptedCheckPasses, describeDifferences, SCRIPTED_EXPECTED } from "./scripted-check.ts";
 export type { Observation, Send } from "./scripted-check.ts";
-export { APP_WORKSPACE, GRAPH_MIGRATION, GRAPH_MIGRATIONS, GRAPH_TABLE, GRAPH_WORKSPACE_MIGRATION, ID_PATTERN, LATENCY_TABLE, LOAD_STEP, TELEMETRY_MIGRATION, WORKFLOW_BINDING, WORKFLOW_CLASS, isRunWorkspaceId, nodeStepName, readStoredGraph, runStoredGraph } from "./worker/graph-run.ts";
+export { APP_WORKSPACE, GRAPH_MIGRATION, GRAPH_MIGRATIONS, GRAPH_TABLE, GRAPH_WORKSPACE_MIGRATION, ID_PATTERN, LATENCY_TABLE, LOAD_STEP, TELEMETRY_MIGRATION, WORKFLOW_BINDING, WORKFLOW_CLASS, isRunWorkspaceId, isTenantWorkspaceId, nodeStepName, readStoredGraph, runStoredGraph } from "./worker/graph-run.ts";
 export type { RunParams, StepLike, StoredGraphRun } from "./worker/graph-run.ts";
 export { PROOF_BRICKS, proofExecutors, proofRegistry } from "./worker/proof-bricks.ts";
+export { DEPLOY_PACKAGE_EXPORTS, createDeployBricks } from "./worker/catalog-bricks.ts";
+export type { DeployBricks, DeployBricksOptions } from "./worker/catalog-bricks.ts";
 export {
   EXCLUDED_DATA_BROWSER_TABLES,
   IMMUTABLE_LEDGER_TABLES,

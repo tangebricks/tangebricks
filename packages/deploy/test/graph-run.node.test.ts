@@ -62,10 +62,12 @@ function fakeStep(kept: Map<string, unknown> = new Map()) {
 
 const nonRetryable = (message: string) => Object.assign(new Error(message), { retry: false });
 let world: ReturnType<typeof sqliteD1>;
+/** The verified workspace these runs are for (story 1.1: a run without one is refused). Graphs stay app-wide rows. */
+const RUN_WS = "ws-run";
 const store = (id: string, graph: unknown, workspaceId: string = APP_WORKSPACE) =>
   world.db.prepare(`INSERT INTO ${GRAPH_TABLE} (workspace_id, id, graph, updated_at) VALUES (?, ?, ?, 'now') ON CONFLICT(workspace_id, id) DO UPDATE SET graph = excluded.graph`).run(workspaceId, id, typeof graph === "string" ? graph : JSON.stringify(graph));
 const start = (stepper: ReturnType<typeof fakeStep>, graphId = "g1", over: { executors?: ReadonlyMap<string, Executor>; payload?: unknown; workspaceId?: string } = {}) =>
-  runStoredGraph({ step: stepper.step, db: world.d1, params: { graphId, workspaceId: over.workspaceId ?? APP_WORKSPACE, payload: "payload" in over ? over.payload : PAYLOAD }, env: {}, registry: proofRegistry, executors: over.executors ?? proofExecutors, nonRetryable });
+  runStoredGraph({ step: stepper.step, db: world.d1, params: { graphId, workspaceId: over.workspaceId ?? RUN_WS, payload: "payload" in over ? over.payload : PAYLOAD }, env: {}, registry: proofRegistry, executors: over.executors ?? proofExecutors, nonRetryable });
 
 beforeEach(() => {
   world = sqliteD1();
@@ -89,7 +91,7 @@ describe("running a stored graph", () => {
     const result = await start(fakeStep());
     expect(result.ok).toBe(true);
     expect(result.outputs.mul).toEqual({ out: 20 });
-    expect(result).toEqual(await runGraph(ADD_THEN_MULTIPLY, proofRegistry, proofExecutors, { payload: PAYLOAD }));
+    expect(result).toEqual(await runGraph(ADD_THEN_MULTIPLY, proofRegistry, proofExecutors, { payload: PAYLOAD, workspaceId: RUN_WS }));
   });
 
   test("each node is one step, named for the node, after one step that loads the graph; nothing else is a step", async () => {
@@ -148,7 +150,7 @@ describe("running a stored graph", () => {
     expect(result.outputs.pa).toEqual({ out: 2 });
     expect(result.outputs.pb).toEqual({ out: 3 });
     expect(stepper.calls.map((c) => c.name)).not.toContain(nodeStepName("after"));
-    expect(result).toEqual(await runGraph(graph, proofRegistry, proofExecutors, { payload: PAYLOAD }));
+    expect(result).toEqual(await runGraph(graph, proofRegistry, proofExecutors, { payload: PAYLOAD, workspaceId: RUN_WS }));
   });
 
   test("a node nothing connects to is a warning, not an error: the graph runs and that node is skipped, as in the local interpreter", async () => {
@@ -159,7 +161,7 @@ describe("running a stored graph", () => {
     expect(result.ok).toBe(true);
     expect(result.skipped).toEqual(["lonely"]);
     expect(stepper.calls.map((c) => c.name)).not.toContain(nodeStepName("lonely"));
-    expect(result).toEqual(await runGraph(withOrphan, proofRegistry, proofExecutors, { payload: PAYLOAD }));
+    expect(result).toEqual(await runGraph(withOrphan, proofRegistry, proofExecutors, { payload: PAYLOAD, workspaceId: RUN_WS }));
   });
 
   test("a diamond with a delay (the toy bricks) gives the same answer as the local interpreter", async () => {
@@ -168,7 +170,7 @@ describe("running a stored graph", () => {
       edges: [wire("t", "out", "l", "in"), wire("t", "out", "r", "in"), wire("l", "out", "j", "a"), wire("r", "out", "j", "b")],
     };
     store("g1", graph);
-    expect(await start(fakeStep())).toEqual(await runGraph(graph, proofRegistry, proofExecutors, { payload: PAYLOAD }));
+    expect(await start(fakeStep())).toEqual(await runGraph(graph, proofRegistry, proofExecutors, { payload: PAYLOAD, workspaceId: RUN_WS }));
   });
 });
 
@@ -217,7 +219,7 @@ describe("one class, any graph: the row decides", () => {
     const second = fakeStep(kept);
     const result = await start(second, "g1", { executors: counting });
     expect(result.outputs.mul).toEqual({ out: 20 }); // the OLD graph's answer
-    expect(result).toEqual(await runGraph(ADD_THEN_MULTIPLY, proofRegistry, proofExecutors, { payload: PAYLOAD }));
+    expect(result).toEqual(await runGraph(ADD_THEN_MULTIPLY, proofRegistry, proofExecutors, { payload: PAYLOAD, workspaceId: RUN_WS }));
     expect(world.reads(GRAPH_TABLE)).toBe(1); // the table was read once, before the edit
     // nodes whose steps had finished were not executed again
     for (const id of ranBeforePause) expect(runs.filter((r) => r === id)).toHaveLength(1);
@@ -276,7 +278,7 @@ describe("a graph that cannot run is refused before any node does", () => {
   test("an edge that points at a node that is not there is ignored by the validator (existing behaviour, from H1), so the graph runs as the local interpreter runs it", async () => {
     const dangling: Graph = { nodes: [node("t", "trigger.manual")], edges: [wire("t", "out", "ghost", "a")] };
     store("g1", dangling);
-    expect(await start(fakeStep())).toEqual(await runGraph(dangling, proofRegistry, proofExecutors, { payload: PAYLOAD }));
+    expect(await start(fakeStep())).toEqual(await runGraph(dangling, proofRegistry, proofExecutors, { payload: PAYLOAD, workspaceId: RUN_WS }));
   });
 
   test("text that is not JSON", async () => {
@@ -378,7 +380,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       db: world.d1,
       params: {
         graphId: "g1",
-        workspaceId: APP_WORKSPACE,
+        workspaceId: RUN_WS,
         payload: PAYLOAD,
         telemetry: {
           runId: "run_stored_graph_1",
@@ -431,6 +433,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       nodeType: "transform.pick",
       config: { path: "a" },
       input: PAYLOAD,
+      workspaceId: RUN_WS,
     });
     const rehearseSig = await signTelemetryPayload(rehearseBody, secret);
     const rehearseRes = await routes(
@@ -467,6 +470,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       revision: 1,
       triggerType: "manual_test",
       triggerPayload: PAYLOAD,
+      workspaceId: RUN_WS,
       graph: boomGraph,
     });
     const runSig = await signTelemetryPayload(runBody, secret);
@@ -500,6 +504,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       fromNodeId: "bad",
       workflowId: "g_boom",
       revision: 1,
+      workspaceId: RUN_WS,
       graph: fixedGraph,
     });
     const rerunSig = await signTelemetryPayload(rerunBody, secret);
