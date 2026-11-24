@@ -134,7 +134,7 @@ test("H7 report", async ({ task }) => {
   // A run stopped by a refused outside attempt has no files to compare. That is the network check's finding (a fail),
   // not evidence that the assembler makes different files (a kill).
   const stoppedByTrap = runs.some((run) => run.failure !== null);
-  const sameFiles = JSON.stringify(second.report.hashes) === JSON.stringify(first.report.hashes) && first.report.files === 10 && second.report.files === 10;
+  const sameFiles = JSON.stringify(second.report.hashes) === JSON.stringify(first.report.hashes) && first.report.files === 11 && second.report.files === 11;
   const clockShifted = (second.report.clockMs - first.report.clockMs) / 86_400_000 > 399;
   const slowest = Math.max(first.wallSeconds, second.wallSeconds);
   record(task, {
