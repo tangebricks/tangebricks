@@ -105,11 +105,30 @@ export function computeNextRun(expression: string, fromDate = new Date()): Date 
 export interface CronServiceOptions {
   /** Host resolver for the SSRF guard; tests inject one to stay offline. Defaults to DNS-over-HTTPS. */
   resolveHost?: HostResolver | null;
+  /**
+   * Workflow binding names a schedule may start (story 0.20, B13). When set it wins over the
+   * `CRON_WORKFLOW_TARGETS` env var; when neither is set no Workflow target is allowed.
+   */
+  allowedWorkflowTargets?: string[];
+}
+
+/** Env var the app sets to the comma-separated Workflow binding names cron-alarms may start. */
+export const CRON_WORKFLOW_TARGETS_ENV = "CRON_WORKFLOW_TARGETS";
+
+/** Parses a comma-separated allowlist: entries trimmed, empty entries ignored. Anything else is an empty list. */
+export function parseWorkflowTargets(raw: unknown): string[] {
+  if (typeof raw !== "string") return [];
+  return raw
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
 }
 
 export class CronService {
   /** URL targets are tenant-supplied, so every call goes through the public-URL guard (no internal addresses). */
   private readonly customFetch: PublicUrlFetcher;
+  /** Workflow binding names this service may start; empty means none (fail closed). */
+  private readonly allowedWorkflowTargets: ReadonlySet<string>;
 
   constructor(
     private readonly db: D1Like,
@@ -123,6 +142,14 @@ export class CronService {
     this.customFetch = createPublicUrlFetch((url, init) => base(url, init), {
       ...(options.resolveHost !== undefined ? { resolveHost: options.resolveHost } : {}),
     });
+    this.allowedWorkflowTargets = new Set(
+      options.allowedWorkflowTargets ?? parseWorkflowTargets(envBindings?.[CRON_WORKFLOW_TARGETS_ENV]),
+    );
+  }
+
+  /** True when `name` is on the app's Workflow target allowlist. */
+  isWorkflowTargetAllowed(name: string): boolean {
+    return this.allowedWorkflowTargets.has(name);
   }
 
   /**
@@ -138,7 +165,7 @@ export class CronService {
       catchUp?: "skip" | "once" | "all";
       maxCatchUp?: number;
     } = {},
-  ): Promise<{ ok: true; schedule: ScheduleRecord } | { ok: false; error: string; code: number }> {
+  ): Promise<{ ok: true; schedule: ScheduleRecord } | { ok: false; error: string; code: number; errorCode?: string }> {
     const cron = cronExpressionRaw.trim();
     if (!validateCron(cron)) {
       return { ok: false, error: "Invalid cron expression format (expected 5 fields)", code: 400 };
@@ -146,6 +173,16 @@ export class CronService {
 
     if (!options.targetWorkflowId && !options.targetUrl) {
       return { ok: false, error: "Must specify either targetWorkflowId or targetUrl", code: 400 };
+    }
+
+    // Story 0.20 (B13): only Workflow bindings the app allowlists may be scheduled; any other name is refused.
+    if (options.targetWorkflowId && !this.isWorkflowTargetAllowed(options.targetWorkflowId)) {
+      return {
+        ok: false,
+        error: `Workflow target ${options.targetWorkflowId} is not allowed (not in ${CRON_WORKFLOW_TARGETS_ENV})`,
+        code: 400,
+        errorCode: "WORKFLOW_TARGET_NOT_ALLOWED",
+      };
     }
 
     const s = scoped(this.db, workspaceId);
@@ -364,11 +401,13 @@ export class CronService {
     let urlTarget = false;
 
     try {
-      if (sched.target_workflow_id) {
-        const bindings = this.envBindings;
-        const workflowBinding = (bindings?.[sched.target_workflow_id] ??
-          bindings?.["GRAPH_RUNNER"] ??
-          bindings?.["WORKFLOW"]) as
+      if (sched.target_workflow_id && !this.isWorkflowTargetAllowed(sched.target_workflow_id)) {
+        // Story 0.20 (B13): re-checked at fire time, since the allowlist may have changed since the schedule was made.
+        // The name is never looked up in env, and there is no fallback runner.
+        outcomeStatus = "failure";
+        summary = `NOT_ALLOWED: workflow target ${sched.target_workflow_id} is not in ${CRON_WORKFLOW_TARGETS_ENV}; not triggered`;
+      } else if (sched.target_workflow_id) {
+        const workflowBinding = this.envBindings?.[sched.target_workflow_id] as
           | { create(options: { id: string; params: unknown }): Promise<unknown> }
           | undefined;
 
@@ -653,7 +692,8 @@ export class CronService {
 
 export interface ScheduledCronContext {
   controller?: { scheduledTime?: number; cron?: string };
-  env: { DB: D1Like; [key: string]: unknown };
+  /** `CRON_WORKFLOW_TARGETS`: comma-separated Workflow binding names a schedule may start (story 0.20). */
+  env: { DB: D1Like; CRON_WORKFLOW_TARGETS?: string; [key: string]: unknown };
   ctx?: unknown;
   dueRows?: Array<{
     id: string;
