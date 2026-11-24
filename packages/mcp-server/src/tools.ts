@@ -68,6 +68,10 @@ export interface ToolContext {
   author?: BlueprintAuthor;
   studioRequest?: StudioRequestFn;
   baseUrl?: string;
+  /** The project the verified token is bound to. Standalone telemetry (no Studio) is read and written for it only. */
+  projectId?: string;
+  /** The verified workspace standalone test_workflow runs record (story 1.4); without one it refuses to run. */
+  workspaceId?: string;
 }
 
 export interface ToolResult {
@@ -1729,7 +1733,32 @@ const listConnections: Tool = {
   },
 };
 
+/** The answer for a Studio error: the error itself, never a fallback to the local standalone tables (story 1.4). */
+async function studioErrorResult(res: Response): Promise<ToolResult> {
+  const body = await res.json().catch(() => ({ error: { code: `STUDIO_HTTP_${res.status}` } }));
+  return { isError: true, text: JSON.stringify(scrubMcpSecrets(body)) };
+}
+
+/** The project whose standalone telemetry a call may read or write: the verified token's project. */
+const standaloneProject = (ctx: ToolContext, args: { project: string }) => ctx.projectId ?? args.project;
+
+async function addStandaloneColumn(db: D1Like, table: string, column: string): Promise<void> {
+  const cols = ((await db.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>()).results ?? []).map((c) => c.name);
+  if (cols.includes(column)) return;
+  try {
+    await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} TEXT`).run();
+  } catch (error) {
+    if (!/duplicate column/i.test(error instanceof Error ? error.message : String(error))) throw error;
+  }
+}
+
 async function ensureStandaloneTelemetryTables(db: D1Like): Promise<void> {
+  await ensureStandaloneTelemetryBaseTables(db);
+  // Story 1.4: every standalone row carries its project; rows from before have none and no read returns them.
+  for (const table of ["px_runs", "px_step_events", "px_logs"]) await addStandaloneColumn(db, table, "project_id");
+}
+
+async function ensureStandaloneTelemetryBaseTables(db: D1Like): Promise<void> {
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS px_runs (
@@ -1804,7 +1833,7 @@ const testWorkflow: Tool = {
     idempotentHint: false,
   },
   async run(
-    { db, catalog, blueprint, studioRequest },
+    ctx,
     args: {
       project: string;
       workflowId: string;
@@ -1813,6 +1842,7 @@ const testWorkflow: Tool = {
       usePinnedOutputs?: boolean;
     },
   ) {
+    const { db, catalog, blueprint, studioRequest } = ctx;
     if (studioRequest) {
       const endpoint = args.nodeId
         ? `/api/projects/${encodeURIComponent(args.project)}/workflows/${encodeURIComponent(args.workflowId)}/nodes/${encodeURIComponent(args.nodeId)}/test-step`
@@ -1908,13 +1938,17 @@ const testWorkflow: Tool = {
       );
     }
 
+    // Story 1.4: a standalone run records the verified workspace and the token's project; never a default workspace.
+    const workspaceId = ctx.workspaceId;
+    if (!workspaceId) {
+      return refuse("NO_WORKSPACE: this server has no verified workspace for standalone runs; nothing was run");
+    }
+    const runProject = standaloneProject(ctx, args);
     await ensureStandaloneTelemetryTables(db);
     const now = new Date().toISOString();
-    const runCountRow = await db
-      .prepare(`SELECT COUNT(*) AS c FROM px_runs`)
-      .first<{ c: number }>();
-    const nextRunSeq = Number(runCountRow?.c ?? 0) + 1;
-    const runId = `run_${String(nextRunSeq).padStart(4, "0")}`;
+    // A random id (crypto.randomUUID), shortened to keep tool pages small; written with INSERT, so a collision fails
+    // instead of replacing another run.
+    const runId = `run_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
     const safeInput = scrubMcpSecrets(args.input ?? {});
 
     const steps: Array<{
@@ -2002,9 +2036,9 @@ const testWorkflow: Tool = {
         });
         await db
           .prepare(
-            `INSERT OR REPLACE INTO px_step_events (
-              step_id, run_id, workflow_id, blueprint_rev, node_id, node_type, attempt, status, started_at, finished_at, duration_ms, input_json, output_json, error_json, error_stack
-            ) VALUES (?, ?, ?, ?, ?, ?, 1, 'failed', ?, ?, 2, ?, NULL, ?, ?)`,
+            `INSERT INTO px_step_events (
+              step_id, run_id, workflow_id, blueprint_rev, node_id, node_type, attempt, status, started_at, finished_at, duration_ms, input_json, output_json, error_json, error_stack, project_id
+            ) VALUES (?, ?, ?, ?, ?, ?, 1, 'failed', ?, ?, 2, ?, NULL, ?, ?, ?)`,
           )
           .bind(
             stepId,
@@ -2022,13 +2056,14 @@ const testWorkflow: Tool = {
               actionableIssue: actionable,
             }),
             missingInputError,
+            runProject,
           )
           .run();
         await db
           .prepare(
-            `INSERT OR REPLACE INTO px_logs (
-              id, timestamp, level, message, brick_id, workflow_id, run_id, node_id, workspace_id, px_env, data_json
-            ) VALUES (?, ?, 'error', ?, ?, ?, ?, ?, 'ws_default', 'preview', ?)`,
+            `INSERT INTO px_logs (
+              id, timestamp, level, message, brick_id, workflow_id, run_id, node_id, workspace_id, px_env, data_json, project_id
+            ) VALUES (?, ?, 'error', ?, ?, ?, ?, ?, ?, 'preview', ?, ?)`,
           )
           .bind(
             `log_${stepId}`,
@@ -2038,6 +2073,7 @@ const testWorkflow: Tool = {
             wf.id,
             runId,
             node.id,
+            workspaceId,
             JSON.stringify({
               errorCode: "RUN_STEP_MISSING_INPUT",
               failingField: missingFieldInfo.dataKey,
@@ -2046,6 +2082,7 @@ const testWorkflow: Tool = {
               availableFields: missingFieldInfo.availableKeys,
               actionableIssue: actionable,
             }),
+            runProject,
           )
           .run();
         break;
@@ -2073,9 +2110,9 @@ const testWorkflow: Tool = {
       });
       await db
         .prepare(
-          `INSERT OR REPLACE INTO px_step_events (
-            step_id, run_id, workflow_id, blueprint_rev, node_id, node_type, attempt, status, started_at, finished_at, duration_ms, input_json, output_json
-          ) VALUES (?, ?, ?, ?, ?, ?, 1, 'succeeded', ?, ?, 2, ?, ?)`,
+          `INSERT INTO px_step_events (
+            step_id, run_id, workflow_id, blueprint_rev, node_id, node_type, attempt, status, started_at, finished_at, duration_ms, input_json, output_json, project_id
+          ) VALUES (?, ?, ?, ?, ?, ?, 1, 'succeeded', ?, ?, 2, ?, ?, ?)`,
         )
         .bind(
           stepId,
@@ -2088,6 +2125,7 @@ const testWorkflow: Tool = {
           now,
           JSON.stringify(safeInput),
           JSON.stringify(stepOut),
+          runProject,
         )
         .run();
     }
@@ -2096,9 +2134,9 @@ const testWorkflow: Tool = {
       const lastStep = steps.at(-1)!;
       await db
         .prepare(
-          `INSERT OR REPLACE INTO px_logs (
-            id, timestamp, level, message, brick_id, workflow_id, run_id, node_id, workspace_id, px_env, data_json
-          ) VALUES (?, ?, 'info', ?, ?, ?, ?, ?, 'ws_default', 'preview', NULL)`,
+          `INSERT INTO px_logs (
+            id, timestamp, level, message, brick_id, workflow_id, run_id, node_id, workspace_id, px_env, data_json, project_id
+          ) VALUES (?, ?, 'info', ?, ?, ?, ?, ?, ?, 'preview', NULL, ?)`,
         )
         .bind(
           `log_${runId}`,
@@ -2110,6 +2148,8 @@ const testWorkflow: Tool = {
           wf.id,
           runId,
           lastStep.nodeId,
+          workspaceId,
+          runProject,
         )
         .run();
     }
@@ -2117,9 +2157,9 @@ const testWorkflow: Tool = {
     const finalOutput = steps.at(-1)?.output ?? safeInput;
     await db
       .prepare(
-        `INSERT OR REPLACE INTO px_runs (
-          run_id, workflow_id, blueprint_rev, trigger_type, status, started_at, finished_at, duration_ms, input_json, output_json, error_json
-        ) VALUES (?, ?, ?, 'manual', ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO px_runs (
+          run_id, workflow_id, blueprint_rev, trigger_type, status, started_at, finished_at, duration_ms, input_json, output_json, error_json, project_id
+        ) VALUES (?, ?, ?, 'manual', ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         runId,
@@ -2132,6 +2172,7 @@ const testWorkflow: Tool = {
         JSON.stringify(safeInput),
         JSON.stringify(finalOutput),
         runError ? JSON.stringify({ message: runError, issues: runIssues }) : null,
+        runProject,
       )
       .run();
 
@@ -2171,7 +2212,7 @@ const listRuns: Tool = {
     idempotentHint: true,
   },
   async run(
-    { db, studioRequest },
+    ctx,
     args: {
       project: string;
       env?: "preview" | "production";
@@ -2182,6 +2223,7 @@ const listRuns: Tool = {
       cursor?: string;
     },
   ) {
+    const { db, studioRequest } = ctx;
     const limit = Math.min(10, Math.max(1, args.limit ?? 10));
     const env = args.env ?? "preview";
 
@@ -2221,11 +2263,12 @@ const listRuns: Tool = {
           nextCursor: body.nextCursor ?? null,
         });
       }
+      return studioErrorResult(res);
     }
 
     await ensureStandaloneTelemetryTables(db);
-    const clauses: string[] = [];
-    const binds: unknown[] = [];
+    const clauses: string[] = ["project_id = ?"];
+    const binds: unknown[] = [standaloneProject(ctx, args)];
     if (args.workflowId) {
       clauses.push("workflow_id = ?");
       binds.push(args.workflowId);
@@ -2238,7 +2281,7 @@ const listRuns: Tool = {
       clauses.push("started_at >= ?");
       binds.push(args.since);
     }
-    const whereSql = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+    const whereSql = `WHERE ${clauses.join(" AND ")}`;
     const offset = args.cursor ? Number.parseInt(args.cursor, 10) || 0 : 0;
 
     const rows = (
@@ -2296,13 +2339,14 @@ const getRunTrace: Tool = {
     idempotentHint: true,
   },
   async run(
-    { db, blueprint, studioRequest },
+    ctx,
     args: {
       project: string;
       runId: string;
       env?: "preview" | "production";
     },
   ) {
+    const { db, blueprint, studioRequest } = ctx;
     const env = args.env ?? "preview";
     const storedForTrace = await blueprint.getProject(args.project);
 
@@ -2359,17 +2403,19 @@ const getRunTrace: Tool = {
           `run "${args.runId}" not found in project "${args.project}"`,
         );
       }
+      return studioErrorResult(res);
     }
 
     await ensureStandaloneTelemetryTables(db);
+    const traceProject = standaloneProject(ctx, args);
     const runRow = await db
       .prepare(
         `SELECT run_id, workflow_id, blueprint_rev, trigger_type, status, started_at, finished_at, duration_ms, input_json, output_json, error_json
          FROM px_runs
-         WHERE run_id = ?
+         WHERE run_id = ? AND project_id = ?
          LIMIT 1`,
       )
-      .bind(args.runId)
+      .bind(args.runId, traceProject)
       .first<{
         run_id: string;
         workflow_id: string;
@@ -2395,10 +2441,10 @@ const getRunTrace: Tool = {
         .prepare(
           `SELECT step_id, node_id, node_type, attempt, status, started_at, finished_at, duration_ms, input_json, output_json, error_json, error_stack
            FROM px_step_events
-           WHERE run_id = ?
+           WHERE run_id = ? AND project_id = ?
            ORDER BY started_at ASC, attempt ASC`,
         )
-        .bind(args.runId)
+        .bind(args.runId, traceProject)
         .all<{
           step_id: string;
           node_id: string;
@@ -2511,7 +2557,7 @@ const queryLogs: Tool = {
     idempotentHint: true,
   },
   async run(
-    { db, studioRequest },
+    ctx,
     args: {
       project: string;
       env?: "preview" | "production";
@@ -2525,6 +2571,7 @@ const queryLogs: Tool = {
       cursor?: string;
     },
   ) {
+    const { db, studioRequest } = ctx;
     const env = args.env ?? "preview";
     const limit = Math.min(10, Math.max(1, args.limit ?? 10));
 
@@ -2564,11 +2611,12 @@ const queryLogs: Tool = {
           nextCursor: body.nextCursor ?? null,
         });
       }
+      return studioErrorResult(res);
     }
 
     await ensureStandaloneTelemetryTables(db);
-    const clauses: string[] = ["px_env = ?"];
-    const binds: unknown[] = [env];
+    const clauses: string[] = ["px_env = ?", "project_id = ?"];
+    const binds: unknown[] = [env, standaloneProject(ctx, args)];
 
     if (args.runId) {
       clauses.push("run_id = ?");

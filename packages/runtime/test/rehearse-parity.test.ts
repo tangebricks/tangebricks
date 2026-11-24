@@ -175,9 +175,9 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
     );
 
     // Verify px_step_events and px_runs rows were written with run_id = "rehearsal:<uuid>"
-    const brickRunRow = await getRunRecord(db, rehearseBrickBody.runId);
+    const brickRunRow = await getRunRecord(db, rehearseBrickBody.runId, { workspaceId: "ws_acme_tenant" });
     expect(brickRunRow?.triggerType).toBe("rehearsal");
-    const brickEvents = await listStepEventsForRun(db, rehearseBrickBody.runId);
+    const brickEvents = await listStepEventsForRun(db, rehearseBrickBody.runId, { workspaceId: "ws_acme_tenant" });
     expect(brickEvents).toHaveLength(1);
     expect(brickEvents[0]?.nodeId).toBe("node_wallet_debit");
     expect(brickEvents[0]?.status).toBe("succeeded");

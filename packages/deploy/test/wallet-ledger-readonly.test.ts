@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import type { D1Like } from "@poc/sdk";
-import { TELEMETRY_SIGNATURE_HEADER, signTelemetryPayload } from "@poc/telemetry";
+import { signControlPlaneRequest } from "@poc/telemetry";
 import { describe, expect, it } from "vitest";
 import { handleDataBrowserRequest } from "../src/worker/data-browser.ts";
 
@@ -151,15 +151,14 @@ async function callLedgerRoute(
   const method = options.method ?? "GET";
   const rawBody = options.body ? JSON.stringify(options.body) : undefined;
   const fullUrl = new URL(`http://worker.internal${pathAndQuery}`);
-  const payloadToSign =
-    rawBody && rawBody.length > 0 ? rawBody : `${fullUrl.pathname}${fullUrl.search}`;
-  const sig = await signTelemetryPayload(payloadToSign, TEST_SECRET);
+  // Story 1.4: the control-plane signature over method, path with query, time and body.
+  const signed = await signControlPlaneRequest(TEST_SECRET, method, fullUrl, rawBody ?? "");
 
   const req = new Request(fullUrl.toString(), {
     method,
     headers: {
       ...(rawBody ? { "content-type": "application/json" } : {}),
-      [TELEMETRY_SIGNATURE_HEADER]: sig,
+      ...signed,
     },
     ...(rawBody ? { body: rawBody } : {}),
   });

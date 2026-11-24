@@ -1,4 +1,5 @@
 import { applyMigration } from "@poc/sdk";
+import { checkControlPlaneSignature, ensureTelemetryTables } from "@poc/telemetry";
 import type { D1Like, D1Result, D1Statement } from "@poc/sdk";
 import { APP_WORKSPACE, GRAPH_MIGRATIONS, GRAPH_TABLE, TELEMETRY_MIGRATION } from "./worker/graph-run.ts";
 
@@ -972,6 +973,30 @@ export class SandboxDispatchPlatform {
     this.studioEventsSink = options?.studioEventsSink;
   }
 
+  /**
+   * Records a sandbox's telemetry (story 1.4: reached only by the sandbox's own signed POST /__px/events, or in-process)
+   * and forwards it to Studio's events sink when one is configured.
+   */
+  async recordSandboxEvents(sandboxId: string, payload: Record<string, unknown>): Promise<Response> {
+    const list = this.telemetryBuffer.get(sandboxId) ?? [];
+    list.push(payload);
+    this.telemetryBuffer.set(sandboxId, list);
+    if (this.studioEventsSink) {
+      return this.studioEventsSink(
+        sandboxId,
+        new Request("https://sandbox.internal/__px/events", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-px-sandbox-id": sandboxId },
+          body: JSON.stringify(payload),
+        }),
+      );
+    }
+    return new Response(JSON.stringify({ ok: true, sandboxId, bufferedEvents: list.length }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   get mutatingCallCount(): number {
     return this.mutatingOps;
   }
@@ -1067,6 +1092,9 @@ export class SandboxDispatchPlatform {
     // Telemetry first: its px_steps view reads px_step_events, and SQLite's ALTER TABLE ... RENAME in 9002 refuses to run
     // while any view in the schema points at a table that is missing (a reused database can keep the view, not the table).
     await rawD1.prepare(TELEMETRY_MIGRATION.sql).run();
+    // Story 1.4: the unchanged 9001 schema, then the guarded upgrade (new columns, key rebuilds, then the new indexes), so
+    // a reused pre-1.4 database ends in the same shape as a fresh one.
+    await ensureTelemetryTables(rawD1);
     // 9000 then 9002, statement by statement, so a fresh sandbox database ends where an upgraded one does. These are not
     // recorded anywhere, so a reused database is read first: only what its graph table still lacks is applied.
     const graphColumns = ((await rawD1.prepare(`PRAGMA table_info(${GRAPH_TABLE})`).all<{ name: string }>()).results ?? []).map((c) => c.name);
@@ -1423,10 +1451,6 @@ export class SandboxDispatchPlatform {
       | {
           dispatchNamespace?: string;
           now?: number;
-          studioEventsHandler?: (
-            sandboxId: string,
-            request: Request,
-          ) => Response | Promise<Response>;
         },
   ): Promise<Response> {
     const opts =
@@ -1490,41 +1514,45 @@ export class SandboxDispatchPlatform {
 
     const url = new URL(request.url);
     if (url.pathname === "/__px/events" || url.pathname.startsWith("/__px/events/")) {
-      const sink = opts?.studioEventsHandler ?? this.studioEventsSink;
-      if (sink) {
-        const forwardedHeaders = new Headers(request.headers);
-        forwardedHeaders.set("x-px-sandbox-id", sandboxId);
-        forwardedHeaders.set(
-          "x-px-telemetry-hmac-Present",
-          worker.telemetryHmacKey ? "1" : "0",
-        );
-        const forwardedReq = new Request(request.url, {
-          method: request.method,
-          headers: forwardedHeaders,
-          body:
-            request.method !== "GET" && request.method !== "HEAD"
-              ? await request.clone().text()
-              : undefined,
+      // Story 1.4: a read (GET) or a sandbox's own event push (POST) takes the control-plane signature (method, path with
+      // query, x-px-signed-at, body) made with this sandbox's own telemetry key, and names this sandbox in the signed
+      // query. Nothing unsigned, or signed for another sandbox, reads or appends to its telemetry.
+      if (request.method !== "GET" && request.method !== "POST") {
+        return new Response(JSON.stringify({ error: { code: "METHOD_NOT_ALLOWED", message: "Expected GET or POST /__px/events" } }), {
+          status: 405,
+          headers: { "content-type": "application/json" },
         });
-        return sink(sandboxId, forwardedReq);
       }
-      if (request.method === "POST") {
-        const payload = (await request.json().catch(() => ({}))) as Record<
-          string,
-          unknown
-        >;
-        const list = this.telemetryBuffer.get(sandboxId) ?? [];
-        list.push(payload);
-        this.telemetryBuffer.set(sandboxId, list);
+      if (url.pathname !== "/__px/events" || url.searchParams.get("sandboxId") !== sandboxId) {
         return new Response(
           JSON.stringify({
-            ok: true,
-            sandboxId,
-            forwardedToStudioApi: true,
-            bufferedEvents: list.length,
+            error: { code: "SANDBOX_ID_REQUIRED", message: "/__px/events?sandboxId=<this sandbox> (signed) is required." },
           }),
-          { status: 200, headers: { "content-type": "application/json" } },
+          { status: 400, headers: { "content-type": "application/json" } },
         );
+      }
+      const bodyText = request.method === "POST" ? await request.text() : "";
+      const refusal = await checkControlPlaneSignature(request, { secret: worker.telemetryHmacKey, nowMs, body: bodyText });
+      if (refusal) {
+        return new Response(JSON.stringify({ error: { code: refusal.code, message: refusal.message } }), {
+          status: refusal.status,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (request.method === "POST") {
+        let payload: unknown;
+        try {
+          payload = JSON.parse(bodyText);
+        } catch {
+          payload = null;
+        }
+        if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
+          return new Response(JSON.stringify({ error: { code: "INVALID_JSON", message: "the body must be a JSON object" } }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        return this.recordSandboxEvents(sandboxId, payload as Record<string, unknown>);
       }
       return new Response(
         JSON.stringify({

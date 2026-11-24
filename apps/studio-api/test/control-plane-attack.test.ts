@@ -24,11 +24,22 @@ import { env } from "cloudflare:workers";
 import { beforeAll, describe, expect, test } from "vitest";
 import { sha256Hex } from "@poc/assembler";
 import { ALL_TOOLS } from "@poc/mcp-server";
+import {
+  deriveProjectTelemetrySecret,
+  insertStepEvent,
+  insertStructuredLog,
+  signTelemetryPayload,
+  TELEMETRY_SIGNATURE_HEADER,
+  upsertHttpRollup,
+  upsertQueueMetrics,
+  upsertRunRecord,
+} from "@poc/telemetry";
 import { compareWithRegistry, describeComparison, registryKeyOf } from "../../../test/support/attack-registry.ts";
 import type { RegistryEntry, RegistryViolation } from "../../../test/support/attack-registry.ts";
 import { app, createStudioApiApp, ensureStudioD1Schema } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import knownFailuresFile from "./control-plane-attack.known-failures.json";
+import { activateTestSandbox } from "./sandbox-data-store.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 const REGISTRY_FILE = "control-plane-attack.known-failures.json";
@@ -67,6 +78,12 @@ const ALL_ATTACKS: readonly string[] = [
   "GLOBAL_HEALTH_RESET",
   "GLOBAL_RUN_PRUNE",
   "SEED_CONTROL_PLANE",
+  // Story 1.4: telemetry keyed by project.
+  "TELEMETRY_CROSS_RUN",
+  "TELEMETRY_CROSS_RERUN",
+  "TELEMETRY_LISTS",
+  "WEBHOOK_PROJECT",
+  "RECONCILE_TARGET",
 ];
 
 /** Every tool name the Studio MCP endpoint answers: the registered tools plus get_history (handled in place). */
@@ -577,6 +594,16 @@ describe("control-plane attack suite: Studio MCP and MCP token routes (story 0.1
 // plus the targeted rows BODY_ORG_B, LIST_TOKEN, LIST_SESSION, CONN_DEFAULT, CONN_REF_OTHER, and the three global writes a
 // project builder must not reach: GLOBAL_HEALTH_RESET (health seed `reset`), GLOBAL_RUN_PRUNE (runs/prune) and
 // SEED_CONTROL_PLANE (data/seed into control-plane tables or with raw DDL).
+// Story 1.4 adds the telemetry rows. PB's runs, step events, logs, health rollups, queue metrics, data and ledger rows sit
+// in the same STUDIO_DB (and the same workspace) as P1's; a caller authorised only for P1 (Alice's session or her P1
+// token) on P1's own routes:
+//   TELEMETRY_CROSS_RUN    reads PB's run by id                                       -> 404 RUN_NOT_FOUND, nothing of PB
+//   TELEMETRY_CROSS_RERUN  reruns PB's run                                            -> 404, no run started
+//   TELEMETRY_LISTS        runs list, events, logs, health, metrics, activity, data   -> no PB row (P1's own rows present)
+//   WEBHOOK_PROJECT        a signed webhook on P1's URL whose payload names PB, or none -> 400/401, nothing written;
+//                          a payload signed with P1's derived secret posted to PB's URL  -> 401, nothing written
+//   RECONCILE_TARGET       reconcile with a body workerUrl, or for PB's workspace          -> refused, nothing written
+// The data and ledger rows of each project live in that project's own data store (its active sandbox database).
 // ---------------------------------------------------------------------------------------------------------------------
 
 const ROUTE_MATRIX_ATTACKS = [
@@ -600,6 +627,11 @@ const ROUTE_MATRIX_ATTACKS = [
   "GLOBAL_HEALTH_RESET",
   "GLOBAL_RUN_PRUNE",
   "SEED_CONTROL_PLANE",
+  "TELEMETRY_CROSS_RUN",
+  "TELEMETRY_CROSS_RERUN",
+  "TELEMETRY_LISTS",
+  "WEBHOOK_PROJECT",
+  "RECONCILE_TARGET",
 ] as const;
 
 interface RouteWorld {
@@ -1062,16 +1094,16 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
     if ((await pxRow(w.connB)) !== before) flag("POST", route, "CONN_REF_OTHER", "Bob's connection row changed");
   }
 
-  // GLOBAL_HEALTH_RESET: px_http_rollups / px_queue_metrics have no project column, so a reset is global. Alice (owner of
-  // P1) is refused, and another project's health rows survive; a platform operator may reset.
+  // GLOBAL_HEALTH_RESET: the health reset stays operator-only (since story 1.4 it deletes only the project's own rows).
+  // Alice (owner of P1) is refused, and another project's health rows survive; a platform operator may reset.
   {
     count("GLOBAL_HEALTH_RESET");
     const route = "/api/projects/:project/environments/:envName/health/seed";
     const marker = `/cpa-health-${crypto.randomUUID().slice(0, 8)}`;
     await studioEnv.STUDIO_DB.prepare(
-      "INSERT INTO px_http_rollups (bucket_minute, route_prefix, brick_id, env_name) VALUES (?, ?, 'runtime', 'preview')",
+      "INSERT INTO px_http_rollups (bucket_minute, route_prefix, brick_id, env_name, workspace_id, project_id) VALUES (?, ?, 'runtime', 'preview', 'ws_default', ?)",
     )
-      .bind(new Date().toISOString().slice(0, 16), marker)
+      .bind(new Date().toISOString().slice(0, 16), marker, w.pb)
       .run();
     const survives = async () =>
       (await studioEnv.STUDIO_DB.prepare("SELECT COUNT(*) AS n FROM px_http_rollups WHERE route_prefix = ?")
@@ -1086,22 +1118,248 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
     }
   }
 
-  // GLOBAL_RUN_PRUNE: px_runs has no project or org column, so runs/prune spans every org. Alice is refused and an
-  // expired run of another org survives.
+  // GLOBAL_RUN_PRUNE: runs/prune is global by design (retention spans every org). Alice is refused and an expired run of
+  // another org survives.
   {
     count("GLOBAL_RUN_PRUNE");
     const route = "/api/projects/:project/runs/prune";
     const runId = `run_cpa_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
     await studioEnv.STUDIO_DB.prepare(
-      `INSERT INTO px_runs (run_id, workflow_id, status, started_at, ended_at) VALUES (?, 'wf_other_org', 'succeeded', ?, ?)`,
+      `INSERT INTO px_runs (run_id, workflow_id, workspace_id, project_id, status, started_at, ended_at) VALUES (?, 'wf_other_org', 'ws_default', ?, 'succeeded', ?, ?)`,
     )
-      .bind(runId, "2020-01-01T00:00:00.000Z", "2020-01-01T00:00:01.000Z")
+      .bind(runId, w.pb, "2020-01-01T00:00:00.000Z", "2020-01-01T00:00:01.000Z")
       .run();
     for (const bearer of [w.alice.token, w.token.token]) {
       const res = await hit("POST", `/api/projects/${w.p1}/runs/prune`, bearer, { body: { retentionDays: 1 } });
       if (res.status !== 403) flag("POST", route, "GLOBAL_RUN_PRUNE", `status ${res.status}, expected 403`);
       const row = await studioEnv.STUDIO_DB.prepare("SELECT run_id FROM px_runs WHERE run_id = ?").bind(runId).first();
       if (!row) flag("POST", route, "GLOBAL_RUN_PRUNE", "another org's run was pruned");
+    }
+  }
+
+  // Story 1.4: telemetry keyed by project (TELEMETRY_CROSS_RUN, TELEMETRY_CROSS_RERUN, TELEMETRY_LISTS, WEBHOOK_PROJECT).
+  {
+    const db = studioEnv.STUDIO_DB;
+    const tag = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+    const pbMarker = `TEL-PB-${tag}`;
+    const p1Marker = `TEL-P1-${tag}`;
+    const pbRun = `run_pb_${tag}`;
+    const p1Run = `run_p1_${tag}`;
+    // The same workspace in both projects: only the project keeps their telemetry apart.
+    const ws = "ws_default";
+    const now = new Date().toISOString();
+    for (const [project, runId, marker] of [
+      [w.pb, pbRun, pbMarker],
+      [w.p1, p1Run, p1Marker],
+    ] as const) {
+      const stamp = { projectId: project };
+      await upsertRunRecord(
+        db,
+        { runId, workflowId: `wf_${marker}`, revision: 0, triggerType: "manual", workspaceId: ws, status: "failed", durationMs: 1, retries: 0, errorStack: `Error: ${marker}`, startedAt: now, endedAt: now },
+        stamp,
+      );
+      await insertStepEvent(
+        db,
+        { eventId: `${runId}:n1:failed:1`, runId, workflowId: `wf_${marker}`, revision: 0, workspaceId: ws, nodeId: "n1", status: "failed", durationMs: 1, retries: 0, inputPreview: JSON.stringify({ marker }), outputPreview: "{}", errorStack: `Error: ${marker}`, createdAt: now },
+        stamp,
+      );
+      await insertStructuredLog(db, { level: "error", message: `log ${marker}`, runId, workspaceId: ws, envName: "preview" }, {}, stamp);
+      await upsertHttpRollup(db, { workspaceId: ws, bucketMinute: now, routePrefix: `/${marker}`, brickId: `brick_${marker}`, requestCount: 2, error5xxCount: 1, envName: "preview" }, stamp);
+      await upsertQueueMetrics(db, { workspaceId: ws, queueName: `queue_${marker}`, depth: 3, dlqCount: 1, envName: "preview" }, stamp);
+    }
+    // P1's and PB's data and ledger rows, each in its project's own data store (the active sandbox database that
+    // resolveProjectDataStore reads), under the same workspace.
+    for (const [project, orgId, marker] of [
+      [w.p1, w.alice.orgId, p1Marker],
+      [w.pb, w.bob.orgId, pbMarker],
+    ] as const) {
+      const store = await activateTestSandbox(db, { project, orgId });
+      await store.rawD1.batch([
+        store.rawD1.prepare("CREATE TABLE IF NOT EXISTS cpa_items (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, label TEXT)"),
+        store.rawD1
+          .prepare(
+            "CREATE TABLE IF NOT EXISTS credit_ledger (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, type TEXT NOT NULL, amount INTEGER NOT NULL, balance_after INTEGER NOT NULL, reason TEXT NOT NULL, metadata TEXT, idempotency_key TEXT, created_at TEXT NOT NULL)",
+          ),
+        store.rawD1.prepare("CREATE TABLE IF NOT EXISTS credit_wallets (workspace_id TEXT PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)"),
+        store.rawD1.prepare("INSERT INTO cpa_items (id, workspace_id, label) VALUES (?, ?, ?)").bind(`item_${marker}`, ws, marker),
+        store.rawD1
+          .prepare(
+            "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, idempotency_key, created_at) VALUES (?, ?, 'u', 'topup', 10, 10, ?, ?, ?)",
+          )
+          .bind(`led_${marker}`, ws, `reason ${marker}`, `idem_${marker}`, now),
+        store.rawD1.prepare("INSERT OR REPLACE INTO credit_wallets (workspace_id, balance, created_at) VALUES (?, 10, ?)").bind(ws, now),
+      ]);
+    }
+    // Test Step's input falls back to the last recorded output of the upstream node: that read is this project's only.
+    // P1 and PB both have a run of the same workflow and node ids; PB's is the newer one.
+    const sharedWf = `wf_shared_${tag}`;
+    for (const [project, marker] of [
+      [w.p1, p1Marker],
+      [w.pb, pbMarker],
+    ] as const) {
+      await insertStepEvent(
+        db,
+        { eventId: `ev_up_${marker}`, runId: `run_up_${marker}`, workflowId: sharedWf, revision: 0, workspaceId: ws, nodeId: "n_up", status: "succeeded", durationMs: 1, retries: 0, inputPreview: "{}", outputPreview: JSON.stringify({ out: { upstream: marker } }), errorStack: null, createdAt: now },
+        { projectId: project },
+      );
+    }
+    const addWf = await hit("POST", `/api/projects/${w.p1}/ops`, w.alice.token, {
+      body: {
+        ops: [
+          {
+            opId: `op-wf-${tag}`,
+            type: "add_workflow",
+            workflow: {
+              id: sharedWf,
+              name: "Shared ids",
+              trigger: "core.webhook",
+              nodes: [
+                { id: "n_up", type: "core.webhook", label: "Up", data: { path: "/up", method: "post" } },
+                { id: "n_down", type: "core.noop", label: "Down", data: {} },
+              ],
+              edges: [{ id: "e1", source: "n_up", sourceHandle: "out", target: "n_down", targetHandle: "in" }],
+            },
+          },
+        ],
+      },
+    });
+    if (addWf.status !== 200) flag("POST", "/api/projects/:project/ops", "TELEMETRY_LISTS", `fixture: add_workflow status ${addWf.status}`);
+
+    const callers = [
+      ["session", w.alice.token],
+      ["P1 token", w.token.token],
+    ] as const;
+    const startedFrom = async (sourceRunId: string) =>
+      Number(
+        (await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE retry_of_run_id = ?").bind(sourceRunId).first<{ c: number }>())?.c ?? 0,
+      );
+
+    for (const [who, bearer] of callers) {
+      // TELEMETRY_CROSS_RUN
+      count("TELEMETRY_CROSS_RUN");
+      const route = "/api/projects/:project/runs/:runId";
+      const detail = await hit("GET", `/api/projects/${w.p1}/runs/${pbRun}`, bearer);
+      if (detail.status !== 404 || !/RUN_NOT_FOUND/.test(detail.text))
+        flag("GET", route, "TELEMETRY_CROSS_RUN", `${who}: status ${detail.status}, expected 404 RUN_NOT_FOUND`);
+      // (The 404 message echoes the id the caller sent; PB's run data is what must not appear.)
+      if (leaks(detail.text, pbMarker)) flag("GET", route, "TELEMETRY_CROSS_RUN", `${who}: answer contains PB's run`);
+      const own = await hit("GET", `/api/projects/${w.p1}/runs/${p1Run}`, bearer);
+      if (own.status !== 200 || !own.text.includes(p1Marker))
+        flag("GET", route, "TELEMETRY_CROSS_RUN", `${who}: fixture: P1's own run not readable (status ${own.status})`);
+
+      // TELEMETRY_CROSS_RERUN
+      count("TELEMETRY_CROSS_RERUN");
+      const rerunRoute = "/api/projects/:project/runs/:runId/rerun";
+      const before = await fingerprint(w.pb, w.bob.orgId);
+      const rerun = await hit("POST", `/api/projects/${w.p1}/runs/${pbRun}/rerun`, bearer, { body: { fromNodeId: "n1" } });
+      if (rerun.status !== 404) flag("POST", rerunRoute, "TELEMETRY_CROSS_RERUN", `${who}: status ${rerun.status}, expected 404`);
+      if (leaks(rerun.text, pbMarker)) flag("POST", rerunRoute, "TELEMETRY_CROSS_RERUN", `${who}: answer contains PB's run`);
+      if ((await startedFrom(pbRun)) !== 0) flag("POST", rerunRoute, "TELEMETRY_CROSS_RERUN", `${who}: a run was started from PB's run`);
+      if ((await fingerprint(w.pb, w.bob.orgId)) !== before) flag("POST", rerunRoute, "TELEMETRY_CROSS_RERUN", `${who}: PB state changed`);
+
+      // TELEMETRY_LISTS: every telemetry read of P1, with and without naming the shared workspace or PB's run id.
+      for (const [listRoute, path, mustShowP1] of [
+        ["/api/projects/:project/runs", `/api/projects/${w.p1}/runs?limit=200`, true],
+        ["/api/projects/:project/runs", `/api/projects/${w.p1}/runs?workspaceId=${ws}&limit=200`, true],
+        ["/api/projects/:project/telemetry/events", `/api/projects/${w.p1}/telemetry/events?limit=500`, true],
+        ["/api/projects/:project/telemetry/events", `/api/projects/${w.p1}/telemetry/events?runId=${pbRun}`, false],
+        ["/api/projects/:project/environments/:envName/logs", `/api/projects/${w.p1}/environments/preview/logs?limit=500`, true],
+        ["/api/projects/:project/environments/:envName/logs", `/api/projects/${w.p1}/environments/preview/logs?workspaceId=all&runId=${pbRun}`, false],
+        ["/api/projects/:project/environments/:envName/data/logs", `/api/projects/${w.p1}/environments/preview/data/logs?workspaceId=${ws}`, true],
+        ["/api/projects/:project/environments/:envName/health", `/api/projects/${w.p1}/environments/preview/health?window=24h`, true],
+        ["/api/projects/:project/environments/:envName/metrics", `/api/projects/${w.p1}/environments/preview/metrics?window=24h&workspaceId=${ws}`, true],
+        ["/api/projects/:project/activity", `/api/projects/${w.p1}/activity`, true],
+        ["/api/projects/:project/environments/:envName/data/tables", `/api/projects/${w.p1}/environments/preview/data/tables?workspaceId=${ws}`, false],
+        ["/api/projects/:project/environments/:envName/data/tables/:tableName/rows", `/api/projects/${w.p1}/environments/preview/data/tables/cpa_items/rows?workspaceId=${ws}`, true],
+        ["/api/projects/:project/environments/:envName/data/ledger", `/api/projects/${w.p1}/environments/preview/data/ledger?workspaceId=${ws}`, true],
+      ] as const) {
+        count("TELEMETRY_LISTS");
+        const res = await hit("GET", path, bearer);
+        if (leaks(res.text.split(path).join(""), pbMarker, pbRun))
+          flag("GET", listRoute, "TELEMETRY_LISTS", `${who}: ${path} contains PB's telemetry`);
+        if (mustShowP1 && (res.status !== 200 || !(res.text.includes(p1Marker) || res.text.includes(p1Run))))
+          flag("GET", listRoute, "TELEMETRY_LISTS", `${who}: fixture: ${path} does not show P1's own rows (status ${res.status})`);
+      }
+    }
+
+    // TELEMETRY_LISTS (Test Step): the upstream input it reads is P1's last output, never PB's newer one.
+    {
+      count("TELEMETRY_LISTS");
+      const route = "/api/projects/:project/workflows/:workflowId/nodes/:nodeId/test-step";
+      const res = await hit("POST", `/api/projects/${w.p1}/workflows/${sharedWf}/nodes/n_down/test-step`, w.alice.token, { body: {} });
+      if (leaks(res.text, pbMarker)) flag("POST", route, "TELEMETRY_LISTS", "Test Step read PB's upstream output");
+      if (res.status !== 200 || !res.text.includes(p1Marker))
+        flag("POST", route, "TELEMETRY_LISTS", `fixture: Test Step did not use P1's own upstream output (status ${res.status})`);
+    }
+
+    // RECONCILE_TARGET: Studio signs the pull, so it never goes to a caller-chosen address or for another project's
+    // workspace; neither request writes anything.
+    {
+      const route = "/api/projects/:project/telemetry/reconcile";
+      const pbOnlyWs = `ws_pb_only_${tag}`;
+      await upsertRunRecord(
+        db,
+        { runId: `run_pbws_${tag}`, workflowId: "wf_pbws", revision: 0, triggerType: "manual", workspaceId: pbOnlyWs, status: "succeeded", durationMs: 1, retries: 0, startedAt: now },
+        { projectId: w.pb },
+      );
+      const p1Rows = async () =>
+        Number((await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE project_id = ?").bind(w.p1).first<{ c: number }>())?.c ?? 0);
+      for (const [label, body] of [
+        ["body workerUrl", { workspaceId: ws, workerUrl: "https://attacker.example" }],
+        ["PB's workspace", { workspaceId: pbOnlyWs }],
+      ] as const) {
+        count("RECONCILE_TARGET");
+        const before = await p1Rows();
+        const res = await hit("POST", `/api/projects/${w.p1}/telemetry/reconcile`, w.alice.token, { body });
+        if (isOk(res.status)) flag("POST", route, "RECONCILE_TARGET", `${label}: status ${res.status}, expected a refusal`);
+        if ((await p1Rows()) !== before) flag("POST", route, "RECONCILE_TARGET", `${label}: rows were written`);
+      }
+    }
+
+    // WEBHOOK_PROJECT: a correctly signed payload posted to P1's URL that names PB (or no project) writes nothing.
+    {
+      const route = "/api/projects/:project/telemetry/webhook";
+      const secret = await deriveProjectTelemetrySecret(studioEnv.PX_TELEMETRY_SECRET!, w.p1);
+      const runId = `run_wh_${tag}`;
+      const payload = (project?: string) =>
+        JSON.stringify({
+          ...(project ? { project } : {}),
+          run: { runId, workflowId: "wf_wh", revision: 0, triggerType: "manual", workspaceId: ws, status: "succeeded", durationMs: 1, retries: 0, startedAt: now },
+          events: [],
+        });
+      for (const [label, body, project] of [
+        ["names PB", payload(w.pb), w.p1],
+        ["names no project", payload(), w.p1],
+      ] as const) {
+        count("WEBHOOK_PROJECT");
+        const res = await app.request(
+          `/api/projects/${project}/telemetry/webhook`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(body, secret) },
+            body,
+          },
+          studioEnv,
+        );
+        if (res.status !== 400 && res.status !== 401) flag("POST", route, "WEBHOOK_PROJECT", `${label}: status ${res.status}, expected 400/401`);
+        const written = await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE run_id = ?").bind(runId).first<{ c: number }>();
+        if (Number(written?.c ?? 0) !== 0) flag("POST", route, "WEBHOOK_PROJECT", `${label}: a run was written`);
+      }
+      // A body naming PB, signed with P1's derived secret, posted to PB's URL: P1's key does not sign for PB.
+      count("WEBHOOK_PROJECT");
+      const forPb = payload(w.pb);
+      const res = await app.request(
+        `/api/projects/${w.pb}/telemetry/webhook`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(forPb, secret) },
+          body: forPb,
+        },
+        studioEnv,
+      );
+      if (res.status !== 401) flag("POST", route, "WEBHOOK_PROJECT", `P1-signed on PB's URL: status ${res.status}, expected 401`);
+      const written = await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE run_id = ?").bind(runId).first<{ c: number }>();
+      if (Number(written?.c ?? 0) !== 0) flag("POST", route, "WEBHOOK_PROJECT", "P1-signed on PB's URL: a run was written");
     }
   }
 

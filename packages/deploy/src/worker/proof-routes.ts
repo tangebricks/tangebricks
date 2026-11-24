@@ -1,13 +1,15 @@
 import {
+  SIGNATURE_WINDOW_SECONDS,
+  SIGNED_AT_HEADER,
+  checkControlPlaneSignature,
+  controlPlaneCanonical,
   handleStepRehearsalRequest,
   handleTelemetryEventsPullRequest,
   handleTelemetryLogsPullRequest,
   handleTelemetryMetricsRequest,
   handleWorkflowRerunRequest,
   handleWorkflowRunRequest,
-  TELEMETRY_SIGNATURE_HEADER,
-  signTelemetryPayload,
-  verifyTelemetrySignature,
+  signControlPlaneRequest,
 } from "@poc/runtime";
 import type { D1Like, Executors, Registry } from "@poc/sdk";
 import { APP_WORKSPACE, GRAPH_TABLE, ID_PATTERN, LATENCY_TABLE, WORKFLOW_BINDING, isTenantWorkspaceId } from "./graph-run.ts";
@@ -39,8 +41,14 @@ import { createDeployBricks } from "./catalog-bricks.ts";
 //
 // The control-plane signature on these two routes (story 1.1): header x-px-signed-at (epoch seconds) and x-px-signature, the
 // HMAC-SHA256 of `${method}\n${path}\n${signedAt}\n${body}`. A timestamp more than 300 s from the Worker's clock is refused,
-// and a signature made for another method, path or body does not verify. The other /__px routes keep their body-only
-// signature (deferred).
+// and a signature made for another method, path or body does not verify.
+//
+// The read routes (story 1.4): GET /__px/events, /__px/logs, /__px/metrics and every /__px/data/* route take the same
+// signature, made with PX_TELEMETRY_SECRET only (never the shared access key), where `path` is the pathname together with
+// the whole query string. The workspace they read is the `workspaceId` of that signed query (missing: 400
+// WORKSPACE_ID_REQUIRED), so a signature made for workspace A does not verify for B, and nothing reads across
+// workspaces. GET /__px/data/workspaces, the list of workspaces, needs the signature and no workspace. No body-only,
+// pathname-only or shared-key signature is accepted on any of them.
 //
 // None of them writes a graph. Graphs are written only by the Studio deploy path (and the owner's own way into their data,
 // the D1 REST query endpoint); there is no shared-key route that stores one. A graph is checked when it is run.
@@ -99,31 +107,21 @@ function controlPlaneSecret(env: ProofEnv): string | null {
 }
 
 export const WORKFLOW_RUNS_PATH = "/__px/workflow-runs";
-export const SIGNED_AT_HEADER = "x-px-signed-at";
-/** How far a signed request's timestamp may be from the Worker's clock, either way. */
-export const SIGNATURE_WINDOW_SECONDS = 300;
 const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** What a control-plane signature covers: the method, the path, the signing time and the body. */
-export const controlPlaneCanonical = (method: string, path: string, signedAt: string, body: string) => `${method.toUpperCase()}\n${path}\n${signedAt}\n${body}`;
+// The signing scheme lives in @poc/telemetry (the pull handlers verify it too); these names stay exported from here for the
+// H11 driver, the smoke scripts and the tests. `signControlPlaneRequest` takes the path with its query string (or a URL).
+export { SIGNATURE_WINDOW_SECONDS, SIGNED_AT_HEADER, controlPlaneCanonical, signControlPlaneRequest };
 
-/** The headers that sign one control-plane request (used by the H11 driver and the tests). */
-export async function signControlPlaneRequest(secret: string, method: string, path: string, body = "", nowMs = Date.now()): Promise<Record<string, string>> {
-  const signedAt = String(Math.floor(nowMs / 1000));
-  return { [SIGNED_AT_HEADER]: signedAt, [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(controlPlaneCanonical(method, path, signedAt, body), secret) };
-}
+/** The read routes that take the control-plane signature over method, path and query, timestamp and body (story 1.4). */
+const SIGNED_READ_ROUTES: readonly string[] = ["/__px/events", "/__px/logs", "/__px/metrics"];
+const isSignedReadRoute = (pathname: string) =>
+  SIGNED_READ_ROUTES.includes(pathname) || pathname === "/__px/data" || pathname.startsWith("/__px/data/");
 
 /** Null when the request carries a fresh, valid control-plane signature over its method, path and body; else the refusal. */
 async function refuseUnsignedControlPlane(request: Request, path: string, body: string, secret: string, nowMs: number): Promise<Response | null> {
-  const signedAt = request.headers.get(SIGNED_AT_HEADER) ?? "";
-  const seconds = /^\d{1,12}$/.test(signedAt) ? Number(signedAt) : NaN;
-  if (!Number.isFinite(seconds) || Math.abs(nowMs / 1000 - seconds) > SIGNATURE_WINDOW_SECONDS) {
-    return json(401, { error: { code: "STALE_OR_MISSING_SIGNED_AT", message: `${SIGNED_AT_HEADER} must be the signing time in epoch seconds, within ${SIGNATURE_WINDOW_SECONDS} s` } });
-  }
-  if (!(await verifyTelemetrySignature(controlPlaneCanonical(request.method, path, signedAt, body), request.headers.get(TELEMETRY_SIGNATURE_HEADER), secret))) {
-    return json(401, { error: { code: "UNAUTHORIZED_TELEMETRY_SIGNATURE", message: "Missing or invalid X-Px-Signature" } });
-  }
-  return null;
+  const refusal = await checkControlPlaneSignature(request, { secret, body, nowMs, path });
+  return refusal ? json(refusal.status, { error: { code: refusal.code, message: refusal.message } }) : null;
 }
 
 /** POST /__px/workflow-runs: the authenticated trigger of a deployed run. See the note at the top of this file. */
@@ -180,12 +178,12 @@ export function createProofRoutes(
     const url = new URL(request.url);
     if (url.pathname.startsWith("/__px/")) {
       if (url.pathname === WORKFLOW_RUNS_PATH) return startSignedWorkflowRun(request, env, clock());
-      const telemetrySecret =
-        typeof env.PX_TELEMETRY_SECRET === "string"
-          ? env.PX_TELEMETRY_SECRET
-          : typeof env.POC_ACCESS_KEY === "string"
-            ? env.POC_ACCESS_KEY
-            : undefined;
+      // Every /__px route that reads telemetry or data accepts only a signature made with PX_TELEMETRY_SECRET itself: the
+      // shared access key is no fallback, so holding the key alone reads nothing (story 1.4).
+      const telemetrySecret = controlPlaneSecret(env) ?? undefined;
+      if (isSignedReadRoute(url.pathname) && telemetrySecret === undefined) {
+        return json(503, { error: { code: "NO_SIGNING_SECRET", message: "this deployment has no control-plane signing secret (PX_TELEMETRY_SECRET, distinct from the access key)" } });
+      }
       const pxEnv = env.PX_ENV === "production" ? "production" : "preview";
       const telemetryWebhookUrl =
         typeof env.PX_TELEMETRY_WEBHOOK_URL === "string"
@@ -230,12 +228,14 @@ export function createProofRoutes(
       const pulled = await handleTelemetryEventsPullRequest(request, {
         db: env.DB,
         telemetrySecret,
+        clock,
       });
       if (pulled) return pulled;
 
       const pulledLogs = await handleTelemetryLogsPullRequest(request, {
         db: env.DB,
         telemetrySecret,
+        clock,
         pxEnv,
       });
       if (pulledLogs) return pulledLogs;
@@ -243,6 +243,7 @@ export function createProofRoutes(
       const pulledMetrics = await handleTelemetryMetricsRequest(request, {
         db: env.DB,
         telemetrySecret,
+        clock,
         pxEnv,
       });
       if (pulledMetrics) return pulledMetrics;
@@ -257,6 +258,7 @@ export function createProofRoutes(
         db: env.DB,
         pxEnv,
         telemetrySecret,
+        clock,
         declaredEntities,
         secretColumns,
       });

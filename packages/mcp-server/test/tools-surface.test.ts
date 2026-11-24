@@ -428,6 +428,8 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
               message: `Upstream failure with key ${plantedStripeKey} and ${plantedWebhookSecret}`,
               runId: runData.runId,
               workflowId: "wf_sec",
+              // Story 1.4: every log line names its workspace.
+              workspaceId: "ws_default",
               nodeId: "n_in",
               fields: {
                 authorization: `Bearer ${plantedStripeKey}`,
@@ -603,6 +605,8 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
               message: "Order processed in preview",
               runId: mcpTestRun.runId,
               workflowId: "wf_order",
+              // Story 1.4: every log line names its workspace.
+              workspaceId: "ws_default",
               nodeId: "n_start",
               fields: { orderId: "ord_100" },
             },

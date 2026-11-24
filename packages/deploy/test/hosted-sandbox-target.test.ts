@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { signControlPlaneRequest } from "@poc/telemetry";
 import {
   assemble,
   computeBuildHash,
@@ -187,21 +188,21 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
     expect(healthBody.sandboxId).toBe("sbx-dispatch-route");
     expect(healthBody.buildHash).toBe(artifact.buildHash);
 
-    // Route /__px/events telemetry request and verify forwarding to studio-api sink
-    const eventsRes = await dispatcher.fetch(
-      new Request(
-        "https://sbx-dispatch-route.sandbox.projectx.dev/__px/events",
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            runId: "run_sbx_01",
-            workflowId: "wf_1",
-            status: "succeeded",
-          }),
-        },
-      ),
-    );
+    // Story 1.4: a POST to /__px/events appends only when the sandbox signed it with its own key, naming itself.
+    const key = platform.getSandbox("sbx-dispatch-route")!.worker!.telemetryHmacKey;
+    const postUrl = new URL("https://sbx-dispatch-route.sandbox.projectx.dev/__px/events?sandboxId=sbx-dispatch-route");
+    const eventBody = JSON.stringify({ runId: "run_sbx_01", workflowId: "wf_1", status: "succeeded" });
+    const post = async (url: URL, headers: Record<string, string>, body = eventBody) =>
+      dispatcher.fetch(new Request(url.toString(), { method: "POST", headers: { "content-type": "application/json", ...headers }, body }));
+    expect((await post(postUrl, {})).status).toBe(401);
+    expect((await post(postUrl, await signControlPlaneRequest("some-other-key-0123456789", "POST", postUrl, eventBody))).status).toBe(401);
+    const otherSandboxUrl = new URL("https://sbx-dispatch-route.sandbox.projectx.dev/__px/events?sandboxId=sbx-someone-else");
+    expect((await post(otherSandboxUrl, await signControlPlaneRequest(key, "POST", otherSandboxUrl, eventBody))).status).toBe(400);
+    // A signature over another body does not verify.
+    expect((await post(postUrl, await signControlPlaneRequest(key, "POST", postUrl, eventBody), eventBody.replace("run_sbx_01", "run_forged"))).status).toBe(401);
+    expect(forwardedEvents).toHaveLength(0);
+
+    const eventsRes = await post(postUrl, await signControlPlaneRequest(key, "POST", postUrl, eventBody));
     expect(eventsRes.status).toBe(200);
     const eventsBody = (await eventsRes.json()) as {
       ok: boolean;
@@ -211,6 +212,21 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
     expect(eventsBody.studioIngested).toBe(true);
     expect(forwardedEvents).toHaveLength(1);
     expect(forwardedEvents[0]?.sandboxId).toBe("sbx-dispatch-route");
+
+    // A read needs the control-plane signature made with this sandbox's own key, over a query naming this sandbox.
+    const readUrl = new URL("https://sbx-dispatch-route.sandbox.projectx.dev/__px/events?sandboxId=sbx-dispatch-route");
+    expect((await dispatcher.fetch(new Request(readUrl.toString()))).status).toBe(401);
+    expect(
+      (await dispatcher.fetch(new Request(readUrl.toString(), { headers: await signControlPlaneRequest("some-other-key-0123456789", "GET", readUrl) }))).status,
+    ).toBe(401);
+    const otherUrl = new URL("https://sbx-dispatch-route.sandbox.projectx.dev/__px/events?sandboxId=sbx-someone-else");
+    expect((await dispatcher.fetch(new Request(otherUrl.toString(), { headers: await signControlPlaneRequest(key, "GET", otherUrl) }))).status).toBe(400);
+    const noIdUrl = new URL("https://sbx-dispatch-route.sandbox.projectx.dev/__px/events");
+    expect((await dispatcher.fetch(new Request(noIdUrl.toString(), { headers: await signControlPlaneRequest(key, "GET", noIdUrl) }))).status).toBe(400);
+    const signedRead = await dispatcher.fetch(new Request(readUrl.toString(), { headers: await signControlPlaneRequest(key, "GET", readUrl) }));
+    expect(signedRead.status).toBe(200);
+    const readBody = (await signedRead.json()) as { events: Array<{ runId: string }> };
+    expect(readBody.events.map((e) => e.runId)).toEqual(["run_sbx_01"]);
   });
 
   it("AC 3: packages/assembler has zero references to platform-sandbox and assemble().buildHash is byte-for-byte identical before and after configuring a sandbox target", async () => {

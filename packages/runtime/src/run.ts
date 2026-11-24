@@ -67,12 +67,23 @@ export interface TelemetryRunOptions {
    * equal `RunGraphOptions.workspaceId`, or the run is refused (WORKSPACE_MISMATCH).
    */
   workspaceId?: string;
-  /** Project slug used in webhook payloads (optional). */
+  /** Project slug used in webhook payloads (optional; falls back to env.PX_PROJECT_ID). */
   project?: string;
+  /**
+   * Studio only (story 1.4): the authorised project this run's telemetry rows are stamped with in STUDIO_DB. A deployed
+   * Worker never sets it.
+   */
+  projectId?: string;
   /** Optional parent run ID if this run is a replay/retry. */
   retryOfRunId?: string | null;
   /** Shared HMAC-SHA256 secret (falls back to options.env?.PX_TELEMETRY_SECRET). */
   telemetrySecret?: string;
+  /**
+   * The project's webhook-signing secret (story 1.4: deriveProjectTelemetrySecret of the root secret and the project).
+   * Falls back to options.env?.PX_TELEMETRY_WEBHOOK_SECRET; without either, no signature is sent and Studio refuses the
+   * webhook. The root PX_TELEMETRY_SECRET is never used to sign a webhook.
+   */
+  webhookSecret?: string;
   /** Target webhook URL (e.g. "http://studio-api/api/projects/my-proj/telemetry/webhook"). */
   webhookUrl?: string;
   /** Custom fetch function for delivering signed webhooks (defaults to globalThis.fetch). */
@@ -378,6 +389,12 @@ export async function runGraph(
     telemetryCfg?.db ??
     (telemetryCfg && isD1Like(options.env?.DB) ? (options.env.DB as D1Like) : undefined);
   const telemetryActive = Boolean(telemetryCfg || telemetryDb);
+  // Studio stamps its rows with the authorised project (story 1.4); a deployed Worker leaves it unset.
+  const telemetryWrite = { projectId: telemetryCfg?.projectId };
+  // The webhook names the project it reports for; Studio refuses a payload that names none or another one.
+  const webhookProject =
+    telemetryCfg?.project ??
+    (typeof options.env?.PX_PROJECT_ID === "string" && options.env.PX_PROJECT_ID ? options.env.PX_PROJECT_ID : undefined);
 
   const trackedSecrets = new Set<string>();
   const secretFieldNames = new Set<string>();
@@ -473,10 +490,11 @@ export async function runGraph(
   const workflowId = telemetryCfg?.workflowId ?? "wf_default";
   const revision = telemetryCfg?.revision ?? 0;
   const triggerType = telemetryCfg?.triggerType ?? "manual";
+  // Webhooks are signed with the project's derived secret only (story 1.4), never the shared root secret.
   const telemetrySecret =
-    telemetryCfg?.telemetrySecret ??
-    (typeof options.env?.PX_TELEMETRY_SECRET === "string"
-      ? options.env.PX_TELEMETRY_SECRET
+    telemetryCfg?.webhookSecret ??
+    (typeof options.env?.PX_TELEMETRY_WEBHOOK_SECRET === "string"
+      ? options.env.PX_TELEMETRY_WEBHOOK_SECRET
       : undefined);
   const webhookUrl = telemetryCfg?.webhookUrl;
   const webhookFetcher = telemetryCfg?.webhookFetcher ?? globalThis.fetch;
@@ -575,6 +593,7 @@ export async function runGraph(
       runId,
       workflowId,
       revision,
+      workspaceId,
       nodeId: params.nodeId,
       status: params.status,
       durationMs: Math.round(params.durationMs * 100) / 100,
@@ -591,12 +610,13 @@ export async function runGraph(
       stepEvent = await insertStepEvent(telemetryDb, stepEvent, {
         envName: effectiveEnvName,
         captureStepIoInProd,
+        ...telemetryWrite,
       });
     }
     stepEvents.push(stepEvent);
 
     await deliverWebhook({
-      ...(telemetryCfg?.project ? { project: telemetryCfg.project } : {}),
+      ...(webhookProject ? { project: webhookProject } : {}),
       run: currentRunRecord(),
       events: [stepEvent],
     });
@@ -608,7 +628,7 @@ export async function runGraph(
 
   if (telemetryActive && runId) {
     if (telemetryDb) {
-      await upsertRunRecord(telemetryDb, currentRunRecord());
+      await upsertRunRecord(telemetryDb, currentRunRecord(), telemetryWrite);
     }
     for (const id of order) {
       if (options.reusedNodeIds?.has(id)) continue;
@@ -815,6 +835,7 @@ export async function runGraph(
               return resolveCaseAConnection(nameOrSelector, {
                 db: connectionDb,
                 connKey,
+                telemetryWrite,
                 projectId:
                   telemetryCfg?.project ??
                   (typeof options.env?.PX_PROJECT_ID === "string"
@@ -881,6 +902,7 @@ export async function runGraph(
                 : node.type;
           const nodeLogger = createStructuredLogger({
             db: telemetryDb,
+            writeOptions: telemetryWrite,
             context: {
               runId: runId ?? null,
               workflowId,
@@ -897,7 +919,7 @@ export async function runGraph(
               emittedLogs.push(entry);
               if (telemetryActive && runId) {
                 await deliverWebhook({
-                  ...(telemetryCfg?.project ? { project: telemetryCfg.project } : {}),
+                  ...(webhookProject ? { project: webhookProject } : {}),
                   run: currentRunRecord(),
                   events: [],
                   logs: [entry],
@@ -1053,12 +1075,13 @@ export async function runGraph(
                       secretValues: trackedSecrets,
                       secretFieldNames,
                     },
+                    telemetryWrite,
                   )
                 : undefined;
               if (autoErrEntry) {
                 emittedLogs.push(autoErrEntry);
                 await deliverWebhook({
-                  ...(telemetryCfg?.project ? { project: telemetryCfg.project } : {}),
+                  ...(webhookProject ? { project: webhookProject } : {}),
                   run: currentRunRecord(),
                   events: [],
                   logs: [autoErrEntry],
@@ -1100,10 +1123,10 @@ export async function runGraph(
       durable: isDurable,
     };
     if (telemetryDb) {
-      await upsertRunRecord(telemetryDb, finalRun);
+      await upsertRunRecord(telemetryDb, finalRun, telemetryWrite);
     }
     await deliverWebhook({
-      ...(telemetryCfg?.project ? { project: telemetryCfg.project } : {}),
+      ...(webhookProject ? { project: webhookProject } : {}),
       run: finalRun,
       events: [],
     });

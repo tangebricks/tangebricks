@@ -5,6 +5,7 @@ import { createRegistry } from "@poc/sdk";
 import type { D1Like, Executor } from "@poc/sdk";
 import {
   TELEMETRY_SIGNATURE_HEADER,
+  deriveProjectTelemetrySecret,
   ensureTelemetryTables,
   getRunRecord,
   listStepEventsForRun,
@@ -156,6 +157,8 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
         revision: 4,
         project: "acme-checkout",
         telemetrySecret,
+        // Story 1.4: webhooks are signed with the project's derived secret, never the shared root secret.
+        webhookSecret: await deriveProjectTelemetrySecret(telemetrySecret, "acme-checkout"),
         webhookUrl: "http://studio-api/api/projects/acme-checkout/telemetry/webhook",
         webhookFetcher: async (_url, init) => {
           const headers = new Headers(init?.headers);
@@ -171,7 +174,7 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     expect(runResult.ok).toBe(true);
     expect(runResult.runId).toBe("run_happy_3node");
 
-    const runRow = await getRunRecord(db, "run_happy_3node");
+    const runRow = await getRunRecord(db, "run_happy_3node", { workspaceId: "ws_test" });
     expect(runRow).not.toBeNull();
     expect(runRow?.workflowId).toBe("wf_checkout");
     expect(runRow?.revision).toBe(4);
@@ -180,7 +183,7 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     expect(runRow?.errorStack).toBeNull();
     expect(runRow?.endedAt).toBeTruthy();
 
-    const events = await listStepEventsForRun(db, "run_happy_3node");
+    const events = await listStepEventsForRun(db, "run_happy_3node", { workspaceId: "ws_test" });
     // 3 nodes * 3 transitions (queued, running, succeeded) = 9 events
     expect(events).toHaveLength(9);
 
@@ -195,8 +198,13 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     expect(webhookCalls.length).toBeGreaterThanOrEqual(9);
     for (const call of webhookCalls) {
       expect(
-        await verifyTelemetrySignature(call.bodyText, call.signature, telemetrySecret),
+        await verifyTelemetrySignature(
+          call.bodyText,
+          call.signature,
+          await deriveProjectTelemetrySecret(telemetrySecret, "acme-checkout"),
+        ),
       ).toBe(true);
+      expect(await verifyTelemetrySignature(call.bodyText, call.signature, telemetrySecret)).toBe(false);
       expect(call.bodyText).not.toContain(CANARY_STRIPE_KEY);
       expect(call.bodyText).not.toContain(btoa(CANARY_STRIPE_KEY));
       expect(call.bodyText).not.toContain(CANARY_CONN_SECRET);
@@ -274,13 +282,13 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     expect(attempts).toBe(3); // 1 initial + 2 retries
     expect(result.skipped).toEqual(["n3_downstream"]);
 
-    const runRow = await getRunRecord(db, "run_fail_retry_3node");
+    const runRow = await getRunRecord(db, "run_fail_retry_3node", { workspaceId: "ws_test" });
     expect(runRow?.status).toBe("failed");
     expect(runRow?.retries).toBe(2);
     expect(runRow?.errorStack).toContain("[REDACTED]");
     expect(runRow?.errorStack).not.toContain(CANARY_STRIPE_KEY);
 
-    const events = await listStepEventsForRun(db, "run_fail_retry_3node");
+    const events = await listStepEventsForRun(db, "run_fail_retry_3node", { workspaceId: "ws_test" });
     const flakyFailed = events.find(
       (e) => e.nodeId === "n2_flaky" && e.status === "failed",
     );

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import {
   TELEMETRY_SIGNATURE_HEADER,
-  canonicalEventsCursorPayload,
   runGraph,
+  signControlPlaneRequest,
   signTelemetryPayload,
   stepPolicyFor,
 } from "@poc/runtime";
@@ -527,17 +527,12 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
     expect(rerunJson.runStatus).toBe("succeeded");
     expect(rerunJson.retryOfRunId).toBe("run_px_route_failed_1");
 
-    // 4. GET /__px/events?after=0&limit=50
-    const eventsSig = await signTelemetryPayload(
-      canonicalEventsCursorPayload(0, 50),
-      secret,
-    );
+    // 4. GET /__px/events?workspaceId=<run ws>&after=0&limit=50, signed over method, path and query, time (story 1.4)
+    const eventsUrl = new URL(`http://deployed.invalid/__px/events?workspaceId=${RUN_WS}&after=0&limit=50`);
     const eventsRes = await routes(
-      new Request("http://deployed.invalid/__px/events?after=0&limit=50", {
+      new Request(eventsUrl.toString(), {
         method: "GET",
-        headers: {
-          [TELEMETRY_SIGNATURE_HEADER]: eventsSig,
-        },
+        headers: await signControlPlaneRequest(secret, "GET", eventsUrl),
       }),
       env,
     );

@@ -121,6 +121,8 @@ export interface ConnectionMetadataRecord {
 
 export interface ResolveCaseAConnectionOptions {
   db?: D1Like;
+  /** Studio only (story 1.4): the project stamp for the connection.expired log line. */
+  telemetryWrite?: { projectId?: string | null };
   connKey?: string;
   projectId?: string;
   envName?: string;
@@ -524,6 +526,7 @@ async function emitConnectionExpiredTelemetry(
       {
         secretValues: options.trackedSecrets,
       },
+      options.telemetryWrite ?? {},
     );
   } catch {
     // Ignore if px_logs table is not initialized on standalone DB

@@ -8,11 +8,15 @@ import type { D1Like, Executor } from "@poc/sdk";
 import {
   TELEMETRY_SIGNATURE_HEADER,
   TelemetryWsFrameSchema,
-  canonicalEventsCursorPayload,
   ensureTelemetryTables,
   getRunRecord,
+  insertStepEvent,
+  insertStructuredLog,
   listStepEventsForRun,
+  deriveProjectTelemetrySecret,
+  signControlPlaneRequest,
   signTelemetryPayload,
+  upsertRunRecord,
 } from "@poc/telemetry";
 import { app, ensureStudioD1Schema } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
@@ -86,6 +90,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
           runId: "run_1",
           workflowId: "wf_1",
           revision: 1,
+          workspaceId: "ws_test",
           nodeId: "node_1",
           status: "running",
           durationMs: 0,
@@ -123,6 +128,78 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
       testEnv,
     );
     expect(forgedSigRes.status).toBe(401);
+
+    // WEBHOOK_PROJECT (story 1.4): a correctly signed payload that names another project, or none, is refused with 400
+    // and nothing is written; the same payload naming this project is accepted and stamped with it.
+    // Story 1.4: each project's webhook is signed with its own derived secret.
+    const projectSecret = await deriveProjectTelemetrySecret(TELEMETRY_SECRET, project);
+    const postSigned = (body: string) =>
+      signTelemetryPayload(body, projectSecret).then((sig) =>
+        app.fetch(
+          new Request(`http://localhost/api/projects/${project}/telemetry/webhook`, {
+            method: "POST",
+            headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: sig },
+            body,
+          }),
+          testEnv,
+        ),
+      );
+    const parsed = JSON.parse(payload) as Record<string, unknown>;
+    const otherProject = await postSigned(JSON.stringify({ ...parsed, project: "some-other-project" }));
+    expect(otherProject.status).toBe(400);
+    expect(((await otherProject.json()) as { error: { code: string } }).error.code).toBe("PROJECT_MISMATCH");
+    const { project: _omitted, ...withoutProject } = parsed;
+    const noProject = await postSigned(JSON.stringify(withoutProject));
+    expect(noProject.status).toBe(400);
+    expect(((await noProject.json()) as { error: { code: string } }).error.code).toBe("PROJECT_REQUIRED");
+    const written = await studioDb.prepare("SELECT COUNT(*) AS c FROM px_step_events WHERE run_id = 'run_1'").first<{ c: number }>();
+    expect(Number(written?.c ?? 0)).toBe(0);
+
+    const sameProject = await postSigned(payload);
+    expect(sameProject.status).toBe(200);
+    const stamped = await studioDb
+      .prepare("SELECT project_id, workspace_id FROM px_step_events WHERE run_id = 'run_1'")
+      .first<{ project_id: string; workspace_id: string }>();
+    expect(stamped).toEqual({ project_id: project, workspace_id: "ws_test" });
+
+    // The shared root secret signs no project's webhook.
+    const rootSigned = await app.fetch(
+      new Request(`http://localhost/api/projects/${project}/telemetry/webhook`, {
+        method: "POST",
+        headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(payload, TELEMETRY_SECRET) },
+        body: payload,
+      }),
+      testEnv,
+    );
+    expect(rootSigned.status).toBe(401);
+
+    // ID_COLLISION: another project's webhook reusing this event's id is refused with 409, writes nothing and
+    // broadcasts nothing; this project's row is unchanged.
+    const other = "telemetry-auth-guard-other";
+    const otherPayload = JSON.stringify({
+      ...parsed,
+      project: other,
+      events: [{ ...(parsed.events as Array<Record<string, unknown>>)[0], status: "failed" }],
+    });
+    const collided = await app.fetch(
+      new Request(`http://localhost/api/projects/${other}/telemetry/webhook`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(otherPayload, await deriveProjectTelemetrySecret(TELEMETRY_SECRET, other)),
+        },
+        body: otherPayload,
+      }),
+      testEnv,
+    );
+    expect(collided.status).toBe(409);
+    const collidedBody = (await collided.json()) as { error: { code: string }; broadcastedCount?: number };
+    expect(collidedBody.error.code).toBe("ID_COLLISION");
+    expect(collidedBody.broadcastedCount).toBeUndefined();
+    const kept = await studioDb
+      .prepare("SELECT project_id, status FROM px_step_events WHERE event_id = 'run_1:node_1:running:1'")
+      .all<{ project_id: string; status: string }>();
+    expect(kept.results).toEqual([{ project_id: project, status: "running" }]);
   });
 
   test("3-node workflow (happy path & failing retry path) pushes signed webhooks to BlueprintDO, broadcasts telemetry frames over WebSockets, and never leaks canary secrets", async () => {
@@ -251,6 +328,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
         revision: 1,
         project,
         telemetrySecret: TELEMETRY_SECRET,
+        webhookSecret: await deriveProjectTelemetrySecret(TELEMETRY_SECRET, project),
         webhookUrl: `http://localhost/api/projects/${project}/telemetry/webhook`,
         webhookFetcher: async (input, init) =>
           app.fetch(new Request(String(input), init), testEnv),
@@ -305,6 +383,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
         revision: 1,
         project,
         telemetrySecret: TELEMETRY_SECRET,
+        webhookSecret: await deriveProjectTelemetrySecret(TELEMETRY_SECRET, project),
         stepRetries: {
           step_charge: { limit: 2, delayMs: 1 },
         },
@@ -318,15 +397,15 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     expect(failAttempts).toBe(3);
 
     // Check D1 run & step event rows for both runs
-    const storedHappyRun = await getRunRecord(studioDb, "run_ws_happy_1");
+    const storedHappyRun = await getRunRecord(studioDb, "run_ws_happy_1", { projectId: project });
     expect(storedHappyRun?.status).toBe("succeeded");
 
-    const storedFailRun = await getRunRecord(studioDb, "run_ws_fail_2");
+    const storedFailRun = await getRunRecord(studioDb, "run_ws_fail_2", { projectId: project });
     expect(storedFailRun?.status).toBe("failed");
     expect(storedFailRun?.retries).toBe(2);
     expect(storedFailRun?.errorStack).toContain("[REDACTED]");
 
-    const failEvents = await listStepEventsForRun(studioDb, "run_ws_fail_2");
+    const failEvents = await listStepEventsForRun(studioDb, "run_ws_fail_2", { projectId: project });
     const failedStep = failEvents.find(
       (e) => e.nodeId === "step_charge" && e.status === "failed",
     );
@@ -341,7 +420,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     const d1Dump = JSON.stringify({
       storedHappyRun,
       storedFailRun,
-      happyEvents: await listStepEventsForRun(studioDb, "run_ws_happy_1"),
+      happyEvents: await listStepEventsForRun(studioDb, "run_ws_happy_1", { projectId: project }),
       failEvents,
     });
 
@@ -416,20 +495,18 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
         revision: 2,
         project,
         telemetrySecret: TELEMETRY_SECRET,
+        webhookSecret: await deriveProjectTelemetrySecret(TELEMETRY_SECRET, project),
         webhookUrl: `http://localhost/api/projects/${project}/telemetry/webhook`,
         webhookFetcher: async (input, init) =>
           app.fetch(new Request(String(input), init), testEnv),
       },
     });
 
-    // Verify Worker shell GET /__px/events?after=0&limit=4 with valid HMAC signature
-    const sig = await signTelemetryPayload(
-      canonicalEventsCursorPayload(0, 4),
-      TELEMETRY_SECRET,
-    );
+    // Verify Worker shell GET /__px/events?workspaceId=ws_test&after=0&limit=4 with a valid control-plane signature
+    const pullUrl = new URL("http://worker.local/__px/events?workspaceId=ws_test&after=0&limit=4");
     const workerPullRes = await handleTelemetryEventsPullRequest(
-      new Request("http://worker.local/__px/events?after=0&limit=4", {
-        headers: { [TELEMETRY_SIGNATURE_HEADER]: sig },
+      new Request(pullUrl.toString(), {
+        headers: await signControlPlaneRequest(TELEMETRY_SECRET, "GET", pullUrl),
       }),
       { db: workerDb, telemetrySecret: TELEMETRY_SECRET },
     );
@@ -461,5 +538,105 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     };
     expect(studioEventsBody.project).toBe(project);
     expect(studioEventsBody.events).toHaveLength(9);
+  });
+
+  test("story 1.4: a colliding id refuses the whole write with 409 (webhook, reconcile, health seed); reconcile without a signing secret is 503", async () => {
+    const owner = "telemetry-collision-owner";
+    const intruder = "telemetry-collision-intruder";
+    const now = new Date().toISOString();
+    const ownerRun = { runId: "run_owned_by_owner", workflowId: "wf", revision: 0, triggerType: "manual", workspaceId: "ws_default", status: "succeeded" as const, durationMs: 1, retries: 0, startedAt: now };
+    await upsertRunRecord(studioDb, ownerRun, { projectId: owner });
+    await insertStepEvent(
+      studioDb,
+      { eventId: "ev_owned_by_owner", runId: ownerRun.runId, workflowId: "wf", revision: 0, workspaceId: "ws_default", nodeId: "n", status: "succeeded", durationMs: 1, retries: 0, inputPreview: "{}", outputPreview: "{}", errorStack: null, createdAt: now },
+      { projectId: owner },
+    );
+    await insertStructuredLog(studioDb, { logId: "log_owned_by_owner", level: "info", message: "owner", workspaceId: "ws_default" }, {}, { projectId: owner });
+    const runStored = async (runId: string) =>
+      Number((await studioDb.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE run_id = ?").bind(runId).first<{ c: number }>())?.c ?? 0);
+
+    // Webhook: a fresh run with a colliding event id (or log id) is refused whole; the fresh run is not stored.
+    const intruderSecret = await deriveProjectTelemetrySecret(TELEMETRY_SECRET, intruder);
+    const postWebhook = async (body: Record<string, unknown>) => {
+      const text = JSON.stringify(body);
+      return app.fetch(
+        new Request(`http://localhost/api/projects/${intruder}/telemetry/webhook`, {
+          method: "POST",
+          headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(text, intruderSecret) },
+          body: text,
+        }),
+        testEnv,
+      );
+    };
+    const freshRun = { ...ownerRun, runId: "run_fresh_intruder" };
+    const evCollision = await postWebhook({
+      project: intruder,
+      run: freshRun,
+      events: [{ eventId: "ev_owned_by_owner", runId: freshRun.runId, workflowId: "wf", revision: 0, workspaceId: "ws_default", nodeId: "n", status: "failed", durationMs: 1, retries: 0, inputPreview: "{}", outputPreview: "{}", errorStack: null, createdAt: now }],
+    });
+    expect(evCollision.status).toBe(409);
+    expect(((await evCollision.json()) as { error: { code: string } }).error.code).toBe("ID_COLLISION");
+    expect(await runStored(freshRun.runId)).toBe(0);
+    const logCollision = await postWebhook({
+      project: intruder,
+      run: freshRun,
+      events: [],
+      logs: [{ logId: "log_owned_by_owner", ts: now, level: "info", message: "intruder", workspaceId: "ws_default", fields: {}, fieldsJson: "{}" }],
+    });
+    expect(logCollision.status).toBe(409);
+    expect(await runStored(freshRun.runId)).toBe(0);
+
+    // Health seed: a run id held by another project is 409 (not 500) and nothing of the seed is written.
+    const { headers: intruderHeaders } = await ensureTestProjectToken(testEnv, intruder);
+    const seed = await app.fetch(
+      new Request(`http://localhost/api/projects/${intruder}/environments/preview/health/seed`, {
+        method: "POST",
+        headers: { ...intruderHeaders, "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: "ws_default", runs: [ownerRun, { ...ownerRun, runId: "run_seed_fresh" }] }),
+      }),
+      testEnv,
+    );
+    expect(seed.status).toBe(409);
+    expect(await runStored("run_seed_fresh")).toBe(0);
+
+    // Reconcile: pulls from the project's registered target only; a colliding pulled id is 409, nothing written.
+    const orgRow = await studioDb.prepare("SELECT org_id FROM projects WHERE project_id = ?").bind(intruder).first<{ org_id: string }>();
+    await studioDb
+      .prepare(
+        `INSERT INTO project_deployments (deploy_id, project_id, org_id, env_name, revision, build_hash, code_hash, graph_hash, action, worker_url, version_id, database_id, actor_id, state_json, created_at)
+         VALUES (?, ?, ?, 'preview', 1, 'b', 'c', 'g', 'deploy', 'https://intruder-target.example', 'v', 'd', 'a', '{}', ?)`,
+      )
+      .bind(`dep_${crypto.randomUUID()}`, intruder, orgRow!.org_id, now)
+      .run();
+    const reconcile = (env: StudioApiEnv) =>
+      app.fetch(
+        new Request(`http://localhost/api/projects/${intruder}/telemetry/reconcile`, {
+          method: "POST",
+          headers: { ...intruderHeaders, "content-type": "application/json" },
+          body: JSON.stringify({ workspaceId: "ws_default" }),
+        }),
+        env,
+      );
+    const noSecret = await reconcile({ ...testEnv, PX_TELEMETRY_SECRET: undefined } as unknown as StudioApiEnv);
+    expect(noSecret.status).toBe(503);
+    expect(((await noSecret.json()) as { error: { code: string } }).error.code).toBe("NOT_CONFIGURED");
+
+    const realFetch = globalThis.fetch;
+    const pulledFrom: string[] = [];
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      pulledFrom.push(String(input instanceof Request ? input.url : input));
+      return Response.json({
+        runs: [{ ...ownerRun, runId: "run_reconcile_fresh" }],
+        events: [{ eventId: "ev_owned_by_owner", runId: "run_reconcile_fresh", workflowId: "wf", revision: 0, workspaceId: "ws_default", nodeId: "n", status: "failed", durationMs: 1, retries: 0, inputPreview: "{}", outputPreview: "{}", errorStack: null, createdAt: now }],
+      });
+    }) as typeof fetch;
+    try {
+      const collided = await reconcile(testEnv);
+      expect(collided.status).toBe(409);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(pulledFrom[0]).toMatch(/^https:\/\/intruder-target\.example\/__px\/events\?workspaceId=ws_default/);
+    expect(await runStored("run_reconcile_fresh")).toBe(0);
   });
 });

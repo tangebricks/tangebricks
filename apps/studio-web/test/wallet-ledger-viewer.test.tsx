@@ -3,7 +3,11 @@ import type { SQLInputValue } from "node:sqlite";
 import type { D1Like, D1Result, D1Statement } from "@poc/sdk";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { signedDataBrowserRequest } from "../../studio-api/src/telemetry-reads.ts";
 import { handleDataBrowserRequest } from "../../../packages/deploy/src/worker/data-browser.ts";
+
+/** The data routes take only the control-plane signature (story 1.4); the harness signs as Studio does. */
+const DATA_BROWSER_SECRET = "studio_web_ledger_viewer_test_secret_0123456789";
 import { EntitiesView } from "../src/components/EntitiesView.tsx";
 import { useStudioStore } from "../src/store.ts";
 import { DEFAULT_CATALOG } from "../src/types.ts";
@@ -267,17 +271,19 @@ describe("Story 6.2 — Studio Web Read-Only Credit Wallet & Usage Ledger Viewer
         if (envMatch) {
           const envName = envMatch[1] as "preview" | "production";
           const restPath = envMatch[2]!;
-          const workerUrl = `http://worker.internal/__px/data/${restPath}${url.search}`;
-          const workerReq = new Request(workerUrl, {
+          const bodyText = typeof init?.body === "string" ? init.body : undefined;
+          // The request studio-api's data browser forwarder builds (workspace into the signed query, signed).
+          const workerReq = await signedDataBrowserRequest({
             method,
-            headers: init?.headers,
-            body: init?.body,
+            workerPathAndQuery: `/__px/data/${restPath}${url.search}`,
+            ...(bodyText ? { rawBody: bodyText } : {}),
+            signingSecret: DATA_BROWSER_SECRET,
           });
           const workerRes = await handleDataBrowserRequest(workerReq, {
             db: d1,
             pxEnv: envName,
             declaredEntities: ["invoices"],
-            skipSignatureVerification: true,
+            telemetrySecret: DATA_BROWSER_SECRET,
           });
           if (workerRes) return workerRes;
         }

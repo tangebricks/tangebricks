@@ -254,7 +254,7 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
       workspaceId: "ws_preview_1",
     });
 
-    const d1Events = await listStepEventsForRun(studioDb, previewBody.runId);
+    const d1Events = await listStepEventsForRun(studioDb, previewBody.runId, { projectId: project });
     expect(d1Events).toHaveLength(1);
     expect(d1Events[0]?.nodeId).toBe("step_debit");
 

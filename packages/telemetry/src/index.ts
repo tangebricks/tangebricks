@@ -45,7 +45,8 @@ export const RunRecordSchema = z.object({
   workflowId: z.string().min(1),
   revision: z.number().int().min(0),
   triggerType: z.string().min(1).default("manual"),
-  workspaceId: z.string().min(1).default("ws_default"),
+  /** The run's workspace (story 1.4): required, never defaulted. */
+  workspaceId: z.string().min(1),
   status: RunStatusSchema,
   durationMs: z.number().min(0),
   retries: z.number().int().min(0).default(0),
@@ -62,6 +63,8 @@ export const StepEventSchema = z.object({
   runId: z.string().min(1),
   workflowId: z.string().min(1),
   revision: z.number().int().min(0),
+  /** The workspace of the run this step belongs to (story 1.4): required, never defaulted. */
+  workspaceId: z.string().min(1),
   nodeId: z.string().min(1),
   status: StepStatusSchema,
   durationMs: z.number().min(0),
@@ -137,6 +140,11 @@ export const TelemetryWsFrameSchema = z.object({
 });
 export type TelemetryWsFrame = z.infer<typeof TelemetryWsFrameSchema>;
 
+/**
+ * The pre-1.4 telemetry schema, byte for byte as deployed under the migration names 9010_px_telemetry.sql (and the
+ * deploy's 9001_px_telemetry.sql). It is never edited: a database migrated with it keeps its migration hash, and the
+ * story 1.4 delta (new columns, key rebuilds, new indexes) is applied by the guarded ensureTelemetryTables path.
+ */
 export const PX_TELEMETRY_MIGRATION_SQL = `
 CREATE TABLE IF NOT EXISTS px_runs (
   run_id TEXT PRIMARY KEY,
@@ -232,6 +240,118 @@ export const PX_TELEMETRY_MIGRATION = {
   name: "9010_px_telemetry.sql",
   sql: PX_TELEMETRY_MIGRATION_SQL,
 };
+
+/**
+ * The story 1.4 shape of the tables that ensureTelemetryTables rebuilds (px_runs, px_http_rollups, px_queue_metrics);
+ * px_step_events and px_logs only gain columns. Every row carries its workspace; `project_id` is set only by Studio,
+ * whose one STUDIO_DB holds every project's telemetry. `workspace_id` is nullable so pre-1.4 rows that cannot be
+ * attributed keep existing, unreadable; every write names a workspace.
+ */
+const PX_TELEMETRY_TARGET_DDL: readonly string[] = [
+  `CREATE TABLE IF NOT EXISTS px_runs (
+  run_id TEXT PRIMARY KEY,
+  workflow_id TEXT NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 0,
+  trigger_type TEXT NOT NULL DEFAULT 'manual',
+  workspace_id TEXT,
+  status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed')),
+  duration_ms REAL NOT NULL DEFAULT 0,
+  retries INTEGER NOT NULL DEFAULT 0,
+  retry_of_run_id TEXT,
+  error_stack TEXT,
+  started_at TEXT NOT NULL,
+  ended_at TEXT,
+  project_id TEXT
+)`,
+  "CREATE INDEX IF NOT EXISTS idx_px_runs_workflow_started ON px_runs(workflow_id, started_at DESC)",
+  `CREATE TABLE IF NOT EXISTS px_step_events (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id TEXT NOT NULL UNIQUE,
+  run_id TEXT NOT NULL,
+  workflow_id TEXT NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 0,
+  node_id TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'skipped')),
+  duration_ms REAL NOT NULL DEFAULT 0,
+  retries INTEGER NOT NULL DEFAULT 0,
+  input_preview TEXT NOT NULL DEFAULT '{}',
+  output_preview TEXT NOT NULL DEFAULT '{}',
+  error_stack TEXT,
+  created_at TEXT NOT NULL,
+  workspace_id TEXT,
+  project_id TEXT
+)`,
+  "CREATE INDEX IF NOT EXISTS idx_px_step_events_run_node ON px_step_events(run_id, node_id)",
+  "CREATE INDEX IF NOT EXISTS idx_px_step_events_workflow_created ON px_step_events(workflow_id, created_at DESC)",
+  "CREATE VIEW IF NOT EXISTS px_steps AS SELECT * FROM px_step_events",
+  `CREATE TABLE IF NOT EXISTS px_logs (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  log_id TEXT NOT NULL UNIQUE,
+  ts TEXT NOT NULL,
+  level TEXT NOT NULL CHECK (level IN ('debug', 'info', 'warn', 'error')),
+  message TEXT NOT NULL,
+  run_id TEXT,
+  workflow_id TEXT,
+  revision INTEGER,
+  node_id TEXT,
+  brick_id TEXT,
+  workspace_id TEXT,
+  request_id TEXT,
+  fields_json TEXT NOT NULL DEFAULT '{}',
+  error_stack TEXT,
+  env_name TEXT NOT NULL DEFAULT 'preview',
+  project_id TEXT
+)`,
+  "CREATE INDEX IF NOT EXISTS idx_px_logs_ts ON px_logs(ts DESC, seq DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_px_logs_run_node ON px_logs(run_id, node_id)",
+  "CREATE INDEX IF NOT EXISTS idx_px_logs_workspace_brick ON px_logs(workspace_id, brick_id)",
+  "CREATE INDEX IF NOT EXISTS idx_px_logs_level_ts ON px_logs(level, ts DESC)",
+  `CREATE TABLE IF NOT EXISTS px_http_rollups (
+  bucket_minute TEXT NOT NULL,
+  route_prefix TEXT NOT NULL DEFAULT '/',
+  brick_id TEXT NOT NULL DEFAULT 'runtime',
+  request_count INTEGER NOT NULL DEFAULT 0,
+  error_4xx_count INTEGER NOT NULL DEFAULT 0,
+  error_5xx_count INTEGER NOT NULL DEFAULT 0,
+  latency_buckets_json TEXT NOT NULL DEFAULT '{}',
+  p50_ms REAL NOT NULL DEFAULT 0,
+  p95_ms REAL NOT NULL DEFAULT 0,
+  p99_ms REAL NOT NULL DEFAULT 0,
+  d1_query_count INTEGER NOT NULL DEFAULT 0,
+  d1_latency_ms REAL NOT NULL DEFAULT 0,
+  d1_error_count INTEGER NOT NULL DEFAULT 0,
+  env_name TEXT NOT NULL DEFAULT 'preview',
+  workspace_id TEXT,
+  project_id TEXT,
+  PRIMARY KEY (bucket_minute, route_prefix, brick_id, env_name, workspace_id, project_id)
+)`,
+  "CREATE INDEX IF NOT EXISTS idx_px_http_rollups_env_bucket ON px_http_rollups(env_name, bucket_minute DESC)",
+  `CREATE TABLE IF NOT EXISTS px_queue_metrics (
+  queue_name TEXT NOT NULL,
+  pending_count INTEGER NOT NULL DEFAULT 0,
+  dlq_count INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  env_name TEXT NOT NULL DEFAULT 'preview',
+  workspace_id TEXT,
+  project_id TEXT,
+  PRIMARY KEY (queue_name, env_name, workspace_id, project_id)
+)`,
+];
+
+/** The indexes the scoped reads use. Created after any column upgrade, since they name the story 1.4 columns. */
+const PX_TELEMETRY_SCOPE_INDEX_DDL: readonly string[] = [
+  "CREATE INDEX IF NOT EXISTS idx_px_runs_project_ws_started ON px_runs(project_id, workspace_id, started_at DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_px_runs_ws_started ON px_runs(workspace_id, started_at DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_px_step_events_project_ws_run ON px_step_events(project_id, workspace_id, run_id, seq)",
+  "CREATE INDEX IF NOT EXISTS idx_px_step_events_ws_seq ON px_step_events(workspace_id, seq)",
+  "CREATE INDEX IF NOT EXISTS idx_px_logs_project_ws_seq ON px_logs(project_id, workspace_id, seq DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_px_logs_ws_seq ON px_logs(workspace_id, seq DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_px_http_rollups_project_ws_env_bucket ON px_http_rollups(project_id, workspace_id, env_name, bucket_minute DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_px_http_rollups_ws_env_bucket ON px_http_rollups(workspace_id, env_name, bucket_minute DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_px_queue_metrics_project_ws_env ON px_queue_metrics(project_id, workspace_id, env_name)",
+  "CREATE INDEX IF NOT EXISTS idx_px_queue_metrics_ws_env ON px_queue_metrics(workspace_id, env_name)",
+];
+
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -666,6 +786,21 @@ export async function signTelemetryPayload(
   return `sha256=${bytesToHex(new Uint8Array(sigBuffer))}`;
 }
 
+/**
+ * The secret one project's telemetry webhook is signed with (story 1.4): HMAC-SHA256(PX_TELEMETRY_SECRET,
+ * "telemetry-webhook:" + projectId), hex. Studio verifies a webhook with the secret of the URL's project, so a payload
+ * signed for project A is never accepted on project B's URL. Note: this isolates projects from each other only once
+ * workers stop holding the root PX_TELEMETRY_SECRET; today a deployed Worker still needs the root secret for its
+ * control-plane routes, so anyone holding it can derive any project's webhook secret (tracked in story 1.17).
+ */
+export async function deriveProjectTelemetrySecret(rootSecret: string, projectId: string): Promise<string> {
+  if (typeof projectId !== "string" || projectId.trim().length === 0) {
+    throw new Error("deriveProjectTelemetrySecret needs a projectId");
+  }
+  const mac = await signTelemetryPayload(`telemetry-webhook:${projectId}`, rootSecret);
+  return mac.slice("sha256=".length);
+}
+
 export async function verifyTelemetrySignature(
   payloadText: string,
   signatureHeader: string | null | undefined,
@@ -694,158 +829,437 @@ export async function verifyTelemetrySignature(
   return diff === 0;
 }
 
-export function canonicalEventsCursorPayload(after: number, limit: number): string {
-  return `GET:/__px/events?after=${after}&limit=${limit}`;
-}
+// --- Control-plane signatures (story 1.1 scheme; story 1.4 puts the pull and data routes on it) -----------------------
+//
+// One signed request: header x-px-signed-at (epoch seconds) and x-px-signature, the HMAC-SHA256 of
+// `${METHOD}\n${path}\n${signedAt}\n${body}`, where `path` is the request's pathname together with its query string. A
+// signature therefore covers the method, every query parameter (the workspace a read names among them), the time and the
+// body: replaying it with another query, another body or after 300 s does not verify.
 
-export function canonicalLogsQueryPayload(queryOrUrl: string | URL): string {
-  if (typeof queryOrUrl === "string") {
-    const trimmed = queryOrUrl.trim();
-    if (trimmed.startsWith("GET:/__px/logs")) return trimmed;
-    if (trimmed.startsWith("/__px/logs")) return `GET:${trimmed}`;
-    if (trimmed.startsWith("?")) return `GET:/__px/logs${trimmed}`;
-    return `GET:/__px/logs${trimmed ? `?${trimmed}` : ""}`;
+export const SIGNED_AT_HEADER = "x-px-signed-at";
+/** How far a signed request's timestamp may be from the verifier's clock, either way. */
+export const SIGNATURE_WINDOW_SECONDS = 300;
+
+/** What a control-plane signature covers: the method, the path with its query string, the signing time and the body. */
+export const controlPlaneCanonical = (method: string, path: string, signedAt: string, body: string) =>
+  `${method.toUpperCase()}\n${path}\n${signedAt}\n${body}`;
+
+/** The signed path of a URL: its pathname and its whole query string, exactly as the URL serialises them. */
+export function controlPlanePath(url: URL | string): string {
+  if (typeof url !== "string") return `${url.pathname}${url.search}`;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
   }
-  return `GET:/__px/logs${queryOrUrl.search}`;
+  return url;
 }
 
-export function canonicalMetricsQueryPayload(queryOrUrl: string | URL): string {
-  if (typeof queryOrUrl === "string") {
-    const trimmed = queryOrUrl.trim();
-    if (trimmed.startsWith("GET:/__px/metrics")) return trimmed;
-    if (trimmed.startsWith("/__px/metrics")) return `GET:${trimmed}`;
-    if (trimmed.startsWith("?")) return `GET:/__px/metrics${trimmed}`;
-    return `GET:/__px/metrics${trimmed ? `?${trimmed}` : ""}`;
+/**
+ * The headers that sign one control-plane request. `path` is the pathname with its query string; a URL is taken as its
+ * pathname and query, so a signer can pass the very URL it sends.
+ */
+export async function signControlPlaneRequest(
+  secret: string,
+  method: string,
+  path: string | URL,
+  body = "",
+  nowMs = Date.now(),
+): Promise<Record<string, string>> {
+  const signedAt = String(Math.floor(nowMs / 1000));
+  return {
+    [SIGNED_AT_HEADER]: signedAt,
+    [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(
+      controlPlaneCanonical(method, controlPlanePath(path), signedAt, body),
+      secret,
+    ),
+  };
+}
+
+export interface ControlPlaneRefusal {
+  status: 401;
+  code: "STALE_OR_MISSING_SIGNED_AT" | "UNAUTHORIZED_TELEMETRY_SIGNATURE";
+  message: string;
+}
+
+/**
+ * Null when the request carries a fresh, valid control-plane signature over its method, its path and query, and `body`;
+ * otherwise why it is refused. A missing secret refuses everything.
+ */
+export async function checkControlPlaneSignature(
+  request: Request,
+  options: { secret: string | null | undefined; body?: string; nowMs?: number; path?: string },
+): Promise<ControlPlaneRefusal | null> {
+  const signedAt = request.headers.get(SIGNED_AT_HEADER) ?? "";
+  const seconds = /^\d{1,12}$/.test(signedAt) ? Number(signedAt) : Number.NaN;
+  const nowMs = options.nowMs ?? Date.now();
+  if (!Number.isFinite(seconds) || Math.abs(nowMs / 1000 - seconds) > SIGNATURE_WINDOW_SECONDS) {
+    return {
+      status: 401,
+      code: "STALE_OR_MISSING_SIGNED_AT",
+      message: `${SIGNED_AT_HEADER} must be the signing time in epoch seconds, within ${SIGNATURE_WINDOW_SECONDS} s`,
+    };
   }
-  return `GET:/__px/metrics${queryOrUrl.search}`;
+  const path = options.path ?? controlPlanePath(new URL(request.url));
+  const valid = await verifyTelemetrySignature(
+    controlPlaneCanonical(request.method, path, signedAt, options.body ?? ""),
+    request.headers.get(TELEMETRY_SIGNATURE_HEADER),
+    options.secret,
+  );
+  return valid
+    ? null
+    : { status: 401, code: "UNAUTHORIZED_TELEMETRY_SIGNATURE", message: "Missing or invalid X-Px-Signature" };
 }
 
+const refusalResponse = (refusal: ControlPlaneRefusal) =>
+  Response.json({ error: { code: refusal.code, message: refusal.message } }, { status: refusal.status });
+
+const workspaceRequiredResponse = (route: string) =>
+  Response.json(
+    {
+      error: {
+        code: "WORKSPACE_ID_REQUIRED",
+        message: `${route} needs a workspaceId query parameter (covered by the signature); there is no default workspace`,
+      },
+    },
+    { status: 400 },
+  );
+
+// --- Scope (story 1.4) ------------------------------------------------------------------------------------------------
+
+/**
+ * Whose telemetry a read may see. Studio passes the authorised project (and, when its caller names one, a workspace of
+ * that project); a deployed Worker passes the workspace its signed request names. At least one is required.
+ */
+export interface TelemetryScope {
+  projectId?: string;
+  workspaceId?: string;
+}
+
+/** Thrown when a telemetry read names neither a project nor a workspace: a programming error, never a reason to read all. */
+export class TelemetryScopeError extends Error {
+  constructor(message = "a telemetry read needs a scope: projectId, workspaceId or both") {
+    super(message);
+    this.name = "TelemetryScopeError";
+  }
+}
+
+/** Thrown when a telemetry write names no workspace. Nothing is written, and the refusal is logged. */
+export class TelemetryWriteRefusedError extends Error {
+  readonly code = "TELEMETRY_WRITE_REFUSED";
+  readonly kind: string;
+  constructor(kind: string, message: string) {
+    super(`${kind}: ${message}`);
+    this.name = "TelemetryWriteRefusedError";
+    this.kind = kind;
+  }
+}
+
+function refuseTelemetryWrite(kind: string, message: string): never {
+  console.warn(JSON.stringify({ event: "telemetry.write_refused", kind, reason: message }));
+  throw new TelemetryWriteRefusedError(kind, message);
+}
+
+const nonEmpty = (value: unknown): string | undefined =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+
+/** The normalised scope; throws TelemetryScopeError when it names neither a project nor a workspace. */
+export function normalizeTelemetryScope(scope: TelemetryScope | null | undefined): TelemetryScope {
+  const projectId = nonEmpty(scope?.projectId);
+  const workspaceId = nonEmpty(scope?.workspaceId);
+  if (!projectId && !workspaceId) throw new TelemetryScopeError();
+  return { ...(projectId ? { projectId } : {}), ...(workspaceId ? { workspaceId } : {}) };
+}
+
+/** The WHERE clauses (with `?` placeholders) and their arguments that confine a statement to a scope. */
+function scopeSql(scope: TelemetryScope, alias = ""): { clauses: string[]; args: unknown[] } {
+  const s = normalizeTelemetryScope(scope);
+  const col = (name: string) => (alias ? `${alias}.${name}` : name);
+  const clauses: string[] = [];
+  const args: unknown[] = [];
+  if (s.projectId) {
+    clauses.push(`${col("project_id")} = ?`);
+    args.push(s.projectId);
+  }
+  if (s.workspaceId) {
+    clauses.push(`${col("workspace_id")} = ?`);
+    args.push(s.workspaceId);
+  }
+  return { clauses, args };
+}
+
+/** Options for a telemetry write. `projectId` is set only by Studio (its STUDIO_DB holds every project's telemetry). */
+export interface TelemetryWriteOptions {
+  projectId?: string | null;
+}
+
+// --- Tables -----------------------------------------------------------------------------------------------------------
+
+const isDuplicateColumnError = (error: unknown) =>
+  /duplicate column/i.test(error instanceof Error ? error.message : String(error));
+
+interface TableInfoRow {
+  name: string;
+  notnull?: number;
+  pk?: number;
+}
+
+async function tableInfo(db: D1Like, table: string): Promise<TableInfoRow[]> {
+  const res = await db.prepare(`PRAGMA table_info(${table})`).all<TableInfoRow>();
+  return res.results ?? [];
+}
+
+async function addColumnIfMissing(db: D1Like, info: TableInfoRow[], table: string, column: string): Promise<void> {
+  if (info.some((c) => c.name === column)) return;
+  try {
+    await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} TEXT`).run();
+  } catch (error) {
+    if (!isDuplicateColumnError(error)) throw error; // another isolate added it first
+  }
+}
+
+const PX_RUNS_LEGACY_COLUMNS = [
+  "run_id",
+  "workflow_id",
+  "revision",
+  "trigger_type",
+  "status",
+  "duration_ms",
+  "retries",
+  "retry_of_run_id",
+  "error_stack",
+  "started_at",
+  "ended_at",
+] as const;
+const HTTP_ROLLUP_LEGACY_COLUMNS = [
+  "bucket_minute",
+  "route_prefix",
+  "brick_id",
+  "request_count",
+  "error_4xx_count",
+  "error_5xx_count",
+  "latency_buckets_json",
+  "p50_ms",
+  "p95_ms",
+  "p99_ms",
+  "d1_query_count",
+  "d1_latency_ms",
+  "d1_error_count",
+  "env_name",
+] as const;
+const QUEUE_METRIC_LEGACY_COLUMNS = ["queue_name", "pending_count", "dlq_count", "updated_at", "env_name"] as const;
+
+/**
+ * Rebuilds a table into its story 1.4 shape (PX_TELEMETRY_TARGET_DDL). SQLite cannot change a primary key or drop a
+ * NOT NULL in place, so the rows are copied into `<table>_v2`, the old table dropped and the copy renamed, in one batch
+ * (one transaction). A stray `<table>_v2` from an interrupted attempt is dropped first. When the old table lacks
+ * `sentinelColumn`, the batch starts by adding it, which fails if another isolate finished the rebuild meanwhile, so a
+ * rebuild is never repeated over the new table. No row is dropped.
+ */
+async function rebuildTable(
+  db: D1Like,
+  table: "px_runs" | "px_http_rollups" | "px_queue_metrics",
+  info: TableInfoRow[],
+  options: {
+    sentinelColumn: string;
+    legacyColumns: readonly string[];
+    /** SELECT expression for each story 1.4 column, by column name. */
+    select: Record<"workspace_id" | "project_id", string>;
+    indexes: readonly string[];
+  },
+): Promise<void> {
+  const create = PX_TELEMETRY_TARGET_DDL.find((statement) => statement.startsWith(`CREATE TABLE IF NOT EXISTS ${table} (`));
+  if (!create) throw new Error(`no DDL for ${table}`);
+  const next = `${table}_v2`;
+  const hasSentinel = info.some((c) => c.name === options.sentinelColumn);
+  const columns = [...options.legacyColumns, "workspace_id", "project_id"].join(", ");
+  const selects = [...options.legacyColumns, options.select.workspace_id, options.select.project_id].join(", ");
+  try {
+    await db.batch([
+      ...(hasSentinel ? [] : [db.prepare(`ALTER TABLE ${table} ADD COLUMN ${options.sentinelColumn} TEXT`)]),
+      db.prepare(`DROP TABLE IF EXISTS ${next}`),
+      db.prepare(create.replace(`CREATE TABLE IF NOT EXISTS ${table} (`, `CREATE TABLE ${next} (`)),
+      db.prepare(`INSERT INTO ${next} (${columns}) SELECT ${selects} FROM ${table}`),
+      db.prepare(`DROP TABLE ${table}`),
+      db.prepare(`ALTER TABLE ${next} RENAME TO ${table}`),
+      ...options.indexes.map((statement) => db.prepare(statement)),
+    ]);
+  } catch (error) {
+    if (!isDuplicateColumnError(error)) throw error;
+  }
+}
+
+const isPk = (info: TableInfoRow[], column: string) => info.some((c) => c.name === column && Number(c.pk ?? 0) > 0);
+const isNotNull = (info: TableInfoRow[], column: string) => info.some((c) => c.name === column && Number(c.notnull ?? 0) === 1);
+const hasColumn = (info: TableInfoRow[], column: string) => info.some((c) => c.name === column);
+
+/** The pre-1.4 statements, exactly as PX_TELEMETRY_MIGRATION_SQL (9010 / 9001) holds them. */
+const PX_TELEMETRY_LEGACY_STATEMENTS: readonly string[] = PX_TELEMETRY_MIGRATION_SQL.split(";")
+  .map((statement) => statement.trim())
+  .filter((statement) => statement.length > 0);
+
+/** Databases this isolate has already brought to the story 1.4 shape. */
+const ensuredTelemetryDbs = new WeakSet<object>();
+
+/** Forgets that `db` was ensured (for a test or an operator that recreated the tables by hand). */
+export function forgetEnsuredTelemetryTables(db: D1Like): void {
+  ensuredTelemetryDbs.delete(db as object);
+}
+
+/**
+ * Creates the telemetry tables (the unchanged 9010 statements), then brings them to the story 1.4 shape: guarded
+ * `ADD COLUMN` where a column is new, a guarded rebuild where a key or a NOT NULL changes, and only then the indexes on
+ * the new columns. Memoised per database object, so the PRAGMA and rebuild work runs once per isolate.
+ *
+ * Pre-1.4 telemetry: runs keep their workspace as stored, and step events take their run's workspace. Rows that cannot
+ * be attributed stay unreadable: rollups and queue metrics (no workspace), step events whose run is gone, and every
+ * Studio row written before 1.4 (no project_id, so no Studio read, which is always project-scoped, returns it). They
+ * stay until retention prunes them.
+ */
 export async function ensureTelemetryTables(db: D1Like): Promise<void> {
-  await db.batch([
-    db.prepare(
-      `CREATE TABLE IF NOT EXISTS px_runs (
-        run_id TEXT PRIMARY KEY,
-        workflow_id TEXT NOT NULL,
-        revision INTEGER NOT NULL DEFAULT 0,
-        trigger_type TEXT NOT NULL DEFAULT 'manual',
-        workspace_id TEXT NOT NULL DEFAULT 'ws_default',
-        status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed')),
-        duration_ms REAL NOT NULL DEFAULT 0,
-        retries INTEGER NOT NULL DEFAULT 0,
-        retry_of_run_id TEXT,
-        error_stack TEXT,
-        started_at TEXT NOT NULL,
-        ended_at TEXT
-      )`,
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_px_runs_workflow_started ON px_runs(workflow_id, started_at DESC)",
-    ),
-    db.prepare(
-      `CREATE TABLE IF NOT EXISTS px_step_events (
-        seq INTEGER PRIMARY KEY AUTOINCREMENT,
-        event_id TEXT NOT NULL UNIQUE,
-        run_id TEXT NOT NULL,
-        workflow_id TEXT NOT NULL,
-        revision INTEGER NOT NULL DEFAULT 0,
-        node_id TEXT NOT NULL,
-        status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'skipped')),
-        duration_ms REAL NOT NULL DEFAULT 0,
-        retries INTEGER NOT NULL DEFAULT 0,
-        input_preview TEXT NOT NULL DEFAULT '{}',
-        output_preview TEXT NOT NULL DEFAULT '{}',
-        error_stack TEXT,
-        created_at TEXT NOT NULL
-      )`,
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_px_step_events_run_node ON px_step_events(run_id, node_id)",
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_px_step_events_workflow_created ON px_step_events(workflow_id, created_at DESC)",
-    ),
-    db.prepare(
-      "CREATE VIEW IF NOT EXISTS px_steps AS SELECT * FROM px_step_events",
-    ),
-    db.prepare(
-      `CREATE TABLE IF NOT EXISTS px_logs (
-        seq INTEGER PRIMARY KEY AUTOINCREMENT,
-        log_id TEXT NOT NULL UNIQUE,
-        ts TEXT NOT NULL,
-        level TEXT NOT NULL CHECK (level IN ('debug', 'info', 'warn', 'error')),
-        message TEXT NOT NULL,
-        run_id TEXT,
-        workflow_id TEXT,
-        revision INTEGER,
-        node_id TEXT,
-        brick_id TEXT,
-        workspace_id TEXT,
-        request_id TEXT,
-        fields_json TEXT NOT NULL DEFAULT '{}',
-        error_stack TEXT,
-        env_name TEXT NOT NULL DEFAULT 'preview'
-      )`,
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_px_logs_ts ON px_logs(ts DESC, seq DESC)",
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_px_logs_run_node ON px_logs(run_id, node_id)",
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_px_logs_workspace_brick ON px_logs(workspace_id, brick_id)",
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_px_logs_level_ts ON px_logs(level, ts DESC)",
-    ),
-    db.prepare(
-      `CREATE TABLE IF NOT EXISTS px_http_rollups (
-        bucket_minute TEXT NOT NULL,
-        route_prefix TEXT NOT NULL DEFAULT '/',
-        brick_id TEXT NOT NULL DEFAULT 'runtime',
-        request_count INTEGER NOT NULL DEFAULT 0,
-        error_4xx_count INTEGER NOT NULL DEFAULT 0,
-        error_5xx_count INTEGER NOT NULL DEFAULT 0,
-        latency_buckets_json TEXT NOT NULL DEFAULT '{}',
-        p50_ms REAL NOT NULL DEFAULT 0,
-        p95_ms REAL NOT NULL DEFAULT 0,
-        p99_ms REAL NOT NULL DEFAULT 0,
-        d1_query_count INTEGER NOT NULL DEFAULT 0,
-        d1_latency_ms REAL NOT NULL DEFAULT 0,
-        d1_error_count INTEGER NOT NULL DEFAULT 0,
-        env_name TEXT NOT NULL DEFAULT 'preview',
-        PRIMARY KEY (bucket_minute, route_prefix, brick_id, env_name)
-      )`,
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_px_http_rollups_env_bucket ON px_http_rollups(env_name, bucket_minute DESC)",
-    ),
-    db.prepare(
-      `CREATE TABLE IF NOT EXISTS px_queue_metrics (
-        queue_name TEXT NOT NULL,
-        pending_count INTEGER NOT NULL DEFAULT 0,
-        dlq_count INTEGER NOT NULL DEFAULT 0,
-        updated_at TEXT NOT NULL,
-        env_name TEXT NOT NULL DEFAULT 'preview',
-        PRIMARY KEY (queue_name, env_name)
-      )`,
-    ),
-  ]);
-}
+  if (ensuredTelemetryDbs.has(db as object)) return;
+  await db.batch(PX_TELEMETRY_LEGACY_STATEMENTS.map((statement) => db.prepare(statement)));
 
-export async function upsertRunRecord(db: D1Like, run: RunRecord): Promise<void> {
-  const parsed = RunRecordSchema.parse(run);
+  const runs = await tableInfo(db, "px_runs");
+  if (!hasColumn(runs, "project_id") || isNotNull(runs, "workspace_id")) {
+    const hadProject = hasColumn(runs, "project_id");
+    await rebuildTable(db, "px_runs", runs, {
+      sentinelColumn: "project_id",
+      legacyColumns: PX_RUNS_LEGACY_COLUMNS,
+      select: {
+        // Existing workspaces are copied as they are (a 'ws_default' run may be a real tenant's or Studio's preview).
+        workspace_id: "workspace_id",
+        project_id: hadProject ? "project_id" : "NULL",
+      },
+      indexes: ["CREATE INDEX IF NOT EXISTS idx_px_runs_workflow_started ON px_runs(workflow_id, started_at DESC)"],
+    });
+  }
+  const steps = await tableInfo(db, "px_step_events");
+  await addColumnIfMissing(db, steps, "px_step_events", "workspace_id");
+  await addColumnIfMissing(db, steps, "px_step_events", "project_id");
+  // Pre-1.4 step events take their run's workspace (and project), so a worker's own run history stays readable in
+  // its workspace. Guarded: only rows still without a workspace are touched.
   await db
     .prepare(
+      `UPDATE px_step_events
+       SET workspace_id = (SELECT r.workspace_id FROM px_runs r WHERE r.run_id = px_step_events.run_id),
+           project_id = COALESCE(project_id, (SELECT r.project_id FROM px_runs r WHERE r.run_id = px_step_events.run_id))
+       WHERE workspace_id IS NULL AND EXISTS (SELECT 1 FROM px_runs r WHERE r.run_id = px_step_events.run_id)`,
+    )
+    .run();
+  await addColumnIfMissing(db, await tableInfo(db, "px_logs"), "px_logs", "project_id");
+
+  const rollups = await tableInfo(db, "px_http_rollups");
+  if (!isPk(rollups, "workspace_id") || !isPk(rollups, "project_id")) {
+    await rebuildTable(db, "px_http_rollups", rollups, {
+      sentinelColumn: "workspace_id",
+      legacyColumns: HTTP_ROLLUP_LEGACY_COLUMNS,
+      select: { workspace_id: "workspace_id", project_id: hasColumn(rollups, "project_id") ? "project_id" : "NULL" },
+      indexes: ["CREATE INDEX IF NOT EXISTS idx_px_http_rollups_env_bucket ON px_http_rollups(env_name, bucket_minute DESC)"],
+    });
+  }
+  const queues = await tableInfo(db, "px_queue_metrics");
+  if (!isPk(queues, "workspace_id") || !isPk(queues, "project_id")) {
+    await rebuildTable(db, "px_queue_metrics", queues, {
+      sentinelColumn: "workspace_id",
+      legacyColumns: QUEUE_METRIC_LEGACY_COLUMNS,
+      select: { workspace_id: "workspace_id", project_id: hasColumn(queues, "project_id") ? "project_id" : "NULL" },
+      indexes: [],
+    });
+  }
+
+  await db.batch(PX_TELEMETRY_SCOPE_INDEX_DDL.map((statement) => db.prepare(statement)));
+  ensuredTelemetryDbs.add(db as object);
+}
+
+// --- Runs and step events ---------------------------------------------------------------------------------------------
+
+/** One id a telemetry payload is about to write, with the scope it would be written in. */
+export interface TelemetryIdClaim {
+  table: "px_runs" | "px_step_events" | "px_logs";
+  id: string;
+  workspaceId: string | null;
+  projectId: string | null;
+}
+
+/**
+ * The first id of `claims` already held by a row of another workspace or project, or null (story 1.4). One query per
+ * table (chunked under D1's bound-parameter limit), so a payload can be refused whole before any of it is written.
+ */
+export async function findTelemetryIdCollision(db: D1Like, claims: readonly TelemetryIdClaim[]): Promise<TelemetryIdClaim | null> {
+  await ensureTelemetryTables(db);
+  const idColumn = { px_runs: "run_id", px_step_events: "event_id", px_logs: "log_id" } as const;
+  for (const table of ["px_runs", "px_step_events", "px_logs"] as const) {
+    const mine = claims.filter((c) => c.table === table);
+    for (let i = 0; i < mine.length; i += 90) {
+      const chunk = mine.slice(i, i + 90);
+      const col = idColumn[table];
+      const rows =
+        (
+          await db
+            .prepare(`SELECT ${col} AS id, workspace_id, project_id FROM ${table} WHERE ${col} IN (${chunk.map(() => "?").join(", ")})`)
+            .bind(...chunk.map((c) => c.id))
+            .all<{ id: string; workspace_id: string | null; project_id: string | null }>()
+        ).results ?? [];
+      for (const row of rows) {
+        const claim = chunk.find((c) => c.id === row.id);
+        if (claim && ((row.workspace_id ?? null) !== (claim.workspaceId ?? null) || (row.project_id ?? null) !== (claim.projectId ?? null))) {
+          return claim;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Throws TelemetryWriteRefusedError("ID_COLLISION") when an upsert changed nothing because the id is held by a row of
+ * another workspace or project (the ON CONFLICT update is confined to the writer's own scope).
+ */
+async function refuseIdCollision(
+  db: D1Like,
+  result: { meta?: { changes?: number } } | undefined,
+  table: "px_runs" | "px_step_events" | "px_logs",
+  idColumn: "run_id" | "event_id" | "log_id",
+  id: string,
+  workspaceId: string | null,
+  projectId: string | null,
+): Promise<void> {
+  if (Number(result?.meta?.changes ?? 1) > 0) return;
+  const other = await db
+    .prepare(
+      `SELECT 1 AS hit FROM ${table} WHERE ${idColumn} = ?1 AND NOT (workspace_id IS ?2 AND project_id IS ?3) LIMIT 1`,
+    )
+    .bind(id, workspaceId, projectId)
+    .first<{ hit: number }>();
+  if (other) {
+    refuseTelemetryWrite("ID_COLLISION", `${idColumn} ${id} is held by another workspace or project; nothing was written`);
+  }
+}
+
+export async function upsertRunRecord(
+  db: D1Like,
+  run: RunRecord,
+  writeOptions: TelemetryWriteOptions = {},
+): Promise<void> {
+  if (!nonEmpty((run as { workspaceId?: unknown } | null)?.workspaceId)) {
+    refuseTelemetryWrite("run", "a run record must name its workspace");
+  }
+  const parsed = RunRecordSchema.parse(run);
+  const projectId = nonEmpty(writeOptions.projectId) ?? null;
+  // A run id already held by another workspace or project is never overwritten: the update applies only in-scope, and
+  // a write that was skipped for that reason is refused (ID_COLLISION), never reported as a success.
+  const result = await db
+    .prepare(
       `INSERT INTO px_runs (
-        run_id, workflow_id, revision, trigger_type, workspace_id, status, duration_ms, retries, retry_of_run_id, error_stack, started_at, ended_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        run_id, workflow_id, revision, trigger_type, workspace_id, status, duration_ms, retries, retry_of_run_id, error_stack, started_at, ended_at, project_id
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
       ON CONFLICT(run_id) DO UPDATE SET
         status = excluded.status,
         duration_ms = excluded.duration_ms,
         retries = excluded.retries,
         error_stack = excluded.error_stack,
-        ended_at = excluded.ended_at`,
+        ended_at = excluded.ended_at
+      WHERE px_runs.workspace_id = excluded.workspace_id AND px_runs.project_id IS excluded.project_id`,
     )
     .bind(
       parsed.runId,
@@ -860,11 +1274,13 @@ export async function upsertRunRecord(db: D1Like, run: RunRecord): Promise<void>
       parsed.errorStack ?? null,
       parsed.startedAt,
       parsed.endedAt ?? null,
+      projectId,
     )
     .run();
+  await refuseIdCollision(db, result, "px_runs", "run_id", parsed.runId, parsed.workspaceId, projectId);
 }
 
-export interface InsertStepEventOptions {
+export interface InsertStepEventOptions extends TelemetryWriteOptions {
   envName?: string;
   captureStepIoInProd?: boolean;
 }
@@ -874,6 +1290,9 @@ export async function insertStepEvent(
   event: StepEvent,
   options: InsertStepEventOptions = {},
 ): Promise<StepEvent> {
+  if (!nonEmpty((event as { workspaceId?: unknown } | null)?.workspaceId)) {
+    refuseTelemetryWrite("step_event", "a step event must name its run's workspace");
+  }
   const suppressProdIo =
     options.captureStepIoInProd === false &&
     (options.envName ?? "production") === "production";
@@ -881,18 +1300,21 @@ export async function insertStepEvent(
     ...event,
     ...(suppressProdIo ? { inputPreview: "{}", outputPreview: "{}" } : {}),
   });
-  await db
+  const projectId = nonEmpty(options.projectId) ?? null;
+  // An event id already held by another workspace or project is never overwritten (refused as ID_COLLISION).
+  const result = await db
     .prepare(
       `INSERT INTO px_step_events (
-        event_id, run_id, workflow_id, revision, node_id, status, duration_ms, retries, input_preview, output_preview, error_stack, created_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        event_id, run_id, workflow_id, revision, node_id, status, duration_ms, retries, input_preview, output_preview, error_stack, created_at, workspace_id, project_id
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
       ON CONFLICT(event_id) DO UPDATE SET
         status = excluded.status,
         duration_ms = excluded.duration_ms,
         retries = excluded.retries,
         input_preview = excluded.input_preview,
         output_preview = excluded.output_preview,
-        error_stack = excluded.error_stack`,
+        error_stack = excluded.error_stack
+      WHERE px_step_events.workspace_id = excluded.workspace_id AND px_step_events.project_id IS excluded.project_id`,
     )
     .bind(
       parsed.eventId,
@@ -907,12 +1329,15 @@ export async function insertStepEvent(
       parsed.outputPreview,
       parsed.errorStack ?? null,
       parsed.createdAt,
+      parsed.workspaceId,
+      projectId,
     )
     .run();
+  await refuseIdCollision(db, result, "px_step_events", "event_id", parsed.eventId, parsed.workspaceId, projectId);
 
   const row = await db
-    .prepare("SELECT seq FROM px_step_events WHERE event_id = ?1")
-    .bind(parsed.eventId)
+    .prepare("SELECT seq FROM px_step_events WHERE event_id = ?1 AND workspace_id = ?2 AND project_id IS ?3")
+    .bind(parsed.eventId, parsed.workspaceId, projectId)
     .first<{ seq: number }>();
 
   return {
@@ -942,6 +1367,7 @@ interface D1StepEventRow {
   run_id: string;
   workflow_id: string;
   revision: number;
+  workspace_id: string | null;
   node_id: string;
   status: StepStatus;
   duration_ms: number;
@@ -983,6 +1409,7 @@ function mapStepEventRow(row: D1StepEventRow): StepEvent {
     runId: row.run_id,
     workflowId: row.workflow_id,
     revision: Number(row.revision),
+    workspaceId: row.workspace_id ?? "",
     nodeId: row.node_id,
     status: row.status,
     durationMs: Number(row.duration_ms),
@@ -997,58 +1424,62 @@ function mapStepEventRow(row: D1StepEventRow): StepEvent {
   };
 }
 
+/** The run with this id if it is inside `scope`; null otherwise (a run of another project or workspace is not found). */
 export async function getRunRecord(
   db: D1Like,
   runId: string,
+  scope: TelemetryScope,
 ): Promise<RunRecord | null> {
+  const { clauses, args } = scopeSql(scope);
   const row = await db
-    .prepare("SELECT * FROM px_runs WHERE run_id = ?1")
-    .bind(runId)
+    .prepare(`SELECT * FROM px_runs WHERE run_id = ? AND ${clauses.join(" AND ")}`)
+    .bind(runId, ...args)
     .first<D1RunRow>();
   return row ? mapRunRow(row) : null;
 }
 
 export async function listRunRecords(
   db: D1Like,
+  scope: TelemetryScope,
   options: { workflowId?: string; limit?: number } = {},
 ): Promise<RunRecord[]> {
   const limit = Math.max(1, Math.min(200, options.limit ?? 50));
-  const res = options.workflowId
-    ? await db
-        .prepare(
-          "SELECT * FROM px_runs WHERE workflow_id = ?1 ORDER BY started_at DESC LIMIT ?2",
-        )
-        .bind(options.workflowId, limit)
-        .all<D1RunRow>()
-    : await db
-        .prepare("SELECT * FROM px_runs ORDER BY started_at DESC LIMIT ?1")
-        .bind(limit)
-        .all<D1RunRow>();
+  const { clauses, args } = scopeSql(scope);
+  if (options.workflowId) {
+    clauses.push("workflow_id = ?");
+    args.push(options.workflowId);
+  }
+  const res = await db
+    .prepare(`SELECT * FROM px_runs WHERE ${clauses.join(" AND ")} ORDER BY started_at DESC LIMIT ?`)
+    .bind(...args, limit)
+    .all<D1RunRow>();
   return (res.results ?? []).map(mapRunRow);
 }
 
 export async function listStepEventsForRun(
   db: D1Like,
   runId: string,
+  scope: TelemetryScope,
 ): Promise<StepEvent[]> {
+  const { clauses, args } = scopeSql(scope);
   const res = await db
-    .prepare("SELECT * FROM px_step_events WHERE run_id = ?1 ORDER BY seq ASC")
-    .bind(runId)
+    .prepare(`SELECT * FROM px_step_events WHERE run_id = ? AND ${clauses.join(" AND ")} ORDER BY seq ASC`)
+    .bind(runId, ...args)
     .all<D1StepEventRow>();
   return (res.results ?? []).map(mapStepEventRow);
 }
 
 export async function listStepEventsAfterCursor(
   db: D1Like,
+  scope: TelemetryScope,
   afterCursor = 0,
   limit = 100,
 ): Promise<{ events: StepEvent[]; nextCursor: number; hasMore: boolean }> {
   const clampedLimit = Math.max(1, Math.min(500, limit));
+  const { clauses, args } = scopeSql(scope);
   const res = await db
-    .prepare(
-      "SELECT * FROM px_step_events WHERE seq > ?1 ORDER BY seq ASC LIMIT ?2",
-    )
-    .bind(afterCursor, clampedLimit + 1)
+    .prepare(`SELECT * FROM px_step_events WHERE seq > ? AND ${clauses.join(" AND ")} ORDER BY seq ASC LIMIT ?`)
+    .bind(afterCursor, ...args, clampedLimit + 1)
     .all<D1StepEventRow>();
   const rows = res.results ?? [];
   const hasMore = rows.length > clampedLimit;
@@ -1062,12 +1493,31 @@ export async function listStepEventsAfterCursor(
   };
 }
 
+/** Options shared by the signed pull routes (`/__px/events`, `/__px/logs`, `/__px/metrics`). */
+export interface TelemetryPullOptions {
+  db: D1Like;
+  /** PX_TELEMETRY_SECRET. Without it every request is refused. */
+  telemetrySecret: string | null | undefined;
+  /** Wall clock in epoch milliseconds, for the signature window (default Date.now). */
+  clock?: () => number;
+  /**
+   * Studio only: the project its caller is authorised for. With it the workspace query parameter is optional and narrows
+   * the read inside the project; without it (a deployed Worker) the signed query must name the workspace.
+   */
+  projectId?: string;
+}
+
+/** The scope of a signed pull: the workspace its signed query names, intersected with Studio's project when given. */
+function pullScope(url: URL, options: TelemetryPullOptions): TelemetryScope | null {
+  const workspaceId = nonEmpty(url.searchParams.get("workspaceId"));
+  const projectId = nonEmpty(options.projectId);
+  if (!workspaceId && !projectId) return null;
+  return { ...(projectId ? { projectId } : {}), ...(workspaceId ? { workspaceId } : {}) };
+}
+
 export async function handleTelemetryEventsPullRequest(
   request: Request,
-  options: {
-    db: D1Like;
-    telemetrySecret: string | undefined;
-  },
+  options: TelemetryPullOptions,
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== "/__px/events") return null;
@@ -1077,6 +1527,15 @@ export async function handleTelemetryEventsPullRequest(
       { status: 405 },
     );
   }
+
+  const refusal = await checkControlPlaneSignature(request, {
+    secret: options.telemetrySecret,
+    nowMs: (options.clock ?? Date.now)(),
+  });
+  if (refusal) return refusalResponse(refusal);
+
+  const scope = pullScope(url, options);
+  if (!scope) return workspaceRequiredResponse("GET /__px/events");
 
   const afterRaw = url.searchParams.get("after") ?? "0";
   const limitRaw = url.searchParams.get("limit") ?? "100";
@@ -1099,41 +1558,14 @@ export async function handleTelemetryEventsPullRequest(
     );
   }
 
-  const signature = request.headers.get(TELEMETRY_SIGNATURE_HEADER);
-  const canonical = canonicalEventsCursorPayload(after, limit);
-  const pathAndQuery = `${url.pathname}${url.search}`;
-  const validCanonical = await verifyTelemetrySignature(
-    canonical,
-    signature,
-    options.telemetrySecret,
-  );
-  const validPathQuery =
-    validCanonical ||
-    (await verifyTelemetrySignature(
-      pathAndQuery,
-      signature,
-      options.telemetrySecret,
-    ));
-
-  if (!validPathQuery) {
-    return Response.json(
-      {
-        error: {
-          code: "UNAUTHORIZED_TELEMETRY_SIGNATURE",
-          message: "Missing or invalid X-Px-Signature",
-        },
-      },
-      { status: 401 },
-    );
-  }
-
   await ensureTelemetryTables(options.db);
-  const page = await listStepEventsAfterCursor(options.db, after, limit);
-  const runs = await listRunRecords(options.db, { limit: 50 });
+  const page = await listStepEventsAfterCursor(options.db, scope, after, limit);
+  const runs = await listRunRecords(options.db, scope, { limit: 50 });
 
   return Response.json(
     {
       ok: true,
+      ...(scope.workspaceId ? { workspaceId: scope.workspaceId } : {}),
       after,
       limit,
       nextCursor: page.nextCursor,
@@ -1386,21 +1818,25 @@ export interface RunHistoryQueryPage {
 export async function findResolvingRetryRunId(
   db: D1Like,
   runId: string,
+  scope: TelemetryScope,
 ): Promise<string | null> {
   await ensureTelemetryTables(db);
+  const { clauses, args } = scopeSql(scope);
   const resolvedRow = await db
     .prepare(
-      "SELECT run_id FROM px_runs WHERE retry_of_run_id = ?1 AND status = 'succeeded' ORDER BY started_at DESC LIMIT 1",
+      `SELECT run_id FROM px_runs WHERE retry_of_run_id = ? AND status = 'succeeded' AND ${clauses.join(" AND ")} ORDER BY started_at DESC LIMIT 1`,
     )
-    .bind(runId)
+    .bind(runId, ...args)
     .first<{ run_id: string }>();
   return resolvedRow?.run_id ?? null;
 }
 
 export async function queryRunHistory(
   db: D1Like,
+  scope: TelemetryScope,
   filters: RunHistoryQueryFilters = {},
 ): Promise<RunHistoryQueryPage> {
+  const scoped = scopeSql(scope);
   await ensureTelemetryTables(db);
   const limit = Math.max(1, Math.min(200, filters.limit ?? 50));
   const offsetRaw =
@@ -1410,8 +1846,8 @@ export async function queryRunHistory(
   const offset =
     Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
 
-  const whereClauses: string[] = [];
-  const bindArgs: unknown[] = [];
+  const whereClauses: string[] = [...scoped.clauses];
+  const bindArgs: unknown[] = [...scoped.args];
 
   if (filters.workflowId && filters.workflowId.trim() && filters.workflowId !== "all") {
     whereClauses.push("workflow_id = ?");
@@ -1434,8 +1870,7 @@ export async function queryRunHistory(
     bindArgs.push(filters.to.trim());
   }
 
-  const whereSql =
-    whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+  const whereSql = `WHERE ${whereClauses.join(" AND ")}`;
 
   const sql = `SELECT * FROM px_runs ${whereSql} ORDER BY started_at DESC, run_id DESC LIMIT ? OFFSET ?`;
   const res = await db
@@ -1451,21 +1886,21 @@ export async function queryRunHistory(
   for (const run of pageRows) {
     const failedEvent = await db
       .prepare(
-        "SELECT node_id FROM px_step_events WHERE run_id = ?1 AND status = 'failed' ORDER BY seq ASC LIMIT 1",
+        `SELECT node_id FROM px_step_events WHERE run_id = ? AND status = 'failed' AND ${scoped.clauses.join(" AND ")} ORDER BY seq ASC LIMIT 1`,
       )
-      .bind(run.runId)
+      .bind(run.runId, ...scoped.args)
       .first<{ node_id: string }>();
 
     const stepCountRow = await db
       .prepare(
-        "SELECT COUNT(DISTINCT node_id) AS cnt FROM px_step_events WHERE run_id = ?1",
+        `SELECT COUNT(DISTINCT node_id) AS cnt FROM px_step_events WHERE run_id = ? AND ${scoped.clauses.join(" AND ")}`,
       )
-      .bind(run.runId)
+      .bind(run.runId, ...scoped.args)
       .first<{ cnt: number }>();
 
     const resolvedByRunId =
       run.status === "failed"
-        ? await findResolvingRetryRunId(db, run.runId)
+        ? await findResolvingRetryRunId(db, run.runId, scope)
         : null;
 
     enriched.push({
@@ -1723,19 +2158,29 @@ function mapLogRow(row: D1LogRow): StructuredLogEntry {
   };
 }
 
+/**
+ * Writes one structured log line. It must name its workspace (a line without one is refused); Studio also stamps it
+ * with the project through `writeOptions.projectId`. A log id already held by another workspace or project is
+ * never overwritten.
+ */
 export async function insertStructuredLog(
   db: D1Like,
   input: RawStructuredLogInput,
   redactOptions: RedactTelemetryOptions = {},
+  writeOptions: TelemetryWriteOptions = {},
 ): Promise<StructuredLogEntry> {
-  await ensureTelemetryTables(db);
   const redacted = redactStructuredLogEntry(input, redactOptions);
+  const projectId = nonEmpty(writeOptions.projectId) ?? null;
+  if (!redacted.workspaceId) {
+    refuseTelemetryWrite("log", "a log line must name its workspace");
+  }
+  await ensureTelemetryTables(db);
 
-  await db
+  const result = await db
     .prepare(
       `INSERT INTO px_logs (
-        log_id, ts, level, message, run_id, workflow_id, revision, node_id, brick_id, workspace_id, request_id, fields_json, error_stack, env_name
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+        log_id, ts, level, message, run_id, workflow_id, revision, node_id, brick_id, workspace_id, request_id, fields_json, error_stack, env_name, project_id
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
       ON CONFLICT(log_id) DO UPDATE SET
         level = excluded.level,
         message = excluded.message,
@@ -1744,11 +2189,11 @@ export async function insertStructuredLog(
         revision = excluded.revision,
         node_id = excluded.node_id,
         brick_id = excluded.brick_id,
-        workspace_id = excluded.workspace_id,
         request_id = excluded.request_id,
         fields_json = excluded.fields_json,
         error_stack = excluded.error_stack,
-        env_name = excluded.env_name`,
+        env_name = excluded.env_name
+      WHERE px_logs.workspace_id IS excluded.workspace_id AND px_logs.project_id IS excluded.project_id`,
     )
     .bind(
       redacted.logId,
@@ -1765,21 +2210,23 @@ export async function insertStructuredLog(
       redacted.fieldsJson,
       redacted.errorStack ?? null,
       redacted.envName ?? "preview",
+      projectId,
     )
     .run();
+  await refuseIdCollision(db, result, "px_logs", "log_id", redacted.logId, redacted.workspaceId ?? null, projectId);
 
   const row = await db
-    .prepare("SELECT * FROM px_logs WHERE log_id = ?1")
-    .bind(redacted.logId)
+    .prepare("SELECT * FROM px_logs WHERE log_id = ?1 AND workspace_id IS ?2 AND project_id IS ?3")
+    .bind(redacted.logId, redacted.workspaceId ?? null, projectId)
     .first<D1LogRow>();
 
   return row ? mapLogRow(row) : redacted;
 }
 
+/** Filters inside a scope. The workspace is part of the scope (TelemetryScope), never a filter that "all" can widen. */
 export interface StructuredLogQueryFilters {
   env?: string;
   level?: string;
-  workspaceId?: string;
   brickId?: string;
   workflowId?: string;
   runId?: string;
@@ -1800,15 +2247,17 @@ export interface StructuredLogQueryPage {
 
 export async function queryStructuredLogs(
   db: D1Like,
+  scope: TelemetryScope,
   filters: StructuredLogQueryFilters = {},
 ): Promise<StructuredLogQueryPage> {
+  const scoped = scopeSql(scope);
   await ensureTelemetryTables(db);
   const limit = Math.max(1, Math.min(500, filters.limit ?? 100));
   const afterRaw = filters.after !== undefined && filters.after !== null ? Number(filters.after) : 0;
   const after = Number.isInteger(afterRaw) && afterRaw >= 0 ? afterRaw : 0;
 
-  const whereClauses: string[] = [];
-  const bindArgs: unknown[] = [];
+  const whereClauses: string[] = [...scoped.clauses];
+  const bindArgs: unknown[] = [...scoped.args];
 
   if (after > 0) {
     whereClauses.push("seq > ?");
@@ -1830,10 +2279,6 @@ export async function queryStructuredLogs(
       whereClauses.push(`level IN (${levels.map(() => "?").join(", ")})`);
       bindArgs.push(...levels);
     }
-  }
-  if (filters.workspaceId && filters.workspaceId.trim() && filters.workspaceId !== "all") {
-    whereClauses.push("workspace_id = ?");
-    bindArgs.push(filters.workspaceId.trim());
   }
   if (filters.brickId && filters.brickId.trim() && filters.brickId !== "all") {
     whereClauses.push("brick_id = ?");
@@ -1863,7 +2308,7 @@ export async function queryStructuredLogs(
     bindArgs.push(qLike, qLike, qLike, qLike, qLike, qLike, qLike);
   }
 
-  const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+  const whereSql = `WHERE ${whereClauses.join(" AND ")}`;
   const orderBySql = after > 0 ? "ORDER BY seq ASC" : "ORDER BY seq DESC";
   const sql = `SELECT * FROM px_logs ${whereSql} ${orderBySql} LIMIT ?`;
 
@@ -1896,6 +2341,8 @@ export interface CreateStructuredLoggerOptions {
   db?: D1Like;
   context?: StructuredLogContext & { envName?: string };
   redactOptions?: RedactTelemetryOptions;
+  /** Studio only: the project its persisted lines are stamped with. */
+  writeOptions?: TelemetryWriteOptions;
   onLog?: (entry: StructuredLogEntry) => void | Promise<void>;
 }
 
@@ -1953,7 +2400,7 @@ export function createStructuredLogger(
         };
 
         const persisted = options.db
-          ? await insertStructuredLog(options.db, rawInput, options.redactOptions)
+          ? await insertStructuredLog(options.db, rawInput, options.redactOptions, options.writeOptions)
           : redactStructuredLogEntry(rawInput, options.redactOptions);
 
         entries.push(persisted);
@@ -1989,11 +2436,7 @@ export function createStructuredLogger(
 
 export async function handleTelemetryLogsPullRequest(
   request: Request,
-  options: {
-    db: D1Like;
-    telemetrySecret: string | undefined;
-    pxEnv?: string;
-  },
+  options: TelemetryPullOptions & { pxEnv?: string },
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== "/__px/logs") return null;
@@ -2003,6 +2446,15 @@ export async function handleTelemetryLogsPullRequest(
       { status: 405 },
     );
   }
+
+  const refusal = await checkControlPlaneSignature(request, {
+    secret: options.telemetrySecret,
+    nowMs: (options.clock ?? Date.now)(),
+  });
+  if (refusal) return refusalResponse(refusal);
+
+  const scope = pullScope(url, options);
+  if (!scope) return workspaceRequiredResponse("GET /__px/logs");
 
   const afterRaw = url.searchParams.get("after") ?? "0";
   const limitRaw = url.searchParams.get("limit") ?? "100";
@@ -2025,33 +2477,10 @@ export async function handleTelemetryLogsPullRequest(
     );
   }
 
-  const signature = request.headers.get(TELEMETRY_SIGNATURE_HEADER);
-  const canonical = canonicalLogsQueryPayload(url);
-  const pathAndQuery = `${url.pathname}${url.search}`;
-  const cursorFallback = `GET:/__px/logs?after=${after}&limit=${limit}`;
-
-  const validSig =
-    (await verifyTelemetrySignature(canonical, signature, options.telemetrySecret)) ||
-    (await verifyTelemetrySignature(pathAndQuery, signature, options.telemetrySecret)) ||
-    (await verifyTelemetrySignature(cursorFallback, signature, options.telemetrySecret));
-
-  if (!validSig) {
-    return Response.json(
-      {
-        error: {
-          code: "UNAUTHORIZED_TELEMETRY_SIGNATURE",
-          message: "Missing or invalid X-Px-Signature",
-        },
-      },
-      { status: 401 },
-    );
-  }
-
   const envParam = url.searchParams.get("env") ?? undefined;
-  const page = await queryStructuredLogs(options.db, {
+  const page = await queryStructuredLogs(options.db, scope, {
     ...(envParam ? { env: envParam } : {}),
     level: url.searchParams.get("level") ?? undefined,
-    workspaceId: url.searchParams.get("workspaceId") ?? undefined,
     brickId: url.searchParams.get("brickId") ?? undefined,
     workflowId: url.searchParams.get("workflowId") ?? undefined,
     runId: url.searchParams.get("runId") ?? undefined,
@@ -2066,6 +2495,7 @@ export async function handleTelemetryLogsPullRequest(
     {
       ok: true,
       env: envParam ?? options.pxEnv ?? "preview",
+      ...(scope.workspaceId ? { workspaceId: scope.workspaceId } : {}),
       after: page.after,
       limit: page.limit,
       nextCursor: page.nextCursor,
@@ -2080,6 +2510,8 @@ export const HealthWindowSchema = z.enum(["1h", "24h", "7d"]);
 export type HealthWindow = z.infer<typeof HealthWindowSchema>;
 
 export interface HttpRollupInput {
+  /** The workspace whose requests these are (story 1.4). Required: a rollup without one is refused. */
+  workspaceId: string;
   bucketMinute: string;
   routePrefix?: string;
   brickId?: string;
@@ -2099,6 +2531,8 @@ export interface HttpRollupInput {
 }
 
 export interface HttpRequestSampleInput {
+  /** The workspace of the request (story 1.4). Required: a sample without one is refused. */
+  workspaceId: string;
   ts?: string | number | Date;
   routePrefix: string;
   brickId: string;
@@ -2111,6 +2545,8 @@ export interface HttpRequestSampleInput {
 }
 
 export interface QueueMetricInput {
+  /** The workspace of the job's queue (story 1.4). Required: a metric without one is refused. */
+  workspaceId: string;
   queueName: string;
   pendingCount?: number;
   depth?: number;
@@ -2316,7 +2752,11 @@ function buildHistogramBuckets(samples: number[]): Record<string, number> {
 export async function upsertHttpRollup(
   db: D1Like,
   input: HttpRollupInput,
+  writeOptions: TelemetryWriteOptions = {},
 ): Promise<void> {
+  const workspaceId = nonEmpty((input as { workspaceId?: unknown } | null)?.workspaceId);
+  if (!workspaceId) refuseTelemetryWrite("http_rollup", "an HTTP rollup must name the workspace of its requests");
+  const projectId = nonEmpty(writeOptions.projectId) ?? null;
   await ensureTelemetryTables(db);
   const bucketMinute = toMinuteBucketIso(input.bucketMinute);
   const routePrefix = input.routePrefix?.trim() || "/";
@@ -2346,44 +2786,51 @@ export async function upsertHttpRollup(
       buckets: buildHistogramBuckets(samples),
     });
 
-  await db
-    .prepare(
-      `INSERT INTO px_http_rollups (
-        bucket_minute, route_prefix, brick_id, request_count, error_4xx_count, error_5xx_count,
-        latency_buckets_json, p50_ms, p95_ms, p99_ms, d1_query_count, d1_latency_ms, d1_error_count, env_name
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
-      ON CONFLICT(bucket_minute, route_prefix, brick_id, env_name) DO UPDATE SET
-        request_count = excluded.request_count,
-        error_4xx_count = excluded.error_4xx_count,
-        error_5xx_count = excluded.error_5xx_count,
-        latency_buckets_json = excluded.latency_buckets_json,
-        p50_ms = excluded.p50_ms,
-        p95_ms = excluded.p95_ms,
-        p99_ms = excluded.p99_ms,
-        d1_query_count = excluded.d1_query_count,
-        d1_latency_ms = excluded.d1_latency_ms,
-        d1_error_count = excluded.d1_error_count`,
-    )
-    .bind(
-      bucketMinute,
-      routePrefix,
-      brickId,
-      requestCount,
-      error4xxCount,
-      error5xxCount,
-      latencyBucketsJson,
-      p50Ms,
-      p95Ms,
-      p99Ms,
-      d1QueryCount,
-      d1LatencyMs,
-      d1ErrorCount,
-      envName,
-    )
-    .run();
+  // project_id is NULL outside Studio, and NULL never conflicts in a key, so the upsert is an UPDATE of the row with the
+  // same key (project compared with IS) followed by an INSERT when there was none, in one batch (one transaction).
+  const values = [
+    requestCount,
+    error4xxCount,
+    error5xxCount,
+    latencyBucketsJson,
+    p50Ms,
+    p95Ms,
+    p99Ms,
+    d1QueryCount,
+    d1LatencyMs,
+    d1ErrorCount,
+  ];
+  const key = [bucketMinute, routePrefix, brickId, envName, workspaceId, projectId];
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE px_http_rollups SET
+          request_count = ?1, error_4xx_count = ?2, error_5xx_count = ?3, latency_buckets_json = ?4,
+          p50_ms = ?5, p95_ms = ?6, p99_ms = ?7, d1_query_count = ?8, d1_latency_ms = ?9, d1_error_count = ?10
+        WHERE bucket_minute = ?11 AND route_prefix = ?12 AND brick_id = ?13 AND env_name = ?14
+          AND workspace_id = ?15 AND project_id IS ?16`,
+      )
+      .bind(...values, ...key),
+    db
+      .prepare(
+        `INSERT INTO px_http_rollups (
+          request_count, error_4xx_count, error_5xx_count, latency_buckets_json, p50_ms, p95_ms, p99_ms,
+          d1_query_count, d1_latency_ms, d1_error_count,
+          bucket_minute, route_prefix, brick_id, env_name, workspace_id, project_id
+        )
+        SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16
+        WHERE NOT EXISTS (
+          SELECT 1 FROM px_http_rollups
+          WHERE bucket_minute = ?11 AND route_prefix = ?12 AND brick_id = ?13 AND env_name = ?14
+            AND workspace_id = ?15 AND project_id IS ?16
+        )`,
+      )
+      .bind(...values, ...key),
+  ]);
 }
 
 interface D1HttpRollupRow {
+  workspace_id?: string | null;
   bucket_minute: string;
   route_prefix: string;
   brick_id: string;
@@ -2403,13 +2850,20 @@ interface D1HttpRollupRow {
 export async function recordHttpRequestSamples(
   db: D1Like,
   samples: HttpRequestSampleInput[],
+  writeOptions: TelemetryWriteOptions = {},
 ): Promise<void> {
   if (!Array.isArray(samples) || samples.length === 0) return;
+  // Every sample names its request's workspace; one that does not refuses the whole batch, and nothing is written.
+  if (samples.some((sample) => !nonEmpty((sample as { workspaceId?: unknown } | null)?.workspaceId))) {
+    refuseTelemetryWrite("http_sample", "every HTTP request sample must name its workspace");
+  }
+  const projectId = nonEmpty(writeOptions.projectId) ?? null;
   await ensureTelemetryTables(db);
 
   const grouped = new Map<
     string,
     {
+      workspaceId: string;
       bucketMinute: string;
       routePrefix: string;
       brickId: string;
@@ -2429,10 +2883,12 @@ export async function recordHttpRequestSamples(
     const routePrefix = sample.routePrefix?.trim() || "/";
     const brickId = sample.brickId?.trim() || "runtime";
     const envName = sample.envName?.trim() || "preview";
-    const key = `${bucketMinute}::${routePrefix}::${brickId}::${envName}`;
+    const workspaceId = sample.workspaceId.trim();
+    const key = JSON.stringify([bucketMinute, routePrefix, brickId, envName, workspaceId]);
     let acc = grouped.get(key);
     if (!acc) {
       acc = {
+        workspaceId,
         bucketMinute,
         routePrefix,
         brickId,
@@ -2471,9 +2927,10 @@ export async function recordHttpRequestSamples(
     const existing = await db
       .prepare(
         `SELECT * FROM px_http_rollups
-         WHERE bucket_minute = ?1 AND route_prefix = ?2 AND brick_id = ?3 AND env_name = ?4`,
+         WHERE bucket_minute = ?1 AND route_prefix = ?2 AND brick_id = ?3 AND env_name = ?4
+           AND workspace_id = ?5 AND project_id IS ?6`,
       )
-      .bind(group.bucketMinute, group.routePrefix, group.brickId, group.envName)
+      .bind(group.bucketMinute, group.routePrefix, group.brickId, group.envName, group.workspaceId, projectId)
       .first<D1HttpRollupRow>();
 
     const existingParsed = parseLatencyBucketsJson(existing?.latency_buckets_json);
@@ -2489,6 +2946,7 @@ export async function recordHttpRequestSamples(
     const d1Quantiles = computeLatencyQuantiles(mergedD1Latencies);
 
     await upsertHttpRollup(db, {
+      workspaceId: group.workspaceId,
       bucketMinute: group.bucketMinute,
       routePrefix: group.routePrefix,
       brickId: group.brickId,
@@ -2507,14 +2965,18 @@ export async function recordHttpRequestSamples(
           ? d1Quantiles.p50Ms
           : Number(existing?.d1_latency_ms ?? 0),
       d1ErrorCount: Number(existing?.d1_error_count ?? 0) + group.d1Errors,
-    });
+    }, { projectId });
   }
 }
 
 export async function upsertQueueMetrics(
   db: D1Like,
   input: QueueMetricInput,
+  writeOptions: TelemetryWriteOptions = {},
 ): Promise<void> {
+  const workspaceId = nonEmpty((input as { workspaceId?: unknown } | null)?.workspaceId);
+  if (!workspaceId) refuseTelemetryWrite("queue_metric", "a queue metric must name the workspace of its jobs");
+  const projectId = nonEmpty(writeOptions.projectId) ?? null;
   await ensureTelemetryTables(db);
   const queueName = input.queueName.trim();
   const pendingCount = Math.max(
@@ -2528,18 +2990,25 @@ export async function upsertQueueMetrics(
       : new Date().toISOString();
   const envName = input.envName?.trim() || "preview";
 
-  await db
-    .prepare(
-      `INSERT INTO px_queue_metrics (
-        queue_name, pending_count, dlq_count, updated_at, env_name
-      ) VALUES (?1, ?2, ?3, ?4, ?5)
-      ON CONFLICT(queue_name, env_name) DO UPDATE SET
-        pending_count = excluded.pending_count,
-        dlq_count = excluded.dlq_count,
-        updated_at = excluded.updated_at`,
-    )
-    .bind(queueName, pendingCount, dlqCount, updatedAt, envName)
-    .run();
+  // As for rollups: UPDATE the row with this key (project compared with IS), else INSERT it, in one batch.
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE px_queue_metrics SET pending_count = ?2, dlq_count = ?3, updated_at = ?4
+         WHERE queue_name = ?1 AND env_name = ?5 AND workspace_id = ?6 AND project_id IS ?7`,
+      )
+      .bind(queueName, pendingCount, dlqCount, updatedAt, envName, workspaceId, projectId),
+    db
+      .prepare(
+        `INSERT INTO px_queue_metrics (queue_name, pending_count, dlq_count, updated_at, env_name, workspace_id, project_id)
+         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
+         WHERE NOT EXISTS (
+           SELECT 1 FROM px_queue_metrics
+           WHERE queue_name = ?1 AND env_name = ?5 AND workspace_id = ?6 AND project_id IS ?7
+         )`,
+      )
+      .bind(queueName, pendingCount, dlqCount, updatedAt, envName, workspaceId, projectId),
+  ]);
 }
 
 interface D1QueueMetricRow {
@@ -2563,12 +3032,15 @@ export function resolveWindowDurationMinutes(window: HealthWindow): number {
 
 export async function queryEnvironmentMetrics(
   db: D1Like,
+  scope: TelemetryScope,
   options: {
     env?: string;
     window?: HealthWindow | string;
     now?: Date | string | number;
   } = {},
 ): Promise<EnvironmentHealthSummary> {
+  const scoped = scopeSql(scope);
+  const scopeAnd = scoped.clauses.map((clause) => ` AND ${clause}`).join("");
   await ensureTelemetryTables(db);
   const env = options.env?.trim() || "preview";
   const windowParsed = HealthWindowSchema.safeParse(options.window ?? "1h");
@@ -2591,10 +3063,10 @@ export async function queryEnvironmentMetrics(
   const rollupRes = await db
     .prepare(
       `SELECT * FROM px_http_rollups
-       WHERE env_name = ?1 AND bucket_minute >= ?2
+       WHERE env_name = ? AND bucket_minute >= ?${scopeAnd}
        ORDER BY bucket_minute ASC`,
     )
-    .bind(env, cutoffIso)
+    .bind(env, cutoffIso, ...scoped.args)
     .all<D1HttpRollupRow>();
   const rollupRows = rollupRes.results ?? [];
 
@@ -2755,10 +3227,10 @@ export async function queryEnvironmentMetrics(
   const runsRes = await db
     .prepare(
       `SELECT * FROM px_runs
-       WHERE started_at >= ?1
+       WHERE started_at >= ?${scopeAnd}
        ORDER BY started_at DESC`,
     )
-    .bind(cutoffIso)
+    .bind(cutoffIso, ...scoped.args)
     .all<D1RunRow>();
   const runRows = runsRes.results ?? [];
 
@@ -2800,10 +3272,10 @@ export async function queryEnvironmentMetrics(
   const queuesRes = await db
     .prepare(
       `SELECT * FROM px_queue_metrics
-       WHERE env_name = ?1
+       WHERE env_name = ?${scopeAnd}
        ORDER BY dlq_count DESC, pending_count DESC, queue_name ASC`,
     )
-    .bind(env)
+    .bind(env, ...scoped.args)
     .all<D1QueueMetricRow>();
   const queues: QueueHealthMetric[] = (queuesRes.results ?? []).map((q) => ({
     queueName: q.queue_name,
@@ -3004,9 +3476,7 @@ export function reconcileCloudflareAnalyticsWithD1Metrics(
 
 export async function handleTelemetryMetricsRequest(
   request: Request,
-  options: {
-    db: D1Like;
-    telemetrySecret: string | undefined;
+  options: TelemetryPullOptions & {
     pxEnv?: string;
     now?: Date | string | number;
   },
@@ -3019,6 +3489,15 @@ export async function handleTelemetryMetricsRequest(
       { status: 405 },
     );
   }
+
+  const refusal = await checkControlPlaneSignature(request, {
+    secret: options.telemetrySecret,
+    nowMs: (options.clock ?? Date.now)(),
+  });
+  if (refusal) return refusalResponse(refusal);
+
+  const scope = pullScope(url, options);
+  if (!scope) return workspaceRequiredResponse("GET /__px/metrics");
 
   const windowParam = url.searchParams.get("window") ?? "1h";
   const parsedWindow = HealthWindowSchema.safeParse(windowParam);
@@ -3034,34 +3513,15 @@ export async function handleTelemetryMetricsRequest(
     );
   }
 
-  const signature = request.headers.get(TELEMETRY_SIGNATURE_HEADER);
-  const canonical = canonicalMetricsQueryPayload(url);
-  const pathAndQuery = `${url.pathname}${url.search}`;
-  const windowFallback = `GET:/__px/metrics?window=${parsedWindow.data}`;
-
-  const validSig =
-    (await verifyTelemetrySignature(canonical, signature, options.telemetrySecret)) ||
-    (await verifyTelemetrySignature(pathAndQuery, signature, options.telemetrySecret)) ||
-    (await verifyTelemetrySignature(windowFallback, signature, options.telemetrySecret));
-
-  if (!validSig) {
-    return Response.json(
-      {
-        error: {
-          code: "UNAUTHORIZED_TELEMETRY_SIGNATURE",
-          message: "Missing or invalid X-Px-Signature",
-        },
-      },
-      { status: 401 },
-    );
-  }
-
   const envParam = url.searchParams.get("env") ?? options.pxEnv ?? "preview";
-  const summary = await queryEnvironmentMetrics(options.db, {
+  const summary = await queryEnvironmentMetrics(options.db, scope, {
     env: envParam,
     window: parsedWindow.data,
     now: options.now,
   });
 
-  return Response.json(summary, { status: 200 });
+  return Response.json(
+    { ...summary, ...(scope.workspaceId ? { workspaceId: scope.workspaceId } : {}) },
+    { status: 200 },
+  );
 }

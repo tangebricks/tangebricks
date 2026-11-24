@@ -181,8 +181,9 @@ describe("GET /api/projects/:projectId/runs and GET /api/projects/:projectId/run
       errorStack: "Error: Insufficient wallet credits\n    at debitWallet (wallet.ts:42:11)",
       startedAt: new Date().toISOString(),
       endedAt: new Date().toISOString(),
-    });
+    }, { projectId: project });
     await insertStepEvent(studioDb, {
+      workspaceId: "ws_default",
       eventId: "ev_r2_fail_debit",
       runId: "run_r2_failed",
       workflowId: "wf_checkout",
@@ -195,7 +196,7 @@ describe("GET /api/projects/:projectId/runs and GET /api/projects/:projectId/run
       outputPreview: "{}",
       errorStack: "Error: Insufficient wallet credits\n    at debitWallet (wallet.ts:42:11)",
       createdAt: new Date().toISOString(),
-    });
+    }, { projectId: project });
 
     const expiredDate = new Date(Date.now() - 20 * 86_400_000).toISOString();
     await upsertRunRecord(studioDb, {
@@ -209,7 +210,7 @@ describe("GET /api/projects/:projectId/runs and GET /api/projects/:projectId/run
       retries: 0,
       startedAt: expiredDate,
       endedAt: expiredDate,
-    });
+    }, { projectId: project });
 
     // 5. Query GET /api/projects/:project/runs with filters
     const listFailedRes = await app.fetch(

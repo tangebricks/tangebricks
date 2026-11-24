@@ -30,6 +30,7 @@ import {
 } from "../src/index.ts";
 import type { DeployBuildArtifactInput, DeployTarget } from "../src/index.ts";
 import { sqliteD1 } from "../../../test/support/sqlite-d1.ts";
+import { listRunRecords, upsertRunRecord } from "@poc/telemetry";
 
 // Story 0.18: poc_graphs has a tenant dimension. A row is keyed (workspace_id, id); a run carries a workspace and loads only
 // that workspace's graph or the app-wide one (APP_WORKSPACE); no route behind the shared access key writes a graph; the
@@ -532,6 +533,27 @@ describe("the sandbox's graph migrations on a reused database", () => {
     reused.db.prepare(`INSERT INTO ${GRAPH_TABLE} (id, graph, updated_at) VALUES ('g', '{}', 'then')`).run();
     await new SandboxDispatchPlatform({ createD1: () => reused.d1 }).ensureDatabase("sbx-reused");
     expect(reused.db.prepare(`SELECT workspace_id, id FROM ${GRAPH_TABLE}`).all()).toEqual([{ workspace_id: APP_WORKSPACE, id: "g" }]);
+  });
+
+  test("story 1.4: a database created with the pre-1.4 telemetry SQL is upgraded in place and keeps its rows", async () => {
+    const reused = sqliteD1();
+    reused.db.exec(TELEMETRY_MIGRATION.sql);
+    reused.db.prepare("INSERT INTO px_runs (run_id, workflow_id, status, started_at) VALUES ('run_old', 'wf', 'succeeded', '2026-10-01T00:00:00.000Z')").run();
+    reused.db.prepare("INSERT INTO px_http_rollups (bucket_minute, request_count) VALUES ('2026-10-01T00:00:00.000Z', 4)").run();
+    await new SandboxDispatchPlatform({ createD1: () => reused.d1 }).ensureDatabase("sbx-reused-telemetry");
+
+    const cols = (table: string) => (reused.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string; pk: number }>);
+    expect(cols("px_runs").map((c) => c.name)).toContain("project_id");
+    expect(cols("px_step_events").map((c) => c.name)).toEqual(expect.arrayContaining(["workspace_id", "project_id"]));
+    expect(cols("px_http_rollups").filter((c) => c.pk > 0).map((c) => c.name)).toEqual(expect.arrayContaining(["workspace_id", "project_id"]));
+    expect(reused.db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_px_runs_ws_started'").all()).toHaveLength(1);
+    // The old row is kept with the workspace it was stored with (never rewritten).
+    expect(reused.db.prepare("SELECT workspace_id FROM px_runs WHERE run_id = 'run_old'").all()).toEqual([{ workspace_id: "ws_default" }]);
+    expect(await listRunRecords(reused.d1, { workspaceId: WS_A })).toEqual([]);
+    expect(reused.db.prepare("SELECT request_count FROM px_http_rollups").all()).toEqual([{ request_count: 4 }]);
+
+    await upsertRunRecord(reused.d1, { runId: "run_new", workflowId: "wf", revision: 0, triggerType: "manual", workspaceId: WS_A, status: "succeeded", durationMs: 1, retries: 0, startedAt: "2026-11-01T00:00:00.000Z" });
+    expect((await listRunRecords(reused.d1, { workspaceId: WS_A })).map((r) => r.runId)).toEqual(["run_new"]);
   });
 });
 

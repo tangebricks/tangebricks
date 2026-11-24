@@ -667,6 +667,8 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
         headers: { "x-org-id": orgId },
         env: operatorEnv,
         body: {
+          // Story 1.4: seeded rows belong to one of the project's own workspaces (its preview workspace here).
+          workspaceId: "ws_default",
           reset: true,
           window: "24h",
           samples: [

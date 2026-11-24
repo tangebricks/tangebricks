@@ -167,6 +167,8 @@ describe("apps/studio-api — Story 6.4 Backend Health & Metrics Panel Endpoints
         headers: { "x-org-id": orgId },
         env: operatorEnv,
         body: {
+          // Story 1.4: seeded rows belong to one of the project's own workspaces (its preview workspace here).
+          workspaceId: "ws_default",
           reset: true,
           now: baseNow,
           window: "1h",

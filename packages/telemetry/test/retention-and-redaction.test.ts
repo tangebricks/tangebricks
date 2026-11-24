@@ -75,6 +75,7 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
         runId,
         workflowId: "wf_retention",
         revision: 1,
+        workspaceId: "ws_1",
         nodeId: "step_1",
         status: "succeeded",
         durationMs: 20,
@@ -97,8 +98,10 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
         ts,
         level: "info",
         message: `Log entry ${idSuffix}`,
+        workspaceId: "ws_1",
       });
       await upsertHttpRollup(db, {
+        workspaceId: "ws_1",
         bucketMinute: ts,
         routePrefix: "/api",
         brickId: "core",
