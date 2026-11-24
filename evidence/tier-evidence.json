@@ -88,9 +88,9 @@
       "behaviourTest": "bricks/cron-alarms/test/cron.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 12,
+      "testsRun": 20,
       "testsSkipped": 0,
-      "assertionCount": 79
+      "assertionCount": 135
     },
     {
       "id": "custom-domains",
@@ -496,8 +496,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-24T14:20:51.972Z",
-    "gitSha": "1f97272e151111ae0850114162982db106606341",
+    "generatedAt": "2026-11-24T14:46:47.399Z",
+    "gitSha": "34cabaede141736f45107fa67584bdb7044146a4",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
