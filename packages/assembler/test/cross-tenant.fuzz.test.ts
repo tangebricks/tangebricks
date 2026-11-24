@@ -16,7 +16,6 @@ import { env } from "cloudflare:workers";
 import { describe, expect, test } from "vitest";
 import { Hono } from "hono";
 import { attach, record } from "@poc/harness";
-import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { catalog } from "../catalog.generated.ts";
 import { computeMaxCompatible } from "../../../scripts/max-compatible.ts";
@@ -24,10 +23,8 @@ import { generateOpenApiSpec } from "../src/openapi.ts";
 import { compareWithRegistry, describeComparison, registryKeyOf as keyOf } from "../../../test/support/attack-registry.ts";
 import type { RegistryEntry } from "../../../test/support/attack-registry.ts";
 import knownFailuresFile from "./attack-suite.known-failures.json";
-
-interface App {
-  fetch(request: Request, env: unknown): Response | Promise<Response>;
-}
+import { call, joinAsMember, resetAndMigrate } from "./support/assembled-app.ts";
+import type { App } from "./support/assembled-app.ts";
 
 interface HonoRoute {
   method: string;
@@ -118,28 +115,6 @@ function getTenantTables(): { tables: string[]; brickOfTable: Map<string, string
 }
 
 const { tables: tenantTables, brickOfTable } = getTenantTables();
-
-async function resetAndMigrate(): Promise<void> {
-  for (let pass = 0; pass < 3; pass += 1) {
-    const tables = await db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE '%_fts_%'",
-      )
-      .all<{ name: string }>();
-    if (tables.results.length === 0) break;
-    for (const row of [...tables.results].reverse()) {
-      try {
-        await db.prepare(`DROP TABLE IF EXISTS "${row.name}"`).run();
-      } catch {
-        // Child tables dropped first on next pass
-      }
-    }
-  }
-  const migrations = Object.entries(sql).sort(([a], [b]) => a.localeCompare(b));
-  for (const [, migSql] of migrations) {
-    await applyMigration(db, migSql);
-  }
-}
 
 type TableRows = Record<string, Array<Record<string, unknown>>>;
 
@@ -404,24 +379,6 @@ function harvest(rows: TableRows): IdBag {
   return bag;
 }
 
-async function call(
-  target: App,
-  method: string,
-  path: string,
-  opts: { user?: string; ws?: string; body?: unknown } = {},
-): Promise<{ status: number; text: string }> {
-  const headers: Record<string, string> = {};
-  if (opts.user) headers["x-test-user"] = opts.user;
-  if (opts.ws) headers["x-workspace-id"] = opts.ws;
-  const hasBody = opts.body !== undefined && method !== "GET" && method !== "HEAD";
-  if (hasBody) headers["content-type"] = "application/json";
-  const res = await target.fetch(
-    new Request(`https://example.test${path}`, { method, headers, ...(hasBody ? { body: JSON.stringify(opts.body) } : {}) }),
-    env,
-  );
-  return { status: res.status, text: await res.text() };
-}
-
 function generateBody(schema: any, seed: string): Record<string, unknown> {
   if (!schema || typeof schema !== "object") return { seed };
   if (schema.$ref) {
@@ -518,7 +475,7 @@ async function createWorkspace(user: string, name: string): Promise<string> {
 }
 
 async function seedWorld(options: { rich?: boolean } = {}): Promise<World> {
-  await resetAndMigrate();
+  await resetAndMigrate(db, sql);
   await loadPrimaryKeys();
 
   const wsA = await createWorkspace("alice", "Workspace A");
@@ -533,11 +490,7 @@ async function seedWorld(options: { rich?: boolean } = {}): Promise<World> {
   const seeded = { attempted: 0, createdA: 0, createdB: 0 };
   if (options.rich) {
     // Carol joins A as a plain member through the real invite flow.
-    const invite = await call(app!, "POST", `/api/workspaces/${wsA}/invites`, { user: "alice", body: { role: "member" } });
-    expect(invite.status).toBe(201);
-    const token = (JSON.parse(invite.text) as { token: string }).token;
-    const accept = await call(app!, "POST", `/api/workspaces/invites/${token}/accept`, { user: "carol" });
-    expect(accept.status).toBe(200);
+    await joinAsMember(app!, wsA, "alice", "carol");
 
     const a = await seedTenant(app!, "alice", wsA, A_MARKER);
     const b = await seedTenant(app!, "bob", wsB, B_MARKER);

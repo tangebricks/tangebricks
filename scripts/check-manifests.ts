@@ -58,7 +58,9 @@ export function loadTierEvidenceMap(rootDir = ROOT): Map<string, any> {
 }
 
 const HTTP_METHODS = new Set(["get", "post", "put", "patch", "delete", "all", "options"]);
-const DI_OPTION_KEYS = new Set(["adapter", "adapters", "gateway", "publicBaseUrl"]);
+// Route-factory options a host passes in code, not manifest settings. `knownPermissions` (rbac-policy, story 0.19) is
+// a string[] allowlist a host sets for its own app; manifest settings have no list type.
+const DI_OPTION_KEYS = new Set(["adapter", "adapters", "gateway", "publicBaseUrl", "knownPermissions"]);
 
 function listTsSourceFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];

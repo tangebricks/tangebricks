@@ -52,8 +52,9 @@ export class RbacService {
         await this.db.batch(permStmts);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { ok: false, error: `Failed to create role: ${msg}`, code: 500 };
+      // The DB error text stays in the log; the response body never carries it.
+      console.error("rbac-policy: createRole failed", err);
+      return { ok: false, error: "Failed to create role", code: 500 };
     }
 
     return {
@@ -184,6 +185,47 @@ export class RbacService {
   }
 
   /**
+   * The permissions of one role in a workspace, or null when the role does not exist in that workspace.
+   */
+  async getRolePermissions(workspaceId: string, roleId: string): Promise<Permission[] | null> {
+    const role = await scoped(this.db, workspaceId).first("rbac_roles", "id = ?", [roleId]);
+    if (!role) return null;
+    const rows = (await this.db.prepare(
+      "SELECT resource, action FROM rbac_permissions WHERE role_id = ?"
+    ).bind(roleId).all<Permission>()).results;
+    return rows.map((r) => ({ resource: r.resource.toLowerCase(), action: r.action.toLowerCase() }));
+  }
+
+  /**
+   * The permissions in `permissions` the user does not hold in the workspace, as "resource:action" strings (empty when
+   * the user holds them all). "Holds" means `can` is true for that literal pair, so a wildcard such as `*:read` is
+   * held only through `*:read` or `*:*`, and `docs:*` only through `docs:*` or `*:*`. The workspace-owner shortcut is
+   * the caller's concern, as in `requirePermission`.
+   */
+  async missingGrants(workspaceId: string, userId: string, permissions: Permission[]): Promise<string[]> {
+    if (permissions.length === 0) return [];
+    const held = await this.getUserPermissions(workspaceId, userId);
+    const missing: string[] = [];
+    for (const p of permissions) {
+      const resource = p.resource.toLowerCase().trim();
+      const action = p.action.toLowerCase().trim();
+      const key = `${resource}:${action}`;
+      if (!RbacService.covers(held, resource, action) && !missing.includes(key)) missing.push(key);
+    }
+    return missing;
+  }
+
+  /** Whether a set of held "resource:action" permissions covers one (already normalised) resource and action. */
+  private static covers(permissions: Set<string>, resource: string, action: string): boolean {
+    return (
+      permissions.has("*:*") ||
+      permissions.has(`${resource}:*`) ||
+      permissions.has(`*:${action}`) ||
+      permissions.has(`${resource}:${action}`)
+    );
+  }
+
+  /**
    * Dynamic authorization check: checks whether a user has permission to perform an action on a resource.
    * Supports:
    * - Exact match: "documents:read"
@@ -195,12 +237,6 @@ export class RbacService {
     const resource = resourceRaw.toLowerCase().trim();
     const action = actionRaw.toLowerCase().trim();
     const permissions = await this.getUserPermissions(workspaceId, userId);
-
-    if (permissions.has("*:*")) return true;
-    if (permissions.has(`${resource}:*`)) return true;
-    if (permissions.has(`*:${action}`)) return true;
-    if (permissions.has(`${resource}:${action}`)) return true;
-
-    return false;
+    return RbacService.covers(permissions, resource, action);
   }
 }
