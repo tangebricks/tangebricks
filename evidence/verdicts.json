@@ -1,5 +1,5 @@
 {
-  "inputsHash": "1d33a6c4a5ab7a3f355a72a4a74fb017d4bcf8cabaed739d23469ae1f6ca963f",
+  "inputsHash": "deadbeef-throwaway",
   "generatedBy": "node scripts/verify.ts",
   "verdicts": {
     "H0": {
