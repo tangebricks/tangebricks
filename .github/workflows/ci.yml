@@ -17,13 +17,58 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  cp0:
+  # The gate is split into four parallel jobs. Together they run every check the old single
+  # sequential `cp0` job ran (ci:cp4 -> cp0..cp3, then cp5..cp10 and mcp:budget), each exactly once:
+  #   vitest (3 shards) - the full `vitest run` (workers, dom and node projects). It covers every
+  #                       `vitest run <subset>` in ci:cp1..cp10 and the @poc/studio-web unit tests.
+  #   e2e               - `pnpm ci:e2e`: the full Playwright suite (covers studio:a11y, the cp5..cp7
+  #                       test:e2e subsets and sandbox-to-byoc), then studio:scorecard, which reads
+  #                       its JSON report.
+  #   gates             - `pnpm ci:gates`: lints, typecheck, catalog, evidence, story and MCP gates.
+  #                       Then the live-canary fetch (continue-on-error) and `pnpm ci:tiers`
+  #                       (catalog:tiers), so evidence:check sees only committed evidence.
+  #   proof             - `pnpm ci:proof`: boot, proof, restore drill and the studio/beta/sandbox gates.
+  # `cp0` aggregates them. Branch protection requires a check named `cp0`; this job fails unless
+  # every job above succeeded (cancelled or skipped counts as failure), so the required check
+  # keeps blocking merges without a branch-protection change.
+
+  vitest:
+    name: vitest (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    strategy:
+      # Every shard runs to the end even if another fails; any failed shard fails the job.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm 10.18.0
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.0
+
+      - name: Setup Node.js >= 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Run vitest shard
+        run: pnpm vitest run --shard=${{ matrix.shard }}/3
+
+  e2e:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          # Evidence provenance cites earlier commits; evidence:check needs them present.
           fetch-depth: 0
 
       - name: Setup pnpm 10.18.0
@@ -43,35 +88,84 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run CP4 gate
-        run: pnpm ci:cp4
+      - name: Run full Playwright suite, then the parity scorecard
+        run: pnpm ci:e2e
 
-      - name: Run CP5 gate
-        run: pnpm ci:cp5
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          # Evidence provenance cites earlier commits; evidence:check and stories:gate need them present.
+          fetch-depth: 0
 
-      - name: Run CP6 gate
-        run: pnpm ci:cp6
+      - name: Setup pnpm 10.18.0
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.0
 
-      - name: Run CP7 gate
-        run: pnpm ci:cp7
+      - name: Setup Node.js >= 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
 
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      # Runs first so evidence:check validates only the committed evidence/ files.
+      - name: Run lint, typecheck, catalog, evidence, story and MCP gates
+        run: pnpm ci:gates
+
+      # Must precede catalog:tiers (ci:tiers), which reads evidence/live-canary/.
       - name: Fetch live canary evidence
         run: |
           git fetch origin evidence/live-canary:evidence/live-canary 2>/dev/null || true
           git checkout evidence/live-canary -- evidence/live-canary/ 2>/dev/null || true
         continue-on-error: true
 
-      - name: Run CP10 gate
-        run: pnpm ci:cp10
+      - name: Run catalog tiers gate
+        run: pnpm ci:tiers
 
-      - name: Run CP8 gate
-        run: pnpm ci:cp8
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Run CP9 gate
-        run: pnpm ci:cp9
+      - name: Setup pnpm 10.18.0
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.0
 
-      - name: Run MCP token budget gate
-        run: pnpm mcp:budget
+      - name: Setup Node.js >= 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Run boot, proof, restore-drill and studio/beta/sandbox gates
+        run: pnpm ci:proof
+
+  # The required check. Fails closed: passes only when every parallel job ended in success.
+  # A matrix job's result is success only when all of its shards succeeded.
+  cp0:
+    needs: [vitest, e2e, gates, proof]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every parallel job to succeed
+        run: |
+          for r in "${{ needs.vitest.result }}" "${{ needs.e2e.result }}" "${{ needs.gates.result }}" "${{ needs.proof.result }}"; do
+            [ "$r" = "success" ] || { echo "a required job ended: $r"; exit 1; }
+          done
+          echo "all parallel jobs succeeded"
 
   changes:
     name: Detect importer changes
