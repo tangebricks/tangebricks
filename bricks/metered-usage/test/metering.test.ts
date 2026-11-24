@@ -187,6 +187,69 @@ describe("Metering Service Core Logic", () => {
   });
 });
 
+describe("Metering correctness (story 1.9)", () => {
+  it("refuses negative and non-finite values and writes nothing", async () => {
+    const service = new MeteringService(db);
+    await service.defineMeter("credits_used", "Credits used", "sum");
+    for (const bad of [-1, -0.5, Number.NaN, Number.POSITIVE_INFINITY, 1e13, null as unknown as number]) {
+      const res = await service.ingestEvent({ workspaceId: WS_ALPHA, meterKey: "credits_used", value: bad });
+      expect(res.ok).toBe(false);
+      expect(res.error).toMatch(/INVALID_VALUE/);
+    }
+    const usage = await service.getUsage(WS_ALPHA, "credits_used");
+    expect(usage.total_value).toBe(0);
+    expect(usage.event_count).toBe(0);
+    const events = await db.prepare("SELECT count(*) AS n FROM meter_events").first<{ n: number }>();
+    expect(events?.n).toBe(0);
+  });
+
+  it("totals exactly under 50 concurrent events (sum and count)", async () => {
+    const service = new MeteringService(db);
+    await service.defineMeter("tokens", "Tokens", "sum");
+    await service.defineMeter("calls", "Calls", "count");
+    const at = new Date().toISOString();
+    const window = getCurrentWindow(new Date(at));
+    await Promise.all([
+      ...Array.from({ length: 50 }, (_, i) => service.ingestEvent({ workspaceId: WS_ALPHA, meterKey: "tokens", value: (i % 5) + 1, timestamp: at })),
+      ...Array.from({ length: 50 }, () => service.ingestEvent({ workspaceId: WS_ALPHA, meterKey: "calls", timestamp: at })),
+    ]);
+    const tokens = await service.getUsage(WS_ALPHA, "tokens", window);
+    const calls = await service.getUsage(WS_ALPHA, "calls", window);
+    expect(tokens.event_count).toBe(50);
+    expect(tokens.total_value).toBe(150); // ten rounds of 1+2+3+4+5
+    expect(calls.event_count).toBe(50);
+    expect(calls.total_value).toBe(50);
+  });
+
+  it("a concurrent duplicate idempotency key counts once", async () => {
+    const service = new MeteringService(db);
+    await service.defineMeter("jobs", "Jobs", "sum");
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => service.ingestEvent({ workspaceId: WS_ALPHA, meterKey: "jobs", value: 7, idempotencyKey: "job-1" })),
+    );
+    expect(results.every((r) => r.ok)).toBe(true);
+    expect(results.filter((r) => r.duplicate === true)).toHaveLength(9);
+    const usage = await service.getUsage(WS_ALPHA, "jobs");
+    expect(usage.event_count).toBe(1);
+    expect(usage.total_value).toBe(7);
+  });
+
+  it("the HTTP route refuses a negative value with 400", async () => {
+    const service = new MeteringService(db);
+    await service.defineMeter("credits_used", "Credits used", "sum");
+    const app = new Hono<MeterEnv>();
+    app.use("/api/*", stubWorkspaceContext);
+    app.route("/api", createMeteringRoutes());
+    const res = await app.request("/api/events", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-workspace-id": WS_ALPHA },
+      body: JSON.stringify({ meterKey: "credits_used", value: -5 }),
+    }, { DB: db });
+    expect(res.status).toBe(400);
+    expect((await service.getUsage(WS_ALPHA, "credits_used")).total_value).toBe(0);
+  });
+});
+
 describe("Metering HTTP API & Route Middleware", () => {
   it("defines meters, ingests events, and queries usage via HTTP", async () => {
     const app = new Hono<MeterEnv>();

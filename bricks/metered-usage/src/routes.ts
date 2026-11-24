@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { platformOperatorRefusal } from "@poc/sdk";
-import { MeteringService, type MeterAggregation } from "./metering.ts";
+import { MAX_METER_EVENT_VALUE, MeteringService, type MeterAggregation } from "./metering.ts";
 import { meteringMiddleware, type MeterEnv } from "./middleware.ts";
 
 const DefineMeterSchema = z.object({
@@ -12,7 +12,8 @@ const DefineMeterSchema = z.object({
 
 const IngestEventSchema = z.object({
   meterKey: z.string().min(1).max(64),
-  value: z.number().default(1.0),
+  // Story 1.9: usage only goes up; negative or non-finite values are refused.
+  value: z.number().finite().nonnegative().max(MAX_METER_EVENT_VALUE).default(1.0),
   idempotencyKey: z.string().max(128).optional(),
   timestamp: z.string().datetime().optional(),
   metadata: z.record(z.unknown()).optional(),

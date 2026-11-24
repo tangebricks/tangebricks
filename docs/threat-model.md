@@ -33,6 +33,7 @@
 | 1.2 | One real deploy path for Studio and MCP |
 | 1.4 | Workspace-keyed telemetry and logs |
 | 1.5 | Proposals by default; approval for destructive tools |
+| 1.9 | Metering correctness: no negative values, atomic aggregation (filed from PROPOSED-2) |
 
 `PROPOSED-n` ids are new tickets defined in [Proposed tickets](#proposed-tickets). They are not filed yet.
 
@@ -105,7 +106,7 @@ Every audit risk appears once.
 | 13 | High | OAuth server issues codes for any user named in the body | 0.6 (+ quarantined (0.11): oauth-server) |
 | 14 | High | Plan prices writable unauthenticated; plan switch without payment | 0.6, 0.9 |
 | 15 | High | Cross-tenant fuzz never tries header A + query B | 0.5 |
-| 16 | Medium | Metering accepts negative values, races on aggregation, global idempotency | 0.7 (keys only); PROPOSED-2 (negative values, aggregation race) |
+| 16 | Medium | Metering accepts negative values, races on aggregation, global idempotency | 0.7 (keys only); 1.9 (negative values, aggregation race) |
 | 17 | Medium | Non-secure cookies, unhashed session tokens, no CSRF/CORS policy | 0.14 |
 | 18 | Medium | No rate limiting on login, signup, wallet or webhooks | 0.21 |
 | 19 | Medium | JWTs without `exp` accepted | 0.14 |
@@ -204,7 +205,7 @@ These are not filed. A human should file each one; the PR for this story lists t
 | Id | Title | Covers | Suggested phase |
 |---|---|---|---|
 | PROPOSED-1 | Rate limiting on auth, money and fan-out paths (wire edge-traffic-armor) | Audit 18; B16 | Phase 0 (filed as 0.21) |
-| PROPOSED-2 | Metering correctness: reject negative values, atomic aggregation | Audit 16 (negative values, aggregation race) | Phase 1 |
+| PROPOSED-2 | Metering correctness: reject negative values, atomic aggregation | Audit 16 (negative values, aggregation race) | Phase 1 (filed as 1.9) |
 | PROPOSED-3 | Workspace delete cascade and suspension enforcement (mount `requireNotSuspended` on every brick route, including `/api/ai`) | Audit 22; A1 (suspension part) | Phase 1 |
 | PROPOSED-4 | API-key authentication, or remove key issuance | Audit 24 | Phase 1 |
 | PROPOSED-5 | rbac-policy: block grant escalation, restrict permission strings, member check, no raw DB errors | B4, B5, B6, B7 | Phase 0 (filed as 0.19) |
