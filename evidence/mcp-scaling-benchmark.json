@@ -1,6 +1,6 @@
 {
   "tokenizer": "gpt-tokenizer 4.1.0, o200k_base",
-  "timestamp": "2026-11-24T16:07:48.528Z",
+  "timestamp": "2026-11-24T16:24:24.830Z",
   "tenBrickSessionRatioPercent": 3.6,
   "tenBrickSession": {
     "tier": "Tier 3: 10-Brick App (10 Bricks, 2 Tables)",
@@ -101,8 +101,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-24T16:07:44.615Z",
-    "gitSha": "918a9a9a9f3c43ee0e1a9b88d0b4ae6126ea4c42",
+    "generatedAt": "2026-11-24T16:24:21.190Z",
+    "gitSha": "84d01beb4b45d9e111933d5ea22ef9752229c3ea",
     "gitDirty": false,
     "generator": "scripts/benchmark-mcp-scale.ts",
     "inputKind": "measured"
