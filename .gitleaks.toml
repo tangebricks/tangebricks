@@ -1,0 +1,17 @@
+# gitleaks configuration: the default rules, minus places that hold fake secrets by design.
+# Test files, end-to-end specs and quarantined proof-of-concept evidence use canary and
+# fixture values (planted keys, signed webhook vectors) to prove redaction and verification.
+# Source code, configuration and live evidence stay fully scanned.
+title = "tangebricks gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake secrets in tests, fixtures and quarantined evidence"
+paths = [
+  '''(^|/)test/''',
+  '''(^|/)e2e/''',
+  '''\.test\.tsx?$''',
+  '''^evidence/quarantine/''',
+]

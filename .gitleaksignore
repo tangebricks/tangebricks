@@ -1,0 +1,3 @@
+# Reviewed false positives in published history (gitleaks fingerprints).
+# A row id, not a secret: apps/studio-api/src/auth.ts tokenId "mcp_cp1_default_owner" in the import commit.
+4c59c1a81d44d720ab5d1ffa0cb1656756dc17a4:apps/studio-api/src/auth.ts:generic-api-key:2264

@@ -89,7 +89,6 @@
     "@cf-wasm/photon": "0.4.0",
     "@cf-wasm/png": "0.4.0",
     "@cf-wasm/resvg": "0.4.0",
-    "@cloudflare/ai-utils": "1.0.1",
     "@cloudflare/sandbox": "0.12.9",
     "@cloudflare/vitest-plugin": "1.8.4",
     "@gltf-transform/core": "4.5.1",

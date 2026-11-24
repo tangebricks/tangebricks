@@ -2261,7 +2261,7 @@ export async function ensureDefaultTestAuth(env: StudioApiEnv): Promise<{
 
   const userId = "user_cp1_default_owner";
   const orgId = "org_default";
-  const tokenId = "mcp_cp1_default_owner";
+  const tokenId = "mcp_cp1_default_owner"; // gitleaks:allow (a row id, not a secret)
   const tokenHash = await sha256Hex(DEFAULT_TEST_SESSION_TOKEN);
   const nowIso = new Date().toISOString();
 

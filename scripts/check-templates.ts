@@ -3,7 +3,9 @@
  *
  * Verifies all 4 starter templates (`ai-credits-saas`, `b2b-workspace-app`,
  * `marketplace`, `stripe-discord-ops`):
- * 1. Every enabled brick has `ui.maturity === "production"` (Risk K1).
+ * 1. Every enabled brick is "production" or "beta" maturity, never "experimental" (which includes every
+ *    quarantined brick). Owner decision 2026-11-24, replacing the production-only rule (Risk K1) after
+ *    story 0.11 re-tiered bricks honestly; Studio shows each brick's tier badge in the template.
  * 2. Every template has pre-populated bricks, entities, and workflows with layout coordinates.
  * 3. Every template passes `computeReadiness` (with `stripe-discord-ops` surfacing
  *    only the expected unbound `sec_discord_bot` connection in `needs[]`, and becoming
@@ -155,15 +157,15 @@ export async function verifyStarterTemplates(rootDir = ROOT): Promise<{
       }
     }
 
-    // Verify all enabled bricks are production maturity (Risk K1)
+    // Verify every enabled brick is production or beta maturity: never experimental or quarantined.
     let allProductionMaturity = true;
     for (const brick of state.bricks) {
       const catEntry = catalog.bricks[brick.id];
       const maturity = catEntry?.manifest.ui?.maturity;
-      if (maturity !== "production") {
+      if (maturity !== "production" && maturity !== "beta") {
         allProductionMaturity = false;
         errors.push(
-          `${id}: brick "${brick.id}" has maturity "${maturity ?? "unknown"}" (expected "production")`,
+          `${id}: brick "${brick.id}" has maturity "${maturity ?? "unknown"}" (expected "production" or "beta")`,
         );
       }
     }
@@ -311,7 +313,7 @@ async function main(): Promise<void> {
         String(row.bricksCount).padStart(6),
         String(row.entitiesCount).padStart(8),
         String(row.workflowsCount).padStart(9),
-        (row.allProductionMaturity ? "production" : "FAIL").padEnd(12),
+        (row.allProductionMaturity ? "beta+" : "FAIL").padEnd(12),
         (row.readinessOk ? "PASS" : "FAIL").padEnd(10),
         row.buildHash.slice(0, 12).padEnd(14),
         (skipWorkerd ? "SKIP" : workerdPassed ? "PASS" : "FAIL").padEnd(8),

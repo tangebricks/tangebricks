@@ -14,7 +14,9 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
       "content-type": "application/json",
     };
 
-    // 1. Create workflow with 2 nodes: step_trigger -> step_debit (requires amount <= balance; minOrderAmount = 50 so amount=10 fails initially)
+    // 1. Create workflow with 2 nodes: step_trigger -> step_divide (core.math: a / b, configured with b = 0 so it fails).
+    // Story 0.9: Studio runs no brick action without a real executor (credit-wallet.debit fails NOT_CONFIGURED whatever
+    // its config), so the step that fails on a bad config and is fixed by a config change is the real core.math node.
     const opsRes = await request.post(`/api/projects/${project}/ops`, {
       headers: authHeaders,
       data: {
@@ -24,12 +26,6 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
             opId: "op-mw",
             type: "enable_brick",
             brickId: "multi-workspace",
-          },
-          {
-            opId: "op-cw",
-            type: "enable_brick",
-            brickId: "credit-wallet",
-            config: { creditsPerUnit: 1, minOrderAmount: 1 },
           },
           {
             opId: "op-wf",
@@ -46,10 +42,10 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
                   data: { method: "post" },
                 },
                 {
-                  id: "step_debit",
-                  type: "credit-wallet.debit",
-                  label: "Debit Wallet",
-                  data: { amount: 500 },
+                  id: "step_divide",
+                  type: "core.math",
+                  label: "Split Order Amount",
+                  data: { operation: "div", b: 0 },
                 },
               ],
               edges: [
@@ -57,7 +53,7 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
                   id: "e1",
                   source: "step_trigger",
                   sourceHandle: "out",
-                  target: "step_debit",
+                  target: "step_divide",
                   targetHandle: "in",
                 },
               ],
@@ -68,7 +64,7 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
     });
     expect(opsRes.ok()).toBe(true);
 
-    // 2. Execute run 1 where balance=100 and amount=500 -> step_trigger succeeds, step_debit fails with insufficient balance
+    // 2. Execute run 1 with a = 500 -> step_trigger succeeds, step_divide fails with division by zero
     const failRunRes = await request.post(
       `/api/projects/${project}/workflows/wf_pin_e2e/runs`,
       {
@@ -78,18 +74,18 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
           triggerType: "manual",
           triggerPayload: {
             orderId: "ord_e2e_99",
-            amount: 500,
-            balance: 100,
+            a: 500,
             workspaceId: "ws_e2e",
           },
         },
       },
     );
     expect(failRunRes.ok()).toBe(true);
-    const failRunBody = (await failRunRes.json()) as { runStatus: string };
+    const failRunBody = (await failRunRes.json()) as { runStatus: string; failed: Record<string, string> };
     expect(failRunBody.runStatus).toBe("failed");
+    expect(failRunBody.failed.step_divide).toContain("division by zero");
 
-    // 3. Fix step_debit config in r2 so amount = 40 (which is <= balance 100 from step_trigger's recorded output!)
+    // 3. Fix step_divide config in r2 so b = 4 (a = 500 still comes from step_trigger's recorded output)
     const fixOpsRes = await request.post(`/api/projects/${project}/ops`, {
       headers: authHeaders,
       data: {
@@ -97,12 +93,12 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
         author: { type: "human", id: "alice" },
         ops: [
           {
-            opId: "op-fix-debit",
+            opId: "op-fix-divide",
             type: "update_node",
             workflowId: "wf_pin_e2e",
-            nodeId: "step_debit",
-            label: "Debit Wallet",
-            data: { amount: 40 },
+            nodeId: "step_divide",
+            label: "Split Order Amount",
+            data: { operation: "div", b: 4 },
           },
         ],
       },
@@ -120,7 +116,7 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
     await page.getByTestId("nav-tab-workflows").click();
     await expect(page.getByTestId("view-workflows")).toBeVisible();
 
-    // 5. Open Run History drawer, replay `run_e2e_failed_1`, pin `step_trigger`'s output, and re-run from `step_debit`
+    // 5. Open Run History drawer, replay `run_e2e_failed_1`, pin `step_trigger`'s output, and re-run from `step_divide`
     await page.getByTestId("toggle-run-history-drawer").click();
     await expect(page.getByTestId("run-row-run_e2e_failed_1")).toBeVisible();
     await page.getByTestId("replay-run-button-run_e2e_failed_1").click();
@@ -144,8 +140,8 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
     expect(Number.parseFloat(pinnedBadgeStyles.borderRadius)).toBeGreaterThan(0);
     expect(pinnedBadgeStyles.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
 
-    // Click `step_debit` and click `Re-run from this step`
-    await page.getByTestId("canvas-node-step_debit").click();
+    // Click `step_divide` and click `Re-run from this step`
+    await page.getByTestId("canvas-node-step_divide").click();
     await page.getByTestId("rerun-from-node-button").click();
 
     // 6. Verify `Resolved by retry` badge + computed styles on `run_e2e_failed_1` in Run History drawer

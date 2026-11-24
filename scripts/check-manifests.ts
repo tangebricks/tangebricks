@@ -36,9 +36,9 @@ export function loadTierEvidenceMap(rootDir = ROOT): Map<string, any> {
   const map = new Map<string, any>();
   const evidenceDir = process.env.POC_EVIDENCE_DIR
     ? resolve(process.env.POC_EVIDENCE_DIR)
-    : existsSync(join(rootDir, ".evidence-run", "tier-evidence.json"))
-      ? join(rootDir, ".evidence-run")
-      : join(rootDir, "evidence");
+    : // Committed evidence unless a run directory is named explicitly (evidence:refresh sets POC_EVIDENCE_DIR).
+      // A leftover .evidence-run/ from an earlier step is never picked up implicitly.
+      join(rootDir, "evidence");
   const p = process.env.POC_TIER_EVIDENCE_PATH
     ? resolve(process.env.POC_TIER_EVIDENCE_PATH)
     : join(evidenceDir, "tier-evidence.json");

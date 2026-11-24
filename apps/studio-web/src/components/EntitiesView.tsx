@@ -1366,6 +1366,10 @@ export function EntitiesView() {
                       </div>
                       <pre
                         data-testid="entity-crud-request-schema"
+                        // Scrollable code block: focusable so keyboard users can scroll it (axe scrollable-region-focusable).
+                        tabIndex={0}
+                        role="region"
+                        aria-label="POST / PATCH body schema"
                         className="p-2.5 rounded bg-surface-base border border-border font-mono text-[11px] text-text-secondary overflow-x-auto"
                       >
                         {JSON.stringify(crudPreview.requestBodySchema, null, 2)}
@@ -1377,6 +1381,10 @@ export function EntitiesView() {
                       </div>
                       <pre
                         data-testid="entity-crud-response-schema"
+                        // Scrollable code block: focusable so keyboard users can scroll it (axe scrollable-region-focusable).
+                        tabIndex={0}
+                        role="region"
+                        aria-label="Response item schema"
                         className="p-2.5 rounded bg-surface-base border border-border font-mono text-[11px] text-text-secondary overflow-x-auto"
                       >
                         {JSON.stringify(crudPreview.responseItemSchema, null, 2)}

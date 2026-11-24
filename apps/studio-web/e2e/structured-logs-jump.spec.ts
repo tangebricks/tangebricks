@@ -4,7 +4,10 @@ test.describe("Story 6.3 — Structured Logs & Errors Correlated to Runs & Nodes
   test("renders structured logs with distinct level badges, scrubs secrets to [REDACTED], filters by facets, persists filter/view state across F5 reload, and jumps from a log entry's correlation link to CP4 Run Replay selecting the failed node", async ({
     page,
   }) => {
-    const CANARY_SECRET = "sk_live_e2e_canary_secret_778899";
+    // A test-mode key: acme-saas has an active hosted sandbox preview (the data browser specs deploy one), and a hosted
+    // sandbox refuses to hold live payment credentials (403 SANDBOX_LIVE_PAYMENTS_BLOCKED). The scrubbing under test is
+    // the same for any sealed value.
+    const CANARY_SECRET = "sk_test_e2e_canary_secret_778899";
 
     await page.goto("/");
 

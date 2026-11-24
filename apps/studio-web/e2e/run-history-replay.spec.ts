@@ -14,7 +14,10 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
       "content-type": "application/json",
     };
 
-    // 1. Apply r1 blueprint with 3 nodes: step_trigger -> step_audit_r1 -> step_debit
+    // 1. Apply r1 blueprint with 3 nodes: step_trigger -> step_audit_r1 -> step_divide.
+    // Story 0.9: Studio runs no brick action without a real executor (credit-wallet.debit fails NOT_CONFIGURED whatever
+    // the input), so the step whose outcome depends on the payload is the real core.math node: it divides a by b and
+    // fails with "division by zero" when b is 0.
     const opsR1Res = await request.post(`/api/projects/${project}/ops`, {
       headers: authHeaders,
       data: {
@@ -24,12 +27,6 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
             opId: "op-r1-mw",
             type: "enable_brick",
             brickId: "multi-workspace",
-          },
-          {
-            opId: "op-r1-cw",
-            type: "enable_brick",
-            brickId: "credit-wallet",
-            config: { creditsPerUnit: 1, minOrderAmount: 1 },
           },
           {
             opId: "op-r1-wf",
@@ -52,10 +49,10 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
                   data: {},
                 },
                 {
-                  id: "step_debit",
-                  type: "credit-wallet.debit",
-                  label: "Debit Wallet",
-                  data: { amount: 30 },
+                  id: "step_divide",
+                  type: "core.math",
+                  label: "Split Amount",
+                  data: { operation: "div" },
                 },
               ],
               edges: [
@@ -70,7 +67,7 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
                   id: "e2",
                   source: "step_audit_r1",
                   sourceHandle: "out",
-                  target: "step_debit",
+                  target: "step_divide",
                   targetHandle: "in",
                 },
               ],
@@ -89,11 +86,12 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
         data: {
           runId: "run_e2e_r1",
           triggerType: "manual",
-          triggerPayload: { amount: 30, balance: 200, workspaceId: "ws_e2e" },
+          triggerPayload: { amount: 30, a: 300, b: 10, workspaceId: "ws_e2e" },
         },
       },
     );
     expect(runR1Res.ok()).toBe(true);
+    expect(((await runR1Res.json()) as { runStatus: string }).runStatus).toBe("succeeded");
 
     const runR1FailRes = await request.post(
       `/api/projects/${project}/workflows/wf_replay_e2e/runs`,
@@ -102,11 +100,14 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
         data: {
           runId: "run_e2e_r1_fail",
           triggerType: "webhook",
-          triggerPayload: { amount: 30, balance: 5, workspaceId: "ws_e2e" },
+          triggerPayload: { amount: 30, a: 300, b: 0, workspaceId: "ws_e2e" },
         },
       },
     );
     expect(runR1FailRes.ok()).toBe(true);
+    const runR1FailBody = (await runR1FailRes.json()) as { runStatus: string; failed: Record<string, string> };
+    expect(runR1FailBody.runStatus).toBe("failed");
+    expect(runR1FailBody.failed.step_divide).toContain("division by zero");
 
     // 3. Mutate blueprint to r2 by removing `step_audit_r1`
     const opsR2Res = await request.post(`/api/projects/${project}/ops`, {
@@ -130,7 +131,7 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
                 id: "e_r2",
                 source: "step_trigger",
                 sourceHandle: "out",
-                target: "step_debit",
+                target: "step_divide",
                 targetHandle: "in",
               },
             ],

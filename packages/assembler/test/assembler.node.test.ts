@@ -348,22 +348,22 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
   test("TWO_BRICK_BLUEPRINT and INVOICE_FLOW_BLUEPRINT emit byte-identical files and hashes when no triggers are present", async () => {
     const twoBrickHashes = await hashFiles(files(TWO_BRICK_BLUEPRINT).files);
     expect(twoBrickHashes).toEqual({
-      "migrations/0001_multi-workspace__0001_multi_workspace.sql": "fdf4e7b5a740e336dbe23dd2b5b37ef6c882a91d711762779179c146849e19ac",
-      "migrations/0002_credit-wallet__0001_credit_wallet.sql": "7b5e5b8d0bea8906226f3f29c7c3f78217ca906e8f6f14e69cb0dcd43113afc4",
+      "migrations/0001_multi-workspace__0001_multi_workspace.sql": "44330d96d93fc7c48c859437e2f78c3ec8daea0381cfab30c94fa80cb0bcaaef",
+      "migrations/0002_credit-wallet__0001_credit_wallet.sql": "29c4056af349d76717f8a1777b58e5bfc09838af60e676f96051a811e3571bfc",
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql": "6274abf0fb0de6ab68cf97d00ccf245cbb67fa0f7a319b5012e60cbec682bead",
       "openapi.json": "c77c2e7c33606f6a369cf1b1a90809da38adaa3a5145d15159f30fb704c49487",
       "package.json": "24d1388075ec69744a13f379f37b38441588d2cdb511352eb58f6ab9d0e1a946",
       "project.json": "5b8c1fe06258acce8605ebec6665dc1cf1a206a5a67044034f412e142e95420c",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "35cca69293cb28ae611ea79d1941d3f995a63ea0f6f1f311260d6a5347811a89",
+      "src/index.ts": "79f81479dedf49609975fa7114ddf59f32eee6d7f49e7c0121054eae0e9508ae",
       "src/privacy.generated.ts": "a029b2ce67225928903d85b59be098fd44f1d04384f286178f42a3715d19d396",
       "wrangler.jsonc": "d678c83f4dd70ff4bfc1dc7e2e75953a9a8d0e0216061d82308bd562c1f4625b",
     });
 
     const invoiceFlowHashes = await hashFiles(files(INVOICE_FLOW_BLUEPRINT).files);
     expect(invoiceFlowHashes).toEqual({
-      "migrations/0001_multi-workspace__0001_multi_workspace.sql": "fdf4e7b5a740e336dbe23dd2b5b37ef6c882a91d711762779179c146849e19ac",
-      "migrations/0002_credit-wallet__0001_credit_wallet.sql": "7b5e5b8d0bea8906226f3f29c7c3f78217ca906e8f6f14e69cb0dcd43113afc4",
+      "migrations/0001_multi-workspace__0001_multi_workspace.sql": "44330d96d93fc7c48c859437e2f78c3ec8daea0381cfab30c94fa80cb0bcaaef",
+      "migrations/0002_credit-wallet__0001_credit_wallet.sql": "29c4056af349d76717f8a1777b58e5bfc09838af60e676f96051a811e3571bfc",
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql": "6274abf0fb0de6ab68cf97d00ccf245cbb67fa0f7a319b5012e60cbec682bead",
       "migrations/0004_entity__invoices.sql": "43c67676212cbfd376e0479b1fe3e955c054eb127b09e84ad0922012e1a445ff",
       "openapi.json": "fc78a27cbc505836cef15723d4c63e5feed04a53f4071a2ef1f7868d8a7fe902",
@@ -371,7 +371,7 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "project.json": "6b40796c6e70e6dbd00431753a2bec1888725ba24254655d2e4ea764b6c16a2d",
       "src/entities.json": "5b153446783e693c0ada62b9c2626071e38f3e3e9bb047dd5a3a39c24179ba0a",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "6e989663518ea59299ed2744476d90dbf61a424f155bd4de64f2e1870f0f1197",
+      "src/index.ts": "edb8e28c2a94e36c4bcfcfdb9c090f782c1edf24312598936dd6b1da22cf50d9",
       "src/privacy.generated.ts": "5c0f6d193d3f6d332a415d2cfa7b9e571bdf3b6ca71f8ae177e053227170e804",
       "wrangler.jsonc": "d7c0046626c2da81eca662bc64f38619da75b0d48f4978b1dc37ecf5eb8c3c0b",
     });

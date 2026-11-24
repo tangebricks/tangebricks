@@ -8,3 +8,9 @@ packages:
 onlyBuiltDependencies:
   - esbuild
   - workerd
+
+# Security floors for transitive dependencies flagged by OSV-Scanner (2026-11-24):
+# undici < 7.30.1 (via miniflare) and follow-redirects < 1.16.2 (via axios).
+overrides:
+  "undici@>=7.0.0 <7.30.1": "7.30.1"
+  "follow-redirects@<1.16.2": "1.16.2"

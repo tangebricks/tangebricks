@@ -12,7 +12,9 @@ test.describe("Test Workflow Trigger & Live Canvas Node Highlighting (Real Backe
 
     await expect(page.getByTestId("studio-shell")).toBeVisible();
 
-    // Seed a branching 4-node workflow (wf-branching-e2e) on acme-saas via the real Studio API
+    // Seed a branching 4-node workflow (wf-branching-e2e) on acme-saas via the real Studio API.
+    // Story 0.9: Studio runs no brick action without a real executor (credit-wallet.debit fails NOT_CONFIGURED whatever
+    // the payload), so the VIP branch's step is the real core.math node: a / b, failing with "division by zero" at b = 0.
     await page.evaluate(async () => {
       await fetch("/api/projects/acme-saas/ops", {
         method: "POST",
@@ -47,10 +49,10 @@ test.describe("Test Workflow Trigger & Live Canvas Node Highlighting (Real Backe
                     data: { field: "tier", operator: "eq", value: "vip" },
                   },
                   {
-                    id: "node_debit_true",
-                    type: "credit-wallet.debit",
-                    label: "Debit VIP Wallet",
-                    data: { amount: 20 },
+                    id: "node_split_true",
+                    type: "core.math",
+                    label: "Split VIP Amount",
+                    data: { operation: "div" },
                   },
                   {
                     id: "node_notify_false",
@@ -70,7 +72,7 @@ test.describe("Test Workflow Trigger & Live Canvas Node Highlighting (Real Backe
                   {
                     id: "e_if_true",
                     source: "node_if",
-                    target: "node_debit_true",
+                    target: "node_split_true",
                     sourceHandle: "true",
                     targetHandle: "in",
                   },
@@ -94,14 +96,15 @@ test.describe("Test Workflow Trigger & Live Canvas Node Highlighting (Real Backe
     await expect(page.getByTestId("view-workflows")).toBeVisible();
     await page.getByTestId("workflow-selector-card-wf-branching-e2e").click();
 
-    // Open Test Workflow Payload drawer and supply a VIP payload with sufficient balance
+    // Open Test Workflow Payload drawer and supply a VIP payload with a non-zero divisor
     await page.getByTestId("toggle-test-workflow-payload-button").click();
     const payloadInput = page.getByTestId("test-workflow-payload-input");
     await payloadInput.fill(
       JSON.stringify(
         {
           tier: "vip",
-          balance: 120,
+          a: 120,
+          b: 4,
           workspaceId: "ws_e2e_live",
         },
         null,
@@ -124,18 +127,18 @@ test.describe("Test Workflow Trigger & Live Canvas Node Highlighting (Real Backe
       { timeout: 2000 },
     );
     await expect(
-      page.getByTestId("node-telemetry-badge-node_debit_true"),
+      page.getByTestId("node-telemetry-badge-node_split_true"),
     ).toHaveAttribute("data-status", "succeeded", { timeout: 2000 });
     await expect(
-      page.getByTestId("node-telemetry-badge-node_debit_true"),
+      page.getByTestId("node-telemetry-badge-node_split_true"),
     ).toContainText("✓");
     await expect(
-      page.getByTestId("node-telemetry-badge-node_debit_true"),
+      page.getByTestId("node-telemetry-badge-node_split_true"),
     ).toContainText("Succeeded");
 
     // Verify compiled Tailwind styles on the succeeded badge via getComputedStyle
     const badgeStyles = await page
-      .getByTestId("node-telemetry-badge-node_debit_true")
+      .getByTestId("node-telemetry-badge-node_split_true")
       .evaluate((el) => {
         const s = window.getComputedStyle(el);
         return {
@@ -166,12 +169,13 @@ test.describe("Test Workflow Trigger & Live Canvas Node Highlighting (Real Backe
     );
     await expect(page.getByTestId("edge-item-count-e_if_false")).toHaveCount(0);
 
-    // Trigger a failing branch run (balance: 3 < amount: 20) and assert Failed badge within 2 seconds
+    // Trigger a failing branch run (b: 0, division by zero) and assert Failed badge within 2 seconds
     await payloadInput.fill(
       JSON.stringify(
         {
           tier: "vip",
-          balance: 3,
+          a: 120,
+          b: 0,
           workspaceId: "ws_e2e_live",
         },
         null,
@@ -181,16 +185,16 @@ test.describe("Test Workflow Trigger & Live Canvas Node Highlighting (Real Backe
     await page.getByTestId("test-workflow-button").click();
 
     await expect(
-      page.getByTestId("node-telemetry-badge-node_debit_true"),
+      page.getByTestId("node-telemetry-badge-node_split_true"),
     ).toHaveAttribute("data-status", "failed", { timeout: 2000 });
     await expect(
-      page.getByTestId("node-telemetry-badge-node_debit_true"),
+      page.getByTestId("node-telemetry-badge-node_split_true"),
     ).toContainText("✕");
     await expect(
-      page.getByTestId("node-telemetry-badge-node_debit_true"),
+      page.getByTestId("node-telemetry-badge-node_split_true"),
     ).toContainText("Failed");
     await expect(
-      page.getByTestId("node-telemetry-error-node_debit_true"),
-    ).toContainText("insufficient balance");
+      page.getByTestId("node-telemetry-error-node_split_true"),
+    ).toContainText("division by zero");
   });
 });
