@@ -2,10 +2,14 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { D1Like, RequestContext } from "@poc/sdk";
 import { WORKSPACE_ADMIN_ROLES, workspaceRoleRefusal } from "@poc/sdk";
-import { CronService } from "./cron.ts";
+import { CronService, parseWorkflowTargets } from "./cron.ts";
 
 export interface CronEnv {
-  Bindings: { DB: D1Like };
+  Bindings: {
+    DB: D1Like;
+    /** Comma-separated Workflow binding names a schedule may start (story 0.20). Unset: none. */
+    CRON_WORKFLOW_TARGETS?: string;
+  };
   Variables: {
     user?: { uid: string; email?: string };
     workspace?: { id: string; role?: string; suspended?: boolean };
@@ -63,7 +67,10 @@ export function createScheduleRoutes(options: CronRouteOptions = {}): Hono<CronE
       return c.json({ error: parsed.error.issues.map((i) => i.message).join(", ") }, 400);
     }
 
-    const service = new CronService(c.env.DB, options.maxSchedules);
+    // The env carries the app's Workflow target allowlist (CRON_WORKFLOW_TARGETS); it is never tenant-settable.
+    const service = new CronService(c.env.DB, options.maxSchedules, undefined, undefined, {
+      allowedWorkflowTargets: parseWorkflowTargets(c.env.CRON_WORKFLOW_TARGETS),
+    });
     const result = await service.createSchedule(workspace.id, parsed.data.cronExpression, {
       targetWorkflowId: parsed.data.targetWorkflowId,
       targetUrl: parsed.data.targetUrl,
@@ -73,7 +80,10 @@ export function createScheduleRoutes(options: CronRouteOptions = {}): Hono<CronE
     });
 
     if (!result.ok) {
-      return c.json({ error: result.error }, result.code as 400 | 403 | 500);
+      return c.json(
+        { error: result.error, ...(result.errorCode ? { code: result.errorCode } : {}) },
+        result.code as 400 | 403 | 500,
+      );
     }
 
     return c.json({ schedule: result.schedule }, 201);

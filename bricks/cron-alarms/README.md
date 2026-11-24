@@ -2,6 +2,20 @@
 
 The Cron Alarms brick provides multi-tenant recurring schedule execution, distributed alarm management, execution history tracking, and failure reporting.
 
+## Configuration: `CRON_WORKFLOW_TARGETS` (Story 0.20)
+
+A schedule may start only the Workflow bindings the app lists in the `CRON_WORKFLOW_TARGETS` env var (a Worker `vars`
+entry): a comma-separated list of binding names, for example `"REPORTS_WF,NIGHTLY_SYNC_WF"`. Entries are trimmed and
+empty entries ignored.
+
+- Unset or empty: no Workflow target is allowed. URL targets (`targetUrl`) are unaffected and keep the SSRF guard.
+- `POST /api/schedules` with a `targetWorkflowId` not on the list answers `400 { error, code: "WORKFLOW_TARGET_NOT_ALLOWED" }` and writes nothing.
+- The list is checked again when a schedule fires. A target removed from the list since the schedule was made is recorded
+  as a failure (`NOT_ALLOWED: ...`) and its binding is never called. A listed name with no binding is `NOT_CONFIGURED`.
+  There is no fallback runner.
+- The list is app configuration only; no route lets a workspace change it. Code embedding `CronService` directly may
+  pass `allowedWorkflowTargets` in its options instead, which takes precedence over the env var.
+
 ## Concurrency & Execution Semantics (Story UC7.6)
 
 ### Atomic CAS Slot Claim

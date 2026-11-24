@@ -1,14 +1,14 @@
 import { createExecutionContext, createScheduledController, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { Hono } from "hono";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assemble } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import shellWorker from "../../../out/max-compatible/src/index.ts";
 import migration from "../migrations/0001_cron_alarms.sql?raw";
-import { createScheduleRoutes, CronService, validateCron, computeNextRun } from "../src/index.ts";
+import { createScheduleRoutes, CronService, runScheduledCronAlarms, validateCron, computeNextRun } from "../src/index.ts";
 import type { CronEnv } from "../src/routes.ts";
 
 const db = env.DB as D1Like;
@@ -51,7 +51,10 @@ describe("Cron Service & Distributed Alarms Engine", () => {
   it("creates schedule, advances next_run_at, and records execution history", async () => {
     // A test workflow binding injected explicitly (story 0.9: a missing binding is a failure, not a success).
     const started: Array<{ id: string }> = [];
-    const service = new CronService(db, 50, { wf_sync_123: { create: async (o: { id: string }) => { started.push(o); } } });
+    const service = new CronService(db, 50, {
+      CRON_WORKFLOW_TARGETS: "wf_sync_123",
+      wf_sync_123: { create: async (o: { id: string }) => { started.push(o); } },
+    });
     const created = await service.createSchedule(WS_A, "*/5 * * * *", {
       targetWorkflowId: "wf_sync_123",
       timezone: "UTC",
@@ -85,7 +88,8 @@ describe("Cron Service & Distributed Alarms Engine", () => {
   });
 
   it("CRON_NO_BINDING: a workflow target with no binding is recorded as a failure, not a success (story 0.9, B14)", async () => {
-    const service = new CronService(db);
+    // Allowlisted (story 0.20) but with no binding: the existing NOT_CONFIGURED failure.
+    const service = new CronService(db, 50, undefined, undefined, { allowedWorkflowTargets: ["wf_unbound"] });
     const created = await service.createSchedule(WS_A, "*/5 * * * *", { targetWorkflowId: "wf_unbound", timezone: "UTC" });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
@@ -284,6 +288,169 @@ describe("Cron Route Handlers (/api/schedules/*)", () => {
   });
 });
 
+describe("story 0.20 (B13): Workflow target allowlist (CRON_WORKFLOW_TARGETS)", () => {
+  const routeApp = (wsId = WS_A) => {
+    const app = new Hono<CronEnv>();
+    app.use("*", async (c, next) => {
+      c.set("workspace", { id: wsId, role: "owner" });
+      c.set("user", { uid: "usr_alice", email: "alice@test.com" });
+      c.set("ctx", Object.freeze({ userId: "usr_alice", workspaceId: wsId, role: "owner" }));
+      await next();
+    });
+    app.route("/api", createScheduleRoutes());
+    return app;
+  };
+  const postSchedule = (body: Record<string, unknown>, env: Record<string, unknown>) =>
+    routeApp().fetch(
+      new Request("http://localhost/api/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cronExpression: "*/5 * * * *", ...body }),
+      }),
+      env,
+    );
+  const scheduleCount = async (): Promise<number> =>
+    (await db.prepare("SELECT count(*) AS cnt FROM cron_schedules").first<{ cnt: number }>())?.cnt ?? 0;
+  const makeDue = async (id: string): Promise<void> => {
+    await db.prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?").bind(new Date(Date.now() - 60000).toISOString(), id).run();
+  };
+
+  it("CREATE_ALLOWED / CREATE_NOT_LISTED: an allowlisted name is created; any other name is 400 WORKFLOW_TARGET_NOT_ALLOWED with no row", async () => {
+    const env = { DB: db, CRON_WORKFLOW_TARGETS: " REPORTS_WF , ,NIGHTLY_WF " };
+    const allowed = await postSchedule({ targetWorkflowId: "REPORTS_WF" }, env);
+    expect(allowed.status).toBe(201);
+    const trimmed = await postSchedule({ targetWorkflowId: "NIGHTLY_WF" }, env);
+    expect(trimmed.status).toBe(201);
+    expect(await scheduleCount()).toBe(2);
+
+    const refused = await postSchedule({ targetWorkflowId: "OTHER_WF" }, env);
+    expect(refused.status).toBe(400);
+    const body = (await refused.json()) as { error: string; code: string };
+    expect(body.code).toBe("WORKFLOW_TARGET_NOT_ALLOWED");
+    expect(body.error).toContain("OTHER_WF");
+    expect(await scheduleCount()).toBe(2);
+  });
+
+  it("CREATE_OTHER_BINDING: another env binding name (DB, or a binding with create) is refused at create", async () => {
+    const otherCreate = vi.fn();
+    const env = { DB: db, CRON_WORKFLOW_TARGETS: "REPORTS_WF", OTHER_BRICK_WF: { create: otherCreate } };
+    for (const target of ["DB", "OTHER_BRICK_WF", "CRON_WORKFLOW_TARGETS", "GRAPH_RUNNER", "WORKFLOW"]) {
+      const res = await postSchedule({ targetWorkflowId: target }, env);
+      expect(res.status, target).toBe(400);
+      expect(((await res.json()) as { code: string }).code).toBe("WORKFLOW_TARGET_NOT_ALLOWED");
+    }
+    const service = new CronService(db, 50, env);
+    const direct = await service.createSchedule(WS_A, "*/5 * * * *", { targetWorkflowId: "OTHER_BRICK_WF" });
+    expect(direct).toMatchObject({ ok: false, code: 400, errorCode: "WORKFLOW_TARGET_NOT_ALLOWED" });
+    expect(await scheduleCount()).toBe(0);
+    expect(otherCreate).not.toHaveBeenCalled();
+  });
+
+  it("NO_LIST: with the env var unset or empty, every Workflow target is refused", async () => {
+    for (const env of [{ DB: db }, { DB: db, CRON_WORKFLOW_TARGETS: "" }, { DB: db, CRON_WORKFLOW_TARGETS: " , " }]) {
+      const res = await postSchedule({ targetWorkflowId: "REPORTS_WF" }, env);
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { code: string }).code).toBe("WORKFLOW_TARGET_NOT_ALLOWED");
+    }
+    const service = new CronService(db, 50, { DB: db, REPORTS_WF: { create: vi.fn() } });
+    expect(service.isWorkflowTargetAllowed("REPORTS_WF")).toBe(false);
+    const direct = await service.createSchedule(WS_A, "*/5 * * * *", { targetWorkflowId: "REPORTS_WF" });
+    expect(direct.ok).toBe(false);
+    expect(await scheduleCount()).toBe(0);
+  });
+
+  it("allowedWorkflowTargets takes precedence over the env var", async () => {
+    const service = new CronService(db, 50, { DB: db, CRON_WORKFLOW_TARGETS: "ENV_WF" }, undefined, {
+      allowedWorkflowTargets: ["OPTION_WF"],
+    });
+    expect(service.isWorkflowTargetAllowed("OPTION_WF")).toBe(true);
+    expect(service.isWorkflowTargetAllowed("ENV_WF")).toBe(false);
+  });
+
+  it("URL_UNAFFECTED: a URL target is created and fires through the SSRF guard with no allowlist set", async () => {
+    const res = await postSchedule({ targetUrl: "https://example.com/tick" }, { DB: db });
+    expect(res.status).toBe(201);
+    const id = ((await res.json()) as { schedule: { id: string } }).schedule.id;
+    await makeDue(id);
+
+    const calls: string[] = [];
+    const fetcher = async (url: string | URL): Promise<Response> => {
+      calls.push(String(url));
+      return new Response("ok", { status: 200 });
+    };
+    const service = new CronService(db, 50, { DB: db }, fetcher, { resolveHost: async () => ["93.184.216.34"] });
+    const triggered = await service.triggerDueSchedules(new Date());
+    expect(triggered).toHaveLength(1);
+    expect(triggered[0]!.status).toBe("success");
+    expect(calls).toEqual(["https://example.com/tick"]);
+  });
+
+  it("FIRE_ALLOWED: an allowlisted target fires and create receives the schedule's workspaceId", async () => {
+    const createFn = vi.fn().mockResolvedValue({ id: "instance" });
+    const env = { DB: db, CRON_WORKFLOW_TARGETS: "REPORTS_WF", REPORTS_WF: { create: createFn } };
+    const service = new CronService(db, 50, env);
+    const created = await service.createSchedule(WS_B, "*/5 * * * *", { targetWorkflowId: "REPORTS_WF" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    await makeDue(created.schedule.id);
+
+    const triggered = await runScheduledCronAlarms({ env });
+    expect(triggered).toHaveLength(1);
+    expect(triggered[0]!.status).toBe("success");
+    expect(createFn).toHaveBeenCalledTimes(1);
+    const arg = createFn.mock.calls[0]![0] as { params: { workspaceId: string; scheduleId: string; workflowId: string } };
+    expect(arg.params.workspaceId).toBe(WS_B);
+    expect(arg.params.scheduleId).toBe(created.schedule.id);
+    expect(arg.params.workflowId).toBe("REPORTS_WF");
+  });
+
+  it("FIRE_DELISTED: a schedule whose target was removed from the allowlist fails with NOT_ALLOWED and create is never called", async () => {
+    const createFn = vi.fn().mockResolvedValue({ id: "instance" });
+    const before = new CronService(db, 50, { DB: db, CRON_WORKFLOW_TARGETS: "REPORTS_WF,OLD_WF", OLD_WF: { create: createFn } });
+    const created = await before.createSchedule(WS_A, "*/5 * * * *", { targetWorkflowId: "OLD_WF" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    await makeDue(created.schedule.id);
+
+    // The app's config changes: OLD_WF is no longer listed, though its binding (and a would-be fallback) still exist.
+    const fallback = vi.fn();
+    const env = {
+      DB: db,
+      CRON_WORKFLOW_TARGETS: "REPORTS_WF",
+      OLD_WF: { create: createFn },
+      GRAPH_RUNNER: { create: fallback },
+      WORKFLOW: { create: fallback },
+    };
+    const triggered = await runScheduledCronAlarms({ env });
+    expect(triggered).toHaveLength(1);
+    expect(triggered[0]!.status).toBe("failure");
+    const expected = "NOT_ALLOWED: workflow target OLD_WF is not in CRON_WORKFLOW_TARGETS; not triggered";
+    expect(triggered[0]!.response_summary).toBe(expected);
+    expect(createFn).not.toHaveBeenCalled();
+    expect(fallback).not.toHaveBeenCalled();
+    const history = await before.getHistory(WS_A, created.schedule.id);
+    expect(history).toHaveLength(1);
+    expect(history[0]!.status).toBe("failure");
+    expect(history[0]!.response_summary).toBe(expected);
+  });
+
+  it("FIRE_ALLOWED_MISSING_BINDING: an allowlisted name with no binding is NOT_CONFIGURED, with no fallback runner", async () => {
+    const fallback = vi.fn();
+    const env = { DB: db, CRON_WORKFLOW_TARGETS: "REPORTS_WF", GRAPH_RUNNER: { create: fallback }, WORKFLOW: { create: fallback } };
+    const service = new CronService(db, 50, env);
+    const created = await service.createSchedule(WS_A, "*/5 * * * *", { targetWorkflowId: "REPORTS_WF" });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    await makeDue(created.schedule.id);
+
+    const triggered = await service.triggerDueSchedules(new Date());
+    expect(triggered).toHaveLength(1);
+    expect(triggered[0]!.status).toBe("failure");
+    expect(triggered[0]!.response_summary).toMatch(/^NOT_CONFIGURED: no workflow binding for REPORTS_WF/);
+    expect(fallback).not.toHaveBeenCalled();
+  });
+});
+
 describe("Assembled Shell scheduled() Dispatcher in workerd (AC 3)", () => {
   it("creates schedules via API, invokes shell scheduled() via createScheduledController, and executes only the due workspace schedule", async () => {
     const assembled = assemble({ project: "cron-shell", bricks: ["multi-workspace", "cron-alarms"] }, catalog);
@@ -331,7 +498,7 @@ describe("Assembled Shell scheduled() Dispatcher in workerd (AC 3)", () => {
           targetWorkflowId: "wf_alpha_due",
         }),
       }),
-      { DB: db },
+      { DB: db, CRON_WORKFLOW_TARGETS: "wf_alpha_due" },
     );
     expect(createAlphaRes.status).toBe(201);
     const alphaSchedule = ((await createAlphaRes.json()) as { schedule: { id: string; next_run_at: string } }).schedule;
@@ -368,7 +535,7 @@ describe("Assembled Shell scheduled() Dispatcher in workerd (AC 3)", () => {
     // A test workflow binding injected explicitly (story 0.9: a missing binding is recorded as a failure).
     const started: Array<{ id: string }> = [];
     const wfAlphaDue = { create: async (o: { id: string }) => { started.push(o); } };
-    await shellWorker.scheduled(controller, { DB: db, wf_alpha_due: wfAlphaDue }, ctx);
+    await shellWorker.scheduled(controller, { DB: db, CRON_WORKFLOW_TARGETS: "wf_alpha_due", wf_alpha_due: wfAlphaDue }, ctx);
     await waitOnExecutionContext(ctx);
 
     // Verify Workspace Alpha's schedule ran and recorded a history row

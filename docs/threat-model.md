@@ -27,6 +27,7 @@
 | 0.12 | Honest README and evidence integrity |
 | 0.14 | Auth session hardening (cookies, JWT exp, CSRF, CORS) |
 | 0.19 | rbac-policy: no grant escalation (filed from PROPOSED-5) |
+| 0.20 | cron-alarms: allowlist of target Workflow bindings (filed from PROPOSED-10) |
 | 1.1 | Real executors and verified workspace in deployed workflows |
 | 1.2 | One real deploy path for Studio and MCP |
 | 1.4 | Workspace-keyed telemetry and logs |
@@ -180,7 +181,7 @@ Every sweep finding appears once. Locations are as the sweep gives them (see [Ci
 | B10 | omnichannel-outbound | Low (latent) | No CR/LF check on subject or recipient: header injection once a real email adapter is used | `dispatcher.ts:157,206-210`; `routes.ts:22-23` | PROPOSED-9 |
 | B11 | omnichannel-outbound | Medium | Default mock adapter records "sent"; `executeSendOutboundMessage` returns `dispatched:true` without sending | `dispatcher.ts:44-67`; `routes.ts:55`; `index.ts:4-16` | 0.9 (scope addition) |
 | B12 | omnichannel-outbound | Low | `?limit=-1` means unlimited, `Infinity` gives 500 | `routes.ts:77`; `packages/sdk/src/scoped.ts:356-357` | PROPOSED-9 |
-| B13 | cron-alarms | Medium | Tenant `targetWorkflowId` used as an env key: can trigger any Worker binding with `.create()` (other bricks' Workflows) on a timer | `cron.ts:347-364`; `routes.ts:20` | PROPOSED-10 |
+| B13 | cron-alarms | Medium | Tenant `targetWorkflowId` used as an env key: can trigger any Worker binding with `.create()` (other bricks' Workflows) on a timer | `cron.ts:347-364`; `routes.ts:20` | 0.20 |
 | B14 | cron-alarms | Medium | Missing workflow binding still recorded as success | `cron.ts:355-366` | 0.9 (scope addition) |
 | B15 | cron-alarms | High | Fetches tenant URL via `globalThis.fetch` and stores status and error text in history (known, audit 12) | `cron.ts:106,368-385,388-389` | 0.8 |
 | B16 | cron-alarms | Low | Catch-up "all" fires up to 100 times per tick | `routes.ts:24`; `cron.ts:520` | PROPOSED-1 |
@@ -210,7 +211,7 @@ These are not filed. A human should file each one; the PR for this story lists t
 | PROPOSED-7 | llm-gateway: debit wallet, model allowlist and per-model cost, pass `maxTokens`, redact provider errors | A1 (wallet debit; suspension is PROPOSED-3), A2, A3, A4 | Phase 1 (before any real provider is connected) |
 | PROPOSED-8 | binary-assets upload hardening: size precheck and quota, safe Content-Type, filename sanitising, `nosniff`, bounded paging | A14, A15, A16, A17, A18 | Phase 1 |
 | PROPOSED-9 | omnichannel-outbound: sender ownership and recipient limits, encrypt and redact channel secrets, CR/LF validation, bounded paging | B8 (sender ownership), B9, B10, B12 | Phase 1 (before any real adapter) |
-| PROPOSED-10 | cron-alarms: allowlist of target Workflow bindings | B13 | Phase 0 |
+| PROPOSED-10 | cron-alarms: allowlist of target Workflow bindings | B13 | Phase 0 (filed as 0.20) |
 | PROPOSED-11 | integration-connections OAuth hardening: provider data wins, `redirect_uri` allowlist, CSRF on connect, bind state to user | A10, A11, A12 | Phase 1 |
 | PROPOSED-12 | studio-web: strip production test hooks and fake values; check href schemes | C4, C5, C6, C7 | Phase 1 |
 | PROPOSED-13 | Payment adapter verification (order id, currency, customer) | A20 | Phase 2 |

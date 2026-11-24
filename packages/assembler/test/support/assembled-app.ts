@@ -1,5 +1,5 @@
 // Helpers shared by the attack suites that run against the assembled max-compatible app
-// (cross-tenant.fuzz.test.ts and rbac-escalation.attack.test.ts): a clean, fully migrated database, a request
+// (cross-tenant.fuzz.test.ts, rbac-escalation.attack.test.ts, cron-target.attack.test.ts): a clean, fully migrated database, a request
 // builder for the stub identity (x-test-user) and workspace header, and joining a workspace through the invite flow.
 import { env } from "cloudflare:workers";
 import { expect } from "vitest";
@@ -33,12 +33,15 @@ export async function resetAndMigrate(db: D1Like, sql: Record<string, string>): 
   }
 }
 
-/** One request as `user` (stub identity header) in workspace `ws`, with an optional JSON body. */
+/**
+ * One request as `user` (stub identity header) in workspace `ws`, with an optional JSON body. `env` replaces the
+ * test env for this request (for example to set an app config var such as CRON_WORKFLOW_TARGETS).
+ */
 export async function call(
   target: App,
   method: string,
   path: string,
-  opts: { user?: string; ws?: string; body?: unknown } = {},
+  opts: { user?: string; ws?: string; body?: unknown; env?: unknown } = {},
 ): Promise<{ status: number; text: string }> {
   const headers: Record<string, string> = {};
   if (opts.user) headers["x-test-user"] = opts.user;
@@ -47,7 +50,7 @@ export async function call(
   if (hasBody) headers["content-type"] = "application/json";
   const res = await target.fetch(
     new Request(`https://example.test${path}`, { method, headers, ...(hasBody ? { body: JSON.stringify(opts.body) } : {}) }),
-    env,
+    opts.env ?? env,
   );
   return { status: res.status, text: await res.text() };
 }

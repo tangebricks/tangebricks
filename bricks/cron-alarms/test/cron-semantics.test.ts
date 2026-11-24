@@ -28,6 +28,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
     const createFn = vi.fn().mockResolvedValue({ id: "mock_instance" });
     const fakeEnv = {
       DB: db,
+      CRON_WORKFLOW_TARGETS: "wf_due_task",
       wf_due_task: { create: createFn },
     };
 
@@ -66,7 +67,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
   });
 
   it("Task (b): double-fire with identical scheduledTime delivered twice produces exactly 1 history row", async () => {
-    const service = new CronService(db);
+    const service = new CronService(db, 50, undefined, undefined, { allowedWorkflowTargets: ["wf_double_fire"] });
     const created = await service.createSchedule(WS, "* * * * *", {
       targetWorkflowId: "wf_double_fire",
     });
@@ -92,7 +93,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
 
   it("AC2 & Task (c): missed-run behaviour matches catchUp policy (once, all, skip)", async () => {
     // 1. Policy 'once': 10 minutes missed -> gives 1 run and next_run_at in future
-    const service = new CronService(db);
+    const service = new CronService(db, 50, undefined, undefined, { allowedWorkflowTargets: ["wf_once", "wf_all", "wf_skip"] });
     const schedOnce = await (service as any).createSchedule(WS, "* * * * *", {
       targetWorkflowId: "wf_once",
       catchUp: "once",
@@ -140,7 +141,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
       .run();
 
     const createSkipFn = vi.fn();
-    const serviceSkip = new CronService(db, 50, { DB: db, wf_skip: { create: createSkipFn } });
+    const serviceSkip = new CronService(db, 50, { DB: db, CRON_WORKFLOW_TARGETS: "wf_skip", wf_skip: { create: createSkipFn } });
     const skipRuns = await serviceSkip.triggerDueSchedules(new Date());
     expect(createSkipFn).not.toHaveBeenCalled();
 
@@ -152,7 +153,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
   });
 
   it("Task (d): allowedIds with a not-yet-due ID gives 0 runs (no bypass of due check)", async () => {
-    const service = new CronService(db);
+    const service = new CronService(db, 50, undefined, undefined, { allowedWorkflowTargets: ["wf_future"] });
     const created = await service.createSchedule(WS, "0 0 1 1 *", {
       targetWorkflowId: "wf_future",
     });
@@ -180,6 +181,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
     };
     const fakeEnv = {
       DB: db,
+      CRON_WORKFLOW_TARGETS: "wf_failing",
       wf_failing: throwingWorkflow,
     };
 

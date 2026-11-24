@@ -61,6 +61,10 @@ const HTTP_METHODS = new Set(["get", "post", "put", "patch", "delete", "all", "o
 // Route-factory options a host passes in code, not manifest settings. `knownPermissions` (rbac-policy, story 0.19) is
 // a string[] allowlist a host sets for its own app; manifest settings have no list type.
 const DI_OPTION_KEYS = new Set(["adapter", "adapters", "gateway", "publicBaseUrl", "knownPermissions"]);
+// Optional app-config env vars a host sets for its own app, not bindings or secrets a brick needs to boot,
+// keyed by the one brick allowed to read each, so rule 8 stays strict for every other brick.
+// `CRON_WORKFLOW_TARGETS` (cron-alarms, story 0.20) is the comma-separated Workflow binding allowlist; unset fails closed.
+const APP_CONFIG_ENV_VARS: Record<string, readonly string[]> = { "cron-alarms": ["CRON_WORKFLOW_TARGETS"] };
 
 function listTsSourceFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -665,7 +669,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   }
 
   // 8. Every env.X / c.env.X referenced is declared in bindings or secrets (DB is standard shell D1 binding)
-  const declaredEnv = new Set<string>(["DB"]);
+  const declaredEnv = new Set<string>(["DB", ...(APP_CONFIG_ENV_VARS[brickName] ?? [])]);
   if (Array.isArray(manifest.bindings)) {
     for (const b of manifest.bindings) declaredEnv.add(b);
   } else if (manifest.bindings && typeof manifest.bindings === "object") {
