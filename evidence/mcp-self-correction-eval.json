@@ -828,8 +828,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-24T10:58:34.404Z",
-    "gitSha": "2efab76c7ec07f96ff32c7af2353f43bfc4a06ef",
+    "generatedAt": "2026-11-24T11:46:14.996Z",
+    "gitSha": "4fbfcf521d70f6724ac0cfda1cbaffdd62236fc5",
     "gitDirty": false,
     "generator": "scripts/mcp-self-correct-eval.ts",
     "inputKind": "measured"
