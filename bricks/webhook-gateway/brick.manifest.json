@@ -17,6 +17,24 @@
   "routePrefixes": [
     "webhooks"
   ],
+  "rateLimits": [
+    {
+      "method": "POST",
+      "path": "/webhooks/in/:subscriptionId",
+      "bucket": "webhook-in",
+      "limit": 300,
+      "windowSeconds": 60,
+      "key": "param:subscriptionId"
+    },
+    {
+      "method": "POST",
+      "path": "/webhooks/ingress/:slug",
+      "bucket": "webhook-ingress",
+      "limit": 300,
+      "windowSeconds": 60,
+      "key": "param:slug"
+    }
+  ],
   "bindings": [
     "PX_WEBHOOK_ALLOW_UNSIGNED"
   ],

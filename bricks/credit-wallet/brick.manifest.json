@@ -18,6 +18,32 @@
     "wallet",
     "payments"
   ],
+  "rateLimits": [
+    {
+      "method": "POST",
+      "path": "/wallet/deduct",
+      "bucket": "wallet-deduct",
+      "limit": 60,
+      "windowSeconds": 60,
+      "key": "workspace"
+    },
+    {
+      "method": "POST",
+      "path": "/payments/create-order",
+      "bucket": "wallet-create-order",
+      "limit": 60,
+      "windowSeconds": 60,
+      "key": "workspace"
+    },
+    {
+      "method": "POST",
+      "path": "/payments/verify",
+      "bucket": "wallet-verify",
+      "limit": 60,
+      "windowSeconds": 60,
+      "key": "ip"
+    }
+  ],
   "npmDependencies": {
     "hono": "4.13.19",
     "zod": "4.6.7"

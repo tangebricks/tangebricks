@@ -496,6 +496,44 @@ export class CustomWorkflow extends WorkflowEntrypoint {}
     );
   });
 
+  test("rateLimits (story 0.21): a path outside routePrefixes, a param key its path lacks, an auth rule that fails open and a reused bucket with other numbers are violations", () => {
+    const clean = createFakeBricksWorkspace({
+      id: "limited-brick",
+      manifest: {
+        rateLimits: [
+          { method: "POST", path: "/items/:itemId/buy", bucket: "items-buy", limit: 10, windowSeconds: 60, key: "param:itemId" },
+          { method: "POST", path: "/items/login", bucket: "auth-items", limit: 5, windowSeconds: 600, key: "field:email", failClosed: true },
+        ],
+      },
+    });
+    expect(checkAllBricks(clean)).toEqual([]);
+
+    const bad = createFakeBricksWorkspace({
+      id: "bad-limits",
+      manifest: {
+        rateLimits: [
+          { method: "POST", path: "/elsewhere/x", bucket: "items-x", limit: 10, windowSeconds: 60, key: "ip" },
+          { method: "POST", path: "/items/x", bucket: "items-y", limit: 10, windowSeconds: 60, key: "param:missing" },
+          { method: "POST", path: "/items/login", bucket: "auth-items", limit: 5, windowSeconds: 600, key: "ip" },
+          { method: "POST", path: "/items/z", bucket: "items-x", limit: 99, windowSeconds: 60, key: "ip" },
+        ],
+      },
+    });
+    const lines = checkAllBricks(bad).map(formatViolationLine);
+    expect(lines).toEqual([
+      "bad-limits: rateLimits: rateLimits[0] POST /elsewhere/x is not under any routePrefix [items]",
+      "bad-limits: rateLimits: rateLimits[1] POST /items/x keys on param:missing, which its path does not name",
+      "bad-limits: rateLimits: rateLimits[2] POST /items/login is an auth rule (bucket auth-items) and must set failClosed: true",
+      "bad-limits: rateLimits: bucket items-x is declared with different numbers or keys",
+    ]);
+
+    const zero = createFakeBricksWorkspace({
+      id: "zero-limit",
+      manifest: { rateLimits: [{ method: "POST", path: "/items", bucket: "items-z", limit: 0, windowSeconds: 60, key: "ip" }] },
+    });
+    expect(checkAllBricks(zero).map(formatViolationLine).some((l) => l.startsWith("zero-limit: schema: rateLimits"))).toBe(true);
+  });
+
   test("untrusted brick without isolation dispatch fails with trust violation", () => {
     const bricksDir = createFakeBricksWorkspace({
       id: "untrusted-brick",

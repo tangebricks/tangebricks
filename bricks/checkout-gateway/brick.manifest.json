@@ -16,6 +16,16 @@
   "routePrefixes": [
     "checkout"
   ],
+  "rateLimits": [
+    {
+      "method": "POST",
+      "path": "/checkout/sessions",
+      "bucket": "checkout-create",
+      "limit": 30,
+      "windowSeconds": 60,
+      "key": "workspace"
+    }
+  ],
   "npmDependencies": {
     "hono": "4.13.19",
     "zod": "4.6.7"

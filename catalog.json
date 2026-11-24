@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "6493ac025186d9597a2ccc5ce4aa0ac935d178d2be385eae4193cd7cffdaf653",
+  "catalogVersion": "0f9bdc5e53e7dfc86073528e861110e35c3c6b5f22e9d2c84ec840f43d31cbdc",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -334,6 +334,16 @@
           "maturityReason": "Persists checkout sessions, tax calculations, and invoices in D1, but external Stripe, Razorpay, and LemonSqueezy API calls are stubbed with synthetic URLs",
           "behaviourTest": "test/checkout.test.ts"
         },
+        "rateLimits": [
+          {
+            "method": "POST",
+            "path": "/checkout/sessions",
+            "bucket": "checkout-create",
+            "limit": 30,
+            "windowSeconds": 60,
+            "key": "workspace"
+          }
+        ],
         "privacy": {
           "tables": {
             "pay_checkout_sessions": {
@@ -430,6 +440,98 @@
           {
             "table": "verification",
             "reason": "Global Better Auth OAuth state and verification tokens created before workspace context exists."
+          }
+        ],
+        "rateLimits": [
+          {
+            "method": "POST",
+            "path": "/auth/login",
+            "bucket": "auth-login-ip",
+            "limit": 20,
+            "windowSeconds": 600,
+            "key": "ip",
+            "failClosed": true
+          },
+          {
+            "method": "POST",
+            "path": "/auth/login",
+            "bucket": "auth-login-account",
+            "limit": 10,
+            "windowSeconds": 600,
+            "key": "field:email",
+            "failClosed": true
+          },
+          {
+            "method": "POST",
+            "path": "/auth/signup",
+            "bucket": "auth-signup-ip",
+            "limit": 5,
+            "windowSeconds": 3600,
+            "key": "ip",
+            "failClosed": true
+          },
+          {
+            "method": "POST",
+            "path": "/auth/sign-in/email",
+            "bucket": "auth-login-ip",
+            "limit": 20,
+            "windowSeconds": 600,
+            "key": "ip",
+            "failClosed": true
+          },
+          {
+            "method": "POST",
+            "path": "/auth/sign-in/email",
+            "bucket": "auth-login-account",
+            "limit": 10,
+            "windowSeconds": 600,
+            "key": "field:email",
+            "failClosed": true
+          },
+          {
+            "method": "POST",
+            "path": "/auth/sign-up/email",
+            "bucket": "auth-signup-ip",
+            "limit": 5,
+            "windowSeconds": 3600,
+            "key": "ip",
+            "failClosed": true
+          },
+          {
+            "method": "POST",
+            "path": "/auth/request-password-reset",
+            "bucket": "auth-reset-ip",
+            "limit": 5,
+            "windowSeconds": 3600,
+            "key": "ip",
+            "failClosed": true
+          },
+          {
+            "method": "POST",
+            "path": "/auth/request-password-reset",
+            "bucket": "auth-reset-account",
+            "limit": 3,
+            "windowSeconds": 3600,
+            "key": "field:email",
+            "failClosed": true
+          },
+          {
+            "method": "POST",
+            "path": "/auth/forget-password",
+            "bucket": "auth-reset-ip",
+            "limit": 5,
+            "windowSeconds": 3600,
+            "key": "ip",
+            "failClosed": true
+          },
+          {
+            "method": "POST",
+            "path": "/auth/forget-password",
+            "bucket": "auth-reset-account",
+            "limit": 3,
+            "windowSeconds": 3600,
+            "key": "field:email",
+            "failClosed": true
           }
         ],
         "privacy": {
@@ -573,6 +675,32 @@
           "maturityReason": "NO_DEFAULT_ADAPTER: No payment gateway is configured by default (payment routes answer 503 NOT_CONFIGURED); pending real provider adapter.",
           "behaviourTest": "test/credit-wallet.test.ts"
         },
+        "rateLimits": [
+          {
+            "method": "POST",
+            "path": "/wallet/deduct",
+            "bucket": "wallet-deduct",
+            "limit": 60,
+            "windowSeconds": 60,
+            "key": "workspace"
+          },
+          {
+            "method": "POST",
+            "path": "/payments/create-order",
+            "bucket": "wallet-create-order",
+            "limit": 60,
+            "windowSeconds": 60,
+            "key": "workspace"
+          },
+          {
+            "method": "POST",
+            "path": "/payments/verify",
+            "bucket": "wallet-verify",
+            "limit": 60,
+            "windowSeconds": 60,
+            "key": "ip"
+          }
+        ],
         "adapters": {
           "paymentGateway": {
             "default": "fake",
@@ -1141,7 +1269,8 @@
           "workspace-context"
         ],
         "migrations": [
-          "migrations/0001_edge_traffic_armor.sql"
+          "migrations/0001_edge_traffic_armor.sql",
+          "migrations/0002_px_rate_limits.sql"
         ],
         "routePrefixes": [
           "armor"
@@ -1164,6 +1293,10 @@
           {
             "table": "arm_rate_limits",
             "reason": "Edge rate-limit counters keyed by composite IP and workspace rate-limit key"
+          },
+          {
+            "table": "px_rate_limits",
+            "reason": "Shared rate-limiter counters (SDK rateLimit), keyed by bucket and a sha256 of the client key; no workspace data"
           }
         ],
         "privacy": {
@@ -1197,7 +1330,8 @@
         }
       },
       "files": {
-        "migrations/0001_edge_traffic_armor.sql": "-- edge-traffic-armor 0001: IP access rules, rate limit windows, and blocked incidents\n-- Modular: No cross-brick foreign key on workspace_id.\n-- Prefixed with arm_ to avoid schema collision.\n\nCREATE TABLE IF NOT EXISTS arm_ip_rules (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  ip_or_cidr TEXT NOT NULL CHECK (length(ip_or_cidr) BETWEEN 3 AND 45),\n  action TEXT NOT NULL CHECK (action IN ('allow', 'block', 'challenge')),\n  reason TEXT CHECK (reason IS NULL OR length(reason) <= 255),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  UNIQUE(workspace_id, ip_or_cidr)\n);\n\nCREATE INDEX IF NOT EXISTS arm_ip_rules_ws_idx ON arm_ip_rules(workspace_id, action);\n\nCREATE TABLE IF NOT EXISTS arm_rate_limits (\n  key TEXT NOT NULL CHECK (length(key) <= 128),\n  window_start INTEGER NOT NULL,\n  request_count INTEGER NOT NULL DEFAULT 1,\n  PRIMARY KEY (key, window_start)\n);\n\nCREATE TABLE IF NOT EXISTS arm_blocked_requests (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  workspace_id TEXT,\n  ip_address TEXT NOT NULL CHECK (length(ip_address) <= 45),\n  path TEXT NOT NULL CHECK (length(path) <= 255),\n  block_reason TEXT NOT NULL CHECK (block_reason IN ('ip_block', 'rate_limit', 'bot_detected', 'waf_rule')),\n  user_agent TEXT CHECK (user_agent IS NULL OR length(user_agent) <= 512),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS arm_blocked_ws_idx ON arm_blocked_requests(workspace_id, created_at DESC);\n"
+        "migrations/0001_edge_traffic_armor.sql": "-- edge-traffic-armor 0001: IP access rules, rate limit windows, and blocked incidents\n-- Modular: No cross-brick foreign key on workspace_id.\n-- Prefixed with arm_ to avoid schema collision.\n\nCREATE TABLE IF NOT EXISTS arm_ip_rules (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  ip_or_cidr TEXT NOT NULL CHECK (length(ip_or_cidr) BETWEEN 3 AND 45),\n  action TEXT NOT NULL CHECK (action IN ('allow', 'block', 'challenge')),\n  reason TEXT CHECK (reason IS NULL OR length(reason) <= 255),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  UNIQUE(workspace_id, ip_or_cidr)\n);\n\nCREATE INDEX IF NOT EXISTS arm_ip_rules_ws_idx ON arm_ip_rules(workspace_id, action);\n\nCREATE TABLE IF NOT EXISTS arm_rate_limits (\n  key TEXT NOT NULL CHECK (length(key) <= 128),\n  window_start INTEGER NOT NULL,\n  request_count INTEGER NOT NULL DEFAULT 1,\n  PRIMARY KEY (key, window_start)\n);\n\nCREATE TABLE IF NOT EXISTS arm_blocked_requests (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  workspace_id TEXT,\n  ip_address TEXT NOT NULL CHECK (length(ip_address) <= 45),\n  path TEXT NOT NULL CHECK (length(path) <= 255),\n  block_reason TEXT NOT NULL CHECK (block_reason IN ('ip_block', 'rate_limit', 'bot_detected', 'waf_rule')),\n  user_agent TEXT CHECK (user_agent IS NULL OR length(user_agent) <= 512),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS arm_blocked_ws_idx ON arm_blocked_requests(workspace_id, created_at DESC);\n",
+        "migrations/0002_px_rate_limits.sql": "CREATE TABLE IF NOT EXISTS px_rate_limits (\n  key TEXT NOT NULL,\n  window_start INTEGER NOT NULL,\n  count INTEGER NOT NULL,\n  PRIMARY KEY (key, window_start)\n);\n"
       }
     },
     "feature-flags": {
@@ -3337,6 +3471,24 @@
         ],
         "secrets": [
           "PX_CONN_KEY"
+        ],
+        "rateLimits": [
+          {
+            "method": "POST",
+            "path": "/webhooks/in/:subscriptionId",
+            "bucket": "webhook-in",
+            "limit": 300,
+            "windowSeconds": 60,
+            "key": "param:subscriptionId"
+          },
+          {
+            "method": "POST",
+            "path": "/webhooks/ingress/:slug",
+            "bucket": "webhook-ingress",
+            "limit": 300,
+            "windowSeconds": 60,
+            "key": "param:slug"
+          }
         ],
         "privacy": {
           "tables": {

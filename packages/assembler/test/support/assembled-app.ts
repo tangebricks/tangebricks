@@ -35,15 +35,16 @@ export async function resetAndMigrate(db: D1Like, sql: Record<string, string>): 
 
 /**
  * One request as `user` (stub identity header) in workspace `ws`, with an optional JSON body. `env` replaces the
- * test env for this request (for example to set an app config var such as CRON_WORKFLOW_TARGETS).
+ * test env for this request (for example to set an app config var such as CRON_WORKFLOW_TARGETS). `headers` adds
+ * request headers (for example a client IP in cf-connecting-ip).
  */
 export async function call(
   target: App,
   method: string,
   path: string,
-  opts: { user?: string; ws?: string; body?: unknown; env?: unknown } = {},
-): Promise<{ status: number; text: string }> {
-  const headers: Record<string, string> = {};
+  opts: { user?: string; ws?: string; body?: unknown; env?: unknown; headers?: Record<string, string> } = {},
+): Promise<{ status: number; text: string; headers: Headers }> {
+  const headers: Record<string, string> = { ...opts.headers };
   if (opts.user) headers["x-test-user"] = opts.user;
   if (opts.ws) headers["x-workspace-id"] = opts.ws;
   const hasBody = opts.body !== undefined && method !== "GET" && method !== "HEAD";
@@ -52,7 +53,7 @@ export async function call(
     new Request(`https://example.test${path}`, { method, headers, ...(hasBody ? { body: JSON.stringify(opts.body) } : {}) }),
     opts.env ?? env,
   );
-  return { status: res.status, text: await res.text() };
+  return { status: res.status, text: await res.text(), headers: res.headers };
 }
 
 /** `user` joins workspace `ws` as a plain member through the real invite flow, invited by `owner`. */

@@ -148,7 +148,7 @@ describe("against the real bundle in workerd", () => {
     expect(facts.session.connected).toBe(true);
     expect(facts.session.answers.map((a) => [a.tool, a.isError])).toEqual([["list_bricks", false], ["enable_brick", false], ["define_entity", false], ["build_project", false]]);
     expect(facts.session.toolCalls).toBe(4);
-    expect(facts.storedAfterSession).toMatchObject({ read: true, fileCount: 12, sameFiles: true, differing: [] });
+    expect(facts.storedAfterSession).toMatchObject({ read: true, fileCount: 13, sameFiles: true, differing: [] });
     expect(facts.storedAfterSession!.projectHash).toBe(facts.directHash);
     expect(facts.repeats).toHaveLength(10);
     expect(facts.repeats.every((a) => a.outcome === "built" && a.hash === facts.directHash)).toBe(true);
@@ -166,7 +166,7 @@ describe("against the real bundle in workerd", () => {
     expect(text).toMatch(/bundle 844\.1 KiB \(141\.0 KiB gzipped\), 1\.29% of the 64 MiB limit; Cloudflare reported a start-up time of 12 ms/);
     expect(text).toMatch(/without a token the endpoint answered 401, with a wrong one 401/);
     expect(text).toMatch(/the scored session \(4 tool calls, official client\): initialize ok in \d+ ms; tools\/list ok/);
-    expect(text).toMatch(/12 files, equal to the direct assembly in Node/);
+    expect(text).toMatch(/13 files, equal to the direct assembly in Node/);
     expect(text).toMatch(/10 more times: 10 built, 0 stopped by Cloudflare's resource limit \(error 1102\), 0 some other way; built in a median of/);
     expect(text).toMatch(/smaller projects were not built: the full project built every time/);
     expect(text).toMatch(/not shown: the CPU time itself/);

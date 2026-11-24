@@ -86,8 +86,8 @@ const round = (n: number, places = 1) => Math.round(n * 10 ** places) / 10 ** pl
 describe("the scored session: the whole invoices project", () => {
   test("every call succeeded, and the build produced the project's nine files", () => {
     expect(full.session.answers.every((a) => !a.isError)).toBe(true);
-    expect(full.session.summary).toMatchObject({ project: "invoice-flow", files: 12, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
-    expect(Object.keys(full.session.stored)).toHaveLength(12);
+    expect(full.session.summary).toMatchObject({ project: "invoice-flow", files: 13, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
+    expect(Object.keys(full.session.stored)).toHaveLength(13);
   });
 
   test("the files it stored are the files a direct assembly of the same blueprint produces, byte for byte and by hash", async () => {
@@ -111,7 +111,7 @@ describe("the scored session: the whole invoices project", () => {
   test("the denominator counts what it says: the three bricks' code plus the generated files, each distinct text once", () => {
     const bricks = new Set(full.source.files.filter((f) => f.origin === "brick").map((f) => f.path.split("/")[1]));
     expect(bricks).toEqual(new Set(["multi-workspace", "credit-wallet", "dynamic-entities"]));
-    expect(full.source.files.filter((f) => f.origin === "generated")).toHaveLength(12);
+    expect(full.source.files.filter((f) => f.origin === "generated")).toHaveLength(13); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration
     expect(full.source.deduplicated).toBe(3); // the bricks' three migrations are copied into the project
     expect(full.source.files.some((f) => /node_modules|\.test\.|client\//.test(f.path))).toBe(false);
   });

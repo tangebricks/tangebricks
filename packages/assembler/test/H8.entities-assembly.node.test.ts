@@ -27,6 +27,8 @@ describe("a blueprint that declares entities", () => {
       "migrations/0002_credit-wallet__0001_credit_wallet.sql",
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
       "migrations/0004_entity__invoices.sql",
+      // Story 0.21: credit-wallet's rate limits bring the shared limiter's table, after every brick and entity table.
+      "migrations/0005_shell__px_rate_limits.sql",
       "openapi.json",
       "package.json",
       "project.json",
@@ -83,7 +85,7 @@ describe("a blueprint that declares entities", () => {
 
   test("two entities get two tables and guards for both, in name order", () => {
     const both = ok({ project: "p", bricks, entities: [widgets, INVOICE_FLOW_BLUEPRINT.entities[0]] });
-    expect(Object.keys(both.files).filter((f) => f.startsWith("migrations/")).slice(3)).toEqual(["migrations/0004_entity__invoices.sql", "migrations/0005_entity__widgets.sql"]);
+    expect(Object.keys(both.files).filter((f) => f.startsWith("migrations/")).slice(3)).toEqual(["migrations/0004_entity__invoices.sql", "migrations/0005_entity__widgets.sql", "migrations/0006_shell__px_rate_limits.sql"]);
     const entry = both.files["src/index.ts"]!;
     expect(entry.indexOf('"/api/invoices"')).toBeLessThan(entry.indexOf('"/api/widgets"'));
     expect(both.files["migrations/0005_entity__widgets.sql"]).toContain('"done" INTEGER CHECK ("done" IN (0, 1))');

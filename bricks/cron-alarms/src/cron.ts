@@ -8,6 +8,12 @@ import {
   type PublicUrlFetcher,
 } from "@poc/sdk";
 
+/**
+ * The most runs one schedule may replay in one tick under catchUp "all" (story 0.21, threat model B16): one schedule
+ * can never fan out more than this, whatever its stored max_catch_up says.
+ */
+export const MAX_CATCH_UP = 10;
+
 export interface ScheduleRecord {
   id: string;
   workspace_id: string;
@@ -203,7 +209,7 @@ export class CronService {
     const id = `cron_${crypto.randomUUID().replace(/-/g, "")}`;
     const now = new Date().toISOString();
     const catchUp = options.catchUp ?? "once";
-    const maxCatchUp = options.maxCatchUp ?? 10;
+    const maxCatchUp = Math.min(options.maxCatchUp ?? MAX_CATCH_UP, MAX_CATCH_UP);
 
     try {
       await s.insert("cron_schedules", {
@@ -531,7 +537,8 @@ export class CronService {
 
     for (const sched of candidates) {
       const policy = sched.catch_up ?? "once";
-      const maxCatchUp = sched.max_catch_up ?? 10;
+      // Rows written before the cap may hold more; they are clamped here.
+      const maxCatchUp = Math.min(sched.max_catch_up ?? MAX_CATCH_UP, MAX_CATCH_UP);
       const scheduledTime = new Date(sched.next_run_at);
 
       // Check if this run is overdue (missed at least one whole interval)

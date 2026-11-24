@@ -5,7 +5,9 @@ import type { D1Like } from "@poc/sdk";
 import migration0001 from "../migrations/0001_cron_alarms.sql?raw";
 import migration0002 from "../migrations/0002_catch_up.sql?raw";
 import cronSource from "../src/cron.ts?raw";
-import { CronService, validateCron, computeNextRun } from "../src/index.ts";
+import { Hono } from "hono";
+import { CronService, MAX_CATCH_UP, createScheduleRoutes, validateCron, computeNextRun } from "../src/index.ts";
+import type { CronEnv } from "../src/index.ts";
 
 const db = env.DB as D1Like;
 const WS = "ws_cron_semantics";
@@ -207,6 +209,50 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
     expect(history).toHaveLength(1);
     expect(history[0].status).toBe("failure");
     expect(history[0].response_summary).toContain("Workflow queue saturated: 503");
+  });
+
+  it("story 0.21 CATCHUP_CAP: catchUp 'all' with 50 missed slots and a stored max_catch_up of 100 fires at most 10 runs per tick", async () => {
+    expect(MAX_CATCH_UP).toBe(10);
+    const service = new CronService(db, 50, undefined, undefined, { allowedWorkflowTargets: ["wf_flood"] });
+    const created = await service.createSchedule(WS, "* * * * *", { targetWorkflowId: "wf_flood", catchUp: "all", maxCatchUp: 100 });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    // A row written before the cap (or by hand) may still say 100: it is clamped when the schedule fires.
+    const fiftyMinsAgo = new Date(Date.now() - 50 * 60 * 1000);
+    await db
+      .prepare("UPDATE cron_schedules SET next_run_at = ?, last_run_at = ?, max_catch_up = 100 WHERE id = ?")
+      .bind(fiftyMinsAgo.toISOString(), new Date(fiftyMinsAgo.getTime() - 60000).toISOString(), created.schedule.id)
+      .run();
+
+    const runs = (await service.triggerDueSchedules(new Date())).filter((r) => r.schedule_id === created.schedule.id);
+    expect(runs).toHaveLength(10);
+    // The schedule has moved past now, so the remaining 40 missed slots are not replayed on the next tick either.
+    const after = await service.getSchedule(WS, created.schedule.id);
+    expect(new Date(after!.next_run_at).getTime()).toBeGreaterThan(Date.now());
+    expect((await service.triggerDueSchedules(new Date())).filter((r) => r.schedule_id === created.schedule.id)).toHaveLength(0);
+  });
+
+  it("story 0.21 CATCHUP_SCHEMA: creating a schedule with maxCatchUp 11 gets 400; 10 is accepted", async () => {
+    const app = new Hono<CronEnv>();
+    app.use("*", async (c, next) => {
+      c.set("workspace", { id: WS, role: "owner" });
+      c.set("user", { uid: "usr_owner" });
+      c.set("ctx", Object.freeze({ userId: "usr_owner", workspaceId: WS, role: "owner" }));
+      await next();
+    });
+    app.route("/api", createScheduleRoutes());
+    const create = (maxCatchUp: number) =>
+      app.fetch(
+        new Request("http://localhost/api/schedules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cronExpression: "*/15 * * * *", targetUrl: "https://api.test.com/task", catchUp: "all", maxCatchUp }),
+        }),
+        { DB: db },
+      );
+    expect((await create(11)).status).toBe(400);
+    expect((await create(100)).status).toBe(400);
+    expect((await create(10)).status).toBe(201);
   });
 
   it("AC3: status is derived from outcome; cron.ts source contains no constant 'success'", () => {

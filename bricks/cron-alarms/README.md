@@ -49,7 +49,7 @@ When a Worker is offline, redeploying, or delayed such that one or more schedule
 | Policy | Behavior |
 | --- | --- |
 | `once` *(default)* | Fires a single execution for the current run, advancing `next_run_at` to the next upcoming interval in the future. |
-| `all` | Sequentially catches up each missed interval slot up to `max_catch_up` (default 10, configurable up to 100), recording individual execution history records for each slot. |
+| `all` | Sequentially catches up each missed interval slot up to `max_catch_up` (default and maximum 10; a request above 10 gets 400, and an older row above 10 is clamped to 10 when it fires), recording individual execution history records for each slot. |
 | `skip` | Bypasses all overdue slots (0 target invocations), advances `next_run_at` to the upcoming future slot, and records a single history record with `status: "missed"`. |
 
 ### Execution History & Outcome Status

@@ -16,6 +16,9 @@ const MOUNT_PATH = /^\/[A-Za-z0-9/_*-]{0,100}$/;
 // A guard path may also contain the token {entity}, which stands for each declared entity's name in turn.
 const GUARD_PATH = /^\/(?:[A-Za-z0-9/_*-]|\{entity\}){0,100}$/;
 const ROUTE_PREFIX = /^[a-z][a-z0-9_-]{0,39}$/;
+const RATE_LIMIT_PATH = /^(?:\/(?:[a-z0-9][a-z0-9_-]{0,39}|:[A-Za-z][A-Za-z0-9_]{0,39})){1,8}$/;
+const RATE_LIMIT_BUCKET = /^[a-z][a-z0-9-]{0,63}$/;
+const RATE_LIMIT_FIELD_OR_PARAM_KEY = /^(?:field|param):[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
 const RELATIVE_FILE = /^[a-z0-9][a-z0-9_./-]{0,100}\.sql$/;
 const RELATIVE_TEST_FILE = /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9_./-]{0,120}\.test\.ts$/;
@@ -157,6 +160,21 @@ const triggersDefinition = z.strictObject({
   queues: z.array(queueTriggerDefinition).optional(),
 });
 export type BrickTriggersDefinition = z.infer<typeof triggersDefinition>;
+
+/**
+ * A rate-limited route (story 0.21): `path` is relative to the brick's mount, like `routePrefixes`, and may name route
+ * params (`/webhooks/in/:subscriptionId`). The assembler mounts the SDK limiter on it, ahead of the brick's routes.
+ */
+const rateLimitDefinition = z.strictObject({
+  method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+  path: z.string().regex(RATE_LIMIT_PATH),
+  bucket: z.string().regex(RATE_LIMIT_BUCKET),
+  limit: z.number().int().positive().max(1_000_000),
+  windowSeconds: z.number().int().positive().max(86_400),
+  key: z.union([z.enum(["ip", "workspace"]), z.string().regex(RATE_LIMIT_FIELD_OR_PARAM_KEY)]),
+  failClosed: z.boolean().optional(),
+});
+export type BrickRateLimitDefinition = z.infer<typeof rateLimitDefinition>;
 
 const conflictDefinition = z.strictObject({
   brick: brickId,
@@ -1125,6 +1143,8 @@ export const ManifestSchema = z
     bindings: bindingsDefinition.optional(),
     secrets: z.array(identifier).optional(),
     globalTables: z.array(globalTableDefinition).optional(),
+    /** Routes the assembler mounts the SDK rate limiter on, with their default limits (story 0.21). */
+    rateLimits: z.array(rateLimitDefinition).optional(),
     adapters: z.record(identifier, adapterDefinition).optional(),
     privacy: privacyDefinition.optional(),
     worker: z.strictObject({

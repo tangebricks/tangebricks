@@ -11,7 +11,8 @@
     "workspace-context"
   ],
   "migrations": [
-    "migrations/0001_edge_traffic_armor.sql"
+    "migrations/0001_edge_traffic_armor.sql",
+    "migrations/0002_px_rate_limits.sql"
   ],
   "routePrefixes": [
     "armor"
@@ -33,6 +34,10 @@
     {
       "table": "arm_rate_limits",
       "reason": "Edge rate-limit counters keyed by composite IP and workspace rate-limit key"
+    },
+    {
+      "table": "px_rate_limits",
+      "reason": "Shared rate-limiter counters (SDK rateLimit), keyed by bucket and a sha256 of the client key; no workspace data"
     }
   ],
   "worker": {
