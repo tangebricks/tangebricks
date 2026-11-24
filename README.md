@@ -24,11 +24,11 @@ Everything in this section is generated from the committed evidence by `pnpm rea
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | H0 | Infrastructure: tests run inside workerd | pass | 1/1 checks | — | — | 1 | local re-measure 2026-11-24 |
 | H1 | A graph validator is small and catches eight error classes | pass | 114 lines | ≤ 120 lines | ≥ 201 lines | 2 | local re-measure 2026-11-24 |
-| H2 | The runtime interprets graphs with no code generation and runs branches concurrently | pass | 0.499 ratio | < 1 ratio | — | 3 | local re-measure 2026-11-24 |
+| H2 | The runtime interprets graphs with no code generation and runs branches concurrently | pass | 0.488 ratio | < 1 ratio | — | 3 | local re-measure 2026-11-24 |
 | H3 | Executors cannot read secrets their manifest does not declare | pass | 4/4 checks | — | — | 4 | local re-measure 2026-11-24 |
 | H5 | The extracted wallet stays correct under concurrency | pass | 0 runs of 20 | ≤ 0 runs of 20 | ≥ 1 runs of 20 | 5 | local re-measure 2026-11-24; hosted D1 half: live run, **stale (run 2026-10-21)** |
 | H6 | Bricks compose from a blueprint without hand edits | pass | 5/5 checks | — | — | 5 | local re-measure 2026-11-24 |
-| H7 | Assembly is deterministic, offline and fast | pass | 0.375 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-24 |
+| H7 | Assembly is deterministic, offline and fast | pass | 0.412 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-24 |
 | H8 | An entity declaration yields tenant-safe CRUD | pass | 7/7 checks | — | — | 7 | local re-measure 2026-11-24 |
 | H9 | An MCP session builds the project at a fraction of the source tokens | pass | 8.4 percent | ≤ 15 percent | > 40 percent | 3 | local re-measure 2026-11-24; deployed MCP Worker half: live run, **stale (run 2026-10-21)** |
 | H10 | The project deploys to the owner's Cloudflare account over REST, idempotently | pass | 16.695 seconds | ≤ 120 seconds | > 600 seconds | 7 | live run, **stale (run 2026-10-21)** |
@@ -37,7 +37,7 @@ Everything in this section is generated from the committed evidence by `pnpm rea
 
 ### Live evidence
 
-A live run is labelled **stale** when it started before the newest released version in [CHANGELOG.md](CHANGELOG.md) (0.1.0, 2026-11-21). Integrity is checked against `evidence/deployed/integrity.json` by `pnpm proof:check`.
+A live run is labelled **stale** when it started before the newest released version in [CHANGELOG.md](CHANGELOG.md) (0.3.0, 2026-11-24). Integrity is checked against `evidence/deployed/integrity.json` by `pnpm proof:check`.
 
 | Evidence | Backs | Run started | Status | Integrity |
 | :-- | :-- | :-- | :-- | :-- |
