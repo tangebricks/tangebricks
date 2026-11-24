@@ -129,8 +129,8 @@
   },
   "violations": [],
   "provenance": {
-    "generatedAt": "2026-11-24T16:24:21.190Z",
-    "gitSha": "84d01beb4b45d9e111933d5ea22ef9752229c3ea",
+    "generatedAt": "2026-11-24T16:34:36.320Z",
+    "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
     "gitDirty": false,
     "generator": "scripts/mcp-budget.ts",
     "inputKind": "measured"

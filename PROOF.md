@@ -31,11 +31,11 @@ Each row below reflects the status and measured values recorded in `evidence/ver
 | :-- | :-- | :-- | :-- | :-- |
 | H0 | pass | 1/1 checks | Infrastructure: tests run inside workerd | offline re-measured |
 | H1 | pass | 114 lines | A graph validator is small and catches eight error classes | offline re-measured |
-| H2 | pass | 0.483 ratio | The runtime interprets graphs with no code generation and runs branches concurrently | offline re-measured |
+| H2 | pass | 0.488 ratio | The runtime interprets graphs with no code generation and runs branches concurrently | offline re-measured |
 | H3 | pass | 4/4 checks | Executors cannot read secrets their manifest does not declare | offline re-measured |
 | H5 | pass | 0 runs of 20 | The extracted wallet stays correct under concurrency | offline + recorded live run 2026-10-21T06:56:57.397Z |
 | H6 | pass | 5/5 checks | Bricks compose from a blueprint without hand edits | offline re-measured |
-| H7 | pass | 0.525 seconds | Assembly is deterministic, offline and fast | offline re-measured |
+| H7 | pass | 0.412 seconds | Assembly is deterministic, offline and fast | offline re-measured |
 | H8 | pass | 7/7 checks | An entity declaration yields tenant-safe CRUD | offline re-measured |
 | H9 | pass | 8.4 percent | An MCP session builds the project at a fraction of the source tokens | offline re-measured |
 | H10 | pass | 16.695 seconds | The project deploys to the owner's Cloudflare account over REST, idempotently | recorded live run 2026-10-21T09:42:02.972Z |
