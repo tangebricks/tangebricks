@@ -115,7 +115,11 @@ test.describe("Editable Workflow Canvas: searchable palette, typed-port validati
     await expect(page.getByTestId("topbar-revision-badge")).toHaveText("r7");
 
     // 7. Copy and Paste node-math-2 -> generates fresh ID and offset coordinates
-    await page.getByTestId("node-multiselect-toggle-node-math-2").check();
+    // The checkbox's checked state comes from React Flow's node store, which updates one render after the click;
+    // locator.check() reads it immediately and fails on slow runners. Click, then wait for the checked state.
+    const mathToggle = page.getByTestId("node-multiselect-toggle-node-math-2");
+    await mathToggle.click();
+    await expect(mathToggle).toBeChecked();
     await page.getByTestId("canvas-copy-button").click();
     await page.getByTestId("canvas-paste-button").click();
 
