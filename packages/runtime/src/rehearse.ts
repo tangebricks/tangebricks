@@ -91,6 +91,11 @@ export interface RehearseStepOptions {
   fetcher?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
   /** Optional custom fetcher for OAuth token refresh operations. */
   oauthFetcher?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+  /**
+   * Studio only (story 1.4): the authorised project the run's telemetry rows are stamped with, since Studio's one
+   * STUDIO_DB holds every project's telemetry. A deployed Worker never sets it. Never read from the request body.
+   */
+  telemetryProjectId?: string;
 }
 
 function isD1Like(candidate: unknown): candidate is D1Like {
@@ -400,6 +405,7 @@ export async function rehearseStep(
         return resolveCaseAConnection(nameOrSelector, {
           db: connectionDb,
           connKey,
+          telemetryWrite: { projectId: options.telemetryProjectId },
           envName: pxEnv,
           workspaceId: request.workspaceId,
           defaultApp: inferredApp,
@@ -475,13 +481,14 @@ export async function rehearseStep(
         startedAt,
         endedAt: new Date().toISOString(),
       };
-      await upsertRunRecord(db, runRecord);
+      await upsertRunRecord(db, runRecord, { projectId: options.telemetryProjectId });
 
       const stepEvent: StepEvent = {
         eventId: `${runId}:${request.nodeId}:succeeded:1`,
         runId,
         workflowId: request.workflowId,
         revision: request.revision,
+        workspaceId: request.workspaceId,
         nodeId: request.nodeId,
         status: "succeeded",
         durationMs,
@@ -491,7 +498,7 @@ export async function rehearseStep(
         errorStack: null,
         createdAt: new Date().toISOString(),
       };
-      await insertStepEvent(db, stepEvent);
+      await insertStepEvent(db, stepEvent, { projectId: options.telemetryProjectId });
     }
 
     return {
@@ -540,13 +547,14 @@ export async function rehearseStep(
         startedAt,
         endedAt: new Date().toISOString(),
       };
-      await upsertRunRecord(db, runRecord);
+      await upsertRunRecord(db, runRecord, { projectId: options.telemetryProjectId });
 
       const stepEvent: StepEvent = {
         eventId: `${runId}:${request.nodeId}:failed:1`,
         runId,
         workflowId: request.workflowId,
         revision: request.revision,
+        workspaceId: request.workspaceId,
         nodeId: request.nodeId,
         status: "failed",
         durationMs,
@@ -556,7 +564,7 @@ export async function rehearseStep(
         errorStack: redactedStack,
         createdAt: new Date().toISOString(),
       };
-      await insertStepEvent(db, stepEvent);
+      await insertStepEvent(db, stepEvent, { projectId: options.telemetryProjectId });
     }
 
     const structuredError = buildStructuredRehearsalError(
@@ -738,6 +746,8 @@ export type WorkflowRunRequest = z.infer<typeof WorkflowRunRequestSchema>;
 
 export interface ExecuteWorkflowRunOptions extends RehearseStepOptions {
   telemetrySecret?: string;
+  /** The project's webhook-signing secret (deriveProjectTelemetrySecret); Studio passes it for its own webhook. */
+  telemetryWebhookSecret?: string;
   telemetryWebhookUrl?: string;
   telemetryWebhookFetcher?: TelemetryRunOptions["webhookFetcher"];
 }
@@ -844,12 +854,14 @@ export async function executeWorkflowRun(
       db,
       runId,
       project: request.project,
+      ...(options.telemetryProjectId ? { projectId: options.telemetryProjectId } : {}),
       workflowId: request.workflowId,
       revision: request.revision,
       triggerType: request.triggerType,
       workspaceId: request.workspaceId,
       retryOfRunId: request.retryOfRunId ?? null,
       telemetrySecret: options.telemetrySecret,
+      ...(options.telemetryWebhookSecret ? { webhookSecret: options.telemetryWebhookSecret } : {}),
       webhookUrl: options.telemetryWebhookUrl,
       webhookFetcher: options.telemetryWebhookFetcher,
       secretValues: trackedSecrets,
@@ -1015,7 +1027,11 @@ export async function executeWorkflowRerun(
   let recordedEvents: StepEvent[] = [];
   if (db) {
     await ensureTelemetryTables(db);
-    recordedEvents = await listStepEventsForRun(db, request.sourceRunId);
+    // Only the source run's events inside this rerun's own workspace (and, in Studio, its project) are reused.
+    recordedEvents = await listStepEventsForRun(db, request.sourceRunId, {
+      workspaceId: request.workspaceId,
+      ...(options.telemetryProjectId ? { projectId: options.telemetryProjectId } : {}),
+    });
   }
   if (request.seededStepEvents && request.seededStepEvents.length > 0) {
     const seenIds = new Set(recordedEvents.map((e) => e.eventId));

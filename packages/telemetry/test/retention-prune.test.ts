@@ -70,6 +70,7 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
       runId: "run_old_20d",
       workflowId: "wf_billing",
       revision: 1,
+      workspaceId: "ws_1",
       nodeId: "node_trigger",
       status: "succeeded",
       durationMs: 42,
@@ -97,6 +98,7 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
       runId: "run_old_15d",
       workflowId: "wf_billing",
       revision: 1,
+      workspaceId: "ws_1",
       nodeId: "node_charge",
       status: "failed",
       durationMs: 85,
@@ -124,6 +126,7 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
       runId: "run_recent_10d",
       workflowId: "wf_billing",
       revision: 2,
+      workspaceId: "ws_1",
       nodeId: "node_webhook",
       status: "succeeded",
       durationMs: 18,
@@ -150,6 +153,7 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
       runId: "run_recent_2d",
       workflowId: "wf_onboarding",
       revision: 3,
+      workspaceId: "ws_1",
       nodeId: "node_welcome",
       status: "succeeded",
       durationMs: 12,
@@ -165,15 +169,15 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
     expect(pruneDefault.deletedRuns).toBe(2);
     expect(pruneDefault.deletedStepEvents).toBe(2);
 
-    const remainingAfterDefault = await listRunRecords(db);
+    const remainingAfterDefault = await listRunRecords(db, { workspaceId: "ws_1" });
     expect(remainingAfterDefault.map((r) => r.runId)).toEqual([
       "run_recent_2d",
       "run_recent_10d",
     ]);
-    expect(await listStepEventsForRun(db, "run_old_20d")).toHaveLength(0);
-    expect(await listStepEventsForRun(db, "run_old_15d")).toHaveLength(0);
-    expect(await listStepEventsForRun(db, "run_recent_10d")).toHaveLength(1);
-    expect(await listStepEventsForRun(db, "run_recent_2d")).toHaveLength(1);
+    expect(await listStepEventsForRun(db, "run_old_20d", { workspaceId: "ws_1" })).toHaveLength(0);
+    expect(await listStepEventsForRun(db, "run_old_15d", { workspaceId: "ws_1" })).toHaveLength(0);
+    expect(await listStepEventsForRun(db, "run_recent_10d", { workspaceId: "ws_1" })).toHaveLength(1);
+    expect(await listStepEventsForRun(db, "run_recent_2d", { workspaceId: "ws_1" })).toHaveLength(1);
 
     // Scheduled dispatcher with PX_RUN_RETENTION_DAYS=3 (clamped to minimum floor 7 days): prunes 10d run, keeps 2d run
     const pruneMinFloor = await runScheduledTelemetryRetentionPrune(
@@ -184,7 +188,7 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
     expect(pruneMinFloor.deletedRuns).toBe(1);
     expect(pruneMinFloor.deletedStepEvents).toBe(1);
 
-    const remainingAfterMinFloor = await listRunRecords(db);
+    const remainingAfterMinFloor = await listRunRecords(db, { workspaceId: "ws_1" });
     expect(remainingAfterMinFloor.map((r) => r.runId)).toEqual(["run_recent_2d"]);
   });
 
@@ -219,6 +223,7 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
       runId: "run_b",
       workflowId: "wf_orders",
       revision: 2,
+      workspaceId: "ws_1",
       nodeId: "step_debit",
       status: "failed",
       durationMs: 95,
@@ -241,21 +246,38 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
       endedAt: "2026-10-30T10:00:00.014Z",
     });
 
-    const wfFiltered = await queryRunHistory(db, { workflowId: "wf_orders" });
+    const wfFiltered = await queryRunHistory(db, { workspaceId: "ws_1" }, { workflowId: "wf_orders" });
     expect(wfFiltered.runs.map((r) => r.runId)).toEqual(["run_b", "run_a"]);
     expect(wfFiltered.runs[0]?.failedNodeId).toBe("step_debit");
     expect(wfFiltered.runs[0]?.stepCount).toBe(1);
 
-    const statusFiltered = await queryRunHistory(db, { status: "failed" });
+    const statusFiltered = await queryRunHistory(db, { workspaceId: "ws_1" }, { status: "failed" });
     expect(statusFiltered.runs.map((r) => r.runId)).toEqual(["run_b"]);
 
-    const triggerFiltered = await queryRunHistory(db, { trigger: "schedule" });
+    const triggerFiltered = await queryRunHistory(db, { workspaceId: "ws_1" }, { trigger: "schedule" });
     expect(triggerFiltered.runs.map((r) => r.runId)).toEqual(["run_c"]);
 
-    const timeFiltered = await queryRunHistory(db, {
+    const timeFiltered = await queryRunHistory(db, { workspaceId: "ws_1" }, {
       from: "2026-10-29T00:00:00.000Z",
       to: "2026-10-29T23:59:59.000Z",
     });
     expect(timeFiltered.runs.map((r) => r.runId)).toEqual(["run_b"]);
+
+    // Another workspace's run never appears in ws_1's history (story 1.4)
+    await upsertRunRecord(db, {
+      runId: "run_other_ws",
+      workflowId: "wf_orders",
+      revision: 1,
+      triggerType: "manual",
+      workspaceId: "ws_2",
+      status: "failed",
+      durationMs: 1,
+      retries: 0,
+      startedAt: "2026-10-29T12:00:00.000Z",
+    });
+    const ws1Only = await queryRunHistory(db, { workspaceId: "ws_1" }, { workflowId: "wf_orders" });
+    expect(ws1Only.runs.map((r) => r.runId)).toEqual(["run_b", "run_a"]);
+    const ws2Only = await queryRunHistory(db, { workspaceId: "ws_2" }, {});
+    expect(ws2Only.runs.map((r) => r.runId)).toEqual(["run_other_ws"]);
   });
 });

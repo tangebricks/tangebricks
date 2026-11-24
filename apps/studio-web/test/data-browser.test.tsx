@@ -7,7 +7,32 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { signedDataBrowserRequest } from "../../studio-api/src/telemetry-reads.ts";
 import { handleDataBrowserRequest } from "../../../packages/deploy/src/worker/data-browser.ts";
+
+/** The data routes take only the control-plane signature (story 1.4); the harness signs as Studio does. */
+const DATA_BROWSER_SECRET = "studio_web_data_browser_test_secret_0123456789";
+
+/**
+ * Requests the mocked Studio API is still answering. Signing and verifying each request is asynchronous, so the view's
+ * catalog and row loads can finish in either order; the test waits for them to settle before it starts an edit (a load
+ * that lands afterwards re-renders the rows and closes the inline editor).
+ */
+let inflight = 0;
+function trackInflight<A extends unknown[], R>(fn: (...args: A) => Promise<R>): (...args: A) => Promise<R> {
+  return async (...args: A) => {
+    inflight += 1;
+    try {
+      return await fn(...args);
+    } finally {
+      inflight -= 1;
+    }
+  };
+}
+const settled = () =>
+  waitFor(() => {
+    expect(inflight).toBe(0);
+  });
 import { sqliteD1 } from "../../../test/support/sqlite-d1.ts";
 import { EntitiesView } from "../src/components/EntitiesView.tsx";
 import { useStudioStore } from "../src/store.ts";
@@ -174,7 +199,7 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
       secrets: [],
     });
 
-    globalThis.fetch = vi.fn(
+    globalThis.fetch = vi.fn(trackInflight(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const rawUrl =
           typeof input === "string"
@@ -227,21 +252,22 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
             );
           }
 
-          const workerUrl = `http://worker.internal/__px/data/${subPath}${parsedUrl.search}`;
           const method = init?.method ?? "GET";
           const bodyText =
             typeof init?.body === "string" ? init.body : undefined;
+          // The request studio-api's data browser forwarder builds (workspace into the signed query, signed).
           const workerRes = await handleDataBrowserRequest(
-            new Request(workerUrl, {
+            await signedDataBrowserRequest({
               method,
-              headers: { "content-type": "application/json" },
-              ...(bodyText ? { body: bodyText } : {}),
+              workerPathAndQuery: `/__px/data/${subPath}${parsedUrl.search}`,
+              ...(bodyText ? { rawBody: bodyText } : {}),
+              signingSecret: DATA_BROWSER_SECRET,
             }),
             {
               db: world.d1,
               pxEnv: envName,
               declaredEntities: ["invoices"],
-              skipSignatureVerification: true,
+              telemetrySecret: DATA_BROWSER_SECRET,
             },
           );
           if (!workerRes) {
@@ -287,7 +313,7 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
         }
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       },
-    ) as unknown as typeof fetch;
+    )) as unknown as typeof fetch;
   });
 
   afterEach(() => {
@@ -306,6 +332,7 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
       expect(screen.getByTestId("data-browser-view")).toBeDefined();
       expect(screen.getByTestId("data-browser-row-inv_A_01")).toBeDefined();
     });
+    await settled();
 
     // Verify workspace_A rows are shown and workspace_B rows are absent
     expect(screen.getByTestId("data-browser-row-inv_A_01")).toBeDefined();
@@ -346,6 +373,7 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
     // Switch back to preview -> Preview badge appears and Add/Edit/Delete controls are enabled on dynamic entity
     fireEvent.click(screen.getByTestId("data-browser-env-preview"));
     await screen.findByTestId("data-browser-preview-badge");
+    await settled();
 
     // Inline edit inv_A_01 in preview with Confirmation Dialog
     await waitFor(async () => {

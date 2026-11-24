@@ -264,6 +264,7 @@ describe("Pin Step Output & Re-Run From Node API", () => {
     const pinnedRunEvents = await listStepEventsForRun(
       studioDb,
       "run_with_pinned_data",
+      { projectId: project },
     );
     const triggerEvent = pinnedRunEvents.find(
       (ev) => ev.nodeId === "step_trigger" && ev.status === "succeeded",
@@ -296,8 +297,9 @@ describe("Pin Step Output & Re-Run From Node API", () => {
       errorStack: "Error: Temporary debit gateway failure",
       startedAt: "2026-10-30T12:00:00.000Z",
       endedAt: "2026-10-30T12:00:00.085Z",
-    });
+    }, { projectId: project });
     await insertStepEvent(studioDb, {
+      workspaceId: "ws_acme",
       eventId: "ev_fail01_trig",
       runId: "run_failed_01",
       workflowId: "wf_orders",
@@ -311,8 +313,9 @@ describe("Pin Step Output & Re-Run From Node API", () => {
         out: { orderId: "ord_retry_88", amount: 25, balance: 300 },
       }),
       createdAt: "2026-10-30T12:00:00.004Z",
-    });
+    }, { projectId: project });
     await insertStepEvent(studioDb, {
+      workspaceId: "ws_acme",
       eventId: "ev_fail01_tx",
       runId: "run_failed_01",
       workflowId: "wf_orders",
@@ -326,8 +329,9 @@ describe("Pin Step Output & Re-Run From Node API", () => {
         out: { orderId: "ord_retry_88", amount: 25, balance: 300 },
       }),
       createdAt: "2026-10-30T12:00:00.010Z",
-    });
+    }, { projectId: project });
     await insertStepEvent(studioDb, {
+      workspaceId: "ws_acme",
       eventId: "ev_fail01_debit",
       runId: "run_failed_01",
       workflowId: "wf_orders",
@@ -340,7 +344,7 @@ describe("Pin Step Output & Re-Run From Node API", () => {
       outputPreview: "{}",
       errorStack: "Error: Temporary debit gateway failure",
       createdAt: "2026-10-30T12:00:00.085Z",
-    });
+    }, { projectId: project });
 
     // 9. Call POST /api/projects/:project/runs/run_failed_01/rerun from `step_debit`
     const rerunRes = await app.fetch(

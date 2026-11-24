@@ -93,6 +93,8 @@ test.describe("Story 6.4 — Backend Health & Metrics Panel (Real Backend)", () 
       "/api/projects/acme-saas/environments/preview/health/seed",
       {
         data: {
+          // Story 1.4: seeded rows belong to one of the project's own workspaces (its preview workspace here).
+          workspaceId: "ws_default",
           window: "1h",
           samples: [
             ...Array.from({ length: 12 }, (_, idx) => ({

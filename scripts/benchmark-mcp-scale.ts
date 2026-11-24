@@ -184,6 +184,8 @@ async function runMcpBenchmark(tier: ScaleTier) {
     verifyToken: createStaticTokenVerifier([
       { token: TOKEN, userId: "user:benchmark", projectId: `proj-${tier.bricks.length}`, scopes: ["read", "edit"] },
     ]),
+    // Standalone runs record an explicit, verified workspace (story 1.4); the benchmark names its own.
+    standaloneWorkspaceId: "ws_benchmark",
   });
   const exchanges: Array<{ req: string; res: string; reqTokens: number; resTokens: number }> = [];
 

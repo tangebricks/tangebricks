@@ -214,6 +214,8 @@ export async function runMcpTokenBudgetSuite(
     tools,
     callsPerMinute: 10_000,
     verifyToken: budgetTokenVerifier,
+    // Standalone runs record an explicit, verified workspace (story 1.4); the budget harness names its own.
+    standaloneWorkspaceId: "ws_budget",
   });
 
   const violations: TokenBudgetViolation[] = [];

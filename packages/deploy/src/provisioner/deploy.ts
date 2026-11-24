@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { splitStatements } from "@poc/sdk";
+import { deriveProjectTelemetrySecret } from "@poc/telemetry";
 import type { Catalog, ProjectLock } from "@poc/assembler";
 import { lintMigration } from "../migration-lint.ts";
 import { planDeploy } from "./plan.ts";
@@ -101,6 +102,34 @@ export interface DeployInput {
   catalog?: Catalog;
   /** Acknowledges brick major-version bumps the plan would otherwise block. */
   allowMajor?: boolean;
+  /**
+   * Story 1.4: when the Worker pushes telemetry to Studio, its webhook URL, its project and that project's derived
+   * webhook-signing secret (build it with telemetryWebhookConfig). Bound as PX_TELEMETRY_WEBHOOK_URL, PX_PROJECT_ID and
+   * the secret PX_TELEMETRY_WEBHOOK_SECRET; the URL is never bound without the other two.
+   */
+  telemetryWebhook?: TelemetryWebhookConfig;
+}
+
+export interface TelemetryWebhookConfig {
+  url: string;
+  projectId: string;
+  /** deriveProjectTelemetrySecret(PX_TELEMETRY_SECRET, projectId), never the root secret itself. */
+  signingSecret: string;
+}
+
+/** The webhook settings for one project's Worker: its URL, its project and the project's derived signing secret. */
+export async function telemetryWebhookConfig(url: string, projectId: string, rootSecret: string): Promise<TelemetryWebhookConfig> {
+  return { url, projectId, signingSecret: await deriveProjectTelemetrySecret(rootSecret, projectId) };
+}
+
+/** The bindings a telemetryWebhook config adds to a Worker upload. */
+export function telemetryWebhookBindings(config: TelemetryWebhookConfig | undefined): Array<Record<string, unknown>> {
+  if (!config) return [];
+  return [
+    { type: "plain_text", name: "PX_TELEMETRY_WEBHOOK_URL", text: config.url },
+    { type: "plain_text", name: "PX_PROJECT_ID", text: config.projectId },
+    { type: "secret_text", name: "PX_TELEMETRY_WEBHOOK_SECRET", text: config.signingSecret },
+  ];
 }
 
 export interface RollbackInput {
@@ -195,6 +224,7 @@ export function uploadMetadata(input: DeployInput, databaseId: string, withWorkf
     { type: "secret_text", name: input.secretBinding ?? KEY_BINDING, text: input.accessKey },
   ];
   if (input.environment) bindings.push({ type: "plain_text", name: "PX_ENVIRONMENT", text: input.environment });
+  bindings.push(...telemetryWebhookBindings(input.telemetryWebhook));
   if (withWorkflow && input.workflow) bindings.push({ type: "workflow", name: input.workflow.binding, workflow_name: input.names.workflow, class_name: input.workflow.className });
   if (input.scriptIsolation) {
     if (input.scriptIsolation.type === "worker_loader") {

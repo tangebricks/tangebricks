@@ -209,6 +209,10 @@ export async function runStoredGraph(run: StoredGraphRun): Promise<RunResult> {
           workflowId: params.graphId,
           ...(envTelemetrySecret ? { telemetrySecret: envTelemetrySecret } : {}),
           ...(envWebhookUrl ? { webhookUrl: envWebhookUrl } : {}),
+          // Story 1.4: the webhook names this deploy's project and is signed with that project's derived secret
+          // (set together with the URL by the provisioner, see telemetryWebhookConfig).
+          ...(typeof run.env?.PX_PROJECT_ID === "string" && run.env.PX_PROJECT_ID ? { project: run.env.PX_PROJECT_ID } : {}),
+          ...(typeof run.env?.PX_TELEMETRY_WEBHOOK_SECRET === "string" ? { webhookSecret: run.env.PX_TELEMETRY_WEBHOOK_SECRET } : {}),
           ...explicitTelemetry,
           // no telemetry option moves the run's workspace
           workspaceId,

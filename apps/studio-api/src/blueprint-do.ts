@@ -3334,7 +3334,11 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
             output_preview: string;
             error_stack: string | null;
             created_at: string;
-          }>("SELECT * FROM telemetry_events WHERE run_id = ? ORDER BY seq ASC", runId)
+            run_workspace_id: string | null;
+          }>(
+            "SELECT e.*, r.workspace_id AS run_workspace_id FROM telemetry_events e LEFT JOIN telemetry_runs r ON r.run_id = e.run_id WHERE e.run_id = ? ORDER BY e.seq ASC",
+            runId,
+          )
           .toArray()
       : this.ctx.storage.sql
           .exec<{
@@ -3351,7 +3355,10 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
             output_preview: string;
             error_stack: string | null;
             created_at: string;
-          }>("SELECT * FROM telemetry_events ORDER BY seq ASC LIMIT 500")
+            run_workspace_id: string | null;
+          }>(
+            "SELECT e.*, r.workspace_id AS run_workspace_id FROM telemetry_events e LEFT JOIN telemetry_runs r ON r.run_id = e.run_id ORDER BY e.seq ASC LIMIT 500",
+          )
           .toArray();
 
     const events: StepEvent[] = eventRows.map((e) => ({
@@ -3359,6 +3366,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       runId: e.run_id,
       workflowId: e.workflow_id,
       revision: Number(e.revision),
+      workspaceId: e.run_workspace_id ?? "",
       nodeId: e.node_id,
       status: e.status,
       durationMs: Number(e.duration_ms),

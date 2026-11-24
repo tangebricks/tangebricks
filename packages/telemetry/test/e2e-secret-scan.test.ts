@@ -13,10 +13,10 @@ import {
   REDACTED_PLACEHOLDER,
   TELEMETRY_SIGNATURE_HEADER,
   TelemetryWsFrameSchema,
-  canonicalEventsCursorPayload,
   ensureTelemetryTables,
   handleTelemetryEventsPullRequest,
   redactTelemetryPayload,
+  signControlPlaneRequest,
   signTelemetryPayload,
 } from "../src/index.ts";
 import type { StepEvent, TelemetryWebhookPayload, TelemetryWsFrame } from "../src/index.ts";
@@ -474,14 +474,11 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
     expect(rerunRes?.status).toBe(200);
     const rerunHttpText = await rerunRes!.text();
 
-    // 5. Pull events cursor via GET /__px/events?after=0&limit=100
-    const cursorSig = await signTelemetryPayload(
-      canonicalEventsCursorPayload(0, 100),
-      telemetrySecret,
-    );
+    // 5. Pull events cursor via GET /__px/events?workspaceId=ws_canary&after=0&limit=100 (control-plane signed)
+    const pullUrl = new URL("http://preview.local/__px/events?workspaceId=ws_canary&after=0&limit=100");
     const pullEventsRes = await handleTelemetryEventsPullRequest(
-      new Request("http://preview.local/__px/events?after=0&limit=100", {
-        headers: { [TELEMETRY_SIGNATURE_HEADER]: cursorSig },
+      new Request(pullUrl.toString(), {
+        headers: await signControlPlaneRequest(telemetrySecret, "GET", pullUrl),
       }),
       { db, telemetrySecret },
     );

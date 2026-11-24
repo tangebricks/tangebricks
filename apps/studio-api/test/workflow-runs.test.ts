@@ -360,7 +360,7 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
     expect(statusesFor("step_notify")).toEqual(["queued", "skipped"]);
 
     // Verify D1 px_step_events persisted all 11 events (4 queued + 3 running + 3 succeeded + 1 skipped)
-    const persistedEvents = await listStepEventsForRun(studioDb, runBody.runId);
+    const persistedEvents = await listStepEventsForRun(studioDb, runBody.runId, { projectId: project });
     expect(persistedEvents.length).toBe(11);
 
     // 4. Trigger failing branch run (tier === "vip", balance: 5 < 25 -> step_debit transitions to failed)

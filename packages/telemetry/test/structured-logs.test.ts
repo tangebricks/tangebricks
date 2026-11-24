@@ -5,12 +5,14 @@ import {
   PX_TELEMETRY_MIGRATION_SQL,
   REDACTED_PLACEHOLDER,
   TELEMETRY_SIGNATURE_HEADER,
-  canonicalLogsQueryPayload,
+  TelemetryScopeError,
+  TelemetryWriteRefusedError,
   createStructuredLogger,
   ensureTelemetryTables,
   handleTelemetryLogsPullRequest,
   insertStructuredLog,
   queryStructuredLogs,
+  signControlPlaneRequest,
   signTelemetryPayload,
 } from "../src/index.ts";
 
@@ -193,31 +195,42 @@ describe("@poc/telemetry — Story 6.3 structured logs, redaction, correlation, 
       errorStack: "Error: ETIMEDOUT at credit-wallet.debit",
     });
 
-    // Filter by level=error
-    const onlyErrors = await queryStructuredLogs(db, { level: "error" });
+    // Filter by level=error, inside ws_beta (every read is scoped, story 1.4)
+    const onlyErrors = await queryStructuredLogs(db, { workspaceId: "ws_beta" }, { level: "error" });
     expect(onlyErrors.logs).toHaveLength(1);
     expect(onlyErrors.logs[0]!.logId).toBe(third.logId);
+    // ws_alpha has no error line: ws_beta's is not visible from it
+    expect((await queryStructuredLogs(db, { workspaceId: "ws_alpha" }, { level: "error" })).logs).toHaveLength(0);
 
-    // Filter by workspaceId=ws_alpha & brickId=credit-wallet
-    const wsBrickFiltered = await queryStructuredLogs(db, {
-      workspaceId: "ws_alpha",
+    // Scope ws_alpha & brickId=credit-wallet
+    const wsBrickFiltered = await queryStructuredLogs(db, { workspaceId: "ws_alpha" }, {
       brickId: "credit-wallet",
     });
     expect(wsBrickFiltered.logs).toHaveLength(1);
     expect(wsBrickFiltered.logs[0]!.logId).toBe(second.logId);
 
     // Filter by runId=run_100
-    const runFiltered = await queryStructuredLogs(db, { runId: "run_100" });
+    const runFiltered = await queryStructuredLogs(db, { workspaceId: "ws_alpha" }, { runId: "run_100" });
     expect(runFiltered.logs).toHaveLength(2);
+    // run_101 is ws_beta's: asking for it from ws_alpha finds nothing
+    expect((await queryStructuredLogs(db, { workspaceId: "ws_alpha" }, { runId: "run_101" })).logs).toHaveLength(0);
 
     // Free-text search q=ETIMEDOUT
-    const searchFiltered = await queryStructuredLogs(db, { q: "ETIMEDOUT" });
+    const searchFiltered = await queryStructuredLogs(db, { workspaceId: "ws_beta" }, { q: "ETIMEDOUT" });
     expect(searchFiltered.logs).toHaveLength(1);
     expect(searchFiltered.logs[0]!.logId).toBe(third.logId);
 
+    // A read with no scope is a programming error, not a read of everything (there is no "all" bypass)
+    await expect(queryStructuredLogs(db, {}, { level: "error" })).rejects.toBeInstanceOf(TelemetryScopeError);
+
+    // A log line with neither a workspace nor a project stamp is refused
+    await expect(insertStructuredLog(db, { level: "info", message: "orphan line" })).rejects.toBeInstanceOf(
+      TelemetryWriteRefusedError,
+    );
+
     // Unsigned request to GET /__px/logs is rejected with 401
     const unsignedRes = await handleTelemetryLogsPullRequest(
-      new Request("https://worker.example/__px/logs?level=error"),
+      new Request("https://worker.example/__px/logs?workspaceId=ws_beta&level=error"),
       { db, telemetrySecret: TELEMETRY_SECRET },
     );
     expect(unsignedRes?.status).toBe(401);
@@ -226,16 +239,27 @@ describe("@poc/telemetry — Story 6.3 structured logs, redaction, correlation, 
     const url = new URL(
       `https://worker.example/__px/logs?env=preview&workspaceId=ws_beta&brickId=credit-wallet&level=error&after=${first.seq ?? 0}&limit=10`,
     );
-    const sig = await signTelemetryPayload(
-      canonicalLogsQueryPayload(url),
-      TELEMETRY_SECRET,
-    );
-    const signedRes = await handleTelemetryLogsPullRequest(
+    // The old body-only scheme over GET:<path and query> is refused
+    const legacyRes = await handleTelemetryLogsPullRequest(
       new Request(url.toString(), {
-        headers: {
-          [TELEMETRY_SIGNATURE_HEADER]: sig,
-        },
+        headers: { [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(`GET:${url.pathname}${url.search}`, TELEMETRY_SECRET) },
       }),
+      { db, telemetrySecret: TELEMETRY_SECRET, pxEnv: "preview" },
+    );
+    expect(legacyRes?.status).toBe(401);
+    // A signature for ws_beta replayed with ws_alpha's query is refused
+    const signed = await signControlPlaneRequest(TELEMETRY_SECRET, "GET", url);
+    const swapped = new URL(url);
+    swapped.searchParams.set("workspaceId", "ws_alpha");
+    const swappedRes = await handleTelemetryLogsPullRequest(new Request(swapped.toString(), { headers: signed }), {
+      db,
+      telemetrySecret: TELEMETRY_SECRET,
+      pxEnv: "preview",
+    });
+    expect(swappedRes?.status).toBe(401);
+
+    const signedRes = await handleTelemetryLogsPullRequest(
+      new Request(url.toString(), { headers: signed }),
       { db, telemetrySecret: TELEMETRY_SECRET, pxEnv: "preview" },
     );
     expect(signedRes?.status).toBe(200);

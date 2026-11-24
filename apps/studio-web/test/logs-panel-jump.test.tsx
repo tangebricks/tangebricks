@@ -9,20 +9,20 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   REDACTED_PLACEHOLDER,
-  TELEMETRY_SIGNATURE_HEADER,
-  canonicalLogsQueryPayload,
   ensureTelemetryTables,
   getRunRecord,
-  handleTelemetryLogsPullRequest,
   insertStepEvent,
   insertStructuredLog,
   listStepEventsForRun,
-  signTelemetryPayload,
   upsertRunRecord,
 } from "@poc/telemetry";
 import { sqliteD1 } from "../../../test/support/sqlite-d1.ts";
+import { readProjectLogs } from "../../studio-api/src/telemetry-reads.ts";
 import { StructuredLogsPanel } from "../src/components/StructuredLogsPanel.tsx";
 import { useStudioStore } from "../src/store.ts";
+
+/** The project every seeded row is stamped with, as Studio's ingest stamps them (story 1.4). */
+const PROJECT = "proj-logs-ui";
 
 describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Replay", () => {
   const originalFetch = globalThis.fetch;
@@ -49,9 +49,10 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
       errorStack: "Error: credit-wallet.debit (node_charge_wallet): insufficient balance (40 < 250)",
       startedAt: "2026-10-31T10:00:00.000Z",
       endedAt: "2026-10-31T10:00:00.042Z",
-    });
+    }, { projectId: PROJECT });
 
     await insertStepEvent(world.d1, {
+      workspaceId: "ws_alpha",
       eventId: "ev_step_01",
       runId: "run_charge_fail_01",
       workflowId: "wf_payment",
@@ -64,9 +65,10 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
       outputPreview: '{"out":{"balance":40,"workspaceId":"ws_alpha"}}',
       errorStack: null,
       createdAt: "2026-10-31T10:00:00.005Z",
-    });
+    }, { projectId: PROJECT });
 
     await insertStepEvent(world.d1, {
+      workspaceId: "ws_alpha",
       eventId: "ev_step_02",
       runId: "run_charge_fail_01",
       workflowId: "wf_payment",
@@ -79,7 +81,7 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
       outputPreview: "{}",
       errorStack: "Error: credit-wallet.debit (node_charge_wallet): insufficient balance (40 < 250)",
       createdAt: "2026-10-31T10:00:00.042Z",
-    });
+    }, { projectId: PROJECT });
 
     // Seed structured log rows across levels (debug, info, warn, error) with canary secrets
     await insertStructuredLog(
@@ -98,7 +100,7 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
         fields: { payloadKeys: ["balance", "workspaceId"] },
         envName: "preview",
       },
-      { secretValues: [CANARY_SECRET] },
+      { secretValues: [CANARY_SECRET] }, { projectId: PROJECT },
     );
 
     await insertStructuredLog(
@@ -117,7 +119,7 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
         fields: { requestedAmount: 250, currentBalance: 40 },
         envName: "preview",
       },
-      { secretValues: [CANARY_SECRET] },
+      { secretValues: [CANARY_SECRET] }, { projectId: PROJECT },
     );
 
     await insertStructuredLog(
@@ -137,7 +139,7 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
         fields: { balance: 15, threshold: 50 },
         envName: "preview",
       },
-      { secretValues: [CANARY_SECRET] },
+      { secretValues: [CANARY_SECRET] }, { projectId: PROJECT },
     );
 
     await insertStructuredLog(
@@ -162,7 +164,7 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
         errorStack: `Error: insufficient balance (${CANARY_SECRET})\n    at executeWalletDebit (credit-wallet.ts:42:9)`,
         envName: "preview",
       },
-      { secretValues: [CANARY_SECRET] },
+      { secretValues: [CANARY_SECRET] }, { projectId: PROJECT },
     );
 
     useStudioStore.getState().resetStore({
@@ -242,33 +244,23 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
         u.pathname ===
         "/api/projects/proj-logs-ui/environments/preview/logs"
       ) {
-        const workerUrl = new URL(
-          `http://env.worker.internal/__px/logs${u.search}`,
-        );
-        if (!workerUrl.searchParams.has("env")) {
-          workerUrl.searchParams.set("env", "preview");
-        }
-        const sig = await signTelemetryPayload(
-          canonicalLogsQueryPayload(workerUrl),
-          TELEMETRY_SECRET,
-        );
-        const workerReq = new Request(workerUrl.toString(), {
-          method: "GET",
-          headers: { [TELEMETRY_SIGNATURE_HEADER]: sig },
-        });
-        const res = await handleTelemetryLogsPullRequest(workerReq, {
+        // The same read studio-api's logs route makes (story 1.4: signed, confined to the project).
+        const res = await readProjectLogs({
           db: world.d1,
+          project: PROJECT,
+          envName: "preview",
+          search: u.search,
           telemetrySecret: TELEMETRY_SECRET,
-          pxEnv: "preview",
         });
         return res!;
       }
 
       if (u.pathname === "/api/projects/proj-logs-ui/runs/run_charge_fail_01") {
-        const run = await getRunRecord(world.d1, "run_charge_fail_01");
+        const run = await getRunRecord(world.d1, "run_charge_fail_01", { projectId: PROJECT });
         const stepEvents = await listStepEventsForRun(
           world.d1,
           "run_charge_fail_01",
+          { projectId: PROJECT },
         );
         const wf =
           useStudioStore.getState().projectState?.workflows[0] ?? null;

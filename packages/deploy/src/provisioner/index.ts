@@ -9,8 +9,8 @@ export { loadOrCreateAccessKey, fileKeyStore, memoryKeyStore } from "./access-ke
 export type { KeyStore } from "./access-key.ts";
 export { createClient, isCloudflareError, CloudflareApiError, CloudflareNetworkError, CloudflareMalformedError, API_BASE } from "./cloudflare.ts";
 export type { CallRecord, Client, CloudflareError } from "./cloudflare.ts";
-export { deploy, rollback, readAccountState, isWriteCall, migrationsFrom, uploadMetadata, UploadFailed, DeployError, MIGRATIONS_TABLE, DEPLOY_TABLE, DEPLOY_HISTORY_TABLE, KEY_BINDING, DB_BINDING, MAIN_MODULE } from "./deploy.ts";
-export type { AccountState, Change, DeployInput, DeployResult, Migration, ObservabilityDeploySpec, RollbackInput, RollbackResult, UploadFailureClass, WorkflowSpec } from "./deploy.ts";
+export { deploy, rollback, readAccountState, isWriteCall, migrationsFrom, uploadMetadata, UploadFailed, DeployError, MIGRATIONS_TABLE, DEPLOY_TABLE, DEPLOY_HISTORY_TABLE, KEY_BINDING, DB_BINDING, MAIN_MODULE, telemetryWebhookBindings, telemetryWebhookConfig } from "./deploy.ts";
+export type { AccountState, Change, DeployInput, DeployResult, Migration, ObservabilityDeploySpec, RollbackInput, RollbackResult, TelemetryWebhookConfig, UploadFailureClass, WorkflowSpec } from "./deploy.ts";
 export { teardown, findUnledgered } from "./teardown.ts";
 export type { TeardownResult } from "./teardown.ts";
 export { runProbe, describeProbe, forEvidence, onlyReads } from "./probe.ts";

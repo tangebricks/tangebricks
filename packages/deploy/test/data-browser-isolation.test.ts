@@ -1,10 +1,8 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { D1Like } from "@poc/sdk";
-import {
-  TELEMETRY_SIGNATURE_HEADER,
-  signTelemetryPayload,
-} from "@poc/telemetry";
+import { SIGNED_AT_HEADER, TELEMETRY_SIGNATURE_HEADER } from "@poc/telemetry";
+import { signedDataBrowserRequest } from "../../../apps/studio-api/src/telemetry-reads.ts";
 import { createProofRoutes } from "../src/worker/proof-routes.ts";
 
 const TELEMETRY_SECRET = "px_test_data_browser_secret_key_0123456789";
@@ -183,20 +181,22 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
   ): Promise<Response> {
     const method = init.method ?? "GET";
     const bodyText = init.body ? JSON.stringify(init.body) : undefined;
-    const fullUrl = new URL(`http://deployed.invalid${pathAndQuery}`);
-    const payloadToSign = bodyText ?? `${fullUrl.pathname}${fullUrl.search}`;
-    const signature = init.omitSignature
-      ? "invalid_signature"
-      : await signTelemetryPayload(payloadToSign, TELEMETRY_SECRET);
-
-    const req = new Request(fullUrl.toString(), {
+    // Story 1.4: the request Studio's data browser forwarder builds (a body's workspaceId carried into the signed query,
+    // control-plane signature); omitSignature sends the same request with a bad signature.
+    const signed = await signedDataBrowserRequest({
       method,
-      headers: {
-        ...(bodyText ? { "content-type": "application/json" } : {}),
-        [TELEMETRY_SIGNATURE_HEADER]: signature,
-      },
-      ...(bodyText ? { body: bodyText } : {}),
+      workerPathAndQuery: pathAndQuery,
+      ...(bodyText ? { rawBody: bodyText } : {}),
+      signingSecret: TELEMETRY_SECRET,
+      origin: "http://deployed.invalid",
     });
+    const req = init.omitSignature
+      ? new Request(signed.url, {
+          method,
+          headers: { [SIGNED_AT_HEADER]: String(Math.floor(Date.now() / 1000)), [TELEMETRY_SIGNATURE_HEADER]: "invalid_signature" },
+          ...(bodyText ? { body: bodyText } : {}),
+        })
+      : signed;
 
     const res = await routes(req, {
       DB: db,

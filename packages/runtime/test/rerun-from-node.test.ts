@@ -86,6 +86,7 @@ function createInMemoryTelemetryDb(): D1Like {
             output_preview: String(outputPreview ?? "{}"),
             error_stack: errorStack ?? null,
             created_at: String(createdAt),
+            workspace_id: bound[12] ?? null,
           };
           if (idx >= 0) {
             stepEvents[idx] = row;
@@ -114,7 +115,11 @@ function createInMemoryTelemetryDb(): D1Like {
       async all<T = Record<string, unknown>>() {
         if (trimmed.includes("FROM px_step_events")) {
           const runId = String(bound[0] ?? "");
-          const matches = stepEvents.filter((e) => e.run_id === runId) as T[];
+          // Story 1.4: reads are scoped; the workspace is the last bound value when the statement filters on it.
+          const scopedWorkspace = trimmed.includes("workspace_id = ?") ? bound[bound.length - 1] : undefined;
+          const matches = stepEvents.filter(
+            (e) => e.run_id === runId && (scopedWorkspace === undefined || e.workspace_id === scopedWorkspace),
+          ) as T[];
           return { success: true, results: matches, meta: { changes: 0 } };
         }
         return { success: true, results: [], meta: { changes: 0 } };
@@ -310,7 +315,7 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
     );
     expect(reusedNodeAEvent?.reused).toBe(true);
 
-    const retryEvents = await listStepEventsForRun(db, "run_2_retry_from_b");
+    const retryEvents = await listStepEventsForRun(db, "run_2_retry_from_b", { workspaceId: "ws_test" });
     expect(
       retryEvents.some(
         (ev) => ev.nodeId === "node_b" && ev.status === "succeeded",
@@ -346,6 +351,7 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
       runId: "run_truncated_upstream",
       workflowId: "wf_trunc",
       revision: 1,
+      workspaceId: "ws_test",
       nodeId: "node_a",
       status: "succeeded",
       durationMs: 10,

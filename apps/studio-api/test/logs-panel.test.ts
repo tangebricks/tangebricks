@@ -290,8 +290,11 @@ describe("Story 6.3 — Studio API Structured Logs & Errors Panel (/api/projects
     const wallet = createWallet(studioDb, gateway);
     await wallet.openWallet("ws_beta");
 
+    // Story 1.4: Studio's logs read is confined to the project, so the brick's lines are stamped with it (as Studio's
+    // own ingest stamps every line it stores).
     const brickLogger = createStructuredLogger({
       db: studioDb,
+      writeOptions: { projectId: project },
       context: {
         brickId: "credit-wallet",
         workspaceId: "ws_beta",

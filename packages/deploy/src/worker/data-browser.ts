@@ -1,8 +1,5 @@
 import type { D1Like } from "@poc/sdk";
-import {
-  TELEMETRY_SIGNATURE_HEADER,
-  verifyTelemetrySignature,
-} from "@poc/telemetry";
+import { checkControlPlaneSignature } from "@poc/telemetry";
 
 export const EXCLUDED_DATA_BROWSER_TABLES = new Set<string>([
   "px_connections",
@@ -140,13 +137,17 @@ export interface DataBrowserLedgerResponse {
 export interface DataBrowserOptions {
   db: D1Like;
   pxEnv?: "preview" | "production";
+  /**
+   * PX_TELEMETRY_SECRET. Every request must carry the control-plane signature made with it (story 1.4): method, path with
+   * the whole query string, x-px-signed-at within 300 s, and the body. Without a secret every request is refused.
+   */
   telemetrySecret?: string;
+  /** Wall clock in epoch milliseconds, for the signature window (default Date.now). */
+  clock?: () => number;
   /** Optional explicit entity names (e.g. ["invoices", "customers"]). */
   declaredEntities?: Iterable<string>;
   /** Optional explicit secret column names from brick manifests or entity schemas. */
   secretColumns?: Iterable<string>;
-  /** When true, skips X-Px-Signature verification (used only after upstream caller has already verified auth). */
-  skipSignatureVerification?: boolean;
 }
 
 export function isExcludedDataBrowserTable(tableName: string): boolean {
@@ -199,58 +200,16 @@ const json = (status: number, body: unknown) =>
     },
   });
 
-async function verifyDataBrowserSignature(
-  request: Request,
-  rawBody: string | null,
-  secret: string | undefined,
-): Promise<boolean> {
-  const signature = request.headers.get(TELEMETRY_SIGNATURE_HEADER);
-  if (!signature || !secret) return false;
-
-  const url = new URL(request.url);
-  const pathAndQuery = `${url.pathname}${url.search}`;
-  const schemeIdx = request.url.indexOf("://");
-  const rawPathIdx =
-    schemeIdx >= 0 ? request.url.indexOf("/", schemeIdx + 3) : -1;
-  const rawPathAndQuery =
-    rawPathIdx >= 0 ? request.url.slice(rawPathIdx) : pathAndQuery;
-
-  if (rawBody !== null && rawBody.length > 0) {
-    if (await verifyTelemetrySignature(rawBody, signature, secret)) {
-      return true;
-    }
-    if (
-      await verifyTelemetrySignature(
-        `${request.method} ${pathAndQuery}\n${rawBody}`,
-        signature,
-        secret,
-      )
-    ) {
-      return true;
-    }
-  }
-
-  if (await verifyTelemetrySignature(rawPathAndQuery, signature, secret)) {
-    return true;
-  }
-  const encodedQuotes = pathAndQuery.replace(/'/g, "%27");
-  if (
-    encodedQuotes !== pathAndQuery &&
-    (await verifyTelemetrySignature(encodedQuotes, signature, secret))
-  ) {
-    return true;
-  }
-  if (
-    rawPathAndQuery !== pathAndQuery &&
-    (await verifyTelemetrySignature(pathAndQuery, signature, secret))
-  ) {
-    return true;
-  }
-  if (await verifyTelemetrySignature(url.pathname, signature, secret)) {
-    return true;
-  }
-  return false;
+/**
+ * The workspace a data request reads or writes: the `workspaceId` of its query, which the signature covers (story 1.4).
+ * Empty when the query names none.
+ */
+function signedWorkspaceOf(url: URL): string {
+  return (url.searchParams.get("workspaceId") ?? url.searchParams.get("workspace_id") ?? "").trim();
 }
+
+const workspaceRequired = (message: string) =>
+  json(400, { error: { code: "WORKSPACE_ID_REQUIRED", message } });
 
 interface SqliteTableInfoRow {
   cid: number;
@@ -448,10 +407,7 @@ export async function listBrowsableWorkspaces(
     // Ignore if workspaces table has different shape
   }
 
-  if (workspaceSet.size === 0) {
-    workspaceSet.add("ws_default");
-  }
-
+  // No workspace is invented when the data names none (story 1.4: there is no default workspace).
   return [...workspaceSet].sort((a, b) => a.localeCompare(b));
 }
 
@@ -893,20 +849,15 @@ export async function handleDataBrowserRequest(
   const isReadMethod = request.method === "GET";
   const rawBody = isReadMethod ? null : await request.text();
 
-  if (!options.skipSignatureVerification) {
-    const validSig = await verifyDataBrowserSignature(
-      request,
-      rawBody,
-      options.telemetrySecret,
-    );
-    if (!validSig) {
-      return json(401, {
-        error: {
-          code: "UNAUTHORIZED_TELEMETRY_SIGNATURE",
-          message: "Missing or invalid X-Px-Signature",
-        },
-      });
-    }
+  // One signature scheme only: the control-plane one over method, path and query, timestamp and body, made with
+  // PX_TELEMETRY_SECRET. No body-only, pathname-only or unsigned path remains (story 1.4).
+  const refusal = await checkControlPlaneSignature(request, {
+    secret: options.telemetrySecret,
+    body: rawBody ?? "",
+    nowMs: (options.clock ?? Date.now)(),
+  });
+  if (refusal) {
+    return json(refusal.status, { error: { code: refusal.code, message: refusal.message } });
   }
 
   const secretColSet = new Set<string>();
@@ -949,7 +900,9 @@ export async function handleDataBrowserRequest(
         },
       });
     }
-    const workspaceId = url.searchParams.get("workspaceId")?.trim() ?? undefined;
+    // With a (signed) workspace, each table's row count in that workspace; without one, the table schema only: no row
+    // and no count of any workspace.
+    const workspaceId = signedWorkspaceOf(url) || undefined;
     const tables = await discoverBrowsableTables(options.db, {
       pxEnv,
       declaredEntities: options.declaredEntities,
@@ -993,20 +946,12 @@ export async function handleDataBrowserRequest(
       });
     }
 
-    const workspaceId = (
-      url.searchParams.get("workspaceId") ??
-      url.searchParams.get("workspace_id") ??
-      ""
-    ).trim();
+    const workspaceId = signedWorkspaceOf(url);
 
     if (!workspaceId) {
-      return json(400, {
-        error: {
-          code: "WORKSPACE_ID_REQUIRED",
-          message:
-            "Query parameter 'workspaceId' is required to inspect the Wallet & Usage Ledger (WHERE workspace_id = ?1).",
-        },
-      });
+      return workspaceRequired(
+        "Query parameter 'workspaceId' is required to inspect the Wallet & Usage Ledger (WHERE workspace_id = ?1).",
+      );
     }
 
     const cursor = url.searchParams.get("cursor") ?? url.searchParams.get("offset");
@@ -1095,20 +1040,10 @@ export async function handleDataBrowserRequest(
 
   // Route 3: GET /__px/data/tables/:tableName/rows
   if (request.method === "GET") {
-    const workspaceId = (
-      url.searchParams.get("workspaceId") ??
-      url.searchParams.get("workspace_id") ??
-      ""
-    ).trim();
+    const workspaceId = signedWorkspaceOf(url);
 
     if (!workspaceId) {
-      return json(400, {
-        error: {
-          code: "WORKSPACE_ID_REQUIRED",
-          message:
-            "Query parameter 'workspaceId' is required and must be non-empty.",
-        },
-      });
+      return workspaceRequired("Query parameter 'workspaceId' is required and must be non-empty.");
     }
 
     const limitRaw = Number(url.searchParams.get("limit") ?? "50");
@@ -1275,21 +1210,21 @@ export async function handleDataBrowserRequest(
     }
   }
 
-  const workspaceId = (
-    (typeof parsedBody.workspaceId === "string" ? parsedBody.workspaceId : "") ||
-    (typeof parsedBody.workspace_id === "string" ? parsedBody.workspace_id : "") ||
-    url.searchParams.get("workspaceId") ||
-    url.searchParams.get("workspace_id") ||
-    ""
-  ).trim();
+  // The workspace of a mutation is the signed query's; a body that names another one is refused.
+  const workspaceId = signedWorkspaceOf(url);
 
   if (!workspaceId) {
-    return json(400, {
-      error: {
-        code: "WORKSPACE_ID_REQUIRED",
-        message: "A non-empty 'workspaceId' is required for all Data Browser mutations.",
-      },
-    });
+    return workspaceRequired("A non-empty 'workspaceId' query parameter is required for all Data Browser mutations.");
+  }
+  for (const bodyWorkspace of [parsedBody.workspaceId, parsedBody.workspace_id]) {
+    if (typeof bodyWorkspace === "string" && bodyWorkspace.trim() && bodyWorkspace.trim() !== workspaceId) {
+      return json(400, {
+        error: {
+          code: "WORKSPACE_MISMATCH",
+          message: "The body names a different workspace than the signed query; nothing was written.",
+        },
+      });
+    }
   }
 
   if (parsedBody.confirmWrite !== true) {

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { STUDIO_PREVIEW_WORKSPACE } from "./preview-workspace.ts";
+import { readProjectLogs, signedDataBrowserRequest } from "./telemetry-reads.ts";
 import { z } from "zod";
 import {
   allowedOriginsFromEnv,
@@ -253,10 +254,10 @@ import {
   LogLevelSchema,
   TELEMETRY_SIGNATURE_HEADER,
   TelemetryWebhookPayloadSchema,
-  canonicalEventsCursorPayload,
-  canonicalLogsQueryPayload,
-  canonicalMetricsQueryPayload,
+  TelemetryWriteRefusedError,
+  deriveProjectTelemetrySecret,
   ensureTelemetryTables,
+  findTelemetryIdCollision,
   findResolvingRetryRunId,
   getRunRecord,
   handleTelemetryLogsPullRequest,
@@ -274,6 +275,7 @@ import {
   recordHttpRequestSamples,
   redactStructuredLogEntry,
   redactTelemetryPayload,
+  signControlPlaneRequest,
   signTelemetryPayload,
   upsertHttpRollup,
   upsertQueueMetrics,
@@ -288,6 +290,7 @@ import type {
   HttpRollupInput,
   LogLevel,
   PruneTelemetryResult,
+  TelemetryScope,
   QueueMetricInput,
   RawStructuredLogInput,
   RunHistorySummary,
@@ -318,6 +321,74 @@ export function requireTelemetrySecret(env: { PX_TELEMETRY_SECRET?: string }): s
   }
   return secret;
 }
+
+/**
+ * The scope of every telemetry read in Studio (story 1.4): the project the caller is authorised for, and, when the caller
+ * names one, a workspace inside it. STUDIO_DB holds every project's telemetry; nothing outside the project is returned.
+ */
+export function studioTelemetryScope(project: string, workspaceId?: string | null): TelemetryScope {
+  const ws = typeof workspaceId === "string" ? workspaceId.trim() : "";
+  return { projectId: project, ...(ws && ws !== "all" ? { workspaceId: ws } : {}) };
+}
+
+/** PX_TELEMETRY_SECRET when Studio has one; null otherwise (never BETTER_AUTH_SECRET or another fallback). */
+function studioSigningSecret(env: { PX_TELEMETRY_SECRET?: string }): string | null {
+  const secret = env.PX_TELEMETRY_SECRET;
+  return typeof secret === "string" && secret.trim().length > 0 ? secret : null;
+}
+
+/**
+ * Whether `workspaceId` is one of this project's own workspaces (story 1.4): Studio's preview workspace, or a workspace
+ * the project's own telemetry already names (rows Studio stamped with the project after authorising it).
+ */
+async function projectOwnsWorkspace(db: D1Like, project: string, workspaceId: string): Promise<boolean> {
+  if (workspaceId === STUDIO_PREVIEW_WORKSPACE) return true;
+  await ensureTelemetryTables(db);
+  const row = await db
+    .prepare("SELECT 1 AS hit FROM px_runs WHERE project_id = ?1 AND workspace_id = ?2 LIMIT 1")
+    .bind(project, workspaceId)
+    .first<{ hit: number }>();
+  return Boolean(row);
+}
+
+/** 409 ID_COLLISION: a payload id is held by another workspace or project, so nothing of the payload was written. */
+const idCollisionResponse = (claim: { table: string; id: string }) =>
+  Response.json(
+    {
+      error: {
+        code: "ID_COLLISION",
+        message: `${claim.table} id "${claim.id}" is held by another workspace or project; nothing was written.`,
+      },
+    },
+    { status: 409 },
+  );
+
+/** Runs a group of telemetry writes, answering 409 for a refused write instead of letting it become a 500. */
+async function refusedWriteAs409(write: () => Promise<void>): Promise<Response | null> {
+  try {
+    await write();
+    return null;
+  } catch (error) {
+    if (error instanceof TelemetryWriteRefusedError) {
+      return Response.json(
+        { error: { code: error.kind === "ID_COLLISION" ? "ID_COLLISION" : "TELEMETRY_WRITE_REFUSED", message: error.message } },
+        { status: error.kind === "ID_COLLISION" ? 409 : 400 },
+      );
+    }
+    throw error;
+  }
+}
+
+const signingSecretNotConfigured = () =>
+  Response.json(
+    {
+      error: {
+        code: "NOT_CONFIGURED",
+        message: "Studio has no PX_TELEMETRY_SECRET, so it cannot sign the request; nothing was read or written.",
+      },
+    },
+    { status: 503 },
+  );
 
 const runtimeRegistry = buildRegistryFromCatalog(catalog);
 /**
@@ -3408,8 +3479,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       });
     }
 
-    // 6. Workflow Runs from telemetry store
-    const runPage = await queryRunHistory(db, { limit: 100 });
+    // 6. Workflow Runs from telemetry store: this project's runs only (story 1.4)
+    const runPage = await queryRunHistory(db, { projectId: project }, { limit: 100 });
     for (const r of runPage.runs) {
       const actor =
         runActorByRunId.get(r.runId) ??
@@ -6190,8 +6261,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const signatureHeader = c.req.header(TELEMETRY_SIGNATURE_HEADER);
-    const telemetrySecret =
-      requireTelemetrySecret(c.env);
+    // Story 1.4: each project's webhook is signed with its own derived secret, so a body signed for another project
+    // (or with the shared root secret) does not verify on this project's URL.
+    const telemetrySecret = await deriveProjectTelemetrySecret(requireTelemetrySecret(c.env), project);
     const rawBody = await c.req.raw.text();
 
     const validSig = await verifyTelemetrySignature(
@@ -6226,6 +6298,24 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
+    // The signed payload must name the project of this URL (story 1.4): a payload signed for another project, or for
+    // none, is refused before anything is written, so it cannot land in this project's telemetry.
+    const signedProject =
+      parsedJson !== null && typeof parsedJson === "object" && !Array.isArray(parsedJson)
+        ? (parsedJson as { project?: unknown }).project
+        : undefined;
+    if (signedProject !== project) {
+      return c.json(
+        {
+          error: {
+            code: signedProject === undefined ? "PROJECT_REQUIRED" : "PROJECT_MISMATCH",
+            message: "The signed telemetry payload must name this URL's project; nothing was written.",
+          },
+        },
+        400,
+      );
+    }
+
     const validated = TelemetryWebhookPayloadSchema.safeParse(parsedJson);
     if (!validated.success) {
       return c.json(
@@ -6243,20 +6333,39 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
+    // Every row is stamped with this (signed, URL-matching) project. A run or event id held by another workspace or
+    // project is a collision: 409, and nothing is broadcast.
+    const stamp = { projectId: project };
     const payload = validated.data;
-    if (payload.run) {
-      await upsertRunRecord(db, payload.run);
-    }
     const persistedEvents: StepEvent[] = [];
-    for (const ev of payload.events) {
-      const saved = await insertStepEvent(db, ev);
-      persistedEvents.push(saved);
-    }
-
     const persistedLogs: StructuredLogEntry[] = [];
-    for (const logItem of payload.logs ?? []) {
-      const savedLog = await insertStructuredLog(db, logItem);
-      persistedLogs.push(savedLog);
+    // Refuse the whole payload, before writing any of it, when one of its ids is held by another workspace or project.
+    const webhookCollision = await findTelemetryIdCollision(db, [
+      ...(payload.run ? [{ table: "px_runs" as const, id: payload.run.runId, workspaceId: payload.run.workspaceId, projectId: project }] : []),
+      ...payload.events.map((ev) => ({ table: "px_step_events" as const, id: ev.eventId, workspaceId: ev.workspaceId, projectId: project })),
+      ...(payload.logs ?? []).map((log) => ({ table: "px_logs" as const, id: log.logId, workspaceId: log.workspaceId ?? null, projectId: project })),
+    ]);
+    if (webhookCollision) return idCollisionResponse(webhookCollision);
+    try {
+      if (payload.run) {
+        await upsertRunRecord(db, payload.run, stamp);
+      }
+      for (const ev of payload.events) {
+        const saved = await insertStepEvent(db, ev, stamp);
+        persistedEvents.push(saved);
+      }
+      for (const logItem of payload.logs ?? []) {
+        const savedLog = await insertStructuredLog(db, logItem, {}, stamp);
+        persistedLogs.push(savedLog);
+      }
+    } catch (error) {
+      if (error instanceof TelemetryWriteRefusedError) {
+        return c.json(
+          { error: { code: error.kind === "ID_COLLISION" ? "ID_COLLISION" : "TELEMETRY_WRITE_REFUSED", message: error.message } },
+          error.kind === "ID_COLLISION" ? 409 : 400,
+        );
+      }
+      throw error;
     }
 
     const stub = getBlueprintStub(c.env, project);
@@ -6328,15 +6437,18 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const limitRaw = c.req.query("limit");
     const after = afterRaw !== undefined ? Number(afterRaw) : 0;
     const limit = limitRaw !== undefined ? Number(limitRaw) : 100;
+    const scope = studioTelemetryScope(project, c.req.query("workspaceId"));
 
-    const runs = await listRunRecords(db, { limit: 50 });
+    await ensureTelemetryTables(db);
+    const runs = await listRunRecords(db, scope, { limit: 50 });
     if (runId) {
-      const events = await listStepEventsForRun(db, runId);
+      const events = await listStepEventsForRun(db, runId, scope);
       return c.json({ project, runs, events, nextCursor: events.length, hasMore: false }, 200);
     }
 
     const page = await listStepEventsAfterCursor(
       db,
+      scope,
       Number.isInteger(after) && after >= 0 ? after : 0,
       Number.isInteger(limit) && limit >= 1 ? limit : 100,
     );
@@ -6386,28 +6498,88 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const body = (await c.req.json().catch(() => ({}))) as {
-      workerUrl?: string;
+      workerUrl?: unknown;
+      env?: unknown;
       after?: number;
       limit?: number;
+      workspaceId?: string;
     };
     const after = typeof body.after === "number" && body.after >= 0 ? Math.floor(body.after) : 0;
     const limit = typeof body.limit === "number" && body.limit >= 1 ? Math.floor(body.limit) : 100;
-    const workerUrl = body.workerUrl ?? "http://worker.local";
+    // Story 1.4: Studio signs this pull, so it goes only to the project's own registered deploy target, never to an
+    // address the caller supplies (a signed request sent elsewhere could be replayed within its 300 s window).
+    if (body.workerUrl !== undefined) {
+      return c.json(
+        {
+          error: {
+            code: "WORKER_URL_NOT_ACCEPTED",
+            message: "Reconcile pulls from the project's own deploy target; a workerUrl in the body is refused.",
+          },
+        },
+        400,
+      );
+    }
+    // The Worker's events pull reads one workspace, the one its signed query names; it must be one of this project's.
+    const workspaceId = typeof body.workspaceId === "string" ? body.workspaceId.trim() : "";
+    if (!workspaceId) {
+      return c.json(
+        {
+          error: {
+            code: "WORKSPACE_ID_REQUIRED",
+            message: "Reconcile pulls one workspace's events: the body must name workspaceId.",
+          },
+        },
+        400,
+      );
+    }
+    if (!(await projectOwnsWorkspace(db, project, workspaceId))) {
+      return c.json(
+        {
+          error: {
+            code: "WORKSPACE_NOT_IN_PROJECT",
+            message: "workspaceId must be this project's preview workspace or one of its own workspaces.",
+          },
+        },
+        403,
+      );
+    }
 
-    const telemetrySecret =
-      requireTelemetrySecret(c.env);
-    const canonical = canonicalEventsCursorPayload(after, limit);
-    const sig = await signTelemetryPayload(canonical, telemetrySecret);
+    const targetEnv = body.env === "production" ? "production" : "preview";
+    const target =
+      (await db
+        .prepare(
+          "SELECT worker_url FROM project_deployments WHERE project_id = ?1 AND org_id = ?2 AND env_name = ?3 ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(project, authz.orgId, targetEnv)
+        .first<{ worker_url: string }>()
+        .catch(() => null)) ??
+      (await db
+        .prepare(
+          "SELECT worker_url FROM deployments WHERE project_id = ?1 AND org_id = ?2 AND env_name = ?3 ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(project, authz.orgId, targetEnv)
+        .first<{ worker_url: string }>()
+        .catch(() => null));
+    if (!target?.worker_url) {
+      return c.json(
+        { error: { code: "NO_TARGET", message: `Project "${project}" has no deployed ${targetEnv} target to reconcile from.` } },
+        409,
+      );
+    }
+    const workerUrl = target.worker_url;
 
+    const telemetrySecret = studioSigningSecret(c.env);
+    if (!telemetrySecret) {
+      return signingSecretNotConfigured();
+    }
     const pullUrl = new URL("/__px/events", workerUrl);
+    pullUrl.searchParams.set("workspaceId", workspaceId);
     pullUrl.searchParams.set("after", String(after));
     pullUrl.searchParams.set("limit", String(limit));
 
     const pullRes = await fetch(pullUrl.toString(), {
       method: "GET",
-      headers: {
-        [TELEMETRY_SIGNATURE_HEADER]: sig,
-      },
+      headers: await signControlPlaneRequest(telemetrySecret, "GET", pullUrl),
     });
 
     if (!pullRes.ok) {
@@ -6429,13 +6601,25 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       hasMore?: boolean;
     };
 
-    for (const run of pulled.runs ?? []) {
-      await upsertRunRecord(db, run);
-    }
+    // Only rows of the workspace that was pulled are kept, each stamped with this project.
+    const stamp = { projectId: project };
+    const pulledRuns = (pulled.runs ?? []).filter((run) => run?.workspaceId === workspaceId);
+    const pulledEvents = (pulled.events ?? []).filter((ev) => ev?.workspaceId === workspaceId);
+    const reconcileCollision = await findTelemetryIdCollision(db, [
+      ...pulledRuns.map((run) => ({ table: "px_runs" as const, id: run.runId, workspaceId, projectId: project })),
+      ...pulledEvents.map((ev) => ({ table: "px_step_events" as const, id: ev.eventId, workspaceId, projectId: project })),
+    ]);
+    if (reconcileCollision) return idCollisionResponse(reconcileCollision);
     const persistedEvents: StepEvent[] = [];
-    for (const ev of pulled.events ?? []) {
-      persistedEvents.push(await insertStepEvent(db, ev));
-    }
+    const reconcileRefused = await refusedWriteAs409(async () => {
+      for (const run of pulledRuns) {
+        await upsertRunRecord(db, run, stamp);
+      }
+      for (const ev of pulledEvents) {
+        persistedEvents.push(await insertStepEvent(db, ev, stamp));
+      }
+    });
+    if (reconcileRefused) return reconcileRefused;
 
     const stub = getBlueprintStub(c.env, project);
     await stub.fetch(
@@ -6445,7 +6629,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           project,
-          ...(pulled.runs && pulled.runs[0] ? { run: pulled.runs[0] } : {}),
+          ...(pulledRuns[0] ? { run: pulledRuns[0] } : {}),
           events: persistedEvents,
         }),
       },
@@ -6692,11 +6876,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           if (pinnedUpstream !== undefined) {
             effectiveInput = pinnedUpstream.output;
           } else {
+            await ensureTelemetryTables(db);
             const lastUpstreamRow = await db
               .prepare(
-                "SELECT output_preview FROM px_step_events WHERE workflow_id = ? AND node_id = ? AND status = 'succeeded' ORDER BY seq DESC LIMIT 1",
+                "SELECT output_preview FROM px_step_events WHERE project_id = ? AND workflow_id = ? AND node_id = ? AND status = 'succeeded' ORDER BY seq DESC LIMIT 1",
               )
-              .bind(workflowId, incomingEdge.source)
+              .bind(project, workflowId, incomingEdge.source)
               .first<{ output_preview: string }>();
             if (lastUpstreamRow?.output_preview) {
               try {
@@ -6770,6 +6955,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         registry: runtimeRegistry,
         executors: runtimeExecutors,
         db,
+        telemetryProjectId: project,
         env: rehearsalEnv,
         ...(connections ? { connections } : {}),
         pxEnv: targetEnv,
@@ -6795,8 +6981,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       }
 
       // Broadcast rehearsal telemetry event to BlueprintDO so connected Studio sessions also see the rehearsal event
-      const stepEvents = await listStepEventsForRun(db, resultBody.runId);
-      const runRecord = (await listRunRecords(db, { workflowId, limit: 5 })).find(
+      const projectScope = { projectId: project };
+      const stepEvents = await listStepEventsForRun(db, resultBody.runId, projectScope);
+      const runRecord = (await listRunRecords(db, projectScope, { workflowId, limit: 5 })).find(
         (r) => r.runId === resultBody.runId,
       );
       await stub.fetch(
@@ -7145,11 +7332,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         registry: runtimeRegistry,
         executors: runtimeExecutors,
         db,
+        telemetryProjectId: project,
         env: runEnv,
         ...(connections ? { connections } : {}),
         pxEnv: targetEnv,
         telemetrySecret,
         telemetryWebhookUrl: webhookUrl,
+        telemetryWebhookSecret: await deriveProjectTelemetrySecret(telemetrySecret, project),
         telemetryWebhookFetcher: async (input, init) =>
           app.fetch(new Request(input, init), c.env),
         secretValues,
@@ -7269,7 +7458,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         ? Math.max(1, Math.min(200, Math.floor(Number(limitRaw))))
         : 50;
 
-    const page = await queryRunHistory(db, {
+    const page = await queryRunHistory(db, studioTelemetryScope(project, c.req.query("workspaceId")), {
       ...(workflowId ? { workflowId } : {}),
       ...(status ? { status } : {}),
       ...(trigger ? { trigger } : {}),
@@ -7402,8 +7591,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const envParam = c.req.query("env") === "production" ? "production" : "preview";
-    let run = await getRunRecord(db, runId);
-    let stepEvents = await listStepEventsForRun(db, runId);
+    // Only this project's run: another project's run id is not found here (404), never read across (story 1.4).
+    const projectScope = { projectId: project };
+    let run = await getRunRecord(db, runId, projectScope);
+    let stepEvents = run ? await listStepEventsForRun(db, runId, projectScope) : [];
 
     const stub = getBlueprintStub(c.env, project);
     if (!run || stepEvents.length === 0) {
@@ -7469,7 +7660,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const resolvedByRunId =
       run.status === "failed"
-        ? await findResolvingRetryRunId(db, run.runId)
+        ? await findResolvingRetryRunId(db, run.runId, projectScope)
         : null;
 
     return c.json(
@@ -7752,8 +7943,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json({ error: authz.error }, authz.status);
     }
 
-    let sourceRun = await getRunRecord(db, sourceRunId);
-    let sourceStepEvents = await listStepEventsForRun(db, sourceRunId);
+    // The source run must be this project's: another project's run id is 404 RUN_NOT_FOUND and nothing starts.
+    const projectScope = { projectId: project };
+    let sourceRun = await getRunRecord(db, sourceRunId, projectScope);
+    let sourceStepEvents = sourceRun ? await listStepEventsForRun(db, sourceRunId, projectScope) : [];
 
     const stub = getBlueprintStub(c.env, project);
     if (!sourceRun || sourceStepEvents.length === 0) {
@@ -7917,7 +8110,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       workspaceId: sourceRun.workspaceId ?? STUDIO_PREVIEW_WORKSPACE,
       sourceRunId,
       fromNodeId,
-      seededStepEvents: sourceStepEvents,
+      seededStepEvents: sourceStepEvents.map((ev) => ({
+        ...ev,
+        workspaceId: ev.workspaceId || sourceRun!.workspaceId,
+      })),
       graph: {
         nodes: (workflow.nodes ?? []).map((n) => ({
           id: n.id,
@@ -7968,10 +8164,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       registry: runtimeRegistry,
       executors: runtimeExecutors,
       db,
+      telemetryProjectId: project,
       env: runEnv,
       pxEnv: targetEnv,
       telemetrySecret,
       telemetryWebhookUrl: webhookUrl,
+        telemetryWebhookSecret: await deriveProjectTelemetrySecret(telemetrySecret, project),
       telemetryWebhookFetcher: async (input, init) =>
         app.fetch(new Request(input, init), c.env),
       secretValues,
@@ -12943,6 +13141,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     workerPathAndQuery: string;
     rawBody?: string;
   }): Promise<Response> {
+    // Story 1.4: the data routes take only the control-plane signature made with PX_TELEMETRY_SECRET; without it
+    // Studio cannot sign, and answers 503 rather than signing with another secret.
+    const signingSecret = studioSigningSecret(params.env);
+    if (!signingSecret) {
+      return signingSecretNotConfigured();
+    }
     // Story 17: the data browser reads the project's own data store and never falls back to STUDIO_DB.
     const dataStore = await resolveProjectDataStore(
       params.db,
@@ -12958,33 +13162,17 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const targetDataDb: D1Like = dataStore.d1;
     const { declaredEntities, secretColumns } = description;
 
-    const telemetrySecret =
-      requireTelemetrySecret({
-        PX_TELEMETRY_SECRET: params.env.PX_TELEMETRY_SECRET ?? params.env.BETTER_AUTH_SECRET,
-      });
-
-    const fullWorkerUrl = new URL(
-      `http://env.worker.internal${params.workerPathAndQuery}`,
-    );
-    const payloadToSign =
-      params.rawBody && params.rawBody.length > 0
-        ? params.rawBody
-        : `${fullWorkerUrl.pathname}${fullWorkerUrl.search}`;
-    const signature = await signTelemetryPayload(payloadToSign, telemetrySecret);
-
-    const workerReq = new Request(fullWorkerUrl.toString(), {
+    const workerReq = await signedDataBrowserRequest({
       method: params.method,
-      headers: {
-        ...(params.rawBody ? { "content-type": "application/json" } : {}),
-        [TELEMETRY_SIGNATURE_HEADER]: signature,
-      },
-      ...(params.rawBody ? { body: params.rawBody } : {}),
+      workerPathAndQuery: params.workerPathAndQuery,
+      ...(params.rawBody !== undefined ? { rawBody: params.rawBody } : {}),
+      signingSecret,
     });
 
     const workerRes = await handleDataBrowserRequest(workerReq, {
       db: targetDataDb,
       pxEnv: params.envName,
-      telemetrySecret,
+      telemetrySecret: signingSecret,
       declaredEntities,
       secretColumns,
     });
@@ -13736,33 +13924,18 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json({ error: authz.error }, authz.status);
     }
 
-    const reqUrl = new URL(c.req.url);
-    const workerUrl = new URL(`http://env.worker.internal/__px/logs${reqUrl.search}`);
-    if (!workerUrl.searchParams.has("env")) {
-      workerUrl.searchParams.set("env", envName);
+    const telemetrySecret = studioSigningSecret(c.env);
+    if (!telemetrySecret) {
+      return signingSecretNotConfigured();
     }
 
-    const telemetrySecret =
-      requireTelemetrySecret({
-        PX_TELEMETRY_SECRET: c.env.PX_TELEMETRY_SECRET ?? c.env.BETTER_AUTH_SECRET,
-      });
-
-    const signature = await signTelemetryPayload(
-      canonicalLogsQueryPayload(workerUrl),
-      telemetrySecret,
-    );
-
-    const workerReq = new Request(workerUrl.toString(), {
-      method: "GET",
-      headers: {
-        [TELEMETRY_SIGNATURE_HEADER]: signature,
-      },
-    });
-
-    const workerRes = await handleTelemetryLogsPullRequest(workerReq, {
+    // The read is confined to the authorised project (story 1.4).
+    const workerRes = await readProjectLogs({
       db,
+      project,
+      envName,
+      search: new URL(c.req.url).search,
       telemetrySecret,
-      pxEnv: envName,
     });
 
     if (!workerRes) {
@@ -13884,6 +14057,22 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const insertedEntries: StructuredLogEntry[] = [];
 
+    // Story 1.4: every log line names its workspace; a batch with a line that does not is refused whole.
+    const unnamed = rawEntries.some(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        typeof item.message === "string" &&
+        item.message.trim() &&
+        !(typeof item.workspaceId === "string" && item.workspaceId.trim()),
+    );
+    if (unnamed) {
+      return c.json(
+        { error: { code: "WORKSPACE_ID_REQUIRED", message: "Every log entry must name its workspaceId; nothing was written." } },
+        400,
+      );
+    }
+
     for (const item of rawEntries) {
       if (!item || typeof item !== "object") continue;
       const parsedLevel = LogLevelSchema.safeParse(item.level ?? "info");
@@ -13913,9 +14102,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         envName,
       };
 
-      const persisted = await insertStructuredLog(db, entryInput, {
-        secretValues,
-      });
+      const persisted = await insertStructuredLog(
+        db,
+        entryInput,
+        { secretValues },
+        { projectId: project },
+      );
       insertedEntries.push(persisted);
     }
 
@@ -14029,31 +14221,30 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json({ error: authz.error }, authz.status);
     }
 
+    const telemetrySecret = studioSigningSecret(c.env);
+    if (!telemetrySecret) {
+      return signingSecretNotConfigured();
+    }
+
     const nowQuery = c.req.query("now") ?? undefined;
     const workerUrl = new URL(
       `http://env.worker.internal/__px/metrics?window=${encodeURIComponent(window)}&env=${encodeURIComponent(envName)}`,
     );
-
-    const telemetrySecret =
-      requireTelemetrySecret({
-        PX_TELEMETRY_SECRET: c.env.PX_TELEMETRY_SECRET ?? c.env.BETTER_AUTH_SECRET,
-      });
-
-    const signature = await signTelemetryPayload(
-      canonicalMetricsQueryPayload(workerUrl),
-      telemetrySecret,
-    );
+    const healthWorkspace = c.req.query("workspaceId")?.trim();
+    if (healthWorkspace && healthWorkspace !== "all") {
+      workerUrl.searchParams.set("workspaceId", healthWorkspace);
+    }
 
     const workerReq = new Request(workerUrl.toString(), {
       method: "GET",
-      headers: {
-        [TELEMETRY_SIGNATURE_HEADER]: signature,
-      },
+      headers: await signControlPlaneRequest(telemetrySecret, "GET", workerUrl),
     });
 
+    // Confined to the authorised project (story 1.4).
     const workerRes = await handleTelemetryMetricsRequest(workerReq, {
       db,
       telemetrySecret,
+      projectId: project,
       pxEnv: envName,
       ...(nowQuery ? { now: nowQuery } : {}),
     });
@@ -14150,9 +14341,15 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json({ error: authz.error }, authz.status);
     }
 
+    // Story 1.4: seeded health data belongs to this project and to one of its own workspaces, which the caller must
+    // name (body.workspaceId); every seeded row is written under it and stamped with the project.
+    const seedWorkspace =
+      typeof rawBody.workspaceId === "string" && rawBody.workspaceId.trim() ? rawBody.workspaceId.trim() : "";
+    const stamp = { projectId: project };
+
     if (rawBody.reset === true) {
-      // Story 16: px_http_rollups and px_queue_metrics have no project or org column, so a reset wipes the health data
-      // of every project in this environment. Only a platform operator may do that.
+      // Story 16 kept this to platform operators while the tables had no project column. Since story 1.4 the reset
+      // deletes only this project's rows, but stays operator-only.
       const resetRefusal = refuseNonPlatformOperator(c.env, resolved.caller);
       if (resetRefusal) {
         return c.json({ error: resetRefusal }, 403);
@@ -14160,11 +14357,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       await ensureTelemetryTables(db);
       await db.batch([
         db
-          .prepare("DELETE FROM px_http_rollups WHERE env_name = ?1")
-          .bind(envName),
+          .prepare("DELETE FROM px_http_rollups WHERE env_name = ?1 AND project_id = ?2")
+          .bind(envName, project),
         db
-          .prepare("DELETE FROM px_queue_metrics WHERE env_name = ?1")
-          .bind(envName),
+          .prepare("DELETE FROM px_queue_metrics WHERE env_name = ?1 AND project_id = ?2")
+          .bind(envName, project),
       ]);
       cloudflareAnalyticsSnapshotsByEnv.delete(`${project}::${envName}::1h`);
       cloudflareAnalyticsSnapshotsByEnv.delete(`${project}::${envName}::24h`);
@@ -14172,6 +14369,30 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       cloudflareAnalyticsSnapshotsByEnv.delete(`${project}::${envName}::all`);
     }
 
+    const seedsRows = ["samples", "rollups", "queues", "runs"].some((key) => Array.isArray(rawBody[key]));
+    if (seedsRows && !(seedWorkspace && (await projectOwnsWorkspace(db, project, seedWorkspace)))) {
+      return c.json(
+        {
+          error: {
+            code: seedWorkspace ? "WORKSPACE_NOT_IN_PROJECT" : "WORKSPACE_ID_REQUIRED",
+            message: "Health seed needs workspaceId: the project's preview workspace or one of its own workspaces.",
+          },
+        },
+        400,
+      );
+    }
+
+    if (Array.isArray(rawBody.runs)) {
+      const seedCollision = await findTelemetryIdCollision(
+        db,
+        (rawBody.runs as Array<RunRecord>)
+          .filter((run) => typeof run?.runId === "string")
+          .map((run) => ({ table: "px_runs" as const, id: run.runId, workspaceId: seedWorkspace, projectId: project })),
+      );
+      if (seedCollision) return idCollisionResponse(seedCollision);
+    }
+
+    const seedRefused = await refusedWriteAs409(async () => {
     if (Array.isArray(rawBody.samples)) {
       const samples: HttpRequestSampleInput[] = (
         rawBody.samples as Array<Record<string, unknown>>
@@ -14188,33 +14409,57 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         d1LatencyMs: typeof s.d1LatencyMs === "number" ? s.d1LatencyMs : undefined,
         d1Errors: typeof s.d1Errors === "number" ? s.d1Errors : 0,
         envName,
+        workspaceId:
+          seedWorkspace,
       }));
-      await recordHttpRequestSamples(db, samples);
+      await recordHttpRequestSamples(db, samples, stamp);
     }
 
     if (Array.isArray(rawBody.rollups)) {
       for (const r of rawBody.rollups as Array<HttpRollupInput>) {
-        await upsertHttpRollup(db, {
-          ...r,
-          envName,
-        });
+        await upsertHttpRollup(
+          db,
+          {
+            ...r,
+            workspaceId:
+              seedWorkspace,
+            envName,
+          },
+          stamp,
+        );
       }
     }
 
     if (Array.isArray(rawBody.queues)) {
       for (const q of rawBody.queues as Array<QueueMetricInput>) {
-        await upsertQueueMetrics(db, {
-          ...q,
-          envName,
-        });
+        await upsertQueueMetrics(
+          db,
+          {
+            ...q,
+            workspaceId:
+              seedWorkspace,
+            envName,
+          },
+          stamp,
+        );
       }
     }
 
     if (Array.isArray(rawBody.runs)) {
       for (const run of rawBody.runs as Array<RunRecord>) {
-        await upsertRunRecord(db, run);
+        await upsertRunRecord(
+          db,
+          {
+            ...run,
+            workspaceId:
+              seedWorkspace,
+          },
+          stamp,
+        );
       }
     }
+    });
+    if (seedRefused) return seedRefused;
 
     if (
       typeof rawBody.cloudflareAnalytics === "object" &&
@@ -14231,7 +14476,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const summary = await queryEnvironmentMetrics(db, {
+    const summary = await queryEnvironmentMetrics(db, { projectId: project }, {
       env: envName,
       window:
         typeof rawBody.window === "string" &&

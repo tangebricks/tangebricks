@@ -79,6 +79,8 @@ async function main() {
     db,
     catalog,
     blueprint,
+    // Standalone runs record an explicit, verified workspace (story 1.4); the eval names its own.
+    workspaceId: "ws_eval",
     author: {
       type: "agent",
       id: "agent:self-correct-eval",

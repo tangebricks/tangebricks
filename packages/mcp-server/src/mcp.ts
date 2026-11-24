@@ -66,6 +66,11 @@ export interface McpOptions {
   studioRequest?: StudioRequestFn;
   /** Optional base URL for Studio consent URLs. */
   baseUrl?: string;
+  /**
+   * The verified workspace standalone test_workflow records its runs under (no Studio configured). Without one, a
+   * standalone run is refused: there is no default workspace (story 1.4).
+   */
+  standaloneWorkspaceId?: string;
   /** Optional custom tool registry (used for negative tamper testing of token budgets). */
   tools?: ReadonlyArray<Tool>;
 }
@@ -339,6 +344,8 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
               author,
               studioRequest: options.studioRequest,
               baseUrl,
+              projectId: caller.projectId,
+              ...(options.standaloneWorkspaceId ? { workspaceId: options.standaloneWorkspaceId } : {}),
             },
             checked.value,
           );

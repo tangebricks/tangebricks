@@ -4,7 +4,6 @@ import type { D1Like } from "@poc/sdk";
 import {
   PX_TELEMETRY_MIGRATION_SQL,
   TELEMETRY_SIGNATURE_HEADER,
-  canonicalMetricsQueryPayload,
   computeLatencyQuantiles,
   ensureTelemetryTables,
   handleTelemetryMetricsRequest,
@@ -12,6 +11,7 @@ import {
   queryEnvironmentMetrics,
   reconcileCloudflareAnalyticsWithD1Metrics,
   recordHttpRequestSamples,
+  signControlPlaneRequest,
   signTelemetryPayload,
   upsertHttpRollup,
   upsertQueueMetrics,
@@ -66,6 +66,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     await recordHttpRequestSamples(
       db,
       rawLatencies.map((latencyMs, idx) => ({
+        workspaceId: "ws_alpha",
         ts: idx < 10 ? min10Ago : min25Ago,
         routePrefix: idx < 12 ? "/webhooks/stripe" : "/api/wallet/debit",
         brickId: idx < 12 ? "webhook-gateway" : "credit-wallet",
@@ -80,6 +81,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
 
     // Record an older rollup 6 hours ago (included in 24h & 7d, excluded from 1h)
     await upsertHttpRollup(db, {
+      workspaceId: "ws_alpha",
       bucketMinute: hours6Ago,
       routePrefix: "/api/entities/orders",
       brickId: "dynamic-entities",
@@ -95,6 +97,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
 
     // Record an even older rollup 3 days ago (included in 7d only)
     await upsertHttpRollup(db, {
+      workspaceId: "ws_alpha",
       bucketMinute: days3Ago,
       routePrefix: "/api/notify/send",
       brickId: "in-app-notifications",
@@ -150,6 +153,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
 
     // Seed queue metrics
     await upsertQueueMetrics(db, {
+      workspaceId: "ws_alpha",
       queueName: "px-outbound-dispatch",
       pendingCount: 14,
       dlqCount: 3,
@@ -157,6 +161,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
       envName: "preview",
     });
     await upsertQueueMetrics(db, {
+      workspaceId: "ws_alpha",
       queueName: "px-webhook-ingest",
       pendingCount: 2,
       dlqCount: 0,
@@ -164,8 +169,30 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
       envName: "preview",
     });
 
+    // Another workspace's traffic, queue and failed run in the same minutes never count for ws_alpha (story 1.4).
+    await recordHttpRequestSamples(db, [
+      { workspaceId: "ws_beta", ts: min10Ago, routePrefix: "/webhooks/stripe", brickId: "webhook-gateway", status: 500, latencyMs: 9999, envName: "preview" },
+    ]);
+    await upsertQueueMetrics(db, { workspaceId: "ws_beta", queueName: "px-outbound-dispatch", pendingCount: 999, dlqCount: 99, updatedAt: min10Ago, envName: "preview" });
+    await upsertRunRecord(db, {
+      runId: "run_beta_fail",
+      workflowId: "wf_beta",
+      revision: 1,
+      triggerType: "webhook",
+      workspaceId: "ws_beta",
+      status: "failed",
+      durationMs: 1,
+      retries: 0,
+      startedAt: min10Ago,
+      endedAt: min10Ago,
+    });
+    const betaOnly = await queryEnvironmentMetrics(db, { workspaceId: "ws_beta" }, { env: "preview", window: "1h", now: baseNow });
+    expect(betaOnly.requestCount).toBe(1);
+    expect(betaOnly.workflows.totalRuns).toBe(1);
+    expect(betaOnly.queues).toEqual([expect.objectContaining({ queueName: "px-outbound-dispatch", depth: 999 })]);
+
     // 1. Verify 1h window
-    const summary1h = await queryEnvironmentMetrics(db, {
+    const summary1h = await queryEnvironmentMetrics(db, { workspaceId: "ws_alpha" }, {
       env: "preview",
       window: "1h",
       now: baseNow,
@@ -198,7 +225,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     expect(summary1h.series).toHaveLength(12);
 
     // 2. Verify 24h window includes 6h-ago rollup (20 + 30 = 50 requests, 2 + 3 = 5 5xx errors)
-    const summary24h = await queryEnvironmentMetrics(db, {
+    const summary24h = await queryEnvironmentMetrics(db, { workspaceId: "ws_alpha" }, {
       env: "preview",
       window: "24h",
       now: baseNow,
@@ -209,7 +236,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     expect(summary24h.perBrick).toHaveLength(3);
 
     // 3. Verify 7d window includes 3d-ago rollup (50 + 50 = 100 requests, 5 5xx errors => 5%)
-    const summary7d = await queryEnvironmentMetrics(db, {
+    const summary7d = await queryEnvironmentMetrics(db, { workspaceId: "ws_alpha" }, {
       env: "preview",
       window: "7d",
       now: baseNow,
@@ -223,6 +250,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
   test("authenticates GET /__px/metrics with HMAC signature and reconciles Cloudflare GraphQL Analytics snapshot", async () => {
     const baseNow = new Date("2026-06-15T12:00:00.000Z");
     await upsertHttpRollup(db, {
+      workspaceId: "ws_alpha",
       bucketMinute: "2026-06-15T11:45:00.000Z",
       routePrefix: "/webhooks/inbound",
       brickId: "webhook-gateway",
@@ -238,31 +266,33 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
 
     // Rejects unsigned request with 401
     const unsignedRes = await handleTelemetryMetricsRequest(
-      new Request("https://worker.local/__px/metrics?window=1h"),
+      new Request("https://worker.local/__px/metrics?workspaceId=ws_alpha&window=1h"),
       { db, telemetrySecret: TELEMETRY_SECRET, pxEnv: "preview", now: baseNow },
     );
     expect(unsignedRes?.status).toBe(401);
 
+    // Rejects the old scheme (a signature over GET:<path and query>) with 401
+    const legacyUrl = new URL("https://worker.local/__px/metrics?workspaceId=ws_alpha&window=1h");
+    const legacyRes = await handleTelemetryMetricsRequest(
+      new Request(legacyUrl.toString(), {
+        headers: { [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(`GET:${legacyUrl.pathname}${legacyUrl.search}`, TELEMETRY_SECRET) },
+      }),
+      { db, telemetrySecret: TELEMETRY_SECRET, pxEnv: "preview", now: baseNow },
+    );
+    expect(legacyRes?.status).toBe(401);
+
     // Rejects invalid window with 400
-    const badWindowUrl = new URL("https://worker.local/__px/metrics?window=99d");
+    const badWindowUrl = new URL("https://worker.local/__px/metrics?workspaceId=ws_alpha&window=99d");
     const badWindowRes = await handleTelemetryMetricsRequest(
-      new Request(badWindowUrl.toString()),
+      new Request(badWindowUrl.toString(), { headers: await signControlPlaneRequest(TELEMETRY_SECRET, "GET", badWindowUrl) }),
       { db, telemetrySecret: TELEMETRY_SECRET, pxEnv: "preview", now: baseNow },
     );
     expect(badWindowRes?.status).toBe(400);
 
-    // Accepts valid HMAC signature
-    const signedUrl = new URL("https://worker.local/__px/metrics?window=1h&env=preview");
-    const sig = await signTelemetryPayload(
-      canonicalMetricsQueryPayload(signedUrl),
-      TELEMETRY_SECRET,
-    );
+    // Accepts a valid control-plane signature over the whole query
+    const signedUrl = new URL("https://worker.local/__px/metrics?workspaceId=ws_alpha&window=1h&env=preview");
     const validRes = await handleTelemetryMetricsRequest(
-      new Request(signedUrl.toString(), {
-        headers: {
-          [TELEMETRY_SIGNATURE_HEADER]: sig,
-        },
-      }),
+      new Request(signedUrl.toString(), { headers: await signControlPlaneRequest(TELEMETRY_SECRET, "GET", signedUrl) }),
       { db, telemetrySecret: TELEMETRY_SECRET, pxEnv: "preview", now: baseNow },
     );
     expect(validRes?.status).toBe(200);
@@ -309,6 +339,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     const freshBucket = new Date(now.getTime() - 2 * 86_400_000).toISOString();
 
     await upsertHttpRollup(db, {
+      workspaceId: "ws_alpha",
       bucketMinute: expiredBucket,
       routePrefix: "/old",
       brickId: "webhook-gateway",
@@ -316,6 +347,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
       envName: "preview",
     });
     await upsertHttpRollup(db, {
+      workspaceId: "ws_alpha",
       bucketMinute: freshBucket,
       routePrefix: "/fresh",
       brickId: "webhook-gateway",
@@ -329,7 +361,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     });
     expect(pruneRes.deletedHttpRollups).toBe(1);
 
-    const summary7d = await queryEnvironmentMetrics(db, {
+    const summary7d = await queryEnvironmentMetrics(db, { workspaceId: "ws_alpha" }, {
       env: "preview",
       window: "7d",
       now,
