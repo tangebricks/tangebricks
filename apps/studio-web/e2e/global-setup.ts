@@ -609,6 +609,14 @@ export default async function globalSetup() {
     PX_CONN_KEY: "studio-e2e-conn-key-0123456789abcdef",
     PX_TOKEN_KEK: "studio-e2e-token-kek-0123456789abcdef",
     PX_TELEMETRY_SECRET: "studio-e2e-telemetry-secret-0123456789",
+    // Test-only (story 0.21): every spec signs in as the same seeded users (alice, viewer) from one local IP, so the
+    // real per-account and per-IP auth limits would refuse logins after the tenth spec. Raise them for the e2e run only;
+    // the limiter itself is proven by packages/assembler/test/rate-limit.attack.test.ts and studio-api's auth-rate-limit test.
+    PX_RATE_LIMITS: JSON.stringify({
+      "auth-login-account": { limit: 100_000, windowSeconds: 600 },
+      "auth-login-ip": { limit: 100_000, windowSeconds: 600 },
+      "auth-signup-ip": { limit: 100_000, windowSeconds: 3600 },
+    }),
   };
 
   await seedRealStudioBackend(studioEnv);

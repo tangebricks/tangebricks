@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { D1Like, RequestContext } from "@poc/sdk";
 import { WORKSPACE_ADMIN_ROLES, workspaceRoleRefusal } from "@poc/sdk";
-import { CronService, parseWorkflowTargets } from "./cron.ts";
+import { CronService, MAX_CATCH_UP, parseWorkflowTargets } from "./cron.ts";
 
 export interface CronEnv {
   Bindings: {
@@ -28,7 +28,7 @@ const CreateScheduleSchema = z.object({
   targetUrl: z.string().url().max(1024).optional(),
   timezone: z.string().max(64).default("UTC"),
   catchUp: z.enum(["skip", "once", "all"]).default("once"),
-  maxCatchUp: z.number().int().min(1).max(100).default(10),
+  maxCatchUp: z.number().int().min(1).max(MAX_CATCH_UP).default(MAX_CATCH_UP),
 });
 
 const ToggleScheduleSchema = z.object({

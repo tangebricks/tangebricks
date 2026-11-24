@@ -5,8 +5,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { sha256Hex } from "@poc/assembler";
 import { PROJECT_SLUG_PATTERN, createEmptyBlueprint, semanticHash } from "@poc/blueprint";
-import { hardenedBetterAuthOptions, hashedSessionDatabase, isPlatformOperator } from "@poc/sdk";
-import type { D1Like } from "@poc/sdk";
+import { hardenedBetterAuthOptions, hashedSessionDatabase, isPlatformOperator, rateLimit } from "@poc/sdk";
+import type { D1Like, RateLimitRule } from "@poc/sdk";
 import { ensureStudioD1Schema } from "./blueprint-do.ts";
 import type { AuthorAttribution, StudioApiEnv } from "./blueprint-do.ts";
 import { recordStudioOnboardingEvent } from "./security/token-vault.ts";
@@ -1036,11 +1036,25 @@ async function cleanupUnusedPersonalOrg(db: D1Like, userId: string): Promise<voi
   ]);
 }
 
+// Story 0.21 (threat model audit 18 / B16): the custom login and signup call auth.api.* directly, which skips Better
+// Auth's own limiter, so they get the shared SDK limiter with the same buckets and numbers as the core-auth brick.
+// Counters live in STUDIO_DB's px_rate_limits; the schema step runs first so a fresh database has the table. Auth rules
+// fail closed: a limiter that cannot count answers 503. Operators tune the numbers with PX_RATE_LIMITS.
+const STUDIO_AUTH_RATE_LIMITS = {
+  loginIp: { bucket: "auth-login-ip", limit: 20, windowSeconds: 600, key: "ip", failClosed: true },
+  loginAccount: { bucket: "auth-login-account", limit: 10, windowSeconds: 600, key: "field:email", failClosed: true },
+  signupIp: { bucket: "auth-signup-ip", limit: 5, windowSeconds: 3600, key: "ip", failClosed: true },
+} satisfies Record<string, RateLimitRule>;
+const studioDb = { db: (env: Record<string, unknown>) => env.STUDIO_DB as D1Like | undefined };
+
 export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }> {
   const router = new Hono<{ Bindings: StudioApiEnv }>();
-
-  router.post("/api/auth/signup", async (c) => {
+  const ensureSchema = async (c: { env: StudioApiEnv }, next: () => Promise<void>) => {
     await ensureStudioD1Schema(c.env.STUDIO_DB);
+    await next();
+  };
+
+  router.post("/api/auth/signup", ensureSchema, rateLimit(STUDIO_AUTH_RATE_LIMITS.signupIp, studioDb), async (c) => {
     const parsed = SignupBodySchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) {
       return c.json({ error: { code: "INVALID_SIGNUP", issues: parsed.error.issues } }, 400);
@@ -1105,52 +1119,57 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
     );
   });
 
-  router.post("/api/auth/login", async (c) => {
-    await ensureStudioD1Schema(c.env.STUDIO_DB);
-    const parsed = LoginBodySchema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success) {
-      return c.json({ error: { code: "INVALID_LOGIN", issues: parsed.error.issues } }, 400);
-    }
+  router.post(
+    "/api/auth/login",
+    ensureSchema,
+    rateLimit(STUDIO_AUTH_RATE_LIMITS.loginIp, studioDb),
+    rateLimit(STUDIO_AUTH_RATE_LIMITS.loginAccount, studioDb),
+    async (c) => {
+      const parsed = LoginBodySchema.safeParse(await c.req.json().catch(() => null));
+      if (!parsed.success) {
+        return c.json({ error: { code: "INVALID_LOGIN", issues: parsed.error.issues } }, 400);
+      }
 
-    const auth = createStudioBetterAuth(c.env, c.req.url);
-    const res = await auth.api.signInEmail({
-      body: {
-        email: parsed.data.email,
-        password: parsed.data.password,
-      },
-      headers: c.req.raw.headers,
-      asResponse: true,
-    });
+      const auth = createStudioBetterAuth(c.env, c.req.url);
+      const res = await auth.api.signInEmail({
+        body: {
+          email: parsed.data.email,
+          password: parsed.data.password,
+        },
+        headers: c.req.raw.headers,
+        asResponse: true,
+      });
 
-    if (!res.ok) {
-      return c.json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password" } }, 401);
-    }
+      if (!res.ok) {
+        return c.json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password" } }, 401);
+      }
 
-    copyAuthHeaders(res.headers, (k, v) => c.header(k, v));
-    const data = (await res.json()) as {
-      token: string;
-      user: { id: string; email: string; name: string };
-    };
-    await ensurePersonalDefaultOrg(
-      c.env.STUDIO_DB,
-      data.user.id,
-      data.user.name || data.user.email,
-    );
-    const expiresAt = new Date(Date.now() + 86400 * 1000).toISOString();
-    return c.json({
-      token: data.token,
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.name,
-        displayName: data.user.name,
-      },
-      session: {
+      copyAuthHeaders(res.headers, (k, v) => c.header(k, v));
+      const data = (await res.json()) as {
+        token: string;
+        user: { id: string; email: string; name: string };
+      };
+      await ensurePersonalDefaultOrg(
+        c.env.STUDIO_DB,
+        data.user.id,
+        data.user.name || data.user.email,
+      );
+      const expiresAt = new Date(Date.now() + 86400 * 1000).toISOString();
+      return c.json({
         token: data.token,
-        expiresAt,
-      },
-    });
-  });
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          displayName: data.user.name,
+        },
+        session: {
+          token: data.token,
+          expiresAt,
+        },
+      });
+    },
+  );
 
   router.post("/api/auth/logout", async (c) => {
     await ensureStudioD1Schema(c.env.STUDIO_DB);
@@ -1223,6 +1242,16 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
       })),
     });
   });
+
+  // Better Auth's own email sign-in and sign-up (served by the catch-all below) share the custom routes' buckets, so
+  // both entry points count against the same email and IP. These only count; the request goes on to the catch-all.
+  router.post(
+    "/api/auth/sign-in/email",
+    ensureSchema,
+    rateLimit(STUDIO_AUTH_RATE_LIMITS.loginIp, studioDb),
+    rateLimit(STUDIO_AUTH_RATE_LIMITS.loginAccount, studioDb),
+  );
+  router.post("/api/auth/sign-up/email", ensureSchema, rateLimit(STUDIO_AUTH_RATE_LIMITS.signupIp, studioDb));
 
   router.all("/api/auth/*", async (c) => {
     await ensureStudioD1Schema(c.env.STUDIO_DB);

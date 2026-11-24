@@ -23,6 +23,8 @@ describe("the two-brick blueprint", () => {
       "migrations/0001_multi-workspace__0001_multi_workspace.sql",
       "migrations/0002_credit-wallet__0001_credit_wallet.sql",
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
+      // Story 0.21: credit-wallet declares rate-limited routes, so the shared limiter's table comes with it.
+      "migrations/0004_shell__px_rate_limits.sql",
       "openapi.json",
       "package.json",
       "project.json",
@@ -76,7 +78,7 @@ describe("the two-brick blueprint", () => {
     const wrangler = JSON.parse(result.files["wrangler.jsonc"]!.replace(/^\/\/.*\n/, ""));
     expect(wrangler).toMatchObject({ name: "invoice-flow", main: "src/index.ts", d1_databases: [{ binding: "DB", database_name: "invoice-flow", migrations_dir: "migrations" }] });
     expect(JSON.parse(result.files["package.json"]!)).toMatchObject({ name: "invoice-flow", dependencies: { "@poc/credit-wallet": "workspace:*", "@poc/multi-workspace": "workspace:*", hono: "4.13.19", zod: "4.6.7" } });
-    expect(JSON.parse(result.files["project.json"]!).migrations).toHaveLength(3);
+    expect(JSON.parse(result.files["project.json"]!).migrations).toHaveLength(4);
   });
 
   test("the identity stub is in the project and says it is a stub", () => {
@@ -351,11 +353,14 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "migrations/0001_multi-workspace__0001_multi_workspace.sql": "44330d96d93fc7c48c859437e2f78c3ec8daea0381cfab30c94fa80cb0bcaaef",
       "migrations/0002_credit-wallet__0001_credit_wallet.sql": "29c4056af349d76717f8a1777b58e5bfc09838af60e676f96051a811e3571bfc",
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql": "6274abf0fb0de6ab68cf97d00ccf245cbb67fa0f7a319b5012e60cbec682bead",
+      // Story 0.21: credit-wallet declares rate limits, so three hashes changed: the limiter's table (new), project.json
+      // (which lists it) and the entry (the app.on(..., rateLimit(...)) lines). Every other file is as before.
+      "migrations/0004_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "c77c2e7c33606f6a369cf1b1a90809da38adaa3a5145d15159f30fb704c49487",
       "package.json": "24d1388075ec69744a13f379f37b38441588d2cdb511352eb58f6ab9d0e1a946",
-      "project.json": "5b8c1fe06258acce8605ebec6665dc1cf1a206a5a67044034f412e142e95420c",
+      "project.json": "a89688bddaf9e606d383364a7a2b06a7069763437fea127ef64963f24986a56d",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "79f81479dedf49609975fa7114ddf59f32eee6d7f49e7c0121054eae0e9508ae",
+      "src/index.ts": "eb5b47f565a6db0b4a38ad73c5ddece51609dcba853c5d3d668f74b24b323f0f",
       "src/privacy.generated.ts": "a029b2ce67225928903d85b59be098fd44f1d04384f286178f42a3715d19d396",
       "wrangler.jsonc": "d678c83f4dd70ff4bfc1dc7e2e75953a9a8d0e0216061d82308bd562c1f4625b",
     });
@@ -366,15 +371,113 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "migrations/0002_credit-wallet__0001_credit_wallet.sql": "29c4056af349d76717f8a1777b58e5bfc09838af60e676f96051a811e3571bfc",
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql": "6274abf0fb0de6ab68cf97d00ccf245cbb67fa0f7a319b5012e60cbec682bead",
       "migrations/0004_entity__invoices.sql": "43c67676212cbfd376e0479b1fe3e955c054eb127b09e84ad0922012e1a445ff",
+      "migrations/0005_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "fc78a27cbc505836cef15723d4c63e5feed04a53f4071a2ef1f7868d8a7fe902",
       "package.json": "95f5732b726396206cd43cc4916b7dcd19b5519f4c31ba4ac0996a1a3edb8e4f",
-      "project.json": "6b40796c6e70e6dbd00431753a2bec1888725ba24254655d2e4ea764b6c16a2d",
+      "project.json": "444740d44ba274af64c0e12ecdeccb3f1ff86687374cf529b53f0f4ca22fb8bf",
       "src/entities.json": "5b153446783e693c0ada62b9c2626071e38f3e3e9bb047dd5a3a39c24179ba0a",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "edb8e28c2a94e36c4bcfcfdb9c090f782c1edf24312598936dd6b1da22cf50d9",
+      "src/index.ts": "96a5fee16726018e2016400e4ddd56e2b0826c57f39d635c8a884cfb2f514720",
       "src/privacy.generated.ts": "5c0f6d193d3f6d332a415d2cfa7b9e571bdf3b6ca71f8ae177e053227170e804",
       "wrangler.jsonc": "d7c0046626c2da81eca662bc64f38619da75b0d48f4978b1dc37ecf5eb8c3c0b",
     });
+  });
+
+  test("story 0.21 NO_RULES_BLUEPRINT: a blueprint whose bricks declare no rate limits assembles byte-identical to before the limiter", async () => {
+    // Hashes recorded from the assembler at the story's baseline revision (16ee1eb), before rateLimits existed.
+    // (edge-traffic-armor is left out: since story 0.21 it ships the px_rate_limits table as its own migration.)
+    const noRules = files({ project: "no-rules", bricks: ["multi-workspace", "audit-trail", "cron-alarms"] });
+    expect(noRules.files["src/index.ts"]).not.toContain("rateLimit");
+    expect(Object.keys(noRules.files).some((f) => f.includes("px_rate_limits"))).toBe(false);
+    expect(await hashFiles(noRules.files)).toEqual({
+      "migrations/0001_multi-workspace__0001_multi_workspace.sql": "44330d96d93fc7c48c859437e2f78c3ec8daea0381cfab30c94fa80cb0bcaaef",
+      "migrations/0002_audit-trail__0001_audit_trail.sql": "d1d8192cea9a17cc12dde86feb5288e361625590e2c0db652a74edfba10a73a2",
+      "migrations/0003_cron-alarms__0001_cron_alarms.sql": "95631dcb80615aee290bfe058373b28e21881d6409b339709670e034ae062926",
+      "migrations/0004_cron-alarms__0002_catch_up.sql": "4d7aa86c89511f06dbf65e841ce31bb7f84d825da41d3317bb84a21921f52011",
+      "migrations/0005_shell__px_schedules.sql": "5876bb9226cf588bb29d757b10c46b24ed970f60e1d0964964b734285e11e752",
+      "openapi.json": "c3964d819bb933d81d0c6e576db76ab8e01a0c3ff8ce7ebc94b36d87b7f8956c",
+      "package.json": "674a79407b61b5947fa4ed7fa2e190c5ac39a255ca61b47ec6b6097d37aff6ea",
+      "project.json": "2115551c1b468de5bb4ceb23c44d6e348790b307265fefa91329cff9b40db02d",
+      "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
+      "src/index.ts": "78063923acdcf5dfecf96e8dcdef86797875e6eece9e0305036027106c2c4286",
+      "src/privacy.generated.ts": "7f4322f58ee6a55f3804d2083a792725f779a951b2694709249a8e20159bfe3d",
+      "wrangler.jsonc": "85a0ab37dcde7ee01d8eba1e1549a27580973cbc6620000388435027176f298c",
+    });
+  });
+
+  test("story 0.21: a brick's rateLimits are mounted with the SDK limiter after its guards and before its routes, and add the px_rate_limits migration", () => {
+    const c = catalogOf(
+      brick("guard-brick", { provides: ["workspace-context"], worker: { package: "@x/guard-brick", guard: { export: "wsGuard", capability: "workspace-context" }, routes: [] } }),
+      brick("limited-brick", {
+        requires: ["workspace-context"],
+        routePrefixes: ["things"],
+        rateLimits: [
+          { method: "POST", path: "/things/:thingId/poke", bucket: "things-poke", limit: 7, windowSeconds: 60, key: "param:thingId" },
+          { method: "POST", path: "/things/login", bucket: "auth-things", limit: 3, windowSeconds: 600, key: "field:email", failClosed: true },
+        ],
+        worker: {
+          package: "@x/limited-brick",
+          routes: [{ factory: "createThings", mountAt: "/api", options: {}, guardWith: "workspace-context", guardPaths: ["/api/things/*"] }],
+        },
+      }),
+    );
+    const out = files({ project: "limited-app", bricks: ["guard-brick", "limited-brick"] }, c);
+    const entry = out.files["src/index.ts"]!;
+    expect(entry).toContain('import { createHttpGuard, rateLimit } from "@poc/sdk";');
+    const poke = entry.indexOf('app.on("POST", "/api/things/:thingId/poke", rateLimit({"bucket":"things-poke","limit":7,"windowSeconds":60,"key":"param:thingId"}));');
+    const login = entry.indexOf('app.on("POST", "/api/things/login", rateLimit({"bucket":"auth-things","limit":3,"windowSeconds":600,"key":"field:email","failClosed":true}));');
+    expect(poke).toBeGreaterThan(-1);
+    expect(login).toBeGreaterThan(poke);
+    expect(entry.indexOf('app.use("/api/things/*", wsGuard);')).toBeGreaterThan(-1);
+    expect(entry.indexOf('app.use("/api/things/*", wsGuard);')).toBeLessThan(poke);
+    expect(login).toBeLessThan(entry.indexOf('app.route("/api", createThings('));
+    expect(Object.keys(out.files).filter((k) => k.startsWith("migrations/"))).toEqual(["migrations/0001_shell__px_rate_limits.sql"]);
+    expect(out.files["migrations/0001_shell__px_rate_limits.sql"]).toContain("CREATE TABLE IF NOT EXISTS px_rate_limits");
+    expect(JSON.stringify(files({ project: "limited-app", bricks: ["limited-brick", "guard-brick"] }, c).files)).toBe(JSON.stringify(out.files));
+  });
+
+  test("story 0.21: with several routes, every guard of the brick comes before its limiter, and rule paths use the brick's mount", () => {
+    const c = catalogOf(
+      brick("guard-brick", { provides: ["workspace-context"], worker: { package: "@x/guard-brick", guard: { export: "wsGuard", capability: "workspace-context" }, routes: [] } }),
+      brick("two-route-brick", {
+        requires: ["workspace-context"],
+        routePrefixes: ["alpha", "beta"],
+        rateLimits: [{ method: "POST", path: "/beta/buy", bucket: "beta-buy", limit: 5, windowSeconds: 60, key: "workspace" }],
+        worker: {
+          package: "@x/two-route-brick",
+          routes: [
+            { factory: "createAlpha", mountAt: "/v2", options: {}, guardWith: "workspace-context", guardPaths: ["/v2/alpha/*"] },
+            { factory: "createBeta", mountAt: "/v2", options: {}, guardWith: "workspace-context", guardPaths: ["/v2/beta/*"] },
+          ],
+        },
+      }),
+    );
+    const entry = files({ project: "two-route-app", bricks: ["guard-brick", "two-route-brick"] }, c).files["src/index.ts"]!;
+    const limiter = entry.indexOf('app.on("POST", "/v2/beta/buy", rateLimit(');
+    expect(limiter).toBeGreaterThan(-1);
+    expect(entry.indexOf('app.use("/v2/alpha/*", wsGuard);')).toBeLessThan(limiter);
+    expect(entry.indexOf('app.use("/v2/beta/*", wsGuard);')).toBeLessThan(limiter);
+    expect(limiter).toBeLessThan(entry.indexOf('app.route("/v2", createAlpha('));
+    expect(limiter).toBeLessThan(entry.indexOf('app.route("/v2", createBeta('));
+  });
+
+  test("story 0.21: the manifest schema refuses a rateLimits entry with a non-positive number, an unknown key or a bad path", async () => {
+    const { ManifestSchema } = await import("../src/schemas.ts");
+    const manifest = (rule: Record<string, unknown>) => ({
+      manifestVersion: 2,
+      kind: "brick",
+      id: "rl-brick",
+      version: "1.0.0",
+      trust: "first-party",
+      routePrefixes: ["things"],
+      rateLimits: [{ method: "POST", path: "/things/:id", bucket: "things-x", limit: 1, windowSeconds: 60, key: "ip", ...rule }],
+      worker: { package: "@x/rl-brick", routes: [] },
+    });
+    expect(ManifestSchema.safeParse(manifest({})).success).toBe(true);
+    expect(ManifestSchema.safeParse(manifest({ key: "param:id", failClosed: true })).success).toBe(true);
+    for (const rule of [{ limit: 0 }, { windowSeconds: -1 }, { limit: 1.5 }, { key: "cookie:session" }, { path: "things" }, { path: "/things/../x" }, { method: "TRACE" }]) {
+      expect(ManifestSchema.safeParse(manifest(rule)).success, JSON.stringify(rule)).toBe(false);
+    }
   });
 
   test("emits one Cron Trigger (* * * * *), px_schedules migration,scheduled() dispatcher, queue bindings, and queue(batch) dispatcher when bricks declare triggers", () => {

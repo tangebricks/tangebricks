@@ -1,9 +1,10 @@
 import { env } from "cloudflare:workers";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
-import { applyMigration } from "@poc/sdk";
+import { PX_RATE_LIMITS_DDL, applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_edge_traffic_armor.sql?raw";
+import rateLimitMigration from "../migrations/0002_px_rate_limits.sql?raw";
 import {
   TrafficArmorService,
   createTrafficArmorRoutes,
@@ -20,7 +21,11 @@ async function resetDb(): Promise<void> {
   await db.prepare("DROP TABLE IF EXISTS arm_blocked_requests").run();
   await db.prepare("DROP TABLE IF EXISTS arm_rate_limits").run();
   await db.prepare("DROP TABLE IF EXISTS arm_ip_rules").run();
+  // Story 0.21: the middleware's rate limit counts in the shared SDK limiter's table, which the brick's own 0002
+  // migration creates.
+  await db.prepare("DROP TABLE IF EXISTS px_rate_limits").run();
   await applyMigration(db, migration);
+  await applyMigration(db, rateLimitMigration);
 }
 
 beforeEach(async () => {
@@ -29,6 +34,10 @@ beforeEach(async () => {
 });
 
 describe("Traffic Armor Core Security Logic", () => {
+  it("story 0.21: the brick's px_rate_limits migration is exactly the SDK limiter's DDL", () => {
+    expect(rateLimitMigration).toBe(PX_RATE_LIMITS_DDL);
+  });
+
   it("manages IP access rules and checks client IP status", async () => {
     const service = new TrafficArmorService(db);
     const rule = await service.addIpRule(WS_ALPHA, "198.51.100.4", "block", "Credential stuffing attacker");
@@ -149,6 +158,12 @@ describe("Traffic Armor HTTP Middleware & API", () => {
     expect(res3.status).toBe(429);
     expect(res3.headers.get("RateLimit-Remaining")).toBe("0");
     expect(res3.headers.get("Retry-After")).not.toBeNull();
+    // The refused request is still logged as an incident.
+    const incidents = await db
+      .prepare("SELECT count(*) AS n FROM arm_blocked_requests WHERE block_reason = 'rate_limit' AND workspace_id = ?")
+      .bind(WS_ALPHA)
+      .first<{ n: number }>();
+    expect(incidents?.n).toBe(1);
   });
 
   it("manages IP rules via API", async () => {

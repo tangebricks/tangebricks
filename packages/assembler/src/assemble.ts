@@ -1,7 +1,7 @@
 import { BlueprintSchema, formatIssues } from "./schemas.ts";
 import type { ObservabilityConfig } from "./schemas.ts";
 import { lintMigration } from "../../deploy/src/migration-lint.ts";
-import { entityDdl, parseEntities } from "@poc/sdk";
+import { PX_RATE_LIMITS_DDL, entityDdl, parseEntities } from "@poc/sdk";
 import type { Entity } from "@poc/sdk";
 import type { BrickManifestFile, Catalog, ProjectLock, SettingDefinition, ValueExpr } from "./schemas.ts";
 import { compare, parse, satisfies } from "./semver.ts";
@@ -394,6 +394,16 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
     migrationNames.push(name);
     migrationEntries.push({ name: fileName, sha256: sha256Sync(PX_SCHEDULES_DDL) });
   }
+  // The shared rate limiter's counters (story 0.21), only when an enabled brick declares a rate-limited route, so a
+  // blueprint without one assembles exactly as before.
+  if (ordered.some((b) => (b.manifest.rateLimits ?? []).length > 0)) {
+    counter += 1;
+    const fileName = `${String(counter).padStart(4, "0")}_shell__px_rate_limits.sql`;
+    const name = `migrations/${fileName}`;
+    files[name] = PX_RATE_LIMITS_DDL;
+    migrationNames.push(name);
+    migrationEntries.push({ name: fileName, sha256: sha256Sync(PX_RATE_LIMITS_DDL) });
+  }
   if (errors.length > 0) return { ok: false, errors };
 
   const workflows =
@@ -750,6 +760,22 @@ function takesEntities(manifest: BrickManifestFile): boolean {
   return manifest.worker.routes.some((route) => Object.values(route.options).some((v) => typeof v === "object" && "$entities" in v));
 }
 
+/** One `app.on(method, path, rateLimit(rule))` line per rate-limited route the brick declares, in manifest order. */
+function renderRateLimits(brick: Chosen): string[] {
+  // Rule paths are relative to the brick's mount, as routePrefixes are: the mount of its (first) route.
+  const mount = (brick.manifest.worker.routes[0]?.mountAt ?? API_PREFIX).replace(/\/+$/, "");
+  return (brick.manifest.rateLimits ?? []).map((r) => {
+    const rule = {
+      bucket: r.bucket,
+      limit: r.limit,
+      windowSeconds: r.windowSeconds,
+      key: r.key,
+      ...(r.failClosed ? { failClosed: true } : {}),
+    };
+    return `app.on(${JSON.stringify(r.method)}, ${JSON.stringify(mount + r.path)}, rateLimit(${JSON.stringify(rule)}));`;
+  });
+}
+
 /** A guard path may name each declared entity with {entity}; every other path stands for itself. */
 function expandGuardPath(path: string, entities: Entity[]): string[] {
   return path.includes("{entity}") ? entities.map((entity) => path.replaceAll("{entity}", entity.name)) : [path];
@@ -777,20 +803,28 @@ function renderEntry(
   }
 
   const body: string[] = [];
+  const hasRateLimits = ordered.some((b) => (b.manifest.rateLimits ?? []).length > 0);
   for (const brick of ordered) {
     body.push(`// ${brick.id}`);
     const isIsolated = brick.manifest.isolation === "dispatch";
     const bindingName = `BRICK_${brick.id.toUpperCase().replace(/[^A-Z0-9_]/g, "_")}`;
+    // Story 0.21: a brick with rate-limited routes gets all its guards first, then the SDK limiter (so a workspace key
+    // sees the verified workspace), then its routes. A brick without rules keeps the guard/route interleaving it had.
+    const rateLimitLines = renderRateLimits(brick);
+    const guardLines: string[] = [];
+    const routeLines: string[] = [];
+    const emitGuard = (line: string) => (rateLimitLines.length > 0 ? guardLines : body).push(line);
+    const emitRoute = (line: string) => (rateLimitLines.length > 0 ? routeLines : body).push(line);
 
     for (const route of brick.manifest.worker.routes) {
       if (route.guardWith) {
         const guard = guardOf.get(route.guardWith);
         if (!guard) throw new Error(`no guard for "${route.guardWith}"`); // cannot happen: assemble() refuses a route whose capability has no guard
         use(guard.pkg, guard.export);
-        for (const path of route.guardPaths) for (const concrete of expandGuardPath(path, entities)) body.push(`app.use(${JSON.stringify(concrete)}, ${guard.export});`);
+        for (const path of route.guardPaths) for (const concrete of expandGuardPath(path, entities)) emitGuard(`app.use(${JSON.stringify(concrete)}, ${guard.export});`);
       }
       if (isIsolated) {
-        body.push(`app.all(${JSON.stringify(route.mountAt + "/*")}, (c) => (c.env as any).${bindingName}.fetch(c.req.raw));`);
+        emitRoute(`app.all(${JSON.stringify(route.mountAt + "/*")}, (c) => (c.env as any).${bindingName}.fetch(c.req.raw));`);
       } else {
         use(brick.manifest.worker.package, route.factory);
         const options = Object.entries(route.options).map(([name, value]) => {
@@ -799,9 +833,10 @@ function renderEntry(
           if (typeof value === "object" && value !== null && "$privacy" in value) needsPrivacy = true;
           return `${name}: ${expression(value, brick.settings)}`;
         });
-        body.push(`app.route(${JSON.stringify(route.mountAt)}, ${route.factory}(${options.length > 0 ? `{ ${options.join(", ")} }` : ""}));`);
+        emitRoute(`app.route(${JSON.stringify(route.mountAt)}, ${route.factory}(${options.length > 0 ? `{ ${options.join(", ")} }` : ""}));`);
       }
     }
+    body.push(...guardLines, ...rateLimitLines, ...routeLines);
   }
 
   for (const sched of schedules) use(sched.pkg, sched.handler);
@@ -870,7 +905,7 @@ function renderEntry(
     [
       "// Assembled by @poc/assembler. Do not edit: change the blueprint and assemble again.",
       'import { Hono } from "hono";',
-      'import { createHttpGuard } from "@poc/sdk";',
+      `import { createHttpGuard${hasRateLimits ? ", rateLimit" : ""} } from "@poc/sdk";`,
       ...importLines,
       ...(identityGuard ? [] : ['import { stubIdentity } from "./identity.stub.ts";']),
       ...(needsEntities ? ['import entities from "./entities.json";'] : []),

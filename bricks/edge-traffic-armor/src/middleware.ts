@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import type { D1Like, RequestContext } from "@poc/sdk";
+import { rateLimit } from "@poc/sdk";
 import { TrafficArmorService } from "./armor.ts";
 
 export interface ArmorEnv {
@@ -16,6 +17,8 @@ export interface ArmorMiddlewareOptions {
   rateLimit?: {
     limit: number;
     windowSeconds: number;
+    /** What a request is counted by: the client IP (default) or the verified workspace. */
+    key?: "ip" | "workspace";
   };
   enforceIpRules?: boolean;
 }
@@ -44,39 +47,21 @@ export function trafficArmorMiddleware(
       }
     }
 
-    // 2. Rate Limit Check
+    // 2. Rate Limit Check: the shared SDK limiter (story 0.21), bucket "armor", counted in px_rate_limits. Fails open:
+    // an armor limit is a traffic shield, not an auth control. A refused request is still logged as an incident.
     if (options.rateLimit) {
-      const key = workspace?.id ? `rl:${workspace.id}:${clientIp}` : `rl:${clientIp}`;
-      const rl = await service.checkRateLimit(
-        key,
-        options.rateLimit.limit,
-        options.rateLimit.windowSeconds
+      const limiter = rateLimit(
+        {
+          bucket: "armor",
+          limit: options.rateLimit.limit,
+          windowSeconds: options.rateLimit.windowSeconds,
+          key: options.rateLimit.key ?? "ip",
+        },
+        {
+          onLimited: () => service.logBlockedRequest(workspace?.id || null, clientIp, path, "rate_limit", userAgent),
+        },
       );
-
-      c.res.headers.set("RateLimit-Limit", String(rl.limit));
-      c.res.headers.set("RateLimit-Remaining", String(rl.remaining));
-      c.res.headers.set("RateLimit-Reset", String(rl.reset));
-
-      if (!rl.allowed) {
-        c.res.headers.set("Retry-After", String(rl.retryAfter));
-        await service.logBlockedRequest(
-          workspace?.id || null,
-          clientIp,
-          path,
-          "rate_limit",
-          userAgent
-        );
-        return c.json(
-          { error: "Too many requests. Please slow down.", retryAfter: rl.retryAfter },
-          429,
-          {
-            "RateLimit-Limit": String(rl.limit),
-            "RateLimit-Remaining": "0",
-            "RateLimit-Reset": String(rl.reset),
-            "Retry-After": String(rl.retryAfter),
-          }
-        );
-      }
+      return limiter(c, next);
     }
 
     await next();

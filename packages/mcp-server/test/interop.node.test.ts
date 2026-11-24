@@ -86,7 +86,7 @@ describe("the official MCP client against this server", () => {
     expect(defined.isError, text(defined)).toBeFalsy();
     const built = await client.callTool({ name: "build_project", arguments: { project: "interop" } });
     expect(built.isError, text(built)).toBeFalsy();
-    expect(JSON.parse(text(built))).toMatchObject({ project: "interop", files: 12, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
+    expect(JSON.parse(text(built))).toMatchObject({ project: "interop", files: 13, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
     await client.close();
   });
 

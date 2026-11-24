@@ -632,6 +632,36 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
     }
   }
 
+  // 6b. Rate-limited routes (story 0.21): each path sits under one of the brick's routePrefixes, numbers are positive,
+  // a param key names a param of its path, a bucket means the same rule wherever it is used, and auth rules fail closed.
+  const bucketRules = new Map<string, string>();
+  for (const [index, rule] of (manifest.rateLimits ?? []).entries()) {
+    const where = `rateLimits[${index}] ${rule.method} ${rule.path}`;
+    const firstSegment = rule.path.split("/")[1] ?? "";
+    if (!declaredPrefixes.has(firstSegment)) {
+      violations.push({
+        brick: brickName,
+        field: "rateLimits",
+        detail: `${where} is not under any routePrefix [${manifest.routePrefixes.join(", ")}]`,
+      });
+    }
+    if (!(Number.isInteger(rule.limit) && rule.limit > 0) || !(Number.isInteger(rule.windowSeconds) && rule.windowSeconds > 0)) {
+      violations.push({ brick: brickName, field: "rateLimits", detail: `${where} needs a positive whole limit and windowSeconds` });
+    }
+    if (rule.key.startsWith("param:") && !rule.path.split("/").includes(`:${rule.key.slice("param:".length)}`)) {
+      violations.push({ brick: brickName, field: "rateLimits", detail: `${where} keys on ${rule.key}, which its path does not name` });
+    }
+    if (rule.bucket.startsWith("auth-") && rule.failClosed !== true) {
+      violations.push({ brick: brickName, field: "rateLimits", detail: `${where} is an auth rule (bucket ${rule.bucket}) and must set failClosed: true` });
+    }
+    const signature = JSON.stringify([rule.limit, rule.windowSeconds, rule.key, rule.failClosed === true]);
+    const previous = bucketRules.get(rule.bucket);
+    if (previous !== undefined && previous !== signature) {
+      violations.push({ brick: brickName, field: "rateLimits", detail: `bucket ${rule.bucket} is declared with different numbers or keys` });
+    }
+    bucketRules.set(rule.bucket, signature);
+  }
+
   // 7. Settings read in source vs declared in manifest.settings
   const nonSettingOptions = new Set<string>(DI_OPTION_KEYS);
   const optionToSetting = new Map<string, string>();

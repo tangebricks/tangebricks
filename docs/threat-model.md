@@ -28,6 +28,7 @@
 | 0.14 | Auth session hardening (cookies, JWT exp, CSRF, CORS) |
 | 0.19 | rbac-policy: no grant escalation (filed from PROPOSED-5) |
 | 0.20 | cron-alarms: allowlist of target Workflow bindings (filed from PROPOSED-10) |
+| 0.21 | Rate limiting on auth, money and fan-out paths (filed from PROPOSED-1) |
 | 1.1 | Real executors and verified workspace in deployed workflows |
 | 1.2 | One real deploy path for Studio and MCP |
 | 1.4 | Workspace-keyed telemetry and logs |
@@ -106,7 +107,7 @@ Every audit risk appears once.
 | 15 | High | Cross-tenant fuzz never tries header A + query B | 0.5 |
 | 16 | Medium | Metering accepts negative values, races on aggregation, global idempotency | 0.7 (keys only); PROPOSED-2 (negative values, aggregation race) |
 | 17 | Medium | Non-secure cookies, unhashed session tokens, no CSRF/CORS policy | 0.14 |
-| 18 | Medium | No rate limiting on login, signup, wallet or webhooks | PROPOSED-1 |
+| 18 | Medium | No rate limiting on login, signup, wallet or webhooks | 0.21 |
 | 19 | Medium | JWTs without `exp` accepted | 0.14 |
 | 20 | Medium | `poc_graphs` and telemetry have no tenant dimension | 0.10 (`poc_graphs`), 1.4 (telemetry) |
 | 21 | Medium | Unauthenticated notification create; spoofable audit actor | 0.6 |
@@ -184,7 +185,7 @@ Every sweep finding appears once. Locations are as the sweep gives them (see [Ci
 | B13 | cron-alarms | Medium | Tenant `targetWorkflowId` used as an env key: can trigger any Worker binding with `.create()` (other bricks' Workflows) on a timer | `cron.ts:347-364`; `routes.ts:20` | 0.20 |
 | B14 | cron-alarms | Medium | Missing workflow binding still recorded as success | `cron.ts:355-366` | 0.9 (scope addition) |
 | B15 | cron-alarms | High | Fetches tenant URL via `globalThis.fetch` and stores status and error text in history (known, audit 12) | `cron.ts:106,368-385,388-389` | 0.8 |
-| B16 | cron-alarms | Low | Catch-up "all" fires up to 100 times per tick | `routes.ts:24`; `cron.ts:520` | PROPOSED-1 |
+| B16 | cron-alarms | Low | Catch-up "all" fires up to 100 times per tick | `routes.ts:24`; `cron.ts:520` | 0.21 |
 | B17 | cron-alarms | Medium | Any member can create, toggle or delete any schedule in the workspace | `routes.ts:45,90,114` | 0.6 (scope addition: `POST /api/schedules`, `PATCH /api/schedules/:id`, `DELETE /api/schedules/:id`) |
 | C1 | studio-web | Medium (High if server trusts it) | "viewer" role enforced only in the UI; the server must role-check project ops, revert, import, proposal accept/reject, secrets, connections, environment plan/deploy/promote/rollback, data row writes, sandbox deploy and BYOC promote, retention settings, workflow pin/test-step, run rerun, org project create and Cloudflare tokens | `apps/studio-web/src/components/StudioShell.tsx:164,1240`; `apps/studio-web/src/components/DataBrowserView.tsx:291`; `apps/studio-web/src/components/ProposalReviewBar.tsx:240`; `apps/studio-web/src/components/HistoryAndLedgerView.tsx:741,1024`; `apps/studio-web/src/components/ConnectionsView.tsx:539` | 0.10 (scope addition: server-side role from project) + 0.5 (test cases) |
 | C2 | studio-web | Medium | Displayed role comes from the active org while `?project=` matches across all the user's orgs: an owner in org A gets edit UI on org B projects where they are a viewer; server must derive org and role from the project | `apps/studio-web/src/App.tsx:56-69`; `apps/studio-web/src/components/StudioShell.tsx:161-170` | 0.10 (scope addition: org and role from project) + 0.5 (test cases) |
@@ -202,7 +203,7 @@ These are not filed. A human should file each one; the PR for this story lists t
 
 | Id | Title | Covers | Suggested phase |
 |---|---|---|---|
-| PROPOSED-1 | Rate limiting on auth, money and fan-out paths (wire edge-traffic-armor) | Audit 18; B16 | Phase 0 |
+| PROPOSED-1 | Rate limiting on auth, money and fan-out paths (wire edge-traffic-armor) | Audit 18; B16 | Phase 0 (filed as 0.21) |
 | PROPOSED-2 | Metering correctness: reject negative values, atomic aggregation | Audit 16 (negative values, aggregation race) | Phase 1 |
 | PROPOSED-3 | Workspace delete cascade and suspension enforcement (mount `requireNotSuspended` on every brick route, including `/api/ai`) | Audit 22; A1 (suspension part) | Phase 1 |
 | PROPOSED-4 | API-key authentication, or remove key issuance | Audit 24 | Phase 1 |

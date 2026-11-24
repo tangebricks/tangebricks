@@ -15,6 +15,98 @@
   "routePrefixes": [
     "auth"
   ],
+  "rateLimits": [
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "bucket": "auth-login-ip",
+      "limit": 20,
+      "windowSeconds": 600,
+      "key": "ip",
+      "failClosed": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "bucket": "auth-login-account",
+      "limit": 10,
+      "windowSeconds": 600,
+      "key": "field:email",
+      "failClosed": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/signup",
+      "bucket": "auth-signup-ip",
+      "limit": 5,
+      "windowSeconds": 3600,
+      "key": "ip",
+      "failClosed": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-in/email",
+      "bucket": "auth-login-ip",
+      "limit": 20,
+      "windowSeconds": 600,
+      "key": "ip",
+      "failClosed": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-in/email",
+      "bucket": "auth-login-account",
+      "limit": 10,
+      "windowSeconds": 600,
+      "key": "field:email",
+      "failClosed": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-up/email",
+      "bucket": "auth-signup-ip",
+      "limit": 5,
+      "windowSeconds": 3600,
+      "key": "ip",
+      "failClosed": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/request-password-reset",
+      "bucket": "auth-reset-ip",
+      "limit": 5,
+      "windowSeconds": 3600,
+      "key": "ip",
+      "failClosed": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/request-password-reset",
+      "bucket": "auth-reset-account",
+      "limit": 3,
+      "windowSeconds": 3600,
+      "key": "field:email",
+      "failClosed": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/forget-password",
+      "bucket": "auth-reset-ip",
+      "limit": 5,
+      "windowSeconds": 3600,
+      "key": "ip",
+      "failClosed": true
+    },
+    {
+      "method": "POST",
+      "path": "/auth/forget-password",
+      "bucket": "auth-reset-account",
+      "limit": 3,
+      "windowSeconds": 3600,
+      "key": "field:email",
+      "failClosed": true
+    }
+  ],
   "npmDependencies": {
     "better-auth": "1.7.25",
     "hono": "4.13.19",

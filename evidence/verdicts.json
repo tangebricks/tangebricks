@@ -1,30 +1,30 @@
 {
-  "inputsHash": "f8c8a123ae9a5c1f4caeace5b0d03bf85340738388502e205caccc5537bee2dc",
+  "inputsHash": "b901d353029073c4d668a27f94d1b204f0b6fee237d1b93d69bf8a79440d67d2",
   "generatedBy": "node scripts/verify.ts",
   "verdicts": {
     "H0": {
       "verdict": "pass",
       "measured": "1/1 checks",
       "reasons": [],
-      "recordedAt": "2026-11-24T14:49:38.442Z"
+      "recordedAt": "2026-11-24T15:56:20.218Z"
     },
     "H1": {
       "verdict": "pass",
       "measured": "114 lines",
       "reasons": [],
-      "recordedAt": "2026-11-24T14:49:38.442Z"
+      "recordedAt": "2026-11-24T15:56:20.218Z"
     },
     "H2": {
       "verdict": "pass",
-      "measured": "0.483 ratio",
+      "measured": "0.499 ratio",
       "reasons": [],
-      "recordedAt": "2026-11-24T14:49:38.442Z"
+      "recordedAt": "2026-11-24T16:10:50.185Z"
     },
     "H3": {
       "verdict": "pass",
       "measured": "4/4 checks",
       "reasons": [],
-      "recordedAt": "2026-11-24T14:49:38.442Z"
+      "recordedAt": "2026-11-24T15:56:20.218Z"
     },
     "H5": {
       "verdict": "pass",
@@ -33,29 +33,29 @@
         "from the run that started 2026-10-21T06:56:57.397Z",
         "20 runs, 1000 operations, 0 with an unknown outcome (0.0%), 0 violating runs"
       ],
-      "recordedAt": "2026-11-24T14:49:38.442Z"
+      "recordedAt": "2026-11-24T15:56:20.218Z"
     },
     "H6": {
       "verdict": "pass",
       "measured": "5/5 checks",
       "reasons": [],
-      "recordedAt": "2026-11-24T14:49:38.442Z"
+      "recordedAt": "2026-11-24T15:56:20.218Z"
     },
     "H7": {
       "verdict": "pass",
-      "measured": "0.459 seconds",
+      "measured": "0.375 seconds",
       "reasons": [],
-      "recordedAt": "2026-11-24T14:49:38.442Z"
+      "recordedAt": "2026-11-24T16:10:50.185Z"
     },
     "H8": {
       "verdict": "pass",
       "measured": "7/7 checks",
       "reasons": [],
-      "recordedAt": "2026-11-24T14:49:38.442Z"
+      "recordedAt": "2026-11-24T15:56:20.218Z"
     },
     "H9": {
       "verdict": "pass",
-      "measured": "8.5 percent",
+      "measured": "8.4 percent",
       "reasons": [
         "from the run that started 2026-10-21T09:40:14.207Z",
         "the upload: bundle 843.5 KiB (140.9 KiB gzipped), 1.29% of the 64 MiB limit; Cloudflare gave no start-up time; the address answered 0.8 seconds after the upload",
@@ -69,7 +69,7 @@
         "calls to Cloudflare's API: 15, of which 0 could write (none); none of them touched another Worker or any Workflow",
         "not shown: the CPU time itself (no analytics permission), whether an error 1102 was the CPU or the memory limit, any plan but the free one"
       ],
-      "recordedAt": "2026-11-24T14:49:38.442Z"
+      "recordedAt": "2026-11-24T15:56:20.218Z"
     },
     "H10": {
       "verdict": "pass",
@@ -107,8 +107,8 @@
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-24T14:46:47.399Z",
-    "gitSha": "34cabaede141736f45107fa67584bdb7044146a4",
+    "generatedAt": "2026-11-24T16:07:44.615Z",
+    "gitSha": "918a9a9a9f3c43ee0e1a9b88d0b4ae6126ea4c42",
     "gitDirty": false,
     "generator": "scripts/verify.ts",
     "inputKind": "measured"

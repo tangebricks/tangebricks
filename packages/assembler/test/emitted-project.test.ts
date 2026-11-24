@@ -39,6 +39,7 @@ describe("the project the setup step wrote", () => {
       "migrations/0001_multi-workspace__0001_multi_workspace.sql",
       "migrations/0002_credit-wallet__0001_credit_wallet.sql",
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
+      "migrations/0004_shell__px_rate_limits.sql", // story 0.21: credit-wallet declares rate limits
       "openapi.json",
       "package.json",
       "project.json",

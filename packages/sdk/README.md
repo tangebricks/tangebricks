@@ -76,6 +76,25 @@ const setting = await systemSettings.first("key = ?", ["maintenance_mode"]);
 - **Order By Safety**: `orderBy` is strictly validated against `/^[a-z_][a-z0-9_]*(\s+(ASC|DESC))?(\s*,\s*[a-z_][a-z0-9_]*(\s+(ASC|DESC))?)*$/i` (throwing `ORDER_BY_UNSAFE`).
 - **Runtime Immutability**: `scoped().workspaceId` is backed by a private `#field` and the `ScopedDb` instance is frozen (`Object.freeze`), preventing runtime tampering.
 
+## Rate limiting (`rateLimit`)
+
+`rateLimit(rule)` is a Hono middleware backed by a D1 fixed window in the `px_rate_limits` table (story 0.21). A rule
+is `{ bucket, limit, windowSeconds, key, failClosed? }`; `key` is `ip` (`cf-connecting-ip`, then the first
+`x-forwarded-for`), `workspace` (the verified workspace, else the IP), `field:<name>` (a JSON body field, lower-cased
+and trimmed, read from a clone of the request; else the IP) or `param:<name>` (a route param). The stored key is
+`<bucket>:<sha256(value)>`, so no raw IP or email is kept. Over the limit the answer is 429
+`{ code: "RATE_LIMITED", retryAfter }` with `Retry-After` and `RateLimit-*` headers.
+
+Bricks do not mount it themselves: a brick lists its sensitive routes in its manifest's `rateLimits`, and the assembler
+mounts the limiter on them (after the brick's guards, before its routes) and emits the `px_rate_limits` migration.
+
+- **Fail closed:** when the limiter cannot count (no database, missing table, D1 error), a rule with
+  `failClosed: true` answers 503 `RATE_LIMIT_UNAVAILABLE`; any other rule logs the error and lets the request through.
+  Auth rules (core-auth and studio-api login, signup and password reset) always fail closed.
+- **`PX_RATE_LIMITS`:** an operator changes a bucket's numbers with this env var, read on every request, for example
+  `PX_RATE_LIMITS='{"auth-login-account":{"limit":5,"windowSeconds":600}}'`. Numbers can go up or down but a rule
+  cannot be switched off (`limit` must be at least 1). Invalid JSON is ignored and logged.
+
 ## Platform Limits and Static Budget Checks (`checkGraphBudget`)
 
 Workflows and blueprints are validated statically against Cloudflare platform limits before deploy, preventing opaque runtime failures.

@@ -154,9 +154,9 @@
       "behaviourTest": "bricks/edge-traffic-armor/test/armor.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 7,
+      "testsRun": 8,
       "testsSkipped": 0,
-      "assertionCount": 31
+      "assertionCount": 33
     },
     {
       "id": "feature-flags",
@@ -496,8 +496,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-24T14:46:47.399Z",
-    "gitSha": "34cabaede141736f45107fa67584bdb7044146a4",
+    "generatedAt": "2026-11-24T16:07:44.615Z",
+    "gitSha": "918a9a9a9f3c43ee0e1a9b88d0b4ae6126ea4c42",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

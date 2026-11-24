@@ -90,3 +90,16 @@ export { findWorkspaceMembership } from "./workspace-membership.ts";
 export type { WorkspaceMembership } from "./workspace-membership.ts";
 export { hardenedBetterAuthOptions, hashedSessionDatabase } from "./better-auth-hardening.ts";
 export type { BetterAuthHardeningInput } from "./better-auth-hardening.ts";
+export {
+  MAX_RATE_LIMIT_WINDOW_SECONDS,
+  PX_RATE_LIMITS_DDL,
+  RATE_LIMITS_ENV,
+  RATE_LIMIT_SWEEP_PROBABILITY,
+  RATE_LIMIT_TABLE,
+  effectiveRateLimit,
+  hitRateLimit,
+  rateLimit,
+  rateLimitClientIp,
+  rateLimitStorageKey,
+} from "./rate-limit.ts";
+export type { RateLimitKey, RateLimitOptions, RateLimitResult, RateLimitRule } from "./rate-limit.ts";

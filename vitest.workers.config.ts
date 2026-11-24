@@ -40,6 +40,13 @@ export default defineConfig({
           PX_CONN_KEY: "test-only-px-conn-key-0123456789abcdef",
           PX_TOKEN_KEK: "test-only-px-token-kek-0123456789abcdef",
           PX_TELEMETRY_SECRET: "test-only-px-telemetry-secret-0123456789",
+          // Story 0.21: requests in tests carry no client IP, so every signup and login in the whole run counts against
+          // the one "unknown" IP bucket. The IP-keyed auth limits are raised for the suite (never removed); the
+          // rate-limit tests pass their own PX_RATE_LIMITS (or none) to exercise the real numbers.
+          PX_RATE_LIMITS: JSON.stringify({
+            "auth-signup-ip": { limit: 100_000, windowSeconds: 3600 },
+            "auth-login-ip": { limit: 100_000, windowSeconds: 600 },
+          }),
         },
         // A local D1 database (workerd's own SQLite-backed implementation), used by the wallet tests. SANDBOX_DB_A and
         // SANDBOX_DB_B are two separate real databases that stand in for two projects' sandbox D1s (story 17 tests).

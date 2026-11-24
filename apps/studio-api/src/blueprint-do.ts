@@ -55,7 +55,7 @@ import type {
   ReadinessResult,
   SemanticDiff,
 } from "@poc/blueprint";
-import { hashLegacySessionTokensOnce } from "@poc/sdk";
+import { PX_RATE_LIMITS_DDL, applyMigration, hashLegacySessionTokensOnce } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import {
   PX_TELEMETRY_MIGRATION_SQL,
@@ -85,6 +85,8 @@ export interface StudioApiEnv {
   PX_TOKEN_KEK_VERSION?: string;
   PX_TOKEN_KEK_MAP?: Record<number, string>;
   PX_TELEMETRY_SECRET?: string;
+  /** Story 0.21: per-bucket rate-limit overrides, JSON `{ "<bucket>": { "limit": n, "windowSeconds": n } }` (see @poc/sdk rateLimit). */
+  PX_RATE_LIMITS?: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
   __OAUTH_FETCHER?: typeof fetch;
@@ -920,6 +922,11 @@ export async function ensureStudioD1Schema(db: D1Like): Promise<void> {
     .prepare("ALTER TABLE studio_mcp_tokens ADD COLUMN project_id TEXT")
     .run()
     .catch(() => {});
+  // Story 0.21: the shared rate limiter's counters for the custom login and signup (hashed keys only, no workspace).
+  // A failure is logged, not thrown: the limiter then fails closed with 503 RATE_LIMIT_UNAVAILABLE on auth routes.
+  await applyMigration(db, PX_RATE_LIMITS_DDL).catch((error: unknown) => {
+    console.error("px_rate_limits schema step failed:", error instanceof Error ? error.message : error);
+  });
   // Story 0.14: session tokens are stored as sha256 digests. Rows written before that still hold the raw token; this
   // guarded step rewrites them to their digest once per isolate (a full scan, so not on every call); a legacy row that
   // appears later is rewritten on first use by the hashed-session adapter. Either way its holder stays signed in.

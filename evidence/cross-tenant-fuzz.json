@@ -1,6 +1,6 @@
 {
   "routeCount": 39,
-  "honoRouteCount": 170,
+  "honoRouteCount": 174,
   "specOnlyRoutes": [
     "GET /api/ai",
     "POST /api/ai",
@@ -49,11 +49,11 @@
     "GET /api/webhooks",
     "POST /api/webhooks"
   ],
-  "cases": 1586,
+  "cases": 1610,
   "casesByAttack": {
-    "HEADER_B": 864,
-    "QUERY_B": 216,
-    "BODY_B": 108,
+    "HEADER_B": 880,
+    "QUERY_B": 220,
+    "BODY_B": 112,
     "ID_GUESS": 170,
     "ROLE_ESCALATION": 24,
     "UNAUTH": 204
@@ -119,11 +119,27 @@
       "reason": "health and OpenAPI endpoints, no tenant data"
     },
     {
+      "route": "POST /api/auth/login",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
       "route": "POST /api/auth/signup",
       "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
     },
     {
-      "route": "POST /api/auth/login",
+      "route": "POST /api/auth/sign-in/email",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "route": "POST /api/auth/sign-up/email",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "route": "POST /api/auth/request-password-reset",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "route": "POST /api/auth/forget-password",
       "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
     },
     {
@@ -258,13 +274,37 @@
     },
     {
       "method": "POST",
+      "route": "/api/auth/login",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "POST",
       "route": "/api/auth/signup",
       "attack": "UNAUTH",
       "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
     },
     {
       "method": "POST",
-      "route": "/api/auth/login",
+      "route": "/api/auth/sign-in/email",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/sign-up/email",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/request-password-reset",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/forget-password",
       "attack": "UNAUTH",
       "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
     },
@@ -860,13 +900,37 @@
       "failures": []
     },
     {
+      "route": "/api/auth/login",
+      "method": "POST",
+      "cases": 6,
+      "failures": []
+    },
+    {
       "route": "/api/auth/signup",
       "method": "POST",
       "cases": 6,
       "failures": []
     },
     {
-      "route": "/api/auth/login",
+      "route": "/api/auth/sign-in/email",
+      "method": "POST",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/auth/sign-up/email",
+      "method": "POST",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/auth/request-password-reset",
+      "method": "POST",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/auth/forget-password",
       "method": "POST",
       "cases": 6,
       "failures": []
@@ -980,18 +1044,6 @@
       "failures": []
     },
     {
-      "route": "/api/wallet",
-      "method": "GET",
-      "cases": 6,
-      "failures": []
-    },
-    {
-      "route": "/api/wallet/history",
-      "method": "GET",
-      "cases": 6,
-      "failures": []
-    },
-    {
       "route": "/api/wallet/deduct",
       "method": "POST",
       "cases": 7,
@@ -1007,6 +1059,18 @@
       "route": "/api/payments/verify",
       "method": "POST",
       "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/wallet",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/wallet/history",
+      "method": "GET",
+      "cases": 6,
       "failures": []
     },
     {
@@ -1742,13 +1806,13 @@
       "failures": []
     },
     {
-      "route": "/api/webhooks/subscriptions",
+      "route": "/api/webhooks/ingress/:slug",
       "method": "POST",
       "cases": 8,
       "failures": []
     },
     {
-      "route": "/api/webhooks/ingress/:slug",
+      "route": "/api/webhooks/subscriptions",
       "method": "POST",
       "cases": 8,
       "failures": []
@@ -2139,8 +2203,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-24T14:46:47.399Z",
-    "gitSha": "34cabaede141736f45107fa67584bdb7044146a4",
+    "generatedAt": "2026-11-24T16:07:44.615Z",
+    "gitSha": "918a9a9a9f3c43ee0e1a9b88d0b4ae6126ea4c42",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
