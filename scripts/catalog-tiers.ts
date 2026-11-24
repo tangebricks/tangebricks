@@ -68,9 +68,9 @@ export function loadIntegrationTiers(rootDir = ROOT): BrickTierRow[] {
 
   const evidenceDir = process.env.POC_EVIDENCE_DIR
     ? resolve(process.env.POC_EVIDENCE_DIR)
-    : existsSync(join(rootDir, ".evidence-run", "tier-evidence.json"))
-      ? join(rootDir, ".evidence-run")
-      : join(rootDir, "evidence");
+    : // Committed evidence unless a run directory is named explicitly (evidence:refresh sets POC_EVIDENCE_DIR).
+      // A leftover .evidence-run/ from an earlier step is never picked up implicitly.
+      join(rootDir, "evidence");
 
   const rows: BrickTierRow[] = [];
   for (const app of apps) {
