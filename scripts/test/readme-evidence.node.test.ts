@@ -137,7 +137,7 @@ describe("live evidence staleness (STALE_LABEL)", () => {
     const text = ["## [Unreleased]", "", "## [0.3.0] - 2026-12-05", "", "## [0.1.0] - 2026-11-21", ""].join("\n");
     expect(latestReleaseFromChangelog(text)).toEqual({ version: "0.3.0", date: "2026-12-05" });
     expect(latestReleaseFromChangelog("## [Unreleased]\n")).toBeUndefined();
-    expect(readLatestRelease(repoRoot, repoRoot)).toEqual({ version: "0.1.0", date: "2026-11-21" });
+    expect(readLatestRelease(repoRoot, repoRoot)).toEqual({ version: "0.3.0", date: "2026-11-24" });
   });
 
   it("the generated section depends on committed files only: same inputs, same output", () => {
