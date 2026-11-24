@@ -1,0 +1,94 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "dynamic-entities",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "dynamic-entities"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [],
+  "routePrefixes": [],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Dynamic Entity CRUD",
+    "category": "data",
+    "summary": "Dynamic entity CRUD router compiling JSON schemas into row-level tenant-isolated REST endpoints.",
+    "maturity": "production",
+    "behaviourTest": "test/dynamic-entities.test.ts"
+  },
+  "nodes": [
+    {
+      "type": "dynamic-entities.record_created",
+      "label": "Entity Record Created",
+      "summary": "Triggers when a new tenant entity record is created.",
+      "role": "trigger",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Record",
+          "dataType": "object"
+        }
+      ],
+      "config": {},
+      "executor": "executeEntityRecordCreatedTrigger",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "dynamic-entities.create_record",
+      "label": "Create Entity Record",
+      "summary": "Creates a new tenant-isolated record in a dynamic entity table.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Record",
+          "dataType": "object",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Created Record",
+          "dataType": "object"
+        }
+      ],
+      "config": {},
+      "executor": "executeEntityCreateRecord",
+      "durable": true,
+      "sideEffects": "write"
+    }
+  ],
+  "worker": {
+    "package": "@poc/dynamic-entities",
+    "routes": [
+      {
+        "factory": "createEntityRoutes",
+        "mountAt": "/api",
+        "options": {
+          "entities": {
+            "$entities": true
+          }
+        },
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/{entity}",
+          "/api/{entity}/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {}
+  }
+}

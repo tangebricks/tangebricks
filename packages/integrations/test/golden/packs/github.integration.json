@@ -1,0 +1,834 @@
+{
+  "manifestVersion": 2,
+  "kind": "integration",
+  "app": "github",
+  "version": "1.0.0",
+  "ui": {
+    "displayName": "GitHub",
+    "category": "developer",
+    "icon": "github",
+    "docsUrl": "https://docs.github.com/en/rest",
+    "summary": "Issues, pull requests, repositories, file contents, Actions workflow dispatch, and webhooks.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "scopes": [
+      "repo",
+      "workflow",
+      "read:org"
+    ],
+    "authorizeUrl": "https://github.com/login/oauth/authorize",
+    "tokenUrl": "https://github.com/login/oauth/access_token",
+    "headerName": "Authorization",
+    "prefix": "Bearer",
+    "connectionFields": [
+      "token"
+    ]
+  },
+  "baseUrl": "https://api.github.com",
+  "allowedHosts": [
+    "api.github.com"
+  ],
+  "operations": [
+    {
+      "operationId": "listIssues",
+      "label": "List repository issues",
+      "summary": "List repository issues",
+      "method": "GET",
+      "path": "/repos/{owner}/{repo}/issues",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "state",
+          "in": "query",
+          "dataType": "string"
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "dataType": "number"
+        }
+      ],
+      "response": {
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "pagination": {
+        "style": "link",
+        "paramName": "page",
+        "responsePath": "items",
+        "maxPages": 3
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "createIssue",
+      "label": "Create repository issue",
+      "summary": "Create repository issue",
+      "method": "POST",
+      "path": "/repos/{owner}/{repo}/issues",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "title",
+            "dataType": "string",
+            "required": true,
+            "description": "Issue title",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "body",
+            "dataType": "string",
+            "description": "Issue body",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "labels",
+            "dataType": "array",
+            "description": "Issue labels",
+            "schema": {
+              "dataType": "array"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 201,
+        "outputs": [
+          {
+            "id": "id",
+            "dataType": "number"
+          },
+          {
+            "id": "node_id",
+            "dataType": "string"
+          },
+          {
+            "id": "url",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "updateIssue",
+      "label": "Update repository issue",
+      "summary": "Update repository issue",
+      "method": "PATCH",
+      "path": "/repos/{owner}/{repo}/issues/{issueNumber}",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "issueNumber",
+          "in": "path",
+          "dataType": "number",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "title",
+            "dataType": "string",
+            "description": "Updated title",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "state",
+            "dataType": "string",
+            "description": "open or closed",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "body",
+            "dataType": "string",
+            "description": "Updated body",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "id",
+            "dataType": "number"
+          },
+          {
+            "id": "node_id",
+            "dataType": "string"
+          },
+          {
+            "id": "url",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "createIssueComment",
+      "label": "Add issue comment",
+      "summary": "Add issue comment",
+      "method": "POST",
+      "path": "/repos/{owner}/{repo}/issues/{issueNumber}/comments",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "issueNumber",
+          "in": "path",
+          "dataType": "number",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "body",
+            "dataType": "string",
+            "required": true,
+            "description": "Comment markdown",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 201,
+        "outputs": [
+          {
+            "id": "id",
+            "dataType": "number"
+          },
+          {
+            "id": "node_id",
+            "dataType": "string"
+          },
+          {
+            "id": "url",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "listPullRequests",
+      "label": "List pull requests",
+      "summary": "List pull requests",
+      "method": "GET",
+      "path": "/repos/{owner}/{repo}/pulls",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "state",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "response": {
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "createPullRequest",
+      "label": "Create pull request",
+      "summary": "Create pull request",
+      "method": "POST",
+      "path": "/repos/{owner}/{repo}/pulls",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "title",
+            "dataType": "string",
+            "required": true,
+            "description": "PR title",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "head",
+            "dataType": "string",
+            "required": true,
+            "description": "Head branch",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "base",
+            "dataType": "string",
+            "required": true,
+            "description": "Base branch",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "body",
+            "dataType": "string",
+            "description": "PR description",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 201,
+        "outputs": [
+          {
+            "id": "url",
+            "dataType": "string"
+          },
+          {
+            "id": "id",
+            "dataType": "number"
+          },
+          {
+            "id": "node_id",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "mergePullRequest",
+      "label": "Merge pull request",
+      "summary": "Merge pull request",
+      "method": "PUT",
+      "path": "/repos/{owner}/{repo}/pulls/{pullNumber}/merge",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "pullNumber",
+          "in": "path",
+          "dataType": "number",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "commit_title",
+            "dataType": "string",
+            "description": "Merge commit title",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "merge_method",
+            "dataType": "string",
+            "description": "merge, squash, rebase",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "sha",
+            "dataType": "string"
+          },
+          {
+            "id": "merged",
+            "dataType": "boolean"
+          },
+          {
+            "id": "message",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "getRepo",
+      "label": "Get repository",
+      "summary": "Get repository",
+      "method": "GET",
+      "path": "/repos/{owner}/{repo}",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "id",
+            "dataType": "number"
+          },
+          {
+            "id": "node_id",
+            "dataType": "string"
+          },
+          {
+            "id": "name",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "listRepos",
+      "label": "List authenticated user repos",
+      "summary": "List authenticated user repos",
+      "method": "GET",
+      "path": "/user/repos",
+      "params": [
+        {
+          "name": "visibility",
+          "in": "query",
+          "dataType": "string"
+        },
+        {
+          "name": "per_page",
+          "in": "query",
+          "dataType": "number"
+        }
+      ],
+      "response": {
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "getContent",
+      "label": "Get file content",
+      "summary": "Get file content",
+      "method": "GET",
+      "path": "/repos/{owner}/{repo}/contents/{path}",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "path",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "ref",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "response": {
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "createOrUpdateFileContents",
+      "label": "Create or update file",
+      "summary": "Create or update file",
+      "method": "PUT",
+      "path": "/repos/{owner}/{repo}/contents/{path}",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "path",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "message",
+            "dataType": "string",
+            "required": true,
+            "description": "Commit message",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "content",
+            "dataType": "string",
+            "required": true,
+            "description": "Base64 content",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "sha",
+            "dataType": "string",
+            "description": "Existing blob SHA",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "content",
+            "dataType": "object"
+          },
+          {
+            "id": "commit",
+            "dataType": "object"
+          }
+        ],
+        "errorShape": {
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "createWorkflowDispatch",
+      "label": "Dispatch GitHub Actions workflow",
+      "summary": "Dispatch GitHub Actions workflow",
+      "method": "POST",
+      "path": "/repos/{owner}/{repo}/actions/workflows/{workflowId}/dispatches",
+      "params": [
+        {
+          "name": "owner",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "repo",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "workflowId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "ref",
+            "dataType": "string",
+            "required": true,
+            "description": "Git ref branch/tag",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "inputs",
+            "dataType": "object",
+            "description": "Workflow inputs",
+            "schema": {
+              "dataType": "object"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "workflow_run_id",
+            "dataType": "number"
+          },
+          {
+            "id": "run_url",
+            "dataType": "string"
+          },
+          {
+            "id": "html_url",
+            "dataType": "string"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "webhook_event",
+      "label": "GitHub Webhook Event",
+      "summary": "Fires when a signed GitHub repository or organization webhook arrives.",
+      "verifier": "github-hmac-sha256",
+      "signatureHeader": "X-Hub-Signature-256",
+      "eventIdPath": "delivery_id",
+      "eventTypePath": "action",
+      "outputs": [
+        {
+          "id": "out",
+          "label": "GitHub Event",
+          "dataType": "object"
+        }
+      ]
+    }
+  ],
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "GitHub token is invalid or expired.",
+      "hint": "Re-authorize the GitHub connection in Connections Center.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "GitHub API rate limit exceeded.",
+      "hint": "Respect Retry-After or X-RateLimit-Reset header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "X-RateLimit-Reset"
+    }
+  },
+  "fidelity": {
+    "specHash": "sha256:2aaece148e7e1b749c7c6fe3496eadf6623c527e9cd6c4d18f7841e383efba1f",
+    "importerVersion": "2.0.0",
+    "level": "curated",
+    "unsupported": []
+  }
+}

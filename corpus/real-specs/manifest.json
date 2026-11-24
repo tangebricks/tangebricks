@@ -1,0 +1,64 @@
+{
+  "specs": [
+    {
+      "id": "stripe",
+      "format": "openapi3",
+      "url": "https://raw.githubusercontent.com/stripe/openapi/bcfd59f49dcac84a84d63d304c62793dff6e5916/openapi/spec3.json",
+      "sha256": "7cff4cc46d0654101a36a3302f7544640f5f73e4f3cad6f264f0e23c19fa1776",
+      "bytes": 8317513
+    },
+    {
+      "id": "github",
+      "format": "openapi3",
+      "url": "https://raw.githubusercontent.com/github/rest-api-description/e85aa3d17265bc8a2dd9c1e5357705ee206e9d71/descriptions/api.github.com/api.github.com.json",
+      "sha256": "72e362731e73c6adc9b12a4d18eb7dd8e095400ae55d47daab06c54714331b6d",
+      "bytes": 13917876
+    },
+    {
+      "id": "discord",
+      "format": "openapi3",
+      "url": "https://raw.githubusercontent.com/discord/discord-api-spec/4e75626a4cedfbc397d66f5491c79a9a62a71fd5/specs/openapi.json",
+      "sha256": "281a2bff563d77a19e51fc3bf8bbe3ebcef28e3dc86684ae395b06ac51ba7484",
+      "bytes": 1204742
+    },
+    {
+      "id": "slack",
+      "format": "swagger2",
+      "url": "https://raw.githubusercontent.com/slackapi/slack-api-specs/dfea73e06d146c368d7f94b52ac90796dc4e27e1/web-api/slack_web_openapi_v2.json",
+      "sha256": "742a5c977180a829df8767cf57bc417d99b3713583aee83741efb9c08ca731e7",
+      "bytes": 1237332
+    },
+    {
+      "id": "google-calendar",
+      "format": "google-discovery",
+      "url": "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest",
+      "snapshot": "corpus/real-specs/snapshots/google-calendar.json.gz",
+      "sha256": "92f9ea3650e8e92308cba6e939a8d4a527df9d7a5ec464a423ec5f52d8533ff3",
+      "bytes": 170208
+    },
+    {
+      "id": "google-gmail",
+      "format": "google-discovery",
+      "url": "https://gmail.googleapis.com/$discovery/rest?version=v1",
+      "snapshot": "corpus/real-specs/snapshots/google-gmail.json.gz",
+      "sha256": "2ac56702d9f09400918c60dadd31aff667595aee009a8d1f09180dd8cf057328",
+      "bytes": 217716
+    },
+    {
+      "id": "google-drive",
+      "format": "google-discovery",
+      "url": "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+      "snapshot": "corpus/real-specs/snapshots/google-drive.json.gz",
+      "sha256": "c1b967db28cb2b747f769c2356b1c4ef774b11137558bf1c6880648a3de9a734",
+      "bytes": 269545
+    },
+    {
+      "id": "google-sheets",
+      "format": "google-discovery",
+      "url": "https://sheets.googleapis.com/$discovery/rest?version=v4",
+      "snapshot": "corpus/real-specs/snapshots/google-sheets.json.gz",
+      "sha256": "c365a0d236a4927bfc5464b2520abd6455bf077e2893b1ee47a453e11e131286",
+      "bytes": 394571
+    }
+  ]
+}

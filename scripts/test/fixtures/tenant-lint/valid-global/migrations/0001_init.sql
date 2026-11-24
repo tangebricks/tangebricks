@@ -1,0 +1,4 @@
+CREATE TABLE gt (
+  id TEXT PRIMARY KEY,
+  config TEXT NOT NULL
+);

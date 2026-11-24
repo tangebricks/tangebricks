@@ -1,0 +1,186 @@
+{
+    "version":  1,
+    "about":  "The tests in packages/assembler/test/H8.entities.test.ts that H8\u0027s tenantACrud, tenantBDenied, bodyWorkspaceIgnored, hostileInputsSafe and walletStillDenied checks stand on, fixed before the file was written. Each title must exist exactly once among the passing tests of that file, so an attack cannot be dropped, renamed, skipped or reduced to nothing without H8 failing. Same mechanism as ported-tests.json (H5) and h6-denial-tests.json (H6). Each test is tagged with the one check it supports (supports): a failed test makes that check false, a missing, renamed, skipped or duplicated one makes it not reported, so lost evidence is a fail and only a failing attack is a kill.",
+    "tests":  [
+                  {
+                      "title":  "creates an invoice",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantACrud"
+                  },
+                  {
+                      "title":  "lists its invoices, newest first, with a total",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantACrud"
+                  },
+                  {
+                      "title":  "reads an invoice by id",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantACrud"
+                  },
+                  {
+                      "title":  "updates an invoice, only the fields sent",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantACrud"
+                  },
+                  {
+                      "title":  "deletes an invoice",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantACrud"
+                  },
+                  {
+                      "title":  "pages through a long list",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantACrud"
+                  },
+                  {
+                      "title":  "a plain member of A can use A\u0027s invoices too",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantACrud"
+                  },
+                  {
+                      "title":  "B reading A\u0027s invoice by id",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "B listing sees only B\u0027s invoices",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "B updating A\u0027s invoice",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "B deleting A\u0027s invoice",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "B naming A\u0027s workspace in the header, on all five operations",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "B naming A\u0027s workspace in the query string",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "B naming both workspaces in one header",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "a stranger with no workspace of their own",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "a hundred attempts at once against A\u0027s rows leave them as they were",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "A cannot reach B either",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "tenantBDenied"
+                  },
+                  {
+                      "title":  "a workspace_id in the body of a create is ignored",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "bodyWorkspaceIgnored"
+                  },
+                  {
+                      "title":  "a workspace_id in the body of an update does not move the row",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "bodyWorkspaceIgnored"
+                  },
+                  {
+                      "title":  "an id in the body of a create does not choose the row\u0027s id",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "bodyWorkspaceIgnored"
+                  },
+                  {
+                      "title":  "a workspace id in the query string of a list is ignored",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "bodyWorkspaceIgnored"
+                  },
+                  {
+                      "title":  "injection-shaped text is stored and returned as text",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "hostileInputsSafe"
+                  },
+                  {
+                      "title":  "injection-shaped ids reach nothing",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "hostileInputsSafe"
+                  },
+                  {
+                      "title":  "injection-shaped paging values are refused",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "hostileInputsSafe"
+                  },
+                  {
+                      "title":  "unknown and made-up fields are dropped",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "hostileInputsSafe"
+                  },
+                  {
+                      "title":  "values outside the declaration are refused",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "hostileInputsSafe"
+                  },
+                  {
+                      "title":  "prototype keys in a body are ignored",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "hostileInputsSafe"
+                  },
+                  {
+                      "title":  "the tables are all still there after the attacks",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "hostileInputsSafe"
+                  },
+                  {
+                      "title":  "A cannot read or spend B\u0027s wallet",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "walletStillDenied"
+                  },
+                  {
+                      "title":  "A\u0027s own wallet still works",
+                      "from":  "H8.entities.test.ts",
+                      "kind":  "ported",
+                      "supports":  "walletStillDenied"
+                  }
+              ]
+}

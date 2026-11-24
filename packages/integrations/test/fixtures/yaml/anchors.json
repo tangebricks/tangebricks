@@ -1,0 +1,13 @@
+{
+  "default_headers": {
+    "Authorization": "Bearer token",
+    "Accept": "application/json"
+  },
+  "endpoint": {
+    "path": "/users",
+    "headers": {
+      "Authorization": "Bearer token",
+      "Accept": "application/json"
+    }
+  }
+}

@@ -1,0 +1,595 @@
+{
+  "manifestVersion": 2,
+  "kind": "node-pack",
+  "id": "core-nodes",
+  "version": "0.0.0",
+  "package": "@poc/core-nodes",
+  "ui": {
+    "displayName": "First-Party Core Nodes",
+    "category": "automation",
+    "summary": "19 first-party workflow trigger, logic, data transform, batch, and HTTP nodes.",
+    "maturity": "production",
+    "behaviourTest": "test/core-nodes.conformance.test.ts"
+  },
+  "nodes": [
+    {
+      "type": "core.webhook",
+      "label": "Webhook Trigger",
+      "summary": "Starts a workflow from a verified inbound HTTP webhook payload.",
+      "role": "trigger",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Payload",
+          "dataType": "object"
+        }
+      ],
+      "config": {
+        "method": {
+          "type": "enum",
+          "values": [
+            "post",
+            "get",
+            "put",
+            "delete"
+          ],
+          "default": "post"
+        }
+      },
+      "executor": "executeWebhookTrigger",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.schedule",
+      "label": "Schedule Trigger",
+      "summary": "Starts a workflow on a recurring cron schedule.",
+      "role": "trigger",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Tick",
+          "dataType": "object"
+        }
+      ],
+      "config": {
+        "intervalMinutes": {
+          "type": "integer",
+          "min": 1,
+          "max": 10080,
+          "default": 60
+        }
+      },
+      "executor": "executeScheduleTrigger",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.brick_event",
+      "label": "Brick Event Trigger",
+      "summary": "Starts a workflow when an enabled brick emits a domain event.",
+      "role": "trigger",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Event",
+          "dataType": "object"
+        }
+      ],
+      "config": {},
+      "executor": "executeBrickEventTrigger",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.if",
+      "label": "If Condition",
+      "summary": "Evaluates a condition and routes data with matched boolean flag.",
+      "role": "logic",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Result",
+          "dataType": "object"
+        },
+        {
+          "id": "true",
+          "label": "True",
+          "dataType": "any"
+        },
+        {
+          "id": "false",
+          "label": "False",
+          "dataType": "any"
+        }
+      ],
+      "config": {
+        "operator": {
+          "type": "enum",
+          "values": [
+            "eq",
+            "neq",
+            "gt",
+            "lt",
+            "exists"
+          ],
+          "default": "eq"
+        }
+      },
+      "executor": "executeIfNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.switch",
+      "label": "Switch Router",
+      "summary": "Matches a field against cases and outputs the selected branch.",
+      "role": "logic",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Result",
+          "dataType": "object"
+        }
+      ],
+      "config": {},
+      "executor": "executeSwitchNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.loop",
+      "label": "Bounded Loop",
+      "summary": "Iterates over an input array up to a bounded iteration limit.",
+      "role": "logic",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Items",
+          "dataType": "array"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Items",
+          "dataType": "array"
+        }
+      ],
+      "config": {
+        "maxIterations": {
+          "type": "integer",
+          "min": 1,
+          "max": 1000,
+          "default": 100
+        }
+      },
+      "executor": "executeLoopNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.map",
+      "label": "Map Array",
+      "summary": "Projects each item of an array by extracting or wrapping fields.",
+      "role": "logic",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Items",
+          "dataType": "array"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Mapped",
+          "dataType": "array"
+        }
+      ],
+      "config": {},
+      "executor": "executeMapNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.merge",
+      "label": "Merge Branches",
+      "summary": "Combines two upstream branch inputs into a single merged object.",
+      "role": "logic",
+      "inputs": [
+        {
+          "id": "a",
+          "label": "Branch A",
+          "dataType": "any"
+        },
+        {
+          "id": "b",
+          "label": "Branch B",
+          "dataType": "any"
+        },
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Merged",
+          "dataType": "object"
+        }
+      ],
+      "config": {
+        "mode": {
+          "type": "enum",
+          "values": [
+            "combine",
+            "prefer-a",
+            "prefer-b"
+          ],
+          "default": "combine"
+        }
+      },
+      "executor": "executeMergeNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.delay",
+      "label": "Delay Step",
+      "summary": "Pauses workflow execution for a bounded duration in milliseconds.",
+      "role": "logic",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Output",
+          "dataType": "any"
+        }
+      ],
+      "config": {
+        "delayMs": {
+          "type": "integer",
+          "min": 0,
+          "max": 60000,
+          "default": 0
+        }
+      },
+      "executor": "executeDelayNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.filter",
+      "label": "Filter Items",
+      "summary": "Filters an array based on a field predicate.",
+      "role": "logic",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Items",
+          "dataType": "array"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Filtered",
+          "dataType": "array"
+        }
+      ],
+      "config": {},
+      "executor": "executeFilterNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.noop",
+      "label": "No-Op Pass-Through",
+      "summary": "Passes input through unchanged for graph structuring and debugging.",
+      "role": "logic",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Output",
+          "dataType": "any"
+        }
+      ],
+      "config": {},
+      "executor": "executeNoopNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.field_map",
+      "label": "Field Map",
+      "summary": "Extracts and maps specified fields from an input object into a new object.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "object"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Mapped",
+          "dataType": "object"
+        }
+      ],
+      "config": {
+        "includeUnmapped": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "executor": "executeFieldMapNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.rename_keys",
+      "label": "Rename Keys",
+      "summary": "Renames keys on an input object according to a key mapping dictionary.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "object"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Renamed",
+          "dataType": "object"
+        }
+      ],
+      "config": {},
+      "executor": "executeRenameKeysNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.format_template",
+      "label": "Format Template",
+      "summary": "Interpolates placeholder tokens from input fields without code evaluation.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Variables",
+          "dataType": "object"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Text",
+          "dataType": "string"
+        }
+      ],
+      "config": {},
+      "executor": "executeFormatTemplateNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.json_transform",
+      "label": "JSON Transform",
+      "summary": "Selects a nested path or wraps and normalizes JSON data deterministically.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Result",
+          "dataType": "any"
+        }
+      ],
+      "config": {},
+      "executor": "executeJsonTransformNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.math",
+      "label": "Math Operation",
+      "summary": "Performs arithmetic (add, subtract, multiply, divide, round) on numeric inputs.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Value",
+          "dataType": "number"
+        }
+      ],
+      "config": {
+        "operation": {
+          "type": "enum",
+          "values": [
+            "add",
+            "sub",
+            "mul",
+            "div",
+            "round"
+          ],
+          "default": "add"
+        }
+      },
+      "executor": "executeMathNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.date_time",
+      "label": "Date & Time",
+      "summary": "Parses, offsets, and formats ISO-8601 UTC timestamps deterministically.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Formatted",
+          "dataType": "string"
+        }
+      ],
+      "config": {
+        "addSeconds": {
+          "type": "integer",
+          "min": -31536000,
+          "max": 31536000,
+          "default": 0
+        }
+      },
+      "executor": "executeDateTimeNode",
+      "durable": true,
+      "sideEffects": "none"
+    },
+    {
+      "type": "core.http_request",
+      "label": "HTTP Request",
+      "summary": "Sends an outbound HTTP request and returns status, headers, and parsed body.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Request Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Response",
+          "dataType": "object"
+        }
+      ],
+      "config": {
+        "method": {
+          "type": "enum",
+          "values": [
+            "get",
+            "post",
+            "put",
+            "patch",
+            "delete"
+          ],
+          "default": "post"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "min": 100,
+          "max": 30000,
+          "default": 5000
+        }
+      },
+      "executor": "executeHttpRequestNode",
+      "durable": true,
+      "sideEffects": "write"
+    },
+    {
+      "type": "core.batch",
+      "label": "Batch Send",
+      "summary": "Queue-backed batch and chunk primitive for rate-safe bulk execution.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Result",
+          "dataType": "object"
+        }
+      ],
+      "config": {
+        "chunkSize": {
+          "type": "enum",
+          "values": [
+            "auto",
+            "10",
+            "20",
+            "25",
+            "40",
+            "50",
+            "100"
+          ],
+          "default": "auto"
+        },
+        "maxItems": {
+          "type": "integer",
+          "min": 1,
+          "max": 100000,
+          "default": 100000
+        }
+      },
+      "executor": "executeBatchNode",
+      "durable": true,
+      "sideEffects": "write",
+      "bindings": [
+        "DB",
+        "QUEUE",
+        "JOB_QUEUE"
+      ]
+    }
+  ]
+}

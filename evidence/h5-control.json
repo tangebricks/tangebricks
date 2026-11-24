@@ -1,0 +1,194 @@
+{
+  "note": "cephlow's read-add-write top-up and its deduction, run 50 operations at a time on local D1; see test/support/cephlow-control.ts",
+  "runs": 20,
+  "violatingRuns": 20,
+  "perRun": [
+    {
+      "run": 1,
+      "start": 35,
+      "violating": true,
+      "reasons": [
+        "final balance 9, expected 292",
+        "32 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 2,
+      "start": 20,
+      "violating": true,
+      "reasons": [
+        "final balance 10, expected 178",
+        "24 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 3,
+      "start": 8,
+      "violating": true,
+      "reasons": [
+        "final balance 14, expected 141",
+        "18 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 4,
+      "start": 8,
+      "violating": true,
+      "reasons": [
+        "final balance 14, expected 265",
+        "26 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 5,
+      "start": 39,
+      "violating": true,
+      "reasons": [
+        "final balance 6, expected 247",
+        "30 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 6,
+      "start": 26,
+      "violating": true,
+      "reasons": [
+        "final balance 14, expected 302",
+        "31 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 7,
+      "start": 28,
+      "violating": true,
+      "reasons": [
+        "final balance 1, expected 281",
+        "30 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 8,
+      "start": 5,
+      "violating": true,
+      "reasons": [
+        "final balance 6, expected 265",
+        "23 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 9,
+      "start": 19,
+      "violating": true,
+      "reasons": [
+        "final balance 17, expected 253",
+        "29 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 10,
+      "start": 27,
+      "violating": true,
+      "reasons": [
+        "final balance 11, expected 165",
+        "26 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 11,
+      "start": 11,
+      "violating": true,
+      "reasons": [
+        "final balance 10, expected 272",
+        "29 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 12,
+      "start": 7,
+      "violating": true,
+      "reasons": [
+        "final balance 4, expected 241",
+        "27 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 13,
+      "start": 9,
+      "violating": true,
+      "reasons": [
+        "final balance 21, expected 301",
+        "26 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 14,
+      "start": 27,
+      "violating": true,
+      "reasons": [
+        "final balance 3, expected 266",
+        "33 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 15,
+      "start": 34,
+      "violating": true,
+      "reasons": [
+        "final balance 7, expected 303",
+        "28 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 16,
+      "start": 2,
+      "violating": true,
+      "reasons": [
+        "final balance 9, expected 264",
+        "23 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 17,
+      "start": 18,
+      "violating": true,
+      "reasons": [
+        "final balance 12, expected 258",
+        "27 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 18,
+      "start": 5,
+      "violating": true,
+      "reasons": [
+        "final balance 18, expected 303",
+        "28 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 19,
+      "start": 36,
+      "violating": true,
+      "reasons": [
+        "final balance 19, expected 233",
+        "30 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    },
+    {
+      "run": 20,
+      "start": 25,
+      "violating": true,
+      "reasons": [
+        "final balance 18, expected 270",
+        "32 ledger rows whose balance_after does not match a replay of the ledger"
+      ]
+    }
+  ],
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "reporters/evidence-reporter.ts",
+    "inputKind": "measured"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "llm-gateway",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "llm-router"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_llm_gateway.sql"
+  ],
+  "routePrefixes": [
+    "ai"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "defaultProvider": {
+      "type": "enum",
+      "values": [
+        "workers-ai",
+        "openai",
+        "anthropic",
+        "gemini"
+      ],
+      "default": "workers-ai"
+    }
+  },
+  "ui": {
+    "displayName": "LLM Gateway & Prompt Router",
+    "category": "ai",
+    "summary": "Multi-provider LLM router, prompts, and token usage.",
+    "maturity": "beta",
+    "maturityReason": "Persists prompt templates and token usage logs in D1; registers no provider adapter by default (generate answers 503 NOT_CONFIGURED); no built-in OpenAI, Anthropic, Gemini or Workers AI adapters",
+    "behaviourTest": "test/gateway.test.ts"
+  },
+  "worker": {
+    "package": "@poc/llm-gateway",
+    "routes": [
+      {
+        "factory": "createAiRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/ai",
+          "/api/ai/*"
+        ],
+        "options": {
+          "provider": {
+            "$setting": "defaultProvider"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "ai_prompt_templates": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "ai_generation_logs": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

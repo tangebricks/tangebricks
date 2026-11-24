@@ -1,0 +1,795 @@
+{
+  "app": "slack",
+  "format": "swagger2",
+  "specHash": "sha256:d3da2c0b8ba608d025f96cb63d737f0aae1a640f6efaf51d346e15528e21e0f5",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 69,
+    "normalized": 1,
+    "curated": 4,
+    "approximated": 1,
+    "unsupported": 0
+  },
+  "excludedByCuration": 1,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/host",
+      "from": "https://slack.com/api",
+      "to": "https://slack.com/api",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": null,
+      "element": "document",
+      "code": "SWAGGER2_UPCONVERTED",
+      "pointer": "#/swagger",
+      "from": "2.0",
+      "to": "3.0",
+      "blocking": false,
+      "status": "normalized"
+    },
+    {
+      "op": null,
+      "element": "response",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/errorWhen",
+      "to": {
+        "path": "ok",
+        "equals": false
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "chat_postMessage",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1chat.postMessage/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_postMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1chat.postMessage/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_postMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1chat.postMessage/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_postMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1chat.postMessage/post/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_postMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1chat.postMessage/post/parameters/3",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_postMessage",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1chat.postMessage/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_postMessage",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1chat.postMessage/post/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_postMessage",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1chat.postMessage/post/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_postMessage",
+      "element": "body",
+      "code": "OVERLAY_OVERRIDE",
+      "pointer": "curation:#/operations/chat_postMessage/body",
+      "from": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "channel",
+            "dataType": "string",
+            "required": true,
+            "description": "Channel ID",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "token",
+            "dataType": "string",
+            "description": "Authentication token",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "text",
+            "dataType": "string",
+            "description": "Message text",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "thread_ts",
+            "dataType": "string",
+            "description": "Thread timestamp",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "to": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "channel",
+            "dataType": "string",
+            "required": true,
+            "description": "Channel ID"
+          },
+          {
+            "name": "text",
+            "dataType": "string",
+            "description": "Message text"
+          },
+          {
+            "name": "thread_ts",
+            "dataType": "string",
+            "description": "Thread timestamp"
+          }
+        ]
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "chat_update",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1chat.update/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_update",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1chat.update/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_update",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1chat.update/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_update",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1chat.update/post/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_update",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1chat.update/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_update",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1chat.update/post/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "chat_update",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1chat.update/post/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_create",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1conversations.create/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_create",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1conversations.create/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_create",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1conversations.create/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_create",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1conversations.create/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_create",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1conversations.create/post/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_create",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1conversations.create/post/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_history",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1conversations.history/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_history",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1conversations.history/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_history",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1conversations.history/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_history",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1conversations.history/get/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_history",
+      "element": "pagination",
+      "code": "PAGINATION_UNMODELLED",
+      "pointer": "#/paths/~1conversations.history/get/responses/200",
+      "reason": "Response declares pagination signals (has_more, next_cursor, nextPageToken, next, Link) but pagination is not modelled",
+      "blocking": false,
+      "status": "approximated",
+      "acknowledged": {
+        "reason": "cursor pagination unmodelled for conversations.history"
+      }
+    },
+    {
+      "op": "conversations_history",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1conversations.history/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_history",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1conversations.history/get/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_history",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1conversations.history/get/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_invite",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1conversations.invite/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_invite",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1conversations.invite/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_invite",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1conversations.invite/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_invite",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1conversations.invite/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_invite",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1conversations.invite/post/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_invite",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1conversations.invite/post/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_list",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1conversations.list/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1conversations.list/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1conversations.list/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1conversations.list/get/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_list",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1conversations.list/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_list",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1conversations.list/get/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_list",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1conversations.list/get/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "conversations_list",
+      "element": "pagination",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/conversations_list/pagination",
+      "to": {
+        "style": "cursor",
+        "paramName": "cursor",
+        "responsePath": "channels",
+        "nextCursorPath": "response_metadata.next_cursor",
+        "maxPages": 3
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "files_upload",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1files.upload/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "files_upload",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1files.upload/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "files_upload",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1files.upload/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "files_upload",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1files.upload/post/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "files_upload",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1files.upload/post/parameters/3",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "files_upload",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1files.upload/post/parameters/4",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "files_upload",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1files.upload/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "files_upload",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1files.upload/post/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "files_upload",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1files.upload/post/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "files_upload",
+      "element": "body",
+      "code": "OVERLAY_OVERRIDE",
+      "pointer": "curation:#/operations/files_upload/body",
+      "from": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "token",
+            "dataType": "string",
+            "description": "Authentication token.",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "file",
+            "dataType": "string",
+            "description": "File contents via `multipart/form-data`.",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "content",
+            "dataType": "string",
+            "description": "File contents via a POST variable.",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "filename",
+            "dataType": "string",
+            "description": "Filename of file.",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "title",
+            "dataType": "string",
+            "description": "Title of file.",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "to": {
+        "contentType": "multipart/form-data",
+        "fields": [
+          {
+            "name": "file",
+            "dataType": "any",
+            "description": "File contents",
+            "binary": true
+          },
+          {
+            "name": "content",
+            "dataType": "string",
+            "description": "File content"
+          },
+          {
+            "name": "filename",
+            "dataType": "string",
+            "description": "Filename"
+          },
+          {
+            "name": "title",
+            "dataType": "string",
+            "description": "Title of file"
+          }
+        ]
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "reactions_add",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1reactions.add/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "reactions_add",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1reactions.add/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "reactions_add",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1reactions.add/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "reactions_add",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1reactions.add/post/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "reactions_add",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1reactions.add/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "reactions_add",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1reactions.add/post/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "reactions_add",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1reactions.add/post/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_info",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1users.info/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_info",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1users.info/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_info",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1users.info/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_info",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1users.info/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_info",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1users.info/get/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_info",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1users.info/get/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_lookupByEmail",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1users.lookupByEmail/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_lookupByEmail",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1users.lookupByEmail/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_lookupByEmail",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1users.lookupByEmail/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_lookupByEmail",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1users.lookupByEmail/get/responses/default",
+      "to": {
+        "codePath": "error"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "users_lookupByEmail",
+      "element": "auth",
+      "code": "AUTH_SCHEME",
+      "pointer": "#/paths/~1users.lookupByEmail/get/security",
+      "blocking": false,
+      "status": "mapped"
+    }
+  ]
+}

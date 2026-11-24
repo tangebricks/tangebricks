@@ -1,0 +1,47 @@
+[
+  {
+    "file": "bricks/cron-alarms/src/cron.ts",
+    "table": "cron_schedules",
+    "reason": "The platform cron runner (systemScope) scans due schedules across all workspaces and claims each one by the schedule id read in that same scan; it serves no tenant request."
+  },
+  {
+    "file": "bricks/edge-traffic-armor/src/armor.ts",
+    "table": "arm_blocked_requests",
+    "reason": "listIncidents() with no workspace is the platform-wide security incident feed; the only route passes the caller's workspace, which uses scoped()."
+  },
+  {
+    "file": "bricks/identity-federation/src/federation.ts",
+    "table": "sso_connections",
+    "reason": "SSO sign-in resolves a connection by its id or by the user's email domain before any workspace is known; the matched row is what names the workspace."
+  },
+  {
+    "file": "bricks/identity-federation/src/federation.ts",
+    "table": "sso_auth_requests",
+    "reason": "A one-time SSO auth request is looked up and consumed by its unguessable state value on the identity-provider callback, before any workspace is known."
+  },
+  {
+    "file": "bricks/public-api-keys/src/keys.ts",
+    "table": "key_api_keys",
+    "reason": "An incoming API key is authenticated by its hash before any workspace is known; the matched row is what establishes the workspace."
+  },
+  {
+    "file": "bricks/queue-jobs/src/jobs.ts",
+    "table": "job_queues",
+    "reason": "Queue workers dequeue and claim jobs across all workspaces by queue name or job id; they serve no tenant request."
+  },
+  {
+    "file": "bricks/webhook-gateway/src/gateway.ts",
+    "table": "wh_subscriptions",
+    "reason": "An inbound webhook resolves its subscription by the public subscription id in its URL, before any workspace is known; the row establishes the workspace."
+  },
+  {
+    "file": "bricks/webhook-gateway/src/gateway.ts",
+    "table": "wh_endpoints",
+    "reason": "An inbound webhook resolves its endpoint by the public slug in its URL, before any workspace is known; the row establishes the workspace."
+  },
+  {
+    "file": "bricks/webhook-gateway/src/gateway.ts",
+    "table": "px_connections",
+    "reason": "Inbound webhook verification unseals the signing secret named by the subscription's connection_ref, a platform-wide primary key. Follow-up: also bind the subscription's workspace_id."
+  }
+]

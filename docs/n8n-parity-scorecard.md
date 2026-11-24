@@ -1,0 +1,70 @@
+# n8n Parity Scorecard (CP3 Visual Editing & CP4 Test and Run)
+
+This scorecard tracks ProjectX Studio's visual workflow and backend editing + run-half parity against n8n, verified by automated real-backend Playwright E2E tests (`apps/studio-web/e2e/*.spec.ts`) and enforced in CI via `pnpm studio:scorecard` (`scripts/check-parity-scorecard.ts`).
+
+## 1. CP3 Build Rows
+
+Every `CP3` row below must reference an existing Playwright E2E spec file in `apps/studio-web/e2e/` and an exact test title that passes in the latest Playwright JSON report (`test-results/playwright-report.json`).
+
+| ID | Capability | Status | Playwright Spec File | Playwright Test Name |
+| --- | --- | --- | --- | --- |
+| CP3-01 | Palette search | `verified: CP3` | `apps/studio-web/e2e/canvas-editing.spec.ts` | `creates a workflow, adds trigger + logic + data nodes from palette, enforces single trigger, blocks incompatible port connections, connects valid wires, copy-pastes & undoes deletion, auto-layouts, and persists across F5 reload` |
+| CP3-02 | Trigger uniqueness | `verified: CP3` | `apps/studio-web/e2e/canvas-editing.spec.ts` | `creates a workflow, adds trigger + logic + data nodes from palette, enforces single trigger, blocks incompatible port connections, connects valid wires, copy-pastes & undoes deletion, auto-layouts, and persists across F5 reload` |
+| CP3-03 | Typed-port drag validation | `verified: CP3` | `apps/studio-web/e2e/canvas-editing.spec.ts` | `creates a workflow, adds trigger + logic + data nodes from palette, enforces single trigger, blocks incompatible port connections, connects valid wires, copy-pastes & undoes deletion, auto-layouts, and persists across F5 reload` |
+| CP3-04 | Multi-select | `verified: CP3` | `apps/studio-web/e2e/canvas-editing.spec.ts` | `creates a workflow, adds trigger + logic + data nodes from palette, enforces single trigger, blocks incompatible port connections, connects valid wires, copy-pastes & undoes deletion, auto-layouts, and persists across F5 reload` |
+| CP3-05 | Copy/paste | `verified: CP3` | `apps/studio-web/e2e/canvas-editing.spec.ts` | `creates a workflow, adds trigger + logic + data nodes from palette, enforces single trigger, blocks incompatible port connections, connects valid wires, copy-pastes & undoes deletion, auto-layouts, and persists across F5 reload` |
+| CP3-06 | Delete with undo | `verified: CP3` | `apps/studio-web/e2e/canvas-editing.spec.ts` | `creates a workflow, adds trigger + logic + data nodes from palette, enforces single trigger, blocks incompatible port connections, connects valid wires, copy-pastes & undoes deletion, auto-layouts, and persists across F5 reload` |
+| CP3-07 | Cmd/Ctrl+Z >= 50-step undo/redo | `verified: CP3` | `apps/studio-web/e2e/validation-undo-diff.spec.ts` | `validates broken pills via Issues Drawer click-to-jump, executes multi-step Undo/Redo + Ledger Undo, renders Canvas Visual Diff overlay, and resolves Human + AI same-object conflicts` |
+| CP3-08 | Auto-layout | `verified: CP3` | `apps/studio-web/e2e/canvas-editing.spec.ts` | `creates a workflow, adds trigger + logic + data nodes from palette, enforces single trigger, blocks incompatible port connections, connects valid wires, copy-pastes & undoes deletion, auto-layouts, and persists across F5 reload` |
+| CP3-09 | Minimap | `verified: CP3` | `apps/studio-web/e2e/r45-performance.spec.ts` | `completes cold first load in < 3,000 ms with compiled Tailwind CSS, sustains >= 50 fps pan/zoom and < 100 ms node drag frame latency on 200 non-overlapping nodes, and runs assemble() on max-compatible blueprint in < 5,000 ms` |
+| CP3-10 | Keyboard navigation + Outline view | `verified: CP3` | `apps/studio-web/e2e/canvas-200-nodes.spec.ts` | `renders 200-node, 240-edge synthetic graph in < 1,500 ms, sustains >= 50 fps over a 60-frame pan/zoom sequence, and drags a node with < 100 ms p95 pointer-to-paint latency` |
+| CP3-11 | Structured data-pill picker with zero typed expressions | `verified: CP3` | `apps/studio-web/e2e/data-pill-picker.spec.ts` | `builds 'When invoice created -> if status == paid -> format & send email to customer_email' with zero typed '{{' expressions and persists across F5 reload` |
+| CP3-12 | Dynamic entity ports | `verified: CP3` | `apps/studio-web/e2e/data-pill-picker.spec.ts` | `builds 'When invoice created -> if status == paid -> format & send email to customer_email' with zero typed '{{' expressions and persists across F5 reload` |
+| CP3-13 | JSON-Schema inspector forms | `verified: CP3` | `apps/studio-web/e2e/brick-editing.spec.ts` | `enables bricks with transitive requires, blocks conflicts, gates experimental bricks, configures 3 distinct settings shapes in Right Dock Inspector, persists across F5 reload, and disables bricks` |
+| CP3-14 | Connections & Secrets center with inline secret binding | `verified: CP3` | `apps/studio-web/e2e/connections-secrets.spec.ts` | `creates secrets in Connections Center and inline from Inspector, binds sec_* handles, rotates & deletes with impact warning, persists across F5 reload, and leaks 0 plaintext bytes across DOM and APIs` |
+| CP3-15 | Inline validation jumper | `verified: CP3` | `apps/studio-web/e2e/validation-undo-diff.spec.ts` | `validates broken pills via Issues Drawer click-to-jump, executes multi-step Undo/Redo + Ledger Undo, renders Canvas Visual Diff overlay, and resolves Human + AI same-object conflicts` |
+| CP3-16 | Visual revision diff | `verified: CP3` | `apps/studio-web/e2e/validation-undo-diff.spec.ts` | `validates broken pills via Issues Drawer click-to-jump, executes multi-step Undo/Redo + Ledger Undo, renders Canvas Visual Diff overlay, and resolves Human + AI same-object conflicts` |
+| CP3-17 | UI-vs-MCP invoice -> email semantic & build hash parity | `verified: CP3` | `apps/studio-web/e2e/invoice-to-email-parity.spec.ts` | `builds 'invoice -> email' SaaS backend in Chromium UI vs MCP tools, proves identical normalized semanticHash and assemble() buildHash, and co-authors live credit-wallet step on canvas within 2s` |
+| CP3-18 | R45 performance & visual layout gate | `verified: CP3` | `apps/studio-web/e2e/r45-performance.spec.ts` | `completes cold first load in < 3,000 ms with compiled Tailwind CSS, sustains >= 50 fps pan/zoom and < 100 ms node drag frame latency on 200 non-overlapping nodes, and runs assemble() on max-compatible blueprint in < 5,000 ms` |
+
+## 2. CP4 Run Rows
+
+Every `CP4` row below must reference an existing Playwright E2E spec file in `apps/studio-web/e2e/` and an exact test title that passes in the latest Playwright JSON report (`test-results/playwright-report.json`).
+
+| ID | Capability | Status | Playwright Spec File | Playwright Test Name |
+| --- | --- | --- | --- | --- |
+| CP4-01 | Single-node Test Step rehearsal with custom/upstream input and structured I/O + timing display (R23) | `verified: CP4` | `apps/studio-web/e2e/test-step-rehearsal.spec.ts` | `executes single-node rehearsal from the Inspector I/O & Test Step tab, displays formatted JSON and Table/Tree views, timing badge, and structured error card` |
+| CP4-02 | Manual workflow run with custom trigger payload and live canvas node status + edge item counts (R24) | `verified: CP4` | `apps/studio-web/e2e/test-workflow-live-telemetry.spec.ts` | `triggers a branching 4-node workflow from Studio against the real preview backend and transitions canvas nodes through Succeeded / Skipped / Failed with edge item counts` |
+| CP4-03 | Execution history filtering by workflow, status, trigger, and time range (R25) | `verified: CP4` | `apps/studio-web/e2e/run-history-replay.spec.ts` | `filters runs in the Run History drawer, replays an r1 run after a node is removed in r2, and inspects node I/O, retries, and error stack` |
+| CP4-04 | Run Replay on the canvas at the run's historical revision with per-node I/O, retries, and error stack inspector (R25) | `verified: CP4` | `apps/studio-web/e2e/run-history-replay.spec.ts` | `filters runs in the Run History drawer, replays an r1 run after a node is removed in r2, and inspects node I/O, retries, and error stack` |
+| CP4-05 | Pinning node output as reusable test data without altering buildHash (R26) | `verified: CP4` | `apps/studio-web/e2e/pin-and-rerun.spec.ts` | `pins node output in Inspector, displays Pinned badge on canvas, re-runs a failed run from a specific step, and displays Resolved by retry badge` |
+| CP4-06 | Re-running a failed workflow from the failed node without re-executing upstream nodes, marking the failure resolved (R26) | `verified: CP4` | `apps/studio-web/e2e/pin-and-rerun.spec.ts` | `pins node output in Inspector, displays Pinned badge on canvas, re-runs a failed run from a specific step, and displays Resolved by retry badge` |
+
+## 3. Explicit Out-of-Scope Rows
+
+| ID | Capability | Decision | Rationale |
+| --- | --- | --- | --- |
+| OOS-01 | 400+ community connectors | `out-of-scope` | ProjectX Studio ships curated, audited Cloudflare-native bricks, OpenAPI-imported packs, and generic HTTP/Webhook/Queue primitives rather than unverified third-party node wrappers |
+| OOS-02 | Self-hosted Docker control plane | `out-of-scope` | Control plane and assembled runtimes target Cloudflare Workers, Durable Objects, D1, R2, and Queues natively |
+| OOS-03 | Multi-cursor live pointers | `out-of-scope` | Human + AI co-editing is coordinated through `BlueprintDO` monotonic revisions, SSE/WS live sync, and same-object conflict resolution cards |
+| OOS-04 | Embeddable end-user canvas | `out-of-scope` | End-user workspaces consume generated APIs and embeddable connection/wallet widgets (`bricks/integration-connections`, `bricks/credit-wallet`), while the workflow canvas remains a builder Studio surface |
+
+## 4. CP8 Canonical 12-Row Parity Scorecard
+
+Every row in the canonical CP8 parity scorecard below maps to an automated test file and exact test case verified by `pnpm studio:parity-scorecard` (`scripts/parity-scorecard.ts`), writing `evidence/n8n-parity-scorecard.json`.
+
+| ID | Capability | Checkpoint | Test File | Test Case |
+| --- | --- | --- | --- | --- |
+| N8N-01 | Palette search across triggers, brick actions, core nodes, and curated app operations | `CP3 / CP10` | `apps/studio-web/test/workflow-canvas-editing.test.tsx` | `1. creates a workflow via add_workflow, searches the palette, enforces max 1 trigger per workflow, and prompts to enable disabled bricks from the palette` |
+| N8N-02 | Canvas drag/drop, pan/zoom (>= 50 fps at 200 nodes), multi-select, copy/paste, auto-layout, minimap, collapsible groups, and Outline View | `CP3 / CP8` | `apps/studio-web/test/workflow-canvas.test.tsx` | `3. opens the Right Dock Node Inspector on node click or Enter key and toggles Accessible Outline View (AC 3)` |
+| N8N-03 | Port-type validation while dragging (blocking incompatible wires with a reason) | `CP3` | `apps/studio-web/test/workflow-canvas-editing.test.tsx` | `2. blocks incompatible port connections with reason banner ('Cannot connect number output to array input') and connects valid ports via connect_edges` |
+| N8N-04 | Undo/redo (>= 50 steps) and revision history with visual diff and revert | `CP3 / CP7` | `apps/studio-web/test/validation-undo-diff.test.tsx` | `maintains a >= 50-step Undo/Redo stack, supports Top Bar & Ctrl+Z / Ctrl+Shift+Z undo/redo, and undoes historical revisions from the AI Change Ledger` |
+| N8N-05 | Visual data mapping without typed expressions (drag/pick upstream fields and live entity columns) + advanced expression fallback | `CP3` | `apps/studio-web/test/data-pill-picker.test.tsx` | `2. maps upstream entity fields in the Data-Pill Picker with zero typed expressions, renders pill chips, and commits update_node` |
+| N8N-06 | Inline node/brick settings validation from Manifest v2 schemas | `CP3` | `apps/studio-web/test/brick-inspector-forms.test.tsx` | `1. opens Dependency & Impact Preview on Turn on, auto-includes transitive requires (multi-workspace for credit-wallet), and commits atomic enable_brick ops` |
+| N8N-07 | First-party core-node pack (triggers, if/switch, loop/map, merge, delay, field map/rename, format, JSON transform, HTTP request) | `CP4` | `packages/core-nodes/test/core-nodes.conformance.test.ts` | `core-nodes.manifest.json validates against NodePackManifestSchema v2 with all 19 core nodes and production maturity` |
+| N8N-08 | Single-node Test Step (`rehearsal: true`) matching production executor output | `CP4` | `packages/runtime/test/rehearse-parity.test.ts` | `proves deep output equality between POST /__px/rehearse and full GraphWorkflow production trigger across 3 distinct node types` |
+| N8N-09 | Live workflow execution highlighting on canvas (`queued` / `running` / `success` / `error` / `skipped`) | `CP4` | `apps/studio-web/test/live-canvas-telemetry.test.tsx` | `renders live WebSocket telemetry transitions (queued -> running -> succeeded/skipped/failed), edge item counts, and respects prefers-reduced-motion: reduce` |
+| N8N-10 | Execution history filtering, Run Replay on canvas with per-step I/O inspection, Pin output as test data, and Re-run from failed node | `CP4` | `apps/studio-web/test/pin-and-rerun.test.tsx` | `pins and unpins node output from Inspector, renders canvas Pinned badge, toggles Use pinned data, re-runs from node in Run Replay Inspector, and displays Resolved by retry badge` |
+| N8N-11 | Connections Center (OAuth2 + auto-refresh, API key, HMAC webhook secrets) with inline creation, status chips, "Used by" tracking, and zero secret leakage | `CP10` | `apps/studio-web/test/connections-center.test.tsx` | `renders Case A status chips (Connected/Expired/Revoked/Error), Test & Re-authorize actions, Agent Connection Consent Banner, and inline Connect {app} modal on canvas` |
+| N8N-12 | Inbound webhook trigger verification and deduplication (`/api/webhooks/in/:subscriptionId`) | `CP10` | `bricks/webhook-gateway/test/gateway.test.ts` | `POST /api/webhooks/in/:subscriptionId -> verifies Stripe signature (5-min replay window), unseals px_connections secret, deduplicates in px_webhook_deliveries, and triggers workflow + telemetry` |
+

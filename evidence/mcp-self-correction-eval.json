@@ -1,0 +1,837 @@
+{
+  "suite": "mcp-self-correction-eval",
+  "story": "story-structured-error-remediation-and-self-correction-eval",
+  "maxToolCallsPerScenario": 3,
+  "totalScenarios": 10,
+  "passedScenarios": 10,
+  "passRate": 1,
+  "minimumRequiredPassRate": 0.8,
+  "ok": true,
+  "scenarios": [
+    {
+      "id": 1,
+      "code": "MISSING_CAPABILITY_PROVIDER",
+      "name": "credit-wallet enabled without multi-workspace",
+      "project": "eval-s1-missing-cap",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "MISSING_CAPABILITY_PROVIDER",
+        "path": "/bricks/credit-wallet",
+        "message": "credit-wallet requires \"workspace-context\", which no enabled brick provides (enable one of: multi-workspace)",
+        "suggestedFix": "Call apply_ops with enable_brick to enable \"multi-workspace\" (which provides capability \"workspace-context\").",
+        "remediationOp": {
+          "kind": "enable_brick",
+          "payloadExample": {
+            "brickId": "multi-workspace"
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "ready",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s1-missing-cap"
+          },
+          "isError": false,
+          "detectedIssue": {
+            "code": "MISSING_CAPABILITY_PROVIDER",
+            "path": "/bricks/credit-wallet",
+            "message": "credit-wallet requires \"workspace-context\", which no enabled brick provides (enable one of: multi-workspace)",
+            "suggestedFix": "Call apply_ops with enable_brick to enable \"multi-workspace\" (which provides capability \"workspace-context\").",
+            "remediationOp": {
+              "kind": "enable_brick",
+              "payloadExample": {
+                "brickId": "multi-workspace"
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s1-missing-cap",
+            "ops": [
+              {
+                "opId": "fix-s1",
+                "type": "enable_brick",
+                "brickId": "multi-workspace"
+              }
+            ]
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s1-missing-cap"
+          },
+          "isError": false
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "code": "BRICK_CONFLICT",
+      "name": "conflicting bricks document-parsing and document-pdf enabled together",
+      "project": "eval-s2-brick-conflict",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "BRICK_CONFLICT",
+        "path": "/bricks/document-pdf",
+        "message": "conflict: document-parsing × document-pdf: Both export route factory createDocumentRoutes in the documents domain",
+        "suggestedFix": "Call apply_ops with remove_brick to disable conflicting brick \"document-pdf\" (conflicts with \"document-parsing\").",
+        "remediationOp": {
+          "kind": "remove_brick",
+          "payloadExample": {
+            "brickId": "document-pdf"
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "ready",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s2-brick-conflict"
+          },
+          "isError": false,
+          "detectedIssue": {
+            "code": "BRICK_CONFLICT",
+            "path": "/bricks/document-pdf",
+            "message": "conflict: document-parsing × document-pdf: Both export route factory createDocumentRoutes in the documents domain",
+            "suggestedFix": "Call apply_ops with remove_brick to disable conflicting brick \"document-pdf\" (conflicts with \"document-parsing\").",
+            "remediationOp": {
+              "kind": "remove_brick",
+              "payloadExample": {
+                "brickId": "document-pdf"
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s2-brick-conflict",
+            "ops": [
+              {
+                "opId": "fix-s2",
+                "type": "remove_brick",
+                "brickId": "document-pdf"
+              }
+            ]
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s2-brick-conflict"
+          },
+          "isError": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "code": "PORT_TYPE_MISMATCH",
+      "name": "string output port wired to number input port",
+      "project": "eval-s3-port-mismatch",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "PORT_TYPE_MISMATCH",
+        "path": "/workflows/wf_1/edges/e_bad_wire",
+        "message": "workflow \"wf_1\": string cannot feed number",
+        "suggestedFix": "Call apply_ops with disconnect_edge on workflow \"wf_1\" to remove incompatible edge \"e_bad_wire\" (workflow \"wf_1\": string cannot feed number).",
+        "remediationOp": {
+          "kind": "disconnect_edge",
+          "payloadExample": {
+            "workflowId": "wf_1",
+            "edgeId": "e_bad_wire"
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "ready",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s3-port-mismatch"
+          },
+          "isError": false,
+          "detectedIssue": {
+            "code": "PORT_TYPE_MISMATCH",
+            "path": "/workflows/wf_1/edges/e_bad_wire",
+            "message": "workflow \"wf_1\": string cannot feed number",
+            "suggestedFix": "Call apply_ops with disconnect_edge on workflow \"wf_1\" to remove incompatible edge \"e_bad_wire\" (workflow \"wf_1\": string cannot feed number).",
+            "remediationOp": {
+              "kind": "disconnect_edge",
+              "payloadExample": {
+                "workflowId": "wf_1",
+                "edgeId": "e_bad_wire"
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s3-port-mismatch",
+            "ops": [
+              {
+                "opId": "fix-s3",
+                "type": "disconnect_edge",
+                "workflowId": "wf_1",
+                "edgeId": "e_bad_wire"
+              }
+            ]
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s3-port-mismatch"
+          },
+          "isError": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "code": "GRAPH_CYCLE",
+      "name": "directed cycle outside a loop node",
+      "project": "eval-s4-graph-cycle",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "GRAPH_CYCLE",
+        "path": "/workflows/wf_1/edges/e_cycle_back",
+        "message": "workflow \"wf_1\": node is in or behind a loop",
+        "suggestedFix": "Call apply_ops with disconnect_edge on workflow \"wf_1\" to remove cycle-forming edge \"e_cycle_back\".",
+        "remediationOp": {
+          "kind": "disconnect_edge",
+          "payloadExample": {
+            "workflowId": "wf_1",
+            "edgeId": "e_cycle_back"
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "ready",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s4-graph-cycle"
+          },
+          "isError": false,
+          "detectedIssue": {
+            "code": "GRAPH_CYCLE",
+            "path": "/workflows/wf_1/edges/e_cycle_back",
+            "message": "workflow \"wf_1\": node is in or behind a loop",
+            "suggestedFix": "Call apply_ops with disconnect_edge on workflow \"wf_1\" to remove cycle-forming edge \"e_cycle_back\".",
+            "remediationOp": {
+              "kind": "disconnect_edge",
+              "payloadExample": {
+                "workflowId": "wf_1",
+                "edgeId": "e_cycle_back"
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s4-graph-cycle",
+            "ops": [
+              {
+                "opId": "fix-s4",
+                "type": "disconnect_edge",
+                "workflowId": "wf_1",
+                "edgeId": "e_cycle_back"
+              }
+            ]
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s4-graph-cycle"
+          },
+          "isError": false
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "code": "UNREACHABLE_NODE",
+      "name": "action node with no incoming path from trigger",
+      "project": "eval-s5-unreachable-node",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "UNREACHABLE_NODE",
+        "path": "/workflows/wf_1/nodes/n_orphan",
+        "message": "workflow \"wf_1\": not connected to the trigger",
+        "suggestedFix": "Call apply_ops with connect_edges on workflow \"wf_1\" to wire upstream node \"t_1\" to unreachable node \"n_orphan\", or remove_node \"n_orphan\".",
+        "remediationOp": {
+          "kind": "connect_edges",
+          "payloadExample": {
+            "workflowId": "wf_1",
+            "edges": [
+              {
+                "id": "e-t_1-n_orphan",
+                "source": "t_1",
+                "target": "n_orphan",
+                "sourceHandle": "out",
+                "targetHandle": "in"
+              }
+            ]
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "ready",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s5-unreachable-node"
+          },
+          "isError": false,
+          "detectedIssue": {
+            "code": "UNREACHABLE_NODE",
+            "path": "/workflows/wf_1/nodes/n_orphan",
+            "message": "workflow \"wf_1\": not connected to the trigger",
+            "suggestedFix": "Call apply_ops with connect_edges on workflow \"wf_1\" to wire upstream node \"t_1\" to unreachable node \"n_orphan\", or remove_node \"n_orphan\".",
+            "remediationOp": {
+              "kind": "connect_edges",
+              "payloadExample": {
+                "workflowId": "wf_1",
+                "edges": [
+                  {
+                    "id": "e-t_1-n_orphan",
+                    "source": "t_1",
+                    "target": "n_orphan",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s5-unreachable-node",
+            "ops": [
+              {
+                "opId": "fix-s5",
+                "type": "connect_edges",
+                "workflowId": "wf_1",
+                "edges": [
+                  {
+                    "id": "e-t_1-n_orphan",
+                    "source": "t_1",
+                    "target": "n_orphan",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  }
+                ]
+              }
+            ]
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s5-unreachable-node"
+          },
+          "isError": false
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "code": "UNBOUND_CONNECTION",
+      "name": "node referencing unbound connectionRef resolved via list_connections",
+      "project": "eval-s6-unbound-conn",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "UNBOUND_CONNECTION",
+        "path": "/workflows/wf_1/nodes/n_2/data/connectionRef",
+        "message": "Node \"n_2\" in workflow \"wf_1\" references connectionRef \"sec_unbound_missing\" which is not bound in this project.",
+        "suggestedFix": "Inspect bound connections via list_connections and call apply_ops with update_node on workflow \"wf_1\" node \"n_2\" to set data.connectionRef to \"sec_stripe_live\".",
+        "remediationOp": {
+          "kind": "update_node",
+          "payloadExample": {
+            "workflowId": "wf_1",
+            "nodeId": "n_2",
+            "patch": {
+              "data": {
+                "connectionRef": "sec_stripe_live"
+              }
+            }
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "ready",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s6-unbound-conn"
+          },
+          "isError": false,
+          "detectedIssue": {
+            "code": "UNBOUND_CONNECTION",
+            "path": "/workflows/wf_1/nodes/n_2/data/connectionRef",
+            "message": "Node \"n_2\" in workflow \"wf_1\" references connectionRef \"sec_unbound_missing\" which is not bound in this project.",
+            "suggestedFix": "Inspect bound connections via list_connections and call apply_ops with update_node on workflow \"wf_1\" node \"n_2\" to set data.connectionRef to \"sec_stripe_live\".",
+            "remediationOp": {
+              "kind": "update_node",
+              "payloadExample": {
+                "workflowId": "wf_1",
+                "nodeId": "n_2",
+                "patch": {
+                  "data": {
+                    "connectionRef": "sec_stripe_live"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "list_connections",
+          "args": {
+            "project": "eval-s6-unbound-conn"
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s6-unbound-conn",
+            "ops": [
+              {
+                "opId": "fix-s6",
+                "type": "update_node",
+                "workflowId": "wf_1",
+                "nodeId": "n_2",
+                "patch": {
+                  "data": {
+                    "connectionRef": "sec_stripe_live"
+                  }
+                }
+              }
+            ]
+          },
+          "isError": false
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "code": "INVALID_SETTING_VALUE",
+      "name": "brick configured with out-of-range setting value (creditsPerUnit: 0)",
+      "project": "eval-s7-invalid-setting",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "INVALID_SETTING_VALUE",
+        "path": "/bricks/credit-wallet/config/creditsPerUnit",
+        "message": "credit-wallet: setting \"creditsPerUnit\" must be a whole number from 1 to 1000000",
+        "suggestedFix": "Call apply_ops with configure_brick on brick \"credit-wallet\" to set \"creditsPerUnit\" to a valid value (e.g. 1).",
+        "remediationOp": {
+          "kind": "configure_brick",
+          "payloadExample": {
+            "brickId": "credit-wallet",
+            "config": {
+              "creditsPerUnit": 1
+            }
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "ready",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s7-invalid-setting"
+          },
+          "isError": false,
+          "detectedIssue": {
+            "code": "INVALID_SETTING_VALUE",
+            "path": "/bricks/credit-wallet/config/creditsPerUnit",
+            "message": "credit-wallet: setting \"creditsPerUnit\" must be a whole number from 1 to 1000000",
+            "suggestedFix": "Call apply_ops with configure_brick on brick \"credit-wallet\" to set \"creditsPerUnit\" to a valid value (e.g. 1).",
+            "remediationOp": {
+              "kind": "configure_brick",
+              "payloadExample": {
+                "brickId": "credit-wallet",
+                "config": {
+                  "creditsPerUnit": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s7-invalid-setting",
+            "ops": [
+              {
+                "opId": "fix-s7",
+                "type": "configure_brick",
+                "brickId": "credit-wallet",
+                "config": {
+                  "creditsPerUnit": 1
+                }
+              }
+            ]
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "validate_blueprint",
+          "args": {
+            "project": "eval-s7-invalid-setting"
+          },
+          "isError": false
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "code": "STALE_BASE_REV",
+      "name": "apply_ops with outdated baseRev refreshes slice and retries cleanly",
+      "project": "eval-s8-stale-rev",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "STALE_BASE_REV",
+        "path": "/workflow/wf_1/node/n_2",
+        "message": "Stale baseRev 1 conflicts with concurrent modification on \"workflow:wf_1:node:n_2\" at current rev 2.",
+        "suggestedFix": "Call get_blueprint_slice (or get_blueprint_summary) to read the latest state at rev 2, then retry apply_ops with baseRev: 2.",
+        "remediationOp": {
+          "kind": "update_node",
+          "payloadExample": {
+            "opId": "agent-s8-stale",
+            "type": "update_node",
+            "workflowId": "wf_1",
+            "nodeId": "n_2",
+            "patch": {
+              "data": {
+                "stepNote": "v3-agent"
+              }
+            },
+            "baseRev": 2
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "ready",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s8-stale-rev",
+            "baseRev": 1,
+            "ops": [
+              {
+                "opId": "agent-s8-stale",
+                "type": "update_node",
+                "workflowId": "wf_1",
+                "nodeId": "n_2",
+                "patch": {
+                  "data": {
+                    "stepNote": "v3-agent"
+                  }
+                }
+              }
+            ]
+          },
+          "isError": true,
+          "detectedIssue": {
+            "code": "STALE_BASE_REV",
+            "path": "/workflow/wf_1/node/n_2",
+            "message": "Stale baseRev 1 conflicts with concurrent modification on \"workflow:wf_1:node:n_2\" at current rev 2.",
+            "suggestedFix": "Call get_blueprint_slice (or get_blueprint_summary) to read the latest state at rev 2, then retry apply_ops with baseRev: 2.",
+            "remediationOp": {
+              "kind": "update_node",
+              "payloadExample": {
+                "opId": "agent-s8-stale",
+                "type": "update_node",
+                "workflowId": "wf_1",
+                "nodeId": "n_2",
+                "patch": {
+                  "data": {
+                    "stepNote": "v3-agent"
+                  }
+                },
+                "baseRev": 2
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "get_blueprint_slice",
+          "args": {
+            "project": "eval-s8-stale-rev",
+            "workflowId": "wf_1"
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s8-stale-rev",
+            "baseRev": 2,
+            "ops": [
+              {
+                "opId": "agent-s8-retry",
+                "type": "update_node",
+                "workflowId": "wf_1",
+                "nodeId": "n_2",
+                "patch": {
+                  "data": {
+                    "stepNote": "v3-agent-rebased"
+                  }
+                }
+              }
+            ]
+          },
+          "isError": false
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "code": "RUN_STEP_MISSING_INPUT",
+      "name": "workflow step 2 fails on missing upstream field; repaired after get_run_trace + query_logs",
+      "project": "eval-s9-missing-input",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "RUN_STEP_MISSING_INPUT",
+        "path": "/workflows/wf_1/nodes/n_2/data/customerId",
+        "message": "RUN_STEP_MISSING_INPUT: Step \"n_2\" field \"customerId\" mapped to \"{{steps.t_1.output.non_existent_customer_id}}\", but field \"non_existent_customer_id\" does not exist on upstream node \"t_1\" output (available fields: customer_id)",
+        "suggestedFix": "Inspect get_run_trace and query_logs for step \"n_2\": upstream node \"t_1\" does not output \"non_existent_customer_id\" (available fields: customer_id). Call apply_ops with update_node on workflow \"wf_1\" node \"n_2\" to set \"data.customerId\" to \"{{steps.t_1.output.customer_id}}\".",
+        "remediationOp": {
+          "kind": "update_node",
+          "payloadExample": {
+            "workflowId": "wf_1",
+            "nodeId": "n_2",
+            "patch": {
+              "data": {
+                "customerId": "{{steps.t_1.output.customer_id}}"
+              }
+            }
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "succeeded",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "get_run_trace",
+          "args": {
+            "project": "eval-s9-missing-input",
+            "runId": "run_0001"
+          },
+          "isError": false,
+          "detectedIssue": {
+            "code": "RUN_STEP_MISSING_INPUT",
+            "path": "/workflows/wf_1/nodes/n_2/data/customerId",
+            "message": "RUN_STEP_MISSING_INPUT: Step \"n_2\" field \"customerId\" mapped to \"{{steps.t_1.output.non_existent_customer_id}}\", but field \"non_existent_customer_id\" does not exist on upstream node \"t_1\" output (available fields: customer_id)",
+            "suggestedFix": "Inspect get_run_trace and query_logs for step \"n_2\": upstream node \"t_1\" does not output \"non_existent_customer_id\" (available fields: customer_id). Call apply_ops with update_node on workflow \"wf_1\" node \"n_2\" to set \"data.customerId\" to \"{{steps.t_1.output.customer_id}}\".",
+            "remediationOp": {
+              "kind": "update_node",
+              "payloadExample": {
+                "workflowId": "wf_1",
+                "nodeId": "n_2",
+                "patch": {
+                  "data": {
+                    "customerId": "{{steps.t_1.output.customer_id}}"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "query_logs",
+          "args": {
+            "project": "eval-s9-missing-input",
+            "runId": "run_0001",
+            "level": "error"
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s9-missing-input",
+            "ops": [
+              {
+                "opId": "fix-s9",
+                "type": "update_node",
+                "workflowId": "wf_1",
+                "nodeId": "n_2",
+                "patch": {
+                  "data": {
+                    "customerId": "{{steps.t_1.output.customer_id}}"
+                  }
+                }
+              }
+            ]
+          },
+          "isError": false
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "code": "DEPLOY_STUB_IDENTITY_REFUSED",
+      "name": "production deploy_plan refuses stub identity and guides switching to core-auth",
+      "project": "eval-s10-deploy-stub",
+      "passed": true,
+      "toolCallsUsed": 3,
+      "maxToolCallsAllowed": 3,
+      "initialIssue": {
+        "code": "DEPLOY_STUB_IDENTITY_REFUSED",
+        "path": "/identity",
+        "message": "Production deployments cannot use stub identity; enable core-auth and set identity to core-auth.",
+        "suggestedFix": "Production deploys cannot use stub identity. Call apply_ops with enable_brick ({ brickId: \"core-auth\" }), bind_secret_ref for BETTER_AUTH_SECRET, and set_identity ({ identity: \"core-auth\" }) before running deploy_plan({ env: \"production\" }).",
+        "remediationOp": {
+          "kind": "set_identity",
+          "payloadExample": {
+            "identity": "core-auth"
+          }
+        }
+      },
+      "schemaValid": true,
+      "finalReady": true,
+      "finalVerificationStatus": "apply",
+      "trace": [
+        {
+          "callIndex": 1,
+          "tool": "deploy_plan",
+          "args": {
+            "project": "eval-s10-deploy-stub",
+            "env": "production"
+          },
+          "isError": false,
+          "detectedIssue": {
+            "code": "DEPLOY_STUB_IDENTITY_REFUSED",
+            "path": "/identity",
+            "message": "Production deployments cannot use stub identity; enable core-auth and set identity to core-auth.",
+            "suggestedFix": "Production deploys cannot use stub identity. Call apply_ops with enable_brick ({ brickId: \"core-auth\" }), bind_secret_ref for BETTER_AUTH_SECRET, and set_identity ({ identity: \"core-auth\" }) before running deploy_plan({ env: \"production\" }).",
+            "remediationOp": {
+              "kind": "set_identity",
+              "payloadExample": {
+                "identity": "core-auth"
+              }
+            }
+          }
+        },
+        {
+          "callIndex": 2,
+          "tool": "apply_ops",
+          "args": {
+            "project": "eval-s10-deploy-stub",
+            "ops": [
+              {
+                "opId": "fix-s10-enable",
+                "type": "enable_brick",
+                "brickId": "core-auth"
+              },
+              {
+                "opId": "fix-s10-identity",
+                "type": "set_identity",
+                "identity": "core-auth"
+              }
+            ]
+          },
+          "isError": false
+        },
+        {
+          "callIndex": 3,
+          "tool": "deploy_plan",
+          "args": {
+            "project": "eval-s10-deploy-stub",
+            "env": "production"
+          },
+          "isError": false
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "scripts/mcp-self-correct-eval.ts",
+    "inputKind": "measured"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "generatedAt": "2026-11-02T18:08:33.386Z",
+  "checkpoint": "CP9",
+  "name": "Hosted Sandbox and Lossless BYOC Promotion Verification",
+  "status": "passed",
+  "timeToSandboxPreviewMs": 3200,
+  "timeToPreviewLimitMs": 120000,
+  "timeToPreviewPassed": true,
+  "guardrails": {
+    "dailyRequestQuota": {
+      "limit": 10000,
+      "enforced": true,
+      "httpStatus": 429,
+      "errorCode": "SANDBOX_QUOTA_EXCEEDED"
+    },
+    "d1StorageCap": {
+      "maxRows": 10000,
+      "maxBytes": 26214400,
+      "enforced": true,
+      "httpStatus": 403,
+      "errorCode": "SANDBOX_STORAGE_CAP_EXCEEDED",
+      "selectAllowedWhenCapped": true
+    },
+    "ttl7DayExpiryAndReaper": {
+      "ttlDays": 7,
+      "enforced": true,
+      "httpStatus": 410,
+      "errorCode": "SANDBOX_EXPIRED",
+      "ephemeralResourcesDestroyed": true,
+      "blueprintDoPreserved": true
+    },
+    "outboundRateLimit": {
+      "maxRequestsPerMinute": 60,
+      "enforced": true,
+      "httpStatus": 429,
+      "errorCode": "SANDBOX_OUTBOUND_RATE_LIMITED"
+    },
+    "livePaymentsBlocked": {
+      "liveSecretPrefixBlocked": true,
+      "liveEgressEndpointBlocked": true,
+      "testSecretAllowed": true,
+      "httpStatus": 403,
+      "errorCode": "SANDBOX_LIVE_PAYMENTS_BLOCKED"
+    }
+  },
+  "promotion": {
+    "sandboxBuildHash": "74f951e6faeb59f0bad561ad0d0f0c2e8200b38781b24f41c970dd0eefdbcd4d",
+    "byocBuildHash": "74f951e6faeb59f0bad561ad0d0f0c2e8200b38781b24f41c970dd0eefdbcd4d",
+    "identicalBuildHash": true,
+    "reAssembleCountDuringPromotion": 0,
+    "sampleDataRowsCopied": 1,
+    "ephemeralSandboxDestroyed": true,
+    "byocTargetType": "byoc"
+  },
+  "conformance": {
+    "hostedSandboxTargetConformancePassed": true,
+    "workersForPlatformsDispatchPassed": true,
+    "graphHotApplyPreserved": true,
+    "assemblerTargetAgnostic": true
+  },
+  "provenance": {
+    "generatedAt": "2026-11-02T18:08:33.386Z",
+    "gitSha": "cb0f935d11bc21323119a20883fd8af5f96feef1",
+    "gitDirty": true,
+    "generator": "scripts/check-sandbox-verification.ts",
+    "inputKind": "simulated",
+    "quarantined": true,
+    "reason": "F-TRUST-3: hardcoded timestamp and literal guardrail values; not a measurement",
+    "quarantinedAt": "2026-11-02T18:08:33.386Z"
+  }
+}

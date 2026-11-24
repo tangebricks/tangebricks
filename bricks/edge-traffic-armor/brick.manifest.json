@@ -1,0 +1,66 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "edge-traffic-armor",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "waf-protection"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_edge_traffic_armor.sql"
+  ],
+  "routePrefixes": [
+    "armor"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Edge Traffic Armor",
+    "category": "governance",
+    "summary": "Rate limiting, IP rules, bot checks, and incident logs.",
+    "maturity": "beta",
+    "behaviourTest": "test/armor.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "globalTables": [
+    {
+      "table": "arm_rate_limits",
+      "reason": "Edge rate-limit counters keyed by composite IP and workspace rate-limit key"
+    }
+  ],
+  "worker": {
+    "package": "@poc/edge-traffic-armor",
+    "routes": [
+      {
+        "factory": "createTrafficArmorRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/armor",
+          "/api/armor/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "arm_ip_rules": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "arm_blocked_requests": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

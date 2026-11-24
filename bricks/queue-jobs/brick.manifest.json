@@ -1,0 +1,71 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "queue-jobs",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "job-queue"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_queue_jobs.sql",
+    "migrations/0002_batch_items.sql"
+  ],
+  "routePrefixes": [
+    "jobs"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Background Job Queue & Dead-Letter Handling",
+    "category": "automation",
+    "summary": "Background job queues, retries, and dead-letter recovery.",
+    "maturity": "beta",
+    "behaviourTest": "test/jobs.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "triggers": {
+    "queues": [
+      {
+        "id": "job-queue",
+        "handler": "consumeJobQueueBatch",
+        "maxBatch": 10,
+        "dlq": true
+      }
+    ]
+  },
+  "worker": {
+    "package": "@poc/queue-jobs",
+    "routes": [
+      {
+        "factory": "createJobQueueRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/jobs",
+          "/api/jobs/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "job_queues": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "job_batch_items": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

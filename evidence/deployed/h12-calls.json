@@ -1,0 +1,613 @@
+{
+  "schema": 1,
+  "commandStartedAt": "2026-10-21T05:36:08.661Z",
+  "clients": [
+    {
+      "label": "bracket-before",
+      "startedAtMs": 2,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 1016,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "owner-seed-A",
+      "startedAtMs": 2261,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 1,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 494,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        }
+      ]
+    },
+    {
+      "label": "owner-check-seed-A",
+      "startedAtMs": 2756,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 389,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "owner-seed-B",
+      "startedAtMs": 3145,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 184,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        }
+      ]
+    },
+    {
+      "label": "owner-check-seed-B",
+      "startedAtMs": 3329,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 133,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "owner-read-1",
+      "startedAtMs": 4249,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 118,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "owner-read-2",
+      "startedAtMs": 5165,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 112,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "owner-read-3",
+      "startedAtMs": 6770,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 194,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "owner-topup",
+      "startedAtMs": 6964,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 110,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        }
+      ]
+    },
+    {
+      "label": "owner-read-4",
+      "startedAtMs": 7637,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 146,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "owner-read-5",
+      "startedAtMs": 8346,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 107,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "owner-read-6",
+      "startedAtMs": 8604,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 176,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "owner-read-page",
+      "startedAtMs": 9722,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 147,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "bracket-after",
+      "startedAtMs": 9869,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 929,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    }
+  ],
+  "urlEvents": [
+    {
+      "n": 1,
+      "atMs": 1021,
+      "ms": 479,
+      "phase": "setup",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "n": 2,
+      "atMs": 1500,
+      "ms": 761,
+      "phase": "setup",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "n": 3,
+      "atMs": 3486,
+      "ms": 198,
+      "phase": "widget",
+      "note": "A",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 200
+    },
+    {
+      "n": 4,
+      "atMs": 3487,
+      "ms": 542,
+      "phase": "widget",
+      "note": "A",
+      "method": "GET",
+      "path": "/api/wallet/history",
+      "status": 200
+    },
+    {
+      "n": 5,
+      "atMs": 4367,
+      "ms": 209,
+      "phase": "server-change",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 6,
+      "atMs": 4589,
+      "ms": 185,
+      "phase": "widget",
+      "note": "A",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 200
+    },
+    {
+      "n": 7,
+      "atMs": 4590,
+      "ms": 502,
+      "phase": "widget",
+      "note": "A",
+      "method": "GET",
+      "path": "/api/wallet/history",
+      "status": 200
+    },
+    {
+      "n": 8,
+      "atMs": 5278,
+      "ms": 456,
+      "phase": "server-change",
+      "method": "POST",
+      "path": "/api/payments/create-order",
+      "status": 200
+    },
+    {
+      "n": 9,
+      "atMs": 5736,
+      "ms": 145,
+      "phase": "server-change",
+      "method": "POST",
+      "path": "/api/payments/verify",
+      "status": 200
+    },
+    {
+      "n": 10,
+      "atMs": 5884,
+      "ms": 814,
+      "phase": "widget",
+      "note": "A",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 200
+    },
+    {
+      "n": 11,
+      "atMs": 5885,
+      "ms": 302,
+      "phase": "widget",
+      "note": "A",
+      "method": "GET",
+      "path": "/api/wallet/history",
+      "status": 200
+    },
+    {
+      "n": 12,
+      "atMs": 7078,
+      "ms": 199,
+      "phase": "widget",
+      "note": "A",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 200
+    },
+    {
+      "n": 13,
+      "atMs": 7078,
+      "ms": 512,
+      "phase": "widget",
+      "note": "A",
+      "method": "GET",
+      "path": "/api/wallet/history",
+      "status": 200
+    },
+    {
+      "n": 14,
+      "atMs": 7787,
+      "ms": 152,
+      "phase": "widget",
+      "note": "B",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 200
+    },
+    {
+      "n": 15,
+      "atMs": 7787,
+      "ms": 503,
+      "phase": "widget",
+      "note": "B",
+      "method": "GET",
+      "path": "/api/wallet/history",
+      "status": 200
+    },
+    {
+      "n": 16,
+      "atMs": 8456,
+      "ms": 88,
+      "phase": "widget",
+      "note": "B-asks-for-A",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 403
+    },
+    {
+      "n": 17,
+      "atMs": 8457,
+      "ms": 344,
+      "phase": "widget",
+      "note": "B-asks-for-A",
+      "method": "GET",
+      "path": "/api/wallet/history",
+      "status": 403
+    }
+  ],
+  "facts": {
+    "names": {
+      "suffix": "c56a65d4",
+      "script": "projectx-poc-c56a65d4",
+      "database": "projectx-poc-c56a65d4-db",
+      "workflow": "projectx-poc-c56a65d4-graphs"
+    },
+    "url": "https://projectx-poc-c56a65d4.killerkingmega.workers.dev",
+    "databaseId": "8cc2fe5f-5c56-4619-802b-2e00d2612a4e",
+    "workspaces": {
+      "A": {
+        "id": "dbf6da4b-5f8a-4f79-9a08-1f52af6aad1d",
+        "user": "alice"
+      },
+      "B": {
+        "id": "0ebe55ca-87a2-458e-b848-5541cf52f8db",
+        "user": "bob"
+      }
+    },
+    "seeds": {
+      "A": 1234,
+      "B": 567
+    },
+    "observations": [
+      {
+        "step": "A: first view",
+        "tenant": "A",
+        "asUser": "alice",
+        "workspace": "dbf6da4b-5f8a-4f79-9a08-1f52af6aad1d",
+        "shown": "1,234",
+        "alert": null,
+        "history": [
+          "seeded by the proof: +1,234 (balance 1,234)"
+        ],
+        "restBalance": 1234
+      },
+      {
+        "step": "A: after spending through the API",
+        "tenant": "A",
+        "asUser": "alice",
+        "workspace": "dbf6da4b-5f8a-4f79-9a08-1f52af6aad1d",
+        "shown": "1,034",
+        "alert": null,
+        "history": [
+          "h12 spend: -200 (balance 1,034)",
+          "seeded by the proof: +1,234 (balance 1,234)"
+        ],
+        "restBalance": 1034
+      },
+      {
+        "step": "A: after creating an order that is not paid",
+        "tenant": "A",
+        "asUser": "alice",
+        "workspace": "dbf6da4b-5f8a-4f79-9a08-1f52af6aad1d",
+        "shown": "1,034",
+        "alert": null,
+        "history": [
+          "h12 spend: -200 (balance 1,034)",
+          "seeded by the proof: +1,234 (balance 1,234)"
+        ],
+        "restBalance": 1034
+      },
+      {
+        "step": "A: after a top-up",
+        "tenant": "A",
+        "asUser": "alice",
+        "workspace": "dbf6da4b-5f8a-4f79-9a08-1f52af6aad1d",
+        "shown": "1,534",
+        "alert": null,
+        "history": [
+          "topped up by the proof: +500 (balance 1,534)",
+          "h12 spend: -200 (balance 1,034)",
+          "seeded by the proof: +1,234 (balance 1,234)"
+        ],
+        "restBalance": 1534
+      },
+      {
+        "step": "B: first view",
+        "tenant": "B",
+        "asUser": "bob",
+        "workspace": "0ebe55ca-87a2-458e-b848-5541cf52f8db",
+        "shown": "567",
+        "alert": null,
+        "history": [
+          "seeded by the proof: +567 (balance 567)"
+        ],
+        "restBalance": 567
+      },
+      {
+        "step": "B asks for A's wallet",
+        "tenant": "B",
+        "asUser": "bob",
+        "workspace": "dbf6da4b-5f8a-4f79-9a08-1f52af6aad1d",
+        "shown": null,
+        "alert": "Could not load your balance: Not a member of this workspaceTry again",
+        "history": [],
+        "restBalance": 1534
+      }
+    ],
+    "server": {
+      "spend": {
+        "amount": 200,
+        "status": 200,
+        "balanceAfter": 1034
+      },
+      "createOrder": {
+        "status": 200,
+        "hasOrderId": true
+      },
+      "verifyUnpaid": {
+        "status": 200,
+        "credited": false,
+        "reported": "ACTIVE"
+      },
+      "topUp": {
+        "via": "d1-rest",
+        "amount": 500,
+        "client": "owner-topup",
+        "why": "the deployed project's gateway is the fake one, which never reports an order as paid, so the API cannot complete a top-up"
+      }
+    },
+    "page": {
+      "shown": "1,534",
+      "restBalance": 1534
+    },
+    "versions": {
+      "before": [
+        "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+        "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+        "928f3b4c-024c-426d-af31-a15a3d725360"
+      ],
+      "after": [
+        "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+        "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+        "928f3b4c-024c-426d-af31-a15a3d725360"
+      ]
+    },
+    "deployedVersionFromH10": "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+    "attempts": [
+      {
+        "n": 1,
+        "phase": "seed two tenants",
+        "atMs": 3462,
+        "outcome": "ok",
+        "detail": "A holds 1234, B holds 567 (read back from D1)"
+      },
+      {
+        "n": 2,
+        "phase": "A: first view",
+        "atMs": 4367,
+        "outcome": "ok",
+        "detail": "the widget shows 1,234; D1 holds 1234"
+      },
+      {
+        "n": 3,
+        "phase": "A: after spending through the API",
+        "atMs": 5278,
+        "outcome": "ok",
+        "detail": "the widget shows 1,034; D1 holds 1034"
+      },
+      {
+        "n": 4,
+        "phase": "A: after creating an order that is not paid",
+        "atMs": 6964,
+        "outcome": "ok",
+        "detail": "the widget shows 1,034; D1 holds 1034"
+      },
+      {
+        "n": 5,
+        "phase": "A: after a top-up",
+        "atMs": 7784,
+        "outcome": "ok",
+        "detail": "the widget shows 1,534; D1 holds 1534"
+      },
+      {
+        "n": 6,
+        "phase": "B: first view",
+        "atMs": 8453,
+        "outcome": "ok",
+        "detail": "the widget shows 567; D1 holds 567"
+      },
+      {
+        "n": 7,
+        "phase": "B asks for A's wallet",
+        "atMs": 8781,
+        "outcome": "ok",
+        "detail": "the widget shows an error (Could not load your balance: Not a member of this workspaceTry again); D1 holds 1534"
+      },
+      {
+        "n": 8,
+        "phase": "the deployed page",
+        "atMs": 9869,
+        "outcome": "ok",
+        "detail": "the page shows 1,534"
+      },
+      {
+        "n": 9,
+        "phase": "version at the end",
+        "atMs": 10799,
+        "outcome": "ok",
+        "detail": "3 version(s), newest 482a71cf"
+      }
+    ]
+  }
+}

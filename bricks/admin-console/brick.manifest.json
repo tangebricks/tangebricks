@@ -1,0 +1,75 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "admin-console",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "admin-console"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_admin_console.sql"
+  ],
+  "routePrefixes": [
+    "admin"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Admin Console & User Impersonation",
+    "category": "governance",
+    "summary": "Super-admin roles, tenant overrides, and impersonation.",
+    "maturity": "experimental",
+    "behaviourTest": "test/admin.test.ts",
+    "maturityReason": "QUARANTINED: impersonation verify/end routes have no workspace-role check, so any member reaches them (attack suite ROLE_ESCALATION); super-admin powers sit inside a tenant app (risk 4)"
+  },
+  "globalTables": [
+    {
+      "table": "adm_super_admins",
+      "reason": "Platform-wide super-admin registry across all workspaces"
+    },
+    {
+      "table": "adm_tenant_overrides",
+      "reason": "All-tenant by design: platform super-admin overrides; workspace_id names the target tenant, not the caller's workspace, and only super-admin routes read or write it (AD-V2 review, story 0.7)"
+    },
+    {
+      "table": "adm_impersonation_sessions",
+      "reason": "All-tenant by design: support impersonation sessions are created by platform super-admins and verified by opaque session token before any workspace context exists (AD-V2 review, story 0.7)"
+    }
+  ],
+  "worker": {
+    "package": "@poc/admin-console",
+    "routes": [
+      {
+        "factory": "createAdminRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/admin",
+          "/api/admin/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "adm_tenant_overrides": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "adm_impersonation_sessions": {
+        "subject": "user",
+        "userColumn": "admin_user_id",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

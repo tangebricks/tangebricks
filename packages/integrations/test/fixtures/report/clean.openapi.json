@@ -1,0 +1,30 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Clean Spec",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/clean": {
+      "get": {
+        "operationId": "getClean",
+        "summary": "Clean operation",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clean response"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "vector-memory",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "vector-index"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_vector_memory.sql"
+  ],
+  "routePrefixes": [
+    "vectors"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Vector Memory & Semantic Index",
+    "category": "data",
+    "summary": "Document chunking, vector embeddings, and cosine RAG.",
+    "maturity": "beta",
+    "behaviourTest": "test/vectors.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "worker": {
+    "package": "@poc/vector-memory",
+    "routes": [
+      {
+        "factory": "createVectorRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/vectors",
+          "/api/vectors/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "vec_indexes": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "vec_documents": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

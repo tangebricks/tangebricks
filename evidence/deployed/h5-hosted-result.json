@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "commandStartedAt": "2026-10-21T06:56:57.397Z",
+  "finishedAt": "2026-10-21T07:12:03.326Z",
+  "completed": true,
+  "callsSha256": "b115710de4f4bd63a7ba351c14a0a4da078fcd0ddab706179437917f0ac543d7",
+  "leakScan": {
+    "filesScanned": 939,
+    "found": [],
+    "scannedFor": [
+      "token",
+      "accountId",
+      "accessKey"
+    ]
+  }
+}

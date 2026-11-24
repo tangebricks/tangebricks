@@ -1,0 +1,106 @@
+{
+  "app": "github",
+  "version": "1.0.0",
+  "format": "openapi3",
+  "specProvenance": "hand-trimmed",
+  "upstream": {
+    "corpusSpec": "github",
+    "operationIds": {
+      "listIssues": "issues/list-for-repo",
+      "createIssue": "issues/create",
+      "updateIssue": "issues/update",
+      "createIssueComment": "issues/create-comment",
+      "listPullRequests": "pulls/list",
+      "createPullRequest": "pulls/create",
+      "mergePullRequest": "pulls/merge",
+      "getRepo": "repos/get",
+      "listRepos": "repos/list-for-authenticated-user",
+      "getContent": "repos/get-content",
+      "createOrUpdateFileContents": "repos/create-or-update-file-contents",
+      "createWorkflowDispatch": "actions/create-workflow-dispatch"
+    }
+  },
+  "acknowledge": [
+  ],
+  "ui": {
+    "displayName": "GitHub",
+    "category": "developer",
+    "icon": "github",
+    "docsUrl": "https://docs.github.com/en/rest",
+    "summary": "Issues, pull requests, repositories, file contents, Actions workflow dispatch, and webhooks.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "authorizeUrl": "https://github.com/login/oauth/authorize",
+    "tokenUrl": "https://github.com/login/oauth/access_token",
+    "scopes": ["repo", "workflow", "read:org"],
+    "headerName": "Authorization",
+    "prefix": "Bearer"
+  },
+  "baseUrl": "https://api.github.com",
+  "allowedHosts": ["api.github.com"],
+  "includeOperations": [
+    "listIssues",
+    "createIssue",
+    "updateIssue",
+    "createIssueComment",
+    "listPullRequests",
+    "createPullRequest",
+    "mergePullRequest",
+    "getRepo",
+    "listRepos",
+    "getContent",
+    "createOrUpdateFileContents",
+    "createWorkflowDispatch"
+  ],
+  "defaultRateLimit": {
+    "maxRetries": 3,
+    "initialBackoffMs": 200,
+    "respectRetryAfter": true,
+    "retryAfterHeader": "Retry-After"
+  },
+  "operations": {
+    "listIssues": {
+      "pagination": {
+        "style": "link",
+        "paramName": "page",
+        "responsePath": "items",
+        "maxPages": 3
+      }
+    }
+  },
+  "triggers": [
+    {
+      "id": "webhook_event",
+      "label": "GitHub Webhook Event",
+      "summary": "Fires when a signed GitHub repository or organization webhook arrives.",
+      "verifier": "github-hmac-sha256",
+      "signatureHeader": "X-Hub-Signature-256",
+      "eventIdPath": "delivery_id",
+      "eventTypePath": "action",
+      "outputs": [
+        { "id": "out", "label": "GitHub Event", "dataType": "object" }
+      ]
+    }
+  ],
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "GitHub token is invalid or expired.",
+      "hint": "Re-authorize the GitHub connection in Connections Center.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "GitHub API rate limit exceeded.",
+      "hint": "Respect Retry-After or X-RateLimit-Reset header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "X-RateLimit-Reset"
+    }
+  }
+}

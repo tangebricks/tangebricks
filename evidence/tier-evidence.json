@@ -1,0 +1,505 @@
+{
+  "data": [
+    {
+      "id": "admin-console",
+      "kind": "brick",
+      "behaviourTest": "bricks/admin-console/test/admin.test.ts",
+      "executed": false,
+      "passed": false,
+      "testsRun": 0,
+      "testsSkipped": 0,
+      "assertionCount": 0
+    },
+    {
+      "id": "agent-sandbox",
+      "kind": "brick",
+      "behaviourTest": "bricks/agent-sandbox/test/agent.test.ts",
+      "executed": false,
+      "passed": false,
+      "testsRun": 0,
+      "testsSkipped": 0,
+      "assertionCount": 0
+    },
+    {
+      "id": "audit-trail",
+      "kind": "brick",
+      "behaviourTest": "bricks/audit-trail/test/audit.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 6,
+      "testsSkipped": 0,
+      "assertionCount": 29,
+      "skipped": [
+        {
+          "check": "CONF_IDEMPOTENT_WRITE",
+          "reason": "Audit trail is an append-only log without idempotency-key deduplication"
+        }
+      ]
+    },
+    {
+      "id": "binary-assets",
+      "kind": "brick",
+      "behaviourTest": "bricks/binary-assets/test/assets.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 8,
+      "testsSkipped": 0,
+      "assertionCount": 32
+    },
+    {
+      "id": "checkout-gateway",
+      "kind": "brick",
+      "behaviourTest": "bricks/checkout-gateway/test/checkout.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 6,
+      "testsSkipped": 0,
+      "assertionCount": 37
+    },
+    {
+      "id": "core-auth",
+      "kind": "brick",
+      "behaviourTest": "bricks/core-auth/test/better-auth.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 14,
+      "testsSkipped": 0,
+      "assertionCount": 126
+    },
+    {
+      "id": "credit-wallet",
+      "kind": "brick",
+      "behaviourTest": "bricks/credit-wallet/test/credit-wallet.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 7,
+      "testsSkipped": 0,
+      "assertionCount": 235,
+      "skipped": [
+        {
+          "check": "CONF_ERROR_CONTRACT",
+          "reason": "Credit wallet preserves legacy cephlow error format verified by H5.payment-routes.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "cron-alarms",
+      "kind": "brick",
+      "behaviourTest": "bricks/cron-alarms/test/cron.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 12,
+      "testsSkipped": 0,
+      "assertionCount": 79
+    },
+    {
+      "id": "custom-domains",
+      "kind": "brick",
+      "behaviourTest": "bricks/custom-domains/test/domains.test.ts",
+      "executed": false,
+      "passed": false,
+      "testsRun": 0,
+      "testsSkipped": 0,
+      "assertionCount": 0
+    },
+    {
+      "id": "data-privacy-gdpr",
+      "kind": "brick",
+      "behaviourTest": "bricks/data-privacy-gdpr/test/privacy.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 10,
+      "testsSkipped": 0,
+      "assertionCount": 72
+    },
+    {
+      "id": "document-parsing",
+      "kind": "brick",
+      "behaviourTest": "bricks/document-parsing/test/document-parsing.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 10,
+      "testsSkipped": 0,
+      "assertionCount": 56
+    },
+    {
+      "id": "document-pdf",
+      "kind": "brick",
+      "behaviourTest": "bricks/document-pdf/test/document.test.ts",
+      "executed": false,
+      "passed": false,
+      "testsRun": 0,
+      "testsSkipped": 0,
+      "assertionCount": 0
+    },
+    {
+      "id": "dynamic-entities",
+      "kind": "brick",
+      "behaviourTest": "bricks/dynamic-entities/test/dynamic-entities.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 6,
+      "testsSkipped": 0,
+      "assertionCount": 78,
+      "skipped": [
+        {
+          "check": "CONF_IDEMPOTENT_WRITE",
+          "reason": "Dynamic entity creation generates a new UUID for each inserted record without deduplication"
+        }
+      ]
+    },
+    {
+      "id": "edge-traffic-armor",
+      "kind": "brick",
+      "behaviourTest": "bricks/edge-traffic-armor/test/armor.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 7,
+      "testsSkipped": 0,
+      "assertionCount": 31
+    },
+    {
+      "id": "feature-flags",
+      "kind": "brick",
+      "behaviourTest": "bricks/feature-flags/test/flags.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 12,
+      "testsSkipped": 0,
+      "assertionCount": 55
+    },
+    {
+      "id": "identity-federation",
+      "kind": "brick",
+      "behaviourTest": "bricks/identity-federation/test/federation.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 9,
+      "testsSkipped": 0,
+      "assertionCount": 54
+    },
+    {
+      "id": "in-app-notifications",
+      "kind": "brick",
+      "behaviourTest": "bricks/in-app-notifications/test/notifications.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 11,
+      "testsSkipped": 0,
+      "assertionCount": 46
+    },
+    {
+      "id": "integration-connections",
+      "kind": "brick",
+      "behaviourTest": "bricks/integration-connections/test/isolation.workerd.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 9,
+      "testsSkipped": 0,
+      "assertionCount": 74
+    },
+    {
+      "id": "live-chat",
+      "kind": "brick",
+      "behaviourTest": "bricks/live-chat/test/chat.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 8,
+      "testsSkipped": 0,
+      "assertionCount": 48
+    },
+    {
+      "id": "llm-gateway",
+      "kind": "brick",
+      "behaviourTest": "bricks/llm-gateway/test/gateway.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 10,
+      "testsSkipped": 0,
+      "assertionCount": 46
+    },
+    {
+      "id": "marketplace-splits",
+      "kind": "brick",
+      "behaviourTest": "bricks/marketplace-splits/test/splits.test.ts",
+      "executed": false,
+      "passed": false,
+      "testsRun": 0,
+      "testsSkipped": 0,
+      "assertionCount": 0
+    },
+    {
+      "id": "metered-usage",
+      "kind": "brick",
+      "behaviourTest": "bricks/metered-usage/test/metering.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 13,
+      "testsSkipped": 0,
+      "assertionCount": 51
+    },
+    {
+      "id": "multi-workspace",
+      "kind": "brick",
+      "behaviourTest": "bricks/multi-workspace/test/multi-workspace.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 7,
+      "testsSkipped": 0,
+      "assertionCount": 42,
+      "skipped": [
+        {
+          "check": "CONF_IDEMPOTENT_WRITE",
+          "reason": "Workspace creation produces unique UUIDs on each call without idempotency-key deduplication"
+        }
+      ]
+    },
+    {
+      "id": "oauth-server",
+      "kind": "brick",
+      "behaviourTest": "bricks/oauth-server/test/oauth.test.ts",
+      "executed": false,
+      "passed": false,
+      "testsRun": 0,
+      "testsSkipped": 0,
+      "assertionCount": 0
+    },
+    {
+      "id": "oidc-verify",
+      "kind": "brick",
+      "behaviourTest": "bricks/oidc-verify/test/conformance.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 13,
+      "testsSkipped": 0,
+      "assertionCount": 59
+    },
+    {
+      "id": "omnichannel-outbound",
+      "kind": "brick",
+      "behaviourTest": "bricks/omnichannel-outbound/test/dispatcher.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 10,
+      "testsSkipped": 0,
+      "assertionCount": 50
+    },
+    {
+      "id": "outbound-webhooks",
+      "kind": "brick",
+      "behaviourTest": "bricks/outbound-webhooks/test/outbound.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 8,
+      "testsSkipped": 0,
+      "assertionCount": 62
+    },
+    {
+      "id": "product-analytics",
+      "kind": "brick",
+      "behaviourTest": "bricks/product-analytics/test/analytics.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 5,
+      "testsSkipped": 0,
+      "assertionCount": 26
+    },
+    {
+      "id": "public-api-keys",
+      "kind": "brick",
+      "behaviourTest": "bricks/public-api-keys/test/keys.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 6,
+      "testsSkipped": 0,
+      "assertionCount": 23
+    },
+    {
+      "id": "queue-jobs",
+      "kind": "brick",
+      "behaviourTest": "bricks/queue-jobs/test/jobs.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 6,
+      "testsSkipped": 0,
+      "assertionCount": 51
+    },
+    {
+      "id": "rbac-policy",
+      "kind": "brick",
+      "behaviourTest": "bricks/rbac-policy/test/rbac.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 8,
+      "testsSkipped": 0,
+      "assertionCount": 25
+    },
+    {
+      "id": "realtime-presence",
+      "kind": "brick",
+      "behaviourTest": "bricks/realtime-presence/test/presence.test.ts",
+      "executed": false,
+      "passed": false,
+      "testsRun": 0,
+      "testsSkipped": 0,
+      "assertionCount": 0
+    },
+    {
+      "id": "scripting-sandbox",
+      "kind": "brick",
+      "behaviourTest": "bricks/scripting-sandbox/test/sandbox.test.ts",
+      "executed": false,
+      "passed": false,
+      "testsRun": 0,
+      "testsSkipped": 0,
+      "assertionCount": 0
+    },
+    {
+      "id": "search-faceted",
+      "kind": "brick",
+      "behaviourTest": "bricks/search-faceted/test/search.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 6,
+      "testsSkipped": 0,
+      "assertionCount": 28
+    },
+    {
+      "id": "subscription-plans",
+      "kind": "brick",
+      "behaviourTest": "bricks/subscription-plans/test/plans.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 16,
+      "testsSkipped": 0,
+      "assertionCount": 75
+    },
+    {
+      "id": "tabular-engine",
+      "kind": "brick",
+      "behaviourTest": "bricks/tabular-engine/test/tabular.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 6,
+      "testsSkipped": 0,
+      "assertionCount": 36
+    },
+    {
+      "id": "threaded-discussions",
+      "kind": "brick",
+      "behaviourTest": "bricks/threaded-discussions/test/threads.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 6,
+      "testsSkipped": 0,
+      "assertionCount": 34
+    },
+    {
+      "id": "user-onboarding",
+      "kind": "brick",
+      "behaviourTest": "bricks/user-onboarding/test/onboarding.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 3,
+      "testsSkipped": 0,
+      "assertionCount": 31
+    },
+    {
+      "id": "user-profile",
+      "kind": "brick",
+      "behaviourTest": "bricks/user-profile/test/profile.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 7,
+      "testsSkipped": 0,
+      "assertionCount": 39
+    },
+    {
+      "id": "vector-memory",
+      "kind": "brick",
+      "behaviourTest": "bricks/vector-memory/test/vectors.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 7,
+      "testsSkipped": 0,
+      "assertionCount": 33
+    },
+    {
+      "id": "webhook-gateway",
+      "kind": "brick",
+      "behaviourTest": "bricks/webhook-gateway/test/gateway.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 16,
+      "testsSkipped": 0,
+      "assertionCount": 76
+    },
+    {
+      "id": "workflow-dag",
+      "kind": "brick",
+      "behaviourTest": "bricks/workflow-dag/test/workflow.test.ts",
+      "executed": false,
+      "passed": false,
+      "testsRun": 0,
+      "testsSkipped": 0,
+      "assertionCount": 0
+    },
+    {
+      "id": "discord",
+      "kind": "integration",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 5,
+      "testsSkipped": 0,
+      "assertionCount": 167
+    },
+    {
+      "id": "github",
+      "kind": "integration",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 5,
+      "testsSkipped": 0,
+      "assertionCount": 167
+    },
+    {
+      "id": "google",
+      "kind": "integration",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 5,
+      "testsSkipped": 0,
+      "assertionCount": 167
+    },
+    {
+      "id": "slack",
+      "kind": "integration",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 5,
+      "testsSkipped": 0,
+      "assertionCount": 167
+    },
+    {
+      "id": "stripe",
+      "kind": "integration",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 5,
+      "testsSkipped": 0,
+      "assertionCount": 167
+    }
+  ],
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "reporters/evidence-reporter.ts",
+    "inputKind": "measured"
+  }
+}

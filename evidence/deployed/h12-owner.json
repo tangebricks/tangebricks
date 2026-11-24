@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-21T05:52:00Z",
+  "words": "see (and two screenshots of the page, one for each shortcut)",
+  "assistantDescription": "As read by the assistant from the two screenshots, not the owner's words: the first, at the Worker's /demo address with nothing after it (the page removes the key from the address bar), shows 'Balance: 1,534 credits' with three lines: 'topped up by the proof: +500 (balance 1,534)', 'h12 spend: -200 (balance 1,034)' and 'seeded by the proof: +1,234 (balance 1,234)', and a Refresh button; the second shows 'Balance: 567 credits' with one line 'seeded by the proof: +567 (balance 567)' and a Refresh button. Both match what D1 held and what the scripted test saw. The owner reported no problem; they sent no further comment.",
+  "isACheck": false
+}

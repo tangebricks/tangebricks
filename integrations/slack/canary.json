@@ -1,0 +1,19 @@
+{
+  "app": "slack",
+  "secretEnv": "CANARY_SLACK_TOKEN",
+  "operations": [
+    {
+      "operationId": "conversations_list",
+      "inputs": {
+        "limit": 1
+      },
+      "expect": {
+        "status": 200
+      }
+    }
+  ],
+  "webhook": {
+    "trigger": "message",
+    "sendVia": "skip"
+  }
+}

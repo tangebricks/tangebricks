@@ -1,0 +1,29 @@
+// Studio control-plane API Worker configuration.
+{
+  "name": "studio-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "STUDIO_DB",
+      "database_name": "studio-db",
+      "database_id": "REPLACE_AT_DEPLOY",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BLUEPRINT_DO",
+        "class_name": "BlueprintDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["BlueprintDO"]
+    }
+  ]
+}

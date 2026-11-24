@@ -1,0 +1,72 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "binary-assets",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "asset-storage"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_binary_assets.sql"
+  ],
+  "routePrefixes": [
+    "assets"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "maxFileSizeBytes": {
+      "type": "integer",
+      "min": 1024,
+      "max": 104857600,
+      "default": 10485760
+    }
+  },
+  "ui": {
+    "displayName": "Binary Asset Pipeline",
+    "category": "data",
+    "summary": "Workspace asset metadata and R2 upload/download storage.",
+    "maturity": "beta",
+    "behaviourTest": "test/assets.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "bindings": {
+    "BUCKET": "r2"
+  },
+  "worker": {
+    "package": "@poc/binary-assets",
+    "routes": [
+      {
+        "factory": "createAssetRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/assets",
+          "/api/assets/*"
+        ],
+        "options": {
+          "maxSize": {
+            "$setting": "maxFileSizeBytes"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "asset_files": {
+        "subject": "user",
+        "userColumn": "uploaded_by",
+        "erase": "retain",
+        "retainReason": "Binary asset object references retained pending asynchronous object lifecycle purge",
+        "export": true
+      }
+    }
+  }
+}

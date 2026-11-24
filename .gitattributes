@@ -1,0 +1,4 @@
+# All text files in the repository use LF line endings so that SHA-256 evidence hashes
+# (evidence/deployed/*, GLUE_SCAN_FILES) are identical on Windows
+# machines with core.autocrlf=true and on POSIX machines.
+* text=auto eol=lf

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "about": "The cephlow tests that H5's portedTestsPass check requires, fixed before any of them was re-homed. Each title must appear, exactly once, among the passing tests of a test file in this repo. 'ported' keeps the original title and its behavioural assertion on stub identity, the real local D1 and the fake gateway. 'rewritten' is a new test that carries the same behaviour because the original depends on machinery that is out of scope (see epic-bricks Notes). 'assertion-changed' keeps the title but not an assertion, for the reason given. Source: cephlow apps/api-worker/src, read 2026-10-20.",
+  "tests": [
+    { "title": "should reject if user is not authenticated", "from": "middleware/workspace.test.ts", "kind": "ported" },
+    { "title": "should reject if workspace context is missing", "from": "middleware/workspace.test.ts", "kind": "ported" },
+    { "title": "should reject if user is not member of workspace", "from": "middleware/workspace.test.ts", "kind": "ported" },
+    { "title": "should accept if user is member of workspace", "from": "middleware/workspace.test.ts", "kind": "ported" },
+    { "title": "should reject if workspace is suspended", "from": "middleware/workspace.test.ts", "kind": "ported" },
+    { "title": "should reject payments verify if the order does not belong to the user (H-5)", "from": "middleware/workspace.test.ts", "kind": "ported" },
+    { "title": "should verify roles with isAdminOrOwner helper", "from": "middleware/workspace.test.ts", "kind": "ported" },
+    { "title": "should handle DB errors in workspaceMiddleware", "from": "middleware/workspace.test.ts", "kind": "assertion-changed", "why": "cephlow asserts the raw database error text is returned to the caller (a mock throws 'DB Query Error'). The brick answers 500 with a generic message and the test asserts the SQL error text is NOT returned." },
+    { "title": "should reject requireNotSuspended if workspace context is missing", "from": "middleware/workspace.test.ts", "kind": "ported" },
+    { "title": "should handle DB errors in requireNotSuspended", "from": "middleware/workspace.test.ts", "kind": "assertion-changed", "why": "same as above: a generic 500, never the database's own error text." },
+    { "title": "should reject invalid amount", "from": "routes/payments.test.ts", "kind": "ported" },
+    { "title": "should reject amount less than minimum recharge", "from": "routes/payments.test.ts", "kind": "ported" },
+    { "title": "should create cashfree order successfully", "from": "routes/payments.test.ts", "kind": "ported" },
+    { "title": "should handle cashfree API failure gracefully", "from": "routes/payments.test.ts", "kind": "ported" },
+    { "title": "should reject missing order_id", "from": "routes/payments.test.ts", "kind": "ported" },
+    { "title": "should return already processed status if processed is true", "from": "routes/payments.test.ts", "kind": "ported" },
+    { "title": "should reject if cashfree status is not PAID", "from": "routes/payments.test.ts", "kind": "ported" },
+    { "title": "should reject if workspace for order does not exist", "from": "routes/payments.test.ts", "kind": "ported" },
+    { "title": "should successfully verify and credit workspace", "from": "routes/payments.test.ts", "kind": "ported" },
+    { "title": "should successfully charge standard rate for unpaid certificates", "from": "routes/clientGenerate.test.ts", "kind": "rewritten", "why": "the original drives /batches/:id/client-generate, which also needs a KV approvals cache, certificates and batches (out of scope); the rewrite drives the brick's own deduction." },
+    { "title": "should reject generation if workspace balance is insufficient (C-2)", "from": "routes/clientGenerate.test.ts", "kind": "rewritten", "why": "same as above." },
+    { "title": "regeneration is free: no balance change and no ledger row for a zero cost", "from": "routes/clientGenerate.test.ts, 'should charge 20% rate for already paid certificates requiring visual regeneration'", "kind": "rewritten", "why": "the original is named for a 20% rate but asserts that regeneration is free (REGEN_RATE = 0); the rewrite carries what it asserts, under an accurate title." }
+  ]
+}

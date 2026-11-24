@@ -1,0 +1,66 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "document-pdf",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "document-engine"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_document_pdf.sql"
+  ],
+  "routePrefixes": [
+    "documents"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Document & PDF Generation",
+    "category": "data",
+    "summary": "HTML template hydration, PDF build, and SHA-256 stamps.",
+    "maturity": "experimental",
+    "maturityReason": "QUARANTINED: stub; strips HTML/CSS into plain text on a single PDF page with no layout or pagination, and conflicts with document-parsing",
+    "behaviourTest": "test/document.test.ts"
+  },
+  "conflicts": [
+    {
+      "brick": "document-parsing",
+      "reason": "Both export route factory createDocumentRoutes in the documents domain"
+    }
+  ],
+  "worker": {
+    "package": "@poc/document-pdf",
+    "routes": [
+      {
+        "factory": "createDocumentRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/documents",
+          "/api/documents/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "doc_templates": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "doc_renders": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

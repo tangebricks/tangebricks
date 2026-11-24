@@ -1,0 +1,591 @@
+{
+  "app": "lossy-branches",
+  "format": "openapi3",
+  "specHash": "sha256:4360102f1708bc1951d9f23c503fca442b231582d2d45fae997b931ce26327b8",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 67,
+    "normalized": 0,
+    "curated": 0,
+    "approximated": 2,
+    "unsupported": 2
+  },
+  "excludedByCuration": 0,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/servers",
+      "from": "/",
+      "to": "/",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyArray",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1body-array/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyArray",
+      "element": "body",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-array/post/requestBody/content/application~1json/schema",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyArray",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1body-array/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyArray",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1body-capped/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-capped/post/requestBody/content/application~1json/schema/properties/f1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-capped/post/requestBody/content/application~1json/schema/properties/f2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-capped/post/requestBody/content/application~1json/schema/properties/f3",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-capped/post/requestBody/content/application~1json/schema/properties/f4",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-capped/post/requestBody/content/application~1json/schema/properties/f5",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-capped/post/requestBody/content/application~1json/schema/properties/f6",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-capped/post/requestBody/content/application~1json/schema/properties/f7",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1body-capped/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyCapped",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyComposed",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1body-composed/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyComposed",
+      "element": "body",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-composed/post/requestBody/content/application~1json/schema",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyComposed",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1body-composed/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyComposed",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyFreeform",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1body-freeform/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyFreeform",
+      "element": "body",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-freeform/post/requestBody/content/application~1json/schema",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyFreeform",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1body-freeform/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyFreeform",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyNested",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1body-nested/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyNested",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-nested/post/requestBody/content/application~1json/schema/properties/address",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyNested",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1body-nested/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyNested",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1body-required-capped/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-required-capped/post/requestBody/content/application~1json/schema/properties/f1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-required-capped/post/requestBody/content/application~1json/schema/properties/f2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-required-capped/post/requestBody/content/application~1json/schema/properties/f3",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-required-capped/post/requestBody/content/application~1json/schema/properties/f4",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-required-capped/post/requestBody/content/application~1json/schema/properties/f5",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-required-capped/post/requestBody/content/application~1json/schema/properties/f6",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1body-required-capped/post/requestBody/content/application~1json/schema/properties/f7",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1body-required-capped/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opBodyRequiredCapped",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opContentTypeUnsupported",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1content-type-unsupported/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opContentTypeUnsupported",
+      "element": "contentType",
+      "code": "CONTENT_TYPE_UNSUPPORTED",
+      "pointer": "#/paths/~1content-type-unsupported/post/requestBody/content",
+      "from": [
+        "application/xml"
+      ],
+      "to": "application/json",
+      "blocking": true,
+      "status": "unsupported"
+    },
+    {
+      "op": "opContentTypeUnsupported",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1content-type-unsupported/post/requestBody/content/application~1xml/schema/properties/file",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opContentTypeUnsupported",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1content-type-unsupported/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opContentTypeUnsupported",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamCookie",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1param-cookie/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamCookie",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1param-cookie/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamCookie",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1param-cookie/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamCookie",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamDefault",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1param-default/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamDefault",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1param-default/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamDefault",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1param-default/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamDefault",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamEnum",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1param-enum/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamEnum",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1param-enum/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamEnum",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1param-enum/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamEnum",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamItems",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1param-items/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamItems",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1param-items/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamItems",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1param-items/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamItems",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamStyle",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1param-style/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamStyle",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1param-style/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamStyle",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1param-style/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opParamStyle",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opRefDepth",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1ref-depth/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opRefDepth",
+      "element": "param",
+      "code": "REF_DEPTH_EXCEEDED",
+      "pointer": "#/paths/~1ref-depth/get/parameters/0",
+      "blocking": false,
+      "status": "approximated"
+    },
+    {
+      "op": "opRefDepth",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1ref-depth/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opRefDepth",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opSchemaComposition",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1schema-composition/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opSchemaComposition",
+      "element": "param",
+      "code": "SCHEMA_COMPOSITION_ERASED",
+      "pointer": "#/paths/~1schema-composition/get/parameters/0",
+      "blocking": false,
+      "status": "approximated"
+    },
+    {
+      "op": "opSchemaComposition",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1schema-composition/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opSchemaComposition",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opSkippedHead",
+      "element": "operation",
+      "code": "OPERATION_SKIPPED",
+      "pointer": "#/paths/~1op-skipped/head",
+      "reason": "HEAD method unsupported",
+      "blocking": false,
+      "status": "unsupported"
+    }
+  ]
+}

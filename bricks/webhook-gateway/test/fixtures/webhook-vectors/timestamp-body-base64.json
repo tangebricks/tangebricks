@@ -1,0 +1,70 @@
+{
+  "preset": "hmac-sha256-timestamp-body-base64",
+  "provenance": {
+    "source": "cephlow apps/api-worker/src/routes/webhooks.test.ts:20,180-190 & openssl",
+    "generationCommand": "printf '%s' \"$ts$body\" | openssl dgst -sha256 -hmac \"$secret\" -binary | base64"
+  },
+  "cases": [
+    {
+      "name": "valid timestamp+body base64 signature",
+      "preset": "hmac-sha256-timestamp-body-base64",
+      "secret": "test-cashfree-secret-key-54321",
+      "headers": {
+        "x-signature": "nsDhEQ+p12DMQts2oAAe33j3FcaCd+NisbhxZ6JWDSM=",
+        "x-timestamp": "1234567890"
+      },
+      "rawBody": "{\"type\":\"PAYMENT_SUCCESS_WEBHOOK\",\"data\":{\"order\":{\"order_id\":\"order-123\"},\"payment\":{\"payment_status\":\"SUCCESS\",\"payment_amount\":100,\"cf_payment_id\":\"cf-999\",\"payment_group\":\"upi\"},\"customer_details\":{\"customer_id\":\"cust-999\"}}}",
+      "nowSeconds": 1234567900,
+      "expect": "ok",
+      "provenance": {
+        "source": "cephlow apps/api-worker/src/routes/webhooks.test.ts:20,180-190 & openssl",
+        "generationCommand": "ts='1234567890'; body='{\"type\":\"PAYMENT_SUCCESS_WEBHOOK\",\"data\":{\"order\":{\"order_id\":\"order-123\"},\"payment\":{\"payment_status\":\"SUCCESS\",\"payment_amount\":100,\"cf_payment_id\":\"cf-999\",\"payment_group\":\"upi\"},\"customer_details\":{\"customer_id\":\"cust-999\"}}}'; secret='test-cashfree-secret-key-54321'; printf '%s' \"$ts$body\" | openssl dgst -sha256 -hmac \"$secret\" -binary | base64"
+      }
+    },
+    {
+      "name": "tampered body",
+      "preset": "hmac-sha256-timestamp-body-base64",
+      "secret": "test-cashfree-secret-key-54321",
+      "headers": {
+        "x-signature": "nsDhEQ+p12DMQts2oAAe33j3FcaCd+NisbhxZ6JWDSM=",
+        "x-timestamp": "1234567890"
+      },
+      "rawBody": "{\"type\":\"PAYMENT_FAILED_WEBHOOK\"}",
+      "nowSeconds": 1234567900,
+      "expect": "WEBHOOK_SIGNATURE_MISMATCH",
+      "provenance": {
+        "source": "Negative test vector: tampered body"
+      }
+    },
+    {
+      "name": "wrong secret",
+      "preset": "hmac-sha256-timestamp-body-base64",
+      "secret": "wrong-secret-key-54321",
+      "headers": {
+        "x-signature": "nsDhEQ+p12DMQts2oAAe33j3FcaCd+NisbhxZ6JWDSM=",
+        "x-timestamp": "1234567890"
+      },
+      "rawBody": "{\"type\":\"PAYMENT_SUCCESS_WEBHOOK\",\"data\":{\"order\":{\"order_id\":\"order-123\"},\"payment\":{\"payment_status\":\"SUCCESS\",\"payment_amount\":100,\"cf_payment_id\":\"cf-999\",\"payment_group\":\"upi\"},\"customer_details\":{\"customer_id\":\"cust-999\"}}}",
+      "nowSeconds": 1234567900,
+      "expect": "WEBHOOK_SIGNATURE_MISMATCH",
+      "provenance": {
+        "source": "Negative test vector: wrong secret"
+      }
+    },
+    {
+      "name": "stale timestamp (> 300s)",
+      "preset": "hmac-sha256-timestamp-body-base64",
+      "secret": "test-cashfree-secret-key-54321",
+      "headers": {
+        "x-signature": "nsDhEQ+p12DMQts2oAAe33j3FcaCd+NisbhxZ6JWDSM=",
+        "x-timestamp": "1234567890"
+      },
+      "rawBody": "{\"type\":\"PAYMENT_SUCCESS_WEBHOOK\",\"data\":{\"order\":{\"order_id\":\"order-123\"},\"payment\":{\"payment_status\":\"SUCCESS\",\"payment_amount\":100,\"cf_payment_id\":\"cf-999\",\"payment_group\":\"upi\"},\"customer_details\":{\"customer_id\":\"cust-999\"}}}",
+      "nowSeconds": 1234568300,
+      "expect": "WEBHOOK_TIMESTAMP_OUT_OF_TOLERANCE",
+      "provenance": {
+        "source": "Negative test vector: timestamp is 410s behind nowSeconds, exceeding 300s tolerance"
+      }
+    }
+  ]
+}

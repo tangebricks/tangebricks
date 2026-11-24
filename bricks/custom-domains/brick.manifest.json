@@ -1,0 +1,61 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "custom-domains",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "custom-domains"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_custom_domains.sql"
+  ],
+  "routePrefixes": [
+    "domains"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Custom Domain & SSL Provisioning",
+    "category": "developer",
+    "summary": "Custom domain mapping, DNS checks, and SSL routing.",
+    "maturity": "experimental",
+    "maturityReason": "QUARANTINED: stub; verifyDomain() reports DNS verified and SSL active without any DNS-over-HTTPS or Cloudflare Custom Hostnames call (fabricated success)",
+    "behaviourTest": "test/domains.test.ts"
+  },
+  "globalTables": [
+    {
+      "table": "dom_domains",
+      "reason": "All-tenant by design: the edge resolves a hostname to its workspace before tenant context exists; management queries bind workspace_id (AD-V2 review, story 0.7)"
+    }
+  ],
+  "worker": {
+    "package": "@poc/custom-domains",
+    "routes": [
+      {
+        "factory": "createCustomDomainRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/domains",
+          "/api/domains/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "dom_domains": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

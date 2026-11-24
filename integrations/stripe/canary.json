@@ -1,0 +1,30 @@
+{
+  "app": "stripe",
+  "secretEnv": "CANARY_STRIPE_TOKEN",
+  "operations": [
+    {
+      "operationId": "listCustomers",
+      "inputs": {
+        "limit": 1
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "operationId": "createCustomer",
+      "inputs": {
+        "name": "Canary Sandbox Customer",
+        "email": "canary@example.com"
+      },
+      "sandboxOnly": true,
+      "expect": {
+        "status": 200
+      }
+    }
+  ],
+  "webhook": {
+    "trigger": "payment_succeeded",
+    "sendVia": "skip"
+  }
+}

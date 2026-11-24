@@ -1,0 +1,85 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "in-app-notifications",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "notification-center"
+  ],
+  "requires": [
+    "user-identity",
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_in_app_notifications.sql"
+  ],
+  "routePrefixes": [
+    "notifications"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "In-App Notification Center",
+    "category": "communication",
+    "summary": "In-app notification feed, unread badges, and alerts.",
+    "maturity": "beta",
+    "behaviourTest": "test/notifications.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "nodes": [
+    {
+      "type": "in-app-notifications.send",
+      "label": "Send In-App Notification",
+      "summary": "Deliver an in-app notification to a user feed.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Notification",
+          "dataType": "any",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Delivered Notification",
+          "dataType": "object"
+        }
+      ],
+      "config": {},
+      "executor": "executeSendInAppNotification",
+      "durable": true,
+      "sideEffects": "write"
+    }
+  ],
+  "worker": {
+    "package": "@poc/in-app-notifications",
+    "routes": [
+      {
+        "factory": "createNotificationRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/notifications",
+          "/api/notifications/unread-count",
+          "/api/notifications/mark-all-read"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "notif_notifications": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

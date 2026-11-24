@@ -1,0 +1,14 @@
+{
+  "name": "@poc/core-nodes",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./manifest": "./core-nodes.manifest.json"
+  },
+  "dependencies": {
+    "@poc/sdk": "workspace:*",
+    "zod": "4.6.7"
+  }
+}

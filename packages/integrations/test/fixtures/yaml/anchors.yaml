@@ -1,0 +1,6 @@
+default_headers: &headers
+  Authorization: "Bearer token"
+  Accept: "application/json"
+endpoint:
+  path: "/users"
+  headers: *headers

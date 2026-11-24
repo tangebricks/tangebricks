@@ -1,0 +1,655 @@
+{
+  "manifestVersion": 2,
+  "kind": "integration",
+  "app": "slack",
+  "version": "1.0.0",
+  "ui": {
+    "displayName": "Slack",
+    "category": "communication",
+    "icon": "slack",
+    "docsUrl": "https://api.slack.com/web",
+    "summary": "Post and update messages, manage channels, look up users by email, and add reactions.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "scopes": [
+      "chat:write",
+      "channels:read",
+      "users:read",
+      "users:read.email",
+      "reactions:write",
+      "files:write"
+    ],
+    "authorizeUrl": "https://slack.com/oauth/v2/authorize",
+    "tokenUrl": "https://slack.com/api/oauth.v2.access",
+    "headerName": "Authorization",
+    "prefix": "Bearer",
+    "schemes": {
+      "slackAuth": {
+        "type": "oauth2"
+      }
+    },
+    "connectionFields": [
+      "token"
+    ]
+  },
+  "baseUrl": "https://slack.com/api",
+  "allowedHosts": [
+    "slack.com"
+  ],
+  "operations": [
+    {
+      "operationId": "chat_postMessage",
+      "label": "Sends a message to a channel",
+      "summary": "Sends a message to a channel",
+      "method": "POST",
+      "path": "/chat.postMessage",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "channel",
+            "dataType": "string",
+            "required": true,
+            "description": "Channel ID"
+          },
+          {
+            "name": "text",
+            "dataType": "string",
+            "description": "Message text"
+          },
+          {
+            "name": "thread_ts",
+            "dataType": "string",
+            "description": "Thread timestamp"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "channel",
+            "dataType": "string"
+          },
+          {
+            "id": "message",
+            "dataType": "object"
+          },
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          },
+          {
+            "id": "ts",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "chat_update",
+      "label": "Updates a message",
+      "summary": "Updates a message",
+      "method": "POST",
+      "path": "/chat.update",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "channel",
+            "dataType": "string",
+            "required": true,
+            "description": "Channel ID",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "ts",
+            "dataType": "string",
+            "required": true,
+            "description": "Timestamp",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "text",
+            "dataType": "string",
+            "description": "New text",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "channel",
+            "dataType": "string"
+          },
+          {
+            "id": "message",
+            "dataType": "object"
+          },
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          },
+          {
+            "id": "text",
+            "dataType": "string"
+          },
+          {
+            "id": "ts",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "conversations_list",
+      "label": "conversations_list",
+      "summary": "Lists all channels in a Slack team.",
+      "method": "GET",
+      "path": "/conversations.list",
+      "params": [
+        {
+          "name": "types",
+          "in": "query",
+          "dataType": "string",
+          "description": "Mix and match channel types by providing a comma-s"
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "dataType": "number",
+          "description": "The maximum number of items to return."
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "dataType": "string",
+          "description": "Paginate through collections of data by setting th"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "channels",
+            "dataType": "array"
+          },
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          },
+          {
+            "id": "response_metadata",
+            "dataType": "object"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "pagination": {
+        "style": "cursor",
+        "paramName": "cursor",
+        "responsePath": "channels",
+        "nextCursorPath": "response_metadata.next_cursor",
+        "maxPages": 3
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "conversations_history",
+      "label": "Fetch conversation history",
+      "summary": "Fetch conversation history",
+      "method": "GET",
+      "path": "/conversations.history",
+      "params": [
+        {
+          "name": "channel",
+          "in": "query",
+          "dataType": "string",
+          "description": "Conversation ID to fetch history for."
+        },
+        {
+          "name": "latest",
+          "in": "query",
+          "dataType": "number",
+          "description": "End of time range of messages to include in result"
+        },
+        {
+          "name": "oldest",
+          "in": "query",
+          "dataType": "number",
+          "description": "Start of time range of messages to include in resu"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "channel_actions_count",
+            "dataType": "number"
+          },
+          {
+            "id": "channel_actions_ts",
+            "dataType": "string"
+          },
+          {
+            "id": "has_more",
+            "dataType": "boolean"
+          },
+          {
+            "id": "messages",
+            "dataType": "array"
+          },
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          },
+          {
+            "id": "pin_count",
+            "dataType": "number"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "conversations_create",
+      "label": "conversations_create",
+      "summary": "Initiates a public or private channel-based conversation",
+      "method": "POST",
+      "path": "/conversations.create",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "name",
+            "dataType": "string",
+            "description": "Name of the public or private channel to create",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "is_private",
+            "dataType": "boolean",
+            "description": "Create a private channel instead of a public one",
+            "schema": {
+              "dataType": "boolean"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "channel",
+            "dataType": "string"
+          },
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "conversations_invite",
+      "label": "conversations_invite",
+      "summary": "Invites users to a channel.",
+      "method": "POST",
+      "path": "/conversations.invite",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "channel",
+            "dataType": "string",
+            "description": "The ID of the public or private channel to invite",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "users",
+            "dataType": "string",
+            "description": "A comma separated list of user IDs.",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "channel",
+            "dataType": "string"
+          },
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "users_lookupByEmail",
+      "label": "users_lookupByEmail",
+      "summary": "Find a user with an email address.",
+      "method": "GET",
+      "path": "/users.lookupByEmail",
+      "params": [
+        {
+          "name": "email",
+          "in": "query",
+          "dataType": "string",
+          "required": true,
+          "description": "An email address belonging to a user in the worksp"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          },
+          {
+            "id": "user",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "users_info",
+      "label": "users_info",
+      "summary": "Gets information about a user.",
+      "method": "GET",
+      "path": "/users.info",
+      "params": [
+        {
+          "name": "include_locale",
+          "in": "query",
+          "dataType": "boolean",
+          "description": "Set this to `true` to receive the locale for this"
+        },
+        {
+          "name": "user",
+          "in": "query",
+          "dataType": "string",
+          "description": "User to get info on"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          },
+          {
+            "id": "user",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "reactions_add",
+      "label": "reactions_add",
+      "summary": "Adds a reaction to an item.",
+      "method": "POST",
+      "path": "/reactions.add",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "channel",
+            "dataType": "string",
+            "required": true,
+            "description": "Channel where the message to add reaction to was p",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "name",
+            "dataType": "string",
+            "required": true,
+            "description": "Reaction (emoji) name.",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "timestamp",
+            "dataType": "string",
+            "required": true,
+            "description": "Timestamp of the message to add reaction to.",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "files_upload",
+      "label": "files_upload",
+      "summary": "Uploads or creates a file.",
+      "method": "POST",
+      "path": "/files.upload",
+      "body": {
+        "contentType": "multipart/form-data",
+        "fields": [
+          {
+            "name": "file",
+            "dataType": "any",
+            "description": "File contents",
+            "binary": true
+          },
+          {
+            "name": "content",
+            "dataType": "string",
+            "description": "File content"
+          },
+          {
+            "name": "filename",
+            "dataType": "string",
+            "description": "Filename"
+          },
+          {
+            "name": "title",
+            "dataType": "string",
+            "description": "Title of file"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "file",
+            "dataType": "object"
+          },
+          {
+            "id": "ok",
+            "dataType": "boolean"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "event_callback",
+      "label": "Slack Event Callback",
+      "summary": "Fires when a signed Slack Events API payload arrives.",
+      "verifier": "slack-v0",
+      "signatureHeader": "X-Slack-Signature",
+      "eventIdPath": "event_id",
+      "eventTypePath": "event.type",
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Slack Event",
+          "dataType": "object"
+        }
+      ]
+    }
+  ],
+  "errorWhen": {
+    "path": "ok",
+    "equals": false
+  },
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "Slack OAuth token is invalid or revoked.",
+      "hint": "Re-authorize the Slack connection in Connections Center.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "Slack Web API rate limit exceeded.",
+      "hint": "Respect Retry-After header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "Retry-After"
+    }
+  },
+  "fidelity": {
+    "specHash": "sha256:d3da2c0b8ba608d025f96cb63d737f0aae1a640f6efaf51d346e15528e21e0f5",
+    "importerVersion": "2.0.0",
+    "level": "partial",
+    "unsupported": [
+      {
+        "op": "conversations_history",
+        "code": "PAGINATION_UNMODELLED",
+        "pointer": "#/paths/~1conversations.history/get/responses/200",
+        "blocking": false
+      }
+    ]
+  }
+}

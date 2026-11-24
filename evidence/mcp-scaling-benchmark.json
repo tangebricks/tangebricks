@@ -1,0 +1,110 @@
+{
+  "tokenizer": "gpt-tokenizer 4.1.0, o200k_base",
+  "timestamp": "2026-11-24T09:22:45.980Z",
+  "tenBrickSessionRatioPercent": 3.8,
+  "tenBrickSession": {
+    "tier": "Tier 3: 10-Brick App (10 Bricks, 2 Tables)",
+    "bricksCount": 10,
+    "entitiesCount": 2,
+    "filesCount": 20,
+    "conversationTokens": 2271,
+    "firstPartySourceTokens": 59193,
+    "generatedFilesOnlyTokens": 19126,
+    "ratioPercent": 3.8,
+    "projectHash": "54ef0ac4c7329034fa2d2a1a3bcc19cdcba63074cee9166bdf06a3105ee485e0",
+    "status": "SUB-4% REACHED"
+  },
+  "results": [
+    {
+      "tier": "Tier 1: Baseline (3 Bricks, 1 Table)",
+      "bricksCount": 3,
+      "entitiesCount": 1,
+      "filesCount": 12,
+      "conversationTokens": 2112,
+      "firstPartySourceTokens": 24680,
+      "generatedFilesOnlyTokens": 8411,
+      "ratioPercent": 8.6,
+      "projectHash": "5addb744d10a9b8c8a8b7dd32ae5407abb28555daea241f4190644dba43659ee",
+      "status": "PASS"
+    },
+    {
+      "tier": "Tier 2: Medium SaaS (7 Bricks, 2 Tables)",
+      "bricksCount": 7,
+      "entitiesCount": 2,
+      "filesCount": 17,
+      "conversationTokens": 2222,
+      "firstPartySourceTokens": 45577,
+      "generatedFilesOnlyTokens": 15471,
+      "ratioPercent": 4.9,
+      "projectHash": "15c6162801433daeedaaf4f28f486d091d6d6f542d276592b1d647d8ca302ad3",
+      "status": "PASS"
+    },
+    {
+      "tier": "Tier 3: 10-Brick App (10 Bricks, 2 Tables)",
+      "bricksCount": 10,
+      "entitiesCount": 2,
+      "filesCount": 20,
+      "conversationTokens": 2271,
+      "firstPartySourceTokens": 59193,
+      "generatedFilesOnlyTokens": 19126,
+      "ratioPercent": 3.8,
+      "projectHash": "54ef0ac4c7329034fa2d2a1a3bcc19cdcba63074cee9166bdf06a3105ee485e0",
+      "status": "SUB-4% REACHED"
+    },
+    {
+      "tier": "Tier 4: Enterprise Backend (12 Bricks, 4 Tables)",
+      "bricksCount": 12,
+      "entitiesCount": 4,
+      "filesCount": 25,
+      "conversationTokens": 2400,
+      "firstPartySourceTokens": 89470,
+      "generatedFilesOnlyTokens": 28078,
+      "ratioPercent": 2.7,
+      "projectHash": "690df7fa550ff2df29b0a2a108f666917835c88dfe19a2e9d28993d1266e04bd",
+      "status": "SUB-4% REACHED"
+    },
+    {
+      "tier": "Tier 5: Scaled SaaS / Sub-4% Threshold (16 Bricks, 4 Tables)",
+      "bricksCount": 16,
+      "entitiesCount": 4,
+      "filesCount": 29,
+      "conversationTokens": 2476,
+      "firstPartySourceTokens": 112411,
+      "generatedFilesOnlyTokens": 33917,
+      "ratioPercent": 2.2,
+      "projectHash": "1338b73a69ca0b267679a35695eb4ac4572cbb5050aa111fe2ef1cc02ff1e6d2",
+      "status": "SUB-4% REACHED"
+    },
+    {
+      "tier": "Tier 6: Cephlow-Scale Suite (25 Bricks, 4 Tables)",
+      "bricksCount": 25,
+      "entitiesCount": 4,
+      "filesCount": 41,
+      "conversationTokens": 2820,
+      "firstPartySourceTokens": 172356,
+      "generatedFilesOnlyTokens": 47451,
+      "ratioPercent": 1.6,
+      "projectHash": "fd00f69a036e7d63bb6c2eb798b49633291e3b923410394a76392f125a8a8be1",
+      "status": "SUB-4% REACHED"
+    },
+    {
+      "tier": "Tier 7: Max-Compatible Platform Suite (38 Bricks, 4 Tables)",
+      "bricksCount": 38,
+      "entitiesCount": 4,
+      "filesCount": 55,
+      "conversationTokens": 3528,
+      "firstPartySourceTokens": 251809,
+      "generatedFilesOnlyTokens": 63373,
+      "ratioPercent": 1.4,
+      "projectHash": "f108ad1707d9f41b9ff7bbe61d2473adc5a5e43bbbfd3c0578e30d77abc4aaee",
+      "status": "SUB-4% REACHED"
+    }
+  ],
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "scripts/benchmark-mcp-scale.ts",
+    "inputKind": "measured"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "audit-trail",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "audit-logging"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_audit_trail.sql"
+  ],
+  "routePrefixes": [
+    "audit"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Audit Trail & Compliance Ledger",
+    "category": "governance",
+    "summary": "Immutable admin audit ledger and SOC2 CSV exports.",
+    "maturity": "production",
+    "behaviourTest": "test/audit.test.ts"
+  },
+  "worker": {
+    "package": "@poc/audit-trail",
+    "routes": [
+      {
+        "factory": "createAuditRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/audit",
+          "/api/audit/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "audit_events": {
+        "subject": "user",
+        "userColumn": "actor_id",
+        "erase": "retain",
+        "retainReason": "Immutable compliance and audit log retention requirement",
+        "export": true
+      }
+    }
+  }
+}

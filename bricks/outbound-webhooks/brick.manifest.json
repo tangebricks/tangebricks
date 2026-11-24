@@ -1,0 +1,66 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "outbound-webhooks",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "outbound-webhooks"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_outbound_webhooks.sql"
+  ],
+  "routePrefixes": [
+    "subscriptions"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Outbound Developer Webhooks",
+    "category": "developer",
+    "summary": "Customer webhook subscriptions, HMAC signing, and replay.",
+    "maturity": "beta",
+    "behaviourTest": "test/outbound.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "conflicts": [
+    {
+      "brick": "subscription-plans",
+      "reason": "Both mount routes under the /api/subscriptions prefix"
+    }
+  ],
+  "worker": {
+    "package": "@poc/outbound-webhooks",
+    "routes": [
+      {
+        "factory": "createOutboundWebhookRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/subscriptions",
+          "/api/subscriptions/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "owh_endpoints": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "owh_deliveries": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

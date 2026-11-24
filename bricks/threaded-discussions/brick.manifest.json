@@ -1,0 +1,62 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "threaded-discussions",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "discussions"
+  ],
+  "requires": [
+    "workspace-context",
+    "user-identity"
+  ],
+  "migrations": [
+    "migrations/0001_threaded_discussions.sql"
+  ],
+  "routePrefixes": [
+    "threads"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Contextual Threaded Discussions",
+    "category": "communication",
+    "summary": "Nested comment threads, @mentions, and resolution.",
+    "maturity": "beta",
+    "behaviourTest": "test/threads.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "worker": {
+    "package": "@poc/threaded-discussions",
+    "routes": [
+      {
+        "factory": "createThreadRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/threads",
+          "/api/threads/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "cmt_threads": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "cmt_comments": {
+        "subject": "user",
+        "userColumn": "author_id",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

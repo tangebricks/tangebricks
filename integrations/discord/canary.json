@@ -1,0 +1,19 @@
+{
+  "app": "discord",
+  "secretEnv": "CANARY_DISCORD_TOKEN",
+  "operations": [
+    {
+      "operationId": "getGuild",
+      "inputs": {
+        "guildId": "canary_guild"
+      },
+      "expect": {
+        "status": 200
+      }
+    }
+  ],
+  "webhook": {
+    "trigger": "message_create",
+    "sendVia": "skip"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "checkout-gateway",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "checkout-engine"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_checkout_gateway.sql"
+  ],
+  "routePrefixes": [
+    "checkout"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Multi-Gateway Checkout & Taxes",
+    "category": "billing",
+    "summary": "Multi-gateway checkout sessions, tax, and invoicing.",
+    "maturity": "beta",
+    "maturityReason": "Persists checkout sessions, tax calculations, and invoices in D1, but external Stripe, Razorpay, and LemonSqueezy API calls are stubbed with synthetic URLs",
+    "behaviourTest": "test/checkout.test.ts"
+  },
+  "worker": {
+    "package": "@poc/checkout-gateway",
+    "routes": [
+      {
+        "factory": "createCheckoutRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/checkout",
+          "/api/checkout/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "pay_checkout_sessions": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "pay_invoices": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

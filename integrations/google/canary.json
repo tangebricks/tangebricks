@@ -1,0 +1,19 @@
+{
+  "app": "google",
+  "secretEnv": "CANARY_GOOGLE_SA_JSON",
+  "operations": [
+    {
+      "operationId": "calendar_events_list",
+      "inputs": {
+        "calendarId": "primary"
+      },
+      "expect": {
+        "status": 200
+      }
+    }
+  ],
+  "webhook": {
+    "trigger": "event_created",
+    "sendVia": "skip"
+  }
+}

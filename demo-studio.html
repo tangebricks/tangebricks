@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProjectX Studio • Edge-Native Composable SaaS Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-void: #09090b;
+      --bg-base: #111116;
+      --bg-surface: #18181f;
+      --bg-elevated: #22222c;
+      --border-subtle: #272732;
+      --border-strong: #383848;
+      --border-focus: #f59e0b;
+      --text-main: #f4f4f5;
+      --text-muted: #9494a0;
+      --text-dim: #626270;
+      --amber: #f59e0b;
+      --amber-glow: rgba(245, 158, 11, 0.18);
+      --amber-dim: #b45309;
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.16);
+      --rose: #f43f5e;
+      --purple: #a855f7;
+      --cyan: #06b6d4;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-void);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    code, pre, .mono {
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-void); }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--amber); }
+
+    /* Top Navigation */
+    header {
+      height: 54px;
+      background: var(--bg-base);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #000;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: -0.5px;
+      box-shadow: 0 0 16px var(--amber-glow);
+    }
+
+    .project-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .project-pill {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 7px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .telemetry-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      padding: 5px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .telemetry-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+    .dot-emerald { background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+    .dot-amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      border-color: var(--border-subtle);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-elevated);
+      border-color: var(--border-strong);
+    }
+
+    .btn-amber {
+      background: var(--amber);
+      color: #000;
+      font-weight: 700;
+      box-shadow: 0 0 14px var(--amber-glow);
+    }
+    .btn-amber:hover {
+      background: #fbbf24;
+      transform: translateY(-1px);
+    }
+
+    /* Main Grid Layout */
+    .app-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 290px 1fr 440px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Left Sidebar: Bricks & Architecture */
+    .sidebar {
+      background: var(--bg-base);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brick-list {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .brick-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 12px;
+      transition: border 0.15s ease;
+      cursor: pointer;
+    }
+
+    .brick-card:hover {
+      border-color: var(--border-strong);
+    }
+
+    .brick-card.active {
+      border-color: var(--amber-dim);
+      background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(245, 158, 11, 0.03) 100%);
+    }
+
+    .brick-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .brick-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Fira Code', monospace;
+    }
+    .badge-amber { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: var(--cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+
+    .brick-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+
+    .brick-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+    /* Center: Visual Graph Canvas */
+    .canvas-container {
+      background: var(--bg-void);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .canvas-bg {
+      position: absolute;
+      inset: 0;
+      background-size: 28px 28px;
+      background-image: 
+        radial-gradient(circle, #22222d 1px, transparent 1px);
+      opacity: 0.6;
+    }
+
+    .canvas-toolbar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .canvas-nodes-layer {
+      position: absolute;
+      inset: 0;
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 60px;
+      z-index: 5;
+    }
+
+    /* Node Cards */
+    .flow-node {
+      width: 250px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+      position: relative;
+      transition: all 0.2s ease;
+      cursor: grab;
+    }
+
+    .flow-node:hover {
+      border-color: var(--amber);
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px rgba(245, 158, 11, 0.12);
+    }
+
+    .node-header {
+      padding: 10px 12px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      border-top-left-radius: 9px;
+      border-top-right-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .node-title {
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .node-body {
+      padding: 12px;
+      font-size: 11px;
+    }
+
+    .port-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      color: var(--text-muted);
+    }
+
+    .handle {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 8px var(--amber);
+      position: absolute;
+    }
+    .handle-left { left: -5px; top: 50%; transform: translateY(-50%); }
+    .handle-right { right: -5px; top: 50%; transform: translateY(-50%); }
+
+    /* SVG Connecting Cables */
+    .canvas-connections {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    .connection-line {
+      fill: none;
+      stroke: var(--amber-dim);
+      stroke-width: 2.5;
+      stroke-dasharray: 6 4;
+      animation: cablePulse 25s linear infinite;
+    }
+
+    @keyframes cablePulse {
+      to { stroke-dashoffset: -1000; }
+    }
+
+    /* Right Split: Terminal & App Preview */
+    .right-pane {
+      background: var(--bg-base);
+      border-left: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tabs-header {
+      display: flex;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-void);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      color: var(--amber);
+      border-bottom-color: var(--amber);
+      background: var(--bg-base);
+    }
+
+    .tab-content {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* Terminal View */
+    .terminal-body {
+      flex: 1;
+      padding: 16px;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      background: #09090c;
+      overflow-y: auto;
+      color: #d4d4d8;
+    }
+
+    .terminal-line { margin-bottom: 6px; word-break: break-all; }
+    .term-prompt { color: var(--amber); font-weight: 600; }
+    .term-accent { color: var(--cyan); }
+    .term-success { color: var(--emerald); }
+    .term-dim { color: var(--text-dim); }
+
+    .token-economy-banner {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 12px;
+    }
+
+    .token-meter {
+      height: 6px;
+      background: #272732;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+    .token-meter-fill {
+      height: 100%;
+      width: 14.1%;
+      background: linear-gradient(90deg, #10b981 0%, #f59e0b 100%);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+    }
+
+    /* Live Preview View */
+    .preview-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-surface);
+      overflow-y: auto;
+      padding: 18px;
+      gap: 16px;
+    }
+
+    .preview-header-card {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .wallet-widget {
+      background: linear-gradient(135deg, #1a1a24 0%, #222230 100%);
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    .wallet-val {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--amber);
+      font-family: 'Fira Code', monospace;
+      margin: 4px 0 10px 0;
+    }
+
+    .wallet-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .table-container {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      text-align: left;
+    }
+
+    .preview-table th {
+      background: var(--bg-surface);
+      padding: 9px 12px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-subtle);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .preview-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-main);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand-wrap">
+      <span class="logo-badge">PROJECT[X]</span>
+      <div class="project-title">
+        <span>invoice-flow-saas</span>
+        <span class="project-pill mono">Cloudflare Edge (workerd)</span>
+      </div>
+    </div>
+
+    <!-- Live Verified Telemetry -->
+    <div class="telemetry-bar mono">
+      <div class="telemetry-item">
+        <span class="dot dot-emerald"></span>
+        <span>H0-H12: PASS (13/13)</span>
+      </div>
+      <div class="telemetry-item">
+        <span class="dot dot-amber"></span>
+        <span>MCP Ratio: 14.1%</span>
+      </div>
+      <div class="telemetry-item">
+        <span>Wallet Invariant: 0 Loss / 1000 Ops</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-secondary mono" onclick="runSimulatedAgent()">
+        <span>🤖 Run Agent Build</span>
+      </button>
+      <button class="btn btn-amber" onclick="simulateDeploy()">
+        <span>⚡ Deploy to Edge (16.7s)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- App Workspace Grid -->
+  <div class="app-body">
+
+    <!-- 1. LEFT SIDEBAR: Modular Bricks System -->
+    <div class="sidebar">
+      <div class="panel-header">
+        <span>Enabled Bricks</span>
+        <span class="badge badge-amber mono">3 Active</span>
+      </div>
+
+      <div class="brick-list">
+        <div class="brick-card active">
+          <div class="brick-top">
+            <span class="brick-name">multi-workspace</span>
+            <span class="badge badge-emerald">Enforced</span>
+          </div>
+          <p class="brick-desc">Row-level tenant isolation middleware with header-origin validation.</p>
+          <div class="brick-meta mono">
+            <span>D1 Table</span> • <span>0001_multi_workspace.sql</span>
+          </div>
+        </div>
+
+        <div class="brick-card active">
+          <div class="brick-top">
+            <span class="brick-name">credit-wallet</span>
+            <span class="badge badge-emerald">Atomic</span>
+          </div>
+          <p class="brick-desc">Double-entry ledger with atomic SQLite updates. Verified across 1,000 concurrent ops.</p>
+          <div class="brick-meta mono">
+            <span>D1 Table</span> • <span>0001_credit_wallet.sql</span>
+          </div>
+        </div>
+
+        <div class="brick-card active">
+          <div class="brick-top">
+            <span class="brick-name">dynamic-entities</span>
+            <span class="badge badge-cyan">CRUD v2</span>
+          </div>
+          <p class="brick-desc">Declarative schema compiler for tenant-scoped relational models (invoices).</p>
+          <div class="brick-meta mono">
+            <span>Zod Schema</span> • <span>100% Tenant Isolated</span>
+          </div>
+        </div>
+
+        <div class="brick-card" style="opacity: 0.7;">
+          <div class="brick-top">
+            <span class="brick-name">cephlow-drive-sync</span>
+            <span class="badge badge-amber">Ported</span>
+          </div>
+          <p class="brick-desc">Google Drive & Slides template rendering with token refresh.</p>
+          <div class="brick-meta mono">
+            <span>Cephlow Hybrid</span> • <span>R2 Cache</span>
+          </div>
+        </div>
+
+        <div class="brick-card" style="opacity: 0.7;">
+          <div class="brick-top">
+            <span class="brick-name">whatsapp-delivery</span>
+            <span class="badge badge-amber">Ported</span>
+          </div>
+          <p class="brick-desc">Cloud API direct document dispatch without browser loops.</p>
+          <div class="brick-meta mono">
+            <span>step.do queue</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. CENTER: Interactive Visual Canvas (Cephlow + ProjectX Evolution) -->
+    <div class="canvas-container">
+      <div class="canvas-bg"></div>
+
+      <div class="canvas-toolbar">
+        <button class="btn btn-secondary mono" style="font-size:11px;" onclick="triggerWorkflowPacket()">
+          <span>▶ Test Workflow Run</span>
+        </button>
+        <span class="badge badge-amber mono" style="display:flex; align-items:center; padding: 0 10px;">
+          Runtime: 107-Line Interpreter (No Codegen)
+        </span>
+      </div>
+
+      <!-- SVG Cable Layer -->
+      <svg class="canvas-connections" width="100%" height="100%">
+        <!-- Line from Sheet to Wallet -->
+        <path d="M 280 230 C 340 230, 360 230, 420 230" class="connection-line" />
+        <!-- Line from Wallet to Invoices -->
+        <path d="M 670 230 C 730 230, 750 230, 810 230" class="connection-line" />
+      </svg>
+
+      <!-- Flow Nodes -->
+      <div class="canvas-nodes-layer">
+        
+        <!-- Node 1: Ingest -->
+        <div class="flow-node" style="transform: translate(-10px, 0);">
+          <div class="node-header">
+            <span class="node-title">📊 Inbound Orders</span>
+            <span class="badge badge-amber">Trigger</span>
+          </div>
+          <div class="node-body">
+            <div class="port-row mono"><span>Source:</span> <span style="color:var(--text-main);">D1 Spreadsheet</span></div>
+            <div class="port-row mono"><span>Records:</span> <span style="color:var(--emerald);">50 pending</span></div>
+            <div class="port-row mono"><span>Batch Mode:</span> <span>Continuous</span></div>
+          </div>
+          <div class="handle handle-right"></div>
+        </div>
+
+        <!-- Node 2: Atomic Wallet Check (step.do) -->
+        <div class="flow-node" id="wallet-node">
+          <div class="handle handle-left"></div>
+          <div class="node-header">
+            <span class="node-title">💳 Wallet Deduct</span>
+            <span class="badge badge-emerald">step.do</span>
+          </div>
+          <div class="node-body">
+            <div class="port-row mono"><span>Fee/Unit:</span> <span>1.0 credit</span></div>
+            <div class="port-row mono"><span>Guarantee:</span> <span style="color:var(--emerald);">Atomic SQLite</span></div>
+            <div class="port-row mono"><span>Idempotency:</span> <span class="mono">UUID v4</span></div>
+          </div>
+          <div class="handle handle-right"></div>
+        </div>
+
+        <!-- Node 3: Dynamic Entity Output -->
+        <div class="flow-node" style="transform: translate(10px, 0);">
+          <div class="handle handle-left"></div>
+          <div class="node-header">
+            <span class="node-title">🧾 Create Invoice</span>
+            <span class="badge badge-cyan">Entity</span>
+          </div>
+          <div class="node-body">
+            <div class="port-row mono"><span>Table:</span> <span>invoices</span></div>
+            <div class="port-row mono"><span>Scoping:</span> <span style="color:var(--emerald);">Tenant A</span></div>
+            <div class="port-row mono"><span>D1 Write:</span> <span style="color:var(--amber);">150 ms</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 3. RIGHT PANEL: Live AI Terminal + Real Edge App Preview -->
+    <div class="right-pane">
+      <div class="tabs-header">
+        <button class="tab-btn active" onclick="switchTab('terminal')">
+          <span>🤖 MCP Agent Terminal</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('preview')">
+          <span>📱 Live App Preview</span>
+        </button>
+      </div>
+
+      <!-- Tab 1: Terminal -->
+      <div id="tab-terminal" class="tab-content active">
+        <!-- Token Economy Meter -->
+        <div class="token-economy-banner mono">
+          <div style="display:flex; justify-content:space-between; font-size:11px;">
+            <span style="color:var(--amber); font-weight:700;">H9 Token Efficiency</span>
+            <span style="color:var(--emerald); font-weight:700;">14.1% of Code Tokens</span>
+          </div>
+          <div class="token-meter">
+            <div class="token-meter-fill"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim);">
+            <span>Conversation: 1,372 tokens</span>
+            <span>Generated Code: 12,309 tokens (85.9% saved)</span>
+          </div>
+        </div>
+
+        <div class="terminal-body" id="term-logs">
+          <div class="terminal-line"><span class="term-dim">[05:50:12]</span> <span class="term-prompt">MCP Client:</span> streamable_http initialized (2025-11-25)</div>
+          <div class="terminal-line"><span class="term-dim">[05:50:13]</span> <span class="term-prompt">Call:</span> <span class="term-accent">list_bricks()</span></div>
+          <div class="terminal-line"><span class="term-dim">[05:50:13]</span> <span class="term-success">Reply:</span> [multi-workspace, credit-wallet, dynamic-entities]</div>
+          <div class="terminal-line"><span class="term-dim">[05:50:14]</span> <span class="term-prompt">Call:</span> <span class="term-accent">enable_brick(["multi-workspace", "credit-wallet"])</span></div>
+          <div class="terminal-line"><span class="term-dim">[05:50:14]</span> <span class="term-success">Reply:</span> ok (2 bricks resolved)</div>
+          <div class="terminal-line"><span class="term-dim">[05:50:15]</span> <span class="term-prompt">Call:</span> <span class="term-accent">define_entity("invoices", fields=[client, amount, status])</span></div>
+          <div class="terminal-line"><span class="term-dim">[05:50:15]</span> <span class="term-success">Reply:</span> entity schema verified with row-level workspace_id</div>
+          <div class="terminal-line"><span class="term-dim">[05:50:16]</span> <span class="term-prompt">Call:</span> <span class="term-accent">build_project("invoice-flow")</span></div>
+          <div class="terminal-line"><span class="term-dim">[05:50:17]</span> <span class="term-success">Build OK:</span> 9 files generated (Hash: 608a7f25...) in 0.77s</div>
+          <div class="terminal-line" style="color:var(--emerald);"><span class="term-dim">[05:50:17]</span> Ready for zero-redeploy Cloudflare Workflows execution.</div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Live SaaS App Preview -->
+      <div id="tab-preview" class="tab-content">
+        <div class="preview-container">
+          
+          <div class="preview-header-card">
+            <div>
+              <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Workspace Context</div>
+              <div style="font-size:13px; font-weight:700;">Acme Corp (Tenant A)</div>
+            </div>
+            <span class="badge badge-emerald mono">Active Session</span>
+          </div>
+
+          <!-- The Real Embedded Credit Widget (H12) -->
+          <div class="wallet-widget">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:11px; text-transform:uppercase; font-weight:700; color:var(--text-muted);">Credit Balance (Live D1)</span>
+              <span class="badge badge-amber mono">Atomic Ledger</span>
+            </div>
+            <div class="wallet-val" id="wallet-balance">1,534</div>
+            <div class="wallet-actions">
+              <button class="btn btn-secondary mono" style="font-size:10px; padding: 5px 10px;" onclick="deductCreditSim()">
+                -1 Credit (Simulate Invoice)
+              </button>
+              <button class="btn btn-amber mono" style="font-size:10px; padding: 5px 10px;" onclick="topUpCreditSim()">
+                +500 Top-Up (Cashfree)
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Invoices Table (H8) -->
+          <div class="table-container">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="invoice-rows">
+                <tr>
+                  <td>Stark Logistics</td>
+                  <td class="mono">$4,200.00</td>
+                  <td><span class="badge badge-emerald">PAID</span></td>
+                </tr>
+                <tr>
+                  <td>Wayne Enterprises</td>
+                  <td class="mono">$8,950.00</td>
+                  <td><span class="badge badge-amber">PENDING</span></td>
+                </tr>
+                <tr>
+                  <td>Cyberdyne Systems</td>
+                  <td class="mono">$1,120.00</td>
+                  <td><span class="badge badge-emerald">PAID</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      if (tab === 'terminal') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('tab-terminal').classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('tab-preview').classList.add('active');
+      }
+    }
+
+    let balance = 1534;
+    function deductCreditSim() {
+      if (balance <= 0) {
+        alert("Insufficient credits! D1 atomic check prevented deduction.");
+        return;
+      }
+      balance -= 1;
+      document.getElementById('wallet-balance').innerText = balance.toLocaleString();
+      
+      // Add row
+      const tbody = document.getElementById('invoice-rows');
+      const tr = document.createElement('tr');
+      const clients = ['Oscorp Technologies', 'Umbrella Corp', 'Initech', 'Pied Piper'];
+      const randomClient = clients[Math.floor(Math.random() * clients.length)];
+      const randomAmount = (Math.random() * 5000 + 500).toFixed(2);
+      tr.innerHTML = `<td>${randomClient}</td><td class="mono">$${randomAmount}</td><td><span class="badge badge-amber">DRAFT</span></td>`;
+      tbody.prepend(tr);
+    }
+
+    function topUpCreditSim() {
+      balance += 500;
+      document.getElementById('wallet-balance').innerText = balance.toLocaleString();
+    }
+
+    function triggerWorkflowPacket() {
+      const node = document.getElementById('wallet-node');
+      node.style.borderColor = 'var(--emerald)';
+      node.style.boxShadow = '0 0 24px rgba(16, 185, 129, 0.4)';
+      deductCreditSim();
+      setTimeout(() => {
+        node.style.borderColor = 'var(--border-strong)';
+        node.style.boxShadow = '0 12px 30px rgba(0,0,0,0.5)';
+      }, 600);
+    }
+
+    function runSimulatedAgent() {
+      switchTab('terminal');
+      const term = document.getElementById('term-logs');
+      const t = new Date().toLocaleTimeString();
+      term.innerHTML += `
+        <div class="terminal-line" style="margin-top:12px;"><span class="term-dim">[${t}]</span> <span class="term-prompt">Claude 3.5 Sonnet:</span> Connected via MCP stdio</div>
+        <div class="terminal-line"><span class="term-dim">[${t}]</span> <span class="term-prompt">AI Action:</span> Executing 4 deterministic tool calls...</div>
+        <div class="terminal-line"><span class="term-dim">[${t}]</span> <span class="term-success">Assembled in 819 ms. 0 lost updates. Token cost: 1,372.</span></div>
+      `;
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function simulateDeploy() {
+      alert("⚡ Cloudflare REST Provisioner: Deployed projectx-poc-c56a65d4 in 16.7s.\nWorker: 843.5 KiB (1.29% limit)\nD1: Migrations applied\nStatus: 200 OK");
+    }
+  </script>
+</body>
+</html>

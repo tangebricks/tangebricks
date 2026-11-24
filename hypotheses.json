@@ -1,0 +1,202 @@
+{
+  "version": 1,
+  "hypotheses": [
+    {
+      "id": "H0",
+      "title": "Infrastructure: tests run inside workerd",
+      "epic": "infrastructure",
+      "status": "live",
+      "metric": null,
+      "pass": null,
+      "kill": null,
+      "mustHold": ["runsInWorkerd"],
+      "killIfFalse": ["runsInWorkerd"]
+    },
+    {
+      "id": "H1",
+      "title": "A graph validator is small and catches eight error classes",
+      "epic": "epic-contract-validator-runtime",
+      "status": "live",
+      "metric": { "name": "validatorCodeLines", "unit": "lines" },
+      "pass": { "max": 120 },
+      "kill": { "min": 201 },
+      "mustHold": ["fixturesCatchAllEightClasses", "validFixturePasses"],
+      "killIfFalse": [],
+      "note": "Also a kill if any class can only be detected by running the graph; judged by a person, not computed.",
+      "caveat": "Counts packages/sdk/src/validate.ts only (its own types and imports included, comments and blank lines excluded). The validator also depends on the brick manifest types in manifest.ts and on zod, which are not counted."
+    },
+    {
+      "id": "H2",
+      "title": "The runtime interprets graphs with no code generation and runs branches concurrently",
+      "epic": "epic-contract-validator-runtime",
+      "status": "live",
+      "metric": { "name": "diamondToSequentialRatio", "unit": "ratio" },
+      "pass": { "lt": 1 },
+      "kill": null,
+      "mustHold": ["chainPasses", "diamondPasses", "noDynamicEvaluation"],
+      "killIfFalse": ["noDynamicEvaluation"]
+    },
+    {
+      "id": "H3",
+      "title": "Executors cannot read secrets their manifest does not declare",
+      "epic": "epic-contract-validator-runtime",
+      "status": "live",
+      "metric": null,
+      "pass": null,
+      "kill": null,
+      "mustHold": [
+        "declaredSecretReadable",
+        "undeclaredSecretAbsent",
+        "undeclaredReadThrows",
+        "rawEnvUnreachable"
+      ],
+      "killIfFalse": ["undeclaredSecretAbsent"],
+      "note": "A kill means isolation needs a separate isolate per brick.",
+      "caveat": "Shown for graph data and for executors that use ctx. Code in the same isolate can import env from cloudflare:workers and read any secret (KNOWN LIMIT test); stopping that needs a separate isolate per brick. The docs' 'impossible by design' holds only for trusted brick code."
+    },
+    {
+      "id": "H5",
+      "title": "The extracted wallet stays correct under concurrency",
+      "epic": "epic-bricks",
+      "status": "live",
+      "metric": { "name": "violatingRuns", "unit": "runs of 20" },
+      "pass": { "max": 0 },
+      "kill": { "min": 1 },
+      "mustHold": ["controlLosesUpdates", "orderCreditedOnce", "insufficientRefusesUnchanged", "graphDeductChangesBalanceOnce", "portedTestsPass"],
+      "killIfFalse": [],
+      "killIfFalseWhenReported": ["holdsOnHostedD1"],
+      "note": "Before accepting a kill, check whether the violation is a defect in the extracted code (fix it, rerun, keep the failing run in the log) or a limit of D1 itself; only the second means the idea stops. Thresholds fixed 2026-10-20 before any brick code existed. Extra evidence added 2026-10-21, before it exists, and confirmed by the owner: the same mixed workload and the same meaning of 'violating' are run through the deployed address against Cloudflare's hosted D1 and reported as holdsOnHostedD1. False is a kill (the money is wrong on the real database). Not reported changes nothing, and the scoreboard says it has not been run. A request whose answer is lost (a timeout or a server error) is counted as unknown, not as a violation: what makes a run violate is wrong money, not a failed request. The exact handling of unknown outcomes is written down and committed before that run exists. HOSTED-D1 RULE written 2026-10-21 (story 8), confirmed in plain words by the owner and committed before the hosted run exists. THE RUN: the same 20 workloads as the local sweep (workload(run) for run 1 to 20: fifty mixed whole-number operations each, the same starting balances), each against a fresh scratch workspace and wallet in the proof's own hosted D1 database, all fifty operations of a run started within the same window. Deductions go through the deployed Worker's own route (POST /api/wallet/deduct). Top-ups cannot go through the Worker, because the deployed project's payment gateway is the fake one and never reports an order as paid (found while building H12); so each top-up is confirmed twice at the same moment by this repository's own wallet code (createWallet and confirmOrder) running in Node against the same hosted database over Cloudflare's D1 REST endpoint, with a local fake gateway that reports the order as paid. The owner is told of this method detail in the same message as this rule is committed; it changes no threshold and no definition, but it means the top-up path is exercised through REST and not through the Worker. Calls to the REST endpoint are spaced to stay under Cloudflare's API rate limit (about 3.7 a second for the whole run), so the top-ups of a run are spread over a minute or so; the deductions of a run are sent in five bursts, the deductions of one burst at the same instant, the bursts spread evenly across that time, so that deductions land among the top-ups and not before or after them. The operations overlap in time, but fifty are not in flight at the same instant as they are locally (a limit of the method, not a pass or fail rule). The Worker is not changed: no upload, and its version, read before and after, must be the same. OUTCOMES: a deduction answered 200 is accepted; one answered 402 is refused for insufficient balance (it must have left no trace); anything else (a timeout, a dropped connection, any other status, an error thrown) is UNKNOWN. A top-up is accepted if exactly one of its two confirmations says credited and neither failed; UNKNOWN if either confirmation ended in an error; and a violation if both returned without error and the number credited is not one. UNKNOWN IS NEITHER A VIOLATION NOR A PASS: the final state is read from D1 (the balance and every ledger row) by a client of its own, and a run violates exactly when D1 contradicts what is known: (1) the final balance is not the starting balance plus the sum of the ledger amounts, or is negative; (2) replaying the ledger in order from the starting balance does not reproduce each row's balance_after, or one is negative; (3) for some deduction amount the rows are fewer than the accepted deductions of that amount or more than the accepted plus the unknown ones; (4) a top-up row exists for an order that was refused or never created, an order is credited more than once, or an accepted order does not have exactly one row; (5) a row exists that matches no requested operation. With no unknown outcome this is exactly the local definition. holdsOnHostedD1 is true only if all 20 runs are clean AND at most 10 percent of all operations were unknown AND the Worker's version did not change. If more than 10 percent were unknown the run is inconclusive: holdsOnHostedD1 stays unreported (the scoreboard keeps saying it has not been run) until the cause is found and the run repeated, every attempt kept. A violating run makes it false, which is a kill of H5, after the check already in this note of whether the fault is this repository's code or harness or a limit of D1 itself. The count of unknown outcomes, per run and in all, is recorded in the evidence.",
+      "caveat": "Measured on local D1 (workerd's own SQLite-backed implementation), not on Cloudflare's hosted D1. A run violates if the final balance is not start plus accepted top-ups minus accepted deductions, the ledger row count differs from the accepted operations, a replay of the ledger does not reproduce each balance_after (or one is negative), a refused deduction left a trace, or an order was credited twice. Credits are whole numbers; cephlow stores REAL balances. Wallet-to-wallet transfers are not extracted or tested. A binding gives a brick the whole D1 database: the manifest scopes which binding a brick may have, not which rows it touches, so the workspace filter is the brick's own code (C4) and not something the runtime enforces."
+    },
+    {
+      "id": "H6",
+      "title": "Bricks compose from a blueprint without hand edits",
+      "epic": "epic-assemble-and-mcp",
+      "status": "live",
+      "metric": null,
+      "pass": null,
+      "kill": null,
+      "mustHold": ["crossTenantDenied", "ownWalletWorks", "emittedProjectUnchanged", "assemblerNamesNoBrick", "denialTestsRepoOwned"],
+      "killIfFalse": ["crossTenantDenied", "ownWalletWorks", "emittedProjectUnchanged", "assemblerNamesNoBrick", "denialTestsRepoOwned"],
+      "note": "Any false check is a kill: a hand edit was needed, or the assembler is hard-wired to the bricks it was tried on. Before accepting a kill, check whether the failing check is a defect in a test (fix it, rerun, keep the failing run in the log) or a real need for a hand edit; only the second is the idea failing. Rule fixed 2026-10-20 before any denial test existed.",
+      "caveat": "H6 tests that the assembler wired the workspace guard in front of the wallet's routes in the right order, and that the assembled project refuses workspace A reading or spending workspace B's money. It does not re-test the bricks' own isolation (H5 and H8 do). The 'no file changed' check is code in this repository: it catches accidents and a lazy bypass, not a determined author. The two bricks are the only real ones, one depends on the other, and deeper ordering is tested only with synthetic bricks. The project runs as modules a test bundler resolves, with no payment gateway wired (its payment routes answer 503 NOT_CONFIGURED, story 0.9), not as a bundled upload; identity is a header-trusting stub."
+    },
+    {
+      "id": "H7",
+      "title": "Assembly is deterministic, offline and fast",
+      "epic": "epic-assemble-and-mcp",
+      "status": "live",
+      "metric": { "name": "assemblySeconds", "unit": "seconds" },
+      "pass": { "lt": 5 },
+      "kill": { "gt": 30 },
+      "mustHold": ["identicalHashes", "noNetworkAttempts"],
+      "killIfFalse": ["identicalHashes"],
+      "note": "Slower than 5 seconds and up to 30 is a fail, and a network attempt is a fail; different files on a repeat run, or more than 30 seconds, is a kill. Before accepting a kill for different files, check whether the cause is a defect in the test set-up (for example an environment value the test itself varies) or the assembler genuinely depending on something outside its inputs; only the second is the claim failing. Rule fixed 2026-10-20 before any measurement existed.",
+      "caveat": "Measured in Node, from a cold start, for the two-brick blueprint, as the larger of two runs' wall-clock time including starting Node. Workerd clocks do not advance during CPU work, so assembly time inside a Worker is not measured here, and whether assembly fits a deployed Worker's CPU limit is unknown (owned by epic-deploy-and-verdict). Identical files are checked across two cold processes that differ in working folder, time zone and a clock shifted by more than a year; that catches an assembler that reads the time, the time zone or the folder. The two runs also set different locale variables, but on Windows these did not change Node's locale in a check made while building this, so locale-dependent behaviour (for example a locale-sensitive sort) is NOT exercised. Nor does this prove the assembler cannot depend on something this test never varied. The network traps cover fetch, sockets, TLS, DNS, HTTP, UDP and spawned programs, and each is shown to fire on a deliberate attempt."
+    },
+    {
+      "id": "H8",
+      "title": "An entity declaration yields tenant-safe CRUD",
+      "epic": "epic-assemble-and-mcp",
+      "status": "live",
+      "metric": null,
+      "pass": null,
+      "kill": null,
+      "mustHold": ["tenantACrud", "tenantBDenied", "bodyWorkspaceIgnored", "hostileInputsSafe", "entityCodeIsGeneric", "walletStillDenied", "emittedProjectUnchanged"],
+      "killIfFalse": ["tenantBDenied", "bodyWorkspaceIgnored", "hostileInputsSafe", "entityCodeIsGeneric"],
+      "note": "A safety failure is a kill: tenant B reaching tenant A's rows, a workspace id in a request body being obeyed, a hostile name or value being treated as code, or tenant safety needing code written for the entity. Tenant A's own create, list, read, update and delete not working, the wallet no longer refusing cross-tenant access in the project that has entities, or the assembled project changing after assembly, is a fail. Before accepting a kill, check whether the failing check is a defect in a test (fix it, rerun, keep the failing run in the log) or a real need for hand-written code; only the second is the claim failing. Rule fixed 2026-10-20 before any entity code existed.",
+      "caveat": "Tested on one declared entity (invoices: text, whole number, enum, and a second entity covering a boolean) assembled with the two bricks, through the assembled project's public routes, with a header-trusting identity stub. Entity data is interpreted at run time from a JSON declaration: no per-entity code is generated, and the check that none was written is a scan of this repository's sources and the emitted files for the entity and field names. Whole numbers only (no decimals), no relations, no filters, no migrations that change an existing entity, no per-role permissions: any member of a workspace may use its entities. 'Hostile' means the injection-shaped names and values tried here; it is a list, not a proof."
+    },
+    {
+      "id": "H9",
+      "title": "An MCP session builds the project at a fraction of the source tokens",
+      "epic": "epic-assemble-and-mcp",
+      "status": "live",
+      "metric": { "name": "tokenRatioPercent", "unit": "percent" },
+      "pass": { "max": 15 },
+      "kill": { "gt": 40 },
+      "mustHold": ["fiveToolCallsOrFewer", "sessionBuiltTheDirectProject", "bothSidesCountedTheSameWay"],
+      "killIfFalse": [],
+      "note": "The register proposed 2 percent to pass and over 10 percent to kill; those were estimates made before any size was known. For a project of two small bricks and one table they are too tight (the tool list alone is a fixed cost), so the owner confirmed 15 and 40 on 2026-10-20 BEFORE any count existed. Fixed for the session that builds the whole invoices project (workspaces, wallet and entities), which needs six tool calls as the tools are built, so fiveToolCallsOrFewer is expected to be false for it; that was known before measuring, is structural, and is reported as it is. A kill (over 40 percent) means pivot, not stop: this is a claim about cost, not about whether the mechanism works. DEPLOYED MEASUREMENT (epic 5, story 9), written and committed before any code for it exists, after the owner chose a separate Worker (2026-10-21): it is information, not a check, and changes no threshold, check or verdict above; H9 remains a measurement made in Node. The MCP endpoint is uploaded as its own Worker (projectx-poc-<suffix>-mcp) with its own database (-mcp-db) and its own random bearer token, so the Worker and database that H10 to H12 and the hosted money check describe are not touched. An official MCP client then plays the scored four-call session against it over the internet, and the command reports: whether the upload was accepted and the bundle size against the 64 MiB limit; for each call whether it worked and how long it took as seen from outside; and for build_project, repeated 10 times, how many attempts built the project (the stored files read back from D1 and their hash equal to the direct assembly's), how many were stopped by Cloudflare's resource limit (error 1102), and how many failed some other way (not a finding: fixed and rerun, every attempt kept). If the full project is not built every time, smaller projects (1 brick, 2 bricks, 3 bricks, 3 bricks and the table; 5 builds each) are built to show where it stops fitting. If it does not fit, the finding is recorded with the options (a paid plan, or assembling outside the Worker) and none is built without the owner asking. What it cannot show: the CPU time itself (no analytics permission), whether a 1102 was the CPU or the memory limit, the paid plan, and anything a real model would do.",
+      "caveat": "Tokens are counted with gpt-tokenizer's o200k_base encoding, a stand-in: Claude's tokenizer is not available offline, so absolute counts are estimates and only the ratio is judged. The conversation is the raw JSON-RPC traffic of a session run by the official MCP client (initialize, tools/list and every tool call and answer), which is harsher than what a model reads; the model-visible count is printed too. The comparison is the conversation against the project's first-party code: the enabled bricks' source and migrations and the files the assembler writes, not third-party libraries, the shared SDK, the widget or tests (excluding those makes the ratio worse, not better). The ratio falls as projects grow because the conversation grows slowly, so a two-brick project shows the worst case, and it is NOT comparable to the docs' 400,000-token-versus-5,000 claim, which describes a ten-brick app of about 150 files written from scratch by a model. Nothing here shows what a real model would spend or whether it would choose these calls; the session is scripted."
+    },
+    {
+      "id": "H10",
+      "title": "The project deploys to the owner's Cloudflare account over REST, idempotently",
+      "epic": "epic-deploy-and-verdict",
+      "status": "live",
+      "metric": {
+        "name": "secondsToCorrectAnswer",
+        "unit": "seconds"
+      },
+      "pass": {
+        "max": 120
+      },
+      "kill": {
+        "gt": 600
+      },
+      "mustHold": [
+        "restUploadAccepted",
+        "deployedOverRestOnly",
+        "urlAnswersCorrectly",
+        "secondRunChangesNothing",
+        "changedProjectChangesOneThing",
+        "publicAccessGated",
+        "tokenNeverLeaked"
+      ],
+      "killIfFalse": [
+        "restUploadAccepted"
+      ],
+      "note": "Rule fixed 2026-10-21, confirmed by the owner ('go ahead with your recommendations', covering the 120 and 600 second lines, the hosted-D1 money check, the browser sighting not deciding, the inline page, the access-key gate with teardown, and a core-mechanism kill being a stop), BEFORE any provisioner, fake server or deploy existed. The clock starts when the deploy command starts, on a project none of which exists in the account yet, and stops at the first request that completes the scripted correctness check; it includes bundling, creating the database, running migrations, uploading the Worker and switching its address on. Pass: 120 seconds or less with every check true. A time from 120 to 600 seconds, or any false check other than restUploadAccepted, is a fail. Kill: more than 600 seconds, or restUploadAccepted false, meaning Cloudflare's own error shows that a Worker with a D1 and a Workflow binding is not accepted over REST. Before accepting a kill, check whether the refusal is Cloudflare's (keep the error body) or a defect in this repository's provisioner (fix it, rerun, keep every attempt in the log; the attempt count is recorded). A kill means stop. Amended 2026-10-21 after an independent audit and before any code existed (changes only make a false stop or an accidental pass harder; the owner is told in the same message): (1) The metric is the first deploy only; the second and third runs are untimed correctness checks. (2) restUploadAccepted is false only when a control upload of the same script WITHOUT the Workflow binding succeeds and the upload WITH it is refused by Cloudflare with an error body that is saved; any other failed upload (a malformed request, a missing field, a size or CPU rejection, a network error) leaves the check unreported, which is a fail and never a kill, and is fixed and rerun with every attempt kept. (3) secondRunChangesNothing means: no write call in the second run's log, and the test's own read-only requests (not the provisioner's report) find the same database id, the same list of applied migrations and the same latest Worker version id and version count before and after. (4) changedProjectChangesOneThing means: after one setting is changed, Cloudflare's version list gains exactly one new version id (both ids recorded) and the database id and applied migrations are unchanged, so a provisioner that merely says 'one change' is caught.",
+      "caveat": "One account and one run for the timing (repeats are recorded when made). The clock leaves out one-time setup the owner does by hand: the account's workers.dev name and the API token. The scripted check creates a workspace, reads a zero balance, creates and lists invoices as tenant A and sees tenant B denied, and the answers must equal what the same emitted project gives locally. 'Over REST only' means this repository's provisioner makes HTTPS calls to Cloudflare's API and starts no other program (no wrangler); the bundler runs before the upload and is inside the clock. The deployed project uses the header-trusting stub identity, so a deploy-time access key is checked before the project sees any request (the assembled project itself is unchanged); this is a measurement rig, not a product. Resources are named with a prefix and removed by a teardown after the owner has looked, and nothing is deleted that this tool did not create and record. Nothing here shows behaviour under load, on other plans, or for a second customer's account."
+    },
+    {
+      "id": "H11",
+      "title": "One Workflow class runs any graph stored in D1; edits need no re-upload",
+      "epic": "epic-deploy-and-verdict",
+      "status": "live",
+      "metric": null,
+      "pass": null,
+      "kill": null,
+      "mustHold": [
+        "oneWorkflowClassRanAllGraphs",
+        "graphReadFromD1",
+        "editChangedNextRun",
+        "scriptVersionUnchanged",
+        "resultsMatchLocalInterpreter",
+        "everyNodeRanInsideStepDo",
+        "runKeepsItsGraphWhenEditedMidRun",
+        "badEditRefusedBeforeAnyStep",
+        "writeLatencyRecorded"
+      ],
+      "killIfFalse": [
+        "editChangedNextRun",
+        "scriptVersionUnchanged"
+      ],
+      "note": "Rule fixed 2026-10-21, confirmed by the owner as for H10, BEFORE any Workflow code existed. Kill if either editChangedNextRun or scriptVersionUnchanged is false: that would mean a graph edit needs a re-upload, so the stored graph is part of the code and not the product's data. Every other false check is a fail. The D1 write latency (ten timed writes, the median and the slowest) is recorded in the evidence and is not judged. A kill means stop. Amended 2026-10-21 after an independent audit and before any code existed (changes only make a false stop or an accidental pass harder; the owner is told in the same message): scriptVersionUnchanged is judged over a bracket: the Worker's latest version id is read immediately before the run that uses the first graph and again immediately after the run that uses the edited graph, both ids are recorded, and the call log must show no upload between those two readings. An upload made by another story before or after the bracket is irrelevant; one inside it is a fail to be explained, and it is a kill only if the log shows the edit itself required it.",
+      "caveat": "Shows one Workflow class on one account running small graphs of the toy nodes (add, multiply, delay) read from D1, not dafthunk nodes and not long runs; Workflows' own limits (steps per run, run length, retries) are not probed. 'Script version unchanged' is read from Cloudflare's version list and from this repository's own call log (no upload call between the edit and the runs). A run reads its graph once, inside a step, so a replay after a pause uses the same snapshot; an edit made after that does not reach that run, by design. How the edit is made (the D1 REST query endpoint or the deployed Worker) is recorded with the evidence. D1 latency is from one place and is not a benchmark."
+    },
+    {
+      "id": "H12",
+      "title": "A brick's client layer works against its deployed API",
+      "epic": "epic-deploy-and-verdict",
+      "status": "live",
+      "metric": null,
+      "pass": null,
+      "kill": null,
+      "mustHold": [
+        "widgetShowsLiveBalance",
+        "balanceFollowsTheServer",
+        "noGlueCode",
+        "tenantBSeesOwnBalance"
+      ],
+      "killIfFalse": [
+        "widgetShowsLiveBalance",
+        "balanceFollowsTheServer",
+        "noGlueCode"
+      ],
+      "note": "Rule fixed 2026-10-21, confirmed by the owner as for H10, BEFORE any deployed page or widget test existed. Kill if widgetShowsLiveBalance, balanceFollowsTheServer or noGlueCode is false: the brick's client layer then needs hand-written code outside the brick to show a balance, and the four-layer claim drops to three. tenantBSeesOwnBalance false is a fail. The owner looking at the page in a browser is recorded with their word and is not a check, because a tool cannot verify what a person sees. A kill means pivot, not stop. Amended 2026-10-21 after an independent audit and before any code existed (changes only make a false stop or an accidental pass harder; the owner is told in the same message): tenantBSeesOwnBalance requires distinct non-zero balances seeded for tenant A and tenant B and the exact seeded values shown for each, so a server that ignores the tenant or reads the wrong one fails.",
+      "caveat": "jsdom stands in for a browser in the scripted test. The page the owner opens is served inline by the deployed Worker (Cloudflare's static-assets upload is not tested), which keeps the check on the brick's client layer rather than on asset hosting. The test uses only the client the brick exports and the deployed address; 'no glue code' is checked by scanning the test and the page for direct fetch or XMLHttpRequest use. Stub identity and the deploy-time access key apply. One widget (the credit balance) is tested, not every brick's client. The glue-code scan is a text check over the test and the page only, leaving out the brick's own client module, which legitimately calls fetch; it catches an accident or a lazy bypass, not a determined author (an alias or built-up name would evade it), like the H6 and H8 file checks."
+    }
+  ]
+}

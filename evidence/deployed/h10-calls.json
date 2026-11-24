@@ -1,0 +1,1917 @@
+{
+  "schema": 1,
+  "commandStartedAt": "2026-10-21T03:23:00.872Z",
+  "clients": [
+    {
+      "label": "first-deploy",
+      "startedAtMs": 676,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 1,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/subdomain",
+          "status": 200,
+          "ms": 1018,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 1019,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 317,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 3,
+          "atMs": 1337,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database",
+          "status": 200,
+          "ms": 725,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 4,
+          "atMs": 2064,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 402,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 5,
+          "atMs": 2467,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 151,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 6,
+          "atMs": 2618,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 118,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 7,
+          "atMs": 2736,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 130,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 8,
+          "atMs": 2866,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 120,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 9,
+          "atMs": 2987,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 104,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 10,
+          "atMs": 3091,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 126,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 11,
+          "atMs": 3218,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 404,
+          "ms": 870,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 12,
+          "atMs": 4088,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 123,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 13,
+          "atMs": 4221,
+          "method": "PUT",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4",
+          "status": 200,
+          "ms": 2378,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 14,
+          "atMs": 6600,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 914,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 15,
+          "atMs": 7515,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 106,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 16,
+          "atMs": 7621,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows",
+          "status": 200,
+          "ms": 231,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 17,
+          "atMs": 7854,
+          "method": "PUT",
+          "path": "/accounts/{account}/workflows/projectx-poc-c56a65d4-graphs",
+          "status": 200,
+          "ms": 2125,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 18,
+          "atMs": 9981,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 1075,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 19,
+          "atMs": 11057,
+          "method": "POST",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 913,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 20,
+          "atMs": 11971,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 323,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 21,
+          "atMs": 12294,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 118,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 22,
+          "atMs": 12411,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 109,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 23,
+          "atMs": 12521,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 847,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 24,
+          "atMs": 13368,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 890,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "read-back",
+      "startedAtMs": 16696,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/settings",
+          "status": 200,
+          "ms": 948,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 949,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows",
+          "status": 200,
+          "ms": 117,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "reader-before-second",
+      "startedAtMs": 18015,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 286,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 286,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 115,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 3,
+          "atMs": 401,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 113,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 4,
+          "atMs": 514,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 864,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 5,
+          "atMs": 1378,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 851,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "second-deploy",
+      "startedAtMs": 20244,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/subdomain",
+          "status": 200,
+          "ms": 865,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 866,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 272,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 3,
+          "atMs": 1138,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 112,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 4,
+          "atMs": 1250,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 118,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 5,
+          "atMs": 1369,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 796,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 6,
+          "atMs": 2165,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 117,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 7,
+          "atMs": 2282,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows",
+          "status": 200,
+          "ms": 98,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 8,
+          "atMs": 2380,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 957,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 9,
+          "atMs": 3336,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 291,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 10,
+          "atMs": 3628,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 102,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 11,
+          "atMs": 3729,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 118,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 12,
+          "atMs": 3848,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 927,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 13,
+          "atMs": 4775,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 864,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "reader-after-second",
+      "startedAtMs": 25883,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 281,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 281,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 116,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 3,
+          "atMs": 396,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 104,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 4,
+          "atMs": 500,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 846,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 5,
+          "atMs": 1346,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 795,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "reader-before-third",
+      "startedAtMs": 28281,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 281,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 281,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 110,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 3,
+          "atMs": 391,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 118,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 4,
+          "atMs": 509,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 957,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 5,
+          "atMs": 1465,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 904,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "third-deploy",
+      "startedAtMs": 30651,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/subdomain",
+          "status": 200,
+          "ms": 916,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 917,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 295,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 3,
+          "atMs": 1212,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 112,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 4,
+          "atMs": 1324,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 98,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 5,
+          "atMs": 1422,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 802,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 6,
+          "atMs": 2224,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 104,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 7,
+          "atMs": 2335,
+          "method": "PUT",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4",
+          "status": 200,
+          "ms": 2948,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 8,
+          "atMs": 5285,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 788,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 9,
+          "atMs": 6073,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 126,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 10,
+          "atMs": 6200,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows",
+          "status": 200,
+          "ms": 102,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 11,
+          "atMs": 6301,
+          "method": "PUT",
+          "path": "/accounts/{account}/workflows/projectx-poc-c56a65d4-graphs",
+          "status": 200,
+          "ms": 1700,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 12,
+          "atMs": 8003,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 899,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 13,
+          "atMs": 8902,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 289,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 14,
+          "atMs": 9191,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 102,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 15,
+          "atMs": 9293,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 107,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 16,
+          "atMs": 9400,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 819,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 17,
+          "atMs": 10218,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 891,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "reader-after-third",
+      "startedAtMs": 41760,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 306,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 307,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 113,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 3,
+          "atMs": 420,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 110,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 4,
+          "atMs": 530,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 824,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 5,
+          "atMs": 1354,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 874,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "fourth-deploy",
+      "startedAtMs": 45874,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/subdomain",
+          "status": 200,
+          "ms": 784,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 784,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 285,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 3,
+          "atMs": 1069,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 136,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 4,
+          "atMs": 1205,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 115,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 5,
+          "atMs": 1320,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 907,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 6,
+          "atMs": 2227,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 104,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 7,
+          "atMs": 2336,
+          "method": "PUT",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4",
+          "status": 200,
+          "ms": 2658,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 8,
+          "atMs": 4995,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 797,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 9,
+          "atMs": 5793,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 112,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 10,
+          "atMs": 5905,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows",
+          "status": 200,
+          "ms": 91,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 11,
+          "atMs": 5996,
+          "method": "PUT",
+          "path": "/accounts/{account}/workflows/projectx-poc-c56a65d4-graphs",
+          "status": 200,
+          "ms": 1212,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 12,
+          "atMs": 7210,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 807,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 13,
+          "atMs": 8018,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 305,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 14,
+          "atMs": 8323,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 133,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 15,
+          "atMs": 8456,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 105,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 16,
+          "atMs": 8561,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 853,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 17,
+          "atMs": 9414,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 925,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "reader-after-fourth",
+      "startedAtMs": 56212,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-db",
+          "status": 200,
+          "ms": 279,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 279,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 123,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 3,
+          "atMs": 402,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 120,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 4,
+          "atMs": 522,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 810,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 5,
+          "atMs": 1332,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/subdomain",
+          "status": 200,
+          "ms": 808,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    }
+  ],
+  "urlEvents": [
+    {
+      "n": 1,
+      "atMs": 14936,
+      "ms": 455,
+      "phase": "wait-for-address",
+      "method": "GET",
+      "path": "/demo",
+      "status": 200
+    },
+    {
+      "n": 2,
+      "atMs": 15470,
+      "ms": 91,
+      "phase": "first-check-1",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "n": 3,
+      "atMs": 15562,
+      "ms": 271,
+      "phase": "first-check-1",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "n": 4,
+      "atMs": 15833,
+      "ms": 106,
+      "phase": "first-check-1",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 200
+    },
+    {
+      "n": 5,
+      "atMs": 15941,
+      "ms": 123,
+      "phase": "first-check-1",
+      "method": "POST",
+      "path": "/api/invoices",
+      "status": 201
+    },
+    {
+      "n": 6,
+      "atMs": 16064,
+      "ms": 133,
+      "phase": "first-check-1",
+      "method": "GET",
+      "path": "/api/invoices/7722f1bd-7cf9-4fc5-9d47-2be9bbda0cb3",
+      "status": 200
+    },
+    {
+      "n": 7,
+      "atMs": 16199,
+      "ms": 107,
+      "phase": "first-check-1",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 200
+    },
+    {
+      "n": 8,
+      "atMs": 16306,
+      "ms": 108,
+      "phase": "first-check-1",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 200
+    },
+    {
+      "n": 9,
+      "atMs": 16414,
+      "ms": 129,
+      "phase": "first-check-1",
+      "method": "GET",
+      "path": "/api/invoices/7722f1bd-7cf9-4fc5-9d47-2be9bbda0cb3",
+      "status": 404
+    },
+    {
+      "n": 10,
+      "atMs": 16544,
+      "ms": 70,
+      "phase": "first-check-1",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 403
+    },
+    {
+      "n": 11,
+      "atMs": 16615,
+      "ms": 80,
+      "phase": "first-check-1",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 401
+    },
+    {
+      "n": 12,
+      "atMs": 43991,
+      "ms": 335,
+      "phase": "third-check",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "n": 13,
+      "atMs": 44327,
+      "ms": 264,
+      "phase": "third-check",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "n": 14,
+      "atMs": 44592,
+      "ms": 242,
+      "phase": "third-check",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 200
+    },
+    {
+      "n": 15,
+      "atMs": 44835,
+      "ms": 195,
+      "phase": "third-check",
+      "method": "POST",
+      "path": "/api/invoices",
+      "status": 201
+    },
+    {
+      "n": 16,
+      "atMs": 45030,
+      "ms": 114,
+      "phase": "third-check",
+      "method": "GET",
+      "path": "/api/invoices/296ae772-1fdd-4a57-bc48-8ac82589c591",
+      "status": 200
+    },
+    {
+      "n": 17,
+      "atMs": 45146,
+      "ms": 208,
+      "phase": "third-check",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 200
+    },
+    {
+      "n": 18,
+      "atMs": 45355,
+      "ms": 190,
+      "phase": "third-check",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 200
+    },
+    {
+      "n": 19,
+      "atMs": 45545,
+      "ms": 107,
+      "phase": "third-check",
+      "method": "GET",
+      "path": "/api/invoices/296ae772-1fdd-4a57-bc48-8ac82589c591",
+      "status": 404
+    },
+    {
+      "n": 20,
+      "atMs": 45653,
+      "ms": 146,
+      "phase": "third-check",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 403
+    },
+    {
+      "n": 21,
+      "atMs": 45800,
+      "ms": 74,
+      "phase": "third-check",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 401
+    },
+    {
+      "n": 22,
+      "atMs": 58355,
+      "ms": 466,
+      "phase": "fourth-check",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "n": 23,
+      "atMs": 58822,
+      "ms": 297,
+      "phase": "fourth-check",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "n": 24,
+      "atMs": 59120,
+      "ms": 375,
+      "phase": "fourth-check",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 200
+    },
+    {
+      "n": 25,
+      "atMs": 59499,
+      "ms": 321,
+      "phase": "fourth-check",
+      "method": "POST",
+      "path": "/api/invoices",
+      "status": 201
+    },
+    {
+      "n": 26,
+      "atMs": 59820,
+      "ms": 125,
+      "phase": "fourth-check",
+      "method": "GET",
+      "path": "/api/invoices/bf77df7b-7249-426b-8c2d-589cf75a870b",
+      "status": 200
+    },
+    {
+      "n": 27,
+      "atMs": 59946,
+      "ms": 336,
+      "phase": "fourth-check",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 200
+    },
+    {
+      "n": 28,
+      "atMs": 60283,
+      "ms": 359,
+      "phase": "fourth-check",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 200
+    },
+    {
+      "n": 29,
+      "atMs": 60642,
+      "ms": 130,
+      "phase": "fourth-check",
+      "method": "GET",
+      "path": "/api/invoices/bf77df7b-7249-426b-8c2d-589cf75a870b",
+      "status": 404
+    },
+    {
+      "n": 30,
+      "atMs": 60772,
+      "ms": 197,
+      "phase": "fourth-check",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 403
+    },
+    {
+      "n": 31,
+      "atMs": 60970,
+      "ms": 100,
+      "phase": "fourth-check",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 401
+    },
+    {
+      "n": 32,
+      "atMs": 61070,
+      "ms": 106,
+      "phase": "gate",
+      "note": "no-key",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 401
+    },
+    {
+      "n": 33,
+      "atMs": 61176,
+      "ms": 87,
+      "phase": "gate",
+      "note": "no-key",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 401
+    },
+    {
+      "n": 34,
+      "atMs": 61264,
+      "ms": 138,
+      "phase": "gate",
+      "note": "no-key",
+      "method": "GET",
+      "path": "/poc/graphs/x",
+      "status": 401
+    },
+    {
+      "n": 35,
+      "atMs": 61403,
+      "ms": 86,
+      "phase": "gate",
+      "note": "no-key",
+      "method": "POST",
+      "path": "/poc/runs",
+      "status": 401
+    },
+    {
+      "n": 36,
+      "atMs": 61489,
+      "ms": 143,
+      "phase": "gate",
+      "note": "no-key",
+      "method": "GET",
+      "path": "/",
+      "status": 401
+    },
+    {
+      "n": 37,
+      "atMs": 61633,
+      "ms": 101,
+      "phase": "gate",
+      "note": "wrong-key",
+      "method": "GET",
+      "path": "/api/invoices",
+      "status": 401
+    },
+    {
+      "n": 38,
+      "atMs": 61734,
+      "ms": 134,
+      "phase": "gate",
+      "note": "wrong-key",
+      "method": "GET",
+      "path": "/api/wallet",
+      "status": 401
+    },
+    {
+      "n": 39,
+      "atMs": 61868,
+      "ms": 101,
+      "phase": "gate",
+      "note": "wrong-key",
+      "method": "GET",
+      "path": "/poc/graphs/x",
+      "status": 401
+    },
+    {
+      "n": 40,
+      "atMs": 61970,
+      "ms": 106,
+      "phase": "gate",
+      "note": "wrong-key",
+      "method": "POST",
+      "path": "/poc/runs",
+      "status": 401
+    },
+    {
+      "n": 41,
+      "atMs": 62077,
+      "ms": 102,
+      "phase": "gate",
+      "note": "wrong-key",
+      "method": "GET",
+      "path": "/",
+      "status": 401
+    },
+    {
+      "n": 42,
+      "atMs": 62179,
+      "ms": 165,
+      "phase": "gate",
+      "note": "demo-open",
+      "method": "GET",
+      "path": "/demo",
+      "status": 200
+    },
+    {
+      "n": 43,
+      "atMs": 62483,
+      "ms": 105,
+      "phase": "gate",
+      "note": "demo-post-refused",
+      "method": "POST",
+      "path": "/demo",
+      "status": 401
+    }
+  ],
+  "facts": {
+    "names": {
+      "suffix": "c56a65d4",
+      "script": "projectx-poc-c56a65d4",
+      "database": "projectx-poc-c56a65d4-db",
+      "workflow": "projectx-poc-c56a65d4-graphs"
+    },
+    "url": "https://projectx-poc-c56a65d4.killerkingmega.workers.dev",
+    "builds": {
+      "base": {
+        "sha256": "6c817fb307cd120e449fcf78ace97d807e83dfed2ffc0d2f37152e864221e1d2",
+        "bytes": 1563029
+      },
+      "rebuilt": {
+        "sha256": "6c817fb307cd120e449fcf78ace97d807e83dfed2ffc0d2f37152e864221e1d2"
+      },
+      "changed": {
+        "sha256": "954f9e9bf8283ab8bea01ecfdb6bdcaefc61739c82ea54ea3bc8083cc19aac4e"
+      }
+    },
+    "runs": {
+      "first": {
+        "client": "first-deploy",
+        "changes": [
+          "database_created",
+          "bookkeeping_created",
+          "migration_applied",
+          "migration_applied",
+          "migration_applied",
+          "migration_applied",
+          "script_uploaded",
+          "workflow_registered",
+          "address_enabled"
+        ],
+        "uploadFingerprint": "43f14a4aaae9e3173583b46d2d9357c32c32f7e7e81258e5f20562ab17e47c8c",
+        "bundleSha256": "6c817fb307cd120e449fcf78ace97d807e83dfed2ffc0d2f37152e864221e1d2"
+      },
+      "second": {
+        "client": "second-deploy",
+        "changes": [],
+        "uploadFingerprint": "43f14a4aaae9e3173583b46d2d9357c32c32f7e7e81258e5f20562ab17e47c8c",
+        "bundleSha256": "6c817fb307cd120e449fcf78ace97d807e83dfed2ffc0d2f37152e864221e1d2"
+      },
+      "third": {
+        "client": "third-deploy",
+        "changes": [
+          "script_uploaded",
+          "workflow_registered"
+        ],
+        "uploadFingerprint": "0cf3447a0f4bbfd321b471701c36707c861413f41a549079a507e8332cd8dacb",
+        "bundleSha256": "954f9e9bf8283ab8bea01ecfdb6bdcaefc61739c82ea54ea3bc8083cc19aac4e"
+      },
+      "fourth": {
+        "client": "fourth-deploy",
+        "changes": [
+          "script_uploaded",
+          "workflow_registered"
+        ],
+        "uploadFingerprint": "43f14a4aaae9e3173583b46d2d9357c32c32f7e7e81258e5f20562ab17e47c8c",
+        "bundleSha256": "6c817fb307cd120e449fcf78ace97d807e83dfed2ffc0d2f37152e864221e1d2"
+      }
+    },
+    "upload": {
+      "outcome": "accepted"
+    },
+    "bindingsReadBack": {
+      "bindings": [
+        {
+          "type": "d1",
+          "name": "DB"
+        },
+        {
+          "type": "workflow",
+          "name": "GRAPH_RUNNER",
+          "workflowName": "projectx-poc-c56a65d4-graphs",
+          "className": "GraphRunner"
+        },
+        {
+          "type": "secret_text",
+          "name": "POC_ACCESS_KEY"
+        }
+      ],
+      "workflowsListed": [
+        "projectx-poc-c56a65d4-graphs"
+      ]
+    },
+    "readings": {
+      "beforeSecond": {
+        "databaseId": "8cc2fe5f-5c56-4619-802b-2e00d2612a4e",
+        "appliedMigrations": [
+          "0001_multi-workspace__0001_multi_workspace.sql",
+          "0002_credit-wallet__0001_credit_wallet.sql",
+          "0003_entity__invoices.sql",
+          "9000_poc_graphs.sql"
+        ],
+        "latestVersionId": "928f3b4c-024c-426d-af31-a15a3d725360",
+        "versionCount": 1,
+        "addressEnabled": true
+      },
+      "afterSecond": {
+        "databaseId": "8cc2fe5f-5c56-4619-802b-2e00d2612a4e",
+        "appliedMigrations": [
+          "0001_multi-workspace__0001_multi_workspace.sql",
+          "0002_credit-wallet__0001_credit_wallet.sql",
+          "0003_entity__invoices.sql",
+          "9000_poc_graphs.sql"
+        ],
+        "latestVersionId": "928f3b4c-024c-426d-af31-a15a3d725360",
+        "versionCount": 1,
+        "addressEnabled": true
+      },
+      "beforeThird": {
+        "databaseId": "8cc2fe5f-5c56-4619-802b-2e00d2612a4e",
+        "appliedMigrations": [
+          "0001_multi-workspace__0001_multi_workspace.sql",
+          "0002_credit-wallet__0001_credit_wallet.sql",
+          "0003_entity__invoices.sql",
+          "9000_poc_graphs.sql"
+        ],
+        "latestVersionId": "928f3b4c-024c-426d-af31-a15a3d725360",
+        "versionCount": 1,
+        "addressEnabled": true
+      },
+      "afterThird": {
+        "databaseId": "8cc2fe5f-5c56-4619-802b-2e00d2612a4e",
+        "appliedMigrations": [
+          "0001_multi-workspace__0001_multi_workspace.sql",
+          "0002_credit-wallet__0001_credit_wallet.sql",
+          "0003_entity__invoices.sql",
+          "9000_poc_graphs.sql"
+        ],
+        "latestVersionId": "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+        "versionCount": 2,
+        "addressEnabled": true
+      },
+      "afterFourth": {
+        "databaseId": "8cc2fe5f-5c56-4619-802b-2e00d2612a4e",
+        "appliedMigrations": [
+          "0001_multi-workspace__0001_multi_workspace.sql",
+          "0002_credit-wallet__0001_credit_wallet.sql",
+          "0003_entity__invoices.sql",
+          "9000_poc_graphs.sql"
+        ],
+        "latestVersionId": "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+        "versionCount": 3,
+        "addressEnabled": true
+      }
+    },
+    "observations": {
+      "first": [
+        {
+          "step": "alice creates workspace A",
+          "status": 201,
+          "facts": {
+            "hasWorkspaceId": true
+          }
+        },
+        {
+          "step": "bob creates workspace B",
+          "status": 201,
+          "facts": {
+            "hasWorkspaceId": true
+          }
+        },
+        {
+          "step": "A's wallet starts at zero",
+          "status": 200,
+          "facts": {
+            "balance": 0
+          }
+        },
+        {
+          "step": "A creates an invoice",
+          "status": 201,
+          "facts": {
+            "clientName": "Acme",
+            "amount": 100,
+            "invoiceStatus": "draft"
+          }
+        },
+        {
+          "step": "A reads its own invoice by id",
+          "status": 200,
+          "facts": {
+            "clientName": "Acme"
+          }
+        },
+        {
+          "step": "A lists its invoices",
+          "status": 200,
+          "facts": {
+            "total": 1,
+            "firstClient": "Acme"
+          }
+        },
+        {
+          "step": "B lists its invoices and sees none of A's",
+          "status": 200,
+          "facts": {
+            "total": 0,
+            "sawAcme": false
+          }
+        },
+        {
+          "step": "B reads A's invoice by id and is refused",
+          "status": 404,
+          "facts": {
+            "leakedAcme": false
+          }
+        },
+        {
+          "step": "B names A's workspace and is refused",
+          "status": 403,
+          "facts": {
+            "leakedAcme": false
+          }
+        },
+        {
+          "step": "a request with no identity is refused",
+          "status": 401,
+          "facts": {}
+        }
+      ],
+      "third": [
+        {
+          "step": "alice creates workspace A",
+          "status": 201,
+          "facts": {
+            "hasWorkspaceId": true
+          }
+        },
+        {
+          "step": "bob creates workspace B",
+          "status": 201,
+          "facts": {
+            "hasWorkspaceId": true
+          }
+        },
+        {
+          "step": "A's wallet starts at zero",
+          "status": 200,
+          "facts": {
+            "balance": 0
+          }
+        },
+        {
+          "step": "A creates an invoice",
+          "status": 201,
+          "facts": {
+            "clientName": "Acme",
+            "amount": 100,
+            "invoiceStatus": "draft"
+          }
+        },
+        {
+          "step": "A reads its own invoice by id",
+          "status": 200,
+          "facts": {
+            "clientName": "Acme"
+          }
+        },
+        {
+          "step": "A lists its invoices",
+          "status": 200,
+          "facts": {
+            "total": 1,
+            "firstClient": "Acme"
+          }
+        },
+        {
+          "step": "B lists its invoices and sees none of A's",
+          "status": 200,
+          "facts": {
+            "total": 0,
+            "sawAcme": false
+          }
+        },
+        {
+          "step": "B reads A's invoice by id and is refused",
+          "status": 404,
+          "facts": {
+            "leakedAcme": false
+          }
+        },
+        {
+          "step": "B names A's workspace and is refused",
+          "status": 403,
+          "facts": {
+            "leakedAcme": false
+          }
+        },
+        {
+          "step": "a request with no identity is refused",
+          "status": 401,
+          "facts": {}
+        }
+      ],
+      "fourth": [
+        {
+          "step": "alice creates workspace A",
+          "status": 201,
+          "facts": {
+            "hasWorkspaceId": true
+          }
+        },
+        {
+          "step": "bob creates workspace B",
+          "status": 201,
+          "facts": {
+            "hasWorkspaceId": true
+          }
+        },
+        {
+          "step": "A's wallet starts at zero",
+          "status": 200,
+          "facts": {
+            "balance": 0
+          }
+        },
+        {
+          "step": "A creates an invoice",
+          "status": 201,
+          "facts": {
+            "clientName": "Acme",
+            "amount": 100,
+            "invoiceStatus": "draft"
+          }
+        },
+        {
+          "step": "A reads its own invoice by id",
+          "status": 200,
+          "facts": {
+            "clientName": "Acme"
+          }
+        },
+        {
+          "step": "A lists its invoices",
+          "status": 200,
+          "facts": {
+            "total": 1,
+            "firstClient": "Acme"
+          }
+        },
+        {
+          "step": "B lists its invoices and sees none of A's",
+          "status": 200,
+          "facts": {
+            "total": 0,
+            "sawAcme": false
+          }
+        },
+        {
+          "step": "B reads A's invoice by id and is refused",
+          "status": 404,
+          "facts": {
+            "leakedAcme": false
+          }
+        },
+        {
+          "step": "B names A's workspace and is refused",
+          "status": 403,
+          "facts": {
+            "leakedAcme": false
+          }
+        },
+        {
+          "step": "a request with no identity is refused",
+          "status": 401,
+          "facts": {}
+        }
+      ]
+    },
+    "timedCheckPhase": "first-check-1",
+    "attempts": [
+      {
+        "n": 1,
+        "phase": "build",
+        "atMs": 674,
+        "outcome": "ok",
+        "detail": "bundle 6c817fb307cd, 1563029 bytes"
+      },
+      {
+        "n": 2,
+        "phase": "first deploy",
+        "atMs": 14934,
+        "outcome": "ok",
+        "detail": "database_created, bookkeeping_created, migration_applied, migration_applied, migration_applied, migration_applied, script_uploaded, workflow_registered, address_enabled"
+      },
+      {
+        "n": 3,
+        "phase": "address answers",
+        "atMs": 15468,
+        "outcome": "ok",
+        "detail": "GET /demo after 1 request(s)"
+      },
+      {
+        "n": 4,
+        "phase": "scripted check",
+        "atMs": 16695,
+        "outcome": "ok",
+        "detail": "answered correctly on try 1"
+      },
+      {
+        "n": 5,
+        "phase": "second run",
+        "atMs": 28025,
+        "outcome": "ok",
+        "detail": "0 change(s) reported"
+      },
+      {
+        "n": 6,
+        "phase": "third run (one setting changed)",
+        "atMs": 43988,
+        "outcome": "ok",
+        "detail": "script_uploaded, workflow_registered"
+      },
+      {
+        "n": 7,
+        "phase": "fourth run (setting restored)",
+        "atMs": 58353,
+        "outcome": "ok",
+        "detail": "script_uploaded, workflow_registered"
+      },
+      {
+        "n": 8,
+        "phase": "gate probes",
+        "atMs": 62588,
+        "outcome": "ok",
+        "detail": "12 requests made without the key or with a wrong one"
+      }
+    ]
+  }
+}

@@ -1,0 +1,858 @@
+{
+  "generatedBy": "node scripts/catalog-tiers.ts",
+  "counts": {
+    "total": 42,
+    "production": 3,
+    "beta": 30,
+    "experimental": 9
+  },
+  "presets": {
+    "ai-credits-saas": [
+      "multi-workspace",
+      "core-auth",
+      "credit-wallet",
+      "subscription-plans",
+      "metered-usage",
+      "vector-memory",
+      "public-api-keys",
+      "edge-traffic-armor",
+      "dynamic-entities"
+    ],
+    "b2b-workspace-app": [
+      "multi-workspace",
+      "core-auth",
+      "rbac-policy",
+      "audit-trail",
+      "dynamic-entities",
+      "outbound-webhooks",
+      "in-app-notifications",
+      "feature-flags"
+    ],
+    "marketplace": [
+      "multi-workspace",
+      "core-auth",
+      "credit-wallet",
+      "subscription-plans",
+      "binary-assets",
+      "dynamic-entities",
+      "search-faceted",
+      "threaded-discussions"
+    ],
+    "stripe-discord-ops": [
+      "multi-workspace",
+      "core-auth",
+      "webhook-gateway",
+      "integration-connections",
+      "dynamic-entities",
+      "audit-trail"
+    ]
+  },
+  "bricks": [
+    {
+      "id": "admin-console",
+      "tier": "experimental",
+      "declaredTier": "experimental",
+      "derivedTier": "experimental",
+      "blockers": [
+        "BEHAVIOUR_TEST_NOT_EXECUTED",
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "QUARANTINED: impersonation verify/end routes have no workspace-role check, so any member reaches them (attack suite ROLE_ESCALATION); super-admin powers sit inside a tenant app (risk 4)",
+      "behaviourTest": "bricks/admin-console/test/admin.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 0
+      }
+    },
+    {
+      "id": "agent-sandbox",
+      "tier": "experimental",
+      "declaredTier": "experimental",
+      "derivedTier": "experimental",
+      "blockers": [
+        "BEHAVIOUR_TEST_NOT_EXECUTED",
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "QUARANTINED: stub; only four built-in handlers run, inline_js, http_webhook and workflow_call tools fail NOT_CONFIGURED, and there is no isolate sandbox",
+      "behaviourTest": "bricks/agent-sandbox/test/agent.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 0
+      }
+    },
+    {
+      "id": "audit-trail",
+      "tier": "production",
+      "declaredTier": "production",
+      "derivedTier": "production",
+      "blockers": [],
+      "reason": null,
+      "behaviourTest": "bricks/audit-trail/test/audit.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 29
+      }
+    },
+    {
+      "id": "binary-assets",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/binary-assets/test/assets.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 32
+      }
+    },
+    {
+      "id": "checkout-gateway",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "Persists checkout sessions, tax calculations, and invoices in D1, but external Stripe, Razorpay, and LemonSqueezy API calls are stubbed with synthetic URLs",
+      "behaviourTest": "bricks/checkout-gateway/test/checkout.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 37
+      }
+    },
+    {
+      "id": "core-auth",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/core-auth/test/better-auth.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 126
+      }
+    },
+    {
+      "id": "credit-wallet",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "DEFAULT_ADAPTER_FAKE"
+      ],
+      "reason": "NO_DEFAULT_ADAPTER: No payment gateway is configured by default (payment routes answer 503 NOT_CONFIGURED); pending real provider adapter.",
+      "behaviourTest": "bricks/credit-wallet/test/credit-wallet.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 235
+      }
+    },
+    {
+      "id": "cron-alarms",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/cron-alarms/test/cron.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 79
+      }
+    },
+    {
+      "id": "custom-domains",
+      "tier": "experimental",
+      "declaredTier": "experimental",
+      "derivedTier": "experimental",
+      "blockers": [
+        "BEHAVIOUR_TEST_NOT_EXECUTED",
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "QUARANTINED: stub; verifyDomain() reports DNS verified and SSL active without any DNS-over-HTTPS or Cloudflare Custom Hostnames call (fabricated success)",
+      "behaviourTest": "bricks/custom-domains/test/domains.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 0
+      }
+    },
+    {
+      "id": "data-privacy-gdpr",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/data-privacy-gdpr/test/privacy.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 72
+      }
+    },
+    {
+      "id": "document-parsing",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "Ingests plain text, Markdown, and CSV into D1 chunks with regex field extraction, but binary PDF, DOCX, and OCR parsing are not implemented",
+      "behaviourTest": "bricks/document-parsing/test/document-parsing.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 56
+      }
+    },
+    {
+      "id": "document-pdf",
+      "tier": "experimental",
+      "declaredTier": "experimental",
+      "derivedTier": "experimental",
+      "blockers": [
+        "BEHAVIOUR_TEST_NOT_EXECUTED",
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "QUARANTINED: stub; strips HTML/CSS into plain text on a single PDF page with no layout or pagination, and conflicts with document-parsing",
+      "behaviourTest": "bricks/document-pdf/test/document.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 0
+      }
+    },
+    {
+      "id": "dynamic-entities",
+      "tier": "production",
+      "declaredTier": "production",
+      "derivedTier": "production",
+      "blockers": [],
+      "reason": null,
+      "behaviourTest": "bricks/dynamic-entities/test/dynamic-entities.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 78
+      }
+    },
+    {
+      "id": "edge-traffic-armor",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/edge-traffic-armor/test/armor.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 31
+      }
+    },
+    {
+      "id": "feature-flags",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/feature-flags/test/flags.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 55
+      }
+    },
+    {
+      "id": "identity-federation",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "OIDC SSO wired via oidc-verify; SAML not supported",
+      "behaviourTest": "bricks/identity-federation/test/federation.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 54
+      }
+    },
+    {
+      "id": "in-app-notifications",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/in-app-notifications/test/notifications.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 46
+      }
+    },
+    {
+      "id": "integration-connections",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/integration-connections/test/isolation.workerd.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 74
+      }
+    },
+    {
+      "id": "live-chat",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/live-chat/test/chat.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 48
+      }
+    },
+    {
+      "id": "llm-gateway",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "Persists prompt templates and token usage logs in D1; registers no provider adapter by default (generate answers 503 NOT_CONFIGURED); no built-in OpenAI, Anthropic, Gemini or Workers AI adapters",
+      "behaviourTest": "bricks/llm-gateway/test/gateway.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 46
+      }
+    },
+    {
+      "id": "marketplace-splits",
+      "tier": "experimental",
+      "declaredTier": "experimental",
+      "derivedTier": "experimental",
+      "blockers": [
+        "BEHAVIOUR_TEST_NOT_EXECUTED",
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "QUARANTINED: payouts can double-spend (threat-model risk 6) and contracts/balances answer 200 for any vendor id from another workspace (attack suite ID_GUESS)",
+      "behaviourTest": "bricks/marketplace-splits/test/splits.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 0
+      }
+    },
+    {
+      "id": "metered-usage",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/metered-usage/test/metering.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 51
+      }
+    },
+    {
+      "id": "multi-workspace",
+      "tier": "production",
+      "declaredTier": "production",
+      "derivedTier": "production",
+      "blockers": [],
+      "reason": null,
+      "behaviourTest": "bricks/multi-workspace/test/multi-workspace.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 42
+      }
+    },
+    {
+      "id": "oauth-server",
+      "tier": "experimental",
+      "declaredTier": "experimental",
+      "derivedTier": "experimental",
+      "blockers": [
+        "BEHAVIOUR_TEST_NOT_EXECUTED",
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "QUARANTINED: stub; issues access tokens that no brick or route accepts, and its authorize route issued codes for any user named in the body until 0.6 (threat-model risk 13)",
+      "behaviourTest": "bricks/oauth-server/test/oauth.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 0
+      }
+    },
+    {
+      "id": "oidc-verify",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "Beta until verified with live canary against production identity issuer (UC5).",
+      "behaviourTest": "bricks/oidc-verify/test/conformance.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 59
+      }
+    },
+    {
+      "id": "omnichannel-outbound",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "Persists channels, templates, suppressions and dispatch logs in D1; no delivery adapter by default (send answers 503 NOT_CONFIGURED); no built-in email, SMS or Slack adapters",
+      "behaviourTest": "bricks/omnichannel-outbound/test/dispatcher.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 50
+      }
+    },
+    {
+      "id": "outbound-webhooks",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/outbound-webhooks/test/outbound.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 62
+      }
+    },
+    {
+      "id": "product-analytics",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/product-analytics/test/analytics.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 26
+      }
+    },
+    {
+      "id": "public-api-keys",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/public-api-keys/test/keys.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 23
+      }
+    },
+    {
+      "id": "queue-jobs",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/queue-jobs/test/jobs.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 51
+      }
+    },
+    {
+      "id": "rbac-policy",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/rbac-policy/test/rbac.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 25
+      }
+    },
+    {
+      "id": "realtime-presence",
+      "tier": "experimental",
+      "declaredTier": "experimental",
+      "derivedTier": "experimental",
+      "blockers": [
+        "BEHAVIOUR_TEST_NOT_EXECUTED",
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "QUARANTINED: room and user lookups answer 200 for a room name or user id from another workspace (attack suite ID_GUESS); HTTP polling in D1, no WebSocket push",
+      "behaviourTest": "bricks/realtime-presence/test/presence.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 0
+      }
+    },
+    {
+      "id": "scripting-sandbox",
+      "tier": "experimental",
+      "declaredTier": "experimental",
+      "derivedTier": "experimental",
+      "blockers": [
+        "BEHAVIOUR_TEST_NOT_EXECUTED",
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "Executes in isolated Worker (Worker Loader/Dispatch) with CPU and wall limits; experimental pending live platform binding rollout per AC5",
+      "behaviourTest": "bricks/scripting-sandbox/test/sandbox.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 0
+      }
+    },
+    {
+      "id": "search-faceted",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/search-faceted/test/search.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 28
+      }
+    },
+    {
+      "id": "subscription-plans",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/subscription-plans/test/plans.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 75
+      }
+    },
+    {
+      "id": "tabular-engine",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/tabular-engine/test/tabular.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 36
+      }
+    },
+    {
+      "id": "threaded-discussions",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/threaded-discussions/test/threads.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 34
+      }
+    },
+    {
+      "id": "user-onboarding",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/user-onboarding/test/onboarding.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 31
+      }
+    },
+    {
+      "id": "user-profile",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/user-profile/test/profile.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 39
+      }
+    },
+    {
+      "id": "vector-memory",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/vector-memory/test/vectors.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 33
+      }
+    },
+    {
+      "id": "webhook-gateway",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
+      "behaviourTest": "bricks/webhook-gateway/test/gateway.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 76
+      }
+    },
+    {
+      "id": "workflow-dag",
+      "tier": "experimental",
+      "declaredTier": "experimental",
+      "derivedTier": "experimental",
+      "blockers": [
+        "BEHAVIOUR_TEST_NOT_EXECUTED",
+        "CONFORMANCE_KIT_MISSING"
+      ],
+      "reason": "QUARANTINED: overlaps blueprint workflows (architecture Open question 12) and runs in-process with toy executors rather than durable Cloudflare Workflows",
+      "behaviourTest": "bricks/workflow-dag/test/workflow.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.260Z",
+        "assertionCount": 0
+      }
+    }
+  ],
+  "integrations": [
+    {
+      "id": "discord",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "LIVE_CANARY_STALE"
+      ],
+      "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.295Z",
+        "assertionCount": 167,
+        "liveVerifiedAt": null,
+        "fidelity": {
+          "specHash": "sha256:2c04fb4cb26068c779d4996f64fff5ed31d3afe5ac69bbcdb11ac81c790d270a",
+          "importerVersion": "2.0.0",
+          "level": "curated",
+          "unsupported": []
+        }
+      }
+    },
+    {
+      "id": "github",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "LIVE_CANARY_STALE"
+      ],
+      "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.295Z",
+        "assertionCount": 167,
+        "liveVerifiedAt": null,
+        "fidelity": {
+          "specHash": "sha256:2aaece148e7e1b749c7c6fe3496eadf6623c527e9cd6c4d18f7841e383efba1f",
+          "importerVersion": "2.0.0",
+          "level": "curated",
+          "unsupported": []
+        }
+      }
+    },
+    {
+      "id": "google",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "LIVE_CANARY_STALE"
+      ],
+      "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.295Z",
+        "assertionCount": 167,
+        "liveVerifiedAt": null,
+        "fidelity": {
+          "specHash": "sha256:19663aef2afe01aa3e4f89e70f6377c6c2bec105604bae303a8491f019975a84",
+          "importerVersion": "2.0.0",
+          "level": "curated",
+          "unsupported": []
+        }
+      }
+    },
+    {
+      "id": "slack",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "LIVE_CANARY_STALE"
+      ],
+      "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.295Z",
+        "assertionCount": 167,
+        "liveVerifiedAt": null,
+        "fidelity": {
+          "specHash": "sha256:d3da2c0b8ba608d025f96cb63d737f0aae1a640f6efaf51d346e15528e21e0f5",
+          "importerVersion": "2.0.0",
+          "level": "partial",
+          "unsupported": [
+            {
+              "op": "conversations_history",
+              "code": "PAGINATION_UNMODELLED",
+              "pointer": "#/paths/~1conversations.history/get/responses/200",
+              "blocking": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "stripe",
+      "tier": "beta",
+      "declaredTier": "beta",
+      "derivedTier": "beta",
+      "blockers": [
+        "LIVE_CANARY_STALE"
+      ],
+      "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+      "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
+      "evidence": {
+        "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+        "runAt": "2026-11-24T09:27:50.295Z",
+        "assertionCount": 167,
+        "liveVerifiedAt": null,
+        "fidelity": {
+          "specHash": "sha256:c3fcdadb633e619af64d2bb053f7f1d75daff1e5b8acd50d58457b661ec83af0",
+          "importerVersion": "2.0.0",
+          "level": "curated",
+          "unsupported": []
+        }
+      }
+    }
+  ],
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "scripts/catalog-tiers.ts",
+    "inputKind": "measured"
+  }
+}

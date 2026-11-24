@@ -1,0 +1,80 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "rbac-policy",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "policy-guard"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_rbac_policy.sql"
+  ],
+  "routePrefixes": [
+    "roles",
+    "policies"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "allowCustomRoles": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "ui": {
+    "displayName": "RBAC & ABAC Policy Engine",
+    "category": "identity",
+    "summary": "Workspace role-based access control and permissions.",
+    "maturity": "beta",
+    "behaviourTest": "test/rbac.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "globalTables": [
+    {
+      "table": "rbac_permissions",
+      "reason": "Global permission catalog referenced by workspace-scoped roles"
+    }
+  ],
+  "worker": {
+    "package": "@poc/rbac-policy",
+    "routes": [
+      {
+        "factory": "createRbacRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/roles",
+          "/api/roles/*",
+          "/api/policies",
+          "/api/policies/*"
+        ],
+        "options": {
+          "customRoles": {
+            "$setting": "allowCustomRoles"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "rbac_roles": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "rbac_role_assignments": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

@@ -1,0 +1,269 @@
+{
+  "schema": 1,
+  "commandStartedAt": "2026-10-21T09:39:29.698Z",
+  "url": "https://projectx-poc-c56a65d4-mcp.killerkingmega.workers.dev/mcp",
+  "deploy": {
+    "bytes": 863772,
+    "gzipBytes": 144332,
+    "sha256": "f6152a06ff457c4c3f6e8154eace780125025502b9b76e8e6c21c923d9dde2c6",
+    "percentOfLimit": 1.29,
+    "limitBytes": 67108864,
+    "startupTimeMs": 19,
+    "changes": [
+      "created database projectx-poc-c56a65d4-mcp-db",
+      "created the tool's two bookkeeping tables in the project database",
+      "applied migration 0001_mcp_server.sql",
+      "uploaded Worker projectx-poc-c56a65d4-mcp",
+      "switched on https://projectx-poc-c56a65d4-mcp.killerkingmega.workers.dev"
+    ],
+    "reachableAfterMs": 582
+  },
+  "uploadError": null,
+  "projectWorker": {
+    "before": [
+      "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+      "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+      "928f3b4c-024c-426d-af31-a15a3d725360"
+    ],
+    "after": [
+      "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+      "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+      "928f3b4c-024c-426d-af31-a15a3d725360"
+    ]
+  },
+  "closed": {
+    "noToken": 404,
+    "wrongToken": 404
+  },
+  "session": {
+    "connected": false,
+    "exchanges": [
+      {
+        "what": "initialize",
+        "status": 404,
+        "ms": 75,
+        "body": "404 Not Found"
+      }
+    ],
+    "answers": [],
+    "toolCalls": 0,
+    "stoppedAt": "connect"
+  },
+  "storedAfterSession": null,
+  "repeats": [],
+  "storedAfterRepeats": null,
+  "ladderRun": false,
+  "ladder": [],
+  "account": [
+    {
+      "n": 1,
+      "atMs": 3,
+      "method": "GET",
+      "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+      "status": 200,
+      "ms": 1290,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 2,
+      "atMs": 1406,
+      "method": "GET",
+      "path": "/accounts/{account}/workers/subdomain",
+      "status": 200,
+      "ms": 913,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 3,
+      "atMs": 2319,
+      "method": "GET",
+      "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-mcp-db",
+      "status": 200,
+      "ms": 333,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 4,
+      "atMs": 2655,
+      "method": "POST",
+      "path": "/accounts/{account}/d1/database",
+      "status": 200,
+      "ms": 937,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 5,
+      "atMs": 3593,
+      "method": "POST",
+      "path": "/accounts/{account}/d1/database/05f8653a-416d-4a86-a695-762ecaf675cb/query",
+      "status": 200,
+      "ms": 417,
+      "outcome": "ok",
+      "attempt": 1,
+      "sqlKind": "select"
+    },
+    {
+      "n": 6,
+      "atMs": 4010,
+      "method": "POST",
+      "path": "/accounts/{account}/d1/database/05f8653a-416d-4a86-a695-762ecaf675cb/query",
+      "status": 200,
+      "ms": 154,
+      "outcome": "ok",
+      "attempt": 1,
+      "sqlKind": "write"
+    },
+    {
+      "n": 7,
+      "atMs": 4164,
+      "method": "POST",
+      "path": "/accounts/{account}/d1/database/05f8653a-416d-4a86-a695-762ecaf675cb/query",
+      "status": 200,
+      "ms": 127,
+      "outcome": "ok",
+      "attempt": 1,
+      "sqlKind": "select"
+    },
+    {
+      "n": 8,
+      "atMs": 4291,
+      "method": "POST",
+      "path": "/accounts/{account}/d1/database/05f8653a-416d-4a86-a695-762ecaf675cb/query",
+      "status": 200,
+      "ms": 159,
+      "outcome": "ok",
+      "attempt": 1,
+      "sqlKind": "write"
+    },
+    {
+      "n": 9,
+      "atMs": 4451,
+      "method": "GET",
+      "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4-mcp/versions",
+      "status": 404,
+      "ms": 915,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 10,
+      "atMs": 5366,
+      "method": "POST",
+      "path": "/accounts/{account}/d1/database/05f8653a-416d-4a86-a695-762ecaf675cb/query",
+      "status": 200,
+      "ms": 127,
+      "outcome": "ok",
+      "attempt": 1,
+      "sqlKind": "select"
+    },
+    {
+      "n": 11,
+      "atMs": 5500,
+      "method": "PUT",
+      "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4-mcp",
+      "status": 200,
+      "ms": 2389,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 12,
+      "atMs": 7892,
+      "method": "GET",
+      "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4-mcp/versions",
+      "status": 200,
+      "ms": 960,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 13,
+      "atMs": 8852,
+      "method": "POST",
+      "path": "/accounts/{account}/d1/database/05f8653a-416d-4a86-a695-762ecaf675cb/query",
+      "status": 200,
+      "ms": 132,
+      "outcome": "ok",
+      "attempt": 1,
+      "sqlKind": "write"
+    },
+    {
+      "n": 14,
+      "atMs": 8984,
+      "method": "GET",
+      "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4-mcp/subdomain",
+      "status": 200,
+      "ms": 842,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 15,
+      "atMs": 9827,
+      "method": "POST",
+      "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4-mcp/subdomain",
+      "status": 200,
+      "ms": 943,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 16,
+      "atMs": 10770,
+      "method": "GET",
+      "path": "/accounts/{account}/d1/database?name=projectx-poc-c56a65d4-mcp-db",
+      "status": 200,
+      "ms": 317,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 17,
+      "atMs": 11087,
+      "method": "POST",
+      "path": "/accounts/{account}/d1/database/05f8653a-416d-4a86-a695-762ecaf675cb/query",
+      "status": 200,
+      "ms": 133,
+      "outcome": "ok",
+      "attempt": 1,
+      "sqlKind": "select"
+    },
+    {
+      "n": 18,
+      "atMs": 11220,
+      "method": "POST",
+      "path": "/accounts/{account}/d1/database/05f8653a-416d-4a86-a695-762ecaf675cb/query",
+      "status": 200,
+      "ms": 123,
+      "outcome": "ok",
+      "attempt": 1,
+      "sqlKind": "select"
+    },
+    {
+      "n": 19,
+      "atMs": 11344,
+      "method": "GET",
+      "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4-mcp/versions",
+      "status": 200,
+      "ms": 1137,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 20,
+      "atMs": 12480,
+      "method": "GET",
+      "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4-mcp/subdomain",
+      "status": 200,
+      "ms": 865,
+      "outcome": "ok",
+      "attempt": 1
+    }
+  ],
+  "directFiles": 9,
+  "directHash": "608a7f25b4930e6c9e599df848d6c57ac2073e364dc2797bec5f54671a88de71"
+}

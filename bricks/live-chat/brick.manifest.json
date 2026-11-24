@@ -1,0 +1,66 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "live-chat",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "support-chat"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_live_chat.sql"
+  ],
+  "routePrefixes": [
+    "chat"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Live Chat & Support Messenger",
+    "category": "communication",
+    "summary": "Visitor chat widget, agent inbox, and canned replies.",
+    "maturity": "beta",
+    "behaviourTest": "test/chat.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "worker": {
+    "package": "@poc/live-chat",
+    "routes": [
+      {
+        "factory": "createChatRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/chat",
+          "/api/chat/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "chat_conversations": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "chat_messages": {
+        "subject": "user",
+        "userColumn": "sender_id",
+        "erase": "delete",
+        "export": true
+      },
+      "chat_canned_replies": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

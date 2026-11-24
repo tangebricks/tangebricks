@@ -1,0 +1,221 @@
+{
+  "generatedAt": "2026-11-02T18:08:33.247Z",
+  "cohortId": "cohort-1",
+  "composition": {
+    "totalPartners": 5,
+    "agencyCount": 2,
+    "mcpFirstDevCount": 2,
+    "soloFounderCount": 1,
+    "d1CompositionPassed": true
+  },
+  "ttfd": {
+    "sampleSize": 5,
+    "medianTtfdMinutes": 16.4,
+    "p90TtfdMinutes": 22,
+    "targetMinutes": 30,
+    "passed": true,
+    "perPartnerMinutes": [
+      {
+        "orgId": "org_cohort1_agency_kestrel",
+        "orgSlug": "kestrel-cloud-studio",
+        "partnerType": "agency",
+        "minutes": 18.2
+      },
+      {
+        "orgId": "org_cohort1_agency_northstar",
+        "orgSlug": "northstar-agency",
+        "partnerType": "agency",
+        "minutes": 14.5
+      },
+      {
+        "orgId": "org_cohort1_founder_Vela",
+        "orgSlug": "vela-marketplace",
+        "partnerType": "solo-founder",
+        "minutes": 22
+      },
+      {
+        "orgId": "org_cohort1_mcp_hyperion",
+        "orgSlug": "hyperion-agentic",
+        "partnerType": "mcp-first-dev",
+        "minutes": 16.4
+      },
+      {
+        "orgId": "org_cohort1_mcp_synthwave",
+        "orgSlug": "synthwave-ai-labs",
+        "partnerType": "mcp-first-dev",
+        "minutes": 11.8
+      }
+    ]
+  },
+  "connectCloudflare": {
+    "wizardOpenedCount": 5,
+    "tokenLinkClickedCount": 5,
+    "tokenSubmittedCount": 5,
+    "permissionCheckFailedCount": 1,
+    "verifiedCount": 5,
+    "dropOffRate": 0,
+    "dropOffThreshold": 0.25,
+    "cp9TriggerFired": false,
+    "soloFoundersUnlocked": true
+  },
+  "integrationAdoption": {
+    "partnersWithIntegrationWorkflows": 4,
+    "totalPartners": 5,
+    "totalDeployedIntegrationWorkflows": 6,
+    "targetPartners": 3,
+    "passed": true
+  },
+  "failingNodeLocalization": {
+    "sampleSize": 5,
+    "meanTimeToLocateSec": 51,
+    "meanTimeToLocateMinutes": 0.85,
+    "targetSec": 120,
+    "targetMinutes": 2,
+    "passed": true
+  },
+  "weeklyActiveRetention": {
+    "activePartnersW4": 5,
+    "totalPartners": 5,
+    "targetActivePartners": 3,
+    "passed": true
+  },
+  "overallPassed": true,
+  "partners": [
+    {
+      "orgId": "org_cohort1_agency_kestrel",
+      "cohortId": "cohort-1",
+      "orgName": "Kestrel Cloud Studio",
+      "orgSlug": "kestrel-cloud-studio",
+      "partnerType": "agency",
+      "ownerEmail": "cto@kestrel-studio.example.com",
+      "ownerUserId": "usr_cohort1_devon",
+      "inviteToken": "inv_cohort-1_agency_01a1973c-a5d",
+      "status": "active",
+      "ttfdMinutes": 18.2,
+      "connectCfWizardOpened": true,
+      "connectCfVerified": true,
+      "deployedIntegrationWorkflows": 1,
+      "meanTimeToLocateFailingNodeSec": 58,
+      "meanTimeToLocateFailingNodeMinutes": 0.97,
+      "weeklyActiveSessionsW4": 5,
+      "isActiveW4": true,
+      "metadata": {
+        "primaryUseCase": "Multi-workspace SaaS starter for agency clients"
+      },
+      "createdAt": "2026-11-01T13:11:36.642Z",
+      "updatedAt": "2026-11-01T13:11:36.642Z"
+    },
+    {
+      "orgId": "org_cohort1_agency_northstar",
+      "cohortId": "cohort-1",
+      "orgName": "Northstar Digital Agency",
+      "orgSlug": "northstar-agency",
+      "partnerType": "agency",
+      "ownerEmail": "lead@northstar-agency.example.com",
+      "ownerUserId": "usr_cohort1_maya",
+      "inviteToken": "inv_cohort-1_agency_01a1973c-a5c",
+      "status": "active",
+      "ttfdMinutes": 14.5,
+      "connectCfWizardOpened": true,
+      "connectCfVerified": true,
+      "deployedIntegrationWorkflows": 2,
+      "meanTimeToLocateFailingNodeSec": 42,
+      "meanTimeToLocateFailingNodeMinutes": 0.7,
+      "weeklyActiveSessionsW4": 6,
+      "isActiveW4": true,
+      "metadata": {
+        "primaryUseCase": "Client Stripe billing + Discord ops automation"
+      },
+      "createdAt": "2026-11-01T13:11:36.642Z",
+      "updatedAt": "2026-11-01T13:11:36.642Z"
+    },
+    {
+      "orgId": "org_cohort1_founder_Vela",
+      "cohortId": "cohort-1",
+      "orgName": "Vela Marketplace Co",
+      "orgSlug": "vela-marketplace",
+      "partnerType": "solo-founder",
+      "ownerEmail": "sam@vela-marketplace.example.com",
+      "ownerUserId": "usr_cohort1_sam",
+      "inviteToken": "inv_cohort-1_solo-founder_01a1973c-a5f",
+      "status": "active",
+      "ttfdMinutes": 22,
+      "connectCfWizardOpened": true,
+      "connectCfVerified": true,
+      "deployedIntegrationWorkflows": 0,
+      "meanTimeToLocateFailingNodeSec": 68,
+      "meanTimeToLocateFailingNodeMinutes": 1.13,
+      "weeklyActiveSessionsW4": 3,
+      "isActiveW4": true,
+      "metadata": {
+        "primaryUseCase": "Two-sided marketplace ledger and payouts"
+      },
+      "createdAt": "2026-11-01T13:11:36.642Z",
+      "updatedAt": "2026-11-01T13:11:36.642Z"
+    },
+    {
+      "orgId": "org_cohort1_mcp_hyperion",
+      "cohortId": "cohort-1",
+      "orgName": "Hyperion Agentic Systems",
+      "orgSlug": "hyperion-agentic",
+      "partnerType": "mcp-first-dev",
+      "ownerEmail": "priya@hyperion-agentic.example.com",
+      "ownerUserId": "usr_cohort1_priya",
+      "inviteToken": "inv_cohort-1_mcp-first-dev_01a1973c-a5e",
+      "status": "active",
+      "ttfdMinutes": 16.4,
+      "connectCfWizardOpened": true,
+      "connectCfVerified": true,
+      "deployedIntegrationWorkflows": 1,
+      "meanTimeToLocateFailingNodeSec": 51,
+      "meanTimeToLocateFailingNodeMinutes": 0.85,
+      "weeklyActiveSessionsW4": 4,
+      "isActiveW4": true,
+      "metadata": {
+        "primaryUseCase": "MCP-authored webhook + GitHub/Slack ops pipelines"
+      },
+      "createdAt": "2026-11-01T13:11:36.642Z",
+      "updatedAt": "2026-11-01T13:11:36.642Z"
+    },
+    {
+      "orgId": "org_cohort1_mcp_synthwave",
+      "cohortId": "cohort-1",
+      "orgName": "Synthwave AI Labs",
+      "orgSlug": "synthwave-ai-labs",
+      "partnerType": "mcp-first-dev",
+      "ownerEmail": "alex@synthwave-ai.example.com",
+      "ownerUserId": "usr_cohort1_alex",
+      "inviteToken": "inv_cohort-1_mcp-first-dev_01a1973c-a5d",
+      "status": "active",
+      "ttfdMinutes": 11.8,
+      "connectCfWizardOpened": true,
+      "connectCfVerified": true,
+      "deployedIntegrationWorkflows": 2,
+      "meanTimeToLocateFailingNodeSec": 36,
+      "meanTimeToLocateFailingNodeMinutes": 0.6,
+      "weeklyActiveSessionsW4": 8,
+      "isActiveW4": true,
+      "metadata": {
+        "primaryUseCase": "Claude Code + Cursor MCP co-building for AI credits backend"
+      },
+      "createdAt": "2026-11-01T13:11:36.642Z",
+      "updatedAt": "2026-11-01T13:11:36.642Z"
+    }
+  ],
+  "n8nParityScorecard": {
+    "totalInScope": 12,
+    "passedInScope": 12,
+    "passRate": 1,
+    "allGreen": true
+  },
+  "provenance": {
+    "generatedAt": "2026-11-02T18:08:33.247Z",
+    "gitSha": "cb0f935d11bc21323119a20883fd8af5f96feef1",
+    "gitDirty": false,
+    "generator": "scripts/beta-readiness.ts",
+    "inputKind": "simulated",
+    "quarantined": true,
+    "reason": "F-TRUST-3: hardcoded timestamp and literal guardrail values; not a measurement",
+    "quarantinedAt": "2026-11-02T18:08:33.247Z"
+  }
+}

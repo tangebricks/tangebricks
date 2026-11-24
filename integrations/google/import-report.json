@@ -1,0 +1,815 @@
+{
+  "app": "google",
+  "format": "google-discovery",
+  "specHash": "sha256:19663aef2afe01aa3e4f89e70f6377c6c2bec105604bae303a8491f019975a84",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 73,
+    "normalized": 2,
+    "curated": 17,
+    "approximated": 0,
+    "unsupported": 0
+  },
+  "excludedByCuration": 1,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/rootUrl",
+      "from": "https://www.googleapis.com",
+      "to": "https://www.googleapis.com",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": null,
+      "element": "document",
+      "code": "SPEC_HAND_TRIMMED",
+      "pointer": "curation:#/specProvenance",
+      "reason": "Spec fixture is hand-trimmed, not upstream",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "calendar_events_delete",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/calendar.events.delete",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_delete",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/calendar.events.delete/parameters/calendarId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_delete",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/calendar.events.delete/parameters/eventId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_delete",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/methods/calendar.events.delete/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_delete",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "calendar_events_insert",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/calendar.events.insert",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_insert",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/calendar.events.insert/parameters/calendarId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_insert",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/calendar.events.insert/request/properties/end",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_insert",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/calendar.events.insert/request/properties/start",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_insert",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/calendar.events.insert/request/properties/summary",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_insert",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/calendar.events.insert/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_insert",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "calendar_events_list",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/calendar.events.list",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/calendar.events.list/parameters/calendarId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/calendar.events.list/parameters/pageToken",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/calendar.events.list/parameters/timeMin",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_list",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/calendar.events.list/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_list",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "calendar_events_list",
+      "element": "pagination",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/calendar_events_list/pagination",
+      "to": {
+        "style": "cursor",
+        "paramName": "pageToken",
+        "responsePath": "items",
+        "nextCursorPath": "nextPageToken",
+        "maxPages": 3
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "calendar_events_patch",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/calendar.events.patch",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_patch",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/calendar.events.patch/parameters/calendarId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_patch",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/calendar.events.patch/parameters/eventId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_patch",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/calendar.events.patch/request/properties/end",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_patch",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/calendar.events.patch/request/properties/start",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_patch",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/calendar.events.patch/request/properties/summary",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_patch",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/calendar.events.patch/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_events_patch",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "calendar_freebusy_query",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/calendar.freebusy.query",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_freebusy_query",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/calendar.freebusy.query/request/properties/items",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_freebusy_query",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/calendar.freebusy.query/request/properties/timeMax",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_freebusy_query",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/calendar.freebusy.query/request/properties/timeMin",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_freebusy_query",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/calendar.freebusy.query/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "calendar_freebusy_query",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "gmail_messages_get",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/gmail.messages.get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_get",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.messages.get/parameters/id",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_get",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.messages.get/parameters/userId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_get",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/gmail.messages.get/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_get",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "gmail_messages_list",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/gmail.messages.list",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_list",
+      "element": "pagination",
+      "code": "PAGINATION_MAPPED",
+      "pointer": "#/methods/gmail.messages.list/parameters/pageToken",
+      "to": {
+        "style": "cursor",
+        "paramName": "pageToken",
+        "nextCursorPath": "nextPageToken",
+        "responsePath": "messages",
+        "maxPages": 5
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.messages.list/parameters/pageToken",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.messages.list/parameters/q",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.messages.list/parameters/userId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_list",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/gmail.messages.list/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_list",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "gmail_messages_list",
+      "element": "pagination",
+      "code": "OVERLAY_OVERRIDE",
+      "pointer": "curation:#/operations/gmail_messages_list/pagination",
+      "from": {
+        "style": "cursor",
+        "paramName": "pageToken",
+        "nextCursorPath": "nextPageToken",
+        "responsePath": "messages",
+        "maxPages": 5
+      },
+      "to": {
+        "style": "cursor",
+        "paramName": "pageToken",
+        "responsePath": "messages",
+        "nextCursorPath": "nextPageToken",
+        "maxPages": 3
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "gmail_messages_send",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/gmail.messages.send",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_send",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.messages.send/parameters/userId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_send",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/gmail.messages.send/request/properties/raw",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_send",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/gmail.messages.send/request/properties/threadId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_send",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/gmail.messages.send/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_messages_send",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "gmail_threads_get",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/gmail.threads.get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_threads_get",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.threads.get/parameters/id",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_threads_get",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.threads.get/parameters/userId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_threads_get",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/gmail.threads.get/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_threads_get",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "gmail_threads_list",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/gmail.threads.list",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_threads_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.threads.list/parameters/q",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_threads_list",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/gmail.threads.list/parameters/userId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_threads_list",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/gmail.threads.list/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "gmail_threads_list",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "sheets_spreadsheets_create",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/sheets.spreadsheets.create",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_spreadsheets_create",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/sheets.spreadsheets.create/request/properties/commentsViewMode",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_spreadsheets_create",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/sheets.spreadsheets.create/request/properties/dataSources",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_spreadsheets_create",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/sheets.spreadsheets.create/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_spreadsheets_create",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "sheets_values_append",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/sheets.values.append",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_append",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/sheets.values.append/parameters/range",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_append",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/sheets.values.append/parameters/spreadsheetId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_append",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/sheets.values.append/parameters/valueInputOption",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_append",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/sheets.values.append/request/properties/range",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_append",
+      "element": "bodyField",
+      "code": "IDENTIFIER_COLLISION_DISAMBIGUATED",
+      "pointer": "#/methods/sheets.values.append/request/properties/range",
+      "from": "range",
+      "to": "range_body",
+      "blocking": false,
+      "status": "normalized"
+    },
+    {
+      "op": "sheets_values_append",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/sheets.values.append/request/properties/values",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_append",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/sheets.values.append/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_append",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "sheets_values_get",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/sheets.values.get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_get",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/sheets.values.get/parameters/range",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_get",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/sheets.values.get/parameters/spreadsheetId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_get",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/sheets.values.get/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_get",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "sheets_values_update",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/sheets.values.update",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_update",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/sheets.values.update/parameters/range",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_update",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/sheets.values.update/parameters/spreadsheetId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_update",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/sheets.values.update/parameters/valueInputOption",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_update",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/sheets.values.update/request/properties/range",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_update",
+      "element": "bodyField",
+      "code": "IDENTIFIER_COLLISION_DISAMBIGUATED",
+      "pointer": "#/methods/sheets.values.update/request/properties/range",
+      "from": "range",
+      "to": "range_body",
+      "blocking": false,
+      "status": "normalized"
+    },
+    {
+      "op": "sheets_values_update",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/sheets.values.update/request/properties/values",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_update",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/methods/sheets.values.update/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "sheets_values_update",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    }
+  ]
+}

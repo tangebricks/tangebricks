@@ -1,0 +1,55 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "public-api-keys",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "api-key-auth"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_public_api_keys.sql"
+  ],
+  "routePrefixes": [
+    "api-keys"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Public API Key Infrastructure",
+    "category": "developer",
+    "summary": "Workspace SHA-256 API keys with scopes and revocation.",
+    "maturity": "beta",
+    "behaviourTest": "test/keys.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "worker": {
+    "package": "@poc/public-api-keys",
+    "routes": [
+      {
+        "factory": "createApiKeyRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/api-keys",
+          "/api/api-keys/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "key_api_keys": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

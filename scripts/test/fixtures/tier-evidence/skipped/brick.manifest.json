@@ -1,0 +1,12 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "fixture-skipped",
+  "version": "1.0.0",
+  "ui": {
+    "displayName": "Fixture Skipped",
+    "category": "testing",
+    "maturity": "beta",
+    "behaviourTest": "test/skipped.node.test.ts"
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "preset": "discord-ed25519",
+  "provenance": {
+    "source": "RFC 8032 §7.1 TEST 1 key pair signing Discord interaction payload",
+    "generationCommand": "node -e \"const privSeed = Buffer.from('9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60', 'hex'); const pkcs8 = Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), privSeed]); (async () => { const privKey = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'Ed25519' }, false, ['sign']); const payload = Buffer.from('1700000000' + JSON.stringify({ type: 1 })); const sig = await crypto.subtle.sign('Ed25519', privKey, payload); console.log(Buffer.from(sig).toString('hex')); })();\""
+  },
+  "publicKey": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+  "secret": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+  "timestamp": "1700000000",
+  "rawBody": "{\"type\":1}",
+  "headers": {
+    "X-Signature-Ed25519": "1695961a47c91a1ec033b819b7e87e3dbc583dd0cee6d1fd0216f58ac87b6228ae531ddbf91fb7bc28d7edf7f08604da16f54624f38a6bc0614e4dc13cd47f0f",
+    "X-Signature-Timestamp": "1700000000"
+  },
+  "signature": "1695961a47c91a1ec033b819b7e87e3dbc583dd0cee6d1fd0216f58ac87b6228ae531ddbf91fb7bc28d7edf7f08604da16f54624f38a6bc0614e4dc13cd47f0f",
+  "nowSeconds": 1700000020,
+  "expect": "ok",
+  "cases": [
+    {
+      "name": "valid Discord interaction signature",
+      "preset": "discord-ed25519",
+      "secret": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+      "headers": {
+        "X-Signature-Ed25519": "1695961a47c91a1ec033b819b7e87e3dbc583dd0cee6d1fd0216f58ac87b6228ae531ddbf91fb7bc28d7edf7f08604da16f54624f38a6bc0614e4dc13cd47f0f",
+        "X-Signature-Timestamp": "1700000000"
+      },
+      "rawBody": "{\"type\":1}",
+      "nowSeconds": 1700000020,
+      "expect": "ok",
+      "provenance": {
+        "source": "RFC 8032 §7.1 TEST 1 key pair signing Discord interaction payload",
+        "generationCommand": "node -e \"const privSeed = Buffer.from('9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60', 'hex'); const pkcs8 = Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), privSeed]); (async () => { const privKey = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'Ed25519' }, false, ['sign']); const payload = Buffer.from('1700000000' + JSON.stringify({ type: 1 })); const sig = await crypto.subtle.sign('Ed25519', privKey, payload); console.log(Buffer.from(sig).toString('hex')); })();\""
+      }
+    },
+    {
+      "name": "tampered body",
+      "preset": "discord-ed25519",
+      "secret": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+      "headers": {
+        "X-Signature-Ed25519": "1695961a47c91a1ec033b819b7e87e3dbc583dd0cee6d1fd0216f58ac87b6228ae531ddbf91fb7bc28d7edf7f08604da16f54624f38a6bc0614e4dc13cd47f0f",
+        "X-Signature-Timestamp": "1700000000"
+      },
+      "rawBody": "{\"type\":2}",
+      "nowSeconds": 1700000020,
+      "expect": "WEBHOOK_SIGNATURE_MISMATCH",
+      "provenance": {
+        "source": "Negative test vector: tampered body"
+      }
+    },
+    {
+      "name": "wrong public key",
+      "preset": "discord-ed25519",
+      "secret": "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c",
+      "headers": {
+        "X-Signature-Ed25519": "1695961a47c91a1ec033b819b7e87e3dbc583dd0cee6d1fd0216f58ac87b6228ae531ddbf91fb7bc28d7edf7f08604da16f54624f38a6bc0614e4dc13cd47f0f",
+        "X-Signature-Timestamp": "1700000000"
+      },
+      "rawBody": "{\"type\":1}",
+      "nowSeconds": 1700000020,
+      "expect": "WEBHOOK_SIGNATURE_MISMATCH",
+      "provenance": {
+        "source": "Negative test vector: wrong public key (RFC 8032 TEST 2)"
+      }
+    },
+    {
+      "name": "stale timestamp (> 300s)",
+      "preset": "discord-ed25519",
+      "secret": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+      "headers": {
+        "X-Signature-Ed25519": "1695961a47c91a1ec033b819b7e87e3dbc583dd0cee6d1fd0216f58ac87b6228ae531ddbf91fb7bc28d7edf7f08604da16f54624f38a6bc0614e4dc13cd47f0f",
+        "X-Signature-Timestamp": "1700000000"
+      },
+      "rawBody": "{\"type\":1}",
+      "nowSeconds": 1700000400,
+      "expect": "WEBHOOK_TIMESTAMP_OUT_OF_TOLERANCE",
+      "provenance": {
+        "source": "Negative test vector: stale timestamp (400s drift)"
+      }
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "data-privacy-gdpr",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "data-privacy"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_data_privacy.sql"
+  ],
+  "routePrefixes": [
+    "privacy"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Data Privacy & GDPR Toolkit",
+    "category": "governance",
+    "summary": "GDPR erasure cascade, data export, and user consent.",
+    "maturity": "beta",
+    "behaviourTest": "test/privacy.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "privacy": {
+    "tables": {
+      "dpr_consents": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      },
+      "dpr_erasure_requests": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "retain",
+        "retainReason": "Audit record of GDPR erasure compliance and fulfillment",
+        "export": false
+      },
+      "dpr_export_requests": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": false
+      }
+    }
+  },
+  "worker": {
+    "package": "@poc/data-privacy-gdpr",
+    "routes": [
+      {
+        "factory": "createPrivacyRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/privacy",
+          "/api/privacy/*"
+        ],
+        "options": {
+          "exportTenant": {
+            "$privacy": "exportTenant"
+          },
+          "eraseTenant": {
+            "$privacy": "eraseTenant"
+          }
+        }
+      }
+    ]
+  }
+}

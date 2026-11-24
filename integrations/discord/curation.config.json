@@ -1,0 +1,105 @@
+{
+  "app": "discord",
+  "version": "1.0.0",
+  "format": "openapi3",
+  "specProvenance": "hand-trimmed",
+  "upstream": {
+    "corpusSpec": "discord",
+    "operationIds": {
+      "createMessage": "create_message",
+      "getChannelMessages": "list_messages",
+      "editMessage": "update_message",
+      "deleteMessage": "delete_message",
+      "createReaction": "add_my_message_reaction",
+      "startThreadFromMessage": "create_thread_from_message",
+      "startThreadWithoutMessage": "create_thread",
+      "getGuild": "get_guild",
+      "getGuildMember": "get_guild_member",
+      "listGuildChannels": "list_guild_channels",
+      "executeWebhook": "execute_webhook"
+    }
+  },
+  "acknowledge": [
+  ],
+  "ui": {
+    "displayName": "Discord",
+    "category": "communication",
+    "icon": "discord",
+    "docsUrl": "https://discord.com/developers/docs/intro",
+    "summary": "Send channel messages, embeds, reactions, threads, and handle Discord interactions.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "authorizeUrl": "https://discord.com/oauth2/authorize",
+    "tokenUrl": "https://discord.com/api/oauth2/token",
+    "scopes": ["bot", "identify", "guilds"],
+    "headerName": "Authorization",
+    "prefix": "Bearer"
+  },
+  "baseUrl": "https://discord.com/api/v10",
+  "allowedHosts": ["discord.com"],
+  "includeOperations": [
+    "createMessage",
+    "getChannelMessages",
+    "editMessage",
+    "deleteMessage",
+    "createReaction",
+    "startThreadFromMessage",
+    "startThreadWithoutMessage",
+    "getGuild",
+    "getGuildMember",
+    "listGuildChannels",
+    "executeWebhook"
+  ],
+  "defaultRateLimit": {
+    "maxRetries": 3,
+    "initialBackoffMs": 200,
+    "respectRetryAfter": true,
+    "retryAfterHeader": "Retry-After"
+  },
+  "operations": {
+    "getChannelMessages": {
+      "pagination": {
+        "style": "cursor",
+        "paramName": "after",
+        "responsePath": "messages",
+        "nextCursorPath": "next_after",
+        "maxPages": 3
+      }
+    }
+  },
+  "triggers": [
+    {
+      "id": "interaction_created",
+      "label": "Discord Interaction / Webhook",
+      "summary": "Fires when a signed Discord interaction or webhook event is received.",
+      "verifier": "discord-ed25519",
+      "signatureHeader": "X-Signature-Ed25519",
+      "eventIdPath": "id",
+      "eventTypePath": "type",
+      "outputs": [
+        { "id": "out", "label": "Interaction Event", "dataType": "object" }
+      ]
+    }
+  ],
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "Discord token is invalid or expired.",
+      "hint": "Re-authorize the Discord connection in Connections Center.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "Discord API rate limit exceeded.",
+      "hint": "Respect Retry-After header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "Retry-After"
+    }
+  }
+}

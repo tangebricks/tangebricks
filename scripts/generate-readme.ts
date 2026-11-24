@@ -1,0 +1,270 @@
+// Writes the README's "What works today" section from evidence (story 0.12, R54). Every number in the section is read
+// from evidence/verdicts.json, hypotheses.json, evidence/brick-tiers.json, evidence/cross-tenant-fuzz.json and
+// evidence/deployed/; nothing in it is typed by hand.
+//
+// Usage: node scripts/generate-readme.ts [--check] [--root <dir>]
+//   (no flag)  rewrite the section between the markers in README.md
+//   --check    exit 1 when the committed section differs from what would be generated (pnpm readme:check)
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parseHypotheses } from "../packages/harness/src/index.ts";
+import type { Hypothesis } from "../packages/harness/src/index.ts";
+import { STATUS_RECORDED, isStale, loadLiveRuns, readLatestRelease, staleLabel } from "./lib/live-evidence.ts";
+import type { LiveRunInfo, ReleaseRef } from "./lib/live-evidence.ts";
+import { computeDecision } from "./poc-verdict.ts";
+import type { VerdictsFile } from "./poc-verdict.ts";
+
+const repoRoot = resolve(import.meta.dirname, "..");
+
+export const WHAT_WORKS_START = "<!-- generated:what-works:start -->";
+export const WHAT_WORKS_END = "<!-- generated:what-works:end -->";
+export const WHAT_WORKS_SECTION = "What works today";
+
+interface BrickTiersFile {
+  counts: Record<string, number>;
+  bricks: Array<{ id: string; tier: string; reason?: string }>;
+}
+
+interface FuzzFile {
+  routeCount?: number;
+  honoRouteCount?: number;
+  cases?: number;
+  casesByAttack?: Record<string, number>;
+  attacks?: string[];
+  failures?: number;
+  knownFailures?: number;
+  violations?: number;
+  notAttacked?: unknown[];
+}
+
+export interface ReadmeInputs {
+  verdicts: VerdictsFile;
+  hypotheses: ReadonlyArray<Hypothesis>;
+  brickTiers: BrickTiersFile;
+  fuzz: FuzzFile;
+  liveRuns: LiveRunInfo[];
+  /** size of the cross-tenant attack suite's known-failures registry */
+  knownFailuresRegistrySize: number;
+  /** newest released version in CHANGELOG.md: the staleness reference */
+  release: ReleaseRef | undefined;
+}
+
+const KNOWN_FAILURES_REL = "packages/assembler/test/attack-suite.known-failures.json";
+
+function readJson<T>(path: string): T {
+  return JSON.parse(readFileSync(path, "utf8")) as T;
+}
+
+export function loadReadmeInputs(targetRoot: string, fallbackRoot: string = repoRoot): ReadmeInputs {
+  const hypothesesPath = existsSync(join(targetRoot, "hypotheses.json"))
+    ? join(targetRoot, "hypotheses.json")
+    : join(fallbackRoot, "hypotheses.json");
+  return {
+    verdicts: readJson<VerdictsFile>(join(targetRoot, "evidence", "verdicts.json")),
+    hypotheses: parseHypotheses(readJson(hypothesesPath)).hypotheses,
+    brickTiers: readJson<BrickTiersFile>(join(targetRoot, "evidence", "brick-tiers.json")),
+    fuzz: readJson<FuzzFile>(join(targetRoot, "evidence", "cross-tenant-fuzz.json")),
+    liveRuns: loadLiveRuns(targetRoot),
+    knownFailuresRegistrySize: (
+      readJson<{ entries?: unknown[] }>(
+        existsSync(join(targetRoot, KNOWN_FAILURES_REL)) ? join(targetRoot, KNOWN_FAILURES_REL) : join(fallbackRoot, KNOWN_FAILURES_REL),
+      ).entries ?? []
+    ).length,
+    release: readLatestRelease(targetRoot, fallbackRoot),
+  };
+}
+
+type Range = { lt?: number; max?: number; gt?: number; min?: number } | null;
+
+function formatRange(range: Range, unit: string): string {
+  if (!range) return "—";
+  const parts: string[] = [];
+  if (range.lt !== undefined) parts.push(`< ${range.lt}`);
+  if (range.max !== undefined) parts.push(`≤ ${range.max}`);
+  if (range.gt !== undefined) parts.push(`> ${range.gt}`);
+  if (range.min !== undefined) parts.push(`≥ ${range.min}`);
+  return `${parts.join(" and ")}${unit ? ` ${unit}` : ""}`;
+}
+
+function cell(text: string): string {
+  return text.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+}
+
+export function liveStatus(run: LiveRunInfo, release: ReleaseRef | undefined): string {
+  return isStale(run.runTimestamp, release?.date) ? `**${staleLabel(run.runDate)}**` : `current (run ${run.runDate})`;
+}
+
+function integrityText(run: LiveRunInfo): string {
+  if (!run.entry) return "no integrity entry";
+  const base = run.entry.status === STATUS_RECORDED ? `${run.entry.status}, sha256 \`${run.entry.sha256.slice(0, 12)}\`` : `**${run.entry.status}**`;
+  return run.entry.note ? `${base}: ${run.entry.note}` : base;
+}
+
+/** The section body between the markers (markers excluded), deterministic for the same inputs. */
+export function renderWhatWorks(inputs: ReadmeInputs): string {
+  const { verdicts, hypotheses, brickTiers, fuzz, liveRuns, release } = inputs;
+  const decision = computeDecision(verdicts.verdicts);
+  const liveByHypothesis = new Map<string, LiveRunInfo[]>();
+  for (const run of liveRuns) {
+    const list = liveByHypothesis.get(run.hypothesis) ?? [];
+    list.push(run);
+    liveByHypothesis.set(run.hypothesis, list);
+  }
+
+  const L: string[] = [];
+  L.push("<!-- Generated by `pnpm readme:generate` from evidence/verdicts.json, hypotheses.json, evidence/brick-tiers.json, evidence/cross-tenant-fuzz.json and evidence/deployed/. Do not edit by hand: `pnpm readme:check` (part of `pnpm proof:check`) fails on any difference. -->");
+  L.push("");
+  L.push("### Hypotheses");
+  L.push("");
+  L.push(
+    `${decision.passes.length} of ${hypotheses.length} hypotheses pass, ${decision.fails.length} fail, ${decision.mechanismKills.length + decision.acceleratorKills.length} kill (from \`evidence/verdicts.json\`; full report in [PROOF.md](PROOF.md)).`,
+  );
+  L.push("");
+  L.push("| Id | Claim | Verdict | Measured | Pass | Kill | Must-hold checks | Evidence |");
+  L.push("| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |");
+  for (const h of hypotheses) {
+    const v = verdicts.verdicts[h.id];
+    const verdict = v ? v.verdict : "missing";
+    const measured = v ? v.measured : "—";
+    const unit = h.status === "live" && h.metric ? h.metric.unit : "";
+    const pass = h.status === "live" ? formatRange(h.pass, unit) : "—";
+    const kill = h.status === "live" ? formatRange(h.kill, unit) : "—";
+    const checks = h.status === "live" ? String(h.mustHold.length) : "—";
+    const live = liveByHypothesis.get(h.id) ?? [];
+    const localPart = v ? `local re-measure ${v.recordedAt.slice(0, 10)}` : "not measured";
+    let evidence: string;
+    if (live.length > 0 && live.every((r) => r.part === "whole hypothesis")) {
+      evidence = `live run, ${liveStatus(live[0]!, release)}`;
+    } else if (live.length > 0) {
+      evidence = `${localPart}; ${live.map((r) => `${r.part}: live run, ${liveStatus(r, release)}`).join("; ")}`;
+    } else {
+      evidence = localPart;
+    }
+    L.push(`| ${h.id} | ${cell(h.title)} | ${verdict} | ${cell(measured)} | ${pass} | ${kill} | ${checks} | ${evidence} |`);
+  }
+  L.push("");
+  L.push("### Live evidence");
+  L.push("");
+  L.push(
+    `A live run is labelled **stale** when it started before the newest released version in [CHANGELOG.md](CHANGELOG.md) (${release ? `${release.version}, ${release.date}` : "none released yet"}). Integrity is checked against \`evidence/deployed/integrity.json\` by \`pnpm proof:check\`.`,
+  );
+  L.push("");
+  L.push("| Evidence | Backs | Run started | Status | Integrity |");
+  L.push("| :-- | :-- | :-- | :-- | :-- |");
+  for (const run of liveRuns) {
+    L.push(
+      `| ${run.key} | ${run.hypothesis}, ${run.part} | ${run.runTimestamp ?? "unknown"} | ${liveStatus(run, release)} | ${cell(integrityText(run))} |`,
+    );
+  }
+  L.push("");
+  L.push("### Bricks");
+  L.push("");
+  const tierNames = Object.keys(brickTiers.counts).filter((k) => k !== "total");
+  const tierText = tierNames.map((t) => `${t} ${brickTiers.counts[t]}`).join(", ");
+  L.push(`${brickTiers.counts.total ?? brickTiers.bricks.length} bricks in \`evidence/brick-tiers.json\`: ${tierText}.`);
+  L.push("");
+  const quarantined = brickTiers.bricks.filter((b) => (b.reason ?? "").startsWith("QUARANTINED"));
+  L.push(
+    `Quarantined (${quarantined.length}): hidden from the default catalog listing and from \`list_bricks\`; listed only when experimental bricks are asked for.`,
+  );
+  L.push("");
+  for (const b of quarantined) {
+    L.push(`- \`${b.id}\`: ${(b.reason ?? "").replace(/^QUARANTINED:\s*/, "")}`);
+  }
+  L.push("");
+  L.push("### Cross-tenant attack suite");
+  L.push("");
+  const byAttack = fuzz.casesByAttack ?? {};
+  const attackText = (fuzz.attacks ?? Object.keys(byAttack)).map((a) => `${a} ${byAttack[a] ?? 0}`).join(", ");
+  L.push(
+    `From \`evidence/cross-tenant-fuzz.json\`: ${fuzz.cases ?? 0} cases over ${fuzz.honoRouteCount ?? 0} mounted routes (${fuzz.routeCount ?? 0} OpenAPI paths); by attack: ${attackText}.`,
+  );
+  L.push(
+    `Violations ${fuzz.violations ?? 0}, failures ${fuzz.failures ?? 0}; known failures matched ${fuzz.knownFailures ?? 0}; known-failures registry (\`${KNOWN_FAILURES_REL}\`): ${inputs.knownFailuresRegistrySize} entries; route/attack pairs not attacked (no fitting row): ${fuzz.notAttacked?.length ?? 0}.`,
+  );
+  L.push("");
+  L.push("### Tests");
+  L.push("");
+  L.push("Test counts are not part of the committed evidence, so none is shown here; run `pnpm test` to see them.");
+  return L.join("\n");
+}
+
+/** Returns README text with the section replaced; throws when the markers are missing. */
+export function applyWhatWorks(readme: string, body: string): string {
+  const start = readme.indexOf(WHAT_WORKS_START);
+  const end = readme.indexOf(WHAT_WORKS_END);
+  if (start < 0 || end < 0 || end < start) {
+    throw new Error(`README.md has no ${WHAT_WORKS_START} ... ${WHAT_WORKS_END} markers`);
+  }
+  return `${readme.slice(0, start + WHAT_WORKS_START.length)}\n${body}\n${readme.slice(end)}`;
+}
+
+export function extractWhatWorks(readme: string): string | undefined {
+  const start = readme.indexOf(WHAT_WORKS_START);
+  const end = readme.indexOf(WHAT_WORKS_END);
+  if (start < 0 || end < 0 || end < start) return undefined;
+  return readme.slice(start + WHAT_WORKS_START.length, end);
+}
+
+/** Errors (empty when in sync) for the README's generated section under `targetRoot`. */
+export function checkReadme(targetRoot: string, fallbackRoot: string = repoRoot): string[] {
+  const readmePath = join(targetRoot, "README.md");
+  if (!existsSync(readmePath)) return [`README.md does not exist at ${readmePath}`];
+  const current = readFileSync(readmePath, "utf8").replace(/\r\n/g, "\n");
+  let expected: string;
+  try {
+    expected = applyWhatWorks(current, renderWhatWorks(loadReadmeInputs(targetRoot, fallbackRoot)));
+  } catch (err) {
+    return [`README.md "${WHAT_WORKS_SECTION}" section cannot be generated: ${(err as Error).message}`];
+  }
+  if (current === expected) return [];
+  const a = (extractWhatWorks(current) ?? "").split("\n");
+  const b = (extractWhatWorks(expected) ?? "").split("\n");
+  const firstDiff = a.findIndex((line, i) => line !== b[i]);
+  const idx = firstDiff < 0 ? Math.min(a.length, b.length) : firstDiff;
+  return [
+    `README.md "${WHAT_WORKS_SECTION}" section differs from what the evidence generates (run pnpm readme:generate); first difference:\n      committed: ${a[idx] ?? "<end>"}\n      expected:  ${b[idx] ?? "<end>"}`,
+  ];
+}
+
+export function runGenerateReadmeCli(argv: string[] = process.argv.slice(2)): number {
+  let targetRoot = repoRoot;
+  let check = false;
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] === "--root" && argv[i + 1]) {
+      targetRoot = resolve(argv[i + 1]!);
+      i += 1;
+    } else if (argv[i] === "--check") {
+      check = true;
+    }
+  }
+  if (check) {
+    const errors = checkReadme(targetRoot);
+    if (errors.length > 0) {
+      console.error("readme:check FAILED:");
+      for (const e of errors) console.error(`  - ${e}`);
+      return 1;
+    }
+    console.log(`readme:check passed: the "${WHAT_WORKS_SECTION}" section matches the evidence.`);
+    return 0;
+  }
+  const readmePath = join(targetRoot, "README.md");
+  const current = readFileSync(readmePath, "utf8").replace(/\r\n/g, "\n");
+  const next = applyWhatWorks(current, renderWhatWorks(loadReadmeInputs(targetRoot)));
+  if (next !== current) {
+    writeFileSync(readmePath, next, "utf8");
+    console.log(`Updated the "${WHAT_WORKS_SECTION}" section of ${readmePath}.`);
+  } else {
+    console.log(`The "${WHAT_WORKS_SECTION}" section of ${readmePath} is already up to date.`);
+  }
+  return 0;
+}
+
+const isMain =
+  process.argv[1] !== undefined &&
+  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+
+if (isMain) {
+  process.exit(runGenerateReadmeCli());
+}

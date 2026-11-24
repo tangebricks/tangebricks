@@ -1,0 +1,66 @@
+{
+  "kind": "discovery#restDescription",
+  "id": "drive:v3",
+  "name": "drive",
+  "version": "v3",
+  "protocol": "rest",
+  "baseUrl": "https://www.googleapis.com/drive/v3/",
+  "resources": {
+    "files": {
+      "methods": {
+        "get": {
+          "id": "drive.files.get",
+          "path": "files/{fileId}",
+          "flatPath": "files/{+fileId}",
+          "httpMethod": "GET",
+          "parameters": {
+            "fileId": {
+              "type": "string",
+              "location": "path",
+              "required": true
+            }
+          },
+          "parameterOrder": ["fileId"]
+        },
+        "insert": {
+          "id": "drive.files.insert",
+          "path": "files",
+          "httpMethod": "POST",
+          "supportsMediaUpload": true
+        },
+        "update": {
+          "id": "drive.files.update",
+          "path": "files/{fileId}",
+          "httpMethod": "PATCH",
+          "parameters": {
+            "fileId": {
+              "type": "string",
+              "location": "path",
+              "required": true
+            }
+          },
+          "request": {
+            "$ref": "File"
+          }
+        }
+      }
+    }
+  },
+  "schemas": {
+    "File": {
+      "id": "File",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "owner": { "$ref": "User" }
+      }
+    },
+    "User": {
+      "id": "User",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" }
+      }
+    }
+  }
+}

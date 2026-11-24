@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface-base: #020617;
+  --surface-canvas: #090d16;
+  --surface-raised: #0f172a;
+  --surface-control: #1e293b;
+  --border: #1e293b;
+  --border-strong: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #a3b3c6;
+  --text-on-accent: #020617;
+  --accent: #f59e0b;
+  --accent-hover: #fbbf24;
+  --success: #10b981;
+  --success-text: #34d399;
+  --info: #38bdf8;
+  --topbar-height: 56px;
+  --left-panel-width: 256px;
+  --canvas-grid: 22px;
+}
+
+body {
+  background-color: var(--surface-base);
+  color: var(--text-primary);
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .react-flow__edge-path {
+    animation: none !important;
+  }
+}

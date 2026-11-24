@@ -1,0 +1,98 @@
+{
+  "project": "ai-credits-saas",
+  "bricks": [
+    "multi-workspace",
+    "core-auth",
+    "credit-wallet",
+    "subscription-plans",
+    "metered-usage",
+    "vector-memory",
+    "public-api-keys",
+    "edge-traffic-armor",
+    "dynamic-entities"
+  ],
+  "entities": [
+    {
+      "name": "usage_ledgers",
+      "fields": [
+        { "name": "title", "type": "text", "required": true },
+        { "name": "status", "type": "enum", "values": ["active", "archived"] }
+      ]
+    }
+  ],
+  "secretRefs": [
+    {
+      "ref": "sec_better_auth",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "BETTER_AUTH_SECRET"
+    },
+    {
+      "ref": "sec_github_id",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "GITHUB_CLIENT_ID"
+    },
+    {
+      "ref": "sec_github_secret",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "GITHUB_CLIENT_SECRET"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "credit_grant_flow",
+      "name": "Credit Grant & Usage Meter Flow",
+      "trigger": { "kind": "webhook", "path": "/webhooks/credit-grant" },
+      "nodes": [
+        {
+          "id": "n_credit",
+          "type": "credit-wallet.credit",
+          "label": "Grant Workspace Credits",
+          "data": { "amount": 100 },
+          "position": { "x": 420, "y": 180 }
+        },
+        {
+          "id": "n_record",
+          "type": "dynamic-entities.create_record",
+          "label": "Log Usage Ledger Entry",
+          "data": { "entity": "usage_ledgers" },
+          "position": { "x": 720, "y": 180 }
+        },
+        {
+          "id": "n_trigger",
+          "type": "core.webhook",
+          "label": "Credit Grant Webhook",
+          "data": { "method": "post" },
+          "position": { "x": 120, "y": 180 }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e_credit_record",
+          "source": "n_credit",
+          "target": "n_record",
+          "sourceHandle": "out",
+          "targetHandle": "in"
+        },
+        {
+          "id": "e_trig_credit",
+          "source": "n_trigger",
+          "target": "n_credit",
+          "sourceHandle": "out",
+          "targetHandle": "in"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "displayName": "AI Credits SaaS",
+    "description": "Multi-tenant AI SaaS with credit wallet, subscription plans, metered usage, vector memory, API keys, and usage ledger.",
+    "layout": {
+      "n_trigger": { "x": 120, "y": 180 },
+      "n_credit": { "x": 420, "y": 180 },
+      "n_record": { "x": 720, "y": 180 }
+    }
+  }
+}

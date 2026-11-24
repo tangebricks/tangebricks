@@ -1,0 +1,15 @@
+{
+  "name": "@poc/assembler",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./catalog": "./catalog.generated.ts"
+  },
+  "dependencies": {
+    "@poc/sdk": "workspace:*",
+    "@poc/telemetry": "workspace:*",
+    "zod": "4.6.7"
+  }
+}

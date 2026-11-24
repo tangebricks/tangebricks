@@ -1,0 +1,724 @@
+{
+  "app": "discord",
+  "format": "openapi3",
+  "specHash": "sha256:2c04fb4cb26068c779d4996f64fff5ed31d3afe5ac69bbcdb11ac81c790d270a",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 66,
+    "normalized": 0,
+    "curated": 13,
+    "approximated": 0,
+    "unsupported": 0
+  },
+  "excludedByCuration": 1,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/servers/0",
+      "from": "https://discord.com/api/v10",
+      "to": "https://discord.com/api/v10",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": null,
+      "element": "document",
+      "code": "SPEC_HAND_TRIMMED",
+      "pointer": "curation:#/specProvenance",
+      "reason": "Spec fixture is hand-trimmed, not upstream",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createMessage",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createMessage",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/post/requestBody/content/application~1json/schema/properties/content",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/post/requestBody/content/application~1json/schema/properties/embeds",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/post/requestBody/content/application~1json/schema/properties/tts",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createMessage",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createMessage",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/post/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createMessage",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createReaction",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1reactions~1{emoji}~1@me/put",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createReaction",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1reactions~1{emoji}~1@me/put/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createReaction",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1reactions~1{emoji}~1@me/put/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createReaction",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1reactions~1{emoji}~1@me/put/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createReaction",
+      "element": "response",
+      "code": "RESPONSE_EMPTY",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1reactions~1{emoji}~1@me/put/responses/204",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createReaction",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1reactions~1{emoji}~1@me/put/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createReaction",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "deleteMessage",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/delete",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "deleteMessage",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/delete/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "deleteMessage",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/delete/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "deleteMessage",
+      "element": "response",
+      "code": "RESPONSE_EMPTY",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/delete/responses/204",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "deleteMessage",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/delete/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "deleteMessage",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "editMessage",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/patch",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "editMessage",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/patch/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "editMessage",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/patch/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "editMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/patch/requestBody/content/application~1json/schema/properties/content",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "editMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/patch/requestBody/content/application~1json/schema/properties/embeds",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "editMessage",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/patch/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "editMessage",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}/patch/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "editMessage",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "executeWebhook",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1webhooks~1{webhookId}~1{webhookToken}/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "executeWebhook",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1webhooks~1{webhookId}~1{webhookToken}/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "executeWebhook",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1webhooks~1{webhookId}~1{webhookToken}/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "executeWebhook",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1webhooks~1{webhookId}~1{webhookToken}/post/requestBody/content/application~1json/schema/properties/content",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "executeWebhook",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1webhooks~1{webhookId}~1{webhookToken}/post/requestBody/content/application~1json/schema/properties/embeds",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "executeWebhook",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1webhooks~1{webhookId}~1{webhookToken}/post/requestBody/content/application~1json/schema/properties/username",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "executeWebhook",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1webhooks~1{webhookId}~1{webhookToken}/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "executeWebhook",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1webhooks~1{webhookId}~1{webhookToken}/post/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "executeWebhook",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "getChannelMessages",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getChannelMessages",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getChannelMessages",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getChannelMessages",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/get/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getChannelMessages",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getChannelMessages",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages/get/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getChannelMessages",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "getChannelMessages",
+      "element": "pagination",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/getChannelMessages/pagination",
+      "to": {
+        "style": "cursor",
+        "paramName": "after",
+        "responsePath": "messages",
+        "nextCursorPath": "next_after",
+        "maxPages": 3
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "getGuild",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1guilds~1{guildId}/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getGuild",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1guilds~1{guildId}/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getGuild",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1guilds~1{guildId}/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getGuild",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1guilds~1{guildId}/get/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getGuild",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "getGuildMember",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1guilds~1{guildId}~1members~1{userId}/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getGuildMember",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1guilds~1{guildId}~1members~1{userId}/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getGuildMember",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1guilds~1{guildId}~1members~1{userId}/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getGuildMember",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1guilds~1{guildId}~1members~1{userId}/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getGuildMember",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1guilds~1{guildId}~1members~1{userId}/get/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getGuildMember",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "listGuildChannels",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1guilds~1{guildId}~1channels/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listGuildChannels",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1guilds~1{guildId}~1channels/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listGuildChannels",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1guilds~1{guildId}~1channels/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listGuildChannels",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1guilds~1{guildId}~1channels/get/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listGuildChannels",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "startThreadFromMessage",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1threads/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadFromMessage",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1threads/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadFromMessage",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1threads/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadFromMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1threads/post/requestBody/content/application~1json/schema/properties/auto_archive_duration",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadFromMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1threads/post/requestBody/content/application~1json/schema/properties/name",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadFromMessage",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1threads/post/responses/201",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadFromMessage",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1channels~1{channelId}~1messages~1{messageId}~1threads/post/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadFromMessage",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "startThreadWithoutMessage",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1threads/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadWithoutMessage",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1threads/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadWithoutMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1threads/post/requestBody/content/application~1json/schema/properties/name",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadWithoutMessage",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1channels~1{channelId}~1threads/post/requestBody/content/application~1json/schema/properties/type",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadWithoutMessage",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1channels~1{channelId}~1threads/post/responses/201",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadWithoutMessage",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1channels~1{channelId}~1threads/post/responses/default",
+      "to": {
+        "codePath": "code",
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "startThreadWithoutMessage",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    }
+  ]
+}

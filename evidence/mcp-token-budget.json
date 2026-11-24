@@ -1,0 +1,138 @@
+{
+  "suite": "mcp-token-budget",
+  "story": "story-ci-token-budget-enforcement",
+  "tokenizer": "gpt-tokenizer 4.1.0, o200k_base",
+  "ok": true,
+  "toolsListTokens": 1183,
+  "perToolDefTokens": {
+    "search_bricks": 70,
+    "get_brick": 57,
+    "search_nodes": 66,
+    "get_node": 55,
+    "get_blueprint_summary": 64,
+    "get_blueprint_slice": 101,
+    "validate_blueprint": 62,
+    "apply_ops": 86,
+    "request_connection": 86,
+    "list_connections": 56,
+    "test_workflow": 83,
+    "list_runs": 78,
+    "get_run_trace": 77,
+    "query_logs": 93,
+    "deploy_plan": 69,
+    "deploy_apply": 78
+  },
+  "perPageMaxTokens": 344,
+  "perPageCeiling": 400,
+  "perPageByTool": {
+    "search_bricks": {
+      "tool": "search_bricks",
+      "pagesChecked": 4,
+      "maxPageTokens": 308,
+      "maxItemsOnPage": 10,
+      "ceiling": 400,
+      "passed": true
+    },
+    "search_nodes": {
+      "tool": "search_nodes",
+      "pagesChecked": 9,
+      "maxPageTokens": 313,
+      "maxItemsOnPage": 10,
+      "ceiling": 400,
+      "passed": true
+    },
+    "list_runs": {
+      "tool": "list_runs",
+      "pagesChecked": 1,
+      "maxPageTokens": 344,
+      "maxItemsOnPage": 10,
+      "ceiling": 400,
+      "passed": true
+    },
+    "query_logs": {
+      "tool": "query_logs",
+      "pagesChecked": 1,
+      "maxPageTokens": 274,
+      "maxItemsOnPage": 10,
+      "ceiling": 400,
+      "passed": true
+    },
+    "get_blueprint_summary": {
+      "tool": "get_blueprint_summary",
+      "pagesChecked": 1,
+      "maxPageTokens": 340,
+      "maxItemsOnPage": 1,
+      "ceiling": 400,
+      "passed": true
+    }
+  },
+  "sessionA": {
+    "calls": 4,
+    "maxCalls": 5,
+    "tokens": 2119,
+    "emittedTokens": 24883,
+    "ratioPct": 8.5,
+    "maxRatioPct": 15,
+    "passed": true
+  },
+  "sessionB": {
+    "calls": 7,
+    "toolDefTokens": 1183,
+    "ioTokens": 5836,
+    "totalTokens": 7019,
+    "maxTotalTokens": 8000,
+    "passed": true,
+    "byCall": [
+      {
+        "tool": "search_bricks",
+        "requestTokens": 13,
+        "responseTokens": 202,
+        "totalTokens": 215
+      },
+      {
+        "tool": "search_nodes",
+        "requestTokens": 12,
+        "responseTokens": 270,
+        "totalTokens": 282
+      },
+      {
+        "tool": "apply_ops",
+        "requestTokens": 1340,
+        "responseTokens": 204,
+        "totalTokens": 1544
+      },
+      {
+        "tool": "get_blueprint_summary",
+        "requestTokens": 20,
+        "responseTokens": 340,
+        "totalTokens": 360
+      },
+      {
+        "tool": "get_blueprint_slice",
+        "requestTokens": 28,
+        "responseTokens": 1039,
+        "totalTokens": 1067
+      },
+      {
+        "tool": "validate_blueprint",
+        "requestTokens": 19,
+        "responseTokens": 418,
+        "totalTokens": 437
+      },
+      {
+        "tool": "test_workflow",
+        "requestTokens": 37,
+        "responseTokens": 1894,
+        "totalTokens": 1931
+      }
+    ]
+  },
+  "violations": [],
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "scripts/mcp-budget.ts",
+    "inputKind": "measured"
+  }
+}

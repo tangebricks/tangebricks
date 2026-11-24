@@ -1,0 +1,138 @@
+{
+  "project": "stripe-discord-ops",
+  "bricks": [
+    "multi-workspace",
+    "core-auth",
+    "webhook-gateway",
+    "integration-connections",
+    "dynamic-entities",
+    "audit-trail"
+  ],
+  "entities": [
+    {
+      "name": "payment_events",
+      "fields": [
+        { "name": "title", "type": "text", "required": true },
+        { "name": "status", "type": "enum", "values": ["active", "archived"] },
+        { "name": "amount_cents", "type": "number" }
+      ]
+    }
+  ],
+  "secretRefs": [
+    {
+      "ref": "sec_better_auth",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "BETTER_AUTH_SECRET"
+    },
+    {
+      "ref": "sec_github_id",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "GITHUB_CLIENT_ID"
+    },
+    {
+      "ref": "sec_github_secret",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "GITHUB_CLIENT_SECRET"
+    },
+    {
+      "ref": "sec_px_conn_gw",
+      "targetKind": "brick",
+      "targetId": "webhook-gateway",
+      "secretName": "PX_CONN_KEY"
+    },
+    {
+      "ref": "sec_px_conn_int",
+      "targetKind": "brick",
+      "targetId": "integration-connections",
+      "secretName": "PX_CONN_KEY"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "stripe_payment_to_discord",
+      "name": "Stripe Payment to Discord Alert",
+      "trigger": { "kind": "webhook", "path": "/webhooks/stripe" },
+      "nodes": [
+        {
+          "id": "n_stripe_webhook",
+          "type": "webhook-gateway.inbound_webhook",
+          "label": "Stripe Payment Succeeded Webhook",
+          "data": {
+            "provider": "stripe",
+            "event": "payment_intent.succeeded"
+          },
+          "position": { "x": 120, "y": 160 }
+        },
+        {
+          "id": "n_discord_notify",
+          "type": "int:discord.createMessage",
+          "label": "Post Alert to Discord #ops",
+          "data": {
+            "connectionRef": "sec_discord_bot",
+            "channelId": "1234567890",
+            "content": "Payment succeeded: {{steps.n_stripe_webhook.output.id}}"
+          },
+          "position": { "x": 460, "y": 160 }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e_stripe_discord",
+          "source": "n_stripe_webhook",
+          "target": "n_discord_notify",
+          "sourceHandle": "out",
+          "targetHandle": "in"
+        }
+      ]
+    },
+    {
+      "id": "workspace_google_calendar_sync",
+      "name": "Workspace Google Calendar Sync",
+      "trigger": { "kind": "manual" },
+      "nodes": [
+        {
+          "id": "n_manual_sync",
+          "type": "trigger.manual",
+          "label": "Manual Sync Trigger",
+          "data": {},
+          "position": { "x": 120, "y": 380 }
+        },
+        {
+          "id": "n_google_calendar",
+          "type": "int:google.calendar_events_list",
+          "label": "List Workspace Google Calendar Events",
+          "data": {
+            "connectionRef": {
+              "scope": "workspace",
+              "app": "google"
+            },
+            "calendarId": "primary"
+          },
+          "position": { "x": 460, "y": 380 }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e_sync_gcal",
+          "source": "n_manual_sync",
+          "target": "n_google_calendar",
+          "sourceHandle": "out",
+          "targetHandle": "in"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "displayName": "Stripe + Discord Ops & Google Calendar Sync",
+    "description": "Integration-enabled starter with Case A Stripe webhook to Discord bot notification and Case B workspace-scoped Google Calendar OAuth sync.",
+    "layout": {
+      "n_stripe_webhook": { "x": 120, "y": 160 },
+      "n_discord_notify": { "x": 460, "y": 160 },
+      "n_manual_sync": { "x": 120, "y": 380 },
+      "n_google_calendar": { "x": 460, "y": 380 }
+    }
+  }
+}

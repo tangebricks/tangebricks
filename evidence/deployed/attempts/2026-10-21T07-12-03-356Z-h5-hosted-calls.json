@@ -1,0 +1,3180 @@
+{
+  "schema": 1,
+  "commandStartedAt": "2026-10-21T06:55:40.426Z",
+  "clients": [
+    {
+      "label": "bracket-before",
+      "startedAtMs": 4,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 1,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 1178,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "rest-run-1",
+      "startedAtMs": 1985,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 1,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 465,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 2,
+          "atMs": 467,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 127,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 3,
+          "atMs": 739,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 138,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 4,
+          "atMs": 1021,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 105,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 5,
+          "atMs": 1286,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 122,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 6,
+          "atMs": 1551,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 165,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 7,
+          "atMs": 1831,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 2030,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 8,
+          "atMs": 3860,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 124,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 9,
+          "atMs": 4145,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 108,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 10,
+          "atMs": 4410,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 153,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 11,
+          "atMs": 4670,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 128,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 12,
+          "atMs": 4947,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 109,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 13,
+          "atMs": 5212,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 102,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 14,
+          "atMs": 5493,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 107,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 15,
+          "atMs": 5758,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 114,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 16,
+          "atMs": 6021,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 112,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 17,
+          "atMs": 6301,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 165,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 18,
+          "atMs": 6565,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 181,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 19,
+          "atMs": 6843,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 759,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 20,
+          "atMs": 7602,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 102,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 21,
+          "atMs": 7886,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 103,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 22,
+          "atMs": 8153,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 102,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 23,
+          "atMs": 8416,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 174,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 24,
+          "atMs": 8695,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 111,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 25,
+          "atMs": 8958,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 157,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 26,
+          "atMs": 9236,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 99,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 27,
+          "atMs": 9502,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 152,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 28,
+          "atMs": 9767,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 106,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 29,
+          "atMs": 10047,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 103,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 30,
+          "atMs": 10313,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 102,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 31,
+          "atMs": 10576,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 109,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 32,
+          "atMs": 10855,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 104,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 33,
+          "atMs": 11117,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 114,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 34,
+          "atMs": 11382,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 104,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 35,
+          "atMs": 11664,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 106,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 36,
+          "atMs": 11928,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 114,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 37,
+          "atMs": 12192,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 160,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 38,
+          "atMs": 12469,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 171,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 39,
+          "atMs": 12733,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 398,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 40,
+          "atMs": 13013,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 265,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 41,
+          "atMs": 13275,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 148,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 42,
+          "atMs": 13548,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 97,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 43,
+          "atMs": 13812,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 139,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 44,
+          "atMs": 14091,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 98,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 45,
+          "atMs": 14356,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 128,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 46,
+          "atMs": 14622,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 100,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 47,
+          "atMs": 14901,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 133,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 48,
+          "atMs": 15166,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 103,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 49,
+          "atMs": 15447,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 147,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 50,
+          "atMs": 15713,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 116,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 51,
+          "atMs": 15977,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 141,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 52,
+          "atMs": 16256,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 153,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 53,
+          "atMs": 16522,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 96,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 54,
+          "atMs": 16785,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 105,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 55,
+          "atMs": 17067,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 160,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 56,
+          "atMs": 17331,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 109,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 57,
+          "atMs": 17593,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 135,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 58,
+          "atMs": 17874,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 145,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 59,
+          "atMs": 18141,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 102,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 60,
+          "atMs": 18405,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 133,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 61,
+          "atMs": 18687,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 164,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 62,
+          "atMs": 18951,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 109,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 63,
+          "atMs": 19217,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 119,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 64,
+          "atMs": 19483,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 142,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 65,
+          "atMs": 19760,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 127,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 66,
+          "atMs": 20023,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 131,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 67,
+          "atMs": 20303,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 109,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 68,
+          "atMs": 20563,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 110,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 69,
+          "atMs": 20840,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 108,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 70,
+          "atMs": 21117,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 92,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 71,
+          "atMs": 21378,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 102,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 72,
+          "atMs": 21657,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 172,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 73,
+          "atMs": 21918,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 104,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 74,
+          "atMs": 22194,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 135,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 75,
+          "atMs": 22458,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 142,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 76,
+          "atMs": 22725,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 189,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 77,
+          "atMs": 23002,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 99,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 78,
+          "atMs": 23265,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 123,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 79,
+          "atMs": 23547,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 114,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 80,
+          "atMs": 23816,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 106,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 81,
+          "atMs": 24079,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 97,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 82,
+          "atMs": 24346,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 109,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 83,
+          "atMs": 24894,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 184,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 84,
+          "atMs": 24614,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 466,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 85,
+          "atMs": 25158,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 134,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 86,
+          "atMs": 25436,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 129,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 87,
+          "atMs": 25701,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 151,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 88,
+          "atMs": 25963,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 113,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 89,
+          "atMs": 26506,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 253,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 90,
+          "atMs": 26785,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 419,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 91,
+          "atMs": 26241,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 994,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 92,
+          "atMs": 27052,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 241,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 93,
+          "atMs": 27315,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 124,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 94,
+          "atMs": 27582,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 139,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 95,
+          "atMs": 27862,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 148,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 96,
+          "atMs": 28128,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 101,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 97,
+          "atMs": 28391,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 102,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 98,
+          "atMs": 28662,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 184,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 99,
+          "atMs": 28937,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 128,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 100,
+          "atMs": 29215,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 127,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 101,
+          "atMs": 29479,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 101,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 102,
+          "atMs": 29744,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 107,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 103,
+          "atMs": 30012,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 122,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 104,
+          "atMs": 30293,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 122,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 105,
+          "atMs": 30554,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 137,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 106,
+          "atMs": 30832,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 103,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 107,
+          "atMs": 31099,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 161,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 108,
+          "atMs": 31363,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 142,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 109,
+          "atMs": 31644,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 129,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 110,
+          "atMs": 31908,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 357,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 111,
+          "atMs": 32173,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 174,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 112,
+          "atMs": 32454,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 99,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 113,
+          "atMs": 32722,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 102,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 114,
+          "atMs": 32988,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 141,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 115,
+          "atMs": 33252,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 107,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 116,
+          "atMs": 33531,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 128,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 117,
+          "atMs": 33799,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 103,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 118,
+          "atMs": 34063,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 105,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 119,
+          "atMs": 34342,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 145,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 120,
+          "atMs": 34608,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 137,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 121,
+          "atMs": 34872,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 400,
+          "ms": 98,
+          "outcome": "api_error",
+          "attempt": 1,
+          "sqlKind": "write",
+          "errorCodes": [
+            7500
+          ]
+        },
+        {
+          "n": 122,
+          "atMs": 35152,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 184,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 123,
+          "atMs": 35417,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 123,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 124,
+          "atMs": 35681,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 103,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 125,
+          "atMs": 35962,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 152,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 126,
+          "atMs": 36225,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 147,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 127,
+          "atMs": 36505,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 139,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 128,
+          "atMs": 36762,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 118,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 129,
+          "atMs": 37034,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 274,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 130,
+          "atMs": 37302,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 168,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 131,
+          "atMs": 37583,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 206,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 132,
+          "atMs": 37848,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 122,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 133,
+          "atMs": 38114,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 138,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 134,
+          "atMs": 38393,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 129,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 135,
+          "atMs": 38659,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 95,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 136,
+          "atMs": 38922,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 107,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 137,
+          "atMs": 39203,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 140,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 138,
+          "atMs": 39466,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 141,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 139,
+          "atMs": 39745,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 98,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 140,
+          "atMs": 40009,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 116,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 141,
+          "atMs": 40275,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 134,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 142,
+          "atMs": 40544,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 129,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 143,
+          "atMs": 40819,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 138,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 144,
+          "atMs": 41084,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 153,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        },
+        {
+          "n": 145,
+          "atMs": 41362,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 118,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "reader-run-1",
+      "startedAtMs": 47179,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 116,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "bracket-after",
+      "startedAtMs": 47298,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 936,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    }
+  ],
+  "urlEvents": [
+    {
+      "n": 1,
+      "atMs": 1183,
+      "ms": 802,
+      "phase": "setup",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/workspaces",
+      "status": 201
+    },
+    {
+      "n": 2,
+      "atMs": 15001,
+      "ms": 1995,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 3,
+      "atMs": 15004,
+      "ms": 1010,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 402
+    },
+    {
+      "n": 4,
+      "atMs": 15006,
+      "ms": 666,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 402
+    },
+    {
+      "n": 5,
+      "atMs": 15007,
+      "ms": 358,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 6,
+      "atMs": 15009,
+      "ms": 527,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 7,
+      "atMs": 15010,
+      "ms": 657,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 8,
+      "atMs": 22780,
+      "ms": 1138,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 402
+    },
+    {
+      "n": 9,
+      "atMs": 22781,
+      "ms": 481,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 10,
+      "atMs": 22782,
+      "ms": 650,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 402
+    },
+    {
+      "n": 11,
+      "atMs": 22783,
+      "ms": 1097,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 402
+    },
+    {
+      "n": 12,
+      "atMs": 22783,
+      "ms": 501,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 402
+    },
+    {
+      "n": 13,
+      "atMs": 30549,
+      "ms": 1095,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 14,
+      "atMs": 30550,
+      "ms": 706,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 15,
+      "atMs": 30550,
+      "ms": 588,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 16,
+      "atMs": 30551,
+      "ms": 475,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 17,
+      "atMs": 30551,
+      "ms": 2685,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 18,
+      "atMs": 38333,
+      "ms": 1120,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 19,
+      "atMs": 38334,
+      "ms": 1415,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 20,
+      "atMs": 38335,
+      "ms": 1947,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 21,
+      "atMs": 38335,
+      "ms": 1414,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 22,
+      "atMs": 38336,
+      "ms": 474,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 23,
+      "atMs": 46102,
+      "ms": 552,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 24,
+      "atMs": 46103,
+      "ms": 1076,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 25,
+      "atMs": 46103,
+      "ms": 1051,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 26,
+      "atMs": 46103,
+      "ms": 597,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    },
+    {
+      "n": 27,
+      "atMs": 46103,
+      "ms": 535,
+      "phase": "deduct",
+      "note": "run-1",
+      "method": "POST",
+      "path": "/api/wallet/deduct",
+      "status": 200
+    }
+  ],
+  "facts": {
+    "names": {
+      "suffix": "c56a65d4",
+      "script": "projectx-poc-c56a65d4",
+      "database": "projectx-poc-c56a65d4-db",
+      "workflow": "projectx-poc-c56a65d4-graphs"
+    },
+    "url": "https://projectx-poc-c56a65d4.killerkingmega.workers.dev",
+    "databaseId": "8cc2fe5f-5c56-4619-802b-2e00d2612a4e",
+    "runsWanted": 1,
+    "burstsPerRun": 5,
+    "restSpacingMs": 270,
+    "versions": {
+      "before": [
+        "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+        "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+        "928f3b4c-024c-426d-af31-a15a3d725360"
+      ],
+      "after": [
+        "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+        "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+        "928f3b4c-024c-426d-af31-a15a3d725360"
+      ]
+    },
+    "deployedVersionFromH10": "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+    "runs": [
+      {
+        "run": 1,
+        "workspaceId": "fe28fec1-f480-480c-b49c-f571a92bdc23",
+        "start": 35,
+        "ops": [
+          {
+            "kind": "topup",
+            "amount": 5,
+            "orderId": "order_08275bf8653046e8"
+          },
+          {
+            "kind": "topup",
+            "amount": 11,
+            "orderId": "order_1ad64fb53a5944ad"
+          },
+          {
+            "kind": "deduct",
+            "amount": 1
+          },
+          {
+            "kind": "topup",
+            "amount": 8,
+            "orderId": "order_aaae83fc55274cbb"
+          },
+          {
+            "kind": "deduct",
+            "amount": 1
+          },
+          {
+            "kind": "deduct",
+            "amount": 4
+          },
+          {
+            "kind": "topup",
+            "amount": 4,
+            "orderId": "order_6d041283a92f485a"
+          },
+          {
+            "kind": "topup",
+            "amount": 20,
+            "orderId": "order_6f375963df8a44fd"
+          },
+          {
+            "kind": "deduct",
+            "amount": 1
+          },
+          {
+            "kind": "deduct",
+            "amount": 7
+          },
+          {
+            "kind": "topup",
+            "amount": 6,
+            "orderId": "order_97785b752f3e4a9c"
+          },
+          {
+            "kind": "topup",
+            "amount": 6,
+            "orderId": "order_57dbd25531564b48"
+          },
+          {
+            "kind": "deduct",
+            "amount": 9
+          },
+          {
+            "kind": "topup",
+            "amount": 19,
+            "orderId": "order_04da65616d5741fa"
+          },
+          {
+            "kind": "deduct",
+            "amount": 5
+          },
+          {
+            "kind": "deduct",
+            "amount": 6
+          },
+          {
+            "kind": "deduct",
+            "amount": 5
+          },
+          {
+            "kind": "topup",
+            "amount": 19,
+            "orderId": "order_57df074a6fe64fd1"
+          },
+          {
+            "kind": "deduct",
+            "amount": 15
+          },
+          {
+            "kind": "topup",
+            "amount": 19,
+            "orderId": "order_a5f7b32641e84106"
+          },
+          {
+            "kind": "deduct",
+            "amount": 20
+          },
+          {
+            "kind": "deduct",
+            "amount": 13
+          },
+          {
+            "kind": "deduct",
+            "amount": 7
+          },
+          {
+            "kind": "topup",
+            "amount": 16,
+            "orderId": "order_1c254df0cd3844bf"
+          },
+          {
+            "kind": "deduct",
+            "amount": 9
+          },
+          {
+            "kind": "deduct",
+            "amount": 16
+          },
+          {
+            "kind": "deduct",
+            "amount": 8
+          },
+          {
+            "kind": "deduct",
+            "amount": 17
+          },
+          {
+            "kind": "topup",
+            "amount": 10,
+            "orderId": "order_3e4b3d482d77461f"
+          },
+          {
+            "kind": "topup",
+            "amount": 7,
+            "orderId": "order_824625edefc7488e"
+          },
+          {
+            "kind": "deduct",
+            "amount": 14
+          },
+          {
+            "kind": "topup",
+            "amount": 2,
+            "orderId": "order_d76b48ae01cc43ae"
+          },
+          {
+            "kind": "deduct",
+            "amount": 18
+          },
+          {
+            "kind": "deduct",
+            "amount": 1
+          },
+          {
+            "kind": "topup",
+            "amount": 10,
+            "orderId": "order_c62d6267b5e940b3"
+          },
+          {
+            "kind": "topup",
+            "amount": 3,
+            "orderId": "order_7a2d7f341a29464e"
+          },
+          {
+            "kind": "topup",
+            "amount": 15,
+            "orderId": "order_ddb4a1358c974eb8"
+          },
+          {
+            "kind": "topup",
+            "amount": 18,
+            "orderId": "order_575d5b4c129640b1"
+          },
+          {
+            "kind": "deduct",
+            "amount": 15
+          },
+          {
+            "kind": "deduct",
+            "amount": 18
+          },
+          {
+            "kind": "deduct",
+            "amount": 9
+          },
+          {
+            "kind": "topup",
+            "amount": 16,
+            "orderId": "order_4f47d22314ef4ecc"
+          },
+          {
+            "kind": "topup",
+            "amount": 10,
+            "orderId": "order_39118941c2954454"
+          },
+          {
+            "kind": "topup",
+            "amount": 19,
+            "orderId": "order_08ad420ca44a4bc6"
+          },
+          {
+            "kind": "deduct",
+            "amount": 3
+          },
+          {
+            "kind": "topup",
+            "amount": 20,
+            "orderId": "order_fd4c4d9eb30f413f"
+          },
+          {
+            "kind": "deduct",
+            "amount": 9
+          },
+          {
+            "kind": "topup",
+            "amount": 20,
+            "orderId": "order_75186003d4e34f4d"
+          },
+          {
+            "kind": "deduct",
+            "amount": 6
+          },
+          {
+            "kind": "topup",
+            "amount": 9,
+            "orderId": "order_fe8199077e064b2e"
+          }
+        ],
+        "deducts": [
+          {
+            "amount": 8,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 15,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 6,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 20,
+            "result": "refused",
+            "status": 402
+          },
+          {
+            "amount": 9,
+            "result": "refused",
+            "status": 402
+          },
+          {
+            "amount": 1,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 5,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 18,
+            "result": "refused",
+            "status": 402
+          },
+          {
+            "amount": 13,
+            "result": "refused",
+            "status": 402
+          },
+          {
+            "amount": 17,
+            "result": "refused",
+            "status": 402
+          },
+          {
+            "amount": 1,
+            "result": "refused",
+            "status": 402
+          },
+          {
+            "amount": 14,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 7,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 6,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 4,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 9,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 3,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 1,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 18,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 5,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 9,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 9,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 7,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 1,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 16,
+            "result": "accepted",
+            "status": 200
+          },
+          {
+            "amount": 15,
+            "result": "accepted",
+            "status": 200
+          }
+        ],
+        "topups": [
+          {
+            "orderId": "order_08275bf8653046e8",
+            "amount": 5,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_1ad64fb53a5944ad",
+            "amount": 11,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_aaae83fc55274cbb",
+            "amount": 8,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_6d041283a92f485a",
+            "amount": 4,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_6f375963df8a44fd",
+            "amount": 20,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_97785b752f3e4a9c",
+            "amount": 6,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_57dbd25531564b48",
+            "amount": 6,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_04da65616d5741fa",
+            "amount": 19,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_57df074a6fe64fd1",
+            "amount": 19,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_a5f7b32641e84106",
+            "amount": 19,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_1c254df0cd3844bf",
+            "amount": 16,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_3e4b3d482d77461f",
+            "amount": 10,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_824625edefc7488e",
+            "amount": 7,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_d76b48ae01cc43ae",
+            "amount": 2,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_c62d6267b5e940b3",
+            "amount": 10,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_7a2d7f341a29464e",
+            "amount": 3,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_ddb4a1358c974eb8",
+            "amount": 15,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_575d5b4c129640b1",
+            "amount": 18,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_4f47d22314ef4ecc",
+            "amount": 16,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_39118941c2954454",
+            "amount": 10,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_08ad420ca44a4bc6",
+            "amount": 19,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_fd4c4d9eb30f413f",
+            "amount": 20,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_75186003d4e34f4d",
+            "amount": 20,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          },
+          {
+            "orderId": "order_fe8199077e064b2e",
+            "amount": 9,
+            "result": "accepted",
+            "confirmations": [
+              {
+                "status": "PAID",
+                "credited": true
+              },
+              {
+                "status": "already_processed",
+                "credited": false
+              }
+            ]
+          }
+        ],
+        "final": {
+          "balance": 168,
+          "ledger": [
+            {
+              "type": "deduction",
+              "amount": -8,
+              "balance_after": 27,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -15,
+              "balance_after": 12,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -6,
+              "balance_after": 6,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -1,
+              "balance_after": 5,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -5,
+              "balance_after": 0,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "topup",
+              "amount": 5,
+              "balance_after": 5,
+              "metadata": "{\"order_id\":\"order_08275bf8653046e8\",\"amount_paid\":5,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_08275bf8653046e8"
+            },
+            {
+              "type": "topup",
+              "amount": 11,
+              "balance_after": 16,
+              "metadata": "{\"order_id\":\"order_1ad64fb53a5944ad\",\"amount_paid\":11,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_1ad64fb53a5944ad"
+            },
+            {
+              "type": "topup",
+              "amount": 8,
+              "balance_after": 24,
+              "metadata": "{\"order_id\":\"order_aaae83fc55274cbb\",\"amount_paid\":8,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_aaae83fc55274cbb"
+            },
+            {
+              "type": "topup",
+              "amount": 4,
+              "balance_after": 28,
+              "metadata": "{\"order_id\":\"order_6d041283a92f485a\",\"amount_paid\":4,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_6d041283a92f485a"
+            },
+            {
+              "type": "topup",
+              "amount": 20,
+              "balance_after": 48,
+              "metadata": "{\"order_id\":\"order_6f375963df8a44fd\",\"amount_paid\":20,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_6f375963df8a44fd"
+            },
+            {
+              "type": "topup",
+              "amount": 6,
+              "balance_after": 54,
+              "metadata": "{\"order_id\":\"order_97785b752f3e4a9c\",\"amount_paid\":6,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_97785b752f3e4a9c"
+            },
+            {
+              "type": "topup",
+              "amount": 6,
+              "balance_after": 60,
+              "metadata": "{\"order_id\":\"order_57dbd25531564b48\",\"amount_paid\":6,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_57dbd25531564b48"
+            },
+            {
+              "type": "topup",
+              "amount": 19,
+              "balance_after": 79,
+              "metadata": "{\"order_id\":\"order_04da65616d5741fa\",\"amount_paid\":19,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_04da65616d5741fa"
+            },
+            {
+              "type": "topup",
+              "amount": 19,
+              "balance_after": 98,
+              "metadata": "{\"order_id\":\"order_57df074a6fe64fd1\",\"amount_paid\":19,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_57df074a6fe64fd1"
+            },
+            {
+              "type": "topup",
+              "amount": 19,
+              "balance_after": 117,
+              "metadata": "{\"order_id\":\"order_a5f7b32641e84106\",\"amount_paid\":19,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_a5f7b32641e84106"
+            },
+            {
+              "type": "topup",
+              "amount": 16,
+              "balance_after": 133,
+              "metadata": "{\"order_id\":\"order_1c254df0cd3844bf\",\"amount_paid\":16,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_1c254df0cd3844bf"
+            },
+            {
+              "type": "topup",
+              "amount": 10,
+              "balance_after": 143,
+              "metadata": "{\"order_id\":\"order_3e4b3d482d77461f\",\"amount_paid\":10,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_3e4b3d482d77461f"
+            },
+            {
+              "type": "topup",
+              "amount": 7,
+              "balance_after": 150,
+              "metadata": "{\"order_id\":\"order_824625edefc7488e\",\"amount_paid\":7,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_824625edefc7488e"
+            },
+            {
+              "type": "deduction",
+              "amount": -14,
+              "balance_after": 136,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -7,
+              "balance_after": 129,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -6,
+              "balance_after": 123,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "topup",
+              "amount": 2,
+              "balance_after": 125,
+              "metadata": "{\"order_id\":\"order_d76b48ae01cc43ae\",\"amount_paid\":2,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_d76b48ae01cc43ae"
+            },
+            {
+              "type": "deduction",
+              "amount": -4,
+              "balance_after": 121,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "topup",
+              "amount": 10,
+              "balance_after": 131,
+              "metadata": "{\"order_id\":\"order_c62d6267b5e940b3\",\"amount_paid\":10,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_c62d6267b5e940b3"
+            },
+            {
+              "type": "topup",
+              "amount": 3,
+              "balance_after": 134,
+              "metadata": "{\"order_id\":\"order_7a2d7f341a29464e\",\"amount_paid\":3,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_7a2d7f341a29464e"
+            },
+            {
+              "type": "deduction",
+              "amount": -9,
+              "balance_after": 125,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "topup",
+              "amount": 15,
+              "balance_after": 140,
+              "metadata": "{\"order_id\":\"order_ddb4a1358c974eb8\",\"amount_paid\":15,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_ddb4a1358c974eb8"
+            },
+            {
+              "type": "topup",
+              "amount": 18,
+              "balance_after": 158,
+              "metadata": "{\"order_id\":\"order_575d5b4c129640b1\",\"amount_paid\":18,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_575d5b4c129640b1"
+            },
+            {
+              "type": "topup",
+              "amount": 16,
+              "balance_after": 174,
+              "metadata": "{\"order_id\":\"order_4f47d22314ef4ecc\",\"amount_paid\":16,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_4f47d22314ef4ecc"
+            },
+            {
+              "type": "topup",
+              "amount": 10,
+              "balance_after": 184,
+              "metadata": "{\"order_id\":\"order_39118941c2954454\",\"amount_paid\":10,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_39118941c2954454"
+            },
+            {
+              "type": "topup",
+              "amount": 19,
+              "balance_after": 203,
+              "metadata": "{\"order_id\":\"order_08ad420ca44a4bc6\",\"amount_paid\":19,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_08ad420ca44a4bc6"
+            },
+            {
+              "type": "topup",
+              "amount": 20,
+              "balance_after": 223,
+              "metadata": "{\"order_id\":\"order_fd4c4d9eb30f413f\",\"amount_paid\":20,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_fd4c4d9eb30f413f"
+            },
+            {
+              "type": "topup",
+              "amount": 20,
+              "balance_after": 243,
+              "metadata": "{\"order_id\":\"order_75186003d4e34f4d\",\"amount_paid\":20,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_75186003d4e34f4d"
+            },
+            {
+              "type": "topup",
+              "amount": 9,
+              "balance_after": 252,
+              "metadata": "{\"order_id\":\"order_fe8199077e064b2e\",\"amount_paid\":9,\"credits_per_unit\":1}",
+              "idempotency_key": "order:order_fe8199077e064b2e"
+            },
+            {
+              "type": "deduction",
+              "amount": -3,
+              "balance_after": 249,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -1,
+              "balance_after": 248,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -18,
+              "balance_after": 230,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -5,
+              "balance_after": 225,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -9,
+              "balance_after": 216,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -9,
+              "balance_after": 207,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -7,
+              "balance_after": 200,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -1,
+              "balance_after": 199,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -16,
+              "balance_after": 183,
+              "metadata": "{}",
+              "idempotency_key": null
+            },
+            {
+              "type": "deduction",
+              "amount": -15,
+              "balance_after": 168,
+              "metadata": "{}",
+              "idempotency_key": null
+            }
+          ],
+          "orders": [
+            {
+              "order_id": "order_08275bf8653046e8",
+              "processed": 1
+            },
+            {
+              "order_id": "order_1ad64fb53a5944ad",
+              "processed": 1
+            },
+            {
+              "order_id": "order_aaae83fc55274cbb",
+              "processed": 1
+            },
+            {
+              "order_id": "order_6d041283a92f485a",
+              "processed": 1
+            },
+            {
+              "order_id": "order_6f375963df8a44fd",
+              "processed": 1
+            },
+            {
+              "order_id": "order_97785b752f3e4a9c",
+              "processed": 1
+            },
+            {
+              "order_id": "order_57dbd25531564b48",
+              "processed": 1
+            },
+            {
+              "order_id": "order_04da65616d5741fa",
+              "processed": 1
+            },
+            {
+              "order_id": "order_57df074a6fe64fd1",
+              "processed": 1
+            },
+            {
+              "order_id": "order_a5f7b32641e84106",
+              "processed": 1
+            },
+            {
+              "order_id": "order_1c254df0cd3844bf",
+              "processed": 1
+            },
+            {
+              "order_id": "order_3e4b3d482d77461f",
+              "processed": 1
+            },
+            {
+              "order_id": "order_824625edefc7488e",
+              "processed": 1
+            },
+            {
+              "order_id": "order_d76b48ae01cc43ae",
+              "processed": 1
+            },
+            {
+              "order_id": "order_c62d6267b5e940b3",
+              "processed": 1
+            },
+            {
+              "order_id": "order_7a2d7f341a29464e",
+              "processed": 1
+            },
+            {
+              "order_id": "order_ddb4a1358c974eb8",
+              "processed": 1
+            },
+            {
+              "order_id": "order_575d5b4c129640b1",
+              "processed": 1
+            },
+            {
+              "order_id": "order_4f47d22314ef4ecc",
+              "processed": 1
+            },
+            {
+              "order_id": "order_39118941c2954454",
+              "processed": 1
+            },
+            {
+              "order_id": "order_08ad420ca44a4bc6",
+              "processed": 1
+            },
+            {
+              "order_id": "order_fd4c4d9eb30f413f",
+              "processed": 1
+            },
+            {
+              "order_id": "order_75186003d4e34f4d",
+              "processed": 1
+            },
+            {
+              "order_id": "order_fe8199077e064b2e",
+              "processed": 1
+            }
+          ]
+        }
+      }
+    ],
+    "attempts": [
+      {
+        "n": 1,
+        "phase": "run 1",
+        "atMs": 47296,
+        "outcome": "ok",
+        "detail": "26 deductions (20 accepted, 6 refused), 24 top-ups, 0 unknown, clean"
+      },
+      {
+        "n": 2,
+        "phase": "version at the end",
+        "atMs": 48234,
+        "outcome": "ok",
+        "detail": "3 version(s), newest 482a71cf"
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "commandStartedAt": "2026-10-21T09:39:29.698Z",
+  "finishedAt": "2026-10-21T09:39:31.005Z",
+  "completed": false,
+  "callsSha256": "ab676328c976c08684daef44150b5e38462b317eacef68ae70815a4d8a299050",
+  "stoppedBecause": "the client could not connect: Streamable HTTP error: Error POSTing to endpoint: 404 Not Found",
+  "leakScan": {
+    "filesScanned": 946,
+    "found": [],
+    "scannedFor": [
+      "token",
+      "accountId",
+      "accessKey",
+      "mcpToken"
+    ]
+  }
+}

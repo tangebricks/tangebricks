@@ -1,0 +1,310 @@
+[
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-brick-audit-and-maturity-tiers.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-compact-paged-discovery-brings-h9-under-15.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-core-auth-on-better-auth-with-real-token-isolation.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-cp0-gate-regenerate-evidence-and-run-done-when.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-d4-bricks-scheduled-queued-and-workflow-execution.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-evidence-re-measured-and-tamper-detected.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-manifest-v2-schema-and-conformance-check.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-multi-brick-presets-boot-in-workerd.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-one-home-per-package-and-frozen-lockfile.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-refactor-sweep.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp0-foundation-hardening/tickets/story-restore-and-review-37-generated-manifests.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp1-shared-blueprint-service/tickets/story-blueprint-do-sqlite-ops-log-and-studio-api-bus.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp1-shared-blueprint-service/tickets/story-blueprint-do-websocket-hub-and-live-broadcast.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp1-shared-blueprint-service/tickets/story-blueprint-package-schema-ops-and-pure-apply-op.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp1-shared-blueprint-service/tickets/story-cp1-gate-shared-blueprint-service-done-when.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp1-shared-blueprint-service/tickets/story-cp1-refactor-sweep.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp1-shared-blueprint-service/tickets/story-deterministic-blueprint-export-and-import.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp1-shared-blueprint-service/tickets/story-optimistic-concurrency-rebase-and-conflict-handling.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp1-shared-blueprint-service/tickets/story-revision-history-semantic-diff-and-inverse-revert.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp1-shared-blueprint-service/tickets/story-stateless-mcp-server-over-blueprint-do.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp10-integration-pack-v1/tickets/story-case-a-connections-center-oauth-and-webhook-gateway.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp10-integration-pack-v1/tickets/story-case-b-integration-connections-brick-and-widget.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp10-integration-pack-v1/tickets/story-cp10-gate-integration-pack-verification.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp10-integration-pack-v1/tickets/story-integration-manifest-schema-and-generic-executor.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp10-integration-pack-v1/tickets/story-openapi-discovery-importer-and-curated-pack-v1.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp10-integration-pack-v1/tickets/story-outbound-openapi-31-publishing.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-cp2-gate-studio-shell-read-only-done-when.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-cp2-refactor-sweep.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-cp2-ui-and-real-backend-hardening.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-live-websocket-sync-author-badges-and-node-highlights.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-project-overview-and-backend-map.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-read-only-bricks-and-entities-views-with-maturity-badges.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-read-only-workflow-canvas-and-200-node-fps-budget.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-revision-history-semantic-diff-and-ai-change-ledger-drawer.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-studio-auth-orgs-and-role-enforcement.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp2-studio-shell-read-only/tickets/story-studio-web-clean-room-scaffold-and-3-panel-shell.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-brick-catalog-enable-disable-and-json-schema-form-inspector.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-cp3-gate-visual-editing-done-when.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-cp3-refactor-sweep.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-inline-validation-undo-redo-and-visual-diff.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-manifest-v2-nodes-and-first-party-core-node-pack.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-n8n-parity-scorecard-and-ui-mcp-hash-equality-proof.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-structured-data-pill-picker-and-expression-free-mapping.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-studio-connections-and-secrets-center.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-visual-entity-designer-and-migration-preview.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp3-visual-editing/tickets/story-workflow-canvas-editing-palette-and-typed-ports.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp4-test-and-run/tickets/story-cp4-parity-scorecard-and-gate.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp4-test-and-run/tickets/story-pin-step-output-and-rerun-from-node.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp4-test-and-run/tickets/story-run-history-and-run-replay-inspector.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp4-test-and-run/tickets/story-runtime-step-telemetry-and-secret-redaction.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp4-test-and-run/tickets/story-test-step-rehearsal-in-preview-and-inspector-io.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp4-test-and-run/tickets/story-test-workflow-and-live-canvas-node-highlighting.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp5-deploy-from-studio/tickets/story-abstract-deploy-target-and-token-custody.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp5-deploy-from-studio/tickets/story-connect-cloudflare-wizard-and-permission-verifier.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp5-deploy-from-studio/tickets/story-content-addressed-deploy-promotion-and-graph-hot-apply.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp5-deploy-from-studio/tickets/story-cp5-token-security-review-and-gate.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp5-deploy-from-studio/tickets/story-drift-detection-and-one-click-rollback.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp5-deploy-from-studio/tickets/story-pre-deploy-plan-diff-modal-and-stub-identity-gate.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp6-backend-visibility/tickets/story-backend-health-and-metrics-panel.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp6-backend-visibility/tickets/story-cp6-backend-visibility-gate.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp6-backend-visibility/tickets/story-readonly-credit-wallet-and-usage-ledger-viewer.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp6-backend-visibility/tickets/story-structured-logs-and-errors-correlated-to-runs.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp6-backend-visibility/tickets/story-workspace-scoped-data-browser-and-isolation.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp7-agent-in-the-loop/tickets/story-ci-token-budget-enforcement.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp7-agent-in-the-loop/tickets/story-cp7-gate-agent-in-the-loop-verification.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp7-agent-in-the-loop/tickets/story-draft-branch-proposal-mode-and-visual-diff-review.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp7-agent-in-the-loop/tickets/story-evolved-mcp-tool-surface-and-parity-gate.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp7-agent-in-the-loop/tickets/story-structured-error-remediation-and-self-correction-eval.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp8-private-beta/tickets/story-accessibility-and-keyboard-navigation-audit.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp8-private-beta/tickets/story-cp8-gate-private-beta-readiness-verification.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp8-private-beta/tickets/story-n8n-parity-scorecard-gate-and-cohort-readiness.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp8-private-beta/tickets/story-starter-templates-and-onboarding-funnel-telemetry.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp8-private-beta/tickets/story-tenancy-hardening-retention-settings-and-redaction.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp9-hosted-sandbox/tickets/story-cp9-gate-hosted-sandbox-verification.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp9-hosted-sandbox/tickets/story-hosted-sandbox-deploy-target-workers-for-platforms.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp9-hosted-sandbox/tickets/story-sandbox-quotas-ttl-expiry-and-abuse-guardrails.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  },
+  {
+    "path": "_bmad-output/initiative-projectx-studio/tickets/epic-cp9-hosted-sandbox/tickets/story-zero-credential-preview-and-move-to-byoc-promotion.md",
+    "reason": "pre-provenance (CP0–CP10), audited in UC0.4"
+  }
+]

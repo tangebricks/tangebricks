@@ -1,0 +1,61 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "user-onboarding",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "user-onboarding"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_user_onboarding.sql"
+  ],
+  "routePrefixes": [
+    "onboarding"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "User Onboarding & Activation Tours",
+    "category": "governance",
+    "summary": "Onboarding checklists, steps, and progress tracking.",
+    "maturity": "beta",
+    "behaviourTest": "test/onboarding.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "worker": {
+    "package": "@poc/user-onboarding",
+    "routes": [
+      {
+        "factory": "createOnboardingRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/onboarding",
+          "/api/onboarding/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "onb_flows": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "onb_user_progress": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

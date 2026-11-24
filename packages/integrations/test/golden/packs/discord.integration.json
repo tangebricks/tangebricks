@@ -1,0 +1,704 @@
+{
+  "manifestVersion": 2,
+  "kind": "integration",
+  "app": "discord",
+  "version": "1.0.0",
+  "ui": {
+    "displayName": "Discord",
+    "category": "communication",
+    "icon": "discord",
+    "docsUrl": "https://discord.com/developers/docs/intro",
+    "summary": "Send channel messages, embeds, reactions, threads, and handle Discord interactions.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "scopes": [
+      "bot",
+      "identify",
+      "guilds"
+    ],
+    "authorizeUrl": "https://discord.com/oauth2/authorize",
+    "tokenUrl": "https://discord.com/api/oauth2/token",
+    "headerName": "Authorization",
+    "prefix": "Bearer",
+    "connectionFields": [
+      "token"
+    ]
+  },
+  "baseUrl": "https://discord.com/api/v10",
+  "allowedHosts": [
+    "discord.com"
+  ],
+  "operations": [
+    {
+      "operationId": "createMessage",
+      "label": "Send channel message",
+      "summary": "Send channel message",
+      "method": "POST",
+      "path": "/channels/{channelId}/messages",
+      "params": [
+        {
+          "name": "channelId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "content",
+            "dataType": "string",
+            "required": true,
+            "description": "Message text",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "embeds",
+            "dataType": "array",
+            "description": "Rich embeds",
+            "schema": {
+              "dataType": "array"
+            }
+          },
+          {
+            "name": "tts",
+            "dataType": "boolean",
+            "description": "Text to speech",
+            "schema": {
+              "dataType": "boolean"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "type",
+            "dataType": "number"
+          },
+          {
+            "id": "content",
+            "dataType": "string"
+          },
+          {
+            "id": "mentions",
+            "dataType": "array"
+          },
+          {
+            "id": "mention_roles",
+            "dataType": "array"
+          }
+        ],
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "getChannelMessages",
+      "label": "List channel messages",
+      "summary": "List channel messages",
+      "method": "GET",
+      "path": "/channels/{channelId}/messages",
+      "params": [
+        {
+          "name": "channelId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "dataType": "number"
+        },
+        {
+          "name": "after",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "response": {
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "pagination": {
+        "style": "cursor",
+        "paramName": "after",
+        "responsePath": "messages",
+        "nextCursorPath": "next_after",
+        "maxPages": 3
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "editMessage",
+      "label": "Edit channel message",
+      "summary": "Edit channel message",
+      "method": "PATCH",
+      "path": "/channels/{channelId}/messages/{messageId}",
+      "params": [
+        {
+          "name": "channelId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "messageId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "content",
+            "dataType": "string",
+            "description": "Updated text",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "embeds",
+            "dataType": "array",
+            "description": "Updated embeds",
+            "schema": {
+              "dataType": "array"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "type",
+            "dataType": "number"
+          },
+          {
+            "id": "content",
+            "dataType": "string"
+          },
+          {
+            "id": "mentions",
+            "dataType": "array"
+          },
+          {
+            "id": "mention_roles",
+            "dataType": "array"
+          }
+        ],
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "deleteMessage",
+      "label": "Delete channel message",
+      "summary": "Delete channel message",
+      "method": "DELETE",
+      "path": "/channels/{channelId}/messages/{messageId}",
+      "params": [
+        {
+          "name": "channelId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "messageId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "status": 204,
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "createReaction",
+      "label": "Add reaction to message",
+      "summary": "Add reaction to message",
+      "method": "PUT",
+      "path": "/channels/{channelId}/messages/{messageId}/reactions/{emoji}/@me",
+      "params": [
+        {
+          "name": "channelId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "messageId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "emoji",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "status": 204,
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "startThreadFromMessage",
+      "label": "Start thread from message",
+      "summary": "Start thread from message",
+      "method": "POST",
+      "path": "/channels/{channelId}/messages/{messageId}/threads",
+      "params": [
+        {
+          "name": "channelId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "messageId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "name",
+            "dataType": "string",
+            "required": true,
+            "description": "Thread name",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "auto_archive_duration",
+            "dataType": "number",
+            "description": "Archive minutes",
+            "schema": {
+              "dataType": "number"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 201,
+        "outputs": [
+          {
+            "id": "id",
+            "dataType": "string"
+          },
+          {
+            "id": "type",
+            "dataType": "number"
+          },
+          {
+            "id": "flags",
+            "dataType": "number"
+          },
+          {
+            "id": "guild_id",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "startThreadWithoutMessage",
+      "label": "Start standalone thread",
+      "summary": "Start standalone thread",
+      "method": "POST",
+      "path": "/channels/{channelId}/threads",
+      "params": [
+        {
+          "name": "channelId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "name",
+            "dataType": "string",
+            "required": true,
+            "description": "Thread name",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "type",
+            "dataType": "number",
+            "description": "Channel type",
+            "schema": {
+              "dataType": "number"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 201,
+        "outputs": [
+          {
+            "id": "id",
+            "dataType": "string"
+          },
+          {
+            "id": "type",
+            "dataType": "number"
+          },
+          {
+            "id": "flags",
+            "dataType": "number"
+          },
+          {
+            "id": "guild_id",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "getGuild",
+      "label": "Get guild details",
+      "summary": "Get guild details",
+      "method": "GET",
+      "path": "/guilds/{guildId}",
+      "params": [
+        {
+          "name": "guildId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "id",
+            "dataType": "string"
+          },
+          {
+            "id": "name",
+            "dataType": "string"
+          },
+          {
+            "id": "icon",
+            "dataType": "string"
+          },
+          {
+            "id": "description",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "getGuildMember",
+      "label": "Get guild member",
+      "summary": "Get guild member",
+      "method": "GET",
+      "path": "/guilds/{guildId}/members/{userId}",
+      "params": [
+        {
+          "name": "guildId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "userId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "avatar",
+            "dataType": "string"
+          },
+          {
+            "id": "banner",
+            "dataType": "string"
+          },
+          {
+            "id": "communication_disabled_until",
+            "dataType": "string"
+          },
+          {
+            "id": "flags",
+            "dataType": "number"
+          }
+        ],
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "listGuildChannels",
+      "label": "List guild channels",
+      "summary": "List guild channels",
+      "method": "GET",
+      "path": "/guilds/{guildId}/channels",
+      "params": [
+        {
+          "name": "guildId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "executeWebhook",
+      "label": "Execute incoming webhook",
+      "summary": "Execute incoming webhook",
+      "method": "POST",
+      "path": "/webhooks/{webhookId}/{webhookToken}",
+      "params": [
+        {
+          "name": "webhookId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "webhookToken",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "content",
+            "dataType": "string",
+            "description": "Webhook text",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "embeds",
+            "dataType": "array",
+            "description": "Embed objects",
+            "schema": {
+              "dataType": "array"
+            }
+          },
+          {
+            "name": "username",
+            "dataType": "string",
+            "description": "Override username",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "type",
+            "dataType": "number"
+          },
+          {
+            "id": "content",
+            "dataType": "string"
+          },
+          {
+            "id": "mentions",
+            "dataType": "array"
+          },
+          {
+            "id": "mention_roles",
+            "dataType": "array"
+          }
+        ],
+        "errorShape": {
+          "codePath": "code",
+          "messagePath": "message"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "interaction_created",
+      "label": "Discord Interaction / Webhook",
+      "summary": "Fires when a signed Discord interaction or webhook event is received.",
+      "verifier": "discord-ed25519",
+      "signatureHeader": "X-Signature-Ed25519",
+      "eventIdPath": "id",
+      "eventTypePath": "type",
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Interaction Event",
+          "dataType": "object"
+        }
+      ]
+    }
+  ],
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "Discord token is invalid or expired.",
+      "hint": "Re-authorize the Discord connection in Connections Center.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "Discord API rate limit exceeded.",
+      "hint": "Respect Retry-After header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "Retry-After"
+    }
+  },
+  "fidelity": {
+    "specHash": "sha256:2c04fb4cb26068c779d4996f64fff5ed31d3afe5ac69bbcdb11ac81c790d270a",
+    "importerVersion": "2.0.0",
+    "level": "curated",
+    "unsupported": []
+  }
+}

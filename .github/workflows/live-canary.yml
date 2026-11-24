@@ -1,0 +1,63 @@
+name: Live Canary (Provider Sandboxes)
+
+on:
+  # Manual only until provider sandbox secrets exist: without them the suite exits 0 and records nothing,
+  # so a daily schedule only spends Actions minutes. Re-enable the schedule in Phase 1 with real secrets.
+  workflow_dispatch:
+
+jobs:
+  canary:
+    name: Run Live Canary Suite
+    runs-on: ubuntu-latest
+    environment: canary
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm 10.18.0
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.0
+
+      - name: Setup Node.js >= 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Live Canary Suite
+        env:
+          CANARY_STRIPE_TOKEN: ${{ secrets.CANARY_STRIPE_TOKEN }}
+          CANARY_GITHUB_TOKEN: ${{ secrets.CANARY_GITHUB_TOKEN }}
+          CANARY_SLACK_TOKEN: ${{ secrets.CANARY_SLACK_TOKEN }}
+          CANARY_DISCORD_TOKEN: ${{ secrets.CANARY_DISCORD_TOKEN }}
+          CANARY_GOOGLE_SA_JSON: ${{ secrets.CANARY_GOOGLE_SA_JSON }}
+        run: pnpm integrations:canary
+
+      - name: Upload Canary Evidence Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-canary-evidence
+          path: evidence/live-canary/*.json
+          retention-days: 30
+
+      - name: Commit evidence to branch evidence/live-canary
+        if: success()
+        run: |
+          git config user.name "projectx-bot"
+          git config user.email "bot@projectx.internal"
+          git fetch origin evidence/live-canary:evidence/live-canary || git branch evidence/live-canary
+          git checkout evidence/live-canary
+          mkdir -p evidence/live-canary
+          git add evidence/live-canary/*.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(canary): update live canary evidence [skip ci]"
+            git push origin evidence/live-canary
+          else
+            echo "No changes in live canary evidence to commit"
+          fi

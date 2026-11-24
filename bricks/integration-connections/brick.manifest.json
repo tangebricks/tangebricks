@@ -1,0 +1,88 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "integration-connections",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "connection-resolver"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_integration_connections.sql"
+  ],
+  "routePrefixes": [
+    "integrations",
+    "connect"
+  ],
+  "secrets": [
+    "PX_CONN_KEY"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "oauthStateTtlSeconds": {
+      "type": "integer",
+      "min": 60,
+      "max": 3600,
+      "default": 600
+    },
+    "refreshWindowSeconds": {
+      "type": "integer",
+      "min": 10,
+      "max": 600,
+      "default": 60
+    }
+  },
+  "nodes": [],
+  "ui": {
+    "displayName": "Workspace Integration Connections",
+    "category": "identity",
+    "summary": "Per-workspace multi-tenant OAuth2 connections and token refresh.",
+    "maturity": "beta",
+    "behaviourTest": "test/isolation.workerd.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "worker": {
+    "package": "@poc/integration-connections",
+    "routes": [
+      {
+        "factory": "createIntegrationConnectionsRoutes",
+        "mountAt": "/api",
+        "options": {
+          "oauthStateTtlSeconds": {
+            "$setting": "oauthStateTtlSeconds"
+          },
+          "refreshWindowSeconds": {
+            "$setting": "refreshWindowSeconds"
+          }
+        },
+        "guardPaths": [
+          "/api/integrations",
+          "/api/integrations/*",
+          "/api/connect/*"
+        ],
+        "guardWith": "workspace-context"
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "int_connections": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "int_oauth_states": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

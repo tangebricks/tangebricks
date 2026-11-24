@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "about": "The tests in packages/assembler/test/H6.denial.test.ts that H6's crossTenantDenied and ownWalletWorks checks stand on, fixed before the tests were written to be graded against. Each title must exist exactly once among the passing tests of that file, so an attack cannot be dropped, renamed, skipped or weakened to nothing without H6 failing. Same mechanism as ported-tests.json for H5.",
+  "tests": [
+    { "title": "reading B's wallet", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "reading B's history", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "spending B's credits", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "starting a payment into B's wallet", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "naming B in the query string instead of the header", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "naming both workspaces in one header", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "being a member of A while spending with the body pointed at B", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "a plain member of A, and a stranger, are refused on B too", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "the same attack in the other direction: B cannot reach A", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "a workspace id made up, or built to break a query, reaches nothing", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "no identity is refused on every wallet route, and so is an identity with no workspace", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "a hundred attempts at once against B leave B exactly as it was", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "reading the balance and the history", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "spending, and the spend lands on A only", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "a plain member of A can use A's wallet too", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "starting a payment passes the guard and is refused as not configured", "from": "H6.denial.test.ts", "kind": "ported" },
+    { "title": "overspending is refused and stops at zero", "from": "H6.denial.test.ts", "kind": "ported" }
+  ]
+}

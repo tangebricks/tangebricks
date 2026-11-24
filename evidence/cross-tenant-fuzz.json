@@ -1,0 +1,2148 @@
+{
+  "routeCount": 39,
+  "honoRouteCount": 170,
+  "specOnlyRoutes": [
+    "GET /api/ai",
+    "POST /api/ai",
+    "GET /api/analytics",
+    "POST /api/analytics",
+    "GET /api/armor",
+    "POST /api/armor",
+    "POST /api/assets",
+    "GET /api/audit",
+    "POST /api/audit",
+    "GET /api/auth",
+    "POST /api/auth",
+    "GET /api/chat",
+    "POST /api/chat",
+    "GET /api/checkout",
+    "POST /api/checkout",
+    "GET /api/connect",
+    "POST /api/connect",
+    "POST /api/docs",
+    "GET /api/events",
+    "POST /api/integrations",
+    "POST /api/jobs",
+    "GET /api/me",
+    "POST /api/me",
+    "GET /api/messages",
+    "POST /api/messages",
+    "GET /api/onboarding",
+    "POST /api/onboarding",
+    "GET /api/payments",
+    "POST /api/payments",
+    "GET /api/policies",
+    "POST /api/policies",
+    "GET /api/privacy",
+    "POST /api/privacy",
+    "POST /api/search",
+    "GET /api/subscriptions",
+    "POST /api/subscriptions",
+    "GET /api/tabular",
+    "POST /api/tabular",
+    "POST /api/usage",
+    "GET /api/users",
+    "POST /api/users",
+    "GET /api/vectors",
+    "POST /api/vectors",
+    "POST /api/wallet",
+    "GET /api/webhooks",
+    "POST /api/webhooks"
+  ],
+  "cases": 1586,
+  "casesByAttack": {
+    "HEADER_B": 864,
+    "QUERY_B": 216,
+    "BODY_B": 108,
+    "ID_GUESS": 170,
+    "ROLE_ESCALATION": 24,
+    "UNAUTH": 204
+  },
+  "attacks": [
+    "HEADER_B",
+    "QUERY_B",
+    "BODY_B",
+    "ID_GUESS",
+    "ROLE_ESCALATION",
+    "UNAUTH"
+  ],
+  "failures": 0,
+  "knownFailures": 0,
+  "violations": 0,
+  "adminClassRoutes": [
+    "DELETE /api/workspaces/:id",
+    "DELETE /api/assets/:id",
+    "POST /api/schedules",
+    "PATCH /api/schedules/:id",
+    "DELETE /api/schedules/:id",
+    "POST /api/privacy/export",
+    "POST /api/privacy/erasure",
+    "DELETE /api/privacy/workspace",
+    "POST /api/flags",
+    "POST /api/flags/:key/override",
+    "DELETE /api/flags/:key/override",
+    "GET /api/integrations/:provider/connect",
+    "GET /api/connect/:provider",
+    "GET /api/integrations/:provider/callback",
+    "POST /api/integrations/:provider/callback",
+    "POST /api/integrations/:provider/disconnect",
+    "POST /api/ai/templates",
+    "POST /api/messages/send",
+    "POST /api/messages/channels",
+    "POST /api/roles",
+    "POST /api/roles/assign",
+    "POST /api/roles/revoke",
+    "POST /api/webhooks/subscriptions"
+  ],
+  "adminClassNotMounted": [
+    "* ^\\/api\\/admin(\\/|$) (admin console)",
+    "POST ^\\/api\\/plans$ (plan prices (risk 14))",
+    "POST ^\\/api\\/subscriptions\\/change$ (plan switch (risk 14))",
+    "POST ^\\/api\\/sso\\/connections$ (SSO connection create (risk 9))",
+    "PUT ^\\/api\\/roles(\\/|$) (rbac role write)",
+    "PATCH ^\\/api\\/roles(\\/|$) (rbac role write)",
+    "DELETE ^\\/api\\/roles(\\/|$) (rbac role delete/unassign)",
+    "POST ^\\/api\\/policies(\\/|$) (rbac policy write)",
+    "* ^\\/api\\/oauth\\/authorize$ (oauth-server code issuance (risk 13))"
+  ],
+  "publicRoutes": [
+    {
+      "route": "GET /openapi.json",
+      "reason": "health and OpenAPI endpoints, no tenant data"
+    },
+    {
+      "route": "GET /healthz",
+      "reason": "health and OpenAPI endpoints, no tenant data"
+    },
+    {
+      "route": "GET /readyz",
+      "reason": "health and OpenAPI endpoints, no tenant data"
+    },
+    {
+      "route": "POST /api/auth/signup",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "route": "POST /api/auth/login",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "route": "POST /api/auth/logout",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "route": "GET /api/auth/me",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "route": "GET /api/users/:id/profile",
+      "reason": "user-profile public profile lookup by design (returns only public fields)"
+    },
+    {
+      "route": "POST /api/webhooks/in/:subscriptionId",
+      "reason": "webhook ingress is called by third parties and authenticated by signature"
+    },
+    {
+      "route": "POST /api/webhooks/ingress/:slug",
+      "reason": "webhook ingress is called by third parties and authenticated by signature"
+    }
+  ],
+  "notAttacked": [
+    {
+      "method": "POST",
+      "route": "/api/workspaces/invites/:token/accept",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "GET",
+      "route": "/api/flags/:key/evaluate",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "POST",
+      "route": "/api/flags/:key/override",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "GET",
+      "route": "/api/integrations/:provider/connect",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "GET",
+      "route": "/api/connect/:provider",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "GET",
+      "route": "/api/integrations/:provider/callback",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "POST",
+      "route": "/api/integrations/:provider/callback",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "POST",
+      "route": "/api/integrations/:provider/disconnect",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "GET",
+      "route": "/api/onboarding/flows/:key",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "GET",
+      "route": "/api/onboarding/flows/:key/progress",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "POST",
+      "route": "/api/onboarding/flows/:key/steps/:stepKey/complete",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "POST",
+      "route": "/api/onboarding/flows/:key/dismiss",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "POST",
+      "route": "/api/onboarding/flows/:key/reset",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "GET",
+      "route": "/api/onboarding/flows/:key/analytics",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/flags/:key/override",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "GET",
+      "route": "/openapi.json",
+      "attack": "UNAUTH",
+      "reason": "health and OpenAPI endpoints, no tenant data"
+    },
+    {
+      "method": "GET",
+      "route": "/healthz",
+      "attack": "UNAUTH",
+      "reason": "health and OpenAPI endpoints, no tenant data"
+    },
+    {
+      "method": "GET",
+      "route": "/readyz",
+      "attack": "UNAUTH",
+      "reason": "health and OpenAPI endpoints, no tenant data"
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/signup",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/login",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth/logout",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "GET",
+      "route": "/api/auth/me",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "GET",
+      "route": "/api/users/:id/profile",
+      "attack": "UNAUTH",
+      "reason": "user-profile public profile lookup by design (returns only public fields)"
+    },
+    {
+      "method": "POST",
+      "route": "/api/webhooks/in/:subscriptionId",
+      "attack": "UNAUTH",
+      "reason": "webhook ingress is called by third parties and authenticated by signature"
+    },
+    {
+      "method": "POST",
+      "route": "/api/webhooks/ingress/:slug",
+      "attack": "UNAUTH",
+      "reason": "webhook ingress is called by third parties and authenticated by signature"
+    },
+    {
+      "method": "GET",
+      "route": "/api/auth",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "POST",
+      "route": "/api/auth",
+      "attack": "UNAUTH",
+      "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (anonymous), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (stubIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/auth/*",
+      "attack": "*",
+      "reason": "middleware (anonymous), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/auth/*",
+      "attack": "*",
+      "reason": "catch-all handler, public auth (core-auth Better Auth; sign-up/sign-in are public by design)"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/audit",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/audit/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (auditContextMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/assets",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/assets/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (checkoutMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/wallet",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/wallet/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/payments/create-order",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/schedules",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/schedules/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/privacy",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/privacy/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/docs",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/docs/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (documentMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/records",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/records/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/armor",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/armor/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/flags",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/flags/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (featureFlagMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/notifications",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/notifications/unread-count",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/notifications/mark-all-read",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (notificationMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/integrations",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/integrations/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/connect/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/chat",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/chat/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (chatMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/ai",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/ai/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/meters",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/meters/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/events",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/events/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/usage",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/usage/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (meteringMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/messages",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/messages/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/subscriptions",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/subscriptions/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (outboundWebhookMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/analytics",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/analytics/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (analyticsMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/api-keys",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/api-keys/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/jobs",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/jobs/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (jobQueueMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/roles",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/roles/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/policies",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/policies/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (rbacMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/scripts",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/scripts/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (sandboxMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/search",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/search/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (searchMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/tabular",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/tabular/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (tabularMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/threads",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/threads/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (discussionMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/onboarding",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/onboarding/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (onboardingMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (profileContextMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/vectors",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/vectors/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/*",
+      "attack": "*",
+      "reason": "middleware (vectorMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/webhooks/endpoints",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/webhooks/endpoints/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/webhooks/subscriptions",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    }
+  ],
+  "problems": [],
+  "routes": [
+    {
+      "route": "/openapi.json",
+      "method": "GET",
+      "cases": 5,
+      "failures": []
+    },
+    {
+      "route": "/healthz",
+      "method": "GET",
+      "cases": 5,
+      "failures": []
+    },
+    {
+      "route": "/readyz",
+      "method": "GET",
+      "cases": 5,
+      "failures": []
+    },
+    {
+      "route": "/api/auth/signup",
+      "method": "POST",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/auth/login",
+      "method": "POST",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/auth/logout",
+      "method": "POST",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/auth/me",
+      "method": "GET",
+      "cases": 5,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces/invites/:token/accept",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces/:id/invites",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/audit/events",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/audit/events",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/audit/export",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/assets",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/assets/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/assets/:id/download",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/assets/upload",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/checkout/sessions",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/checkout/sessions/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/checkout/invoices",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/checkout/invoices/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/wallet",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/wallet/history",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/wallet/deduct",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/payments/create-order",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/payments/verify",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/schedules",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/schedules",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/schedules/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/schedules/:id",
+      "method": "PATCH",
+      "cases": 11,
+      "failures": []
+    },
+    {
+      "route": "/api/schedules/:id/history",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/privacy/consents",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/privacy/consents",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/privacy/export",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/privacy/export/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/privacy/erasure",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/privacy/erasure/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/docs/ingest",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/docs/:id/chunk",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/docs/:id/extract",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/docs",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/docs/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/docs/:id/chunks",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/docs/:id/extractions",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/records",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/records",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/records/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/records/:id",
+      "method": "PATCH",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/armor/rules",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/armor/rules",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/armor/incidents",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/flags",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/flags",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/flags/:key/evaluate",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/flags/:key/override",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/notifications",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/notifications/unread-count",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/notifications",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/notifications/:id/read",
+      "method": "PATCH",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/notifications/mark-all-read",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/integrations",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/integrations/:provider/connect",
+      "method": "GET",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/connect/:provider",
+      "method": "GET",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/integrations/:provider/callback",
+      "method": "GET",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/integrations/:provider/callback",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/integrations/:provider/disconnect",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/chat/conversations",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/chat/conversations",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/chat/conversations/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/chat/conversations/:id/messages",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/chat/conversations/:id/assign",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/chat/conversations/:id/resolve",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/chat/canned-replies",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/chat/canned-replies",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/ai/generate",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/ai/templates",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/ai/templates",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/ai/usage",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/meters",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/meters",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/events",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/usage",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/messages/send",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/messages/history",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/messages/channels",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/messages/channels",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/subscriptions/webhooks",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/subscriptions/webhooks",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/subscriptions/webhooks/dispatch",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/subscriptions/webhooks/deliveries",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/subscriptions/webhooks/deliveries/:id/replay",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/analytics/track",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/analytics/identify",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/analytics/counts",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/analytics/funnels",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/analytics/funnels/:id/report",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/api-keys",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/api-keys",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/jobs/enqueue",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/jobs/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/jobs/:id/complete",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/jobs/:id/fail",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/jobs/:id/replay",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/jobs",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/roles",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/roles",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/roles/assign",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/roles/revoke",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/policies/check",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/scripts",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/scripts",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/scripts/test",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/scripts/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/scripts/:id",
+      "method": "PUT",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/scripts/:id/run",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/scripts/:id/executions",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/search/index",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/search",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/search/typeahead",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/tabular/infer",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/tabular/imports",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/tabular/imports/:id/execute",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/tabular/imports/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/tabular/views",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/tabular/views",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/threads",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/threads",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/threads/:id",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/threads/:id/comments",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/threads/:id/resolve",
+      "method": "PATCH",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/threads/:id/reopen",
+      "method": "PATCH",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding/flows",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding/flows",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding/flows/:key",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding/flows/:key/progress",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding/flows/:key/steps/:stepKey/complete",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding/flows/:key/dismiss",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding/flows/:key/reset",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding/flows/:key/analytics",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/me/profile",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/me/profile",
+      "method": "PATCH",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/me/preferences",
+      "method": "PATCH",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/users/:id/profile",
+      "method": "GET",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/vectors/indexes",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/vectors/indexes",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/vectors/indexes/:id/upsert",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/vectors/indexes/:id/search",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/webhooks/in/:subscriptionId",
+      "method": "POST",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/webhooks/subscriptions",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/webhooks/ingress/:slug",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/webhooks/endpoints",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/webhooks/endpoints",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/webhooks/endpoints/:id/rotate",
+      "method": "POST",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/webhooks/endpoints/:id/deliveries",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/ai",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/ai",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/analytics",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/analytics",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/armor",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/armor",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/assets",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/audit",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/audit",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/auth",
+      "method": "GET",
+      "cases": 5,
+      "failures": []
+    },
+    {
+      "route": "/api/auth",
+      "method": "POST",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/chat",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/chat",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/checkout",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/checkout",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/connect",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/connect",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/docs",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/events",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/integrations",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/jobs",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/me",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/me",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/messages",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/messages",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/onboarding",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/payments",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/payments",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/policies",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/policies",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/privacy",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/privacy",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/search",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/subscriptions",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/subscriptions",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/tabular",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/tabular",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/usage",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/users",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/users",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/vectors",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/vectors",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/wallet",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/webhooks",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/webhooks",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces/:id/members/:userId",
+      "method": "DELETE",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/assets/:id",
+      "method": "DELETE",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/schedules/:id",
+      "method": "DELETE",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/privacy/workspace",
+      "method": "DELETE",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/docs/:id",
+      "method": "DELETE",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/records/:id",
+      "method": "DELETE",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/armor/rules",
+      "method": "DELETE",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/flags/:key/override",
+      "method": "DELETE",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/notifications/:id",
+      "method": "DELETE",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/subscriptions/webhooks/:id",
+      "method": "DELETE",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/api-keys/:id",
+      "method": "DELETE",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/scripts/:id",
+      "method": "DELETE",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/search/index/:type/:id",
+      "method": "DELETE",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces/:id",
+      "method": "DELETE",
+      "cases": 10,
+      "failures": []
+    }
+  ],
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "reporters/evidence-reporter.ts",
+    "inputKind": "measured"
+  }
+}

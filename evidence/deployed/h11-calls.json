@@ -1,0 +1,2188 @@
+{
+  "schema": 1,
+  "commandStartedAt": "2026-10-21T04:16:18.083Z",
+  "clients": [
+    {
+      "label": "bracket-before",
+      "startedAtMs": 2,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 1127,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "workflows",
+      "startedAtMs": 1132,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows",
+          "status": 200,
+          "ms": 250,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "owner-read-1",
+      "startedAtMs": 2823,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 389,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "instance-sum-first",
+      "startedAtMs": 7364,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 424,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "owner-edit-1",
+      "startedAtMs": 7790,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 130,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 2,
+          "atMs": 130,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 136,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "instance-sum-edited",
+      "startedAtMs": 9739,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 333,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "bracket-after",
+      "startedAtMs": 10075,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 944,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "owner-read-slow-1",
+      "startedAtMs": 11494,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 152,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "midrun-watch-1",
+      "startedAtMs": 12113,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 2111,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 2,
+          "atMs": 2520,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 322,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 3,
+          "atMs": 3252,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 534,
+          "outcome": "ok",
+          "attempt": 1
+        },
+        {
+          "n": 4,
+          "atMs": 4202,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 342,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "owner-edit-mid",
+      "startedAtMs": 16657,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 112,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 2,
+          "atMs": 112,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 110,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "instance-slow-midrun",
+      "startedAtMs": 20423,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 308,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "instance-slow-after",
+      "startedAtMs": 27241,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 300,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "owner-read-diamond",
+      "startedAtMs": 27904,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 142,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "instance-diamond",
+      "startedAtMs": 29496,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 323,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "owner-edit-bad",
+      "startedAtMs": 29821,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 131,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 2,
+          "atMs": 131,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 212,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "select"
+        }
+      ]
+    },
+    {
+      "label": "instance-bad",
+      "startedAtMs": 35456,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workflows/{workflow}/instances/{run}",
+          "status": 200,
+          "ms": 379,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "label": "latency-rest",
+      "startedAtMs": 37759,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 185,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 2,
+          "atMs": 186,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 138,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 3,
+          "atMs": 323,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 137,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 4,
+          "atMs": 460,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 100,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 5,
+          "atMs": 560,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 116,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 6,
+          "atMs": 676,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 134,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 7,
+          "atMs": 811,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 145,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 8,
+          "atMs": 955,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 118,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 9,
+          "atMs": 1074,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 145,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        },
+        {
+          "n": 10,
+          "atMs": 1219,
+          "method": "POST",
+          "path": "/accounts/{account}/d1/database/8cc2fe5f-5c56-4619-802b-2e00d2612a4e/query",
+          "status": 200,
+          "ms": 187,
+          "outcome": "ok",
+          "attempt": 1,
+          "sqlKind": "write"
+        }
+      ]
+    },
+    {
+      "label": "bracket-final",
+      "startedAtMs": 39169,
+      "calls": [
+        {
+          "n": 1,
+          "atMs": 0,
+          "method": "GET",
+          "path": "/accounts/{account}/workers/scripts/projectx-poc-c56a65d4/versions",
+          "status": 200,
+          "ms": 1006,
+          "outcome": "ok",
+          "attempt": 1
+        }
+      ]
+    }
+  ],
+  "urlEvents": [
+    {
+      "n": 1,
+      "atMs": 1384,
+      "ms": 1439,
+      "phase": "store-graph",
+      "method": "PUT",
+      "path": "/poc/graphs/h11-sum",
+      "status": 200
+    },
+    {
+      "n": 2,
+      "atMs": 3213,
+      "ms": 1205,
+      "phase": "start-run",
+      "note": "sum-first",
+      "method": "POST",
+      "path": "/poc/runs",
+      "status": 202
+    },
+    {
+      "n": 3,
+      "atMs": 4419,
+      "ms": 1125,
+      "phase": "poll-run",
+      "note": "sum-first",
+      "method": "GET",
+      "path": "/poc/runs/cf_43db712866b51de67585f18b70448e7a4a912e70df199c1de4a69a390a013d1d",
+      "status": 200
+    },
+    {
+      "n": 4,
+      "atMs": 5949,
+      "ms": 495,
+      "phase": "poll-run",
+      "note": "sum-first",
+      "method": "GET",
+      "path": "/poc/runs/cf_43db712866b51de67585f18b70448e7a4a912e70df199c1de4a69a390a013d1d",
+      "status": 200
+    },
+    {
+      "n": 5,
+      "atMs": 6852,
+      "ms": 511,
+      "phase": "poll-run",
+      "note": "sum-first",
+      "method": "GET",
+      "path": "/poc/runs/cf_43db712866b51de67585f18b70448e7a4a912e70df199c1de4a69a390a013d1d",
+      "status": 200
+    },
+    {
+      "n": 6,
+      "atMs": 8057,
+      "ms": 500,
+      "phase": "start-run",
+      "note": "sum-edited",
+      "method": "POST",
+      "path": "/poc/runs",
+      "status": 202
+    },
+    {
+      "n": 7,
+      "atMs": 8558,
+      "ms": 414,
+      "phase": "poll-run",
+      "note": "sum-edited",
+      "method": "GET",
+      "path": "/poc/runs/cf_a48f329989c9d3ae496bebe833cb5d1aaea2c31f04f53aa237de70257272014c",
+      "status": 200
+    },
+    {
+      "n": 8,
+      "atMs": 9382,
+      "ms": 356,
+      "phase": "poll-run",
+      "note": "sum-edited",
+      "method": "GET",
+      "path": "/poc/runs/cf_a48f329989c9d3ae496bebe833cb5d1aaea2c31f04f53aa237de70257272014c",
+      "status": 200
+    },
+    {
+      "n": 9,
+      "atMs": 11021,
+      "ms": 473,
+      "phase": "store-graph",
+      "method": "PUT",
+      "path": "/poc/graphs/h11-slow",
+      "status": 200
+    },
+    {
+      "n": 10,
+      "atMs": 11647,
+      "ms": 466,
+      "phase": "start-run",
+      "note": "slow-midrun",
+      "method": "POST",
+      "path": "/poc/runs",
+      "status": 202
+    },
+    {
+      "n": 11,
+      "atMs": 16881,
+      "ms": 771,
+      "phase": "poll-run",
+      "note": "slow-midrun",
+      "method": "GET",
+      "path": "/poc/runs/cf_8e2f77885ca15ad0ed5d3db156c228d8d22b17fd5d4ea46d000a02703efafa73",
+      "status": 200
+    },
+    {
+      "n": 12,
+      "atMs": 18061,
+      "ms": 271,
+      "phase": "poll-run",
+      "note": "slow-midrun",
+      "method": "GET",
+      "path": "/poc/runs/cf_8e2f77885ca15ad0ed5d3db156c228d8d22b17fd5d4ea46d000a02703efafa73",
+      "status": 200
+    },
+    {
+      "n": 13,
+      "atMs": 18747,
+      "ms": 285,
+      "phase": "poll-run",
+      "note": "slow-midrun",
+      "method": "GET",
+      "path": "/poc/runs/cf_8e2f77885ca15ad0ed5d3db156c228d8d22b17fd5d4ea46d000a02703efafa73",
+      "status": 200
+    },
+    {
+      "n": 14,
+      "atMs": 19447,
+      "ms": 271,
+      "phase": "poll-run",
+      "note": "slow-midrun",
+      "method": "GET",
+      "path": "/poc/runs/cf_8e2f77885ca15ad0ed5d3db156c228d8d22b17fd5d4ea46d000a02703efafa73",
+      "status": 200
+    },
+    {
+      "n": 15,
+      "atMs": 20133,
+      "ms": 288,
+      "phase": "poll-run",
+      "note": "slow-midrun",
+      "method": "GET",
+      "path": "/poc/runs/cf_8e2f77885ca15ad0ed5d3db156c228d8d22b17fd5d4ea46d000a02703efafa73",
+      "status": 200
+    },
+    {
+      "n": 16,
+      "atMs": 20733,
+      "ms": 670,
+      "phase": "start-run",
+      "note": "slow-after",
+      "method": "POST",
+      "path": "/poc/runs",
+      "status": 202
+    },
+    {
+      "n": 17,
+      "atMs": 21404,
+      "ms": 1161,
+      "phase": "poll-run",
+      "note": "slow-after",
+      "method": "GET",
+      "path": "/poc/runs/cf_5755ede6cfbeec3df192da9daa09f0222d2f25f5d08e9adccceda552baeb18ce",
+      "status": 200
+    },
+    {
+      "n": 18,
+      "atMs": 22973,
+      "ms": 274,
+      "phase": "poll-run",
+      "note": "slow-after",
+      "method": "GET",
+      "path": "/poc/runs/cf_5755ede6cfbeec3df192da9daa09f0222d2f25f5d08e9adccceda552baeb18ce",
+      "status": 200
+    },
+    {
+      "n": 19,
+      "atMs": 23660,
+      "ms": 242,
+      "phase": "poll-run",
+      "note": "slow-after",
+      "method": "GET",
+      "path": "/poc/runs/cf_5755ede6cfbeec3df192da9daa09f0222d2f25f5d08e9adccceda552baeb18ce",
+      "status": 200
+    },
+    {
+      "n": 20,
+      "atMs": 24314,
+      "ms": 260,
+      "phase": "poll-run",
+      "note": "slow-after",
+      "method": "GET",
+      "path": "/poc/runs/cf_5755ede6cfbeec3df192da9daa09f0222d2f25f5d08e9adccceda552baeb18ce",
+      "status": 200
+    },
+    {
+      "n": 21,
+      "atMs": 24983,
+      "ms": 264,
+      "phase": "poll-run",
+      "note": "slow-after",
+      "method": "GET",
+      "path": "/poc/runs/cf_5755ede6cfbeec3df192da9daa09f0222d2f25f5d08e9adccceda552baeb18ce",
+      "status": 200
+    },
+    {
+      "n": 22,
+      "atMs": 25652,
+      "ms": 257,
+      "phase": "poll-run",
+      "note": "slow-after",
+      "method": "GET",
+      "path": "/poc/runs/cf_5755ede6cfbeec3df192da9daa09f0222d2f25f5d08e9adccceda552baeb18ce",
+      "status": 200
+    },
+    {
+      "n": 23,
+      "atMs": 26319,
+      "ms": 239,
+      "phase": "poll-run",
+      "note": "slow-after",
+      "method": "GET",
+      "path": "/poc/runs/cf_5755ede6cfbeec3df192da9daa09f0222d2f25f5d08e9adccceda552baeb18ce",
+      "status": 200
+    },
+    {
+      "n": 24,
+      "atMs": 26962,
+      "ms": 278,
+      "phase": "poll-run",
+      "note": "slow-after",
+      "method": "GET",
+      "path": "/poc/runs/cf_5755ede6cfbeec3df192da9daa09f0222d2f25f5d08e9adccceda552baeb18ce",
+      "status": 200
+    },
+    {
+      "n": 25,
+      "atMs": 27543,
+      "ms": 361,
+      "phase": "store-graph",
+      "method": "PUT",
+      "path": "/poc/graphs/h11-diamond",
+      "status": 200
+    },
+    {
+      "n": 26,
+      "atMs": 28046,
+      "ms": 444,
+      "phase": "start-run",
+      "note": "diamond",
+      "method": "POST",
+      "path": "/poc/runs",
+      "status": 202
+    },
+    {
+      "n": 27,
+      "atMs": 28490,
+      "ms": 1004,
+      "phase": "poll-run",
+      "note": "diamond",
+      "method": "GET",
+      "path": "/poc/runs/cf_5c585f35813c54f178dd7e52b465a491eb142774a20e5da7317862da23a894e1",
+      "status": 200
+    },
+    {
+      "n": 28,
+      "atMs": 30164,
+      "ms": 413,
+      "phase": "start-run",
+      "note": "bad",
+      "method": "POST",
+      "path": "/poc/runs",
+      "status": 202
+    },
+    {
+      "n": 29,
+      "atMs": 30577,
+      "ms": 2769,
+      "phase": "poll-run",
+      "note": "bad",
+      "method": "GET",
+      "path": "/poc/runs/cf_a9200b138323806846e440cd8d1e9e42e5aaba366abccc8dd79485db74a9ace1",
+      "status": 200
+    },
+    {
+      "n": 30,
+      "atMs": 33759,
+      "ms": 278,
+      "phase": "poll-run",
+      "note": "bad",
+      "method": "GET",
+      "path": "/poc/runs/cf_a9200b138323806846e440cd8d1e9e42e5aaba366abccc8dd79485db74a9ace1",
+      "status": 200
+    },
+    {
+      "n": 31,
+      "atMs": 34444,
+      "ms": 291,
+      "phase": "poll-run",
+      "note": "bad",
+      "method": "GET",
+      "path": "/poc/runs/cf_a9200b138323806846e440cd8d1e9e42e5aaba366abccc8dd79485db74a9ace1",
+      "status": 200
+    },
+    {
+      "n": 32,
+      "atMs": 35142,
+      "ms": 314,
+      "phase": "poll-run",
+      "note": "bad",
+      "method": "GET",
+      "path": "/poc/runs/cf_a9200b138323806846e440cd8d1e9e42e5aaba366abccc8dd79485db74a9ace1",
+      "status": 200
+    },
+    {
+      "n": 33,
+      "atMs": 35836,
+      "ms": 1922,
+      "phase": "write-latency",
+      "method": "POST",
+      "path": "/poc/write-latency",
+      "status": 200
+    }
+  ],
+  "facts": {
+    "names": {
+      "suffix": "c56a65d4",
+      "script": "projectx-poc-c56a65d4",
+      "database": "projectx-poc-c56a65d4-db",
+      "workflow": "projectx-poc-c56a65d4-graphs"
+    },
+    "url": "https://projectx-poc-c56a65d4.killerkingmega.workers.dev",
+    "databaseId": "8cc2fe5f-5c56-4619-802b-2e00d2612a4e",
+    "versions": {
+      "before": [
+        "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+        "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+        "928f3b4c-024c-426d-af31-a15a3d725360"
+      ],
+      "after": [
+        "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+        "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+        "928f3b4c-024c-426d-af31-a15a3d725360"
+      ],
+      "final": [
+        "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+        "84838066-93fb-4c5b-92e0-64f0c2ddaa6a",
+        "928f3b4c-024c-426d-af31-a15a3d725360"
+      ]
+    },
+    "deployedVersionFromH10": "482a71cf-859f-4ee1-9dd2-aaf7b8ef34de",
+    "runs": [
+      {
+        "key": "sum-first",
+        "graphId": "h11-sum",
+        "instanceId": "cf_43db712866b51de67585f18b70448e7a4a912e70df199c1de4a69a390a013d1d",
+        "rowText": "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger.manual\",\"data\":{}},{\"id\":\"pa\",\"type\":\"transform.pick\",\"data\":{\"path\":\"a\"}},{\"id\":\"pb\",\"type\":\"transform.pick\",\"data\":{\"path\":\"b\"}},{\"id\":\"pc\",\"type\":\"transform.pick\",\"data\":{\"path\":\"c\"}},{\"id\":\"add\",\"type\":\"proof.add\",\"data\":{}},{\"id\":\"mul\",\"type\":\"proof.multiply\",\"data\":{}}],\"edges\":[{\"id\":\"t.out-pa.in\",\"source\":\"t\",\"target\":\"pa\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"t.out-pb.in\",\"source\":\"t\",\"target\":\"pb\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"t.out-pc.in\",\"source\":\"t\",\"target\":\"pc\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"pa.out-add.a\",\"source\":\"pa\",\"target\":\"add\",\"sourceHandle\":\"out\",\"targetHandle\":\"a\"},{\"id\":\"pb.out-add.b\",\"source\":\"pb\",\"target\":\"add\",\"sourceHandle\":\"out\",\"targetHandle\":\"b\"},{\"id\":\"add.out-mul.a\",\"source\":\"add\",\"target\":\"mul\",\"sourceHandle\":\"out\",\"targetHandle\":\"a\"},{\"id\":\"pc.out-mul.b\",\"source\":\"pc\",\"target\":\"mul\",\"sourceHandle\":\"out\",\"targetHandle\":\"b\"}]}",
+        "workerStatus": {
+          "status": "complete",
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "pa": {
+                "out": 2
+              },
+              "pb": {
+                "out": 3
+              },
+              "pc": {
+                "out": 4
+              },
+              "add": {
+                "out": 5
+              },
+              "mul": {
+                "out": 20
+              }
+            },
+            "failed": {},
+            "skipped": []
+          }
+        },
+        "details": {
+          "status": "complete",
+          "success": true,
+          "error": null,
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "pa": {
+                "out": 2
+              },
+              "pb": {
+                "out": 3
+              },
+              "pc": {
+                "out": 4
+              },
+              "add": {
+                "out": 5
+              },
+              "mul": {
+                "out": 20
+              }
+            },
+            "failed": {},
+            "skipped": []
+          },
+          "params": {
+            "graphId": "h11-sum",
+            "payload": {
+              "a": 2,
+              "b": 3,
+              "c": 4
+            }
+          },
+          "start": "2026-10-21T04:16:24.693Z",
+          "end": "2026-10-21T04:16:25.118Z",
+          "steps": [
+            {
+              "type": "step",
+              "name": "load graph-1",
+              "success": true,
+              "start": "2026-10-21T04:16:24.861Z",
+              "end": "2026-10-21T04:16:25.041Z",
+              "attempts": 1,
+              "output": {
+                "nodes": [
+                  {
+                    "id": "t",
+                    "type": "trigger.manual",
+                    "data": {}
+                  },
+                  {
+                    "id": "pa",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "a"
+                    }
+                  },
+                  {
+                    "id": "pb",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "b"
+                    }
+                  },
+                  {
+                    "id": "pc",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "c"
+                    }
+                  },
+                  {
+                    "id": "add",
+                    "type": "proof.add",
+                    "data": {}
+                  },
+                  {
+                    "id": "mul",
+                    "type": "proof.multiply",
+                    "data": {}
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "t.out-pa.in",
+                    "source": "t",
+                    "target": "pa",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "t.out-pb.in",
+                    "source": "t",
+                    "target": "pb",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "t.out-pc.in",
+                    "source": "t",
+                    "target": "pc",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "pa.out-add.a",
+                    "source": "pa",
+                    "target": "add",
+                    "sourceHandle": "out",
+                    "targetHandle": "a"
+                  },
+                  {
+                    "id": "pb.out-add.b",
+                    "source": "pb",
+                    "target": "add",
+                    "sourceHandle": "out",
+                    "targetHandle": "b"
+                  },
+                  {
+                    "id": "add.out-mul.a",
+                    "source": "add",
+                    "target": "mul",
+                    "sourceHandle": "out",
+                    "targetHandle": "a"
+                  },
+                  {
+                    "id": "pc.out-mul.b",
+                    "source": "pc",
+                    "target": "mul",
+                    "sourceHandle": "out",
+                    "targetHandle": "b"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:t-1",
+              "success": true,
+              "start": "2026-10-21T04:16:25.051Z",
+              "end": "2026-10-21T04:16:25.060Z",
+              "attempts": 1,
+              "output": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pa-1",
+              "success": true,
+              "start": "2026-10-21T04:16:25.069Z",
+              "end": "2026-10-21T04:16:25.073Z",
+              "attempts": 1,
+              "output": {
+                "out": 2
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pb-1",
+              "success": true,
+              "start": "2026-10-21T04:16:25.069Z",
+              "end": "2026-10-21T04:16:25.074Z",
+              "attempts": 1,
+              "output": {
+                "out": 3
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pc-1",
+              "success": true,
+              "start": "2026-10-21T04:16:25.069Z",
+              "end": "2026-10-21T04:16:25.075Z",
+              "attempts": 1,
+              "output": {
+                "out": 4
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:add-1",
+              "success": true,
+              "start": "2026-10-21T04:16:25.082Z",
+              "end": "2026-10-21T04:16:25.090Z",
+              "attempts": 1,
+              "output": {
+                "out": 5
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:mul-1",
+              "success": true,
+              "start": "2026-10-21T04:16:25.099Z",
+              "end": "2026-10-21T04:16:25.109Z",
+              "attempts": 1,
+              "output": {
+                "out": 20
+              }
+            }
+          ]
+        }
+      },
+      {
+        "key": "sum-edited",
+        "graphId": "h11-sum",
+        "instanceId": "cf_a48f329989c9d3ae496bebe833cb5d1aaea2c31f04f53aa237de70257272014c",
+        "rowText": "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger.manual\",\"data\":{}},{\"id\":\"pa\",\"type\":\"transform.pick\",\"data\":{\"path\":\"a\"}},{\"id\":\"pb\",\"type\":\"transform.pick\",\"data\":{\"path\":\"b\"}},{\"id\":\"pc\",\"type\":\"transform.pick\",\"data\":{\"path\":\"c\"}},{\"id\":\"add\",\"type\":\"proof.add\",\"data\":{}},{\"id\":\"mul\",\"type\":\"proof.add\",\"data\":{}}],\"edges\":[{\"id\":\"t.out-pa.in\",\"source\":\"t\",\"target\":\"pa\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"t.out-pb.in\",\"source\":\"t\",\"target\":\"pb\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"t.out-pc.in\",\"source\":\"t\",\"target\":\"pc\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"pa.out-add.a\",\"source\":\"pa\",\"target\":\"add\",\"sourceHandle\":\"out\",\"targetHandle\":\"a\"},{\"id\":\"pb.out-add.b\",\"source\":\"pb\",\"target\":\"add\",\"sourceHandle\":\"out\",\"targetHandle\":\"b\"},{\"id\":\"add.out-mul.a\",\"source\":\"add\",\"target\":\"mul\",\"sourceHandle\":\"out\",\"targetHandle\":\"a\"},{\"id\":\"pc.out-mul.b\",\"source\":\"pc\",\"target\":\"mul\",\"sourceHandle\":\"out\",\"targetHandle\":\"b\"}]}",
+        "workerStatus": {
+          "status": "complete",
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "pa": {
+                "out": 2
+              },
+              "pb": {
+                "out": 3
+              },
+              "pc": {
+                "out": 4
+              },
+              "add": {
+                "out": 5
+              },
+              "mul": {
+                "out": 9
+              }
+            },
+            "failed": {},
+            "skipped": []
+          }
+        },
+        "details": {
+          "status": "complete",
+          "success": true,
+          "error": null,
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "pa": {
+                "out": 2
+              },
+              "pb": {
+                "out": 3
+              },
+              "pc": {
+                "out": 4
+              },
+              "add": {
+                "out": 5
+              },
+              "mul": {
+                "out": 9
+              }
+            },
+            "failed": {},
+            "skipped": []
+          },
+          "params": {
+            "graphId": "h11-sum",
+            "payload": {
+              "a": 2,
+              "b": 3,
+              "c": 4
+            }
+          },
+          "start": "2026-10-21T04:16:26.738Z",
+          "end": "2026-10-21T04:16:27.226Z",
+          "steps": [
+            {
+              "type": "step",
+              "name": "load graph-1",
+              "success": true,
+              "start": "2026-10-21T04:16:26.985Z",
+              "end": "2026-10-21T04:16:27.155Z",
+              "attempts": 1,
+              "output": {
+                "nodes": [
+                  {
+                    "id": "t",
+                    "type": "trigger.manual",
+                    "data": {}
+                  },
+                  {
+                    "id": "pa",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "a"
+                    }
+                  },
+                  {
+                    "id": "pb",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "b"
+                    }
+                  },
+                  {
+                    "id": "pc",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "c"
+                    }
+                  },
+                  {
+                    "id": "add",
+                    "type": "proof.add",
+                    "data": {}
+                  },
+                  {
+                    "id": "mul",
+                    "type": "proof.add",
+                    "data": {}
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "t.out-pa.in",
+                    "source": "t",
+                    "target": "pa",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "t.out-pb.in",
+                    "source": "t",
+                    "target": "pb",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "t.out-pc.in",
+                    "source": "t",
+                    "target": "pc",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "pa.out-add.a",
+                    "source": "pa",
+                    "target": "add",
+                    "sourceHandle": "out",
+                    "targetHandle": "a"
+                  },
+                  {
+                    "id": "pb.out-add.b",
+                    "source": "pb",
+                    "target": "add",
+                    "sourceHandle": "out",
+                    "targetHandle": "b"
+                  },
+                  {
+                    "id": "add.out-mul.a",
+                    "source": "add",
+                    "target": "mul",
+                    "sourceHandle": "out",
+                    "targetHandle": "a"
+                  },
+                  {
+                    "id": "pc.out-mul.b",
+                    "source": "pc",
+                    "target": "mul",
+                    "sourceHandle": "out",
+                    "targetHandle": "b"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:t-1",
+              "success": true,
+              "start": "2026-10-21T04:16:27.164Z",
+              "end": "2026-10-21T04:16:27.172Z",
+              "attempts": 1,
+              "output": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pa-1",
+              "success": true,
+              "start": "2026-10-21T04:16:27.182Z",
+              "end": "2026-10-21T04:16:27.184Z",
+              "attempts": 1,
+              "output": {
+                "out": 2
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pb-1",
+              "success": true,
+              "start": "2026-10-21T04:16:27.182Z",
+              "end": "2026-10-21T04:16:27.186Z",
+              "attempts": 1,
+              "output": {
+                "out": 3
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pc-1",
+              "success": true,
+              "start": "2026-10-21T04:16:27.182Z",
+              "end": "2026-10-21T04:16:27.187Z",
+              "attempts": 1,
+              "output": {
+                "out": 4
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:add-1",
+              "success": true,
+              "start": "2026-10-21T04:16:27.192Z",
+              "end": "2026-10-21T04:16:27.200Z",
+              "attempts": 1,
+              "output": {
+                "out": 5
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:mul-1",
+              "success": true,
+              "start": "2026-10-21T04:16:27.209Z",
+              "end": "2026-10-21T04:16:27.217Z",
+              "attempts": 1,
+              "output": {
+                "out": 9
+              }
+            }
+          ]
+        }
+      },
+      {
+        "key": "slow-midrun",
+        "graphId": "h11-slow",
+        "instanceId": "cf_8e2f77885ca15ad0ed5d3db156c228d8d22b17fd5d4ea46d000a02703efafa73",
+        "rowText": "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger.manual\",\"data\":{}},{\"id\":\"pa\",\"type\":\"transform.pick\",\"data\":{\"path\":\"a\"}},{\"id\":\"pb\",\"type\":\"transform.pick\",\"data\":{\"path\":\"b\"}},{\"id\":\"wait\",\"type\":\"util.delay\",\"data\":{\"ms\":4000}},{\"id\":\"add\",\"type\":\"proof.add\",\"data\":{}}],\"edges\":[{\"id\":\"t.out-pa.in\",\"source\":\"t\",\"target\":\"pa\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"t.out-pb.in\",\"source\":\"t\",\"target\":\"pb\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"pa.out-wait.in\",\"source\":\"pa\",\"target\":\"wait\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"wait.out-add.a\",\"source\":\"wait\",\"target\":\"add\",\"sourceHandle\":\"out\",\"targetHandle\":\"a\"},{\"id\":\"pb.out-add.b\",\"source\":\"pb\",\"target\":\"add\",\"sourceHandle\":\"out\",\"targetHandle\":\"b\"}]}",
+        "workerStatus": {
+          "status": "complete",
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "pa": {
+                "out": 2
+              },
+              "pb": {
+                "out": 3
+              },
+              "wait": {
+                "out": 2
+              },
+              "add": {
+                "out": 5
+              }
+            },
+            "failed": {},
+            "skipped": []
+          }
+        },
+        "details": {
+          "status": "complete",
+          "success": true,
+          "error": null,
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "pa": {
+                "out": 2
+              },
+              "pb": {
+                "out": 3
+              },
+              "wait": {
+                "out": 2
+              },
+              "add": {
+                "out": 5
+              }
+            },
+            "failed": {},
+            "skipped": []
+          },
+          "params": {
+            "graphId": "h11-slow",
+            "payload": {
+              "a": 2,
+              "b": 3,
+              "c": 4
+            }
+          },
+          "start": "2026-10-21T04:16:33.644Z",
+          "end": "2026-10-21T04:16:38.141Z",
+          "steps": [
+            {
+              "type": "step",
+              "name": "load graph-1",
+              "success": true,
+              "start": "2026-10-21T04:16:33.891Z",
+              "end": "2026-10-21T04:16:34.066Z",
+              "attempts": 1,
+              "output": {
+                "nodes": [
+                  {
+                    "id": "t",
+                    "type": "trigger.manual",
+                    "data": {}
+                  },
+                  {
+                    "id": "pa",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "a"
+                    }
+                  },
+                  {
+                    "id": "pb",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "b"
+                    }
+                  },
+                  {
+                    "id": "wait",
+                    "type": "util.delay",
+                    "data": {
+                      "ms": 4000
+                    }
+                  },
+                  {
+                    "id": "add",
+                    "type": "proof.add",
+                    "data": {}
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "t.out-pa.in",
+                    "source": "t",
+                    "target": "pa",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "t.out-pb.in",
+                    "source": "t",
+                    "target": "pb",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "pa.out-wait.in",
+                    "source": "pa",
+                    "target": "wait",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "wait.out-add.a",
+                    "source": "wait",
+                    "target": "add",
+                    "sourceHandle": "out",
+                    "targetHandle": "a"
+                  },
+                  {
+                    "id": "pb.out-add.b",
+                    "source": "pb",
+                    "target": "add",
+                    "sourceHandle": "out",
+                    "targetHandle": "b"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:t-1",
+              "success": true,
+              "start": "2026-10-21T04:16:34.076Z",
+              "end": "2026-10-21T04:16:34.085Z",
+              "attempts": 1,
+              "output": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pa-1",
+              "success": true,
+              "start": "2026-10-21T04:16:34.093Z",
+              "end": "2026-10-21T04:16:34.100Z",
+              "attempts": 1,
+              "output": {
+                "out": 2
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pb-1",
+              "success": true,
+              "start": "2026-10-21T04:16:34.093Z",
+              "end": "2026-10-21T04:16:34.100Z",
+              "attempts": 1,
+              "output": {
+                "out": 3
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:wait-1",
+              "success": true,
+              "start": "2026-10-21T04:16:34.107Z",
+              "end": "2026-10-21T04:16:38.115Z",
+              "attempts": 1,
+              "output": {
+                "out": 2
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:add-1",
+              "success": true,
+              "start": "2026-10-21T04:16:38.124Z",
+              "end": "2026-10-21T04:16:38.132Z",
+              "attempts": 1,
+              "output": {
+                "out": 5
+              }
+            }
+          ]
+        }
+      },
+      {
+        "key": "slow-after",
+        "graphId": "h11-slow",
+        "instanceId": "cf_5755ede6cfbeec3df192da9daa09f0222d2f25f5d08e9adccceda552baeb18ce",
+        "rowText": "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger.manual\",\"data\":{}},{\"id\":\"pa\",\"type\":\"transform.pick\",\"data\":{\"path\":\"a\"}},{\"id\":\"pb\",\"type\":\"transform.pick\",\"data\":{\"path\":\"b\"}},{\"id\":\"wait\",\"type\":\"util.delay\",\"data\":{\"ms\":4000}},{\"id\":\"add\",\"type\":\"proof.multiply\",\"data\":{}}],\"edges\":[{\"id\":\"t.out-pa.in\",\"source\":\"t\",\"target\":\"pa\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"t.out-pb.in\",\"source\":\"t\",\"target\":\"pb\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"pa.out-wait.in\",\"source\":\"pa\",\"target\":\"wait\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"wait.out-add.a\",\"source\":\"wait\",\"target\":\"add\",\"sourceHandle\":\"out\",\"targetHandle\":\"a\"},{\"id\":\"pb.out-add.b\",\"source\":\"pb\",\"target\":\"add\",\"sourceHandle\":\"out\",\"targetHandle\":\"b\"}]}",
+        "workerStatus": {
+          "status": "complete",
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "pa": {
+                "out": 2
+              },
+              "pb": {
+                "out": 3
+              },
+              "wait": {
+                "out": 2
+              },
+              "add": {
+                "out": 6
+              }
+            },
+            "failed": {},
+            "skipped": []
+          }
+        },
+        "details": {
+          "status": "complete",
+          "success": true,
+          "error": null,
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "pa": {
+                "out": 2
+              },
+              "pb": {
+                "out": 3
+              },
+              "wait": {
+                "out": 2
+              },
+              "add": {
+                "out": 6
+              }
+            },
+            "failed": {},
+            "skipped": []
+          },
+          "params": {
+            "graphId": "h11-slow",
+            "payload": {
+              "a": 2,
+              "b": 3,
+              "c": 4
+            }
+          },
+          "start": "2026-10-21T04:16:40.102Z",
+          "end": "2026-10-21T04:16:44.746Z",
+          "steps": [
+            {
+              "type": "step",
+              "name": "load graph-1",
+              "success": true,
+              "start": "2026-10-21T04:16:40.345Z",
+              "end": "2026-10-21T04:16:40.573Z",
+              "attempts": 1,
+              "output": {
+                "nodes": [
+                  {
+                    "id": "t",
+                    "type": "trigger.manual",
+                    "data": {}
+                  },
+                  {
+                    "id": "pa",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "a"
+                    }
+                  },
+                  {
+                    "id": "pb",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "b"
+                    }
+                  },
+                  {
+                    "id": "wait",
+                    "type": "util.delay",
+                    "data": {
+                      "ms": 4000
+                    }
+                  },
+                  {
+                    "id": "add",
+                    "type": "proof.multiply",
+                    "data": {}
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "t.out-pa.in",
+                    "source": "t",
+                    "target": "pa",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "t.out-pb.in",
+                    "source": "t",
+                    "target": "pb",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "pa.out-wait.in",
+                    "source": "pa",
+                    "target": "wait",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "wait.out-add.a",
+                    "source": "wait",
+                    "target": "add",
+                    "sourceHandle": "out",
+                    "targetHandle": "a"
+                  },
+                  {
+                    "id": "pb.out-add.b",
+                    "source": "pb",
+                    "target": "add",
+                    "sourceHandle": "out",
+                    "targetHandle": "b"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:t-1",
+              "success": true,
+              "start": "2026-10-21T04:16:40.593Z",
+              "end": "2026-10-21T04:16:40.613Z",
+              "attempts": 1,
+              "output": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pa-1",
+              "success": true,
+              "start": "2026-10-21T04:16:40.633Z",
+              "end": "2026-10-21T04:16:40.649Z",
+              "attempts": 1,
+              "output": {
+                "out": 2
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:pb-1",
+              "success": true,
+              "start": "2026-10-21T04:16:40.633Z",
+              "end": "2026-10-21T04:16:40.649Z",
+              "attempts": 1,
+              "output": {
+                "out": 3
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:wait-1",
+              "success": true,
+              "start": "2026-10-21T04:16:40.667Z",
+              "end": "2026-10-21T04:16:44.686Z",
+              "attempts": 1,
+              "output": {
+                "out": 2
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:add-1",
+              "success": true,
+              "start": "2026-10-21T04:16:44.707Z",
+              "end": "2026-10-21T04:16:44.726Z",
+              "attempts": 1,
+              "output": {
+                "out": 6
+              }
+            }
+          ]
+        }
+      },
+      {
+        "key": "diamond",
+        "graphId": "h11-diamond",
+        "instanceId": "cf_5c585f35813c54f178dd7e52b465a491eb142774a20e5da7317862da23a894e1",
+        "rowText": "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger.manual\",\"data\":{}},{\"id\":\"l\",\"type\":\"util.delay\",\"data\":{\"ms\":50}},{\"id\":\"r\",\"type\":\"transform.pick\",\"data\":{\"path\":\"a\"}},{\"id\":\"j\",\"type\":\"util.join\",\"data\":{}}],\"edges\":[{\"id\":\"t.out-l.in\",\"source\":\"t\",\"target\":\"l\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"t.out-r.in\",\"source\":\"t\",\"target\":\"r\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"l.out-j.a\",\"source\":\"l\",\"target\":\"j\",\"sourceHandle\":\"out\",\"targetHandle\":\"a\"},{\"id\":\"r.out-j.b\",\"source\":\"r\",\"target\":\"j\",\"sourceHandle\":\"out\",\"targetHandle\":\"b\"}]}",
+        "workerStatus": {
+          "status": "complete",
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "r": {
+                "out": 2
+              },
+              "l": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "j": {
+                "out": {
+                  "a": {
+                    "a": 2,
+                    "b": 3,
+                    "c": 4
+                  },
+                  "b": 2
+                }
+              }
+            },
+            "failed": {},
+            "skipped": []
+          }
+        },
+        "details": {
+          "status": "complete",
+          "success": true,
+          "error": null,
+          "output": {
+            "ok": true,
+            "outputs": {
+              "t": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "r": {
+                "out": 2
+              },
+              "l": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              },
+              "j": {
+                "out": {
+                  "a": {
+                    "a": 2,
+                    "b": 3,
+                    "c": 4
+                  },
+                  "b": 2
+                }
+              }
+            },
+            "failed": {},
+            "skipped": []
+          },
+          "params": {
+            "graphId": "h11-diamond",
+            "payload": {
+              "a": 2,
+              "b": 3,
+              "c": 4
+            }
+          },
+          "start": "2026-10-21T04:16:46.739Z",
+          "end": "2026-10-21T04:16:47.290Z",
+          "steps": [
+            {
+              "type": "step",
+              "name": "load graph-1",
+              "success": true,
+              "start": "2026-10-21T04:16:46.984Z",
+              "end": "2026-10-21T04:16:47.174Z",
+              "attempts": 1,
+              "output": {
+                "nodes": [
+                  {
+                    "id": "t",
+                    "type": "trigger.manual",
+                    "data": {}
+                  },
+                  {
+                    "id": "l",
+                    "type": "util.delay",
+                    "data": {
+                      "ms": 50
+                    }
+                  },
+                  {
+                    "id": "r",
+                    "type": "transform.pick",
+                    "data": {
+                      "path": "a"
+                    }
+                  },
+                  {
+                    "id": "j",
+                    "type": "util.join",
+                    "data": {}
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "t.out-l.in",
+                    "source": "t",
+                    "target": "l",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "t.out-r.in",
+                    "source": "t",
+                    "target": "r",
+                    "sourceHandle": "out",
+                    "targetHandle": "in"
+                  },
+                  {
+                    "id": "l.out-j.a",
+                    "source": "l",
+                    "target": "j",
+                    "sourceHandle": "out",
+                    "targetHandle": "a"
+                  },
+                  {
+                    "id": "r.out-j.b",
+                    "source": "r",
+                    "target": "j",
+                    "sourceHandle": "out",
+                    "targetHandle": "b"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:t-1",
+              "success": true,
+              "start": "2026-10-21T04:16:47.185Z",
+              "end": "2026-10-21T04:16:47.194Z",
+              "attempts": 1,
+              "output": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:l-1",
+              "success": true,
+              "start": "2026-10-21T04:16:47.204Z",
+              "end": "2026-10-21T04:16:47.261Z",
+              "attempts": 1,
+              "output": {
+                "out": {
+                  "a": 2,
+                  "b": 3,
+                  "c": 4
+                }
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:r-1",
+              "success": true,
+              "start": "2026-10-21T04:16:47.204Z",
+              "end": "2026-10-21T04:16:47.213Z",
+              "attempts": 1,
+              "output": {
+                "out": 2
+              }
+            },
+            {
+              "type": "step",
+              "name": "node:j-1",
+              "success": true,
+              "start": "2026-10-21T04:16:47.271Z",
+              "end": "2026-10-21T04:16:47.280Z",
+              "attempts": 1,
+              "output": {
+                "out": {
+                  "a": {
+                    "a": 2,
+                    "b": 3,
+                    "c": 4
+                  },
+                  "b": 2
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "key": "bad",
+        "graphId": "h11-bad",
+        "instanceId": "cf_a9200b138323806846e440cd8d1e9e42e5aaba366abccc8dd79485db74a9ace1",
+        "rowText": "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger.manual\",\"data\":{}},{\"id\":\"x\",\"type\":\"proof.add\",\"data\":{}},{\"id\":\"y\",\"type\":\"proof.add\",\"data\":{}}],\"edges\":[{\"id\":\"t.out-x.a\",\"source\":\"t\",\"target\":\"x\",\"sourceHandle\":\"out\",\"targetHandle\":\"a\"},{\"id\":\"x.out-y.a\",\"source\":\"x\",\"target\":\"y\",\"sourceHandle\":\"out\",\"targetHandle\":\"a\"},{\"id\":\"y.out-x.b\",\"source\":\"y\",\"target\":\"x\",\"sourceHandle\":\"out\",\"targetHandle\":\"b\"}]}",
+        "workerStatus": {
+          "status": "errored",
+          "error": {
+            "name": "Error",
+            "message": "NonRetryableError: graph is invalid: cycle at x (node is in or behind a loop); cycle at y (node is in or behind a loop)"
+          },
+          "output": null
+        },
+        "details": {
+          "status": "errored",
+          "success": false,
+          "error": {
+            "name": "Error",
+            "message": "NonRetryableError: graph is invalid: cycle at x (node is in or behind a loop); cycle at y (node is in or behind a loop)"
+          },
+          "params": {
+            "graphId": "h11-bad",
+            "payload": {
+              "a": 2,
+              "b": 3,
+              "c": 4
+            }
+          },
+          "start": "2026-10-21T04:16:52.540Z",
+          "end": "2026-10-21T04:16:52.997Z",
+          "steps": [
+            {
+              "type": "step",
+              "name": "load graph-1",
+              "success": false,
+              "start": "2026-10-21T04:16:52.777Z",
+              "end": "2026-10-21T04:16:52.987Z",
+              "attempts": 1,
+              "output": null
+            }
+          ]
+        }
+      }
+    ],
+    "edits": [
+      {
+        "key": "sum-edit",
+        "graphId": "h11-sum",
+        "client": "owner-edit-1",
+        "updatedAt": "2026-10-21T04:16:26.094Z"
+      },
+      {
+        "key": "mid-edit",
+        "graphId": "h11-slow",
+        "client": "owner-edit-mid",
+        "updatedAt": "2026-10-21T04:16:34.943Z"
+      },
+      {
+        "key": "bad-edit",
+        "graphId": "h11-bad",
+        "client": "owner-edit-bad",
+        "updatedAt": "2026-10-21T04:16:48.125Z"
+      }
+    ],
+    "midRun": {
+      "polls": [
+        {
+          "status": "queued",
+          "loadDone": false,
+          "delayDone": false
+        },
+        {
+          "status": "queued",
+          "loadDone": false,
+          "delayDone": false
+        },
+        {
+          "status": "running",
+          "loadDone": false,
+          "delayDone": false
+        },
+        {
+          "status": "running",
+          "loadDone": true,
+          "delayDone": false
+        }
+      ],
+      "tooLate": 0
+    },
+    "latency": {
+      "worker": {
+        "timingsMs": [
+          336,
+          149,
+          149,
+          150,
+          150,
+          151,
+          147,
+          151,
+          159,
+          151
+        ],
+        "medianMs": 150.5,
+        "slowestMs": 336
+      },
+      "rest": {
+        "timingsMs": [
+          185,
+          138,
+          137,
+          100,
+          116,
+          134,
+          145,
+          118,
+          145,
+          187
+        ],
+        "medianMs": 137.5,
+        "slowestMs": 187
+      }
+    },
+    "workflows": [
+      {
+        "name": "projectx-poc-c56a65d4-graphs",
+        "className": "GraphRunner",
+        "scriptName": "projectx-poc-c56a65d4"
+      }
+    ],
+    "attempts": [
+      {
+        "n": 1,
+        "phase": "version before the first run",
+        "atMs": 1129,
+        "outcome": "ok",
+        "detail": "3 version(s), newest 482a71cf"
+      },
+      {
+        "n": 2,
+        "phase": "run sum-first",
+        "atMs": 7788,
+        "outcome": "ok",
+        "detail": "worker says complete, Cloudflare says complete, 7 step(s)"
+      },
+      {
+        "n": 3,
+        "phase": "run sum-edited",
+        "atMs": 10072,
+        "outcome": "ok",
+        "detail": "worker says complete, Cloudflare says complete, 7 step(s)"
+      },
+      {
+        "n": 4,
+        "phase": "version after the edited run",
+        "atMs": 11019,
+        "outcome": "ok",
+        "detail": "3 version(s), newest 482a71cf"
+      },
+      {
+        "n": 5,
+        "phase": "edit the row under a run",
+        "atMs": 16879,
+        "outcome": "ok",
+        "detail": "try 1: edited while the run was waiting"
+      },
+      {
+        "n": 6,
+        "phase": "run slow-midrun",
+        "atMs": 20731,
+        "outcome": "ok",
+        "detail": "worker says complete, Cloudflare says complete, 6 step(s)"
+      },
+      {
+        "n": 7,
+        "phase": "run slow-after",
+        "atMs": 27541,
+        "outcome": "ok",
+        "detail": "worker says complete, Cloudflare says complete, 6 step(s)"
+      },
+      {
+        "n": 8,
+        "phase": "run diamond",
+        "atMs": 29820,
+        "outcome": "ok",
+        "detail": "worker says complete, Cloudflare says complete, 5 step(s)"
+      },
+      {
+        "n": 9,
+        "phase": "run bad",
+        "atMs": 35835,
+        "outcome": "ok",
+        "detail": "worker says errored, Cloudflare says errored, 1 step(s)"
+      },
+      {
+        "n": 10,
+        "phase": "ten timed writes",
+        "atMs": 39166,
+        "outcome": "ok",
+        "detail": "inside the Worker: median 150.5 ms; over REST: median 137.5 ms"
+      },
+      {
+        "n": 11,
+        "phase": "version at the end",
+        "atMs": 40175,
+        "outcome": "ok",
+        "detail": "3 version(s), newest 482a71cf"
+      }
+    ]
+  }
+}

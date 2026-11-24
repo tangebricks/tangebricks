@@ -1,0 +1,28 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "violating-template-literal",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [],
+  "requires": [],
+  "migrations": [
+    "migrations/0001_init.sql"
+  ],
+  "routePrefixes": [
+    "violating-template"
+  ],
+  "npmDependencies": {},
+  "settings": {},
+  "ui": {
+    "displayName": "Violating Template Literal",
+    "category": "core",
+    "summary": "Fixture brick testing template literal prepare on tenant table",
+    "maturity": "experimental",
+    "behaviourTest": "test/test.ts"
+  },
+  "worker": {
+    "package": "@poc/violating-template-literal",
+    "routes": []
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Mini Fidelity Test API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/items": {
+      "post": {
+        "operationId": "createItem",
+        "summary": "Create an item with mini test fixture",
+        "parameters": [
+          {
+            "name": "tracking_cookie",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["prop7"],
+                "properties": {
+                  "prop1": {
+                    "type": "string",
+                    "enum": ["alpha", "beta"]
+                  },
+                  "prop2": {
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "number" }
+                    ]
+                  },
+                  "prop3": {
+                    "type": "string"
+                  },
+                  "prop4": {
+                    "type": "string"
+                  },
+                  "prop5": {
+                    "type": "string"
+                  },
+                  "prop6": {
+                    "type": "string"
+                  },
+                  "prop7": {
+                    "type": "string"
+                  },
+                  "prop8": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Item created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

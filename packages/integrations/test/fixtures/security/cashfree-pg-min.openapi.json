@@ -1,0 +1,50 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Cashfree PG Min",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://sandbox.cashfree.com/pg"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "XClientId": {
+        "type": "apiKey",
+        "name": "x-client-id",
+        "in": "header"
+      },
+      "XClientSecret": {
+        "type": "apiKey",
+        "name": "x-client-secret",
+        "in": "header"
+      },
+      "XApiVersion": {
+        "type": "apiKey",
+        "name": "x-api-version",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "XClientId": [],
+      "XClientSecret": [],
+      "XApiVersion": []
+    }
+  ],
+  "paths": {
+    "/orders": {
+      "post": {
+        "operationId": "createOrder",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  }
+}

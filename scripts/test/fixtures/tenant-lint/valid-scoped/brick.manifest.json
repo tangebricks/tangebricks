@@ -1,0 +1,28 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "valid-scoped",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [],
+  "requires": [],
+  "migrations": [
+    "migrations/0001_init.sql"
+  ],
+  "routePrefixes": [
+    "valid-scoped"
+  ],
+  "npmDependencies": {},
+  "settings": {},
+  "ui": {
+    "displayName": "Valid Scoped",
+    "category": "core",
+    "summary": "Fixture brick testing scoped() queries on a tenant table",
+    "maturity": "experimental",
+    "behaviourTest": "test/test.ts"
+  },
+  "worker": {
+    "package": "@poc/valid-scoped",
+    "routes": []
+  }
+}

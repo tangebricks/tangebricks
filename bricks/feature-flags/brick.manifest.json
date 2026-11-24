@@ -1,0 +1,71 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "feature-flags",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "feature-flags"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_feature_flags.sql"
+  ],
+  "routePrefixes": [
+    "flags"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "allowWorkspaceOverrides": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "ui": {
+    "displayName": "Feature Flags & Progressive Rollouts",
+    "category": "governance",
+    "summary": "Global feature flags, rollouts, and tenant overrides.",
+    "maturity": "beta",
+    "behaviourTest": "test/flags.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "globalTables": [
+    {
+      "table": "flag_definitions",
+      "reason": "Global feature flag definitions with workspace-level overrides in flag_overrides"
+    }
+  ],
+  "worker": {
+    "package": "@poc/feature-flags",
+    "routes": [
+      {
+        "factory": "createFlagRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/flags",
+          "/api/flags/*"
+        ],
+        "options": {
+          "allowOverrides": {
+            "$setting": "allowWorkspaceOverrides"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "flag_overrides": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

@@ -1,0 +1,123 @@
+name: CI (CP0 Foundation)
+
+on:
+  # Full gate only where it matters: pull requests into main, and main itself after a merge.
+  # Story branches get CI through their pull request, not on every push (saves Actions minutes).
+  push:
+    branches: [main]
+    paths-ignore: ["**/*.md", "docs/**", ".github/ISSUE_TEMPLATE/**"]
+  pull_request:
+    branches: [main]
+    paths-ignore: ["**/*.md", "docs/**", ".github/ISSUE_TEMPLATE/**"]
+  workflow_dispatch:
+
+# A newer push to the same branch or pull request cancels the run still in progress.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cp0:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm 10.18.0
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.0
+
+      - name: Setup Node.js >= 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run CP4 gate
+        run: pnpm ci:cp4
+
+      - name: Run CP5 gate
+        run: pnpm ci:cp5
+
+      - name: Run CP6 gate
+        run: pnpm ci:cp6
+
+      - name: Run CP7 gate
+        run: pnpm ci:cp7
+
+      - name: Fetch live canary evidence
+        run: |
+          git fetch origin evidence/live-canary:evidence/live-canary 2>/dev/null || true
+          git checkout evidence/live-canary -- evidence/live-canary/ 2>/dev/null || true
+        continue-on-error: true
+
+      - name: Run CP10 gate
+        run: pnpm ci:cp10
+
+      - name: Run CP8 gate
+        run: pnpm ci:cp8
+
+      - name: Run CP9 gate
+        run: pnpm ci:cp9
+
+      - name: Run MCP token budget gate
+        run: pnpm mcp:budget
+
+  changes:
+    name: Detect importer changes
+    runs-on: ubuntu-latest
+    outputs:
+      importer: ${{ steps.filter.outputs.importer }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        name: Did importer or integration files change?
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then base="${{ github.event.pull_request.base.sha }}"; else base="${{ github.event.before }}"; fi
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "importer=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if git diff --name-only "$base" HEAD | grep -E '^(packages/integrations|integrations|corpus)/' >/dev/null; then echo "importer=true" >> "$GITHUB_OUTPUT"; else echo "importer=false" >> "$GITHUB_OUTPUT"; fi
+
+  fidelity:
+    name: Importer Fidelity Regression Check
+    needs: changes
+    if: needs.changes.outputs.importer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm 10.18.0
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.0
+
+      - name: Setup Node.js >= 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache real-spec corpus
+        uses: actions/cache@v6
+        with:
+          path: corpus/real-specs/.cache
+          key: corpus-real-specs-${{ hashFiles('corpus/real-specs/manifest.json') }}
+
+      - name: Fetch and verify corpus
+        run: pnpm fidelity:fetch
+
+      - name: Check importer fidelity against baseline
+        run: pnpm fidelity:check

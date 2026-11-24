@@ -1,0 +1,83 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "core-auth",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "user-identity",
+    "session-context"
+  ],
+  "requires": [],
+  "migrations": [
+    "migrations/0001_core_auth.sql"
+  ],
+  "routePrefixes": [
+    "auth"
+  ],
+  "npmDependencies": {
+    "better-auth": "1.7.25",
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "sessionDuration": {
+      "type": "integer",
+      "min": 300,
+      "max": 2592000,
+      "default": 86400
+    }
+  },
+  "ui": {
+    "displayName": "Core Authentication",
+    "category": "identity",
+    "summary": "Better Auth email/password and GitHub OAuth authentication with D1 sessions and bearer tokens.",
+    "maturity": "beta",
+    "behaviourTest": "test/better-auth.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "secrets": [
+    "BETTER_AUTH_SECRET",
+    "GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET"
+  ],
+  "globalTables": [
+    {
+      "table": "user",
+      "reason": "Global Better Auth user directory shared across all workspaces a user may join."
+    },
+    {
+      "table": "session",
+      "reason": "Global Better Auth session store resolved prior to workspace selection."
+    },
+    {
+      "table": "account",
+      "reason": "Global Better Auth credential and OAuth provider accounts linked to global user records."
+    },
+    {
+      "table": "verification",
+      "reason": "Global Better Auth OAuth state and verification tokens created before workspace context exists."
+    }
+  ],
+  "worker": {
+    "package": "@poc/core-auth",
+    "guard": {
+      "export": "sessionMiddleware",
+      "capability": "user-identity"
+    },
+    "routes": [
+      {
+        "factory": "createAuthRoutes",
+        "mountAt": "/api",
+        "options": {
+          "sessionDuration": {
+            "$setting": "sessionDuration"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {}
+  }
+}

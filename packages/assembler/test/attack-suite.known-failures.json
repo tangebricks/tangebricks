@@ -1,0 +1,4 @@
+{
+  "$comment": "Known failures of the cross-tenant attack suite (story 0.5). Each entry is a violation that exists today, keyed by exact method + route + attack, with the story that fixes it. The suite fails on a violation not listed here and on an entry that no longer fails, so the fixing story must delete its entries. See docs/brick-audit.md.",
+  "entries": []
+}

@@ -1,0 +1,544 @@
+{
+  "kind": "discovery#restDescription",
+  "discoveryVersion": "v1",
+  "name": "google_workspace_bundle",
+  "version": "v1",
+  "rootUrl": "https://www.googleapis.com/",
+  "servicePath": "",
+  "schemas": {
+    "CalendarEvent": {
+      "id": "CalendarEvent",
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "Event title"
+        },
+        "start": {
+          "type": "object",
+          "description": "Start time"
+        },
+        "end": {
+          "type": "object",
+          "description": "End time"
+        }
+      }
+    },
+    "FreeBusyRequest": {
+      "id": "FreeBusyRequest",
+      "type": "object",
+      "properties": {
+        "timeMin": {
+          "type": "string",
+          "description": "Start ISO"
+        },
+        "timeMax": {
+          "type": "string",
+          "description": "End ISO"
+        },
+        "items": {
+          "type": "array",
+          "description": "Calendars"
+        }
+      }
+    },
+    "ValueRange": {
+      "id": "ValueRange",
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {}
+        }
+      }
+    },
+    "Spreadsheet": {
+      "id": "Spreadsheet",
+      "type": "object",
+      "properties": {
+        "dataSources": {
+          "type": "array",
+          "items": {}
+        },
+        "commentsViewMode": {
+          "type": "string"
+        }
+      }
+    },
+    "GmailMessage": {
+      "id": "GmailMessage",
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "string",
+          "description": "Base64url RFC2822"
+        },
+        "threadId": {
+          "type": "string",
+          "description": "Thread ID"
+        }
+      }
+    },
+    "Events": {
+      "id": "Events",
+      "type": "object",
+      "properties": {
+        "updated": {
+          "type": "string"
+        },
+        "timeZone": {
+          "type": "string"
+        }
+      }
+    },
+    "Event": {
+      "id": "Event",
+      "type": "object",
+      "properties": {
+        "focusTimeProperties": {
+          "type": "object"
+        },
+        "start": {
+          "type": "object"
+        }
+      }
+    },
+    "FreeBusyResponse": {
+      "id": "FreeBusyResponse",
+      "type": "object",
+      "properties": {
+        "timeMax": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        }
+      }
+    },
+    "AppendValuesResponse": {
+      "id": "AppendValuesResponse",
+      "type": "object",
+      "properties": {
+        "spreadsheetId": {
+          "type": "string"
+        },
+        "updates": {
+          "type": "object"
+        }
+      }
+    },
+    "UpdateValuesResponse": {
+      "id": "UpdateValuesResponse",
+      "type": "object",
+      "properties": {
+        "updatedCells": {
+          "type": "number"
+        },
+        "updatedData": {
+          "type": "object"
+        }
+      }
+    },
+    "Message": {
+      "id": "Message",
+      "type": "object",
+      "properties": {
+        "snippet": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    },
+    "ListMessagesResponse": {
+      "id": "ListMessagesResponse",
+      "type": "object",
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {}
+        },
+        "nextPageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "ListThreadsResponse": {
+      "id": "ListThreadsResponse",
+      "type": "object",
+      "properties": {
+        "resultSizeEstimate": {
+          "type": "number"
+        },
+        "threads": {
+          "type": "array",
+          "items": {}
+        }
+      }
+    },
+    "Thread": {
+      "id": "Thread",
+      "type": "object",
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {}
+        },
+        "id": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "resources": {
+    "calendar": {
+      "resources": {
+        "events": {
+          "methods": {
+            "list": {
+              "id": "calendar.events.list",
+              "httpMethod": "GET",
+              "flatPath": "calendar/v3/calendars/{calendarId}/events",
+              "description": "List calendar events",
+              "parameters": {
+                "calendarId": {
+                  "type": "string",
+                  "location": "path",
+                  "required": true
+                },
+                "timeMin": {
+                  "type": "string",
+                  "location": "query"
+                },
+                "pageToken": {
+                  "type": "string",
+                  "location": "query"
+                }
+              },
+              "response": {
+                "$ref": "Events"
+              }
+            },
+            "insert": {
+              "id": "calendar.events.insert",
+              "httpMethod": "POST",
+              "flatPath": "calendar/v3/calendars/{calendarId}/events",
+              "description": "Create calendar event",
+              "parameters": {
+                "calendarId": {
+                  "type": "string",
+                  "location": "path",
+                  "required": true
+                }
+              },
+              "request": {
+                "$ref": "CalendarEvent"
+              },
+              "response": {
+                "$ref": "Event"
+              }
+            },
+            "patch": {
+              "id": "calendar.events.patch",
+              "httpMethod": "PATCH",
+              "flatPath": "calendar/v3/calendars/{calendarId}/events/{eventId}",
+              "description": "Update calendar event",
+              "parameters": {
+                "calendarId": {
+                  "type": "string",
+                  "location": "path",
+                  "required": true
+                },
+                "eventId": {
+                  "type": "string",
+                  "location": "path",
+                  "required": true
+                }
+              },
+              "request": {
+                "$ref": "CalendarEvent"
+              },
+              "response": {
+                "$ref": "Event"
+              }
+            },
+            "delete": {
+              "id": "calendar.events.delete",
+              "httpMethod": "DELETE",
+              "flatPath": "calendar/v3/calendars/{calendarId}/events/{eventId}",
+              "description": "Delete calendar event",
+              "parameters": {
+                "calendarId": {
+                  "type": "string",
+                  "location": "path",
+                  "required": true
+                },
+                "eventId": {
+                  "type": "string",
+                  "location": "path",
+                  "required": true
+                }
+              }
+            }
+          }
+        },
+        "freebusy": {
+          "methods": {
+            "query": {
+              "id": "calendar.freebusy.query",
+              "httpMethod": "POST",
+              "flatPath": "calendar/v3/freeBusy",
+              "description": "Query calendar free/busy",
+              "parameters": {},
+              "request": {
+                "$ref": "FreeBusyRequest"
+              },
+              "response": {
+                "$ref": "FreeBusyResponse"
+              }
+            }
+          }
+        }
+      }
+    },
+    "sheets": {
+      "resources": {
+        "spreadsheets": {
+          "methods": {
+            "create": {
+              "id": "sheets.spreadsheets.create",
+              "httpMethod": "POST",
+              "flatPath": "v4/spreadsheets",
+              "description": "Create spreadsheet",
+              "parameters": {},
+              "request": {
+                "$ref": "Spreadsheet"
+              },
+              "response": {
+                "$ref": "Spreadsheet"
+              }
+            }
+          },
+          "resources": {
+            "values": {
+              "methods": {
+                "get": {
+                  "id": "sheets.values.get",
+                  "httpMethod": "GET",
+                  "flatPath": "v4/spreadsheets/{spreadsheetId}/values/{range}",
+                  "description": "Read sheet cell values",
+                  "parameters": {
+                    "spreadsheetId": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    },
+                    "range": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    }
+                  },
+                  "response": {
+                    "$ref": "ValueRange"
+                  }
+                },
+                "append": {
+                  "id": "sheets.values.append",
+                  "httpMethod": "POST",
+                  "flatPath": "v4/spreadsheets/{spreadsheetId}/values/{range}:append",
+                  "description": "Append sheet rows",
+                  "parameters": {
+                    "spreadsheetId": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    },
+                    "range": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    },
+                    "valueInputOption": {
+                      "type": "string",
+                      "location": "query"
+                    }
+                  },
+                  "request": {
+                    "$ref": "ValueRange"
+                  },
+                  "response": {
+                    "$ref": "AppendValuesResponse"
+                  }
+                },
+                "update": {
+                  "id": "sheets.values.update",
+                  "httpMethod": "PUT",
+                  "flatPath": "v4/spreadsheets/{spreadsheetId}/values/{range}",
+                  "description": "Update sheet cell values",
+                  "parameters": {
+                    "spreadsheetId": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    },
+                    "range": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    },
+                    "valueInputOption": {
+                      "type": "string",
+                      "location": "query"
+                    }
+                  },
+                  "request": {
+                    "$ref": "ValueRange"
+                  },
+                  "response": {
+                    "$ref": "UpdateValuesResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "gmail": {
+      "resources": {
+        "users": {
+          "resources": {
+            "messages": {
+              "methods": {
+                "send": {
+                  "id": "gmail.messages.send",
+                  "httpMethod": "POST",
+                  "flatPath": "gmail/v1/users/{userId}/messages/send",
+                  "description": "Send Gmail message",
+                  "parameters": {
+                    "userId": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    }
+                  },
+                  "request": {
+                    "$ref": "GmailMessage"
+                  },
+                  "response": {
+                    "$ref": "Message"
+                  }
+                },
+                "list": {
+                  "id": "gmail.messages.list",
+                  "httpMethod": "GET",
+                  "flatPath": "gmail/v1/users/{userId}/messages",
+                  "description": "List Gmail messages",
+                  "parameters": {
+                    "userId": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    },
+                    "q": {
+                      "type": "string",
+                      "location": "query"
+                    },
+                    "pageToken": {
+                      "type": "string",
+                      "location": "query"
+                    }
+                  },
+                  "response": {
+                    "$ref": "ListMessagesResponse"
+                  }
+                },
+                "get": {
+                  "id": "gmail.messages.get",
+                  "httpMethod": "GET",
+                  "flatPath": "gmail/v1/users/{userId}/messages/{id}",
+                  "description": "Get Gmail message",
+                  "parameters": {
+                    "userId": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    },
+                    "id": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    }
+                  },
+                  "response": {
+                    "$ref": "Message"
+                  }
+                }
+              }
+            },
+            "threads": {
+              "methods": {
+                "list": {
+                  "id": "gmail.threads.list",
+                  "httpMethod": "GET",
+                  "flatPath": "gmail/v1/users/{userId}/threads",
+                  "description": "List Gmail threads",
+                  "parameters": {
+                    "userId": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    },
+                    "q": {
+                      "type": "string",
+                      "location": "query"
+                    }
+                  },
+                  "response": {
+                    "$ref": "ListThreadsResponse"
+                  }
+                },
+                "get": {
+                  "id": "gmail.threads.get",
+                  "httpMethod": "GET",
+                  "flatPath": "gmail/v1/users/{userId}/threads/{id}",
+                  "description": "Get Gmail thread",
+                  "parameters": {
+                    "userId": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    },
+                    "id": {
+                      "type": "string",
+                      "location": "path",
+                      "required": true
+                    }
+                  },
+                  "response": {
+                    "$ref": "Thread"
+                  }
+                }
+              }
+            },
+            "drafts": {
+              "methods": {
+                "listUncurated": {
+                  "id": "gmail.drafts.listUncurated",
+                  "httpMethod": "GET",
+                  "flatPath": "gmail/v1/users/{userId}/drafts",
+                  "description": "Uncurated endpoint filtered out"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

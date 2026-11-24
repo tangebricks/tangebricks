@@ -1,0 +1,14 @@
+{
+  "name": "@poc/oidc-verify",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@poc/sdk": "workspace:*",
+    "@poc/runtime": "workspace:*",
+    "hono": "4.13.19"
+  }
+}

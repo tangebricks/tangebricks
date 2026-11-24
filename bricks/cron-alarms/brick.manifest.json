@@ -1,0 +1,82 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "cron-alarms",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "cron-scheduler"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_cron_alarms.sql",
+    "migrations/0002_catch_up.sql"
+  ],
+  "routePrefixes": [
+    "schedules"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "maxSchedulesPerWorkspace": {
+      "type": "integer",
+      "min": 1,
+      "max": 1000,
+      "default": 50
+    }
+  },
+  "ui": {
+    "displayName": "Cron & Distributed Alarms",
+    "category": "automation",
+    "summary": "Workspace recurring cron schedules and run logs.",
+    "maturity": "beta",
+    "behaviourTest": "test/cron.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "triggers": {
+    "schedules": [
+      {
+        "id": "due-schedules",
+        "cron": "* * * * *",
+        "handler": "runScheduledCronAlarms"
+      }
+    ]
+  },
+  "worker": {
+    "package": "@poc/cron-alarms",
+    "routes": [
+      {
+        "factory": "createScheduleRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/schedules",
+          "/api/schedules/*"
+        ],
+        "options": {
+          "maxSchedules": {
+            "$setting": "maxSchedulesPerWorkspace"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "cron_schedules": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "cron_history": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

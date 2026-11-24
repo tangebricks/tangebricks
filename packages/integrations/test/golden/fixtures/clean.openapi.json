@@ -1,0 +1,58 @@
+{
+  "app": "clean",
+  "format": "openapi3",
+  "specHash": "sha256:6698972744f65f38f0edbcd71b5bdc33c1c06cba55fa87e35aa7d821a02a22bc",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 5,
+    "normalized": 0,
+    "curated": 0,
+    "approximated": 0,
+    "unsupported": 0
+  },
+  "excludedByCuration": 0,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/servers",
+      "from": "/",
+      "to": "/",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getClean",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1clean/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getClean",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1clean/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getClean",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1clean/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getClean",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    }
+  ]
+}

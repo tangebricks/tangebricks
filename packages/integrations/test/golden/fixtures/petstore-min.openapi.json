@@ -1,0 +1,62 @@
+{
+  "app": "petstore-min",
+  "format": "openapi3",
+  "specHash": "sha256:59ae7c77eb5fd83b83ad74f7f3dcfbc119b841c61852d8ba54774fd9bc3b94d8",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 4,
+    "normalized": 0,
+    "curated": 1,
+    "approximated": 0,
+    "unsupported": 0
+  },
+  "excludedByCuration": 0,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/servers",
+      "from": "/",
+      "to": "/",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getPet",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1pets~1{id}/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getPet",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1pets~1{id}/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getPet",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1pets~1{id}/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getPet",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "#/paths/~1pets~1{id}/get/security",
+      "from": [
+        "bearerAuth"
+      ],
+      "to": "none",
+      "blocking": false,
+      "status": "curated"
+    }
+  ]
+}

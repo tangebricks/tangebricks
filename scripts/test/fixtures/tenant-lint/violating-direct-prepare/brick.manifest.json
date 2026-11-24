@@ -1,0 +1,28 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "violating-direct-prepare",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [],
+  "requires": [],
+  "migrations": [
+    "migrations/0001_init.sql"
+  ],
+  "routePrefixes": [
+    "violating-direct"
+  ],
+  "npmDependencies": {},
+  "settings": {},
+  "ui": {
+    "displayName": "Violating Direct Prepare",
+    "category": "core",
+    "summary": "Fixture brick testing direct db.prepare on a tenant table",
+    "maturity": "experimental",
+    "behaviourTest": "test/test.ts"
+  },
+  "worker": {
+    "package": "@poc/violating-direct-prepare",
+    "routes": []
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "app": "github",
+  "secretEnv": "CANARY_GITHUB_TOKEN",
+  "operations": [
+    {
+      "operationId": "listRepos",
+      "inputs": {
+        "per_page": 1
+      },
+      "expect": {
+        "status": 200
+      }
+    }
+  ],
+  "webhook": {
+    "trigger": "push",
+    "sendVia": "skip"
+  }
+}

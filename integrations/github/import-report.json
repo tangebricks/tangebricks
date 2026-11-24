@@ -1,0 +1,898 @@
+{
+  "app": "github",
+  "format": "openapi3",
+  "specHash": "sha256:2aaece148e7e1b749c7c6fe3496eadf6623c527e9cd6c4d18f7841e383efba1f",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 88,
+    "normalized": 0,
+    "curated": 14,
+    "approximated": 0,
+    "unsupported": 0
+  },
+  "excludedByCuration": 1,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/servers/0",
+      "from": "https://api.github.com",
+      "to": "https://api.github.com",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": null,
+      "element": "document",
+      "code": "SPEC_HAND_TRIMMED",
+      "pointer": "curation:#/specProvenance",
+      "reason": "Spec fixture is hand-trimmed, not upstream",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createIssue",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssue",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssue",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssue",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/post/requestBody/content/application~1json/schema/properties/body",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssue",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/post/requestBody/content/application~1json/schema/properties/labels",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssue",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/post/requestBody/content/application~1json/schema/properties/title",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssue",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/post/responses/201",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssue",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/post/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssue",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createIssueComment",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}~1comments/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssueComment",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}~1comments/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssueComment",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}~1comments/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssueComment",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}~1comments/post/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssueComment",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}~1comments/post/requestBody/content/application~1json/schema/properties/body",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssueComment",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}~1comments/post/responses/201",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssueComment",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}~1comments/post/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createIssueComment",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/put",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/put/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/put/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/put/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/put/requestBody/content/application~1json/schema/properties/content",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/put/requestBody/content/application~1json/schema/properties/message",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/put/requestBody/content/application~1json/schema/properties/sha",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/put/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/put/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createOrUpdateFileContents",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/post/requestBody/content/application~1json/schema/properties/base",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/post/requestBody/content/application~1json/schema/properties/body",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/post/requestBody/content/application~1json/schema/properties/head",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/post/requestBody/content/application~1json/schema/properties/title",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/post/responses/201",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/post/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPullRequest",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createWorkflowDispatch",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1actions~1workflows~1{workflowId}~1dispatches/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createWorkflowDispatch",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1actions~1workflows~1{workflowId}~1dispatches/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createWorkflowDispatch",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1actions~1workflows~1{workflowId}~1dispatches/post/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createWorkflowDispatch",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1actions~1workflows~1{workflowId}~1dispatches/post/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createWorkflowDispatch",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1actions~1workflows~1{workflowId}~1dispatches/post/requestBody/content/application~1json/schema/properties/inputs",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createWorkflowDispatch",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1actions~1workflows~1{workflowId}~1dispatches/post/requestBody/content/application~1json/schema/properties/ref",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createWorkflowDispatch",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1actions~1workflows~1{workflowId}~1dispatches/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createWorkflowDispatch",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "getContent",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getContent",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getContent",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getContent",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/get/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getContent",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/get/parameters/3",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getContent",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getContent",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1contents~1{path}/get/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getContent",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "getRepo",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getRepo",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getRepo",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getRepo",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getRepo",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}/get/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getRepo",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "listIssues",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listIssues",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listIssues",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listIssues",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/get/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listIssues",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/get/parameters/3",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listIssues",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listIssues",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues/get/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listIssues",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "listIssues",
+      "element": "pagination",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/listIssues/pagination",
+      "to": {
+        "style": "link",
+        "paramName": "page",
+        "responsePath": "items",
+        "maxPages": 3
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "listPullRequests",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listPullRequests",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listPullRequests",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listPullRequests",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/get/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listPullRequests",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listPullRequests",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls/get/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listPullRequests",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "listRepos",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1user~1repos/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listRepos",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1user~1repos/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listRepos",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1user~1repos/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listRepos",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1user~1repos/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listRepos",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1user~1repos/get/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listRepos",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "mergePullRequest",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls~1{pullNumber}~1merge/put",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "mergePullRequest",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls~1{pullNumber}~1merge/put/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "mergePullRequest",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls~1{pullNumber}~1merge/put/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "mergePullRequest",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls~1{pullNumber}~1merge/put/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "mergePullRequest",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls~1{pullNumber}~1merge/put/requestBody/content/application~1json/schema/properties/commit_title",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "mergePullRequest",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls~1{pullNumber}~1merge/put/requestBody/content/application~1json/schema/properties/merge_method",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "mergePullRequest",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls~1{pullNumber}~1merge/put/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "mergePullRequest",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1pulls~1{pullNumber}~1merge/put/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "mergePullRequest",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "updateIssue",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}/patch",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateIssue",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}/patch/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateIssue",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}/patch/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateIssue",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}/patch/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateIssue",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}/patch/requestBody/content/application~1json/schema/properties/body",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateIssue",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}/patch/requestBody/content/application~1json/schema/properties/state",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateIssue",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}/patch/requestBody/content/application~1json/schema/properties/title",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateIssue",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}/patch/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateIssue",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1repos~1{owner}~1{repo}~1issues~1{issueNumber}/patch/responses/default",
+      "to": {
+        "messagePath": "message"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateIssue",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    }
+  ]
+}

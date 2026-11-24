@@ -1,0 +1,114 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "omnichannel-outbound",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "message-dispatcher"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_omnichannel_outbound.sql"
+  ],
+  "routePrefixes": [
+    "messages"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "defaultChannel": {
+      "type": "enum",
+      "values": [
+        "email",
+        "sms",
+        "whatsapp",
+        "slack"
+      ],
+      "default": "email"
+    }
+  },
+  "ui": {
+    "displayName": "Omnichannel Outbound Dispatcher",
+    "category": "communication",
+    "summary": "Outbound messaging across email, SMS, chat, and Slack.",
+    "maturity": "beta",
+    "maturityReason": "Persists channels, templates, suppressions and dispatch logs in D1; no delivery adapter by default (send answers 503 NOT_CONFIGURED); no built-in email, SMS or Slack adapters",
+    "behaviourTest": "test/dispatcher.test.ts"
+  },
+  "nodes": [
+    {
+      "type": "omnichannel-outbound.send_message",
+      "label": "Send Outbound Message",
+      "summary": "Dispatch an outbound message over email, SMS, WhatsApp, or Slack.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Message",
+          "dataType": "any",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Delivery Receipt",
+          "dataType": "object"
+        }
+      ],
+      "config": {
+        "channel": {
+          "type": "enum",
+          "values": [
+            "email",
+            "sms",
+            "whatsapp",
+            "slack"
+          ],
+          "default": "email"
+        }
+      },
+      "executor": "executeSendOutboundMessage",
+      "durable": true,
+      "sideEffects": "write"
+    }
+  ],
+  "worker": {
+    "package": "@poc/omnichannel-outbound",
+    "routes": [
+      {
+        "factory": "createMessageRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/messages",
+          "/api/messages/*"
+        ],
+        "options": {
+          "channel": {
+            "$setting": "defaultChannel"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "msg_channels": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "msg_dispatches": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

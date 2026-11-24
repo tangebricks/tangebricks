@@ -1,0 +1,14 @@
+# Local development secrets for studio-api. Copy to .dev.vars (gitignored) and replace every value.
+# The code has no built-in fallbacks: a missing value fails with "Missing required secret <NAME>".
+# In deployed environments set these with `wrangler secret put <NAME>`.
+BETTER_AUTH_SECRET=replace-with-32-plus-random-characters
+PX_VAULT_KEY=replace-with-32-plus-random-characters
+PX_CONN_KEY=replace-with-32-plus-random-characters
+PX_TOKEN_KEK=replace-with-32-plus-random-characters
+PX_TELEMETRY_SECRET=replace-with-32-plus-random-characters
+# Optional: GitHub sign-in is enabled only when both are set.
+# GITHUB_CLIENT_ID=
+# GITHUB_CLIENT_SECRET=
+# Optional: comma-separated user ids of platform operators, the only callers allowed to write all-tenant tables
+# (global feature flags, meter definitions, plan prices) and create admin-console super-admins. Unset means nobody.
+# PX_PLATFORM_OPERATORS=

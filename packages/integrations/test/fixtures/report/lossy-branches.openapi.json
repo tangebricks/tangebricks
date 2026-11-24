@@ -1,0 +1,353 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Lossy Branches Test Spec",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/param-cookie": {
+      "get": {
+        "operationId": "opParamCookie",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "cookie",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/param-enum": {
+      "get": {
+        "operationId": "opParamEnum",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["active", "inactive"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/param-default": {
+      "get": {
+        "operationId": "opParamDefault",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/param-items": {
+      "get": {
+        "operationId": "opParamItems",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/param-style": {
+      "get": {
+        "operationId": "opParamStyle",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/body-capped": {
+      "post": {
+        "operationId": "opBodyCapped",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "f1": { "type": "string" },
+                  "f2": { "type": "string" },
+                  "f3": { "type": "string" },
+                  "f4": { "type": "string" },
+                  "f5": { "type": "string" },
+                  "f6": { "type": "string" },
+                  "f7": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/body-required-capped": {
+      "post": {
+        "operationId": "opBodyRequiredCapped",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["f7"],
+                "properties": {
+                  "f1": { "type": "string" },
+                  "f2": { "type": "string" },
+                  "f3": { "type": "string" },
+                  "f4": { "type": "string" },
+                  "f5": { "type": "string" },
+                  "f6": { "type": "string" },
+                  "f7": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/body-nested": {
+      "post": {
+        "operationId": "opBodyNested",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "address": {
+                    "type": "object",
+                    "properties": {
+                      "city": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/schema-composition": {
+      "get": {
+        "operationId": "opSchemaComposition",
+        "parameters": [
+          {
+            "name": "composed",
+            "in": "query",
+            "schema": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "integer" }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/body-composed": {
+      "post": {
+        "operationId": "opBodyComposed",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/TypeA" },
+                  { "$ref": "#/components/schemas/TypeB" }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/body-freeform": {
+      "post": {
+        "operationId": "opBodyFreeform",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/body-array": {
+      "post": {
+        "operationId": "opBodyArray",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/content-type-unsupported": {
+      "post": {
+        "operationId": "opContentTypeUnsupported",
+        "requestBody": {
+          "content": {
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/ref-depth": {
+      "get": {
+        "operationId": "opRefDepth",
+        "parameters": [
+          {
+            "name": "deepParam",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Depth1"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/op-skipped": {
+      "head": {
+        "operationId": "opSkippedHead",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TypeA": {
+        "type": "object",
+        "properties": {
+          "a": { "type": "string" }
+        }
+      },
+      "TypeB": {
+        "type": "object",
+        "properties": {
+          "b": { "type": "number" }
+        }
+      },
+      "Depth1": { "$ref": "#/components/schemas/Depth2" },
+      "Depth2": { "$ref": "#/components/schemas/Depth3" },
+      "Depth3": { "$ref": "#/components/schemas/Depth4" },
+      "Depth4": { "$ref": "#/components/schemas/Depth5" },
+      "Depth5": { "$ref": "#/components/schemas/Depth6" },
+      "Depth6": { "$ref": "#/components/schemas/Depth7" },
+      "Depth7": { "type": "string" }
+    }
+  }
+}

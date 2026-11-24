@@ -1,0 +1,12 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "fixture-zero-expects",
+  "version": "1.0.0",
+  "ui": {
+    "displayName": "Fixture Zero Expects",
+    "category": "testing",
+    "maturity": "experimental",
+    "behaviourTest": "test/zero-expects.node.test.ts"
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "oidc-verify",
+  "version": "2.0.0",
+  "trust": "first-party",
+  "isolation": "none",
+  "provides": [
+    "user-identity@1.0.0",
+    "oidc-verifier@1.0.0"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [],
+  "routePrefixes": [],
+  "npmDependencies": {
+    "hono": "4.13.19"
+  },
+  "settings": {
+    "issuer": {
+      "type": "string",
+      "format": "url",
+      "default": "https://auth.example.com"
+    },
+    "audience": {
+      "type": "string",
+      "default": "authenticated"
+    },
+    "jwksUri": {
+      "type": "string",
+      "format": "url",
+      "default": ""
+    },
+    "algorithms": {
+      "type": "enum",
+      "values": [
+        "RS256",
+        "ES256",
+        "EdDSA"
+      ],
+      "default": "RS256"
+    },
+    "clockSkewSec": {
+      "type": "integer",
+      "min": 0,
+      "max": 300,
+      "default": 60
+    },
+    "userIdClaim": {
+      "type": "string",
+      "format": "claim-path",
+      "default": "sub"
+    },
+    "workspaceClaim": {
+      "type": "string",
+      "format": "claim-path",
+      "default": ""
+    },
+    "rolesClaim": {
+      "type": "string",
+      "format": "claim-path",
+      "default": ""
+    },
+    "audienceClaim": {
+      "type": "string",
+      "format": "claim-path",
+      "default": "aud"
+    },
+    "hs256SecretName": {
+      "type": "string",
+      "format": "identifier",
+      "default": ""
+    }
+  },
+  "ui": {
+    "displayName": "OIDC Verification",
+    "category": "identity",
+    "summary": "Generic OpenID Connect and JWKS bearer token verification for external identity providers.",
+    "maturity": "beta",
+    "maturityReason": "Beta until verified with live canary against production identity issuer (UC5).",
+    "behaviourTest": "test/conformance.test.ts"
+  },
+  "worker": {
+    "package": "@poc/oidc-verify",
+    "guard": {
+      "export": "oidcMiddleware",
+      "capability": "user-identity"
+    },
+    "routes": []
+  }
+}

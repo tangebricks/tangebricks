@@ -1,0 +1,12 @@
+{
+  "note": "Commits from the private pre-public history of this project. The public repository starts from a single import commit, so these SHAs do not exist here. Only frozen evidence (the importer baseline and quarantined proof-of-concept records) may cite them. New evidence must cite a commit in this repository.",
+  "commits": {
+    "eefa726944d945c25bb4606ad38c51744d8ce2cf": [
+      "evidence/importer-fidelity.baseline.json"
+    ],
+    "cb0f935d11bc21323119a20883fd8af5f96feef1": [
+      "evidence/quarantine/cp8-beta-readiness.json",
+      "evidence/quarantine/cp9-sandbox-verification.json"
+    ]
+  }
+}

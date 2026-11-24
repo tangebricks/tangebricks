@@ -1,0 +1,66 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "marketplace-splits",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "marketplace-payouts"
+  ],
+  "requires": [
+    "workspace-context",
+    "credit-wallet"
+  ],
+  "migrations": [
+    "migrations/0001_marketplace_splits.sql"
+  ],
+  "routePrefixes": [
+    "marketplace"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Marketplace Splits & Payouts",
+    "category": "billing",
+    "summary": "Platform fee splits, creator shares, and payouts.",
+    "maturity": "experimental",
+    "behaviourTest": "test/splits.test.ts",
+    "maturityReason": "QUARANTINED: payouts can double-spend (threat-model risk 6) and contracts/balances answer 200 for any vendor id from another workspace (attack suite ID_GUESS)"
+  },
+  "worker": {
+    "package": "@poc/marketplace-splits",
+    "routes": [
+      {
+        "factory": "createMarketplaceSplitsRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/marketplace",
+          "/api/marketplace/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "split_contracts": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "split_transactions": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "split_payouts": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

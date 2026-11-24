@@ -1,0 +1,118 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "webhook-gateway",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "webhook-gateway"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_webhook_gateway.sql",
+    "migrations/0002_webhook_signature_scheme.sql"
+  ],
+  "routePrefixes": [
+    "webhooks"
+  ],
+  "bindings": [
+    "PX_WEBHOOK_ALLOW_UNSIGNED"
+  ],
+  "secrets": [
+    "PX_CONN_KEY"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "secretRotationGraceHours": {
+      "type": "integer",
+      "min": 1,
+      "max": 168,
+      "default": 24
+    }
+  },
+  "ui": {
+    "displayName": "Webhook Ingress & Egress Gateway",
+    "category": "automation",
+    "summary": "Inbound webhook endpoints, HMAC checks, and rotation.",
+    "maturity": "beta",
+    "behaviourTest": "test/gateway.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "nodes": [
+    {
+      "type": "webhook-gateway.inbound_webhook",
+      "label": "Inbound Webhook Trigger",
+      "summary": "Triggers when a verified HMAC webhook arrives at the gateway.",
+      "role": "trigger",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Webhook Event",
+          "dataType": "object"
+        }
+      ],
+      "config": {},
+      "executor": "executeInboundWebhookTrigger",
+      "durable": true,
+      "sideEffects": "none"
+    }
+  ],
+  "worker": {
+    "package": "@poc/webhook-gateway",
+    "routes": [
+      {
+        "factory": "createWebhookRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/webhooks/endpoints",
+          "/api/webhooks/endpoints/*",
+          "/api/webhooks/subscriptions"
+        ],
+        "options": {
+          "rotationGraceHours": {
+            "$setting": "secretRotationGraceHours"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "hookTables": [
+      "wh_subscriptions_v2"
+    ],
+    "tables": {
+      "wh_endpoints": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "wh_deliveries": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "wh_subscriptions": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "px_webhook_deliveries": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "px_connections": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

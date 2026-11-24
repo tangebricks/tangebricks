@@ -1,0 +1,176 @@
+{
+  "app": "stripe",
+  "version": "1.0.0",
+  "format": "openapi3",
+  "specProvenance": "hand-trimmed",
+  "upstream": {
+    "corpusSpec": "stripe",
+    "operationIds": {
+      "createCustomer": "PostCustomers",
+      "getCustomer": "GetCustomersCustomer",
+      "updateCustomer": "PostCustomersCustomer",
+      "listCustomers": "GetCustomers",
+      "createCheckoutSession": "PostCheckoutSessions",
+      "createPaymentIntent": "PostPaymentIntents",
+      "getPaymentIntent": "GetPaymentIntentsIntent",
+      "confirmPaymentIntent": "PostPaymentIntentsIntentConfirm",
+      "createSubscription": "PostSubscriptions",
+      "updateSubscription": "PostSubscriptionsSubscriptionExposedId",
+      "cancelSubscription": "DeleteSubscriptionsSubscriptionExposedId",
+      "createInvoice": "PostInvoices",
+      "listInvoices": "GetInvoices",
+      "createRefund": "PostRefunds"
+    }
+  },
+  "acknowledge": [
+  ],
+  "ui": {
+    "displayName": "Stripe",
+    "category": "billing",
+    "icon": "stripe",
+    "docsUrl": "https://docs.stripe.com/api",
+    "summary": "Customers, checkout sessions, payment intents, subscriptions, invoices, refunds, and webhooks.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "authorizeUrl": "https://connect.stripe.com/oauth/authorize",
+    "tokenUrl": "https://connect.stripe.com/oauth/token",
+    "scopes": ["read_write"],
+    "headerName": "Authorization",
+    "prefix": "Bearer"
+  },
+  "baseUrl": "https://api.stripe.com",
+  "allowedHosts": ["api.stripe.com"],
+  "includeOperations": [
+    "createCustomer",
+    "getCustomer",
+    "updateCustomer",
+    "listCustomers",
+    "createCheckoutSession",
+    "createPaymentIntent",
+    "getPaymentIntent",
+    "confirmPaymentIntent",
+    "createSubscription",
+    "updateSubscription",
+    "cancelSubscription",
+    "createInvoice",
+    "listInvoices",
+    "createRefund"
+  ],
+  "defaultRateLimit": {
+    "maxRetries": 3,
+    "initialBackoffMs": 200,
+    "respectRetryAfter": true,
+    "retryAfterHeader": "Retry-After"
+  },
+  "operations": {
+    "createCustomer": {
+      "idempotency": { "header": "Idempotency-Key" }
+    },
+    "updateCustomer": {
+      "idempotency": { "header": "Idempotency-Key" }
+    },
+    "createCheckoutSession": {
+      "idempotency": { "header": "Idempotency-Key" }
+    },
+    "createPaymentIntent": {
+      "idempotency": { "header": "Idempotency-Key" }
+    },
+    "confirmPaymentIntent": {
+      "idempotency": { "header": "Idempotency-Key" }
+    },
+    "createSubscription": {
+      "idempotency": { "header": "Idempotency-Key" }
+    },
+    "updateSubscription": {
+      "idempotency": { "header": "Idempotency-Key" }
+    },
+    "createInvoice": {
+      "idempotency": { "header": "Idempotency-Key" }
+    },
+    "createRefund": {
+      "idempotency": { "header": "Idempotency-Key" }
+    },
+    "listCustomers": {
+      "pagination": {
+        "style": "lastItemCursor",
+        "paramName": "starting_after",
+        "responsePath": "data",
+        "itemIdPath": "id",
+        "hasMorePath": "has_more",
+        "maxPages": 3
+      }
+    },
+    "listInvoices": {
+      "pagination": {
+        "style": "lastItemCursor",
+        "paramName": "starting_after",
+        "responsePath": "data",
+        "itemIdPath": "id",
+        "hasMorePath": "has_more",
+        "maxPages": 3
+      }
+    }
+  },
+  "triggers": [
+    {
+      "id": "payment_intent_succeeded",
+      "label": "Payment Intent Succeeded",
+      "summary": "Fires on Stripe payment_intent.succeeded webhook.",
+      "verifier": "stripe-signature",
+      "signatureHeader": "Stripe-Signature",
+      "eventIdPath": "id",
+      "eventTypePath": "type",
+      "eventTypeFilter": ["payment_intent.succeeded"],
+      "outputs": [
+        { "id": "out", "label": "Stripe Event", "dataType": "object" }
+      ]
+    },
+    {
+      "id": "customer_subscription_updated",
+      "label": "Subscription Updated",
+      "summary": "Fires on Stripe customer.subscription.updated webhook.",
+      "verifier": "stripe-signature",
+      "signatureHeader": "Stripe-Signature",
+      "eventIdPath": "id",
+      "eventTypePath": "type",
+      "eventTypeFilter": ["customer.subscription.updated"],
+      "outputs": [
+        { "id": "out", "label": "Stripe Event", "dataType": "object" }
+      ]
+    },
+    {
+      "id": "invoice_paid",
+      "label": "Invoice Paid",
+      "summary": "Fires on Stripe invoice.paid webhook.",
+      "verifier": "stripe-signature",
+      "signatureHeader": "Stripe-Signature",
+      "eventIdPath": "id",
+      "eventTypePath": "type",
+      "eventTypeFilter": ["invoice.paid"],
+      "outputs": [
+        { "id": "out", "label": "Stripe Event", "dataType": "object" }
+      ]
+    }
+  ],
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "Stripe API key or OAuth token is invalid or expired.",
+      "hint": "Reconnect Stripe in Connections Center.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "Stripe rate limit exceeded.",
+      "hint": "Respect Retry-After header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "Retry-After"
+    }
+  }
+}

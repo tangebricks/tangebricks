@@ -1,0 +1,12 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "fixture-passing",
+  "version": "1.0.0",
+  "ui": {
+    "displayName": "Fixture Passing",
+    "category": "testing",
+    "maturity": "production",
+    "behaviourTest": "test/passing.node.test.ts"
+  }
+}

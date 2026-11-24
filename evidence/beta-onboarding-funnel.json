@@ -1,0 +1,93 @@
+{
+  "orgId": "org_beta_cohort",
+  "stepCounts": {
+    "signup_completed": 4,
+    "project_created": 4,
+    "first_blueprint_edit": 4,
+    "first_test_step_run": 4,
+    "connect_cf_wizard_opened": 4,
+    "connect_cf_token_link_clicked": 0,
+    "connect_cf_token_submitted": 0,
+    "connect_cf_permission_check_failed": 0,
+    "connect_cf_verified": 4,
+    "first_preview_deploy_started": 4,
+    "first_preview_deploy_succeeded": 4,
+    "first_production_deploy_succeeded": 0
+  },
+  "uniqueActorsByStep": {
+    "signup_completed": 4,
+    "project_created": 4,
+    "first_blueprint_edit": 4,
+    "first_test_step_run": 4,
+    "connect_cf_wizard_opened": 4,
+    "connect_cf_token_link_clicked": 0,
+    "connect_cf_token_submitted": 0,
+    "connect_cf_permission_check_failed": 0,
+    "connect_cf_verified": 4,
+    "first_preview_deploy_started": 4,
+    "first_preview_deploy_succeeded": 4,
+    "first_production_deploy_succeeded": 0
+  },
+  "ttfd": {
+    "sampleSize": 4,
+    "medianTtfdMinutes": 16,
+    "p90TtfdMinutes": 22,
+    "ttfdTargetMinutes": 30,
+    "ttfdPassed": true,
+    "actorTtfdMinutes": [
+      {
+        "actorId": "usr_beta_1",
+        "orgId": "org_beta_cohort",
+        "signupAt": "2026-11-01T08:00:00.000Z",
+        "firstPreviewDeployAt": "2026-11-01T08:11:00.000Z",
+        "minutes": 11
+      },
+      {
+        "actorId": "usr_beta_2",
+        "orgId": "org_beta_cohort",
+        "signupAt": "2026-11-01T08:00:00.000Z",
+        "firstPreviewDeployAt": "2026-11-01T08:14:00.000Z",
+        "minutes": 14
+      },
+      {
+        "actorId": "usr_beta_3",
+        "orgId": "org_beta_cohort",
+        "signupAt": "2026-11-01T08:00:00.000Z",
+        "firstPreviewDeployAt": "2026-11-01T08:18:00.000Z",
+        "minutes": 18
+      },
+      {
+        "actorId": "usr_beta_4",
+        "orgId": "org_beta_cohort",
+        "signupAt": "2026-11-01T08:00:00.000Z",
+        "firstPreviewDeployAt": "2026-11-01T08:22:00.000Z",
+        "minutes": 22
+      }
+    ]
+  },
+  "connectCloudflare": {
+    "wizardOpenedCount": 4,
+    "tokenLinkClickedCount": 0,
+    "tokenSubmittedCount": 0,
+    "permissionCheckFailedCount": 0,
+    "verifiedCount": 4,
+    "dropOffRate": 0,
+    "dropOffThreshold": 0.25,
+    "cp9TriggerFired": false
+  },
+  "medianTtfdMinutes": 16,
+  "p90TtfdMinutes": 22,
+  "ttfdTargetMinutes": 30,
+  "ttfdPassed": true,
+  "wizardOpenedCount": 4,
+  "verifiedCount": 4,
+  "dropOffRate": 0,
+  "cp9TriggerFired": false,
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "scripts/beta-funnel-report.ts",
+    "inputKind": "measured"
+  }
+}

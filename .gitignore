@@ -1,0 +1,23 @@
+node_modules/
+.wrangler/
+*.log
+# Written by the vitest reporter on every run; verdicts.json is the committed evidence.
+evidence/raw-results.json
+.evidence-run/
+
+# Downloaded real-spec fidelity corpus cache
+corpus/real-specs/.cache/
+
+
+
+# Projects the assembler writes for the tests to import; rebuilt by the test setup on every run.
+out/
+
+# Credential files. The real ones live outside both repositories; these patterns are a second safeguard.
+.env
+*.env
+.env.*
+.dev.vars
+test-results/
+playwright-report/
+apps/studio-web/dist/

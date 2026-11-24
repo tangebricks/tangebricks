@@ -1,0 +1,83 @@
+{
+  "project": "b2b-workspace-app",
+  "identity": "core-auth",
+  "bricks": [
+    "multi-workspace",
+    "core-auth",
+    "rbac-policy",
+    "audit-trail",
+    "dynamic-entities",
+    "outbound-webhooks",
+    "in-app-notifications",
+    "feature-flags"
+  ],
+  "entities": [
+    {
+      "name": "projects",
+      "fields": [
+        { "name": "title", "type": "text", "required": true },
+        { "name": "status", "type": "enum", "values": ["active", "archived"] }
+      ]
+    }
+  ],
+  "secretRefs": [
+    {
+      "ref": "sec_better_auth",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "BETTER_AUTH_SECRET"
+    },
+    {
+      "ref": "sec_github_id",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "GITHUB_CLIENT_ID"
+    },
+    {
+      "ref": "sec_github_secret",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "GITHUB_CLIENT_SECRET"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "rbac_audit_workflow",
+      "name": "RBAC Project Audit & Notification Flow",
+      "trigger": { "kind": "event", "event": "dynamic-entities.record_created" },
+      "nodes": [
+        {
+          "id": "n_notify_team",
+          "type": "in-app-notifications.send",
+          "label": "Notify Workspace Members",
+          "data": { "channel": "audit-trail", "entity": "projects" },
+          "position": { "x": 440, "y": 180 }
+        },
+        {
+          "id": "n_record_created",
+          "type": "dynamic-entities.record_created",
+          "label": "Project Created Trigger",
+          "data": { "entity": "projects" },
+          "position": { "x": 120, "y": 180 }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e_rec_notify",
+          "source": "n_record_created",
+          "target": "n_notify_team",
+          "sourceHandle": "out",
+          "targetHandle": "in"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "displayName": "B2B Workspace App",
+    "description": "Multi-workspace B2B SaaS with Better Auth, RBAC policy, audit trail, dynamic entities, outbound webhooks, notifications, and feature flags.",
+    "layout": {
+      "n_notify_team": { "x": 440, "y": 180 },
+      "n_record_created": { "x": 120, "y": 180 }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@poc/integrations",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts"
+  },
+  "dependencies": {
+    "@poc/assembler": "workspace:*",
+    "gpt-tokenizer": "4.1.2",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
+  }
+}

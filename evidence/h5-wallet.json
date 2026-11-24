@@ -1,0 +1,221 @@
+{
+  "note": "the credit-wallet brick: 50 mixed operations at once (each top-up confirmed twice at once), 20 runs, local D1",
+  "runs": 20,
+  "violatingRuns": 0,
+  "perRun": [
+    {
+      "run": 1,
+      "start": 35,
+      "end": 292,
+      "acceptedTopups": 24,
+      "acceptedDeductions": 9,
+      "refusedDeductions": 17,
+      "reasons": []
+    },
+    {
+      "run": 2,
+      "start": 20,
+      "end": 178,
+      "acceptedTopups": 24,
+      "acceptedDeductions": 2,
+      "refusedDeductions": 24,
+      "reasons": []
+    },
+    {
+      "run": 3,
+      "start": 8,
+      "end": 141,
+      "acceptedTopups": 18,
+      "acceptedDeductions": 3,
+      "refusedDeductions": 29,
+      "reasons": []
+    },
+    {
+      "run": 4,
+      "start": 8,
+      "end": 265,
+      "acceptedTopups": 24,
+      "acceptedDeductions": 3,
+      "refusedDeductions": 23,
+      "reasons": []
+    },
+    {
+      "run": 5,
+      "start": 39,
+      "end": 247,
+      "acceptedTopups": 24,
+      "acceptedDeductions": 7,
+      "refusedDeductions": 19,
+      "reasons": []
+    },
+    {
+      "run": 6,
+      "start": 26,
+      "end": 302,
+      "acceptedTopups": 28,
+      "acceptedDeductions": 4,
+      "refusedDeductions": 18,
+      "reasons": []
+    },
+    {
+      "run": 7,
+      "start": 28,
+      "end": 281,
+      "acceptedTopups": 26,
+      "acceptedDeductions": 5,
+      "refusedDeductions": 19,
+      "reasons": []
+    },
+    {
+      "run": 8,
+      "start": 5,
+      "end": 265,
+      "acceptedTopups": 22,
+      "acceptedDeductions": 2,
+      "refusedDeductions": 26,
+      "reasons": []
+    },
+    {
+      "run": 9,
+      "start": 19,
+      "end": 253,
+      "acceptedTopups": 24,
+      "acceptedDeductions": 6,
+      "refusedDeductions": 20,
+      "reasons": []
+    },
+    {
+      "run": 10,
+      "start": 27,
+      "end": 165,
+      "acceptedTopups": 23,
+      "acceptedDeductions": 5,
+      "refusedDeductions": 22,
+      "reasons": []
+    },
+    {
+      "run": 11,
+      "start": 11,
+      "end": 272,
+      "acceptedTopups": 27,
+      "acceptedDeductions": 3,
+      "refusedDeductions": 20,
+      "reasons": []
+    },
+    {
+      "run": 12,
+      "start": 7,
+      "end": 241,
+      "acceptedTopups": 24,
+      "acceptedDeductions": 4,
+      "refusedDeductions": 22,
+      "reasons": []
+    },
+    {
+      "run": 13,
+      "start": 9,
+      "end": 301,
+      "acceptedTopups": 25,
+      "acceptedDeductions": 2,
+      "refusedDeductions": 23,
+      "reasons": []
+    },
+    {
+      "run": 14,
+      "start": 27,
+      "end": 266,
+      "acceptedTopups": 30,
+      "acceptedDeductions": 5,
+      "refusedDeductions": 15,
+      "reasons": []
+    },
+    {
+      "run": 15,
+      "start": 34,
+      "end": 303,
+      "acceptedTopups": 25,
+      "acceptedDeductions": 4,
+      "refusedDeductions": 21,
+      "reasons": []
+    },
+    {
+      "run": 16,
+      "start": 2,
+      "end": 264,
+      "acceptedTopups": 23,
+      "acceptedDeductions": 1,
+      "refusedDeductions": 26,
+      "reasons": []
+    },
+    {
+      "run": 17,
+      "start": 18,
+      "end": 258,
+      "acceptedTopups": 28,
+      "acceptedDeductions": 2,
+      "refusedDeductions": 20,
+      "reasons": []
+    },
+    {
+      "run": 18,
+      "start": 5,
+      "end": 303,
+      "acceptedTopups": 27,
+      "acceptedDeductions": 2,
+      "refusedDeductions": 21,
+      "reasons": []
+    },
+    {
+      "run": 19,
+      "start": 36,
+      "end": 233,
+      "acceptedTopups": 24,
+      "acceptedDeductions": 8,
+      "refusedDeductions": 18,
+      "reasons": []
+    },
+    {
+      "run": 20,
+      "start": 25,
+      "end": 270,
+      "acceptedTopups": 27,
+      "acceptedDeductions": 6,
+      "refusedDeductions": 17,
+      "reasons": []
+    }
+  ],
+  "orderScenario": {
+    "creditedResults": 1,
+    "balance": 107,
+    "rows": 1,
+    "processed": 1,
+    "others": [
+      "already_processed"
+    ],
+    "ok": true
+  },
+  "refusalScenario": {
+    "single": {
+      "ok": false,
+      "reason": "insufficient_balance",
+      "balance": 5
+    },
+    "afterSingle": {
+      "balance": 5,
+      "rows": 0
+    },
+    "accepted": 2,
+    "afterRace": {
+      "balance": 2,
+      "rows": 2
+    },
+    "ok": true
+  },
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "reporters/evidence-reporter.ts",
+    "inputKind": "measured"
+  }
+}

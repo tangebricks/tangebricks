@@ -1,0 +1,15 @@
+{
+  "name": "@poc/core-auth",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@poc/sdk": "workspace:*",
+    "better-auth": "1.7.25",
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  }
+}

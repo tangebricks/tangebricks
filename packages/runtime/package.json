@@ -1,0 +1,22 @@
+{
+  "name": "@poc/runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./expressions": "./src/expressions.ts"
+  },
+  "scripts": {
+    "test": "cd ../.. && vitest run packages/runtime/test"
+  },
+  "dependencies": {
+    "@poc/assembler": "workspace:*",
+    "@poc/core-nodes": "workspace:*",
+    "@poc/sdk": "workspace:*",
+    "@poc/telemetry": "workspace:*"
+  },
+  "devDependencies": {
+    "zod": "4.6.7"
+  }
+}

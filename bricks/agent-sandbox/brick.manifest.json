@@ -1,0 +1,65 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "agent-sandbox",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "mcp-agent-tools"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_agent_sandbox.sql"
+  ],
+  "routePrefixes": [
+    "mcp"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Agent Sandbox & Tool Registry",
+    "category": "ai",
+    "summary": "MCP server/client, tool registry, and sandboxed runner.",
+    "maturity": "experimental",
+    "maturityReason": "QUARANTINED: stub; only four built-in handlers run, inline_js, http_webhook and workflow_call tools fail NOT_CONFIGURED, and there is no isolate sandbox",
+    "behaviourTest": "test/agent.test.ts"
+  },
+  "worker": {
+    "package": "@poc/agent-sandbox",
+    "routes": [
+      {
+        "factory": "createAgentSandboxRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/mcp",
+          "/api/mcp/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "mcp_tools": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "mcp_agent_sessions": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "mcp_tool_invocations": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

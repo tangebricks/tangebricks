@@ -1,0 +1,82 @@
+{
+  "project": "marketplace",
+  "bricks": [
+    "multi-workspace",
+    "core-auth",
+    "credit-wallet",
+    "subscription-plans",
+    "binary-assets",
+    "dynamic-entities",
+    "search-faceted",
+    "threaded-discussions"
+  ],
+  "entities": [
+    {
+      "name": "listings",
+      "fields": [
+        { "name": "title", "type": "text", "required": true },
+        { "name": "price_cents", "type": "number", "required": true }
+      ]
+    }
+  ],
+  "secretRefs": [
+    {
+      "ref": "sec_better_auth",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "BETTER_AUTH_SECRET"
+    },
+    {
+      "ref": "sec_github_id",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "GITHUB_CLIENT_ID"
+    },
+    {
+      "ref": "sec_github_secret",
+      "targetKind": "brick",
+      "targetId": "core-auth",
+      "secretName": "GITHUB_CLIENT_SECRET"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "order_payout_workflow",
+      "name": "Marketplace Order & Seller Payout Flow",
+      "trigger": { "kind": "event", "event": "dynamic-entities.record_created" },
+      "nodes": [
+        {
+          "id": "n_listing_order",
+          "type": "dynamic-entities.record_created",
+          "label": "Listing Order Created",
+          "data": { "entity": "listings" },
+          "position": { "x": 120, "y": 180 }
+        },
+        {
+          "id": "n_seller_payout",
+          "type": "credit-wallet.credit",
+          "label": "Credit Seller Wallet",
+          "data": { "amount": 500 },
+          "position": { "x": 440, "y": 180 }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e_order_payout",
+          "source": "n_listing_order",
+          "target": "n_seller_payout",
+          "sourceHandle": "out",
+          "targetHandle": "in"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "displayName": "Multi-Vendor Marketplace",
+    "description": "Two-sided marketplace with listings, seller payouts to a credit wallet, binary assets, faceted search, and threaded discussions. Payout splits (marketplace-splits) are experimental and not included.",
+    "layout": {
+      "n_listing_order": { "x": 120, "y": 180 },
+      "n_seller_payout": { "x": 440, "y": 180 }
+    }
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "generatedAt": "2026-11-24T09:22:42.204Z",
+  "scorecardPath": "docs/n8n-parity-scorecard.md",
+  "totalInScope": 12,
+  "passedInScope": 12,
+  "failedInScope": 0,
+  "passRate": 1,
+  "allGreen": true,
+  "inScopeRows": [
+    {
+      "id": "N8N-01",
+      "capability": "Palette search across triggers, brick actions, core nodes, and curated app operations",
+      "checkpoint": "CP3 / CP10",
+      "testFile": "apps/studio-web/test/workflow-canvas-editing.test.tsx",
+      "testCase": "1. creates a workflow via add_workflow, searches the palette, enforces max 1 trigger per workflow, and prompts to enable disabled bricks from the palette",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-02",
+      "capability": "Canvas drag/drop, pan/zoom (>= 50 fps at 200 nodes), multi-select, copy/paste, auto-layout, minimap, collapsible groups, and Outline View",
+      "checkpoint": "CP3 / CP8",
+      "testFile": "apps/studio-web/test/workflow-canvas.test.tsx",
+      "testCase": "3. opens the Right Dock Node Inspector on node click or Enter key and toggles Accessible Outline View (AC 3)",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-03",
+      "capability": "Port-type validation while dragging (blocking incompatible wires with a reason)",
+      "checkpoint": "CP3",
+      "testFile": "apps/studio-web/test/workflow-canvas-editing.test.tsx",
+      "testCase": "2. blocks incompatible port connections with reason banner ('Cannot connect number output to array input') and connects valid ports via connect_edges",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-04",
+      "capability": "Undo/redo (>= 50 steps) and revision history with visual diff and revert",
+      "checkpoint": "CP3 / CP7",
+      "testFile": "apps/studio-web/test/validation-undo-diff.test.tsx",
+      "testCase": "maintains a >= 50-step Undo/Redo stack, supports Top Bar & Ctrl+Z / Ctrl+Shift+Z undo/redo, and undoes historical revisions from the AI Change Ledger",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-05",
+      "capability": "Visual data mapping without typed expressions (drag/pick upstream fields and live entity columns) + advanced expression fallback",
+      "checkpoint": "CP3",
+      "testFile": "apps/studio-web/test/data-pill-picker.test.tsx",
+      "testCase": "2. maps upstream entity fields in the Data-Pill Picker with zero typed expressions, renders pill chips, and commits update_node",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-06",
+      "capability": "Inline node/brick settings validation from Manifest v2 schemas",
+      "checkpoint": "CP3",
+      "testFile": "apps/studio-web/test/brick-inspector-forms.test.tsx",
+      "testCase": "1. opens Dependency & Impact Preview on Turn on, auto-includes transitive requires (multi-workspace for credit-wallet), and commits atomic enable_brick ops",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-07",
+      "capability": "First-party core-node pack (triggers, if/switch, loop/map, merge, delay, field map/rename, format, JSON transform, HTTP request)",
+      "checkpoint": "CP4",
+      "testFile": "packages/core-nodes/test/core-nodes.conformance.test.ts",
+      "testCase": "core-nodes.manifest.json validates against NodePackManifestSchema v2 with all 19 core nodes and production maturity",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-08",
+      "capability": "Single-node Test Step (`rehearsal: true`) matching production executor output",
+      "checkpoint": "CP4",
+      "testFile": "packages/runtime/test/rehearse-parity.test.ts",
+      "testCase": "proves deep output equality between POST /__px/rehearse and full GraphWorkflow production trigger across 3 distinct node types",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-09",
+      "capability": "Live workflow execution highlighting on canvas (`queued` / `running` / `success` / `error` / `skipped`)",
+      "checkpoint": "CP4",
+      "testFile": "apps/studio-web/test/live-canvas-telemetry.test.tsx",
+      "testCase": "renders live WebSocket telemetry transitions (queued -> running -> succeeded/skipped/failed), edge item counts, and respects prefers-reduced-motion: reduce",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-10",
+      "capability": "Execution history filtering, Run Replay on canvas with per-step I/O inspection, Pin output as test data, and Re-run from failed node",
+      "checkpoint": "CP4",
+      "testFile": "apps/studio-web/test/pin-and-rerun.test.tsx",
+      "testCase": "pins and unpins node output from Inspector, renders canvas Pinned badge, toggles Use pinned data, re-runs from node in Run Replay Inspector, and displays Resolved by retry badge",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-11",
+      "capability": "Connections Center (OAuth2 + auto-refresh, API key, HMAC webhook secrets) with inline creation, status chips, \"Used by\" tracking, and zero secret leakage",
+      "checkpoint": "CP10",
+      "testFile": "apps/studio-web/test/connections-center.test.tsx",
+      "testCase": "renders Case A status chips (Connected/Expired/Revoked/Error), Test & Re-authorize actions, Agent Connection Consent Banner, and inline Connect {app} modal on canvas",
+      "status": "passed"
+    },
+    {
+      "id": "N8N-12",
+      "capability": "Inbound webhook trigger verification and deduplication (`/api/webhooks/in/:subscriptionId`)",
+      "checkpoint": "CP10",
+      "testFile": "bricks/webhook-gateway/test/gateway.test.ts",
+      "testCase": "POST /api/webhooks/in/:subscriptionId -> verifies Stripe signature (5-min replay window), unseals px_connections secret, deduplicates in px_webhook_deliveries, and triggers workflow + telemetry",
+      "status": "passed"
+    }
+  ],
+  "outOfScopeRows": [
+    {
+      "id": "OOS-01",
+      "capability": "400+ community connectors",
+      "decision": "out-of-scope",
+      "rationale": "ProjectX Studio ships curated, audited Cloudflare-native bricks, OpenAPI-imported packs, and generic HTTP/Webhook/Queue primitives rather than unverified third-party node wrappers"
+    },
+    {
+      "id": "OOS-02",
+      "capability": "Self-hosted Docker control plane",
+      "decision": "out-of-scope",
+      "rationale": "Control plane and assembled runtimes target Cloudflare Workers, Durable Objects, D1, R2, and Queues natively"
+    },
+    {
+      "id": "OOS-03",
+      "capability": "Multi-cursor live pointers",
+      "decision": "out-of-scope",
+      "rationale": "Human + AI co-editing is coordinated through `BlueprintDO` monotonic revisions, SSE/WS live sync, and same-object conflict resolution cards"
+    },
+    {
+      "id": "OOS-04",
+      "capability": "Embeddable end-user canvas",
+      "decision": "out-of-scope",
+      "rationale": "End-user workspaces consume generated APIs and embeddable connection/wallet widgets (`bricks/integration-connections`, `bricks/credit-wallet`), while the workflow canvas remains a builder Studio surface"
+    }
+  ],
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "scripts/parity-scorecard.ts",
+    "inputKind": "measured"
+  }
+}

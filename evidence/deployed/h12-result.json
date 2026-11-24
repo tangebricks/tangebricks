@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "commandStartedAt": "2026-10-21T05:36:08.661Z",
+  "finishedAt": "2026-10-21T05:36:19.459Z",
+  "completed": true,
+  "callsSha256": "8e905ae194446e84ca24c942ffe3dace6301597321942f834d85d85b9fcaa2d3",
+  "scanned": {
+    "packages/deploy/client/demo-entry.tsx": "59de092fb96d4727640ef9ccc5d9491fab6d56aee2b2604f382c86023452d50e",
+    "bricks/credit-wallet/client/CreditWidget.tsx": "581de07a149782b94551c314e5691ba924d28b77b0ee1cf1d701473d9c217d8a",
+    "packages/deploy/client/support/widget-driver.tsx": "e9789af141efe64453ff82fb0d3a8ed1b1862cd91c76f0b1d82dc787fa31086f",
+    "packages/deploy/client/live/H12.live.test.tsx": "8b8c44117c0d90945d4fc42a343a53dad9e6dea8393b069f62910996e6a4c1a4",
+    "packages/deploy/client/test/H12.rehearsal.test.tsx": "e6425bf89f22fdd62e3c1a216dcdfc4b8f20fdb815928a99ce5726b16ef9976f"
+  },
+  "leakScan": {
+    "filesScanned": 928,
+    "found": [],
+    "scannedFor": [
+      "token",
+      "accountId",
+      "accessKey"
+    ]
+  }
+}

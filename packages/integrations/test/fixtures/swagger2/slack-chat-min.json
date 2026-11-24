@@ -1,0 +1,113 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Slack Chat Min Spec",
+    "version": "1.0.0"
+  },
+  "host": "slack.com",
+  "basePath": "/api",
+  "schemes": [
+    "https"
+  ],
+  "securityDefinitions": {
+    "slackAuth": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "authorizationUrl": "https://slack.com/oauth/authorize",
+      "tokenUrl": "https://slack.com/api/oauth.access",
+      "scopes": {
+        "chat:write": "Post messages",
+        "files:write": "Upload files"
+      }
+    }
+  },
+  "paths": {
+    "/chat.postMessage": {
+      "post": {
+        "operationId": "chat_postMessage",
+        "summary": "Sends a message to a channel",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "formData",
+            "required": true,
+            "type": "string",
+            "description": "Authentication token"
+          },
+          {
+            "name": "channel",
+            "in": "formData",
+            "required": true,
+            "type": "string",
+            "description": "Channel ID"
+          },
+          {
+            "name": "text",
+            "in": "formData",
+            "required": false,
+            "type": "string",
+            "description": "Message text"
+          }
+        ],
+        "security": [
+          {
+            "slackAuth": [
+              "chat:write"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "ts": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files.upload": {
+      "post": {
+        "operationId": "files_upload",
+        "summary": "Uploads a file",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "formData",
+            "required": true,
+            "type": "file",
+            "description": "File contents"
+          }
+        ],
+        "security": [
+          {
+            "slackAuth": [
+              "files:write"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

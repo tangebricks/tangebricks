@@ -1,0 +1,71 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "document-parsing",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "document-parsing"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_document_parsing.sql"
+  ],
+  "routePrefixes": [
+    "docs"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Document Parsing & Structured Extraction",
+    "category": "ai",
+    "summary": "OCR, markdown chunking, and structured JSON extraction.",
+    "maturity": "beta",
+    "maturityReason": "Ingests plain text, Markdown, and CSV into D1 chunks with regex field extraction, but binary PDF, DOCX, and OCR parsing are not implemented",
+    "behaviourTest": "test/document-parsing.test.ts"
+  },
+  "conflicts": [
+    {
+      "brick": "document-pdf",
+      "reason": "Both export route factory createDocumentRoutes in the documents domain"
+    }
+  ],
+  "worker": {
+    "package": "@poc/document-parsing",
+    "routes": [
+      {
+        "factory": "createDocumentRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/docs",
+          "/api/docs/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "docp_documents": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "docp_chunks": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "docp_extractions": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

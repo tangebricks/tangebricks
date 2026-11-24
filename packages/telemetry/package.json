@@ -1,0 +1,16 @@
+{
+  "name": "@poc/telemetry",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "cd ../.. && vitest run packages/telemetry/test"
+  },
+  "dependencies": {
+    "@poc/sdk": "workspace:*",
+    "zod": "4.6.7"
+  }
+}

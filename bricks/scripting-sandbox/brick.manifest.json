@@ -1,0 +1,91 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "scripting-sandbox",
+  "version": "0.1.0",
+  "trust": "first-party",
+  "provides": [
+    "scripting-sandbox"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_scripting_sandbox.sql"
+  ],
+  "routePrefixes": [
+    "scripts"
+  ],
+  "bindings": [
+    "SCRIPT_LOADER",
+    "SCRIPT_DISPATCH"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Plugin / Scripting Sandbox",
+    "category": "developer",
+    "summary": "Sandboxed JS plugin runner, AST checks, and run logs.",
+    "maturity": "experimental",
+    "maturityReason": "Executes in isolated Worker (Worker Loader/Dispatch) with CPU and wall limits; experimental pending live platform binding rollout per AC5",
+    "behaviourTest": "test/sandbox.test.ts"
+  },
+  "nodes": [
+    {
+      "type": "scripting-sandbox.run_script",
+      "label": "Run Sandboxed Script",
+      "summary": "Execute a registered sandboxed script step on the workflow payload.",
+      "role": "action",
+      "inputs": [
+        {
+          "id": "in",
+          "label": "Input",
+          "dataType": "any",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Output",
+          "dataType": "any"
+        }
+      ],
+      "config": {},
+      "executor": "executeRunSandboxScript",
+      "durable": true,
+      "sideEffects": "none"
+    }
+  ],
+  "worker": {
+    "package": "@poc/scripting-sandbox",
+    "routes": [
+      {
+        "factory": "createScriptingRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/scripts",
+          "/api/scripts/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "scr_scripts": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "scr_executions": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

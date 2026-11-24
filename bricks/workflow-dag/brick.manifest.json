@@ -1,0 +1,69 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "workflow-dag",
+  "version": "0.1.0",
+  "trust": "first-party",
+  "provides": [
+    "workflow-engine"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_workflow_dag.sql"
+  ],
+  "routePrefixes": [
+    "workflows",
+    "runs"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Workflow & DAG Engine",
+    "category": "automation",
+    "summary": "Directed acyclic workflow graphs and step execution.",
+    "maturity": "experimental",
+    "maturityReason": "QUARANTINED: overlaps blueprint workflows (architecture Open question 12) and runs in-process with toy executors rather than durable Cloudflare Workflows",
+    "behaviourTest": "test/workflow.test.ts"
+  },
+  "globalTables": [
+    {
+      "table": "wf_step_logs",
+      "reason": "Workflow step execution logs scoped via run_id foreign key to wf_runs"
+    }
+  ],
+  "worker": {
+    "package": "@poc/workflow-dag",
+    "routes": [
+      {
+        "factory": "createWorkflowRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/workflows",
+          "/api/workflows/*",
+          "/api/runs",
+          "/api/runs/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "wf_definitions": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "wf_runs": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "valid-global",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [],
+  "requires": [],
+  "migrations": [
+    "migrations/0001_init.sql"
+  ],
+  "routePrefixes": [
+    "valid-global"
+  ],
+  "npmDependencies": {},
+  "settings": {},
+  "globalTables": [
+    {
+      "table": "gt",
+      "reason": "Platform global table shared across tenants"
+    }
+  ],
+  "ui": {
+    "displayName": "Valid Global",
+    "category": "core",
+    "summary": "Fixture brick testing declared global table with reason",
+    "maturity": "experimental",
+    "behaviourTest": "test/test.ts"
+  },
+  "worker": {
+    "package": "@poc/valid-global",
+    "routes": []
+  }
+}

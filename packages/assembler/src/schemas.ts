@@ -1,0 +1,1241 @@
+import { z } from "zod";
+import { isForbiddenIntegrationHost } from "@poc/sdk";
+import { compare } from "./semver.ts";
+
+// Everything the assembler reads is checked here first, and everything it writes into source text comes from a value
+// that passed one of these patterns. Nothing in this package knows any particular brick: a brick describes itself in
+// a brick.manifest.json that has to satisfy ManifestSchema.
+
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+const BRICK_ID = /^[a-z][a-z0-9-]{0,39}$/;
+const CAPABILITY = /^[a-z][a-z0-9-]{0,39}$/;
+const PROVIDES_ITEM = /^[a-z][a-z0-9-]{0,39}(?:@\d+\.\d+\.\d+)?$/;
+const REQUIRES_ITEM = /^[a-z][a-z0-9-]{0,39}(?:@(?:\*|\^?\d+\.\d+\.\d+|~?\d+\.\d+\.\d+|>=?\d+\.\d+\.\d+|<=?\d+\.\d+\.\d+|>|\^|~|>=|<=|<))?$/;
+const PACKAGE_NAME = /^(@[a-z0-9][a-z0-9-]{0,39}\/)?[a-z0-9][a-z0-9-]{0,39}$/;
+const MOUNT_PATH = /^\/[A-Za-z0-9/_*-]{0,100}$/;
+// A guard path may also contain the token {entity}, which stands for each declared entity's name in turn.
+const GUARD_PATH = /^\/(?:[A-Za-z0-9/_*-]|\{entity\}){0,100}$/;
+const ROUTE_PREFIX = /^[a-z][a-z0-9_-]{0,39}$/;
+const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
+const RELATIVE_FILE = /^[a-z0-9][a-z0-9_./-]{0,100}\.sql$/;
+const RELATIVE_TEST_FILE = /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9_./-]{0,120}\.test\.ts$/;
+const SAFE_TEXT = /^[A-Za-z0-9][A-Za-z0-9 &(),.:;/_'+=%>@-]{0,199}$/;
+const CRON_EXPRESSION = /^[0-9*,/-]+(?: [0-9*,/-]+){4}$/;
+
+export const identifier = z.string().regex(IDENTIFIER);
+export const brickId = z.string().regex(BRICK_ID);
+export const capability = z.string().regex(CAPABILITY);
+export const providesItem = z.string().regex(PROVIDES_ITEM);
+export const requiresItem = z.string().regex(REQUIRES_ITEM);
+const mountPath = z.string().regex(MOUNT_PATH);
+
+export const BRICK_CATEGORIES = [
+  "identity",
+  "billing",
+  "data",
+  "automation",
+  "communication",
+  "ai",
+  "developer",
+  "governance",
+] as const;
+export const brickCategory = z.enum(BRICK_CATEGORIES);
+export type BrickCategory = z.infer<typeof brickCategory>;
+
+export const BRICK_MATURITIES = ["production", "beta", "experimental"] as const;
+export const brickMaturity = z.enum(BRICK_MATURITIES);
+export type BrickMaturity = z.infer<typeof brickMaturity>;
+
+export const BINDING_TYPES = [
+  "d1",
+  "r2",
+  "kv",
+  "queue",
+  "service",
+  "ai",
+  "vectorize",
+  "durable_object",
+] as const;
+export const bindingType = z.enum(BINDING_TYPES);
+export type BindingType = z.infer<typeof bindingType>;
+
+/** A value placed in a route factory's options: a literal, a setting, a call of an imported function with no arguments, or the blueprint's declared entities. */
+export const valueExpr = z.union([
+  z.number().finite(),
+  z.string().max(200),
+  z.boolean(),
+  z.strictObject({ $setting: z.string().regex(IDENTIFIER) }),
+  z.strictObject({ $call: identifier }),
+  /** The entities the owner declared, passed in as data (the assembler writes them to entities.json). */
+  z.strictObject({ $entities: z.literal(true) }),
+  z.strictObject({ $privacy: z.enum(["exportTenant", "eraseTenant"]) }),
+]);
+export type ValueExpr = z.infer<typeof valueExpr>;
+
+export const settingDeprecated = z.strictObject({
+  since: z.string().regex(EXACT_VERSION),
+  replacedBy: z.string().regex(IDENTIFIER).optional(),
+  removeIn: z.string().regex(EXACT_VERSION).optional(),
+});
+export type SettingDeprecated = z.infer<typeof settingDeprecated>;
+
+export const settingDefinition = z.discriminatedUnion("type", [
+  z.strictObject({
+    type: z.literal("integer"),
+    min: z.number().int(),
+    max: z.number().int(),
+    default: z.number().int(),
+    since: z.string().regex(EXACT_VERSION).optional(),
+    deprecated: settingDeprecated.optional(),
+  }),
+  z.strictObject({
+    type: z.literal("enum"),
+    values: z.array(z.string().regex(/^[A-Za-z0-9_-]{1,30}$/)).min(1).max(20),
+    default: z.string(),
+    since: z.string().regex(EXACT_VERSION).optional(),
+    deprecated: settingDeprecated.optional(),
+  }),
+  z.strictObject({
+    type: z.literal("boolean"),
+    default: z.boolean(),
+    since: z.string().regex(EXACT_VERSION).optional(),
+    deprecated: settingDeprecated.optional(),
+  }),
+  z.strictObject({
+    type: z.literal("string"),
+    format: z.enum(["url", "identifier", "claim-path"]).optional(),
+    maxLength: z.number().int().positive().max(512).default(512),
+    default: z.string().max(512),
+    since: z.string().regex(EXACT_VERSION).optional(),
+    deprecated: settingDeprecated.optional(),
+  }),
+]);
+export type SettingDefinition = z.infer<typeof settingDefinition>;
+
+export const routeDefinition = z.strictObject({
+  factory: identifier,
+  mountAt: mountPath,
+  options: z.record(identifier, valueExpr).default({}),
+  /** Paths the guard for `guardWith` is mounted at, in front of this route. `{entity}` expands to each declared entity. */
+  guardPaths: z.array(z.string().regex(GUARD_PATH)).default([]),
+  guardWith: capability.optional(),
+});
+export type RouteDefinition = z.infer<typeof routeDefinition>;
+
+const adapterDefinition = z.strictObject({
+  default: z.enum(["real", "fake"]),
+  reason: z.string().optional(),
+});
+export type BrickAdapterDefinition = z.infer<typeof adapterDefinition>;
+
+const uiDefinition = z.strictObject({
+  displayName: z.string().min(1).max(80).regex(SAFE_TEXT),
+  category: brickCategory,
+  summary: z.string().min(1).max(140).regex(SAFE_TEXT),
+  maturity: brickMaturity.optional(),
+  maturityReason: z.string().min(1).max(200).regex(SAFE_TEXT).optional(),
+  behaviourTest: z.string().regex(RELATIVE_TEST_FILE).optional(),
+  adapters: z.record(identifier, adapterDefinition).optional(),
+});
+export type BrickUiDefinition = z.infer<typeof uiDefinition>;
+
+const scheduleTriggerDefinition = z.strictObject({
+  id: z.string().regex(ROUTE_PREFIX),
+  cron: z.string().max(64).regex(CRON_EXPRESSION),
+  handler: identifier,
+});
+
+const queueTriggerDefinition = z.strictObject({
+  id: z.string().regex(ROUTE_PREFIX),
+  handler: identifier,
+  maxBatch: z.number().int().min(1).max(100).optional(),
+  dlq: z.boolean().optional(),
+});
+
+const triggersDefinition = z.strictObject({
+  schedules: z.array(scheduleTriggerDefinition).optional(),
+  queues: z.array(queueTriggerDefinition).optional(),
+});
+export type BrickTriggersDefinition = z.infer<typeof triggersDefinition>;
+
+const conflictDefinition = z.strictObject({
+  brick: brickId,
+  reason: z.string().min(1).max(200).regex(SAFE_TEXT),
+});
+export type BrickConflictDefinition = z.infer<typeof conflictDefinition>;
+
+const globalTableDefinition = z.strictObject({
+  table: identifier,
+  reason: z.string().min(1).max(200).regex(SAFE_TEXT),
+});
+export type GlobalTableDefinition = z.infer<typeof globalTableDefinition>;
+
+export const privacyTableDefinition = z.strictObject({
+  subject: z.enum(["workspace", "user"]),
+  userColumn: identifier.optional(),
+  erase: z.enum(["delete", "anonymize", "retain"]),
+  anonymize: z.array(identifier).optional(),
+  retainReason: z.string().min(1).max(500).optional(),
+  export: z.boolean(),
+});
+export type PrivacyTableDefinition = z.infer<typeof privacyTableDefinition>;
+
+export const privacyDefinition = z.strictObject({
+  tables: z.record(identifier, privacyTableDefinition).default({}),
+  hookTables: z.array(identifier).optional(),
+});
+export type PrivacyDefinition = z.infer<typeof privacyDefinition>;
+
+export const workerPrivacyDefinition = z.strictObject({
+  exportTenant: identifier.optional(),
+  eraseTenant: identifier.optional(),
+});
+export type WorkerPrivacyDefinition = z.infer<typeof workerPrivacyDefinition>;
+
+const bindingsDefinition = z.union([
+  z.array(identifier),
+  z.record(identifier, bindingType),
+]);
+
+export const NODE_PORT_DATA_TYPES = [
+  "string",
+  "number",
+  "boolean",
+  "object",
+  "array",
+  "any",
+] as const;
+export const nodePortDataType = z.enum(NODE_PORT_DATA_TYPES);
+export type NodePortDataType = z.infer<typeof nodePortDataType>;
+
+export const nodePortDefinition = z.strictObject({
+  id: identifier,
+  label: z.string().optional(),
+  dataType: nodePortDataType,
+  required: z.boolean().optional(),
+  enum: z.array(z.union([z.string(), z.number(), z.boolean()])).max(256).optional(),
+  default: z.unknown().optional(),
+});
+export type NodePortDefinition = z.infer<typeof nodePortDefinition>;
+
+export const nodeDefinition = z.strictObject({
+  type: z
+    .string()
+    .regex(
+      /^(?:[a-z][a-z0-9-]*\.[a-z][a-z0-9_]*|core\.[a-z][a-z0-9_]*|int:[a-z0-9-]+\.[A-Za-z0-9_]+)$/,
+    ),
+  label: z.string().min(1).max(80),
+  summary: z.string().max(140).optional(),
+  role: z.enum(["trigger", "action", "logic"]),
+  inputs: z.array(nodePortDefinition),
+  outputs: z.array(nodePortDefinition),
+  config: z.record(identifier, settingDefinition).default({}),
+  secrets: z.array(identifier).optional(),
+  bindings: z.array(identifier).optional(),
+  executor: z.string().min(1),
+  durable: z.boolean().default(true),
+  sideEffects: z.enum(["none", "read", "write"]),
+  idempotent: z.boolean().optional(),
+  retry: z.strictObject({ limit: z.number().int().min(0).max(10).optional() }).optional(),
+  availability: z.enum(["available", "unsupported"]).optional(),
+});
+export type ManifestNodeDefinition = z.infer<typeof nodeDefinition>;
+
+export const NodePackManifestSchema = z.strictObject({
+  manifestVersion: z.literal(2),
+  kind: z.literal("node-pack"),
+  id: brickId,
+  version: z.string().regex(EXACT_VERSION),
+  package: z.string().regex(PACKAGE_NAME),
+  ui: uiDefinition,
+  nodes: z.array(nodeDefinition).min(1),
+});
+export type NodePackManifestFile = z.infer<typeof NodePackManifestSchema>;
+
+// Host rules live in @poc/sdk (egress-guard.ts) so the runtime egress guard and manifest validation share one source.
+export { isForbiddenIntegrationHost };
+
+const integrationUiObjectSchema = z.strictObject({
+  displayName: z.string().min(1).max(80),
+  category: brickCategory.default("communication"),
+  icon: z.string().min(1).max(120).optional(),
+  docsUrl: z.string().url().startsWith("https://").optional(),
+  summary: z.string().min(1).max(200),
+  maturity: brickMaturity,
+  maturityReason: z.string().min(1).max(200).optional(),
+  behaviourTest: z.string().regex(RELATIVE_TEST_FILE).optional(),
+});
+
+export const IntegrationUiSchema = z.preprocess((val) => {
+  if (typeof val !== "object" || val === null || Array.isArray(val)) return val;
+  const raw = { ...(val as Record<string, unknown>) };
+  if (raw.displayName === undefined && typeof raw.title === "string") {
+    raw.displayName = raw.title;
+    delete raw.title;
+  }
+  if (raw.summary === undefined && typeof raw.description === "string") {
+    raw.summary = raw.description;
+    delete raw.description;
+  }
+  return raw;
+}, integrationUiObjectSchema);
+export type IntegrationUiDefinition = z.infer<typeof IntegrationUiSchema>;
+
+export const IntegrationAuthSchema = z.strictObject({
+  type: z.enum(["oauth2", "apiKey", "basic", "none", "headers"]),
+  scopes: z.array(z.string().min(1).max(120)).optional(),
+  authorizeUrl: z.string().url().startsWith("https://").optional(),
+  tokenUrl: z.string().url().startsWith("https://").optional(),
+  headerName: z.string().min(1).max(100).optional(),
+  prefix: z.string().max(60).optional(),
+  in: z.enum(["header", "query"]).optional(),
+  queryParam: z.string().min(1).max(100).optional(),
+  headers: z
+    .record(
+      z.string().regex(/^[A-Za-z0-9-]{1,100}$/),
+      z
+        .string()
+        .max(500)
+        .regex(/^(?:[^{}]|\{\{conn\.[A-Za-z_][A-Za-z0-9_]{0,63}\}\})*$/),
+    )
+    .optional(),
+  schemes: z
+    .record(
+      z.string(),
+      z.strictObject({
+        type: z.enum(["apiKey", "http", "oauth2", "openIdConnect", "mutualTLS"]),
+        in: z.enum(["header", "query", "cookie"]).optional(),
+        name: z.string().optional(),
+        scheme: z.string().optional(),
+        bearerFormat: z.string().optional(),
+      }),
+    )
+    .optional(),
+  requirements: z
+    .array(
+      z.array(
+        z.strictObject({
+          scheme: z.string(),
+          scopes: z.array(z.string()).optional(),
+        }),
+      ),
+    )
+    .optional(),
+  connectionFields: z.array(z.string().regex(IDENTIFIER)).optional(),
+});
+export type IntegrationAuthDefinition = z.infer<typeof IntegrationAuthSchema>;
+
+export function extractAuthConnectionFields(auth?: IntegrationAuthDefinition | null): string[] {
+  if (!auth) return [];
+  if (Array.isArray(auth.connectionFields) && auth.connectionFields.length > 0) {
+    return [...auth.connectionFields];
+  }
+  const fields = new Set<string>();
+  if (auth.type === "headers" && auth.headers) {
+    const regex = /\{\{conn\.([A-Za-z_][A-Za-z0-9_]{0,63})\}\}/g;
+    for (const val of Object.values(auth.headers)) {
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(val)) !== null) {
+        if (m[1]) fields.add(m[1]);
+      }
+    }
+  } else if (auth.type === "apiKey") {
+    fields.add("apiKey");
+  } else if (auth.type === "basic") {
+    fields.add("username");
+    fields.add("password");
+  } else if (auth.type === "oauth2") {
+    fields.add("token");
+  }
+  return [...fields].sort();
+}
+
+export const IntegrationOperationParamSchema = z.strictObject({
+  name: z.string().regex(IDENTIFIER),
+  wireName: z.string().min(1).max(256).optional(),
+  in: z.enum(["path", "query", "header", "cookie"]),
+  dataType: nodePortDataType,
+  required: z.boolean().optional(),
+  description: z.string().max(200).optional(),
+  sensitive: z.boolean().optional(),
+  enum: z.array(z.union([z.string(), z.number(), z.boolean()])).max(256).optional(),
+  default: z.unknown().optional(),
+  items: z
+    .strictObject({
+      dataType: nodePortDataType,
+      enum: z.array(z.union([z.string(), z.number(), z.boolean()])).max(256).optional(),
+    })
+    .optional(),
+  style: z
+    .enum([
+      "form",
+      "simple",
+      "spaceDelimited",
+      "pipeDelimited",
+      "deepObject",
+      "label",
+      "matrix",
+    ])
+    .optional(),
+  explode: z.boolean().optional(),
+  allowReserved: z.boolean().optional(),
+});
+export type IntegrationOperationParam = z.infer<typeof IntegrationOperationParamSchema>;
+
+export interface FieldSchema {
+  dataType: NodePortDataType;
+  required?: string[];
+  enum?: (string | number | boolean)[];
+  default?: unknown;
+  properties?: Record<string, FieldSchema>;
+  items?: FieldSchema;
+  variants?: FieldSchema[];
+  discriminator?: string;
+  additionalProperties?: boolean;
+}
+
+export const FieldSchemaZod: z.ZodType<FieldSchema> = z
+  .lazy(() =>
+    z.strictObject({
+      dataType: nodePortDataType,
+      required: z.array(z.string().min(1).max(256)).optional(),
+      enum: z.array(z.union([z.string(), z.number(), z.boolean()])).optional(),
+      default: z.unknown().optional(),
+      properties: z.record(z.string().min(1).max(256), z.lazy(() => FieldSchemaZod)).optional(),
+      items: z.lazy(() => FieldSchemaZod).optional(),
+      variants: z.array(z.lazy(() => FieldSchemaZod)).optional(),
+      discriminator: z.string().min(1).max(120).optional(),
+      additionalProperties: z.boolean().optional(),
+    }),
+  )
+  .superRefine((val, ctx) => {
+    let totalNodes = 0;
+    function checkDepth(node: FieldSchema, depth: number): void {
+      totalNodes++;
+      if (totalNodes > 200) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "FieldSchema exceeds maximum node count of 200",
+        });
+        return;
+      }
+      if (depth > 8) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "FieldSchema exceeds maximum recursion depth of 8",
+        });
+        return;
+      }
+      if (node.properties) {
+        for (const child of Object.values(node.properties)) {
+          checkDepth(child, depth + 1);
+        }
+      }
+      if (node.items) {
+        checkDepth(node.items, depth + 1);
+      }
+      if (node.variants) {
+        for (const variant of node.variants) {
+          checkDepth(variant, depth + 1);
+        }
+      }
+    }
+    checkDepth(val, 1);
+  });
+
+export const IntegrationOperationBodyFieldSchema = z.strictObject({
+  name: z.string().regex(IDENTIFIER),
+  wireName: z.string().min(1).max(256).optional(),
+  dataType: nodePortDataType,
+  required: z.boolean().optional(),
+  description: z.string().max(200).optional(),
+  sensitive: z.boolean().optional(),
+  binary: z.boolean().optional(),
+  schema: FieldSchemaZod.optional(),
+});
+export type IntegrationOperationBodyField = z.infer<typeof IntegrationOperationBodyFieldSchema>;
+
+const integrationOperationBodyObjectSchema = z.strictObject({
+  contentType: z
+    .enum([
+      "application/json",
+      "application/x-www-form-urlencoded",
+      "multipart/form-data",
+      "multipart/related",
+      "application/octet-stream",
+      "text/plain",
+    ])
+    .optional(),
+  fields: z.array(IntegrationOperationBodyFieldSchema).optional(),
+  root: z
+    .strictObject({
+      dataType: z.enum(["array", "object", "any", "string"]),
+      schema: FieldSchemaZod.optional(),
+    })
+    .optional(),
+  encoding: z
+    .record(
+      z.string(),
+      z.strictObject({
+        style: z.enum(["form", "deepObject"]),
+        explode: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+});
+
+export const IntegrationOperationBodySchema = integrationOperationBodyObjectSchema.superRefine(
+  (data, ctx) => {
+    const hasFields = Array.isArray(data.fields) && data.fields.length > 0;
+    const hasRoot = Boolean(data.root);
+    if (!((hasFields && !hasRoot) || (!hasFields && hasRoot))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "IntegrationOperationBody must specify exactly one of non-empty 'fields' or 'root'",
+      });
+    }
+  },
+);
+export type IntegrationOperationBody = z.infer<typeof IntegrationOperationBodySchema>;
+
+export const IntegrationOperationResponseSchema = z.strictObject({
+  dataPath: z.string().max(120).optional(),
+  status: z.number().int().min(100).max(599).optional(),
+  contentType: z.string().min(1).max(120).optional(),
+  binary: z.boolean().optional(),
+  maxBytes: z.number().int().min(1).max(100 * 1024 * 1024).optional(),
+  outputs: z.array(nodePortDefinition).optional(),
+  errorShape: z
+    .strictObject({
+      codePath: z.string().max(120).optional(),
+      messagePath: z.string().max(120).optional(),
+      typePath: z.string().max(120).optional(),
+    })
+    .optional(),
+});
+export type IntegrationOperationResponse = z.infer<typeof IntegrationOperationResponseSchema>;
+
+const FORBIDDEN_PATH_SEGMENTS = new Set(["__proto__", "constructor", "prototype"]);
+const DOT_PATH_IDENTIFIER = /^[A-Za-z0-9_$-]+$/;
+
+function isValidDotPath(p: string): boolean {
+  if (typeof p !== "string" || p.trim().length === 0 || p.length > 120) return false;
+  const segments = p.split(".");
+  for (const seg of segments) {
+    if (seg.length === 0 || FORBIDDEN_PATH_SEGMENTS.has(seg) || !DOT_PATH_IDENTIFIER.test(seg)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+const PredicateDotPathSchema = z.string().min(1).max(120).refine(isValidDotPath, {
+  message: "Invalid dot path: must contain valid segments and not access __proto__, constructor, or prototype",
+});
+
+const PredicatePrimitiveSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+
+const PredicateLeafEqualsSchema = z.strictObject({
+  path: PredicateDotPathSchema,
+  equals: PredicatePrimitiveSchema,
+});
+
+const PredicateLeafInSchema = z.strictObject({
+  path: PredicateDotPathSchema,
+  in: z.array(PredicatePrimitiveSchema).min(1),
+});
+
+const PredicateLeafExistsSchema = z.strictObject({
+  path: PredicateDotPathSchema,
+  exists: z.boolean(),
+});
+
+export type Predicate =
+  | { path: string; equals: string | number | boolean | null }
+  | { path: string; in: (string | number | boolean | null)[] }
+  | { path: string; exists: boolean }
+  | { all: Predicate[] }
+  | { any: Predicate[] };
+
+export const PredicateSchema: z.ZodType<Predicate> = z
+  .lazy(() =>
+    z.union([
+      PredicateLeafEqualsSchema,
+      PredicateLeafInSchema,
+      PredicateLeafExistsSchema,
+      z.strictObject({
+        all: z.array(PredicateSchema).min(1),
+      }),
+      z.strictObject({
+        any: z.array(PredicateSchema).min(1),
+      }),
+    ]),
+  )
+  .superRefine((val, ctx) => {
+    function getDepth(p: Predicate): number {
+      if ("all" in p) {
+        return 1 + Math.max(0, ...p.all.map(getDepth));
+      }
+      if ("any" in p) {
+        return 1 + Math.max(0, ...p.any.map(getDepth));
+      }
+      return 0;
+    }
+    if (getDepth(val) > 2) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Predicate depth must not exceed 2",
+      });
+    }
+  });
+
+export const IntegrationPaginationSchema = z.strictObject({
+  style: z.enum([
+    "cursor",
+    "page",
+    "link",
+    "offset",
+    "bodyNextUrl",
+    "headerToken",
+    "lastItemCursor",
+  ]),
+  paramName: z.string().regex(IDENTIFIER).optional(),
+  responsePath: z.string().min(1).max(120),
+  nextCursorPath: z.string().min(1).max(120).optional(),
+  maxPages: z.number().int().min(1).max(100).default(5),
+  limitParam: z.string().regex(IDENTIFIER).optional(),
+  pageSize: z.number().int().min(1).max(1000).optional(),
+  nextUrlPath: z.string().min(1).max(120).optional(),
+  tokenHeader: z.string().min(1).max(100).optional(),
+  itemIdPath: z.string().min(1).max(120).optional(),
+  hasMorePath: z.string().min(1).max(120).optional(),
+});
+export type IntegrationPagination = z.infer<typeof IntegrationPaginationSchema>;
+
+export const IntegrationRateLimitSchema = z.strictObject({
+  maxRetries: z.number().int().min(0).max(5).default(3),
+  initialBackoffMs: z.number().int().min(0).max(60000).default(250),
+  baseBackoffMs: z.number().int().min(0).max(60000).optional(),
+  respectRetryAfter: z.boolean().default(true),
+  retryAfterHeader: z.string().min(1).max(100).optional(),
+  maxRetryAfterMs: z.number().int().min(0).max(300000).optional(),
+});
+export type IntegrationRateLimit = z.infer<typeof IntegrationRateLimitSchema>;
+
+export const IntegrationIdempotencySchema = z.strictObject({
+  header: z.string().min(1).max(100),
+});
+export type IntegrationIdempotency = z.infer<typeof IntegrationIdempotencySchema>;
+
+export const IntegrationErrorMappingSchema = z.strictObject({
+  status: z.number().int().min(100).max(599).optional(),
+  code: z.string().min(1).max(80),
+  message: z.string().min(1).max(200).optional(),
+  hint: z.string().min(1).max(240).optional(),
+  retryable: z.boolean().optional(),
+  retryAfterHeader: z.string().min(1).max(100).optional(),
+});
+export type IntegrationErrorMapping = z.infer<typeof IntegrationErrorMappingSchema>;
+
+export const IntegrationErrorMappingsSchema = z.union([
+  z.array(IntegrationErrorMappingSchema),
+  z.record(z.string().regex(/^\d{3}$/), IntegrationErrorMappingSchema),
+]);
+export type IntegrationErrorMappings = z.infer<typeof IntegrationErrorMappingsSchema>;
+
+const integrationOperationObjectSchema = z.strictObject({
+  operationId: z.string().regex(/^[A-Za-z0-9_]{1,64}$/),
+  label: z.string().min(1).max(80),
+  summary: z.string().max(200).optional(),
+  description: z.string().max(500).optional(),
+  method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+  path: z.string().min(1).max(240),
+  security: z
+    .array(
+      z.array(
+        z.strictObject({
+          scheme: z.string(),
+          scopes: z.array(z.string()).optional(),
+        }),
+      ),
+    )
+    .optional(),
+  params: z.array(IntegrationOperationParamSchema).optional(),
+  body: IntegrationOperationBodySchema.optional(),
+  response: IntegrationOperationResponseSchema.default({}),
+  pagination: IntegrationPaginationSchema.optional(),
+  errorWhen: PredicateSchema.optional(),
+  successWhen: PredicateSchema.optional(),
+  rateLimit: IntegrationRateLimitSchema.optional(),
+  idempotency: IntegrationIdempotencySchema.optional(),
+  errorMappings: IntegrationErrorMappingsSchema.optional(),
+  sideEffects: z.enum(["none", "read", "write"]),
+  timeoutMs: z.number().int().min(1000).max(120000).optional(),
+  maxResponseBytes: z.number().int().min(1).max(50 * 1024 * 1024).optional(),
+});
+
+export const IntegrationOperationSchema = z.preprocess((val) => {
+  if (typeof val !== "object" || val === null || Array.isArray(val)) return val;
+  const raw = { ...(val as Record<string, unknown>) };
+  if (raw.operationId === undefined && typeof raw.id === "string") {
+    raw.operationId = raw.id;
+    delete raw.id;
+  }
+  if (raw.label === undefined && typeof raw.summary === "string") {
+    raw.label = raw.summary.slice(0, 80);
+  }
+  if (raw.sideEffects === undefined && typeof raw.method === "string") {
+    raw.sideEffects = raw.method === "GET" ? "read" : "write";
+  }
+  if (raw.response === undefined) {
+    raw.response = {};
+  }
+  return raw;
+}, integrationOperationObjectSchema);
+export type IntegrationOperation = z.infer<typeof IntegrationOperationSchema>;
+
+export const WebhookSignatureSchemeSchema = z
+  .strictObject({
+    algorithm: z.enum(["hmac-sha256", "hmac-sha1", "hmac-sha512", "ed25519"]),
+    signedPayload: z.string().min(1),
+    signatureHeader: z.string().min(1).max(100),
+    timestampHeader: z.string().min(1).max(100).optional(),
+    idHeader: z.string().min(1).max(100).optional(),
+    encoding: z.enum(["hex", "base64"]),
+    prefix: z.string().optional(),
+    signatureFormat: z
+      .strictObject({
+        kind: z.literal("kv-list"),
+        pairSeparator: z.string().min(1),
+        kvSeparator: z.string().min(1),
+        timestampKey: z.string().min(1).optional(),
+        signatureKey: z.string().min(1),
+      })
+      .optional(),
+    toleranceSec: z.number().int().min(0).max(3600).optional(),
+    secretEncoding: z.enum(["utf8", "base64", "hex"]).optional(),
+    publicKey: z.string().min(1).max(128).optional(),
+  })
+  .superRefine((val, ctx) => {
+    const allowedTokens = new Set(["body", "timestamp", "id", "url"]);
+    const tokenRegex = /\{([^}]+)\}/g;
+    let match: RegExpExecArray | null;
+    while ((match = tokenRegex.exec(val.signedPayload)) !== null) {
+      const token = match[1];
+      if (!token || !allowedTokens.has(token)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["signedPayload"],
+          message: `WEBHOOK_SCHEME_UNKNOWN_TOKEN: unknown token "{${token ?? ""}}" in signedPayload template`,
+        });
+      }
+    }
+    const literalsOnly = val.signedPayload.replace(/\{[^}]+\}/g, "");
+    if (literalsOnly.length > 0 && !/^[A-Za-z0-9:._-]*$/.test(literalsOnly)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["signedPayload"],
+        message: "signedPayload template contains invalid literal characters: must match [A-Za-z0-9:._-]",
+      });
+    }
+  });
+export type WebhookSignatureScheme = z.infer<typeof WebhookSignatureSchemeSchema>;
+
+export const WebhookVerifierPresetSchema = z.enum([
+  "hmac-sha256",
+  "stripe-signature",
+  "stripe-v1",
+  "shared-secret",
+  "ed25519",
+  "slack-v0",
+  "github-hmac-sha256",
+  "meta-hub-signature-256",
+  "meta-sha256",
+  "discord-ed25519",
+  "hmac-sha256-timestamp-body-base64",
+  "timestamp-body-base64",
+]);
+export type WebhookVerifierPreset = z.infer<typeof WebhookVerifierPresetSchema>;
+
+export const IntegrationTriggerSchema = z.preprocess(
+  (val) => {
+    if (val && typeof val === "object" && !("signatureHeader" in val)) {
+      const v = val as { verifier?: unknown };
+      if (
+        v.verifier &&
+        typeof v.verifier === "object" &&
+        "signatureHeader" in v.verifier &&
+        typeof (v.verifier as { signatureHeader?: unknown }).signatureHeader === "string"
+      ) {
+        return {
+          ...val,
+          signatureHeader: (v.verifier as { signatureHeader: string }).signatureHeader,
+        };
+      }
+    }
+    return val;
+  },
+  z.strictObject({
+    id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+    label: z.string().min(1).max(80),
+    summary: z.string().max(200).optional(),
+    verifier: z.union([WebhookVerifierPresetSchema, WebhookSignatureSchemeSchema]),
+    signatureHeader: z.string().min(1).max(100),
+    eventIdPath: z.string().min(1).max(120),
+    eventTypePath: z.string().min(1).max(120).optional(),
+    eventTypeFilter: z.array(z.string().min(1)).optional(),
+    outputs: z.array(nodePortDefinition),
+  }),
+);
+export type IntegrationTrigger = z.infer<typeof IntegrationTriggerSchema>;
+
+export const IntegrationFidelitySchema = z.strictObject({
+  specHash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  importerVersion: z.string().regex(EXACT_VERSION),
+  level: z.enum(["exact", "curated", "partial"]),
+  unsupported: z
+    .array(
+      z.strictObject({
+        op: z.string().regex(/^[A-Za-z0-9_]{1,64}$/).nullable(),
+        code: z.string().regex(/^[A-Z][A-Z0-9_]{2,63}$/),
+        pointer: z.string().max(512),
+        blocking: z.boolean(),
+      }),
+    )
+    .max(500),
+});
+export type IntegrationFidelity = z.infer<typeof IntegrationFidelitySchema>;
+
+export const IntegrationManifestSchema = z
+  .strictObject({
+    manifestVersion: z.literal(2),
+    kind: z.literal("integration"),
+    app: brickId,
+    version: z.string().regex(EXACT_VERSION),
+    ui: IntegrationUiSchema,
+    auth: IntegrationAuthSchema,
+    defaultHeaders: z.record(z.string().regex(/^[A-Za-z0-9-]{1,100}$/), z.string().max(200)).optional(),
+    baseUrl: z.string().min(1),
+    allowedHosts: z.array(z.string().min(1)).min(1),
+    operations: z.array(IntegrationOperationSchema).min(1).max(30),
+    triggers: z.array(IntegrationTriggerSchema).optional(),
+    errorWhen: PredicateSchema.optional(),
+    successWhen: PredicateSchema.optional(),
+    errorMappings: IntegrationErrorMappingsSchema.optional(),
+    fidelity: IntegrationFidelitySchema,
+  })
+  .superRefine((m, ctx) => {
+    let parsedBaseUrl: URL | null = null;
+    try {
+      parsedBaseUrl = new URL(m.baseUrl);
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        path: ["baseUrl"],
+        message: "baseUrl must be a valid URL",
+      });
+    }
+
+    if (parsedBaseUrl) {
+      if (parsedBaseUrl.protocol !== "https:") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["baseUrl"],
+          message: "baseUrl must use https://",
+        });
+      }
+      if (parsedBaseUrl.username || parsedBaseUrl.password) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["baseUrl"],
+          message: "baseUrl must not include credentials",
+        });
+      }
+      if (isForbiddenIntegrationHost(parsedBaseUrl.hostname)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["baseUrl"],
+          message: `baseUrl hostname "${parsedBaseUrl.hostname}" is not a valid public HTTPS hostname`,
+        });
+      } else if (!m.allowedHosts.includes(parsedBaseUrl.hostname)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["allowedHosts"],
+          message: `baseUrl hostname "${parsedBaseUrl.hostname}" must be listed in allowedHosts`,
+        });
+      }
+    }
+
+    m.allowedHosts.forEach((host, idx) => {
+      if (isForbiddenIntegrationHost(host)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["allowedHosts", idx],
+          message: `allowedHosts[${idx}] "${host}" must be an exact public HTTPS hostname (no wildcards, schemes, paths, localhost, or IP literals)`,
+        });
+      }
+    });
+
+    if (m.ui.maturity !== "production" && !m.ui.maturityReason?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ui", "maturityReason"],
+        message: `ui.maturityReason is required when ui.maturity is "${m.ui.maturity}"`,
+      });
+    }
+
+    if (m.defaultHeaders) {
+      for (const [k, v] of Object.entries(m.defaultHeaders)) {
+        const lower = k.toLowerCase();
+        if (
+          lower === "authorization" ||
+          lower === "cookie" ||
+          lower === "host" ||
+          lower === "content-length"
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["defaultHeaders", k],
+            message: `header "${k}" is forbidden in defaultHeaders`,
+          });
+        }
+        if (v.includes("{{")) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["defaultHeaders", k],
+            message: `defaultHeaders value for "${k}" cannot contain "{{" templates`,
+          });
+        }
+      }
+    }
+
+    const seenOpIds = new Set<string>();
+    m.operations.forEach((op, idx) => {
+      if (seenOpIds.has(op.operationId)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["operations", idx, "operationId"],
+          message: `duplicate operationId "${op.operationId}"`,
+        });
+      }
+      seenOpIds.add(op.operationId);
+
+      if (!op.path.startsWith("/") || op.path.startsWith("//") || /(?:^|\/)\.\.(?:\/|$)/.test(op.path)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["operations", idx, "path"],
+          message: `operation "${op.operationId}" path "${op.path}" must start with a single "/" and contain no ".." segments`,
+        });
+      }
+
+      op.params?.forEach((p, pIdx) => {
+        if (p.wireName !== undefined && p.wireName === p.name) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["operations", idx, "params", pIdx, "wireName"],
+            message: `param "${p.name}" wireName must not equal name`,
+          });
+        }
+      });
+
+      op.body?.fields?.forEach((f, fIdx) => {
+        if (f.wireName !== undefined && f.wireName === f.name) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["operations", idx, "body", "fields", fIdx, "wireName"],
+            message: `body field "${f.name}" wireName must not equal name`,
+          });
+        }
+      });
+    });
+
+    if (m.fidelity) {
+      const opIds = new Set(m.operations.map((op) => op.operationId));
+      m.fidelity.unsupported.forEach((item, idx) => {
+        if (item.op !== null && !opIds.has(item.op)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["fidelity", "unsupported", idx, "op"],
+            message: `unsupported op "${item.op}" is not an operation of the manifest`,
+          });
+        }
+      });
+    }
+  });
+export type IntegrationManifestFile = z.infer<typeof IntegrationManifestSchema>;
+
+export function projectIntegrationToNodes(
+  manifest: IntegrationManifestFile,
+): ManifestNodeDefinition[] {
+  return manifest.operations.map((op) => {
+    const inputs: NodePortDefinition[] = [];
+    const seenInputIds = new Set<string>();
+
+    for (const param of op.params ?? []) {
+      if (seenInputIds.has(param.name)) continue;
+      seenInputIds.add(param.name);
+      inputs.push({
+        id: param.name,
+        ...(param.description ? { label: param.description } : { label: param.name }),
+        dataType: param.dataType,
+        ...(param.required !== undefined ? { required: param.required } : {}),
+        ...(param.enum !== undefined ? { enum: param.enum } : {}),
+        ...(param.default !== undefined ? { default: param.default } : {}),
+      });
+    }
+
+    if (op.body?.fields) {
+      const requiredFields = op.body.fields.filter((f) => f.required);
+      const optionalFields = op.body.fields.filter((f) => !f.required);
+      const projectedFields = [...requiredFields, ...optionalFields.slice(0, 12)];
+      for (const field of projectedFields) {
+        if (seenInputIds.has(field.name)) continue;
+        seenInputIds.add(field.name);
+        inputs.push({
+          id: field.name,
+          ...(field.description ? { label: field.description } : { label: field.name }),
+          dataType: field.dataType,
+          ...(field.required !== undefined ? { required: field.required } : {}),
+        });
+      }
+    } else if (op.body?.root) {
+      if (!seenInputIds.has("body")) {
+        inputs.push({
+          id: "body",
+          label: "Body",
+          dataType:
+            op.body.root.dataType === "array"
+              ? "array"
+              : op.body.root.dataType === "object"
+                ? "object"
+                : "any",
+        });
+        seenInputIds.add("body");
+      }
+    }
+
+    if (!seenInputIds.has("in")) {
+      inputs.push({
+        id: "in",
+        label: "Input",
+        dataType: "any",
+      });
+    }
+
+    const outputs: NodePortDefinition[] = [];
+    const seenOutputIds = new Set<string>();
+    for (const outPort of op.response?.outputs ?? []) {
+      if (seenOutputIds.has(outPort.id)) continue;
+      seenOutputIds.add(outPort.id);
+      outputs.push({
+        id: outPort.id,
+        ...(outPort.label !== undefined ? { label: outPort.label } : {}),
+        dataType: outPort.dataType,
+        ...(outPort.required !== undefined ? { required: outPort.required } : {}),
+      });
+    }
+    if (!seenOutputIds.has("out")) {
+      outputs.push({
+        id: "out",
+        label: "Output",
+        dataType: "object",
+      });
+    }
+    if (!seenOutputIds.has("status")) {
+      outputs.push({
+        id: "status",
+        label: "Status",
+        dataType: "number",
+      });
+    }
+    if (!seenOutputIds.has("body")) {
+      outputs.push({
+        id: "body",
+        label: "Body",
+        dataType: "any",
+      });
+    }
+    if (op.pagination) {
+      if (!seenOutputIds.has("truncated")) {
+        outputs.push({
+          id: "truncated",
+          label: "Truncated",
+          dataType: "boolean",
+        });
+      }
+      if (!seenOutputIds.has("nextCursor")) {
+        outputs.push({
+          id: "nextCursor",
+          label: "Next Cursor",
+          dataType: "string",
+        });
+      }
+    }
+
+    const summaryText = (op.summary ?? `${manifest.ui.displayName}: ${op.label}`).slice(0, 140);
+    const hasBlockingLoss = (manifest.fidelity?.unsupported ?? []).some(
+      (e) => (e.op === op.operationId || e.op === null || e.op === "*") && e.blocking,
+    );
+
+    return {
+      type: `int:${manifest.app}.${op.operationId}`,
+      label: op.label,
+      summary: summaryText,
+      role: "action" as const,
+      inputs,
+      outputs,
+      config: {},
+      executor: "integration.operation",
+      durable: true,
+      sideEffects: op.sideEffects,
+      ...(op.idempotency !== undefined ? { idempotent: true } : {}),
+      availability: hasBlockingLoss ? ("unsupported" as const) : ("available" as const),
+    };
+  });
+}
+
+export const ManifestSchema = z
+  .strictObject({
+    manifestVersion: z.literal(2),
+    kind: z.literal("brick"),
+    id: brickId,
+    version: z.string().regex(EXACT_VERSION),
+    trust: z.enum(["first-party", "untrusted"]).default("untrusted"),
+    isolation: z.enum(["none", "dispatch"]).default("none"),
+    /** What this brick offers other bricks (for example a way to know which workspace a request is for). */
+    provides: z.array(providesItem).default([]),
+    /** What this brick needs another enabled brick to offer. */
+    requires: z.array(requiresItem).default([]),
+    /** SQL files, relative to the brick's folder, applied in this order. */
+    migrations: z.array(z.string().regex(RELATIVE_FILE)).default([]),
+    /** The first URL segments this brick's routes use (for example "wallet"). A declared entity may not take one. */
+    routePrefixes: z.array(z.string().regex(ROUTE_PREFIX)).default([]),
+    /** Third-party packages the emitted project needs, at exact versions. */
+    npmDependencies: z.record(z.string().regex(PACKAGE_NAME), z.string().regex(EXACT_VERSION)).default({}),
+    settings: z.record(z.string().regex(IDENTIFIER), settingDefinition).default({}),
+    nodes: z.array(nodeDefinition).default([]),
+    ui: uiDefinition.optional(),
+    triggers: triggersDefinition.optional(),
+    conflicts: z.array(conflictDefinition).optional(),
+    bindings: bindingsDefinition.optional(),
+    secrets: z.array(identifier).optional(),
+    globalTables: z.array(globalTableDefinition).optional(),
+    adapters: z.record(identifier, adapterDefinition).optional(),
+    privacy: privacyDefinition.optional(),
+    worker: z.strictObject({
+      package: z.string().regex(PACKAGE_NAME),
+      guard: z.strictObject({ export: identifier, capability }).optional(),
+      routes: z.array(routeDefinition).default([]),
+      privacy: workerPrivacyDefinition.optional(),
+    }),
+  })
+  .superRefine((m, ctx) => {
+    const problem = (message: string, path?: (string | number)[]) => ctx.addIssue({ code: "custom", message, path });
+    if (m.privacy?.tables) {
+      for (const [table, rule] of Object.entries(m.privacy.tables)) {
+        if (rule.erase === "retain" && (!rule.retainReason || rule.retainReason.trim().length === 0)) {
+          problem(`privacy table "${table}" erase "retain" requires retainReason`, ["privacy", "tables", table, "retainReason"]);
+        }
+      }
+    }
+    if (m.trust === "untrusted" && m.isolation !== "dispatch") problem('untrusted requires isolation: "dispatch"', ["trust"]);
+    if (m.worker.guard) {
+      const guardCap = m.worker.guard.capability;
+      const providesGuard = m.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === guardCap);
+      if (!providesGuard) problem(`guard capability "${guardCap}" is not listed in provides`);
+    }
+    for (const [name, sDef] of Object.entries(m.settings)) {
+      if (sDef.since && compare(sDef.since, m.version) > 0) {
+        problem(`setting "${name}" since "${sDef.since}" is greater than brick version "${m.version}"`, ["settings", name, "since"]);
+      }
+      if (sDef.deprecated?.since && compare(sDef.deprecated.since, m.version) > 0) {
+        problem(`setting "${name}" deprecated.since "${sDef.deprecated.since}" is greater than brick version "${m.version}"`, ["settings", name, "deprecated", "since"]);
+      }
+    }
+    for (const route of m.worker.routes) {
+      if (route.guardPaths.length > 0 && !route.guardWith) problem(`route ${route.factory} has guardPaths but no guardWith`);
+      if (route.guardWith) {
+        const requiresGuard = m.requires.some((r) => (r.includes("@") ? r.slice(0, r.indexOf("@")) : r) === route.guardWith);
+        if (!requiresGuard) problem(`route ${route.factory} is guarded with "${route.guardWith}", which is not listed in requires`);
+      }
+      for (const [name, value] of Object.entries(route.options)) {
+        if (typeof value === "object" && "$setting" in value && !(value.$setting in m.settings)) problem(`route ${route.factory} option ${name} uses unknown setting "${value.$setting}"`);
+      }
+    }
+  });
+
+export type BrickManifestFile = Omit<z.infer<typeof ManifestSchema>, "nodes"> & {
+  nodes?: ManifestNodeDefinition[];
+};
+
+export interface ProjectLock {
+  project?: string;
+  identity?: string;
+  environment?: "dev" | "preview" | "production";
+  bricks?: Array<{
+    id: string;
+    version: string;
+    capabilities?: Record<string, string>;
+    settings?: Record<string, unknown>;
+    defaults?: Record<string, unknown>;
+  }>;
+  capabilities?: Record<string, string>;
+  migrations?: string[];
+  entities?: string[];
+  workflows?: unknown;
+  secretRefs?: unknown;
+}
+
+/** The bricks the assembler may choose from: each manifest and the text of the files it lists. */
+export interface Catalog {
+  catalogVersion?: string;
+  bricks: Record<string, { manifest: BrickManifestFile; files: Record<string, string> }>;
+  nodePacks?: Record<string, { manifest: NodePackManifestFile }>;
+  integrations?: Record<string, { manifest: IntegrationManifestFile; nodes: ManifestNodeDefinition[] }>;
+}
+
+const brickEntry = z.union([
+  brickId,
+  z.strictObject({ id: brickId, config: z.record(z.string().regex(IDENTIFIER), z.union([z.number(), z.string(), z.boolean()])).optional() }),
+]);
+
+export const ObservabilityAlertsSchema = z.strictObject({
+  webhookSecret: z.string().optional(),
+  signingSecret: z.string().optional(),
+});
+export type ObservabilityAlertsConfig = z.infer<typeof ObservabilityAlertsSchema>;
+
+export const ObservabilitySchema = z.strictObject({
+  logs: z.boolean().optional(),
+  logpush: z.boolean().optional(),
+  alerts: ObservabilityAlertsSchema.optional(),
+});
+export type ObservabilityConfig = z.infer<typeof ObservabilitySchema>;
+
+export const BlueprintSchema = z.strictObject({
+  schemaVersion: z.literal(2).optional(),
+  /** Becomes the project's folder and package name. */
+  project: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/),
+  bricks: z.array(brickEntry).min(1).max(50),
+  /** Either "stub" or the id of an enabled brick that provides user identity. */
+  identity: brickId.default("stub"),
+  /** Declared entities, checked in full by parseEntities (@poc/sdk); here only that it is a list. */
+  entities: z.array(z.unknown()).max(20).default([]),
+  /** Optional v2 blueprint sections; worker assembly reads only project, identity, bricks, and entities. */
+  workflows: z.array(z.unknown()).optional(),
+  secretRefs: z.array(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  /** Optional observability preset (Workers Logs, Logpush, Tail Worker alerts). */
+  observability: ObservabilitySchema.optional(),
+});
+export type Blueprint = z.infer<typeof BlueprintSchema>;
+
+/** Formats Zod issues as short readable lines. */
+export function formatIssues(error: z.ZodError, label = ""): string[] {
+  return error.issues.map((i) => `${label}${i.path.length > 0 ? i.path.join(".") + ": " : ""}${i.message}`);
+}

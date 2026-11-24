@@ -1,0 +1,61 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "product-analytics",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "product-analytics"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_product_analytics.sql"
+  ],
+  "routePrefixes": [
+    "analytics"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Product Analytics & Funnel Tracking",
+    "category": "governance",
+    "summary": "Product telemetry, event ingestion, and funnel queries.",
+    "maturity": "beta",
+    "behaviourTest": "test/analytics.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "worker": {
+    "package": "@poc/product-analytics",
+    "routes": [
+      {
+        "factory": "createProductAnalyticsRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/analytics",
+          "/api/analytics/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "evt_analytics_events": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      },
+      "evt_funnels": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

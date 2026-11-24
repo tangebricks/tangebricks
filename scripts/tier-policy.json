@@ -1,0 +1,14 @@
+{
+  "minAssertions": {
+    "production": 20,
+    "beta": 5
+  },
+  "requireConformanceKit": {
+    "production": true
+  },
+  "liveVerifiedMaxAgeDays": 7,
+  "integrationFidelity": {
+    "production": "zero-unacknowledged",
+    "beta": "report-present"
+  }
+}

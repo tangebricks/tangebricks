@@ -1,0 +1,15 @@
+{
+  "name": "@poc/admin-console",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@poc/multi-workspace": "workspace:*",
+    "@poc/sdk": "workspace:*",
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  }
+}

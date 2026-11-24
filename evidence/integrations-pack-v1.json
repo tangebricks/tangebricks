@@ -1,0 +1,104 @@
+{
+  "suite": "integrations-pack-v1",
+  "story": "story-openapi-discovery-importer-and-curated-pack-v1",
+  "generatedAt": "2026-11-24T09:22:42.204Z",
+  "ok": true,
+  "totalApps": 5,
+  "totalOperations": 61,
+  "totalTriggers": 7,
+  "totalContractTestsPassed": 20,
+  "apps": {
+    "discord": {
+      "app": "discord",
+      "displayName": "Discord",
+      "maturity": "beta",
+      "operationCount": 11,
+      "triggerCount": 1,
+      "contractTestPassCount": 4,
+      "mode": "recorded-fixture",
+      "smokeOperation": "int:discord.getGuild",
+      "ok": true,
+      "status": 200,
+      "tokenMetrics": {
+        "compactSummaryTokens": 230,
+        "maxOperationDetailTokens": 236,
+        "maxSearchPageTokens": 290
+      }
+    },
+    "github": {
+      "app": "github",
+      "displayName": "GitHub",
+      "maturity": "beta",
+      "operationCount": 12,
+      "triggerCount": 1,
+      "contractTestPassCount": 4,
+      "mode": "recorded-fixture",
+      "smokeOperation": "int:github.listRepos",
+      "ok": true,
+      "status": 200,
+      "tokenMetrics": {
+        "compactSummaryTokens": 251,
+        "maxOperationDetailTokens": 245,
+        "maxSearchPageTokens": 285
+      }
+    },
+    "google": {
+      "app": "google",
+      "displayName": "Google Workspace",
+      "maturity": "beta",
+      "operationCount": 14,
+      "triggerCount": 1,
+      "contractTestPassCount": 4,
+      "mode": "recorded-fixture",
+      "smokeOperation": "int:google.calendar_events_list",
+      "ok": true,
+      "status": 200,
+      "tokenMetrics": {
+        "compactSummaryTokens": 292,
+        "maxOperationDetailTokens": 221,
+        "maxSearchPageTokens": 301
+      }
+    },
+    "slack": {
+      "app": "slack",
+      "displayName": "Slack",
+      "maturity": "beta",
+      "operationCount": 10,
+      "triggerCount": 1,
+      "contractTestPassCount": 4,
+      "mode": "recorded-fixture",
+      "smokeOperation": "int:slack.conversations_list",
+      "ok": true,
+      "status": 200,
+      "tokenMetrics": {
+        "compactSummaryTokens": 223,
+        "maxOperationDetailTokens": 241,
+        "maxSearchPageTokens": 303
+      }
+    },
+    "stripe": {
+      "app": "stripe",
+      "displayName": "Stripe",
+      "maturity": "beta",
+      "operationCount": 14,
+      "triggerCount": 3,
+      "contractTestPassCount": 4,
+      "mode": "recorded-fixture",
+      "smokeOperation": "int:stripe.listCustomers",
+      "ok": true,
+      "status": 200,
+      "tokenMetrics": {
+        "compactSummaryTokens": 263,
+        "maxOperationDetailTokens": 221,
+        "maxSearchPageTokens": 279
+      }
+    }
+  },
+  "provenance": {
+    "generatedAt": "2026-11-24T09:22:42.204Z",
+    "gitSha": "055d79f7afe45b0ab3e37d4d976254f83a3b739b",
+    "gitDirty": false,
+    "generator": "scripts/integrations-live-smoke.ts",
+    "inputKind": "measured"
+  }
+}

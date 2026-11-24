@@ -1,0 +1,68 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "identity-federation",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "federated-identity"
+  ],
+  "requires": [
+    "user-identity",
+    "oidc-verifier@^1.0.0",
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_identity_federation.sql",
+    "migrations/0002_auth_requests.sql"
+  ],
+  "routePrefixes": [
+    "sso"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Identity Federation & Enterprise SSO",
+    "category": "identity",
+    "summary": "Enterprise SSO, SAML/OIDC login, and SCIM directory sync.",
+    "maturity": "beta",
+    "maturityReason": "OIDC SSO wired via oidc-verify; SAML not supported",
+    "behaviourTest": "test/federation.test.ts"
+  },
+  "worker": {
+    "package": "@poc/identity-federation",
+    "routes": [
+      {
+        "factory": "createSsoRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/sso/connections"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "sso_connections": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "sso_federated_identities": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      },
+      "sso_auth_requests": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": false
+      }
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "tabular-engine",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "tabular-import"
+  ],
+  "requires": [
+    "workspace-context",
+    "dynamic-entities"
+  ],
+  "migrations": [
+    "migrations/0001_tabular_engine.sql"
+  ],
+  "routePrefixes": [
+    "tabular"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Spreadsheet & Tabular Engine",
+    "category": "data",
+    "summary": "CSV bulk import, field mapping, and grid views.",
+    "maturity": "beta",
+    "behaviourTest": "test/tabular.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "worker": {
+    "package": "@poc/tabular-engine",
+    "routes": [
+      {
+        "factory": "createTabularRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/tabular",
+          "/api/tabular/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "tab_import_jobs": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "tab_grid_views": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

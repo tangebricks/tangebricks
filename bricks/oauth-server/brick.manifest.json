@@ -1,0 +1,79 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "oauth-server",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "oauth2-server"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_oauth_server.sql"
+  ],
+  "routePrefixes": [
+    "oauth"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "globalTables": [
+    {
+      "table": "oauth_clients",
+      "reason": "All-tenant by design: the authorization-code flow and token exchange look clients up by public client_id before a workspace is known (AD-V2 review, story 0.7)"
+    },
+    {
+      "table": "oauth_auth_codes",
+      "reason": "All-tenant by design: a single-use authorization code is validated and consumed by its own value during token exchange, before a workspace is known (AD-V2 review, story 0.7)"
+    },
+    {
+      "table": "oauth_tokens",
+      "reason": "All-tenant by design: bearer and refresh tokens are verified, introspected and rotated by their own hash, which is what establishes the workspace (AD-V2 review, story 0.7)"
+    }
+  ],
+  "ui": {
+    "displayName": "OAuth 2.0 Authorization Server",
+    "category": "developer",
+    "summary": "OAuth 2.0 server with PKCE and scoped access tokens.",
+    "maturity": "experimental",
+    "behaviourTest": "test/oauth.test.ts",
+    "maturityReason": "QUARANTINED: stub; issues access tokens that no brick or route accepts, and its authorize route issued codes for any user named in the body until 0.6 (threat-model risk 13)"
+  },
+  "worker": {
+    "package": "@poc/oauth-server",
+    "routes": [
+      {
+        "factory": "createOAuthRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/oauth",
+          "/api/oauth/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "oauth_clients": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "oauth_auth_codes": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "oauth_tokens": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

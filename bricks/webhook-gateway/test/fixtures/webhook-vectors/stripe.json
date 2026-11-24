@@ -1,0 +1,66 @@
+{
+  "preset": "stripe-signature",
+  "provenance": {
+    "source": "Stripe webhook signature scheme RFC specification / openssl",
+    "generationCommand": "printf '%s' \"$t.$body\" | openssl dgst -sha256 -hmac \"$secret\""
+  },
+  "cases": [
+    {
+      "name": "valid Stripe signature",
+      "preset": "stripe-signature",
+      "secret": "whsec_test_stripe_secret_12345",
+      "headers": {
+        "stripe-signature": "t=1700000000,v1=c81a8633865713f75163c05766f397b76071d30e60bc35a97acce2d8f33f1d76"
+      },
+      "rawBody": "{\"id\":\"evt_test_123\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\"}",
+      "nowSeconds": 1700000020,
+      "expect": "ok",
+      "provenance": {
+        "source": "Stripe webhook signature scheme / openssl",
+        "generationCommand": "t='1700000000'; body='{\"id\":\"evt_test_123\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\"}'; secret='whsec_test_stripe_secret_12345'; printf '%s' \"$t.$body\" | openssl dgst -sha256 -hmac \"$secret\""
+      }
+    },
+    {
+      "name": "tampered body",
+      "preset": "stripe-signature",
+      "secret": "whsec_test_stripe_secret_12345",
+      "headers": {
+        "stripe-signature": "t=1700000000,v1=c81a8633865713f75163c05766f397b76071d30e60bc35a97acce2d8f33f1d76"
+      },
+      "rawBody": "{\"id\":\"evt_test_123\",\"object\":\"event\",\"type\":\"payment_intent.failed\"}",
+      "nowSeconds": 1700000020,
+      "expect": "WEBHOOK_SIGNATURE_MISMATCH",
+      "provenance": {
+        "source": "Negative test vector: tampered body with original valid signature"
+      }
+    },
+    {
+      "name": "wrong secret",
+      "preset": "stripe-signature",
+      "secret": "whsec_wrong_secret_key_99999",
+      "headers": {
+        "stripe-signature": "t=1700000000,v1=c81a8633865713f75163c05766f397b76071d30e60bc35a97acce2d8f33f1d76"
+      },
+      "rawBody": "{\"id\":\"evt_test_123\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\"}",
+      "nowSeconds": 1700000020,
+      "expect": "WEBHOOK_SIGNATURE_MISMATCH",
+      "provenance": {
+        "source": "Negative test vector: valid signature verified against wrong secret"
+      }
+    },
+    {
+      "name": "stale timestamp (> 300s)",
+      "preset": "stripe-signature",
+      "secret": "whsec_test_stripe_secret_12345",
+      "headers": {
+        "stripe-signature": "t=1700000000,v1=c81a8633865713f75163c05766f397b76071d30e60bc35a97acce2d8f33f1d76"
+      },
+      "rawBody": "{\"id\":\"evt_test_123\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\"}",
+      "nowSeconds": 1700000400,
+      "expect": "WEBHOOK_TIMESTAMP_OUT_OF_TOLERANCE",
+      "provenance": {
+        "source": "Negative test vector: timestamp is 400s behind nowSeconds, exceeding 300s tolerance"
+      }
+    }
+  ]
+}

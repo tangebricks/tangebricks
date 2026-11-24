@@ -1,0 +1,37 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "leaky-brick",
+  "version": "0.0.0",
+  "trust": "first-party",
+  "provides": [
+    "leaky-service"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_leaky.sql"
+  ],
+  "routePrefixes": [
+    "leaky"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.13"
+  },
+  "settings": {},
+  "worker": {
+    "package": "@poc/leaky-brick",
+    "routes": [
+      {
+        "factory": "createLeakyRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/leaky",
+          "/api/leaky/*"
+        ]
+      }
+    ]
+  }
+}

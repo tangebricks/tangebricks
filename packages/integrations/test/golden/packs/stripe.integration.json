@@ -1,0 +1,998 @@
+{
+  "manifestVersion": 2,
+  "kind": "integration",
+  "app": "stripe",
+  "version": "1.0.0",
+  "ui": {
+    "displayName": "Stripe",
+    "category": "billing",
+    "icon": "stripe",
+    "docsUrl": "https://docs.stripe.com/api",
+    "summary": "Customers, checkout sessions, payment intents, subscriptions, invoices, refunds, and webhooks.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "scopes": [
+      "read_write"
+    ],
+    "authorizeUrl": "https://connect.stripe.com/oauth/authorize",
+    "tokenUrl": "https://connect.stripe.com/oauth/token",
+    "headerName": "Authorization",
+    "prefix": "Bearer",
+    "connectionFields": [
+      "token"
+    ]
+  },
+  "baseUrl": "https://api.stripe.com",
+  "allowedHosts": [
+    "api.stripe.com"
+  ],
+  "operations": [
+    {
+      "operationId": "createCustomer",
+      "label": "Create customer",
+      "summary": "Create customer",
+      "method": "POST",
+      "path": "/v1/customers",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "email",
+            "dataType": "string",
+            "description": "Customer email",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "name",
+            "dataType": "string",
+            "description": "Customer name",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "description",
+            "dataType": "string",
+            "description": "Account note",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "created",
+            "dataType": "number"
+          },
+          {
+            "id": "id",
+            "dataType": "string"
+          },
+          {
+            "id": "livemode",
+            "dataType": "boolean"
+          },
+          {
+            "id": "object",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "idempotency": {
+        "header": "Idempotency-Key"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "getCustomer",
+      "label": "Retrieve customer",
+      "summary": "Retrieve customer",
+      "method": "GET",
+      "path": "/v1/customers/{customerId}",
+      "params": [
+        {
+          "name": "customerId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "id",
+            "dataType": "string"
+          },
+          {
+            "id": "object",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "updateCustomer",
+      "label": "Update customer",
+      "summary": "Update customer",
+      "method": "POST",
+      "path": "/v1/customers/{customerId}",
+      "params": [
+        {
+          "name": "customerId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "email",
+            "dataType": "string",
+            "description": "Customer email",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "name",
+            "dataType": "string",
+            "description": "Customer name",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "created",
+            "dataType": "number"
+          },
+          {
+            "id": "id",
+            "dataType": "string"
+          },
+          {
+            "id": "livemode",
+            "dataType": "boolean"
+          },
+          {
+            "id": "object",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "idempotency": {
+        "header": "Idempotency-Key"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "listCustomers",
+      "label": "List customers",
+      "summary": "List customers",
+      "method": "GET",
+      "path": "/v1/customers",
+      "params": [
+        {
+          "name": "limit",
+          "in": "query",
+          "dataType": "number"
+        },
+        {
+          "name": "starting_after",
+          "in": "query",
+          "dataType": "string"
+        },
+        {
+          "name": "email",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "has_more",
+            "dataType": "boolean"
+          },
+          {
+            "id": "object",
+            "dataType": "string"
+          },
+          {
+            "id": "url",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "pagination": {
+        "style": "lastItemCursor",
+        "paramName": "starting_after",
+        "responsePath": "data",
+        "maxPages": 3,
+        "itemIdPath": "id",
+        "hasMorePath": "has_more"
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "createCheckoutSession",
+      "label": "Create checkout session",
+      "summary": "Create checkout session",
+      "method": "POST",
+      "path": "/v1/checkout/sessions",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "mode",
+            "dataType": "string",
+            "required": true,
+            "description": "payment or subscription",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "success_url",
+            "dataType": "string",
+            "required": true,
+            "description": "Redirect URL",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "cancel_url",
+            "dataType": "string",
+            "description": "Cancel URL",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "customer",
+            "dataType": "string",
+            "description": "Customer ID",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "automatic_tax",
+            "dataType": "object"
+          },
+          {
+            "id": "created",
+            "dataType": "number"
+          },
+          {
+            "id": "custom_fields",
+            "dataType": "array"
+          },
+          {
+            "id": "custom_text",
+            "dataType": "object"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "idempotency": {
+        "header": "Idempotency-Key"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "createPaymentIntent",
+      "label": "Create payment intent",
+      "summary": "Create payment intent",
+      "method": "POST",
+      "path": "/v1/payment_intents",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "amount",
+            "dataType": "number",
+            "required": true,
+            "description": "Amount in cents",
+            "schema": {
+              "dataType": "number"
+            }
+          },
+          {
+            "name": "currency",
+            "dataType": "string",
+            "required": true,
+            "description": "ISO currency",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "customer",
+            "dataType": "string",
+            "description": "Customer ID",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "created",
+            "dataType": "number"
+          },
+          {
+            "id": "id",
+            "dataType": "string"
+          },
+          {
+            "id": "livemode",
+            "dataType": "boolean"
+          },
+          {
+            "id": "object",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "idempotency": {
+        "header": "Idempotency-Key"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "getPaymentIntent",
+      "label": "Retrieve payment intent",
+      "summary": "Retrieve payment intent",
+      "method": "GET",
+      "path": "/v1/payment_intents/{intentId}",
+      "params": [
+        {
+          "name": "intentId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "created",
+            "dataType": "number"
+          },
+          {
+            "id": "id",
+            "dataType": "string"
+          },
+          {
+            "id": "livemode",
+            "dataType": "boolean"
+          },
+          {
+            "id": "object",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "confirmPaymentIntent",
+      "label": "Confirm payment intent",
+      "summary": "Confirm payment intent",
+      "method": "POST",
+      "path": "/v1/payment_intents/{intentId}/confirm",
+      "params": [
+        {
+          "name": "intentId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "payment_method",
+            "dataType": "string",
+            "description": "Payment method ID",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "created",
+            "dataType": "number"
+          },
+          {
+            "id": "id",
+            "dataType": "string"
+          },
+          {
+            "id": "livemode",
+            "dataType": "boolean"
+          },
+          {
+            "id": "object",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "idempotency": {
+        "header": "Idempotency-Key"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "createSubscription",
+      "label": "Create subscription",
+      "summary": "Create subscription",
+      "method": "POST",
+      "path": "/v1/subscriptions",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "customer",
+            "dataType": "string",
+            "required": true,
+            "description": "Customer ID",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "price",
+            "dataType": "string",
+            "description": "Price ID",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "automatic_tax",
+            "dataType": "object"
+          },
+          {
+            "id": "billing_cycle_anchor",
+            "dataType": "number"
+          },
+          {
+            "id": "billing_mode",
+            "dataType": "object"
+          },
+          {
+            "id": "billing_schedules",
+            "dataType": "array"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "idempotency": {
+        "header": "Idempotency-Key"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "updateSubscription",
+      "label": "Update subscription",
+      "summary": "Update subscription",
+      "method": "POST",
+      "path": "/v1/subscriptions/{subscriptionId}",
+      "params": [
+        {
+          "name": "subscriptionId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "cancel_at_period_end",
+            "dataType": "boolean",
+            "description": "Cancel at end",
+            "schema": {
+              "dataType": "boolean"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "automatic_tax",
+            "dataType": "object"
+          },
+          {
+            "id": "billing_cycle_anchor",
+            "dataType": "number"
+          },
+          {
+            "id": "billing_mode",
+            "dataType": "object"
+          },
+          {
+            "id": "billing_schedules",
+            "dataType": "array"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "idempotency": {
+        "header": "Idempotency-Key"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "cancelSubscription",
+      "label": "Cancel subscription",
+      "summary": "Cancel subscription",
+      "method": "DELETE",
+      "path": "/v1/subscriptions/{subscriptionId}",
+      "params": [
+        {
+          "name": "subscriptionId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "automatic_tax",
+            "dataType": "object"
+          },
+          {
+            "id": "billing_cycle_anchor",
+            "dataType": "number"
+          },
+          {
+            "id": "billing_mode",
+            "dataType": "object"
+          },
+          {
+            "id": "billing_schedules",
+            "dataType": "array"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "createInvoice",
+      "label": "Create invoice",
+      "summary": "Create invoice",
+      "method": "POST",
+      "path": "/v1/invoices",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "customer",
+            "dataType": "string",
+            "required": true,
+            "description": "Customer ID",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "auto_advance",
+            "dataType": "boolean",
+            "description": "Auto finalize",
+            "schema": {
+              "dataType": "boolean"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "amount_due",
+            "dataType": "number"
+          },
+          {
+            "id": "amount_overpaid",
+            "dataType": "number"
+          },
+          {
+            "id": "amount_paid",
+            "dataType": "number"
+          },
+          {
+            "id": "amount_paid_off_stripe",
+            "dataType": "number"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "idempotency": {
+        "header": "Idempotency-Key"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "listInvoices",
+      "label": "List invoices",
+      "summary": "List invoices",
+      "method": "GET",
+      "path": "/v1/invoices",
+      "params": [
+        {
+          "name": "customer",
+          "in": "query",
+          "dataType": "string"
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "dataType": "number"
+        },
+        {
+          "name": "starting_after",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "has_more",
+            "dataType": "boolean"
+          },
+          {
+            "id": "object",
+            "dataType": "string"
+          },
+          {
+            "id": "url",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "pagination": {
+        "style": "lastItemCursor",
+        "paramName": "starting_after",
+        "responsePath": "data",
+        "maxPages": 3,
+        "itemIdPath": "id",
+        "hasMorePath": "has_more"
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "createRefund",
+      "label": "Create refund",
+      "summary": "Create refund",
+      "method": "POST",
+      "path": "/v1/refunds",
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          {
+            "name": "payment_intent",
+            "dataType": "string",
+            "required": true,
+            "description": "Payment intent ID",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "amount",
+            "dataType": "number",
+            "description": "Refund cents",
+            "schema": {
+              "dataType": "number"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "outputs": [
+          {
+            "id": "amount",
+            "dataType": "number"
+          },
+          {
+            "id": "created",
+            "dataType": "number"
+          },
+          {
+            "id": "currency",
+            "dataType": "string"
+          },
+          {
+            "id": "id",
+            "dataType": "string"
+          }
+        ],
+        "errorShape": {
+          "codePath": "error.code",
+          "messagePath": "error.message",
+          "typePath": "error.type"
+        }
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "idempotency": {
+        "header": "Idempotency-Key"
+      },
+      "sideEffects": "write"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "payment_intent_succeeded",
+      "label": "Payment Intent Succeeded",
+      "summary": "Fires on Stripe payment_intent.succeeded webhook.",
+      "verifier": "stripe-signature",
+      "signatureHeader": "Stripe-Signature",
+      "eventIdPath": "id",
+      "eventTypePath": "type",
+      "eventTypeFilter": [
+        "payment_intent.succeeded"
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Stripe Event",
+          "dataType": "object"
+        }
+      ]
+    },
+    {
+      "id": "customer_subscription_updated",
+      "label": "Subscription Updated",
+      "summary": "Fires on Stripe customer.subscription.updated webhook.",
+      "verifier": "stripe-signature",
+      "signatureHeader": "Stripe-Signature",
+      "eventIdPath": "id",
+      "eventTypePath": "type",
+      "eventTypeFilter": [
+        "customer.subscription.updated"
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Stripe Event",
+          "dataType": "object"
+        }
+      ]
+    },
+    {
+      "id": "invoice_paid",
+      "label": "Invoice Paid",
+      "summary": "Fires on Stripe invoice.paid webhook.",
+      "verifier": "stripe-signature",
+      "signatureHeader": "Stripe-Signature",
+      "eventIdPath": "id",
+      "eventTypePath": "type",
+      "eventTypeFilter": [
+        "invoice.paid"
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Stripe Event",
+          "dataType": "object"
+        }
+      ]
+    }
+  ],
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "Stripe API key or OAuth token is invalid or expired.",
+      "hint": "Reconnect Stripe in Connections Center.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "Stripe rate limit exceeded.",
+      "hint": "Respect Retry-After header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "Retry-After"
+    }
+  },
+  "fidelity": {
+    "specHash": "sha256:c3fcdadb633e619af64d2bb053f7f1d75daff1e5b8acd50d58457b661ec83af0",
+    "importerVersion": "2.0.0",
+    "level": "curated",
+    "unsupported": []
+  }
+}

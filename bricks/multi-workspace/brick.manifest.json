@@ -1,0 +1,63 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "multi-workspace",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "workspace-context"
+  ],
+  "requires": [],
+  "migrations": [
+    "migrations/0001_multi_workspace.sql"
+  ],
+  "routePrefixes": [
+    "workspaces"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Multi-Tenant Hierarchy",
+    "category": "identity",
+    "summary": "Multi-tenant workspace partitioning, membership roles, and tenant isolation middleware.",
+    "maturity": "production",
+    "behaviourTest": "test/multi-workspace.test.ts"
+  },
+  "globalTables": [
+    {
+      "table": "mw_workspaces",
+      "reason": "Root workspace tenant table whose primary key id is the workspace identifier"
+    }
+  ],
+  "worker": {
+    "package": "@poc/multi-workspace",
+    "routes": [
+      {
+        "factory": "createWorkspaceRoutes",
+        "mountAt": "/api"
+      }
+    ],
+    "guard": {
+      "export": "workspaceMiddleware",
+      "capability": "workspace-context"
+    }
+  },
+  "privacy": {
+    "tables": {
+      "mw_members": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      },
+      "mw_invites": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

@@ -1,0 +1,942 @@
+[
+  {
+    "app": "stripe",
+    "op": "createCustomer",
+    "method": "POST",
+    "request": {
+      "url": "https://api.stripe.com/v1/customers",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "email=test&name=test&description=test"
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "getCustomer",
+    "method": "GET",
+    "request": {
+      "url": "https://api.stripe.com/v1/customers/test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "updateCustomer",
+    "method": "POST",
+    "request": {
+      "url": "https://api.stripe.com/v1/customers/test",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "email=test&name=test"
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "listCustomers",
+    "method": "GET",
+    "request": {
+      "url": "https://api.stripe.com/v1/customers?limit=1&starting_after=test&email=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "createCheckoutSession",
+    "method": "POST",
+    "request": {
+      "url": "https://api.stripe.com/v1/checkout/sessions",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "mode=test&success_url=test&cancel_url=test&customer=test"
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "createPaymentIntent",
+    "method": "POST",
+    "request": {
+      "url": "https://api.stripe.com/v1/payment_intents",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "amount=1&currency=test&customer=test"
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "getPaymentIntent",
+    "method": "GET",
+    "request": {
+      "url": "https://api.stripe.com/v1/payment_intents/test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "confirmPaymentIntent",
+    "method": "POST",
+    "request": {
+      "url": "https://api.stripe.com/v1/payment_intents/test/confirm",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "payment_method=test"
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "createSubscription",
+    "method": "POST",
+    "request": {
+      "url": "https://api.stripe.com/v1/subscriptions",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "customer=test&price=test"
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "updateSubscription",
+    "method": "POST",
+    "request": {
+      "url": "https://api.stripe.com/v1/subscriptions/test",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "cancel_at_period_end=true"
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "cancelSubscription",
+    "method": "DELETE",
+    "request": {
+      "url": "https://api.stripe.com/v1/subscriptions/test",
+      "method": "DELETE",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "createInvoice",
+    "method": "POST",
+    "request": {
+      "url": "https://api.stripe.com/v1/invoices",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "customer=test&auto_advance=true"
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "listInvoices",
+    "method": "GET",
+    "request": {
+      "url": "https://api.stripe.com/v1/invoices?customer=test&limit=1&starting_after=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "stripe",
+    "op": "createRefund",
+    "method": "POST",
+    "request": {
+      "url": "https://api.stripe.com/v1/refunds",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "payment_intent=test&amount=1"
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "listIssues",
+    "method": "GET",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/issues?state=test&page=1",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "createIssue",
+    "method": "POST",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/issues",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"title\":\"test\",\"body\":\"test\",\"labels\":[\"test\"]}"
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "updateIssue",
+    "method": "PATCH",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/issues/1",
+      "method": "PATCH",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"title\":\"test\",\"state\":\"test\",\"body\":\"test\"}"
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "createIssueComment",
+    "method": "POST",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/issues/1/comments",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"body\":\"test\"}"
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "listPullRequests",
+    "method": "GET",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/pulls?state=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "createPullRequest",
+    "method": "POST",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/pulls",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"title\":\"test\",\"head\":\"test\",\"base\":\"test\",\"body\":\"test\"}"
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "mergePullRequest",
+    "method": "PUT",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/pulls/1/merge",
+      "method": "PUT",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"commit_title\":\"test\",\"merge_method\":\"test\"}"
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "getRepo",
+    "method": "GET",
+    "request": {
+      "url": "https://api.github.com/repos/test/test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "listRepos",
+    "method": "GET",
+    "request": {
+      "url": "https://api.github.com/user/repos?visibility=test&per_page=1",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "getContent",
+    "method": "GET",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/contents/test?ref=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "createOrUpdateFileContents",
+    "method": "PUT",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/contents/test",
+      "method": "PUT",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"message\":\"test\",\"content\":\"test\",\"sha\":\"test\"}"
+    },
+    "error": null
+  },
+  {
+    "app": "github",
+    "op": "createWorkflowDispatch",
+    "method": "POST",
+    "request": {
+      "url": "https://api.github.com/repos/test/test/actions/workflows/test/dispatches",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"ref\":\"test\",\"inputs\":{\"key\":\"val\"}}"
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "createMessage",
+    "method": "POST",
+    "request": {
+      "url": "https://discord.com/api/v10/channels/test/messages",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"content\":\"test\",\"embeds\":[\"test\"],\"tts\":true}"
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "getChannelMessages",
+    "method": "GET",
+    "request": {
+      "url": "https://discord.com/api/v10/channels/test/messages?limit=1&after=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "editMessage",
+    "method": "PATCH",
+    "request": {
+      "url": "https://discord.com/api/v10/channels/test/messages/test",
+      "method": "PATCH",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"content\":\"test\",\"embeds\":[\"test\"]}"
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "deleteMessage",
+    "method": "DELETE",
+    "request": {
+      "url": "https://discord.com/api/v10/channels/test/messages/test",
+      "method": "DELETE",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "createReaction",
+    "method": "PUT",
+    "request": null,
+    "error": "INTEGRATION_HOST_FORBIDDEN: Path \"/channels/{channelId}/messages/{messageId}/reactions/{emoji}/@me\" for integration \"discord\" contains forbidden host override or path traversal segments"
+  },
+  {
+    "app": "discord",
+    "op": "startThreadFromMessage",
+    "method": "POST",
+    "request": {
+      "url": "https://discord.com/api/v10/channels/test/messages/test/threads",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"name\":\"test\",\"auto_archive_duration\":1}"
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "startThreadWithoutMessage",
+    "method": "POST",
+    "request": {
+      "url": "https://discord.com/api/v10/channels/test/threads",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"name\":\"test\",\"type\":1}"
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "getGuild",
+    "method": "GET",
+    "request": {
+      "url": "https://discord.com/api/v10/guilds/test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "getGuildMember",
+    "method": "GET",
+    "request": {
+      "url": "https://discord.com/api/v10/guilds/test/members/test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "listGuildChannels",
+    "method": "GET",
+    "request": {
+      "url": "https://discord.com/api/v10/guilds/test/channels",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "discord",
+    "op": "executeWebhook",
+    "method": "POST",
+    "request": {
+      "url": "https://discord.com/api/v10/webhooks/test/test",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"content\":\"test\",\"embeds\":[\"test\"],\"username\":\"test\"}"
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "chat_postMessage",
+    "method": "POST",
+    "request": {
+      "url": "https://slack.com/api/chat.postMessage",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "channel=test&text=test&thread_ts=test"
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "chat_update",
+    "method": "POST",
+    "request": {
+      "url": "https://slack.com/api/chat.update",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "channel=test&ts=test&text=test"
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "conversations_list",
+    "method": "GET",
+    "request": {
+      "url": "https://slack.com/api/conversations.list?types=test&limit=1&cursor=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "conversations_history",
+    "method": "GET",
+    "request": {
+      "url": "https://slack.com/api/conversations.history?channel=test&latest=1&oldest=1",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "conversations_create",
+    "method": "POST",
+    "request": {
+      "url": "https://slack.com/api/conversations.create",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "name=test&is_private=true"
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "conversations_invite",
+    "method": "POST",
+    "request": {
+      "url": "https://slack.com/api/conversations.invite",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "channel=test&users=test"
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "users_lookupByEmail",
+    "method": "GET",
+    "request": {
+      "url": "https://slack.com/api/users.lookupByEmail?email=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "users_info",
+    "method": "GET",
+    "request": {
+      "url": "https://slack.com/api/users.info?include_locale=true&user=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "reactions_add",
+    "method": "POST",
+    "request": {
+      "url": "https://slack.com/api/reactions.add",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      "body": "channel=test&name=test&timestamp=test"
+    },
+    "error": null
+  },
+  {
+    "app": "slack",
+    "op": "files_upload",
+    "method": "POST",
+    "request": {
+      "url": "https://slack.com/api/files.upload",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "calendar_events_list",
+    "method": "GET",
+    "request": {
+      "url": "https://www.googleapis.com/calendar/v3/calendars/test/events?timeMin=test&pageToken=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "calendar_events_insert",
+    "method": "POST",
+    "request": {
+      "url": "https://www.googleapis.com/calendar/v3/calendars/test/events",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"summary\":\"test\",\"start\":{\"key\":\"val\"},\"end\":{\"key\":\"val\"}}"
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "calendar_events_patch",
+    "method": "PATCH",
+    "request": {
+      "url": "https://www.googleapis.com/calendar/v3/calendars/test/events/test",
+      "method": "PATCH",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"summary\":\"test\",\"start\":{\"key\":\"val\"},\"end\":{\"key\":\"val\"}}"
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "calendar_events_delete",
+    "method": "DELETE",
+    "request": {
+      "url": "https://www.googleapis.com/calendar/v3/calendars/test/events/test",
+      "method": "DELETE",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "calendar_freebusy_query",
+    "method": "POST",
+    "request": {
+      "url": "https://www.googleapis.com/calendar/v3/freeBusy",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"timeMin\":\"test\",\"timeMax\":\"test\",\"items\":[\"test\"]}"
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "sheets_values_get",
+    "method": "GET",
+    "request": {
+      "url": "https://www.googleapis.com/v4/spreadsheets/test/values/test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "sheets_values_append",
+    "method": "POST",
+    "request": {
+      "url": "https://www.googleapis.com/v4/spreadsheets/test/values/test:append?valueInputOption=test",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"range\":\"test\",\"values\":[\"test\"]}"
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "sheets_values_update",
+    "method": "PUT",
+    "request": {
+      "url": "https://www.googleapis.com/v4/spreadsheets/test/values/test?valueInputOption=test",
+      "method": "PUT",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"range\":\"test\",\"values\":[\"test\"]}"
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "sheets_spreadsheets_create",
+    "method": "POST",
+    "request": {
+      "url": "https://www.googleapis.com/v4/spreadsheets",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"dataSources\":[\"test\"],\"commentsViewMode\":\"test\"}"
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "gmail_messages_send",
+    "method": "POST",
+    "request": {
+      "url": "https://www.googleapis.com/gmail/v1/users/test/messages/send",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123",
+        "content-type": "application/json"
+      },
+      "body": "{\"raw\":\"test\",\"threadId\":\"test\"}"
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "gmail_messages_list",
+    "method": "GET",
+    "request": {
+      "url": "https://www.googleapis.com/gmail/v1/users/test/messages?q=test&pageToken=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "gmail_messages_get",
+    "method": "GET",
+    "request": {
+      "url": "https://www.googleapis.com/gmail/v1/users/test/messages/test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "gmail_threads_list",
+    "method": "GET",
+    "request": {
+      "url": "https://www.googleapis.com/gmail/v1/users/test/threads?q=test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  },
+  {
+    "app": "google",
+    "op": "gmail_threads_get",
+    "method": "GET",
+    "request": {
+      "url": "https://www.googleapis.com/gmail/v1/users/test/threads/test",
+      "method": "GET",
+      "headers": {
+        "accept": "application/json",
+        "authorization": "Bearer golden_token_123"
+      },
+      "body": null
+    },
+    "error": null
+  }
+]

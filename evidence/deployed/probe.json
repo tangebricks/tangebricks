@@ -1,0 +1,115 @@
+{
+  "story": "5.4",
+  "at": "2026-10-21T02:19:49.572Z",
+  "allRequestsWereReads": true,
+  "report": {
+    "token": {
+      "reachable": true,
+      "status": "active",
+      "expiresOn": "2026-10-28T18:29:59Z",
+      "daysLeft": 7
+    },
+    "permissionGroups": {
+      "state": "refused",
+      "status": 403,
+      "codes": [
+        9109
+      ],
+      "note": "Unauthorized to access requested resource"
+    },
+    "checks": {
+      "d1": {
+        "state": "readable",
+        "value": []
+      },
+      "scripts": {
+        "state": "readable",
+        "value": []
+      },
+      "subdomain": {
+        "state": "readable",
+        "value": "killerkingmega"
+      },
+      "workflows": {
+        "state": "readable",
+        "value": []
+      }
+    },
+    "existingProofResources": [],
+    "counts": {
+      "databases": 0,
+      "scripts": 1,
+      "workflows": 0
+    },
+    "missing": [],
+    "notEstablished": [
+      "whether the token may WRITE to D1 and Workers Scripts: reads cannot show it, and the token's own list was not readable; the first write in story 5 will show"
+    ],
+    "ready": true
+  },
+  "calls": [
+    {
+      "n": 1,
+      "atMs": 1,
+      "method": "GET",
+      "path": "/accounts/{account}/tokens/verify",
+      "status": 200,
+      "ms": 548,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 2,
+      "atMs": 549,
+      "method": "GET",
+      "path": "/accounts/{account}/tokens/{token-id}",
+      "status": 403,
+      "ms": 426,
+      "outcome": "api_error",
+      "attempt": 1,
+      "errorCodes": [
+        9109
+      ]
+    },
+    {
+      "n": 3,
+      "atMs": 975,
+      "method": "GET",
+      "path": "/accounts/{account}/d1/database",
+      "status": 200,
+      "ms": 449,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 4,
+      "atMs": 1425,
+      "method": "GET",
+      "path": "/accounts/{account}/workers/scripts",
+      "status": 200,
+      "ms": 1156,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 5,
+      "atMs": 2581,
+      "method": "GET",
+      "path": "/accounts/{account}/workers/subdomain",
+      "status": 200,
+      "ms": 938,
+      "outcome": "ok",
+      "attempt": 1
+    },
+    {
+      "n": 6,
+      "atMs": 3520,
+      "method": "GET",
+      "path": "/accounts/{account}/workflows",
+      "status": 200,
+      "ms": 190,
+      "outcome": "ok",
+      "attempt": 1
+    }
+  ]
+}

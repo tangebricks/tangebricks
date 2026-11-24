@@ -1,0 +1,51 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "user-profile",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "profile-context"
+  ],
+  "requires": [
+    "user-identity"
+  ],
+  "migrations": [
+    "migrations/0001_user_profile.sql"
+  ],
+  "routePrefixes": [
+    "me",
+    "users"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "User Profile & Preferences",
+    "category": "identity",
+    "summary": "User profiles, avatars, locale, and theme settings.",
+    "maturity": "beta",
+    "behaviourTest": "test/profile.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "globalTables": [
+    {
+      "table": "profile_users",
+      "reason": "User-scoped profile and preference records keyed by user_id"
+    }
+  ],
+  "worker": {
+    "package": "@poc/user-profile",
+    "routes": [
+      {
+        "factory": "createProfileRoutes",
+        "mountAt": "/api"
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {}
+  }
+}

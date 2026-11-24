@@ -1,0 +1,56 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "search-faceted",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "search-engine"
+  ],
+  "requires": [
+    "workspace-context",
+    "dynamic-entities"
+  ],
+  "migrations": [
+    "migrations/0001_search_faceted.sql"
+  ],
+  "routePrefixes": [
+    "search"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Full-Text & Faceted Search",
+    "category": "data",
+    "summary": "SQLite FTS5 full-text search and faceted filtering.",
+    "maturity": "beta",
+    "behaviourTest": "test/search.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "worker": {
+    "package": "@poc/search-faceted",
+    "routes": [
+      {
+        "factory": "createSearchRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/search",
+          "/api/search/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "search_documents": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "app": "slack",
+  "version": "1.0.0",
+  "format": "swagger2",
+  "specProvenance": "upstream",
+  "upstream": {
+    "corpusSpec": "slack",
+    "operationIds": {
+      "chat_postMessage": "chat_postMessage",
+      "chat_update": "chat_update",
+      "conversations_list": "conversations_list",
+      "conversations_history": "conversations_history",
+      "conversations_create": "conversations_create",
+      "conversations_invite": "conversations_invite",
+      "users_lookupByEmail": "users_lookupByEmail",
+      "users_info": "users_info",
+      "reactions_add": "reactions_add",
+      "files_upload": "files_upload"
+    }
+  },
+  "acknowledge": [
+    {
+      "op": "conversations_history",
+      "code": "PAGINATION_UNMODELLED",
+      "reason": "cursor pagination unmodelled for conversations.history"
+    }
+  ],
+  "ui": {
+    "displayName": "Slack",
+    "category": "communication",
+    "icon": "slack",
+    "docsUrl": "https://api.slack.com/web",
+    "summary": "Post and update messages, manage channels, look up users by email, and add reactions.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "authorizeUrl": "https://slack.com/oauth/v2/authorize",
+    "tokenUrl": "https://slack.com/api/oauth.v2.access",
+    "scopes": [
+      "chat:write",
+      "channels:read",
+      "users:read",
+      "users:read.email",
+      "reactions:write",
+      "files:write"
+    ],
+    "headerName": "Authorization",
+    "prefix": "Bearer"
+  },
+  "baseUrl": "https://slack.com/api",
+  "allowedHosts": ["slack.com"],
+  "includeOperations": [
+    "chat_postMessage",
+    "chat_update",
+    "conversations_list",
+    "conversations_history",
+    "conversations_create",
+    "conversations_invite",
+    "users_lookupByEmail",
+    "users_info",
+    "reactions_add",
+    "files_upload"
+  ],
+  "defaultRateLimit": {
+    "maxRetries": 3,
+    "initialBackoffMs": 200,
+    "respectRetryAfter": true,
+    "retryAfterHeader": "Retry-After"
+  },
+  "errorWhen": {
+    "path": "ok",
+    "equals": false
+  },
+  "operations": {
+    "chat_postMessage": {
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "fields": [
+          { "name": "channel", "dataType": "string", "required": true, "description": "Channel ID" },
+          { "name": "text", "dataType": "string", "description": "Message text" },
+          { "name": "thread_ts", "dataType": "string", "description": "Thread timestamp" }
+        ]
+      }
+    },
+    "conversations_list": {
+      "pagination": {
+        "style": "cursor",
+        "paramName": "cursor",
+        "responsePath": "channels",
+        "nextCursorPath": "response_metadata.next_cursor",
+        "maxPages": 3
+      }
+    },
+    "files_upload": {
+      "body": {
+        "contentType": "multipart/form-data",
+        "fields": [
+          { "name": "file", "dataType": "any", "binary": true, "description": "File contents" },
+          { "name": "content", "dataType": "string", "description": "File content" },
+          { "name": "filename", "dataType": "string", "description": "Filename" },
+          { "name": "title", "dataType": "string", "description": "Title of file" }
+        ]
+      }
+    }
+  },
+  "triggers": [
+    {
+      "id": "event_callback",
+      "label": "Slack Event Callback",
+      "summary": "Fires when a signed Slack Events API payload arrives.",
+      "verifier": "slack-v0",
+      "signatureHeader": "X-Slack-Signature",
+      "eventIdPath": "event_id",
+      "eventTypePath": "event.type",
+      "outputs": [
+        { "id": "out", "label": "Slack Event", "dataType": "object" }
+      ]
+    }
+  ],
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "Slack OAuth token is invalid or revoked.",
+      "hint": "Re-authorize the Slack connection in Connections Center.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "Slack Web API rate limit exceeded.",
+      "hint": "Respect Retry-After header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "Retry-After"
+    }
+  }
+}

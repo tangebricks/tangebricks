@@ -1,0 +1,83 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "subscription-plans",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "plan-entitlements"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_subscription_plans.sql"
+  ],
+  "routePrefixes": [
+    "plans",
+    "subscriptions"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "defaultTier": {
+      "type": "enum",
+      "values": [
+        "free",
+        "pro",
+        "enterprise"
+      ],
+      "default": "free"
+    }
+  },
+  "ui": {
+    "displayName": "Subscription & Plan Entitlements",
+    "category": "billing",
+    "summary": "Subscription plan catalog, tier changes, and limits.",
+    "maturity": "beta",
+    "behaviourTest": "test/plans.test.ts",
+    "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "conflicts": [
+    {
+      "brick": "outbound-webhooks",
+      "reason": "Both mount routes under the /api/subscriptions prefix"
+    }
+  ],
+  "globalTables": [
+    {
+      "table": "sub_plans",
+      "reason": "Global subscription plan catalog referenced by workspace subscriptions"
+    }
+  ],
+  "worker": {
+    "package": "@poc/subscription-plans",
+    "routes": [
+      {
+        "factory": "createPlanRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/subscriptions",
+          "/api/subscriptions/*"
+        ],
+        "options": {
+          "defaultTier": {
+            "$setting": "defaultTier"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "sub_subscriptions": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

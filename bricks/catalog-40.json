@@ -1,0 +1,536 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "projectx-40-primitives",
+  "version": "1.0.0",
+  "description": "Comprehensive specification of the 40 Orthogonal Functional Primitives across 8 Core Domains for ProjectX edge SaaS architecture.",
+  "domains": [
+    {
+      "id": "domain-1",
+      "name": "Identity, Access & Tenancy",
+      "primitives": [
+        {
+          "id": "core-auth",
+          "number": 1,
+          "name": "Core Authentication",
+          "tier": 0,
+          "phase": 1,
+          "provides": ["user-identity", "session-context"],
+          "requires": [],
+          "routePrefixes": ["auth"],
+          "tablePrefix": "auth_",
+          "summary": "Passkeys (WebAuthn), Argon2/PBKDF2 passwords, magic links, session tokens, MFA (TOTP)."
+        },
+        {
+          "id": "multi-workspace",
+          "number": 2,
+          "name": "Multi-Tenant Hierarchy",
+          "tier": 0,
+          "phase": 1,
+          "provides": ["workspace-context"],
+          "requires": ["user-identity"],
+          "routePrefixes": ["workspaces"],
+          "tablePrefix": "mw_",
+          "summary": "Organizations, workspaces, team boundaries, cross-workspace switching, tenant isolation."
+        },
+        {
+          "id": "rbac-policy",
+          "number": 3,
+          "name": "RBAC & ABAC Policy Engine",
+          "tier": 0,
+          "phase": 1,
+          "provides": ["policy-guard"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["roles", "policies"],
+          "tablePrefix": "rbac_",
+          "summary": "Role-based and attribute-based access control, permission matrices, inheritance, dynamic capability checks."
+        },
+        {
+          "id": "identity-federation",
+          "number": 4,
+          "name": "Identity Federation & Enterprise SSO",
+          "tier": 0,
+          "phase": 3,
+          "provides": ["federated-identity"],
+          "requires": ["core-auth"],
+          "routePrefixes": ["sso", "saml", "oidc"],
+          "tablePrefix": "sso_",
+          "summary": "SAML 2.0, OIDC, directory sync (SCIM), social logins (Google, GitHub, Microsoft, Apple)."
+        },
+        {
+          "id": "user-profile",
+          "number": 5,
+          "name": "User Profile & Preferences",
+          "tier": 0,
+          "phase": 2,
+          "provides": ["profile-context"],
+          "requires": ["user-identity"],
+          "routePrefixes": ["profiles", "preferences"],
+          "tablePrefix": "profile_",
+          "summary": "Avatar pipelines, locales, timezones, themes (dark/light), communication preferences."
+        }
+      ]
+    },
+    {
+      "id": "domain-2",
+      "name": "Monetization, Billing & Financial Engineering",
+      "primitives": [
+        {
+          "id": "credit-wallet",
+          "number": 6,
+          "name": "Ledger & Credit Wallet",
+          "tier": 1,
+          "phase": 1,
+          "provides": ["credit-wallet"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["wallet", "payments"],
+          "tablePrefix": "credit_",
+          "summary": "Double-entry append-only balance accounting, atomic deductions, overdraft protection."
+        },
+        {
+          "id": "subscription-plans",
+          "number": 7,
+          "name": "Subscription & Plan Entitlements",
+          "tier": 1,
+          "phase": 1,
+          "provides": ["plan-entitlements"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["subscriptions", "plans"],
+          "tablePrefix": "sub_",
+          "summary": "Tier definitions (Free, Pro, Enterprise), feature gating, subscription lifecycles, upgrades, proration."
+        },
+        {
+          "id": "metered-usage",
+          "number": 8,
+          "name": "Metered Usage & Event Ingestion",
+          "tier": 1,
+          "phase": 2,
+          "provides": ["metering-engine"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["metering", "events"],
+          "tablePrefix": "meter_",
+          "summary": "High-throughput event counters (API calls, storage GB, compute seconds), aggregation windows, overage billing."
+        },
+        {
+          "id": "checkout-gateway",
+          "number": 9,
+          "name": "Multi-Gateway Checkout & Taxes",
+          "tier": 1,
+          "phase": 2,
+          "provides": ["checkout-engine"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["checkout", "invoices"],
+          "tablePrefix": "pay_",
+          "summary": "Checkout sessions (Stripe, LemonSqueezy, Cashfree, Paddle), VAT/sales tax automation, invoice PDF generation."
+        },
+        {
+          "id": "marketplace-splits",
+          "number": 10,
+          "name": "Marketplace Splits & Payouts",
+          "tier": 1,
+          "phase": 3,
+          "provides": ["marketplace-payouts"],
+          "requires": ["credit-wallet"],
+          "routePrefixes": ["marketplace", "payouts"],
+          "tablePrefix": "split_",
+          "summary": "Two-sided platform fees, creator revenue shares, escrow holds, merchant payouts via Stripe Connect / Wise."
+        }
+      ]
+    },
+    {
+      "id": "domain-3",
+      "name": "Data, Content & Storage Pipelines",
+      "primitives": [
+        {
+          "id": "dynamic-entities",
+          "number": 11,
+          "name": "Dynamic Entity CRUD",
+          "tier": 2,
+          "phase": 1,
+          "provides": ["entity-crud"],
+          "requires": ["workspace-context"],
+          "routePrefixes": [],
+          "tablePrefix": "de_",
+          "summary": "Generic relational data models, schema migrations, tenant-isolated queries, automated REST endpoints."
+        },
+        {
+          "id": "binary-assets",
+          "number": 12,
+          "name": "Binary Asset Pipeline",
+          "tier": 2,
+          "phase": 1,
+          "provides": ["asset-storage"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["assets", "uploads"],
+          "tablePrefix": "asset_",
+          "summary": "Chunked uploads to R2, presigned upload URLs, CDN delivery, image metadata extraction."
+        },
+        {
+          "id": "tabular-engine",
+          "number": 13,
+          "name": "Spreadsheet & Tabular Engine",
+          "tier": 2,
+          "phase": 2,
+          "provides": ["tabular-import"],
+          "requires": ["dynamic-entities"],
+          "routePrefixes": ["tabular", "imports"],
+          "tablePrefix": "tab_",
+          "summary": "CSV/XLSX bulk ingestion, field mapping interfaces, batch validation, virtualized interactive data grids."
+        },
+        {
+          "id": "document-pdf",
+          "number": 14,
+          "name": "Document & PDF Generation",
+          "tier": 2,
+          "phase": 3,
+          "provides": ["document-engine"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["documents", "templates"],
+          "tablePrefix": "doc_",
+          "summary": "HTML/Tailwind-to-PDF compilation, template variable hydration, watermarking, digital signing."
+        },
+        {
+          "id": "search-faceted",
+          "number": 15,
+          "name": "Full-Text & Faceted Search",
+          "tier": 2,
+          "phase": 3,
+          "provides": ["search-engine"],
+          "requires": ["dynamic-entities"],
+          "routePrefixes": ["search"],
+          "tablePrefix": "search_",
+          "summary": "Inverted indexes (SQLite FTS5), tokenization, fuzzy search, typeahead autocomplete, faceted queries."
+        },
+        {
+          "id": "vector-memory",
+          "number": 16,
+          "name": "Vector Memory & Semantic Index",
+          "tier": 2,
+          "phase": 2,
+          "provides": ["vector-index"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["vectors", "semantic"],
+          "tablePrefix": "vec_",
+          "summary": "Chunking, vector embedding generation, cosine similarity retrieval via Cloudflare Vectorize, RAG sync."
+        }
+      ]
+    },
+    {
+      "id": "domain-4",
+      "name": "Automation, Orchestration & Background Work",
+      "primitives": [
+        {
+          "id": "workflow-dag",
+          "number": 17,
+          "name": "Workflow & DAG Engine",
+          "tier": 3,
+          "phase": 1,
+          "provides": ["workflow-engine"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["workflows", "runs"],
+          "tablePrefix": "wf_",
+          "summary": "Directed Acyclic Graph execution, branching/merging conditionals, stateful durable step execution."
+        },
+        {
+          "id": "cron-alarms",
+          "number": 18,
+          "name": "Cron & Distributed Alarms",
+          "tier": 3,
+          "phase": 1,
+          "provides": ["cron-scheduler"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["schedules"],
+          "tablePrefix": "cron_",
+          "summary": "Recurrence engines (RFC 5545 RRULE), scheduled future tasks, timezone-aware triggers, jitter control."
+        },
+        {
+          "id": "queue-jobs",
+          "number": 19,
+          "name": "Background Job Queue & Dead-Letter Handling",
+          "tier": 3,
+          "phase": 2,
+          "provides": ["job-queue"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["jobs", "queue"],
+          "tablePrefix": "job_",
+          "summary": "Asynchronous task offloading via Cloudflare Queues, concurrency rate-limits, priority queues, exponential retries."
+        },
+        {
+          "id": "webhook-gateway",
+          "number": 20,
+          "name": "Webhook Ingress & Egress Gateway",
+          "tier": 3,
+          "phase": 1,
+          "provides": ["webhook-gateway"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["webhooks"],
+          "tablePrefix": "wh_",
+          "summary": "Inbound payload verification (HMAC SHA-256), signature rotation, event broadcasting, failure retry policies."
+        }
+      ]
+    },
+    {
+      "id": "domain-5",
+      "name": "Communication, Messaging & Collaboration",
+      "primitives": [
+        {
+          "id": "omnichannel-outbound",
+          "number": 21,
+          "name": "Omnichannel Outbound Dispatcher",
+          "tier": 3,
+          "phase": 1,
+          "provides": ["message-dispatcher"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["messages", "broadcast"],
+          "tablePrefix": "msg_",
+          "summary": "Transactional delivery across Email (Resend/Workers Mail), SMS (Twilio), WhatsApp, Discord, Slack."
+        },
+        {
+          "id": "in-app-notifications",
+          "number": 22,
+          "name": "In-App Notification Center",
+          "tier": 3,
+          "phase": 2,
+          "provides": ["notification-center"],
+          "requires": ["user-identity"],
+          "routePrefixes": ["notifications"],
+          "tablePrefix": "notif_",
+          "summary": "Bell icon feeds, unread badge counters, actionable notification items, web push notifications."
+        },
+        {
+          "id": "realtime-presence",
+          "number": 23,
+          "name": "Real-Time Presence & State Sync",
+          "tier": 4,
+          "phase": 3,
+          "provides": ["presence-sync"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["presence", "sync"],
+          "tablePrefix": "pres_",
+          "summary": "WebSocket / SSE channels via Durable Objects, online/offline status, viewing pills, live cursor tracking."
+        },
+        {
+          "id": "threaded-discussions",
+          "number": 24,
+          "name": "Contextual Threaded Discussions",
+          "tier": 4,
+          "phase": 3,
+          "provides": ["discussions"],
+          "requires": ["user-identity"],
+          "routePrefixes": ["threads", "comments"],
+          "tablePrefix": "cmt_",
+          "summary": "Nested comment threads attached to arbitrary entity IDs, @mentions, rich markdown rendering, resolution flows."
+        },
+        {
+          "id": "live-chat",
+          "number": 25,
+          "name": "Live Chat & Support Messenger",
+          "tier": 4,
+          "phase": 3,
+          "provides": ["support-chat"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["chat", "conversations"],
+          "tablePrefix": "chat_",
+          "summary": "In-app visitor widget, agent conversation inbox, canned replies, ticket escalation."
+        }
+      ]
+    },
+    {
+      "id": "domain-6",
+      "name": "AI & Machine Intelligence Infrastructure",
+      "primitives": [
+        {
+          "id": "llm-gateway",
+          "number": 26,
+          "name": "LLM Gateway & Prompt Router",
+          "tier": 4,
+          "phase": 1,
+          "provides": ["llm-router"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["ai", "prompt"],
+          "tablePrefix": "ai_",
+          "summary": "Multi-provider fallback (OpenAI, Anthropic, Gemini, Workers AI), cost tracking, token streaming over HTTP SSE."
+        },
+        {
+          "id": "agent-sandbox",
+          "number": 27,
+          "name": "Agent Sandbox & Tool Registry",
+          "tier": 4,
+          "phase": 2,
+          "provides": ["mcp-agent-tools"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["mcp", "tools"],
+          "tablePrefix": "mcp_",
+          "summary": "Model Context Protocol (MCP) server/client, structured JSON tool calling, sandboxed code/eval execution."
+        },
+        {
+          "id": "document-parsing",
+          "number": 28,
+          "name": "Document Parsing & Structured Extraction",
+          "tier": 4,
+          "phase": 3,
+          "provides": ["doc-extraction"],
+          "requires": ["llm-gateway"],
+          "routePrefixes": ["parse", "extract"],
+          "tablePrefix": "ocr_",
+          "summary": "Multimodal OCR, PDF tabular extraction, schema-constrained JSON extraction from unstructured text."
+        }
+      ]
+    },
+    {
+      "id": "domain-7",
+      "name": "Developer Platform & Extensibility",
+      "primitives": [
+        {
+          "id": "public-api-keys",
+          "number": 29,
+          "name": "Public API Key Infrastructure",
+          "tier": 0,
+          "phase": 2,
+          "provides": ["api-key-auth"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["api-keys"],
+          "tablePrefix": "key_",
+          "summary": "Cryptographic key generation (sk_live_...), SHA-256 hash storage, permission scopes, per-key rate limiting."
+        },
+        {
+          "id": "oauth-server",
+          "number": 30,
+          "name": "OAuth 2.0 Authorization Server",
+          "tier": 0,
+          "phase": 3,
+          "provides": ["oauth-provider"],
+          "requires": ["core-auth"],
+          "routePrefixes": ["oauth"],
+          "tablePrefix": "oa2_",
+          "summary": "Third-party scoped app access, PKCE token exchanges, consent screens."
+        },
+        {
+          "id": "outbound-webhooks",
+          "number": 31,
+          "name": "Outbound Developer Webhooks",
+          "tier": 3,
+          "phase": 2,
+          "provides": ["outbound-webhooks"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["subscriptions/webhooks"],
+          "tablePrefix": "owh_",
+          "summary": "Customer endpoint subscriptions to platform events, signing secrets, delivery logs, payload replay."
+        },
+        {
+          "id": "custom-domains",
+          "number": 32,
+          "name": "Custom Domain & SSL Provisioning",
+          "tier": 4,
+          "phase": 3,
+          "provides": ["custom-domains"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["domains"],
+          "tablePrefix": "dom_",
+          "summary": "Vanity domain routing (client.com -> multi-tenant app), CNAME verification, Cloudflare SSL for SaaS."
+        },
+        {
+          "id": "scripting-sandbox",
+          "number": 33,
+          "name": "Plugin / Scripting Sandbox",
+          "tier": 4,
+          "phase": 3,
+          "provides": ["code-sandbox"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["plugins", "eval"],
+          "tablePrefix": "plg_",
+          "summary": "Safe customer-written JavaScript / Lua extensions with isolated memory limits."
+        }
+      ]
+    },
+    {
+      "id": "domain-8",
+      "name": "Security, Governance & Growth Telemetry",
+      "primitives": [
+        {
+          "id": "audit-trail",
+          "number": 34,
+          "name": "Audit Trail & Compliance Ledger",
+          "tier": 0,
+          "phase": 2,
+          "provides": ["audit-logging"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["audit"],
+          "tablePrefix": "audit_",
+          "summary": "Immutable append-only logs of administrative actions (actor, action, target, timestamp, IP) with compliance export."
+        },
+        {
+          "id": "admin-console",
+          "number": 35,
+          "name": "Admin Console & User Impersonation",
+          "tier": 4,
+          "phase": 3,
+          "provides": ["admin-impersonation"],
+          "requires": ["core-auth", "rbac-policy"],
+          "routePrefixes": ["admin"],
+          "tablePrefix": "adm_",
+          "summary": "Internal backoffice, Login-as-User session hijacking with audit trails, workspace overrides."
+        },
+        {
+          "id": "edge-traffic-armor",
+          "number": 36,
+          "name": "Edge Traffic Armor",
+          "tier": 0,
+          "phase": 2,
+          "provides": ["waf-protection"],
+          "requires": [],
+          "routePrefixes": ["armor"],
+          "tablePrefix": "arm_",
+          "summary": "DDoS protection, WAF rules, IP allow/denylists, bot detection (Turnstile), rate-limit headers."
+        },
+        {
+          "id": "data-privacy-gdpr",
+          "number": 37,
+          "name": "Data Privacy & GDPR Toolkit",
+          "tier": 0,
+          "phase": 3,
+          "provides": ["gdpr-toolkit"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["privacy", "gdpr"],
+          "tablePrefix": "gdpr_",
+          "summary": "Export my Data ZIP generator, cascade account deletion (Right to be Forgotten), cookie consent."
+        },
+        {
+          "id": "feature-flags",
+          "number": 38,
+          "name": "Feature Flags & Progressive Rollouts",
+          "tier": 0,
+          "phase": 2,
+          "provides": ["feature-flags"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["flags"],
+          "tablePrefix": "flag_",
+          "summary": "Percentage-based user rollouts, canary deployments, environment overrides, instant kill-switches."
+        },
+        {
+          "id": "product-analytics",
+          "number": 39,
+          "name": "Product Analytics & Funnel Tracking",
+          "tier": 4,
+          "phase": 2,
+          "provides": ["product-analytics"],
+          "requires": ["workspace-context"],
+          "routePrefixes": ["analytics", "funnels"],
+          "tablePrefix": "evt_",
+          "summary": "Clickstream events, conversion funnel tracking, user retention cohorts, session analytics."
+        },
+        {
+          "id": "user-onboarding",
+          "number": 40,
+          "name": "User Onboarding & Activation Tours",
+          "tier": 4,
+          "phase": 3,
+          "provides": ["onboarding-tours"],
+          "requires": ["user-identity"],
+          "routePrefixes": ["onboarding"],
+          "tablePrefix": "tour_",
+          "summary": "Interactive checklist widgets, milestone progress bars, modal walkthroughs, feature discovery tooltips."
+        }
+      ]
+    }
+  ]
+}

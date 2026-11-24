@@ -1,0 +1,138 @@
+{
+  "app": "lossy-discovery",
+  "format": "google-discovery",
+  "specHash": "sha256:8353841371031b5da94cdc2bdbc24cdac27815413dd99d3fec6e2d6df45cf751",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 14,
+    "normalized": 0,
+    "curated": 0,
+    "approximated": 0,
+    "unsupported": 1
+  },
+  "excludedByCuration": 0,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/rootUrl",
+      "from": "/",
+      "to": "/",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_get",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/drive.files.get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_get",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/drive.files.get/parameters/fileId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_get",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/methods/drive.files.get/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_get",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/methods/drive.files.get/scopes",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_insert",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/drive.files.insert",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_insert",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/methods/drive.files.insert/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_insert",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/methods/drive.files.insert/scopes",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_insert",
+      "element": "operation",
+      "code": "MEDIA_UPLOAD_UNSUPPORTED",
+      "pointer": "#/methods/drive.files.insert/supportsMediaUpload",
+      "blocking": false,
+      "status": "unsupported"
+    },
+    {
+      "op": "drive_files_update",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/methods/drive.files.update",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_update",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/methods/drive.files.update/parameters/fileId",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_update",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/drive.files.update/request/properties/id",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_update",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/methods/drive.files.update/request/properties/owner",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_update",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/methods/drive.files.update/response",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "drive_files_update",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/methods/drive.files.update/scopes",
+      "blocking": false,
+      "status": "mapped"
+    }
+  ]
+}

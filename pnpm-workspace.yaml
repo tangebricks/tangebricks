@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+  - bricks/*
+
+# pnpm 10 skips dependency install scripts unless allowed; workerd and esbuild
+# ship their native binary through one.
+onlyBuiltDependencies:
+  - esbuild
+  - workerd

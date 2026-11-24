@@ -1,0 +1,12 @@
+[
+  {
+    "startedAt": "2026-10-21T09:39:29.698Z",
+    "completed": false,
+    "stoppedBecause": "the client could not connect: Streamable HTTP error: Error POSTing to endpoint: 404 Not Found"
+  },
+  {
+    "startedAt": "2026-10-21T09:40:14.207Z",
+    "completed": true,
+    "stoppedBecause": null
+  }
+]

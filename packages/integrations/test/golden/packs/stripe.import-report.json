@@ -1,0 +1,968 @@
+{
+  "app": "stripe",
+  "format": "openapi3",
+  "specHash": "sha256:c3fcdadb633e619af64d2bb053f7f1d75daff1e5b8acd50d58457b661ec83af0",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 75,
+    "normalized": 0,
+    "curated": 26,
+    "approximated": 0,
+    "unsupported": 0
+  },
+  "excludedByCuration": 1,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/servers/0",
+      "from": "https://api.stripe.com",
+      "to": "https://api.stripe.com",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": null,
+      "element": "document",
+      "code": "SPEC_HAND_TRIMMED",
+      "pointer": "curation:#/specProvenance",
+      "reason": "Spec fixture is hand-trimmed, not upstream",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "cancelSubscription",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1subscriptions~1{subscriptionId}/delete",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "cancelSubscription",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1subscriptions~1{subscriptionId}/delete/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "cancelSubscription",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1subscriptions~1{subscriptionId}/delete/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "cancelSubscription",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1subscriptions~1{subscriptionId}/delete/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "cancelSubscription",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "confirmPaymentIntent",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1payment_intents~1{intentId}~1confirm/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "confirmPaymentIntent",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1payment_intents~1{intentId}~1confirm/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "confirmPaymentIntent",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1payment_intents~1{intentId}~1confirm/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/payment_method",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "confirmPaymentIntent",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1payment_intents~1{intentId}~1confirm/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "confirmPaymentIntent",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1payment_intents~1{intentId}~1confirm/post/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "confirmPaymentIntent",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "confirmPaymentIntent",
+      "element": "operation",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/confirmPaymentIntent/idempotency",
+      "to": {
+        "header": "Idempotency-Key"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createCheckoutSession",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1checkout~1sessions/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCheckoutSession",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1checkout~1sessions/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/cancel_url",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCheckoutSession",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1checkout~1sessions/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/customer",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCheckoutSession",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1checkout~1sessions/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/mode",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCheckoutSession",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1checkout~1sessions/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/success_url",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCheckoutSession",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1checkout~1sessions/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCheckoutSession",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1checkout~1sessions/post/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCheckoutSession",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createCheckoutSession",
+      "element": "operation",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/createCheckoutSession/idempotency",
+      "to": {
+        "header": "Idempotency-Key"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createCustomer",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1customers/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCustomer",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1customers/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/description",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCustomer",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1customers/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/email",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCustomer",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1customers/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/name",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCustomer",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1customers/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCustomer",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1customers/post/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createCustomer",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createCustomer",
+      "element": "operation",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/createCustomer/idempotency",
+      "to": {
+        "header": "Idempotency-Key"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createInvoice",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1invoices/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createInvoice",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1invoices/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/auto_advance",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createInvoice",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1invoices/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/customer",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createInvoice",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1invoices/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createInvoice",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1invoices/post/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createInvoice",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createInvoice",
+      "element": "operation",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/createInvoice/idempotency",
+      "to": {
+        "header": "Idempotency-Key"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createPaymentIntent",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1payment_intents/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPaymentIntent",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1payment_intents/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/amount",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPaymentIntent",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1payment_intents/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/currency",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPaymentIntent",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1payment_intents/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/customer",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPaymentIntent",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1payment_intents/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPaymentIntent",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1payment_intents/post/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createPaymentIntent",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createPaymentIntent",
+      "element": "operation",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/createPaymentIntent/idempotency",
+      "to": {
+        "header": "Idempotency-Key"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createRefund",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1refunds/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createRefund",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1refunds/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/amount",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createRefund",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1refunds/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/payment_intent",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createRefund",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1refunds/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createRefund",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1refunds/post/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createRefund",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createRefund",
+      "element": "operation",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/createRefund/idempotency",
+      "to": {
+        "header": "Idempotency-Key"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createSubscription",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1subscriptions/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createSubscription",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1subscriptions/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/customer",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createSubscription",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1subscriptions/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/price",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createSubscription",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1subscriptions/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createSubscription",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1subscriptions/post/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "createSubscription",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "createSubscription",
+      "element": "operation",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/createSubscription/idempotency",
+      "to": {
+        "header": "Idempotency-Key"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "getCustomer",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getCustomer",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getCustomer",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getCustomer",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/get/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getCustomer",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "getPaymentIntent",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1payment_intents~1{intentId}/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getPaymentIntent",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1payment_intents~1{intentId}/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getPaymentIntent",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1payment_intents~1{intentId}/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getPaymentIntent",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1payment_intents~1{intentId}/get/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "getPaymentIntent",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "listCustomers",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1customers/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listCustomers",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1customers/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listCustomers",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1customers/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listCustomers",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1customers/get/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listCustomers",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1customers/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listCustomers",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1customers/get/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listCustomers",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "listCustomers",
+      "element": "pagination",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/listCustomers/pagination",
+      "to": {
+        "style": "lastItemCursor",
+        "paramName": "starting_after",
+        "responsePath": "data",
+        "maxPages": 3,
+        "itemIdPath": "id",
+        "hasMorePath": "has_more"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "listInvoices",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1invoices/get",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listInvoices",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1invoices/get/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listInvoices",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1invoices/get/parameters/1",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listInvoices",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1invoices/get/parameters/2",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listInvoices",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1invoices/get/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listInvoices",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1invoices/get/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "listInvoices",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "listInvoices",
+      "element": "pagination",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/listInvoices/pagination",
+      "to": {
+        "style": "lastItemCursor",
+        "paramName": "starting_after",
+        "responsePath": "data",
+        "maxPages": 3,
+        "itemIdPath": "id",
+        "hasMorePath": "has_more"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "updateCustomer",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateCustomer",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateCustomer",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/email",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateCustomer",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/name",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateCustomer",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateCustomer",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1customers~1{customerId}/post/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateCustomer",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "updateCustomer",
+      "element": "operation",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/updateCustomer/idempotency",
+      "to": {
+        "header": "Idempotency-Key"
+      },
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "updateSubscription",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1v1~1subscriptions~1{subscriptionId}/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateSubscription",
+      "element": "param",
+      "code": "PARAM_MAPPED",
+      "pointer": "#/paths/~1v1~1subscriptions~1{subscriptionId}/post/parameters/0",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateSubscription",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1v1~1subscriptions~1{subscriptionId}/post/requestBody/content/application~1x-www-form-urlencoded/schema/properties/cancel_at_period_end",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateSubscription",
+      "element": "response",
+      "code": "RESPONSE_SCHEMA",
+      "pointer": "#/paths/~1v1~1subscriptions~1{subscriptionId}/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateSubscription",
+      "element": "response",
+      "code": "ERROR_SHAPE",
+      "pointer": "#/paths/~1v1~1subscriptions~1{subscriptionId}/post/responses/default",
+      "to": {
+        "codePath": "error.code",
+        "messagePath": "error.message",
+        "typePath": "error.type"
+      },
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "updateSubscription",
+      "element": "auth",
+      "code": "AUTH_FROM_CURATION",
+      "pointer": "curation:#/auth",
+      "to": "oauth2",
+      "reason": "spec declares no security",
+      "blocking": false,
+      "status": "curated"
+    },
+    {
+      "op": "updateSubscription",
+      "element": "operation",
+      "code": "OVERLAY_ADDED",
+      "pointer": "curation:#/operations/updateSubscription/idempotency",
+      "to": {
+        "header": "Idempotency-Key"
+      },
+      "blocking": false,
+      "status": "curated"
+    }
+  ]
+}

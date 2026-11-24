@@ -1,0 +1,807 @@
+{
+  "manifestVersion": 2,
+  "kind": "integration",
+  "app": "google",
+  "version": "1.0.0",
+  "ui": {
+    "displayName": "Google Workspace",
+    "category": "automation",
+    "icon": "google",
+    "docsUrl": "https://developers.google.com/workspace",
+    "summary": "Calendar events and free/busy, Sheets values, and Gmail messages and threads.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "scopes": [
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/gmail.modify"
+    ],
+    "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+    "tokenUrl": "https://oauth2.googleapis.com/token",
+    "headerName": "Authorization",
+    "prefix": "Bearer",
+    "schemes": {
+      "oauth2": {
+        "type": "oauth2"
+      }
+    },
+    "requirements": [
+      [
+        {
+          "scheme": "oauth2"
+        }
+      ]
+    ],
+    "connectionFields": [
+      "token"
+    ]
+  },
+  "baseUrl": "https://www.googleapis.com",
+  "allowedHosts": [
+    "www.googleapis.com",
+    "sheets.googleapis.com",
+    "gmail.googleapis.com"
+  ],
+  "operations": [
+    {
+      "operationId": "calendar_events_list",
+      "label": "List calendar events",
+      "summary": "List calendar events",
+      "method": "GET",
+      "path": "/calendar/v3/calendars/{calendarId}/events",
+      "params": [
+        {
+          "name": "calendarId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "timeMin",
+          "in": "query",
+          "dataType": "string"
+        },
+        {
+          "name": "pageToken",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "response": {
+        "outputs": [
+          {
+            "id": "updated",
+            "dataType": "string"
+          },
+          {
+            "id": "timeZone",
+            "dataType": "string"
+          }
+        ]
+      },
+      "pagination": {
+        "style": "cursor",
+        "paramName": "pageToken",
+        "responsePath": "items",
+        "nextCursorPath": "nextPageToken",
+        "maxPages": 3
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "calendar_events_insert",
+      "label": "Create calendar event",
+      "summary": "Create calendar event",
+      "method": "POST",
+      "path": "/calendar/v3/calendars/{calendarId}/events",
+      "params": [
+        {
+          "name": "calendarId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "summary",
+            "dataType": "string",
+            "description": "Event title",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "start",
+            "dataType": "object",
+            "description": "Start time",
+            "schema": {
+              "dataType": "object"
+            }
+          },
+          {
+            "name": "end",
+            "dataType": "object",
+            "description": "End time",
+            "schema": {
+              "dataType": "object"
+            }
+          }
+        ]
+      },
+      "response": {
+        "outputs": [
+          {
+            "id": "focusTimeProperties",
+            "dataType": "object"
+          },
+          {
+            "id": "start",
+            "dataType": "object"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "calendar_events_patch",
+      "label": "Update calendar event",
+      "summary": "Update calendar event",
+      "method": "PATCH",
+      "path": "/calendar/v3/calendars/{calendarId}/events/{eventId}",
+      "params": [
+        {
+          "name": "calendarId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "eventId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "summary",
+            "dataType": "string",
+            "description": "Event title",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "start",
+            "dataType": "object",
+            "description": "Start time",
+            "schema": {
+              "dataType": "object"
+            }
+          },
+          {
+            "name": "end",
+            "dataType": "object",
+            "description": "End time",
+            "schema": {
+              "dataType": "object"
+            }
+          }
+        ]
+      },
+      "response": {
+        "outputs": [
+          {
+            "id": "focusTimeProperties",
+            "dataType": "object"
+          },
+          {
+            "id": "start",
+            "dataType": "object"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "calendar_events_delete",
+      "label": "Delete calendar event",
+      "summary": "Delete calendar event",
+      "method": "DELETE",
+      "path": "/calendar/v3/calendars/{calendarId}/events/{eventId}",
+      "params": [
+        {
+          "name": "calendarId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "eventId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {},
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "calendar_freebusy_query",
+      "label": "Query calendar free/busy",
+      "summary": "Query calendar free/busy",
+      "method": "POST",
+      "path": "/calendar/v3/freeBusy",
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "timeMin",
+            "dataType": "string",
+            "description": "Start ISO",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "timeMax",
+            "dataType": "string",
+            "description": "End ISO",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "items",
+            "dataType": "array",
+            "description": "Calendars",
+            "schema": {
+              "dataType": "array"
+            }
+          }
+        ]
+      },
+      "response": {
+        "outputs": [
+          {
+            "id": "timeMax",
+            "dataType": "string"
+          },
+          {
+            "id": "kind",
+            "dataType": "string"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "sheets_values_get",
+      "label": "Read sheet cell values",
+      "summary": "Read sheet cell values",
+      "method": "GET",
+      "path": "/v4/spreadsheets/{spreadsheetId}/values/{range}",
+      "params": [
+        {
+          "name": "spreadsheetId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "range",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "outputs": [
+          {
+            "id": "range",
+            "dataType": "string"
+          },
+          {
+            "id": "values",
+            "dataType": "array"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "sheets_values_append",
+      "label": "Append sheet rows",
+      "summary": "Append sheet rows",
+      "method": "POST",
+      "path": "/v4/spreadsheets/{spreadsheetId}/values/{range}:append",
+      "params": [
+        {
+          "name": "spreadsheetId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "range",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "valueInputOption",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "range_body",
+            "wireName": "range",
+            "dataType": "string",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "values",
+            "dataType": "array",
+            "schema": {
+              "dataType": "array",
+              "items": {
+                "dataType": "string"
+              }
+            }
+          }
+        ]
+      },
+      "response": {
+        "outputs": [
+          {
+            "id": "spreadsheetId",
+            "dataType": "string"
+          },
+          {
+            "id": "updates",
+            "dataType": "object"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "sheets_values_update",
+      "label": "Update sheet cell values",
+      "summary": "Update sheet cell values",
+      "method": "PUT",
+      "path": "/v4/spreadsheets/{spreadsheetId}/values/{range}",
+      "params": [
+        {
+          "name": "spreadsheetId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "range",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "valueInputOption",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "range_body",
+            "wireName": "range",
+            "dataType": "string",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "values",
+            "dataType": "array",
+            "schema": {
+              "dataType": "array",
+              "items": {
+                "dataType": "string"
+              }
+            }
+          }
+        ]
+      },
+      "response": {
+        "outputs": [
+          {
+            "id": "updatedCells",
+            "dataType": "number"
+          },
+          {
+            "id": "updatedData",
+            "dataType": "object"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "sheets_spreadsheets_create",
+      "label": "Create spreadsheet",
+      "summary": "Create spreadsheet",
+      "method": "POST",
+      "path": "/v4/spreadsheets",
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "dataSources",
+            "dataType": "array",
+            "schema": {
+              "dataType": "array",
+              "items": {
+                "dataType": "string"
+              }
+            }
+          },
+          {
+            "name": "commentsViewMode",
+            "dataType": "string",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "outputs": [
+          {
+            "id": "dataSources",
+            "dataType": "array"
+          },
+          {
+            "id": "commentsViewMode",
+            "dataType": "string"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "gmail_messages_send",
+      "label": "Send Gmail message",
+      "summary": "Send Gmail message",
+      "method": "POST",
+      "path": "/gmail/v1/users/{userId}/messages/send",
+      "params": [
+        {
+          "name": "userId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "body": {
+        "contentType": "application/json",
+        "fields": [
+          {
+            "name": "raw",
+            "dataType": "string",
+            "description": "Base64url RFC2822",
+            "schema": {
+              "dataType": "string"
+            }
+          },
+          {
+            "name": "threadId",
+            "dataType": "string",
+            "description": "Thread ID",
+            "schema": {
+              "dataType": "string"
+            }
+          }
+        ]
+      },
+      "response": {
+        "outputs": [
+          {
+            "id": "snippet",
+            "dataType": "string"
+          },
+          {
+            "id": "payload",
+            "dataType": "object"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "write"
+    },
+    {
+      "operationId": "gmail_messages_list",
+      "label": "List Gmail messages",
+      "summary": "List Gmail messages",
+      "method": "GET",
+      "path": "/gmail/v1/users/{userId}/messages",
+      "params": [
+        {
+          "name": "userId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "q",
+          "in": "query",
+          "dataType": "string"
+        },
+        {
+          "name": "pageToken",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "response": {
+        "outputs": [
+          {
+            "id": "messages",
+            "dataType": "array"
+          },
+          {
+            "id": "nextPageToken",
+            "dataType": "string"
+          }
+        ]
+      },
+      "pagination": {
+        "style": "cursor",
+        "paramName": "pageToken",
+        "responsePath": "messages",
+        "nextCursorPath": "nextPageToken",
+        "maxPages": 3
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "gmail_messages_get",
+      "label": "Get Gmail message",
+      "summary": "Get Gmail message",
+      "method": "GET",
+      "path": "/gmail/v1/users/{userId}/messages/{id}",
+      "params": [
+        {
+          "name": "userId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "outputs": [
+          {
+            "id": "snippet",
+            "dataType": "string"
+          },
+          {
+            "id": "payload",
+            "dataType": "object"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "gmail_threads_list",
+      "label": "List Gmail threads",
+      "summary": "List Gmail threads",
+      "method": "GET",
+      "path": "/gmail/v1/users/{userId}/threads",
+      "params": [
+        {
+          "name": "userId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "q",
+          "in": "query",
+          "dataType": "string"
+        }
+      ],
+      "response": {
+        "outputs": [
+          {
+            "id": "resultSizeEstimate",
+            "dataType": "number"
+          },
+          {
+            "id": "threads",
+            "dataType": "array"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    },
+    {
+      "operationId": "gmail_threads_get",
+      "label": "Get Gmail thread",
+      "summary": "Get Gmail thread",
+      "method": "GET",
+      "path": "/gmail/v1/users/{userId}/threads/{id}",
+      "params": [
+        {
+          "name": "userId",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "dataType": "string",
+          "required": true
+        }
+      ],
+      "response": {
+        "outputs": [
+          {
+            "id": "messages",
+            "dataType": "array"
+          },
+          {
+            "id": "id",
+            "dataType": "string"
+          }
+        ]
+      },
+      "rateLimit": {
+        "maxRetries": 3,
+        "initialBackoffMs": 200,
+        "respectRetryAfter": true,
+        "retryAfterHeader": "Retry-After"
+      },
+      "sideEffects": "read"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "push_notification",
+      "label": "Google Push Notification",
+      "summary": "Fires when a Google Calendar, Drive, or Gmail push notification arrives.",
+      "verifier": "shared-secret",
+      "signatureHeader": "X-Goog-Channel-Token",
+      "eventIdPath": "message.messageId",
+      "outputs": [
+        {
+          "id": "out",
+          "label": "Push Notification",
+          "dataType": "object"
+        }
+      ]
+    }
+  ],
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "Google OAuth2 access token is invalid or expired.",
+      "hint": "Re-authorize the Google Workspace connection.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "Google API quota or rate limit exceeded.",
+      "hint": "Respect Retry-After header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "Retry-After"
+    }
+  },
+  "fidelity": {
+    "specHash": "sha256:19663aef2afe01aa3e4f89e70f6377c6c2bec105604bae303a8491f019975a84",
+    "importerVersion": "2.0.0",
+    "level": "curated",
+    "unsupported": []
+  }
+}

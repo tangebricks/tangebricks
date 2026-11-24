@@ -1,0 +1,68 @@
+{
+  "app": "lossy-swagger2",
+  "format": "swagger2",
+  "specHash": "sha256:aff9c16a1412829af95bfd873c466dbc688b113fcbf6acc34acb8247a3bf79fc",
+  "importerVersion": "2.0.0",
+  "summary": {
+    "mapped": 5,
+    "normalized": 1,
+    "curated": 0,
+    "approximated": 0,
+    "unsupported": 0
+  },
+  "excludedByCuration": 0,
+  "entries": [
+    {
+      "op": null,
+      "element": "server",
+      "code": "BASEURL",
+      "pointer": "#/basePath",
+      "from": "/",
+      "to": "/",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": null,
+      "element": "document",
+      "code": "SWAGGER2_UPCONVERTED",
+      "pointer": "#/swagger",
+      "from": "2.0",
+      "to": "3.0",
+      "blocking": false,
+      "status": "normalized"
+    },
+    {
+      "op": "opSwaggerBody",
+      "element": "operation",
+      "code": "OPERATION_MAPPED",
+      "pointer": "#/paths/~1swagger-body/post",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opSwaggerBody",
+      "element": "bodyField",
+      "code": "BODY_FIELD_MAPPED",
+      "pointer": "#/paths/~1swagger-body/post/parameters/0/schema/properties/name",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opSwaggerBody",
+      "element": "response",
+      "code": "RESPONSE_MAPPED",
+      "pointer": "#/paths/~1swagger-body/post/responses/200",
+      "blocking": false,
+      "status": "mapped"
+    },
+    {
+      "op": "opSwaggerBody",
+      "element": "auth",
+      "code": "AUTH_MAPPED",
+      "pointer": "#/security",
+      "blocking": false,
+      "status": "mapped"
+    }
+  ]
+}

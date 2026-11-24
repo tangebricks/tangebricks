@@ -1,0 +1,16 @@
+[
+  {
+    "startedAt": "2026-10-21T02:56:30.833Z",
+    "completed": true,
+    "seconds": 15.502,
+    "stoppedBecause": null,
+    "uploadOutcome": "accepted"
+  },
+  {
+    "startedAt": "2026-10-21T03:23:00.872Z",
+    "completed": true,
+    "seconds": 16.695,
+    "stoppedBecause": null,
+    "uploadOutcome": "accepted"
+  }
+]

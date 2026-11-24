@@ -1,0 +1,61 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "realtime-presence",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "presence-sync"
+  ],
+  "requires": [
+    "workspace-context"
+  ],
+  "migrations": [
+    "migrations/0001_realtime_presence.sql"
+  ],
+  "routePrefixes": [
+    "presence"
+  ],
+  "npmDependencies": {
+    "hono": "4.13.19",
+    "zod": "4.6.7"
+  },
+  "settings": {},
+  "ui": {
+    "displayName": "Real-Time Presence & State Sync",
+    "category": "communication",
+    "summary": "Real-time room presence, live cursors, and heartbeats.",
+    "maturity": "experimental",
+    "maturityReason": "QUARANTINED: room and user lookups answer 200 for a room name or user id from another workspace (attack suite ID_GUESS); HTTP polling in D1, no WebSocket push",
+    "behaviourTest": "test/presence.test.ts"
+  },
+  "worker": {
+    "package": "@poc/realtime-presence",
+    "routes": [
+      {
+        "factory": "createPresenceRoutes",
+        "mountAt": "/api",
+        "guardWith": "workspace-context",
+        "guardPaths": [
+          "/api/presence",
+          "/api/presence/*"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "pres_rooms": {
+        "subject": "workspace",
+        "erase": "delete",
+        "export": true
+      },
+      "pres_sessions": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "delete",
+        "export": true
+      }
+    }
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "app": "google",
+  "version": "1.0.0",
+  "format": "google-discovery",
+  "specProvenance": "hand-trimmed",
+  "upstream": {
+    "corpusSpec": "google",
+    "operationIds": {
+      "calendar_events_list": "calendar_events_list",
+      "calendar_events_insert": "calendar_events_insert",
+      "calendar_events_patch": "calendar_events_patch",
+      "calendar_events_delete": "calendar_events_delete",
+      "calendar_freebusy_query": "calendar_freebusy_query",
+      "sheets_values_get": "sheets_spreadsheets_values_get",
+      "sheets_values_append": "sheets_spreadsheets_values_append",
+      "sheets_values_update": "sheets_spreadsheets_values_update",
+      "sheets_spreadsheets_create": "sheets_spreadsheets_create",
+      "gmail_messages_send": "gmail_users_messages_send",
+      "gmail_messages_list": "gmail_users_messages_list",
+      "gmail_messages_get": "gmail_users_messages_get",
+      "gmail_threads_list": "gmail_users_threads_list",
+      "gmail_threads_get": "gmail_users_threads_get"
+    }
+  },
+  "acknowledge": [
+  ],
+  "ui": {
+    "displayName": "Google Workspace",
+    "category": "automation",
+    "icon": "google",
+    "docsUrl": "https://developers.google.com/workspace",
+    "summary": "Calendar events and free/busy, Sheets values, and Gmail messages and threads.",
+    "maturity": "beta",
+    "maturityReason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
+    "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts"
+  },
+  "auth": {
+    "type": "oauth2",
+    "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+    "tokenUrl": "https://oauth2.googleapis.com/token",
+    "scopes": [
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/gmail.modify"
+    ],
+    "headerName": "Authorization",
+    "prefix": "Bearer"
+  },
+  "baseUrl": "https://www.googleapis.com",
+  "allowedHosts": [
+    "www.googleapis.com",
+    "sheets.googleapis.com",
+    "gmail.googleapis.com"
+  ],
+  "includeOperations": [
+    "calendar_events_list",
+    "calendar_events_insert",
+    "calendar_events_patch",
+    "calendar_events_delete",
+    "calendar_freebusy_query",
+    "sheets_values_get",
+    "sheets_values_append",
+    "sheets_values_update",
+    "sheets_spreadsheets_create",
+    "gmail_messages_send",
+    "gmail_messages_list",
+    "gmail_messages_get",
+    "gmail_threads_list",
+    "gmail_threads_get"
+  ],
+  "defaultRateLimit": {
+    "maxRetries": 3,
+    "initialBackoffMs": 200,
+    "respectRetryAfter": true,
+    "retryAfterHeader": "Retry-After"
+  },
+  "operations": {
+    "calendar_events_list": {
+      "pagination": {
+        "style": "cursor",
+        "paramName": "pageToken",
+        "responsePath": "items",
+        "nextCursorPath": "nextPageToken",
+        "maxPages": 3
+      }
+    },
+    "gmail_messages_list": {
+      "pagination": {
+        "style": "cursor",
+        "paramName": "pageToken",
+        "responsePath": "messages",
+        "nextCursorPath": "nextPageToken",
+        "maxPages": 3
+      }
+    }
+  },
+  "triggers": [
+    {
+      "id": "push_notification",
+      "label": "Google Push Notification",
+      "summary": "Fires when a Google Calendar, Drive, or Gmail push notification arrives.",
+      "verifier": "shared-secret",
+      "signatureHeader": "X-Goog-Channel-Token",
+      "eventIdPath": "message.messageId",
+      "outputs": [
+        { "id": "out", "label": "Push Notification", "dataType": "object" }
+      ]
+    }
+  ],
+  "errorMappings": {
+    "401": {
+      "status": 401,
+      "code": "CONNECTION_EXPIRED",
+      "message": "Google OAuth2 access token is invalid or expired.",
+      "hint": "Re-authorize the Google Workspace connection.",
+      "retryable": false
+    },
+    "429": {
+      "status": 429,
+      "code": "RATE_LIMITED",
+      "message": "Google API quota or rate limit exceeded.",
+      "hint": "Respect Retry-After header before retrying.",
+      "retryable": true,
+      "retryAfterHeader": "Retry-After"
+    }
+  }
+}
