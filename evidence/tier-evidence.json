@@ -330,9 +330,9 @@
       "behaviourTest": "bricks/rbac-policy/test/rbac.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 8,
+      "testsRun": 22,
       "testsSkipped": 0,
-      "assertionCount": 25
+      "assertionCount": 78
     },
     {
       "id": "realtime-presence",
@@ -496,8 +496,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-24T12:57:47.413Z",
-    "gitSha": "378ce37c889a347685d9b2efecc2fa16b7b3293c",
+    "generatedAt": "2026-11-24T14:20:51.972Z",
+    "gitSha": "1f97272e151111ae0850114162982db106606341",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
