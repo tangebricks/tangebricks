@@ -1,4 +1,20 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
+
+// Story 0.11: brick tiers are derived honestly and recorded in evidence/brick-tiers.json. The badges must show exactly
+// that tier, so the expected text is read from the evidence rather than hard-coded.
+const brickTiers = (
+  JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../evidence/brick-tiers.json"), "utf8")) as {
+    bricks: Array<{ id: string; tier: "production" | "beta" | "experimental" }>;
+  }
+).bricks;
+const TIER_BADGE = { production: "Production ✓", beta: "Beta ◆", experimental: "Experimental ⚠" } as const;
+function tierBadge(brickId: string): string {
+  const entry = brickTiers.find((b) => b.id === brickId);
+  if (!entry) throw new Error(`${brickId} is not in evidence/brick-tiers.json`);
+  return TIER_BADGE[entry.tier];
+}
 
 test.describe("CP2 Read-Only Studio Views End-to-End Verification", () => {
   test("verifies compiled Tailwind tokens, 3-panel horizontal layout, F5 session restoration, Overview Backend Map, Bricks with maturity badges, Entities DDL preview, Workflow Canvas, and History/Semantic Diff Drawer", async ({
@@ -64,21 +80,27 @@ test.describe("CP2 Read-Only Studio Views End-to-End Verification", () => {
     // 2. Bricks View & Maturity Badges (Production, Beta, Experimental)
     await page.getByTestId("nav-tab-bricks").click();
     await expect(page.getByTestId("view-bricks")).toBeVisible();
+    // One enabled brick of each honest tier present on acme-saas: dynamic-entities (Production), credit-wallet (Beta)
+    expect(tierBadge("dynamic-entities")).toBe("Production ✓");
+    await expect(
+      page.getByTestId("enabled-brick-maturity-dynamic-entities"),
+    ).toHaveText(tierBadge("dynamic-entities"));
     await expect(
       page.getByTestId("enabled-brick-maturity-credit-wallet"),
-    ).toHaveText("Production ✓");
+    ).toHaveText(tierBadge("credit-wallet"));
     await expect(
       page.getByTestId("catalog-brick-maturity-document-parsing"),
-    ).toHaveText("Beta ◆");
+    ).toHaveText(tierBadge("document-parsing"));
 
     // Experimental bricks hidden by default until toggled
     await expect(
       page.getByTestId("catalog-brick-card-scripting-sandbox"),
     ).toHaveCount(0);
     await page.getByTestId("bricks-experimental-toggle").click();
+    expect(tierBadge("scripting-sandbox")).toBe("Experimental ⚠");
     await expect(
       page.getByTestId("catalog-brick-maturity-scripting-sandbox"),
-    ).toHaveText("Experimental ⚠");
+    ).toHaveText(tierBadge("scripting-sandbox"));
 
     // Clicking a brick opens its read-only Inspector
     await page.getByTestId("enabled-brick-card-credit-wallet").click();

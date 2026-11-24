@@ -9,6 +9,8 @@ async function api(path: string, init: { method?: string; cookie?: string; body?
   return fetch(`${API}${path}`, {
     method: init.method ?? (init.body !== undefined ? "POST" : "GET"),
     headers: {
+      // Same-origin Origin, as a browser sends it; the CSRF check (story 0.14) refuses cookie calls without it.
+      origin: API,
       ...(init.body !== undefined ? { "content-type": "application/json" } : {}),
       ...(init.cookie ? { cookie: init.cookie } : {}),
     },

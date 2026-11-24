@@ -510,6 +510,67 @@ export function storedGraphKey(workspaceId: string, graphId: string): string {
   return workspaceId === APP_WORKSPACE ? graphId : `${workspaceId}:${graphId}`;
 }
 
+/** SQLite-style comparison of one cell against a bound value: numeric when either side is a number and both convert. */
+function matchesSqlComparison(cell: unknown, op: string, value: unknown): boolean {
+  if (cell === null || cell === undefined || value === null || value === undefined) return false;
+  if (op === "LIKE") {
+    const pattern = String(value)
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      .replace(/%/g, ".*")
+      .replace(/_/g, ".");
+    return new RegExp(`^${pattern}$`, "is").test(String(cell));
+  }
+  const numeric =
+    (typeof cell === "number" || typeof value === "number") &&
+    String(cell).trim() !== "" &&
+    String(value).trim() !== "" &&
+    Number.isFinite(Number(cell)) &&
+    Number.isFinite(Number(value));
+  const a: number | string = numeric ? Number(cell) : String(cell);
+  const b: number | string = numeric ? Number(value) : String(value);
+  if (op === ">") return a > b;
+  if (op === "<") return a < b;
+  return a === b;
+}
+
+/**
+ * The simple `"col" op ?N` clauses (joined by AND) of a statement's WHERE: `=`, `>`, `<` and
+ * `CAST("col" AS TEXT) LIKE ?N`, the shapes the data browser compiles. `complete` is false when the WHERE also holds
+ * a clause of another shape (left to the special cases around it).
+ */
+function parseSimpleWhere(
+  sql: string,
+  bound: unknown[],
+): { present: boolean; complete: boolean; matches: (row: Record<string, unknown>) => boolean } {
+  const where = sql.match(/\bWHERE\s+([\s\S]+?)(?:\s+ORDER\s+BY\b|\s+GROUP\s+BY\b|\s+LIMIT\b|\s*;|$)/i);
+  if (!where) return { present: false, complete: true, matches: () => true };
+  const tests: Array<(row: Record<string, unknown>) => boolean> = [];
+  let complete = true;
+  for (const part of where[1]!.split(/\s+AND\s+/i)) {
+    const m = part
+      .trim()
+      .match(/^(?:CAST\(\s*)?["`]?([A-Za-z_][A-Za-z0-9_]*)["`]?(?:\s+AS\s+TEXT\s*\))?\s*(=|>|<|LIKE)\s*\?(\d+)$/i);
+    const value = m ? bound[Number(m[3]) - 1] : undefined;
+    if (!m || value === undefined) {
+      complete = false;
+      continue;
+    }
+    const column = m[1]!;
+    const op = m[2]!.toUpperCase();
+    tests.push((row) => matchesSqlComparison(row[column], op, value));
+  }
+  return { present: true, complete, matches: (row) => tests.every((t) => t(row)) };
+}
+
+/** Keeps the rows that satisfy the statement's simple WHERE clauses (see `parseSimpleWhere`). */
+function applySimpleWhereClauses(
+  rows: Array<Record<string, unknown>>,
+  sql: string,
+  bound: unknown[],
+): Array<Record<string, unknown>> {
+  return rows.filter(parseSimpleWhere(sql, bound).matches);
+}
+
 function createLightweightInMemoryD1(): D1Like {
   const tables = new Map<string, Array<Record<string, unknown>>>();
   const tableSchemas = new Map<
@@ -638,6 +699,7 @@ function createLightweightInMemoryD1(): D1Like {
           if (/WHERE\s+["`]?workspace_id["`]?\s*=\s*\?(?:1)?/i.test(trimmed) && bound.length > 0) {
             rows = rows.filter((r) => r.workspace_id === bound[0]);
           }
+          rows = applySimpleWhereClauses(rows, trimmed, bound);
           return { cnt: rows.length, total: rows.length } as unknown as T;
         }
         const allRes = await this.all<T>();
@@ -737,17 +799,54 @@ function createLightweightInMemoryD1(): D1Like {
         const deleteMatch = trimmed.match(
           /^DELETE\s+FROM\s+["`]?([A-Za-z0-9_]+)["`]?/i,
         );
+        // UPDATE t SET "c" = ?N, ... WHERE <simple clauses>: only the matching rows change; a WHERE of another shape
+        // changes nothing rather than every row.
+        const updateMatch = trimmed.match(
+          /^UPDATE\s+["`]?([A-Za-z0-9_]+)["`]?\s+SET\s+([\s\S]+?)\s+WHERE\s/i,
+        );
+        if (updateMatch) {
+          const tbl = updateMatch[1]!;
+          const assignments: Array<[string, unknown]> = [];
+          let assignable = true;
+          for (const part of updateMatch[2]!.split(",")) {
+            const m = part.trim().match(/^["`]?([A-Za-z_][A-Za-z0-9_]*)["`]?\s*=\s*\?(\d+)$/);
+            if (!m) {
+              assignable = false;
+              break;
+            }
+            assignments.push([m[1]!, bound[Number(m[2]) - 1] ?? null]);
+          }
+          const where = parseSimpleWhere(trimmed, bound);
+          let changes = 0;
+          if (assignable && where.complete) {
+            for (const row of tables.get(tbl) ?? []) {
+              if (!where.matches(row)) continue;
+              for (const [col, value] of assignments) row[col] = value;
+              changes += 1;
+            }
+          }
+          return { results: [], success: true, meta: { changes } };
+        }
         if (deleteMatch) {
           const tbl = deleteMatch[1]!;
-          if (/WHERE\s+["`]?id["`]?\s*=\s*\?/i.test(trimmed) && bound.length > 0) {
+          const where = parseSimpleWhere(trimmed, bound);
+          if (where.present && where.complete) {
+            // Only the rows the WHERE names (e.g. `"workspace_id" = ?1 AND "id" = ?2`), never the whole table.
+            tables.set(
+              tbl,
+              ensureTable(tbl).filter((r) => !where.matches(r)),
+            );
+          } else if (/WHERE\s+["`]?id["`]?\s*=\s*\?/i.test(trimmed) && bound.length > 0) {
             const list = ensureTable(tbl);
             tables.set(
               tbl,
               list.filter((r) => r.id !== bound[0]),
             );
-          } else {
+          } else if (!where.present) {
+            // DELETE with no WHERE clears the table, as SQL does.
             tables.set(tbl, []);
           }
+          // A WHERE of a shape this emulator cannot evaluate deletes nothing rather than every row.
         }
         return {
           results: [],
@@ -795,6 +894,7 @@ function createLightweightInMemoryD1(): D1Like {
               .filter((r) => r.workspace_id === bound[1] || r.workspace_id === app)
               .sort((a, b) => (a.workspace_id === bound[1] ? 0 : 1) - (b.workspace_id === bound[1] ? 0 : 1));
           }
+          rows = applySimpleWhereClauses(rows, trimmed, bound);
           return { results: rows as unknown as T[], success: true, meta: { changes: 0 } };
         }
         return { results: [], success: true, meta: { changes: 0 } };

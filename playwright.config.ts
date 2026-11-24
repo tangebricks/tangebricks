@@ -12,6 +12,10 @@ export default defineConfig({
   globalSetup: "./apps/studio-web/e2e/global-setup.ts",
   use: {
     baseURL: "http://127.0.0.1:4173",
+    // Requests made from test code (page.request) carry the session cookie but, unlike a browser,
+    // no Origin header; cookie-authenticated mutating routes refuse those (CSRF check, story 0.14).
+    // Send the app's own origin, exactly what the browser sends for the same request.
+    extraHTTPHeaders: { origin: "http://127.0.0.1:4173" },
     viewport: { width: 1440, height: 900 },
     headless: true,
   },

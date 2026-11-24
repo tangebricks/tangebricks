@@ -302,9 +302,12 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
       toolName: string,
       args: Record<string, unknown>,
     ): Promise<T> => {
+      // Story 0.15: an MCP token is bound to one project, so each call uses the token of the project it targets
+      // (the MCP surface builds `invoice-mcp`; the co-author step below edits `invoice-ui`).
+      const project = typeof args.project === "string" ? args.project : "invoice-mcp";
       const res = await request.post("http://127.0.0.1:8787/mcp", {
         headers: {
-          authorization: `Bearer ${await e2eProjectToken("invoice-mcp")}`,
+          authorization: `Bearer ${await e2eProjectToken(project)}`,
           "content-type": "application/json",
         },
         data: {

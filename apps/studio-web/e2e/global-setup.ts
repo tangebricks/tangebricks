@@ -377,7 +377,11 @@ async function seedRealStudioBackend(env: StudioApiEnv): Promise<void> {
     path: string,
     init: RequestInit = {},
   ): Promise<Response> => {
-    const req = new Request(`http://127.0.0.1:8787${path}`, init);
+    // Send the same-origin Origin header a browser sends; cookie-authenticated
+    // mutating routes refuse requests without it (CSRF check, story 0.14).
+    const headers = new Headers(init.headers);
+    if (!headers.has("origin")) headers.set("origin", "http://127.0.0.1:8787");
+    const req = new Request(`http://127.0.0.1:8787${path}`, { ...init, headers });
     return studioApp.fetch(req, env);
   };
 

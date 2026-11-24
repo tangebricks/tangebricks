@@ -72,11 +72,27 @@ test.describe("Story 6.4 — Backend Health & Metrics Panel (Real Backend)", () 
     const min5Ago = new Date(nowMs - 5 * 60_000).toISOString();
     const hours6Ago = new Date(nowMs - 6 * 3600_000).toISOString();
 
-    const seedRes = await page.request.post(
+    // Story 0.16: `reset` wipes the health tables of every project in the environment, so only a platform operator may
+    // send it. Alice owns acme-saas but is not an operator: the reset is refused and nothing is written.
+    const resetRes = await page.request.post(
       "/api/projects/acme-saas/environments/preview/health/seed",
       {
         data: {
           reset: true,
+          window: "1h",
+          samples: [{ ts: min5Ago, routePrefix: "/webhooks/stripe", brickId: "webhook-gateway", status: 200, latencyMs: 10 }],
+        },
+      },
+    );
+    expect(resetRes.status()).toBe(403);
+    const resetBody = (await resetRes.json()) as { error: { code: string } };
+    expect(resetBody.error.code).toBe("FORBIDDEN_PLATFORM_OPERATOR");
+
+    // The owner seeds the project's health data without a reset (the e2e database starts empty).
+    const seedRes = await page.request.post(
+      "/api/projects/acme-saas/environments/preview/health/seed",
+      {
+        data: {
           window: "1h",
           samples: [
             ...Array.from({ length: 12 }, (_, idx) => ({
