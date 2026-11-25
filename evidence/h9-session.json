@@ -8,14 +8,14 @@
   "scored": {
     "session": "the whole invoices project (workspaces, wallet, entities)",
     "toolCalls": 4,
-    "conversationTokens": 2114,
-    "modelVisibleTokens": 1737,
-    "firstPartySourceTokens": 25495,
-    "generatedFilesOnlyTokens": 8837,
-    "ratioPercent": 8.3,
-    "ratioAgainstGeneratedFilesOnlyPercent": 23.9,
-    "modelVisibleRatioPercent": 6.8,
-    "projectHash": "efa99a86cedb1c39e9645300cc04b8d6a33a26afafbf82440cc2ccd50fb144bc",
+    "conversationTokens": 2118,
+    "modelVisibleTokens": 1741,
+    "firstPartySourceTokens": 28241,
+    "generatedFilesOnlyTokens": 9799,
+    "ratioPercent": 7.5,
+    "ratioAgainstGeneratedFilesOnlyPercent": 21.6,
+    "modelVisibleRatioPercent": 6.2,
+    "projectHash": "e0174e84a8f8aa89bcc5e03d2b8c69d70c113f74ecee11558f6316e9195798ee",
     "files": 13,
     "byMessage": [
       {
@@ -51,7 +51,7 @@
       {
         "what": "tools/call build_project",
         "requestTokens": 33,
-        "responseTokens": 110
+        "responseTokens": 114
       }
     ],
     "sourceByFile": [
@@ -61,7 +61,7 @@
       },
       {
         "path": "bricks/multi-workspace/src/index.ts",
-        "tokens": 75
+        "tokens": 87
       },
       {
         "path": "bricks/multi-workspace/src/middleware.ts",
@@ -69,7 +69,7 @@
       },
       {
         "path": "bricks/multi-workspace/src/routes.ts",
-        "tokens": 2554
+        "tokens": 4083
       },
       {
         "path": "bricks/multi-workspace/migrations/0001_multi_workspace.sql",
@@ -77,7 +77,7 @@
       },
       {
         "path": "bricks/multi-workspace/brick.manifest.json",
-        "tokens": 391
+        "tokens": 523
       },
       {
         "path": "bricks/credit-wallet/src/brick.ts",
@@ -117,7 +117,7 @@
       },
       {
         "path": "bricks/credit-wallet/brick.manifest.json",
-        "tokens": 1221
+        "tokens": 1332
       },
       {
         "path": "bricks/dynamic-entities/src/index.ts",
@@ -176,7 +176,7 @@
       },
       {
         "path": "generated:src/index.ts",
-        "tokens": 1679
+        "tokens": 2641
       },
       {
         "path": "generated:src/privacy.generated.ts",
@@ -192,45 +192,45 @@
     "filteredDiscovery": {
       "session": "the whole invoices project with filtered list_bricks ({ query: 'workspace' })",
       "toolCalls": 4,
-      "conversationTokens": 2002,
-      "firstPartySourceTokens": 25495,
-      "ratioPercent": 7.9
+      "conversationTokens": 2006,
+      "firstPartySourceTokens": 28241,
+      "ratioPercent": 7.1
     },
     "tenBricks": {
       "session": "ten bricks and the invoices table in four calls",
       "toolCalls": 4,
-      "conversationTokens": 2230,
-      "firstPartySourceTokens": 60255,
+      "conversationTokens": 2224,
+      "firstPartySourceTokens": 63545,
       "filesBuilt": 20,
-      "ratioPercent": 3.7
+      "ratioPercent": 3.5
     },
     "smallerProject": {
       "session": "workspaces and invoices without the wallet",
       "toolCalls": 4,
-      "conversationTokens": 2102,
-      "firstPartySourceTokens": 13973,
-      "ratioPercent": 15
+      "conversationTokens": 2103,
+      "firstPartySourceTokens": 16528,
+      "ratioPercent": 12.7
     },
     "eightTables": {
       "session": "three bricks and eight tables: in four calls with lists, and one item per call",
       "listsToolCalls": 4,
-      "listsConversationTokens": 2430,
+      "listsConversationTokens": 2422,
       "oneItemPerCallToolCalls": 13,
-      "oneItemPerCallConversationTokens": 3363,
+      "oneItemPerCallConversationTokens": 3355,
       "tokensSavedByLists": 933,
       "filesBuilt": 20
     },
     "oneBrickPerCall": {
       "session": "the same project built one brick per call, the way the first version of the tools required",
       "toolCalls": 6,
-      "conversationTokens": 2299,
+      "conversationTokens": 2303,
       "toolListTokens": 1216,
-      "ratioPercent": 9
+      "ratioPercent": 8.2
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-24T20:15:23.849Z",
-    "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+    "generatedAt": "2026-11-25T00:59:39.706Z",
+    "gitSha": "302e7cfcb66b8687c22c74904ea9e829d3e3cdd5",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

@@ -174,9 +174,9 @@
       "behaviourTest": "bricks/identity-federation/test/federation.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 9,
+      "testsRun": 11,
       "testsSkipped": 0,
-      "assertionCount": 54
+      "assertionCount": 60
     },
     {
       "id": "in-app-notifications",
@@ -244,9 +244,9 @@
       "behaviourTest": "bricks/multi-workspace/test/multi-workspace.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 7,
+      "testsRun": 15,
       "testsSkipped": 0,
-      "assertionCount": 42,
+      "assertionCount": 105,
       "skipped": [
         {
           "check": "CONF_IDEMPOTENT_WRITE",
@@ -496,8 +496,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-24T20:15:23.849Z",
-    "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+    "generatedAt": "2026-11-25T00:59:39.706Z",
+    "gitSha": "302e7cfcb66b8687c22c74904ea9e829d3e3cdd5",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
