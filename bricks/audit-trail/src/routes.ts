@@ -12,7 +12,7 @@ const RecordEventSchema = z.object({
   targetId: z.string().min(1).max(128),
   ipAddress: z.string().max(45).optional(),
   userAgent: z.string().max(512).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export function createAuditRoutes(): Hono<AuditEnv> {

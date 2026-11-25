@@ -167,3 +167,25 @@ Every node executor receives an `ExecutionContext` built by the runtime for the 
 Integration operations with `sideEffects: "write"` forward this key as `Idempotency-Key` (or the provider manifest's declared header, such as `X-Slack-Req-Id`) in outbound HTTP requests and to `callOperation({ idempotencyKey })`. Because Cloudflare Workflows steps have at-least-once execution semantics, this deterministic key ensures that step retries or pause/resume replays do not result in double-charges, duplicate message sends, or duplicated external mutations.
 
 
+
+## Using outside the monorepo
+
+The bricks import `@poc/sdk` at runtime, so a project outside this repo installs it next to them. See
+[Using bricks outside the monorepo](../../docs/using-bricks-outside-the-monorepo.md) for the whole flow.
+
+- **Install from a tarball.** Nothing is published to a registry (the package stays `"private": true`). Run
+  `pnpm pack` in `packages/sdk` and depend on the tarball: `"@poc/sdk": "file:./vendor/poc-sdk-0.0.0.tgz"`. Packed
+  bricks depend on `@poc/sdk` by version, so also add an override that points every `@poc/sdk` at the same tarball
+  (`"pnpm": { "overrides": { "@poc/sdk": "file:./vendor/poc-sdk-0.0.0.tgz" } }`, or npm's `"overrides"`).
+- **What the tarball holds.** `src/`, this README, `LICENSE` and `NOTICE` (Apache-2.0). No migrations and no
+  manifest: the SDK is not a brick.
+- **TypeScript sources.** There is one export, `"."`, pointing at `./src/index.ts`. Bundle the worker with wrangler or
+  esbuild, which compile it; Node cannot load `.ts` from `node_modules`.
+- **Runtime dependencies.** Only `zod`. The `hono` import in `src/rate-limit.ts` is type-only.
+- **Migrations.** The SDK ships no migration files. `applyMigration(db, sql)` applies one brick migration file to a
+  D1 database, statement by statement; call it from bundled worker code, not from a Node script. If you mount
+  `rateLimit`, create its `px_rate_limits` table with a migration holding `PX_RATE_LIMITS_DDL`.
+- **Mounting helpers.** `rateLimit(rule)` mounts a brick manifest's `rateLimits` entry (method and path from the
+  manifest, with your prefix in place of `/api`).
+- **Identity.** The SDK does not authenticate anyone. Your app sets `user` (`{ uid, email? }`) on the Hono context
+  before any brick route runs.
