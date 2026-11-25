@@ -28,9 +28,9 @@ Everything in this section is generated from the committed evidence by `pnpm rea
 | H3 | Executors cannot read secrets their manifest does not declare | pass | 4/4 checks | — | — | 4 | local re-measure 2026-11-25 |
 | H5 | The extracted wallet stays correct under concurrency | pass | 0 runs of 20 | ≤ 0 runs of 20 | ≥ 1 runs of 20 | 5 | local re-measure 2026-11-25; hosted D1 half: live run, **stale (run 2026-10-21)** |
 | H6 | Bricks compose from a blueprint without hand edits | pass | 5/5 checks | — | — | 5 | local re-measure 2026-11-25 |
-| H7 | Assembly is deterministic, offline and fast | pass | 0.422 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-25 |
+| H7 | Assembly is deterministic, offline and fast | pass | 0.412 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-25 |
 | H8 | An entity declaration yields tenant-safe CRUD | pass | 7/7 checks | — | — | 7 | local re-measure 2026-11-25 |
-| H9 | An MCP session builds the project at a fraction of the source tokens | pass | 7 percent | ≤ 15 percent | > 40 percent | 3 | local re-measure 2026-11-25; deployed MCP Worker half: live run, **stale (run 2026-10-21)** |
+| H9 | An MCP session builds the project at a fraction of the source tokens | pass | 6.3 percent | ≤ 15 percent | > 40 percent | 3 | local re-measure 2026-11-25; deployed MCP Worker half: live run, **stale (run 2026-10-21)** |
 | H10 | The project deploys to the owner's Cloudflare account over REST, idempotently | pass | 16.695 seconds | ≤ 120 seconds | > 600 seconds | 7 | live run, **stale (run 2026-10-21)** |
 | H11 | One Workflow class runs any graph stored in D1; edits need no re-upload | pass | 9/9 checks | — | — | 9 | live run, **stale (run 2026-10-21)** |
 | H12 | A brick's client layer works against its deployed API | pass | 4/4 checks | — | — | 4 | live run, **stale (run 2026-10-21)** |
@@ -64,8 +64,8 @@ Quarantined (8): hidden from the default catalog listing and from `list_bricks`;
 
 ### Cross-tenant attack suite
 
-From `evidence/cross-tenant-fuzz.json`: 1610 cases over 174 mounted routes (39 OpenAPI paths); by attack: HEADER_B 880, QUERY_B 220, BODY_B 112, ID_GUESS 170, ROLE_ESCALATION 24, UNAUTH 204.
-Violations 0, failures 0; known failures matched 0; known-failures registry (`packages/assembler/test/attack-suite.known-failures.json`): 0 entries; route/attack pairs not attacked (no fitting row): 249.
+From `evidence/cross-tenant-fuzz.json`: 1622 cases over 176 mounted routes (39 OpenAPI paths); by attack: HEADER_B 888, QUERY_B 222, BODY_B 114, ID_GUESS 170, ROLE_ESCALATION 24, UNAUTH 204.
+Violations 0, failures 0; known failures matched 0; known-failures registry (`packages/assembler/test/attack-suite.known-failures.json`): 0 entries; route/attack pairs not attacked (no fitting row): 260.
 
 ### Tests
 

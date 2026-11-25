@@ -1,6 +1,6 @@
 {
   "routeCount": 39,
-  "honoRouteCount": 174,
+  "honoRouteCount": 176,
   "specOnlyRoutes": [
     "GET /api/ai",
     "POST /api/ai",
@@ -49,11 +49,11 @@
     "GET /api/webhooks",
     "POST /api/webhooks"
   ],
-  "cases": 1610,
+  "cases": 1622,
   "casesByAttack": {
-    "HEADER_B": 880,
-    "QUERY_B": 220,
-    "BODY_B": 112,
+    "HEADER_B": 888,
+    "QUERY_B": 222,
+    "BODY_B": 114,
     "ID_GUESS": 170,
     "ROLE_ESCALATION": 24,
     "UNAUTH": 204
@@ -149,6 +149,14 @@
     {
       "route": "GET /api/auth/me",
       "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
+    },
+    {
+      "route": "POST /api/checkout/webhook",
+      "reason": "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature"
+    },
+    {
+      "route": "POST /api/payments/webhook",
+      "reason": "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature"
     },
     {
       "route": "GET /api/users/:id/profile",
@@ -321,6 +329,18 @@
       "reason": "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design"
     },
     {
+      "method": "POST",
+      "route": "/api/checkout/webhook",
+      "attack": "UNAUTH",
+      "reason": "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature"
+    },
+    {
+      "method": "POST",
+      "route": "/api/payments/webhook",
+      "attack": "UNAUTH",
+      "reason": "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature"
+    },
+    {
       "method": "GET",
       "route": "/api/users/:id/profile",
       "attack": "UNAUTH",
@@ -388,7 +408,25 @@
     },
     {
       "method": "ALL",
-      "route": "/api/checkout/*",
+      "route": "/api/checkout/sessions",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/sessions/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/invoices",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/invoices/*",
       "attack": "*",
       "reason": "middleware (apiKeyIdentity), not an endpoint"
     },
@@ -838,13 +876,49 @@
     },
     {
       "method": "ALL",
-      "route": "/api/checkout/*",
+      "route": "/api/checkout/sessions",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
     },
     {
       "method": "ALL",
-      "route": "/api/checkout/*",
+      "route": "/api/checkout/sessions",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/sessions/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/sessions/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/invoices",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/invoices",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/invoices/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/invoices/*",
       "attack": "*",
       "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
@@ -1806,6 +1880,12 @@
       "failures": []
     },
     {
+      "route": "/api/checkout/webhook",
+      "method": "POST",
+      "cases": 6,
+      "failures": []
+    },
+    {
       "route": "/api/checkout/sessions/:id",
       "method": "GET",
       "cases": 9,
@@ -1839,6 +1919,12 @@
       "route": "/api/payments/verify",
       "method": "POST",
       "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/payments/webhook",
+      "method": "POST",
+      "cases": 6,
       "failures": []
     },
     {
@@ -2983,8 +3069,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T06:58:50.972Z",
-    "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
+    "generatedAt": "2026-11-25T08:27:02.759Z",
+    "gitSha": "654105d6ab18e22e626be14d6d9a4bd78df20f5c",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
