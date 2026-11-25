@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "4477e69020ff607b8741c722044949ab913a94e0b1574af34d9e1a64c0bc8c4b",
+  "catalogVersion": "afffad95b98286fd76e73f33748952bd74e456e2cc7becea2085943c5c531c96",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -275,6 +275,19 @@ export const catalog: Catalog = {
             "min": 1024,
             "max": 104857600,
             "default": 10485760
+          },
+          "workspaceQuotaBytes": {
+            "type": "integer",
+            "min": 1048576,
+            "max": 1099511627776,
+            "default": 1073741824
+          },
+          "allowedContentTypes": {
+            "type": "string",
+            "pattern": "^ *[A-Za-z0-9][A-Za-z0-9.+-]{0,63}/[A-Za-z0-9][A-Za-z0-9.+-]{0,63} *(, *[A-Za-z0-9][A-Za-z0-9.+-]{0,63}/[A-Za-z0-9][A-Za-z0-9.+-]{0,63} *)*$",
+            "example": "image/png,image/jpeg,application/pdf",
+            "maxLength": 512,
+            "default": "image/png,image/jpeg,image/gif,image/webp,image/avif,application/pdf,text/plain,text/csv,application/json,application/zip,application/octet-stream,audio/mpeg,video/mp4"
           }
         },
         "nodes": [],
@@ -322,6 +335,12 @@ export const catalog: Catalog = {
               "options": {
                 "maxSize": {
                   "$setting": "maxFileSizeBytes"
+                },
+                "quotaBytes": {
+                  "$setting": "workspaceQuotaBytes"
+                },
+                "allowedContentTypes": {
+                  "$setting": "allowedContentTypes"
                 }
               },
               "guardPaths": [
