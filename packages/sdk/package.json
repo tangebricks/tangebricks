@@ -2,10 +2,17 @@
   "name": "@poc/sdk",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
   "dependencies": {
     "zod": "4.6.7"
   }

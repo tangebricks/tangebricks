@@ -2,10 +2,20 @@
   "name": "@poc/audit-trail",
   "version": "1.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "files": [
+    "src",
+    "migrations",
+    "brick.manifest.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
   "dependencies": {
     "@poc/sdk": "workspace:*",
     "hono": "4.13.19",

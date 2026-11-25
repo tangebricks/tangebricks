@@ -1,0 +1,20 @@
+{
+  "name": "external-app-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.18.0",
+  "description": "A project outside the monorepo that installs the packed bricks. The test rewrites the tarball placeholders to file: paths.",
+  "dependencies": {
+    "@poc/sdk": "TARBALL:@poc/sdk",
+    "@poc/multi-workspace": "TARBALL:@poc/multi-workspace",
+    "@poc/credit-wallet": "TARBALL:@poc/credit-wallet",
+    "@poc/audit-trail": "TARBALL:@poc/audit-trail",
+    "hono": "4.13.19"
+  },
+  "pnpm": {
+    "overrides": {
+      "@poc/sdk": "TARBALL:@poc/sdk"
+    }
+  }
+}
