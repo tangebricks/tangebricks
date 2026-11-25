@@ -194,6 +194,37 @@ export class IntegrationConnectionsError extends Error {
   }
 }
 
+/** Story 1.15 (A10): the longest caller-supplied account label kept, and only when the provider returned none. */
+export const MAX_CALLER_ACCOUNT_LABEL_LENGTH = 128;
+
+/**
+ * Story 1.15 (A11): the `allowedRedirectUris` setting (a comma string) or an already-split list, as the exact
+ * `https://` URIs a caller may ask for as `redirect_uri`. Blank entries and anything that is not an https URL are
+ * dropped, so a malformed entry never widens the allowlist.
+ */
+export function parseAllowedRedirectUris(raw: string | readonly string[] | undefined): string[] {
+  if (raw === undefined) return [];
+  const entries = typeof raw === "string" ? raw.split(",") : [...raw];
+  const out: string[] = [];
+  for (const entry of entries) {
+    const uri = String(entry).trim();
+    if (!uri) continue;
+    try {
+      if (new URL(uri).protocol !== "https:") continue;
+    } catch {
+      continue;
+    }
+    out.push(uri);
+  }
+  return out;
+}
+
+/** The callback URL the brick itself serves for a provider: `<publicBaseUrl>/api/integrations/<provider>/callback`. */
+export function defaultCallbackUrl(providerSlug: string, publicBaseUrl?: string): string {
+  const base = (publicBaseUrl ?? "https://app.projectx.local").replace(/\/+$/, "");
+  return `${base}/api/integrations/${providerSlug}/callback`;
+}
+
 interface IntOAuthStateRow {
   state: string;
   workspace_id: string;
@@ -231,6 +262,8 @@ export async function startWorkspaceOAuthConnect(
     scopes?: string[];
     oauthStateTtlSeconds: number;
     publicBaseUrl?: string;
+    /** Story 1.15 (A11): exact redirect URIs a caller may ask for besides the default callback URL. */
+    allowedRedirectUris?: string | readonly string[];
     adapter?: IntegrationConnectionsAdapter;
   },
 ): Promise<{
@@ -251,6 +284,20 @@ export async function startWorkspaceOAuthConnect(
   const cfg = resolveProviderConfig(providerSlug, params.adapter);
   // Story 0.9 (A13): no placeholder client id. Refuse before any state is stored.
   requireClientId(cfg, providerSlug);
+  // Story 1.15 (A11): a caller redirect_uri must be the default callback URL or an allowlisted one. Refuse before
+  // any state is stored.
+  const defaultRedirectUri = defaultCallbackUrl(providerSlug, params.publicBaseUrl);
+  if (
+    params.redirectUri !== undefined &&
+    params.redirectUri !== defaultRedirectUri &&
+    !parseAllowedRedirectUris(params.allowedRedirectUris).includes(params.redirectUri)
+  ) {
+    throw new IntegrationConnectionsError(
+      "REDIRECT_URI_NOT_ALLOWED",
+      "redirect_uri is not the default callback URL or in allowedRedirectUris",
+      400,
+    );
+  }
   const state = generateOAuthStateToken();
   const codeVerifier = generatePkceVerifier();
   const codeChallenge = await computePkceChallengeS256(codeVerifier);
@@ -258,9 +305,7 @@ export async function startWorkspaceOAuthConnect(
   const nowMs = Date.now();
   const ttlMs = Math.max(60, params.oauthStateTtlSeconds) * 1000;
   const expiresAt = nowMs + ttlMs;
-  const baseCallbackOrigin = (params.publicBaseUrl ?? "https://app.projectx.local").replace(/\/+$/, "");
-  const redirectUri =
-    params.redirectUri ?? `${baseCallbackOrigin}/api/integrations/${providerSlug}/callback`;
+  const redirectUri = params.redirectUri ?? defaultRedirectUri;
 
   await scoped(db, params.workspaceId).insert("int_oauth_states", {
     state,
@@ -296,11 +341,16 @@ export async function completeWorkspaceOAuthCallback(
   db: D1Like,
   params: {
     workspaceId: string;
+    /** Story 1.15 (A12): the user completing the callback; must be the user who started the flow. */
+    userId: string;
     provider: string;
     code: string;
     state: string;
+    /**
+     * Story 1.15 (A10): used only when the provider returns no label, trimmed and capped at 128 characters. There is
+     * no caller external account id: it comes only from the provider (or the generated fallback).
+     */
     accountLabel?: string;
-    externalAccountId?: string;
     connKey?: string;
     adapter?: IntegrationConnectionsAdapter;
   },
@@ -339,6 +389,16 @@ export async function completeWorkspaceOAuthCallback(
     throw new IntegrationConnectionsError(
       "OAUTH_STATE_MISMATCH",
       `OAuth state token belongs to a different workspace`,
+      400,
+    );
+  }
+
+  // Story 1.15 (A12): the state is bound to the user who started the flow. It is already consumed above, and no
+  // token exchange runs.
+  if (stateRow.user_id !== params.userId) {
+    throw new IntegrationConnectionsError(
+      "OAUTH_STATE_MISMATCH",
+      "OAuth state token was issued to a different user",
       400,
     );
   }
@@ -456,13 +516,15 @@ export async function completeWorkspaceOAuthCallback(
       : exchanged.expiresIn !== undefined
         ? nowMs + exchanged.expiresIn * 1000
         : nowMs + 3600 * 1000;
+  // Story 1.15 (A10): the provider's account data wins. A caller label is only a fallback for a provider that
+  // returned none; a caller external account id is never used.
+  const callerLabel = params.accountLabel?.trim().slice(0, MAX_CALLER_ACCOUNT_LABEL_LENGTH) || undefined;
   const accountLabel =
-    params.accountLabel ??
-    exchanged.accountLabel ??
+    exchanged.accountLabel ||
+    callerLabel ||
     `${params.workspaceId}@${providerSlug}.connected`;
   const externalAccountId =
-    params.externalAccountId ??
-    exchanged.externalAccountId ??
+    exchanged.externalAccountId ||
     `acct_${params.workspaceId}_${providerSlug}`;
 
   const credentialsToSeal: WorkspaceSealedCredentials = {

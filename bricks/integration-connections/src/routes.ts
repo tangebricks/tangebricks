@@ -32,14 +32,52 @@ export interface IntegrationConnectionsRouteOptions {
   oauthStateTtlSeconds?: number;
   refreshWindowSeconds?: number;
   publicBaseUrl?: string;
+  /**
+   * Story 1.15 (A11): exact `https://` redirect URIs a caller may pass as `redirect_uri`, besides the default callback
+   * URL. A comma string (the `allowedRedirectUris` setting) or a list; empty by default.
+   */
+  allowedRedirectUris?: string | readonly string[];
   adapter?: IntegrationConnectionsAdapter;
+}
+
+/**
+ * Story 1.15 (A11): a connect that answers with a redirect is a top-level GET a cross-site page could trigger, so it
+ * is refused when the browser says the request is cross-site (`Sec-Fetch-Site`) or names a foreign `Origin`.
+ */
+function isCrossSiteRequest(c: Ctx, publicBaseUrl: string | undefined): boolean {
+  const fetchSite = c.req.header("sec-fetch-site");
+  if (fetchSite !== undefined) {
+    const site = fetchSite.trim().toLowerCase();
+    if (site !== "same-origin" && site !== "none") return true;
+  }
+  const originHeader = c.req.header("origin");
+  if (originHeader !== undefined) {
+    const allowed = new Set<string>([new URL(c.req.url).origin]);
+    if (publicBaseUrl) {
+      try {
+        allowed.add(new URL(publicBaseUrl).origin);
+      } catch {
+        // an unparsable publicBaseUrl adds no allowed origin
+      }
+    }
+    let origin: string;
+    try {
+      origin = new URL(originHeader.trim()).origin;
+    } catch {
+      return true; // "null" or garbage: not a same-origin request
+    }
+    if (!allowed.has(origin)) return true;
+  }
+  return false;
 }
 
 const CallbackPayloadSchema = z.object({
   code: z.string().min(1).max(2048),
   state: z.string().min(1).max(512),
-  accountLabel: z.string().min(1).max(320).optional(),
-  externalAccountId: z.string().min(1).max(320).optional(),
+  // Story 1.15 (A10): the service trims and caps the label at 128; an empty one counts as absent.
+  accountLabel: z.string().max(2048).optional(),
+  // Story 1.15 (A10): a caller externalAccountId is accepted for compatibility but ignored.
+  externalAccountId: z.unknown().optional(),
 });
 
 type Ctx = Context<IntegrationConnectionsEnv>;
@@ -50,6 +88,7 @@ export function createIntegrationConnectionsRoutes(
   const oauthStateTtlSeconds = options.oauthStateTtlSeconds ?? 600;
   const refreshWindowSeconds = options.refreshWindowSeconds ?? 60;
   const publicBaseUrl = options.publicBaseUrl;
+  const allowedRedirectUris = options.allowedRedirectUris;
   const adapter: IntegrationConnectionsAdapter = {
     ...options.adapter,
     integrations:
@@ -90,6 +129,12 @@ export function createIntegrationConnectionsRoutes(
       ? rawScopes.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)
       : undefined;
     const wantsRedirect = c.req.query("redirect") === "1" || c.req.query("redirect") === "true";
+    if (wantsRedirect && isCrossSiteRequest(c, publicBaseUrl)) {
+      return c.json(
+        { error: { code: "CSRF_REJECTED", message: "Cross-site redirecting connect requests are refused" } },
+        403,
+      );
+    }
 
     try {
       const started = await startWorkspaceOAuthConnect(c.env.DB, {
@@ -100,6 +145,7 @@ export function createIntegrationConnectionsRoutes(
         ...(scopes ? { scopes } : {}),
         oauthStateTtlSeconds,
         ...(publicBaseUrl ? { publicBaseUrl } : {}),
+        ...(allowedRedirectUris !== undefined ? { allowedRedirectUris } : {}),
         adapter,
       });
 
@@ -139,9 +185,9 @@ export function createIntegrationConnectionsRoutes(
     const provider = c.req.param("provider") ?? "";
     let code = c.req.query("code") ?? "";
     let state = c.req.query("state") ?? "";
+    // Story 1.15 (A10): a caller label is only a fallback for a provider that returns none; a caller external
+    // account id (query or body) is ignored.
     let accountLabel = c.req.query("account_label") ?? c.req.query("accountLabel") ?? undefined;
-    let externalAccountId =
-      c.req.query("external_account_id") ?? c.req.query("externalAccountId") ?? undefined;
 
     if (c.req.method === "POST" && (!code || !state)) {
       let rawBody: unknown;
@@ -168,17 +214,16 @@ export function createIntegrationConnectionsRoutes(
       code = parsed.data.code;
       state = parsed.data.state;
       accountLabel = parsed.data.accountLabel ?? accountLabel;
-      externalAccountId = parsed.data.externalAccountId ?? externalAccountId;
     }
 
     try {
       const connection = await completeWorkspaceOAuthCallback(c.env.DB, {
         workspaceId: ctx.workspace.id,
+        userId: ctx.user.uid,
         provider,
         code,
         state,
         ...(accountLabel ? { accountLabel } : {}),
-        ...(externalAccountId ? { externalAccountId } : {}),
         connKey: c.env.PX_CONN_KEY,
         adapter,
       });

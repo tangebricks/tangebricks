@@ -34,7 +34,7 @@ app.route(
         refreshToken: `1//refresh.${provider}.${workspaceId}.${code}`,
         tokenType: "Bearer",
         expiresIn: 3600,
-        accountLabel: `${workspaceId}@${provider}.connected`,
+        // Story 1.15 (A10): no provider label here, so the callback's account_label is the (fallback) label shown.
         externalAccountId: `acct_${workspaceId}_${provider}`,
       }),
     },

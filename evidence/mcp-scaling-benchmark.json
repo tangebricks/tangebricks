@@ -1,6 +1,6 @@
 {
   "tokenizer": "gpt-tokenizer 4.1.0, o200k_base",
-  "timestamp": "2026-11-25T03:43:55.231Z",
+  "timestamp": "2026-11-25T04:14:51.576Z",
   "tenBrickSessionRatioPercent": 3.1,
   "tenBrickSession": {
     "tier": "Tier 3: 10-Brick App (10 Bricks, 2 Tables)",
@@ -93,16 +93,16 @@
       "entitiesCount": 4,
       "filesCount": 59,
       "conversationTokens": 3527,
-      "firstPartySourceTokens": 279547,
-      "generatedFilesOnlyTokens": 69065,
+      "firstPartySourceTokens": 280811,
+      "generatedFilesOnlyTokens": 69078,
       "ratioPercent": 1.3,
-      "projectHash": "b802107f3918c6f411b167fb5db81c8736a32a50728067f5f63fe2b12fa8facc",
+      "projectHash": "594dbac1821a9defa3aa8ed66490dd9aefbb96b4a21a43126ffad15c006d5c46",
       "status": "SUB-4% REACHED"
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T03:43:51.471Z",
-    "gitSha": "e8912fef03c726685b1a20749cd40a1bd8544758",
+    "generatedAt": "2026-11-25T04:14:47.819Z",
+    "gitSha": "b3d4a3bc00868e79bdeeadbc481f89f3f4c362dd",
     "gitDirty": false,
     "generator": "scripts/benchmark-mcp-scale.ts",
     "inputKind": "measured"
