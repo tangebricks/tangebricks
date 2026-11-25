@@ -699,7 +699,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   const optionToSetting = new Map<string, string>();
   for (const route of manifest.worker.routes) {
     for (const [optName, optVal] of Object.entries(route.options)) {
-      if (typeof optVal === "object" && ("$call" in optVal || "$entities" in optVal || "$privacy" in optVal || "$workspaceData" in optVal)) {
+      if (typeof optVal === "object" && ("$call" in optVal || "$entities" in optVal || "$privacy" in optVal || "$workspaceData" in optVal || "$capability" in optVal)) {
         nonSettingOptions.add(optName);
       } else if (typeof optVal === "object" && "$setting" in optVal) {
         optionToSetting.set(optName, optVal.$setting);

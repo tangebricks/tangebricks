@@ -24,6 +24,7 @@ const RELATIVE_FILE = /^[a-z0-9][a-z0-9_./-]{0,100}\.sql$/;
 const RELATIVE_TEST_FILE = /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9_./-]{0,120}\.test\.ts$/;
 const SAFE_TEXT = /^[A-Za-z0-9][A-Za-z0-9 &(),.:;/_'+=%>@-]{0,199}$/;
 const CRON_EXPRESSION = /^[0-9*,/-]+(?: [0-9*,/-]+){4}$/;
+const CAPABILITY_EXPORT = /^[a-z][a-z0-9-]{0,39}\.[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
 export const identifier = z.string().regex(IDENTIFIER);
 export const brickId = z.string().regex(BRICK_ID);
@@ -77,7 +78,45 @@ export const valueExpr = z.union([
    * workspace's objects under every declared prefix and its rows in every declared table.
    */
   z.strictObject({ $workspaceData: z.literal("purgeWorkspaceData") }),
+  /**
+   * Story 1.13: a named export of whichever enabled brick provides a capability, written `<capability>.<export>`
+   * (for example `some-capability.someExport`). The assembler imports that export from the provider's package, so the
+   * brick that takes it never imports the provider itself. With no provider enabled the blueprint is refused, unless
+   * `requiredWhen` names a setting of this brick whose value differs from `equals`; then the option is left out.
+   */
+  z.strictObject({
+    $capability: z.string().regex(CAPABILITY_EXPORT),
+    requiredWhen: z.strictObject({ setting: identifier, equals: z.union([z.number().finite(), z.string().max(200), z.boolean()]) }).optional(),
+  }),
 ]);
+
+const JS_RESERVED = new Set(
+  (
+    "break case catch class const continue debugger default delete do else enum export extends false finally for function if " +
+    "import in instanceof new null return super switch this throw true try typeof var void while with yield let static " +
+    "implements interface package private protected public await arguments eval undefined NaN Infinity"
+  ).split(" "),
+);
+/** Names the assembled entry (src/index.ts) binds itself; an imported export with one of these names would clash. */
+const ENTRY_BINDINGS = new Set([
+  "Hono", "app", "entities", "openapiSpec", "exportTenant", "eraseTenant", "purgeWorkspaceData", "stubIdentity",
+  "createHttpGuard", "rateLimit", "tableName", "D1Like", "scheduled", "queue", "suspensionExempt", "BUILD_SHA",
+  "MIGRATIONS", "REQUIRED_BINDINGS", "SUSPENSION_EXEMPT", "WORKSPACE_ID_PATTERN", "WORKSPACE_PURGE_SQL",
+  "WORKSPACE_PURGE_SHELL_SQL", "WORKSPACE_PURGE_BRICK_SQL", "WORKSPACE_PURGE_OBJECTS",
+]);
+
+/** Why an export name cannot be imported into the assembled entry, or undefined if it can (story 1.13). */
+export function entryBindingClash(name: string): string | undefined {
+  if (JS_RESERVED.has(name)) return "it is a JavaScript reserved word";
+  if (ENTRY_BINDINGS.has(name) || name.startsWith("notSuspended_")) return "the entry already defines that name";
+  return undefined;
+}
+
+/** Splits a `$capability` reference into the capability name and the provider's export. */
+export function capabilityReference(ref: string): { capability: string; export: string } {
+  const dot = ref.indexOf(".");
+  return { capability: ref.slice(0, dot), export: ref.slice(dot + 1) };
+}
 export type ValueExpr = z.infer<typeof valueExpr>;
 
 export const settingDeprecated = z.strictObject({
@@ -112,6 +151,12 @@ export const settingDefinition = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("string"),
     format: z.enum(["url", "identifier", "claim-path"]).optional(),
+    /**
+     * Story 1.13: a whole-value regular expression (anchor it with ^ and $) the value must match, checked at assembly so
+     * a malformed value is refused there rather than at run time. `example` is shown in the refusal.
+     */
+    pattern: z.string().min(1).max(500).optional(),
+    example: z.string().max(200).optional(),
     maxLength: z.number().int().positive().max(512).default(512),
     default: z.string().max(512),
     since: z.string().regex(EXACT_VERSION).optional(),
@@ -1186,6 +1231,11 @@ export const ManifestSchema = z
        * a request without that credential passes through it unchanged, and the session identity then runs as before.
        */
       identityAlternative: z.strictObject({ export: identifier }).optional(),
+      /**
+       * Story 1.13: the exports this brick offers other bricks through a `$capability` route option, by capability (one
+       * it provides). A reference to an export not listed here is refused at assembly.
+       */
+      capabilityExports: z.record(capability, z.array(identifier).min(1).max(20)).optional(),
       routes: z.array(routeDefinition).default([]),
       privacy: workerPrivacyDefinition.optional(),
     }),
@@ -1215,6 +1265,30 @@ export const ManifestSchema = z
       }
     }
     if (m.trust === "untrusted" && m.isolation !== "dispatch") problem('untrusted requires isolation: "dispatch"', ["trust"]);
+    for (const [cap, names] of Object.entries(m.worker.capabilityExports ?? {})) {
+      if (!m.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === cap)) {
+        problem(`worker.capabilityExports names "${cap}", which this brick does not provide`, ["worker", "capabilityExports", cap]);
+      }
+      for (const name of names) {
+        const clash = entryBindingClash(name);
+        if (clash) problem(`worker.capabilityExports "${name}" cannot be imported into the assembled entry: ${clash}`, ["worker", "capabilityExports", cap]);
+      }
+    }
+    for (const [name, sDef] of Object.entries(m.settings)) {
+      if (sDef.type !== "string" || sDef.pattern === undefined) continue;
+      // A pattern is a regular expression the assembler runs: only a first-party manifest may declare one.
+      if (m.trust !== "first-party") {
+        problem(`setting "${name}" declares a pattern, which only a first-party brick may do`, ["settings", name, "pattern"]);
+        continue;
+      }
+      let compiled: RegExp | undefined;
+      try {
+        compiled = new RegExp(sDef.pattern);
+      } catch {
+        problem(`setting "${name}" pattern is not a valid regular expression`, ["settings", name, "pattern"]);
+      }
+      if (compiled && !compiled.test(sDef.default)) problem(`setting "${name}" default does not match its pattern`, ["settings", name, "default"]);
+    }
     if (m.worker.guard) {
       const guardCap = m.worker.guard.capability;
       const providesGuard = m.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === guardCap);
@@ -1236,6 +1310,9 @@ export const ManifestSchema = z
       }
       for (const [name, value] of Object.entries(route.options)) {
         if (typeof value === "object" && "$setting" in value && !(value.$setting in m.settings)) problem(`route ${route.factory} option ${name} uses unknown setting "${value.$setting}"`);
+        if (typeof value === "object" && "$capability" in value && value.requiredWhen && !(value.requiredWhen.setting in m.settings)) {
+          problem(`route ${route.factory} option ${name} is required when unknown setting "${value.requiredWhen.setting}" is set`);
+        }
       }
     }
   });
