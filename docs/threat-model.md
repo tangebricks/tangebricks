@@ -39,6 +39,7 @@
 | 1.12 | feature-flags: honour allowOverrides on clear (filed from PROPOSED-6) |
 | 1.13 | llm-gateway: wallet debit, model allowlist, maxTokens, error redaction (filed from PROPOSED-7) |
 | 1.14 | binary-assets: upload size precheck and quota, Content-Type allowlist, filename sanitising, safe download headers, bounded paging (filed from PROPOSED-8) |
+| 1.15 | integration-connections OAuth hardening: provider account data wins, `redirect_uri` allowlist, CSRF guard on the redirecting connect, OAuth state bound to the user (filed from PROPOSED-11) |
 
 `PROPOSED-n` ids are new tickets defined in [Proposed tickets](#proposed-tickets). They are not filed yet.
 
@@ -164,9 +165,9 @@ Every sweep finding appears once. Locations are as the sweep gives them (see [Ci
 | A7 | integration-connections | High | No code exchange as mounted: OAuth callback stores a token made from the caller's code and marks the connection connected | `bricks/integration-connections/src/service.ts:427-438`; `out/max-compatible/src/index.ts:343` | 0.9 (scope addition) |
 | A8 | integration-connections | High | `PX_CONN_KEY` unset means credentials are sealed with a source constant key | `crypto.ts:1,39-43` | 0.8 (new instance: `bricks/integration-connections/src/crypto.ts:1`) |
 | A9 | integration-connections | Medium | Any member can connect (overwrite) or disconnect the workspace connection | `routes.ts:228-251`; `service.ts:486-501` | 0.6 (scope addition: `GET /api/integrations/:provider/connect`, `GET /api/connect/:provider`, `GET`/`POST /api/integrations/:provider/callback`, `POST /api/integrations/:provider/disconnect`) |
-| A10 | integration-connections | Low | Caller-supplied `accountLabel`/`externalAccountId` on callback override the provider's | `routes.ts:131-133`; `service.ts:447-454` | PROPOSED-11 |
-| A11 | integration-connections | Low | Caller `redirect_uri` unchecked; GET connect with `redirect=1` has no CSRF guard | `routes.ts:76,81,96`; `service.ts:247-248` | PROPOSED-11 |
-| A12 | integration-connections | Low | OAuth state bound to the workspace, not the initiating user | `service.ts:302-337` | PROPOSED-11 |
+| A10 | integration-connections | Low | Caller-supplied `accountLabel`/`externalAccountId` on callback override the provider's | `routes.ts:131-133`; `service.ts:447-454` | 1.15 |
+| A11 | integration-connections | Low | Caller `redirect_uri` unchecked; GET connect with `redirect=1` has no CSRF guard | `routes.ts:76,81,96`; `service.ts:247-248` | 1.15 |
+| A12 | integration-connections | Low | OAuth state bound to the workspace, not the initiating user | `service.ts:302-337` | 1.15 |
 | A13 | integration-connections | Low | Placeholder client id `px_<slug>_client` when unconfigured | `service.ts:263,376` | 0.9 (scope addition) |
 | A14 | binary-assets | Medium | Whole body read before the size check; no Content-Length precheck; no per-workspace quota | `bricks/binary-assets/src/routes.ts:86`; `assets.ts:136` | 1.14 |
 | A15 | binary-assets | Medium (needs `publicBaseUrl`) | Uploader-chosen Content-Type on a public R2 URL allows stored XSS (HTML/SVG) | `assets.ts:128,146,150` | 1.14 |
@@ -219,7 +220,7 @@ These are not filed. A human should file each one; the PR for this story lists t
 | PROPOSED-8 | binary-assets upload hardening: size precheck and quota, safe Content-Type, filename sanitising, `nosniff`, bounded paging | A14, A15, A16, A17, A18 | Phase 1 (filed as 1.14) |
 | PROPOSED-9 | omnichannel-outbound: sender ownership and recipient limits, encrypt and redact channel secrets, CR/LF validation, bounded paging | B8 (sender ownership), B9, B10, B12 | Phase 1 (before any real adapter) |
 | PROPOSED-10 | cron-alarms: allowlist of target Workflow bindings | B13 | Phase 0 (filed as 0.20) |
-| PROPOSED-11 | integration-connections OAuth hardening: provider data wins, `redirect_uri` allowlist, CSRF on connect, bind state to user | A10, A11, A12 | Phase 1 |
+| PROPOSED-11 | integration-connections OAuth hardening: provider data wins, `redirect_uri` allowlist, CSRF on connect, bind state to user | A10, A11, A12 | Phase 1 (filed as 1.15) |
 | PROPOSED-12 | studio-web: strip production test hooks and fake values; check href schemes | C4, C5, C6, C7 | Phase 1 |
 | PROPOSED-13 | Payment adapter verification (order id, currency, customer) | A20 | Phase 2 |
 | PROPOSED-14 | Sub-resource routes answer 200 for another workspace's parent id instead of 404 | D1 | Phase 1 |

@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "afffad95b98286fd76e73f33748952bd74e456e2cc7becea2085943c5c531c96",
+  "catalogVersion": "536a8257a268e2bca80d3aed81c2c4ed2f721e54e72ef8eb684a71ca327536e1",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -1798,6 +1798,13 @@ export const catalog: Catalog = {
             "min": 10,
             "max": 600,
             "default": 60
+          },
+          "allowedRedirectUris": {
+            "type": "string",
+            "pattern": "^( *https://[^\\s,]{1,500} *(, *https://[^\\s,]{1,500} *)*)?$",
+            "example": "https://app.example.com/api/integrations/google/callback",
+            "maxLength": 512,
+            "default": ""
           }
         },
         "nodes": [],
@@ -1849,6 +1856,9 @@ export const catalog: Catalog = {
                 },
                 "refreshWindowSeconds": {
                   "$setting": "refreshWindowSeconds"
+                },
+                "allowedRedirectUris": {
+                  "$setting": "allowedRedirectUris"
                 }
               },
               "guardPaths": [
