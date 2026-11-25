@@ -10,11 +10,11 @@
     "toolCalls": 4,
     "conversationTokens": 2118,
     "modelVisibleTokens": 1741,
-    "firstPartySourceTokens": 28697,
+    "firstPartySourceTokens": 30175,
     "generatedFilesOnlyTokens": 9799,
-    "ratioPercent": 7.4,
+    "ratioPercent": 7,
     "ratioAgainstGeneratedFilesOnlyPercent": 21.6,
-    "modelVisibleRatioPercent": 6.1,
+    "modelVisibleRatioPercent": 5.8,
     "projectHash": "e0174e84a8f8aa89bcc5e03d2b8c69d70c113f74ecee11558f6316e9195798ee",
     "files": 13,
     "byMessage": [
@@ -84,6 +84,10 @@
         "tokens": 1177
       },
       {
+        "path": "bricks/credit-wallet/src/charger.ts",
+        "tokens": 1426
+      },
+      {
         "path": "bricks/credit-wallet/src/d1.ts",
         "tokens": 44
       },
@@ -93,7 +97,7 @@
       },
       {
         "path": "bricks/credit-wallet/src/index.ts",
-        "tokens": 383
+        "tokens": 412
       },
       {
         "path": "bricks/credit-wallet/src/migrate.ts",
@@ -117,7 +121,7 @@
       },
       {
         "path": "bricks/credit-wallet/brick.manifest.json",
-        "tokens": 1332
+        "tokens": 1355
       },
       {
         "path": "bricks/dynamic-entities/src/index.ts",
@@ -193,16 +197,16 @@
       "session": "the whole invoices project with filtered list_bricks ({ query: 'workspace' })",
       "toolCalls": 4,
       "conversationTokens": 2006,
-      "firstPartySourceTokens": 28697,
-      "ratioPercent": 7
+      "firstPartySourceTokens": 30175,
+      "ratioPercent": 6.6
     },
     "tenBricks": {
       "session": "ten bricks and the invoices table in four calls",
       "toolCalls": 4,
       "conversationTokens": 2226,
-      "firstPartySourceTokens": 67175,
+      "firstPartySourceTokens": 68653,
       "filesBuilt": 21,
-      "ratioPercent": 3.3
+      "ratioPercent": 3.2
     },
     "smallerProject": {
       "session": "workspaces and invoices without the wallet",
@@ -225,12 +229,12 @@
       "toolCalls": 6,
       "conversationTokens": 2303,
       "toolListTokens": 1216,
-      "ratioPercent": 8
+      "ratioPercent": 7.6
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-25T01:58:17.348Z",
-    "gitSha": "c7d2630a3fd0d38d6bafb6a69f13c837f2437c8e",
+    "generatedAt": "2026-11-25T03:12:42.838Z",
+    "gitSha": "43af4437ecc7a08655c9faf3e62b588f95e7d0d6",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

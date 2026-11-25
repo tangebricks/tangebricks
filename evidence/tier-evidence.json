@@ -216,7 +216,7 @@
       "passed": true,
       "testsRun": 10,
       "testsSkipped": 0,
-      "assertionCount": 46
+      "assertionCount": 48
     },
     {
       "id": "marketplace-splits",
@@ -496,8 +496,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T01:58:17.348Z",
-    "gitSha": "c7d2630a3fd0d38d6bafb6a69f13c837f2437c8e",
+    "generatedAt": "2026-11-25T03:12:42.838Z",
+    "gitSha": "43af4437ecc7a08655c9faf3e62b588f95e7d0d6",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
