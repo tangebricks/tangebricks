@@ -81,6 +81,32 @@
       "sideEffects": "none"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "wh_endpoints"
+      },
+      {
+        "table": "wh_deliveries"
+      },
+      {
+        "table": "wh_subscriptions"
+      },
+      {
+        "table": "px_webhook_deliveries"
+      }
+    ],
+    "exempt": [
+      {
+        "table": "wh_subscriptions_v2",
+        "reason": "Transient migration table; renamed to wh_subscriptions, which is declared"
+      },
+      {
+        "table": "px_connections",
+        "reason": "runtime connection vault, project-scoped; scope decided in 1.17"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/webhook-gateway",
     "routes": [

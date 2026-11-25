@@ -78,6 +78,16 @@
       "sideEffects": "write"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "msg_channels"
+      },
+      {
+        "table": "msg_dispatches"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/omnichannel-outbound",
     "routes": [

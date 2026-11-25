@@ -30,6 +30,13 @@
     "behaviourTest": "test/search.test.ts",
     "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "search_documents"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/search-faceted",
     "routes": [

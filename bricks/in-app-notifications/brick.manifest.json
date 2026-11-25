@@ -57,6 +57,13 @@
       "sideEffects": "write"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "notif_notifications"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/in-app-notifications",
     "routes": [
@@ -66,8 +73,7 @@
         "guardWith": "workspace-context",
         "guardPaths": [
           "/api/notifications",
-          "/api/notifications/unread-count",
-          "/api/notifications/mark-all-read"
+          "/api/notifications/*"
         ]
       }
     ]

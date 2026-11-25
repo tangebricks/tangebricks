@@ -32,6 +32,19 @@
     "maturityReason": "OIDC SSO wired via oidc-verify; SAML not supported",
     "behaviourTest": "test/federation.test.ts"
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "sso_connections"
+      },
+      {
+        "table": "sso_federated_identities"
+      },
+      {
+        "table": "sso_auth_requests"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/identity-federation",
     "routes": [

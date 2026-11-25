@@ -382,9 +382,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/audit",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/audit/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/audit/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -400,9 +412,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/assets",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/assets/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/assets/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -412,9 +436,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/checkout",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/checkout/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -430,9 +466,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/wallet",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/wallet/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/wallet/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -442,9 +490,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/payments/create-order",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/schedules",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/schedules",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -454,9 +514,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/schedules/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/privacy",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/privacy",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -466,7 +538,25 @@
     },
     {
       "method": "ALL",
+      "route": "/api/privacy/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/docs",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/docs",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/docs/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
     },
@@ -474,7 +564,7 @@
       "method": "ALL",
       "route": "/api/docs/*",
       "attack": "*",
-      "reason": "middleware (workspaceMiddleware), not an endpoint"
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -490,9 +580,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/records",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/records/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/records/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -502,9 +604,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/armor",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/armor/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/armor/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -514,9 +628,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/flags",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/flags/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/flags/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -532,15 +658,21 @@
     },
     {
       "method": "ALL",
-      "route": "/api/notifications/unread-count",
+      "route": "/api/notifications",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/notifications/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
     },
     {
       "method": "ALL",
-      "route": "/api/notifications/mark-all-read",
+      "route": "/api/notifications/*",
       "attack": "*",
-      "reason": "middleware (workspaceMiddleware), not an endpoint"
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -556,9 +688,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/integrations",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/integrations/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/integrations/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -568,7 +712,25 @@
     },
     {
       "method": "ALL",
+      "route": "/api/connect/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/chat",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/chat",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/chat/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
     },
@@ -576,7 +738,7 @@
       "method": "ALL",
       "route": "/api/chat/*",
       "attack": "*",
-      "reason": "middleware (workspaceMiddleware), not an endpoint"
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -592,9 +754,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/ai",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/ai/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/ai/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -604,9 +778,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/meters",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/meters/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/meters/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -616,9 +802,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/events",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/events/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/events/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -628,9 +826,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/usage",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/usage/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/usage/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -646,9 +856,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/messages",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/messages/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/messages/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -658,9 +880,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/subscriptions",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/subscriptions/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/subscriptions/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -676,9 +910,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/analytics",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/analytics/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/analytics/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -694,9 +940,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/api-keys",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/api-keys/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/api-keys/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -706,9 +964,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/jobs",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/jobs/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/jobs/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -724,9 +994,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/roles",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/roles/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/roles/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -736,9 +1018,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/policies",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/policies/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/policies/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -754,9 +1048,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/scripts",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/scripts/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/scripts/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -772,9 +1078,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/search",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/search/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/search/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -790,9 +1108,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/tabular",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/tabular/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/tabular/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -808,9 +1138,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/threads",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/threads/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/threads/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -826,9 +1168,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/onboarding",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/onboarding/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/onboarding/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -850,9 +1204,21 @@
     },
     {
       "method": "ALL",
+      "route": "/api/vectors",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/vectors/*",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/vectors/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     },
     {
       "method": "ALL",
@@ -868,7 +1234,25 @@
     },
     {
       "method": "ALL",
+      "route": "/api/webhooks/endpoints",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/webhooks/endpoints/*",
+      "attack": "*",
+      "reason": "middleware (workspaceMiddleware), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/webhooks/endpoints/*",
+      "attack": "*",
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/webhooks/subscriptions",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
     },
@@ -876,7 +1260,7 @@
       "method": "ALL",
       "route": "/api/webhooks/subscriptions",
       "attack": "*",
-      "reason": "middleware (workspaceMiddleware), not an endpoint"
+      "reason": "middleware (notSuspended_workspace_context), not an endpoint"
     }
   ],
   "problems": [],
@@ -2203,8 +2587,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-24T20:15:23.849Z",
-    "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+    "generatedAt": "2026-11-25T00:59:39.706Z",
+    "gitSha": "302e7cfcb66b8687c22c74904ea9e829d3e3cdd5",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

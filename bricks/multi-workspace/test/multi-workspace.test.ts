@@ -348,3 +348,176 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
     expect(eveMember).toBeNull();
   });
 });
+
+// Story 1.10: invite ceilings, suspension on the workspace brick's own routes, and the delete hook.
+describe("story 1.10: invites, suspension and the workspace delete hook", () => {
+  function appWith(options: Parameters<typeof createWorkspaceRoutes>[0] = {}) {
+    const app = new Hono<WorkspaceEnv>();
+    app.use("*", async (c, next) => {
+      const uid = c.req.header("x-test-user");
+      if (uid) c.set("user", { uid, email: `${uid}@test.com` });
+      await next();
+    });
+    app.route("/", createWorkspaceRoutes(options));
+    return app;
+  }
+  const send = (app: Hono<WorkspaceEnv>, method: string, path: string, user: string, body?: unknown) =>
+    app.request(
+      `http://localhost${path}`,
+      { method, headers: { "x-test-user": user, ...(body ? { "content-type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) },
+      { DB: db },
+    );
+  async function seedWorkspace(id: string, suspended = false): Promise<void> {
+    await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id, suspended) VALUES (?, ?, 'usr_owner', ?)").bind(id, id, suspended ? 1 : 0).run();
+    await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, 'usr_owner', 'owner'), (?, 'usr_admin', 'admin'), (?, 'usr_member', 'member')").bind(id, id, id).run();
+  }
+
+  it("an inviter may only invite at or below their own role", async () => {
+    const app = appWith();
+    await seedWorkspace("ws_roles");
+    const adminOwner = await send(app, "POST", "/workspaces/ws_roles/invites", "usr_admin", { role: "owner" });
+    expect(adminOwner.status).toBe(403);
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_invites").first<{ n: number }>()).toEqual({ n: 0 });
+    expect((await send(app, "POST", "/workspaces/ws_roles/invites", "usr_admin", { role: "admin" })).status).toBe(201);
+    expect((await send(app, "POST", "/workspaces/ws_roles/invites", "usr_admin", { role: "member" })).status).toBe(201);
+    expect((await send(app, "POST", "/workspaces/ws_roles/invites", "usr_owner", { role: "owner" })).status).toBe(201);
+    expect((await send(app, "POST", "/workspaces/ws_roles/invites", "usr_member", { role: "member" })).status).toBe(403);
+  });
+
+  it("a suspended workspace is refused with 403 WORKSPACE_SUSPENDED on invite, accept, member removal and delete; its GETs still answer", async () => {
+    const app = appWith();
+    await seedWorkspace("ws_susp");
+    const invite = (await (await send(app, "POST", "/workspaces/ws_susp/invites", "usr_owner", { role: "member" })).json()) as { token: string };
+    await db.prepare("UPDATE mw_workspaces SET suspended = 1 WHERE id = 'ws_susp'").run();
+
+    const expectSuspended = async (res: Response, label: string) => {
+      expect(res.status, label).toBe(403);
+      expect(((await res.json()) as { code?: string }).code, label).toBe("WORKSPACE_SUSPENDED");
+    };
+    await expectSuspended(await send(app, "POST", "/workspaces/ws_susp/invites", "usr_owner", { role: "member" }), "invite");
+    await expectSuspended(await send(app, "POST", `/workspaces/invites/${invite.token}/accept`, "usr_new"), "accept");
+    await expectSuspended(await send(app, "DELETE", "/workspaces/ws_susp/members/usr_member", "usr_owner"), "member removal");
+    await expectSuspended(await send(app, "DELETE", "/workspaces/ws_susp", "usr_owner"), "delete");
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_susp'").first<{ n: number }>()).toEqual({ n: 3 });
+    expect(await db.prepare("SELECT used FROM mw_invites WHERE token = ?").bind(invite.token).first<{ used: number }>()).toEqual({ used: 0 });
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_workspaces WHERE id = 'ws_susp'").first<{ n: number }>()).toEqual({ n: 1 });
+
+    const list = await send(app, "GET", "/workspaces", "usr_member");
+    expect(list.status).toBe(200);
+    const detail = await send(app, "GET", "/workspaces/ws_susp", "usr_member");
+    expect(detail.status).toBe(200);
+    expect(((await detail.json()) as { workspace: { suspended: boolean } }).workspace.suspended).toBe(true);
+  });
+
+  it("the delete hook runs before the workspace rows go; when it fails the workspace and its rows stay, and a retry completes", async () => {
+    await db.prepare("DROP TABLE IF EXISTS hook_items").run();
+    await db.prepare("CREATE TABLE hook_items (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL)").run();
+    await seedWorkspace("ws_a");
+    await seedWorkspace("ws_b");
+    await db.prepare("INSERT INTO hook_items (id, workspace_id) VALUES ('a1', 'ws_a'), ('b1', 'ws_b')").run();
+
+    let fail = true;
+    const app = appWith({
+      workspaceDataPurge: async (env, workspaceId) => {
+        await env.DB.batch([
+          env.DB.prepare("DELETE FROM hook_items WHERE workspace_id = ?").bind(workspaceId),
+          ...(fail ? [env.DB.prepare("DELETE FROM no_such_table WHERE workspace_id = ?").bind(workspaceId)] : []),
+        ]);
+      },
+    });
+    // A member or an admin cannot delete; the hook does not run.
+    expect((await send(app, "DELETE", "/workspaces/ws_a", "usr_member")).status).toBe(403);
+    expect((await send(app, "DELETE", "/workspaces/ws_a", "usr_admin")).status).toBe(403);
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM hook_items").first<{ n: number }>()).toEqual({ n: 2 });
+
+    // A purge statement fails: its batch rolls back, A's rows and the workspace stay.
+    expect((await send(app, "DELETE", "/workspaces/ws_a", "usr_owner")).status).toBe(500);
+    expect(await db.prepare("SELECT id FROM hook_items WHERE workspace_id = 'ws_a'").all()).toMatchObject({ results: [{ id: "a1" }] });
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_a'").first<{ n: number }>()).toEqual({ n: 3 });
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_workspaces WHERE id = 'ws_a'").first<{ n: number }>()).toEqual({ n: 1 });
+    // The fence stays up: the workspace is suspended for the delete, so other writes are refused meanwhile.
+    expect(await db.prepare("SELECT suspended, suspended_reason FROM mw_workspaces WHERE id = 'ws_a'").first()).toEqual({ suspended: 1, suspended_reason: "deleting" });
+    expect((await send(app, "POST", "/workspaces/ws_a/invites", "usr_owner", { role: "member" })).status).toBe(403);
+
+    // The retry runs the hook statements and then removes the workspace; B is untouched.
+    fail = false;
+    expect((await send(app, "DELETE", "/workspaces/ws_a", "usr_owner")).status).toBe(200);
+    expect(await db.prepare("SELECT id FROM hook_items ORDER BY id").all()).toMatchObject({ results: [{ id: "b1" }] });
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_workspaces WHERE id = 'ws_a'").first<{ n: number }>()).toEqual({ n: 0 });
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_b'").first<{ n: number }>()).toEqual({ n: 3 });
+  });
+
+  it("an id that is not one plain segment is refused with 400 before anything runs", async () => {
+    let ran = false;
+    const app = appWith({ workspaceDataPurge: async () => { ran = true; } });
+    for (const id of ["a%2Fb", "a..b%2F", "x".repeat(65)]) {
+      expect((await send(app, "DELETE", `/workspaces/${id}`, "usr_owner")).status, id).toBe(400);
+    }
+    expect(ran).toBe(false);
+  });
+
+  it("two concurrent accepts of one invite give exactly one member", async () => {
+    const app = appWith();
+    await seedWorkspace("ws_race");
+    const { token } = (await (await send(app, "POST", "/workspaces/ws_race/invites", "usr_owner", { role: "owner" })).json()) as { token: string };
+    const results = await Promise.all([
+      send(app, "POST", `/workspaces/invites/${token}/accept`, "usr_x"),
+      send(app, "POST", `/workspaces/invites/${token}/accept`, "usr_y"),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_race' AND user_id IN ('usr_x', 'usr_y')").first<{ n: number }>()).toEqual({ n: 1 });
+  });
+
+  it("an existing member cannot accept an invite: 409 ALREADY_MEMBER, role unchanged, invite still open", async () => {
+    const app = appWith();
+    await seedWorkspace("ws_exist");
+    const { token } = (await (await send(app, "POST", "/workspaces/ws_exist/invites", "usr_owner", { role: "member" })).json()) as { token: string };
+    const res = await send(app, "POST", `/workspaces/invites/${token}/accept`, "usr_admin");
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe("ALREADY_MEMBER");
+    expect(await db.prepare("SELECT role FROM mw_members WHERE workspace_id = 'ws_exist' AND user_id = 'usr_admin'").first()).toEqual({ role: "admin" });
+    expect(await db.prepare("SELECT used FROM mw_invites WHERE token = ?").bind(token).first()).toEqual({ used: 0 });
+  });
+
+  it("an invite whose inviter was removed is revoked: 403 INVITE_REVOKED and not consumed", async () => {
+    const app = appWith();
+    await seedWorkspace("ws_revoke");
+    const { token } = (await (await send(app, "POST", "/workspaces/ws_revoke/invites", "usr_admin", { role: "admin" })).json()) as { token: string };
+    expect((await send(app, "DELETE", "/workspaces/ws_revoke/members/usr_admin", "usr_owner")).status).toBe(200);
+    const res = await send(app, "POST", `/workspaces/invites/${token}/accept`, "usr_new");
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe("INVITE_REVOKED");
+    expect(await db.prepare("SELECT used FROM mw_invites WHERE token = ?").bind(token).first()).toEqual({ used: 0 });
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE user_id = 'usr_new'").first<{ n: number }>()).toEqual({ n: 0 });
+  });
+
+  it("members are removed only by a caller of strictly higher rank or by themselves, and never the last owner", async () => {
+    const app = appWith();
+    await seedWorkspace("ws_rm");
+    await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES ('ws_rm', 'usr_admin2', 'admin'), ('ws_rm', 'usr_member2', 'member')").run();
+    const remove = (caller: string, target: string) => send(app, "DELETE", `/workspaces/ws_rm/members/${target}`, caller);
+    const role = async (user: string) => (await db.prepare("SELECT role FROM mw_members WHERE workspace_id = 'ws_rm' AND user_id = ?").bind(user).first<{ role: string }>())?.role;
+
+    expect((await remove("usr_admin", "usr_owner")).status).toBe(403);
+    expect((await remove("usr_admin", "usr_admin2")).status).toBe(403);
+    expect((await remove("usr_member", "usr_member2")).status).toBe(403);
+    expect(await role("usr_owner")).toBe("owner");
+    expect(await role("usr_admin2")).toBe("admin");
+    expect(await role("usr_member2")).toBe("member");
+
+    expect((await remove("usr_admin", "usr_member2")).status).toBe(200);
+    expect((await remove("usr_owner", "usr_admin2")).status).toBe(200);
+    expect((await remove("usr_member", "usr_member")).status).toBe(200);
+
+    const last = await remove("usr_owner", "usr_owner");
+    expect(last.status).toBe(409);
+    expect(((await last.json()) as { error: { code: string } }).error.code).toBe("LAST_OWNER");
+    expect(await role("usr_owner")).toBe("owner");
+
+    // With a second owner, an owner may leave, but still not remove the other owner.
+    await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES ('ws_rm', 'usr_owner2', 'owner')").run();
+    expect((await remove("usr_owner", "usr_owner2")).status).toBe(403);
+    expect((await remove("usr_owner", "usr_owner")).status).toBe(200);
+    expect(await role("usr_owner2")).toBe("owner");
+  });
+});

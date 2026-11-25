@@ -72,6 +72,11 @@ export const valueExpr = z.union([
   /** The entities the owner declared, passed in as data (the assembler writes them to entities.json). */
   z.strictObject({ $entities: z.literal(true) }),
   z.strictObject({ $privacy: z.enum(["exportTenant", "eraseTenant"]) }),
+  /**
+   * The assembled app's generated workspace-data purge (story 1.10): `purgeWorkspaceData(env, workspaceId)` deletes a
+   * workspace's objects under every declared prefix and its rows in every declared table.
+   */
+  z.strictObject({ $workspaceData: z.literal("purgeWorkspaceData") }),
 ]);
 export type ValueExpr = z.infer<typeof valueExpr>;
 
@@ -203,6 +208,25 @@ export const privacyDefinition = z.strictObject({
   hookTables: z.array(identifier).optional(),
 });
 export type PrivacyDefinition = z.infer<typeof privacyDefinition>;
+
+/**
+ * The brick's per-workspace rows (story 1.10): every table that holds rows for one workspace (each must have a
+ * `workspace_id` column). When a workspace is deleted, the assembled app deletes its rows from each declared table, or
+ * for a `tombstone` table (kept for audit) sets `deleted_at` when the table has that column and otherwise keeps the
+ * rows as they are. A tenant table the brick does not want purged is listed in `exempt` with a reason.
+ */
+export const workspaceDataDefinition = z.strictObject({
+  tables: z.array(z.strictObject({ table: identifier, tombstone: z.boolean().optional() })).default([]),
+  exempt: z.array(z.strictObject({ table: identifier, reason: z.string().min(1).max(200).regex(SAFE_TEXT) })).optional(),
+  /**
+   * Object-store prefixes holding one workspace's objects, in a binding the brick declares. `{workspaceId}` must be
+   * followed by "/", so one workspace's prefix never covers another's. Deleted before the rows.
+   */
+  objectPrefixes: z
+    .array(z.strictObject({ binding: identifier, prefix: z.string().max(200).regex(/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\/\{workspaceId\}\/(?:[A-Za-z0-9_.-]+\/)*$/) }))
+    .optional(),
+});
+export type WorkspaceDataDefinition = z.infer<typeof workspaceDataDefinition>;
 
 export const workerPrivacyDefinition = z.strictObject({
   exportTenant: identifier.optional(),
@@ -1147,9 +1171,15 @@ export const ManifestSchema = z
     rateLimits: z.array(rateLimitDefinition).optional(),
     adapters: z.record(identifier, adapterDefinition).optional(),
     privacy: privacyDefinition.optional(),
+    /** Tables holding per-workspace rows, removed when a workspace is deleted (story 1.10). */
+    workspaceData: workspaceDataDefinition.optional(),
     worker: z.strictObject({
       package: z.string().regex(PACKAGE_NAME),
-      guard: z.strictObject({ export: identifier, capability }).optional(),
+      /**
+       * `suspension` (story 1.10) names an export that refuses a suspended workspace. The assembler mounts it right
+       * after this guard on every path the guard is mounted at, apart from a short allowlist kept in the assembler.
+       */
+      guard: z.strictObject({ export: identifier, capability, suspension: identifier.optional() }).optional(),
       routes: z.array(routeDefinition).default([]),
       privacy: workerPrivacyDefinition.optional(),
     }),
@@ -1161,6 +1191,21 @@ export const ManifestSchema = z
         if (rule.erase === "retain" && (!rule.retainReason || rule.retainReason.trim().length === 0)) {
           problem(`privacy table "${table}" erase "retain" requires retainReason`, ["privacy", "tables", table, "retainReason"]);
         }
+      }
+    }
+    if (m.workspaceData) {
+      const seenTables = new Set<string>();
+      for (const entry of [...m.workspaceData.tables, ...(m.workspaceData.exempt ?? [])]) {
+        if (seenTables.has(entry.table)) problem(`workspaceData lists table "${entry.table}" more than once`, ["workspaceData"]);
+        seenTables.add(entry.table);
+      }
+      for (const o of m.workspaceData.objectPrefixes ?? []) {
+        const type = m.bindings && !Array.isArray(m.bindings) ? m.bindings[o.binding] : undefined;
+        if (type !== "r2") problem(`workspaceData objectPrefixes binding "${o.binding}" must be declared as an R2 binding ("r2") in bindings`, ["workspaceData", "objectPrefixes"]);
+      }
+      const globals = new Set((m.globalTables ?? []).map((g) => g.table));
+      for (const entry of m.workspaceData.tables) {
+        if (globals.has(entry.table)) problem(`workspaceData table "${entry.table}" is a global table; global tables are never purged`, ["workspaceData"]);
       }
     }
     if (m.trust === "untrusted" && m.isolation !== "dispatch") problem('untrusted requires isolation: "dispatch"', ["trust"]);

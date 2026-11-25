@@ -46,6 +46,16 @@
       }
     ]
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "cron_schedules"
+      },
+      {
+        "table": "cron_history"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/cron-alarms",
     "routes": [

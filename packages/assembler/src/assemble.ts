@@ -1,7 +1,7 @@
 import { BlueprintSchema, formatIssues } from "./schemas.ts";
 import type { ObservabilityConfig } from "./schemas.ts";
 import { lintMigration } from "../../deploy/src/migration-lint.ts";
-import { PX_RATE_LIMITS_DDL, entityDdl, parseEntities } from "@poc/sdk";
+import { PX_RATE_LIMITS_DDL, entityDdl, parseEntities, tableName } from "@poc/sdk";
 import type { Entity } from "@poc/sdk";
 import type { BrickManifestFile, Catalog, ProjectLock, SettingDefinition, ValueExpr } from "./schemas.ts";
 import { compare, parse, satisfies } from "./semver.ts";
@@ -51,6 +51,28 @@ const PX_SCHEDULES_DDL = [
   "",
 ].join("\n");
 
+/**
+ * Story 1.10: the routes a suspended workspace may still call. Everywhere else that a workspace guard with a
+ * `suspension` export is mounted, a suspended workspace gets 403 WORKSPACE_SUSPENDED. Matched on the request's method
+ * and exact path shape only (never a header or the query); `:name` is one path segment. Each entry says why it is
+ * exempt. Routes with no workspace guard (auth, payment verify, inbound webhooks, the workspace brick's own routes)
+ * are never behind the check, so they need no entry here.
+ */
+export const SUSPENSION_EXEMPT: ReadonlyArray<{ method: "GET" | "POST"; path: string; reason: string }> = [
+  { method: "POST", path: "/api/privacy/export", reason: "data-subject rights must remain available while suspended" },
+  { method: "GET", path: "/api/privacy/export/:id", reason: "data-subject rights must remain available while suspended" },
+  { method: "POST", path: "/api/privacy/erasure", reason: "data-subject rights must remain available while suspended" },
+  { method: "GET", path: "/api/privacy/erasure/:id", reason: "data-subject rights must remain available while suspended" },
+];
+
+/** An exempt path as the source of an anchored regular expression over the request path (for `new RegExp`). */
+export function exemptPathPattern(path: string): string {
+  const prefix = path.endsWith("/*");
+  const segments = (prefix ? path.slice(0, -2) : path).split("/");
+  const body = segments.map((segment) => (segment.startsWith(":") ? "[^/]+" : segment.replace(/[^A-Za-z0-9_-]/g, (ch) => `\\${ch}`))).join("/");
+  return `^${body}${prefix ? "(?:/.*)?" : ""}$`;
+}
+
 type SettingValue = number | string | boolean;
 
 interface Chosen {
@@ -58,6 +80,20 @@ interface Chosen {
   manifest: BrickManifestFile;
   files: Record<string, string>;
   settings: Record<string, SettingValue>;
+}
+
+/** One per-workspace table the generated purge touches (story 1.10). `keep` is a tombstone table without deleted_at. */
+interface WorkspaceDataTable {
+  brick: string;
+  table: string;
+  mode: "delete" | "tombstone" | "keep";
+}
+
+/** An object-store prefix holding one workspace's objects (story 1.10); `{workspaceId}` is filled in at delete time. */
+interface WorkspaceObjectPrefix {
+  brick: string;
+  binding: string;
+  prefix: string;
 }
 
 interface ScheduledTriggerEntry {
@@ -351,6 +387,43 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
   }
   if (errors.length > 0) return { ok: false, errors };
 
+  // 4c. Workspace data (story 1.10): the tables each brick declares as holding per-workspace rows, checked against its
+  // migrations and listed in reverse install order, so a workspace delete removes child rows before their parents.
+  const workspaceData: WorkspaceDataTable[] = [];
+  for (const brick of ordered) {
+    const declared = brick.manifest.workspaceData?.tables ?? [];
+    if (declared.length === 0) continue;
+    const globals = new Set((brick.manifest.globalTables ?? []).map((g) => g.table));
+    const created = workspaceTablesOf(brick.manifest.migrations.map((path) => brick.files[path] ?? ""));
+    const position = new Map(created.map((t, index) => [t.table, index]));
+    const rows: Array<WorkspaceDataTable & { index: number }> = [];
+    for (const entry of declared) {
+      const info = created.find((t) => t.table === entry.table);
+      if (!info) errors.push(`${brick.id} declares workspaceData table "${entry.table}", which its migrations do not create`);
+      else if (!info.hasWorkspaceId) errors.push(`${brick.id} declares workspaceData table "${entry.table}", which has no workspace_id column`);
+      else if (globals.has(entry.table)) errors.push(`${brick.id} declares workspaceData table "${entry.table}", which is a global table`);
+      else rows.push({ brick: brick.id, table: entry.table, mode: entry.tombstone ? (info.hasDeletedAt ? "tombstone" : "keep") : "delete", index: position.get(entry.table)! });
+    }
+    for (const row of rows.sort((a, b) => a.index - b.index)) workspaceData.push({ brick: row.brick, table: row.table, mode: row.mode });
+  }
+  // Declared entities are per-workspace tables too (entityDdl always gives them workspace_id), installed after the bricks.
+  for (const entity of entities) workspaceData.push({ brick: "entity", table: tableName(entity), mode: "delete" });
+  // The shell's px_schedules (emitted when a brick declares schedules) is a platform table, but each row mirrors one
+  // workspace's schedule: left behind, scheduled() would keep claiming a deleted workspace's rows every minute.
+  if (chosen.some((b) => (b.manifest.triggers?.schedules ?? []).length > 0)) workspaceData.push({ brick: "shell", table: "px_schedules", mode: "delete" });
+  workspaceData.reverse();
+  const workspaceObjects: WorkspaceObjectPrefix[] = [];
+  for (const brick of ordered) {
+    const raw = brick.manifest.bindings;
+    const typeOf = (name: string) => (raw && !Array.isArray(raw) ? raw[name] : undefined);
+    for (const o of brick.manifest.workspaceData?.objectPrefixes ?? []) {
+      // Only an R2 bucket is listed and deleted by prefix; any other binding would make every workspace delete fail.
+      if (typeOf(o.binding) !== "r2") errors.push(`${brick.id} declares workspaceData objects in binding "${o.binding}", which is not an R2 binding in its bindings`);
+      else workspaceObjects.push({ brick: brick.id, binding: o.binding, prefix: o.prefix });
+    }
+  }
+  if (errors.length > 0) return { ok: false, errors };
+
   // 5. Write the files.
   const files: Record<string, string> = {};
   const migrationNames: string[] = [];
@@ -456,6 +529,8 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
     requiredBindings,
     buildSha,
     identityGuard,
+    workspaceData,
+    workspaceObjects,
   );
   files["src/privacy.generated.ts"] = renderPrivacyGenerated(ordered, entities);
   if (handlers.length > 0) files["src/entities.json"] = json(entities);
@@ -750,6 +825,7 @@ function expression(value: ValueExpr, settings: Record<string, SettingValue>): s
     if ("$setting" in value) return JSON.stringify(settings[value.$setting]);
     if ("$entities" in value) return "entities"; // the identifier imported from ./entities.json
     if ("$privacy" in value) return value.$privacy;
+    if ("$workspaceData" in value) return value.$workspaceData;
     return `${value.$call}()`;
   }
   return JSON.stringify(value);
@@ -790,16 +866,22 @@ function renderEntry(
   requiredBindings: string[],
   buildSha: string,
   identityGuard?: { pkg: string; export: string },
+  workspaceData: WorkspaceDataTable[] = [],
+  workspaceObjects: WorkspaceObjectPrefix[] = [],
 ): string {
   const imports = new Map<string, Set<string>>();
   const use = (pkg: string, name: string) => imports.set(pkg, (imports.get(pkg) ?? new Set()).add(name));
   let needsEntities = false;
   let needsPrivacy = false;
+  // Story 1.10: set when a brick's route takes the generated workspace-data purge (the workspace delete route).
+  let needsWorkspaceData = false;
+  // Story 1.10: one suspension check per guard capability that has one, keyed by capability.
+  const suspensionChecks = new Map<string, { name: string; suspension: string }>();
   if (identityGuard) use(identityGuard.pkg, identityGuard.export);
-  const guardOf = new Map<string, { pkg: string; export: string }>();
+  const guardOf = new Map<string, { pkg: string; export: string; suspension?: string }>();
   for (const brick of ordered) {
     const guard = brick.manifest.worker.guard;
-    if (guard) guardOf.set(guard.capability, { pkg: brick.manifest.worker.package, export: guard.export });
+    if (guard) guardOf.set(guard.capability, { pkg: brick.manifest.worker.package, export: guard.export, ...(guard.suspension ? { suspension: guard.suspension } : {}) });
   }
 
   const body: string[] = [];
@@ -821,7 +903,19 @@ function renderEntry(
         const guard = guardOf.get(route.guardWith);
         if (!guard) throw new Error(`no guard for "${route.guardWith}"`); // cannot happen: assemble() refuses a route whose capability has no guard
         use(guard.pkg, guard.export);
-        for (const path of route.guardPaths) for (const concrete of expandGuardPath(path, entities)) emitGuard(`app.use(${JSON.stringify(concrete)}, ${guard.export});`);
+        let check: string | undefined;
+        if (guard.suspension) {
+          use(guard.pkg, guard.suspension);
+          check = `notSuspended_${route.guardWith.replace(/[^A-Za-z0-9]/g, "_")}`;
+          suspensionChecks.set(route.guardWith, { name: check, suspension: guard.suspension });
+        }
+        for (const path of route.guardPaths) {
+          for (const concrete of expandGuardPath(path, entities)) {
+            emitGuard(`app.use(${JSON.stringify(concrete)}, ${guard.export});`);
+            // Story 1.10: right after the guard that resolved the workspace, refuse a suspended one.
+            if (check) emitGuard(`app.use(${JSON.stringify(concrete)}, ${check});`);
+          }
+        }
       }
       if (isIsolated) {
         emitRoute(`app.all(${JSON.stringify(route.mountAt + "/*")}, (c) => (c.env as any).${bindingName}.fetch(c.req.raw));`);
@@ -831,6 +925,7 @@ function renderEntry(
           if (typeof value === "object" && value !== null && "$call" in value) use(brick.manifest.worker.package, value.$call);
           if (typeof value === "object" && value !== null && "$entities" in value) needsEntities = true;
           if (typeof value === "object" && value !== null && "$privacy" in value) needsPrivacy = true;
+          if (typeof value === "object" && value !== null && "$workspaceData" in value) needsWorkspaceData = true;
           return `${name}: ${expression(value, brick.settings)}`;
         });
         emitRoute(`app.route(${JSON.stringify(route.mountAt)}, ${route.factory}(${options.length > 0 ? `{ ${options.join(", ")} }` : ""}));`);
@@ -845,6 +940,10 @@ function renderEntry(
   const importLines = [...imports.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([pkg, names]) => `import { ${[...names].sort().join(", ")} } from ${JSON.stringify(pkg)};`);
+
+  // Story 1.10: the purge reads the declared entities from entities.json at run time, so no entity is named in code.
+  const purgeEntities = needsWorkspaceData && workspaceData.some((t) => t.brick === "entity");
+  if (purgeEntities) needsEntities = true;
 
   const hasTriggers = schedules.length > 0 || queues.length > 0;
   const footerLines: string[] = [];
@@ -905,11 +1004,12 @@ function renderEntry(
     [
       "// Assembled by @poc/assembler. Do not edit: change the blueprint and assemble again.",
       'import { Hono } from "hono";',
-      `import { createHttpGuard${hasRateLimits ? ", rateLimit" : ""} } from "@poc/sdk";`,
+      `import { createHttpGuard${hasRateLimits ? ", rateLimit" : ""}${purgeEntities ? ", tableName" : ""} } from "@poc/sdk";`,
       ...importLines,
       ...(identityGuard ? [] : ['import { stubIdentity } from "./identity.stub.ts";']),
       ...(needsEntities ? ['import entities from "./entities.json";'] : []),
       ...(needsPrivacy ? ['import { eraseTenant, exportTenant } from "./privacy.generated.ts";'] : []),
+      ...(needsWorkspaceData ? ['import type { D1Like } from "@poc/sdk";'] : []),
       'import openapiSpec from "../openapi.json";',
       "",
       "const app = new Hono();",
@@ -985,6 +1085,8 @@ function renderEntry(
             `app.use(${JSON.stringify(API_PREFIX + "/*")}, stubIdentity);`,
           ]),
       "",
+      ...(needsWorkspaceData ? renderWorkspaceDataPurge(workspaceData, workspaceObjects, purgeEntities) : []),
+      ...(suspensionChecks.size > 0 ? renderSuspensionChecks([...suspensionChecks.values()]) : []),
       ...body,
       ...footerLines,
     ].join("\n") + "\n"
@@ -1425,4 +1527,127 @@ function renderPrivacyGenerated(ordered: Chosen[], entities: Entity[]): string {
       "",
     ].join("\n") + "\n"
   );
+}
+
+/**
+ * Story 1.10: one `notSuspended_<capability>` per guard capability, each wrapping that guard's own `suspension` export
+ * with the assembler's allowlist. The decision uses the request's method and path only, so no header or query can
+ * make a route exempt.
+ */
+function renderSuspensionChecks(checks: Array<{ name: string; suspension: string }>): string[] {
+  return [
+    "// A suspended workspace gets 403 WORKSPACE_SUSPENDED on every workspace route (story 1.10), apart from these:",
+    "const SUSPENSION_EXEMPT: ReadonlyArray<{ method: string; path: RegExp }> = [",
+    ...SUSPENSION_EXEMPT.flatMap((e) => [
+      `  // ${e.method} ${e.path}: ${e.reason}`,
+      `  { method: ${JSON.stringify(e.method)}, path: new RegExp(${JSON.stringify(exemptPathPattern(e.path))}) },`,
+    ]),
+    "];",
+    "const suspensionExempt = (c: any) => SUSPENSION_EXEMPT.some((e) => e.method === c.req.method && e.path.exec(c.req.path) !== null);",
+    ...checks.map((k) => `const ${k.name} = (c: any, next: any) => (suspensionExempt(c) ? next() : ${k.suspension}(c, next));`),
+    "",
+  ];
+}
+
+interface WorkspaceTableInfo {
+  table: string;
+  hasWorkspaceId: boolean;
+  hasDeletedAt: boolean;
+}
+
+/**
+ * The tables a brick's migrations leave behind, in the order they first appear, with whether each has workspace_id and
+ * deleted_at. Follows `ALTER TABLE a RENAME TO b` (b takes a's columns) and `ALTER TABLE t ADD COLUMN deleted_at`.
+ */
+function workspaceTablesOf(migrations: string[]): WorkspaceTableInfo[] {
+  const tables = new Map<string, WorkspaceTableInfo>();
+  const statement =
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z0-9_"]+)\s*\(([\s\S]*?)\)\s*;|ALTER\s+TABLE\s+([A-Za-z0-9_"]+)\s+RENAME\s+TO\s+([A-Za-z0-9_"]+)|ALTER\s+TABLE\s+([A-Za-z0-9_"]+)\s+ADD\s+(?:COLUMN\s+)?([A-Za-z0-9_"]+)/gi;
+  const name = (raw: string | undefined) => (raw ?? "").replace(/"/g, "");
+  for (const sql of migrations) {
+    const stripped = sql.replace(/--[^\r\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const m of stripped.matchAll(statement)) {
+      if (m[1] !== undefined) {
+        const table = name(m[1]);
+        const body = m[2] ?? "";
+        if (!tables.has(table)) tables.set(table, { table, hasWorkspaceId: /\bworkspace_id\b/i.test(body), hasDeletedAt: /\bdeleted_at\b/i.test(body) });
+      } else if (m[3] !== undefined) {
+        const from = tables.get(name(m[3]));
+        const to = name(m[4]);
+        // The renamed table keeps the place of the table it replaces (or of the one renamed, when it is new).
+        if (from) {
+          const existing = tables.get(to);
+          if (existing) {
+            existing.hasWorkspaceId = from.hasWorkspaceId;
+            existing.hasDeletedAt = from.hasDeletedAt;
+          } else {
+            tables.set(to, { table: to, hasWorkspaceId: from.hasWorkspaceId, hasDeletedAt: from.hasDeletedAt });
+          }
+        }
+      } else if (m[5] !== undefined) {
+        const target = tables.get(name(m[5]));
+        if (target && name(m[6]).toLowerCase() === "deleted_at") target.hasDeletedAt = true;
+      }
+    }
+  }
+  return [...tables.values()];
+}
+
+/**
+ * Story 1.10: `purgeWorkspaceData(env, workspaceId)`, emitted into the entry. It first deletes the objects under each
+ * declared object prefix (listed page by page), then removes one workspace's rows from every table the enabled bricks
+ * declare as per-workspace data (and every declared entity, and the shell's px_schedules), in reverse install order, in
+ * batches of at most 25 statements. Every statement is an idempotent DELETE or UPDATE bound to that workspace only, so
+ * a failed purge can be retried. Global tables are never listed.
+ */
+function renderWorkspaceDataPurge(tables: WorkspaceDataTable[], objects: WorkspaceObjectPrefix[], withEntities: boolean): string[] {
+  const sql = (list: WorkspaceDataTable[]) =>
+    list
+      .filter((t) => t.mode !== "keep")
+      .map((t) =>
+        t.mode === "delete"
+          ? `DELETE FROM "${t.table}" WHERE workspace_id = ?`
+          : `UPDATE "${t.table}" SET deleted_at = datetime('now') WHERE workspace_id = ? AND deleted_at IS NULL`,
+      );
+  // Reverse install order: the shell's tables (installed last), then the declared entities, then the bricks' tables.
+  const shell = sql(tables.filter((t) => t.brick === "shell"));
+  const bricks = sql(tables.filter((t) => t.brick !== "shell" && t.brick !== "entity"));
+  const kept = tables.filter((t) => t.mode === "keep").map((t) => t.table);
+  return [
+    "// Workspace delete (story 1.10): one statement per declared per-workspace table, in reverse install order, each bound",
+    `// to the deleted workspace's id only, run in batches of at most 25.${withEntities ? " Entity tables come from entities.json." : ""}`,
+    ...(kept.length > 0 ? [`// Kept for audit (tombstone tables without a deleted_at column): ${kept.join(", ")}.`] : []),
+    `const WORKSPACE_PURGE_SHELL_SQL: ReadonlyArray<string> = ${JSON.stringify(shell, null, 2)};`,
+    `const WORKSPACE_PURGE_BRICK_SQL: ReadonlyArray<string> = ${JSON.stringify(bricks, null, 2)};`,
+    "const WORKSPACE_PURGE_SQL: ReadonlyArray<string> = [",
+    "  ...WORKSPACE_PURGE_SHELL_SQL,",
+    ...(withEntities
+      ? ["  ...[...(entities as Array<{ name: string }>)].reverse().map((entity) => `DELETE FROM \"${tableName(entity)}\" WHERE workspace_id = ?`),"]
+      : []),
+    "  ...WORKSPACE_PURGE_BRICK_SQL,",
+    "];",
+    `const WORKSPACE_PURGE_OBJECTS: ReadonlyArray<{ binding: string; prefix: string }> = ${JSON.stringify(objects.map((o) => ({ binding: o.binding, prefix: o.prefix })))};`,
+    "const WORKSPACE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;",
+    "type PurgeBucket = { list(o: { prefix: string; cursor?: string }): Promise<{ objects: Array<{ key: string }>; truncated: boolean; cursor?: string }>; delete(keys: string[]): Promise<unknown> };",
+    "async function purgeWorkspaceData(env: { DB: D1Like } & Record<string, unknown>, workspaceId: string): Promise<void> {",
+    "  // One plain segment only: a '/' would widen an object prefix to other workspaces' objects.",
+    '  if (WORKSPACE_ID_PATTERN.exec(workspaceId) === null) throw new Error("workspace purge: invalid workspace id");',
+    "  for (const o of WORKSPACE_PURGE_OBJECTS) {",
+    "    const bucket = env[o.binding] as PurgeBucket | undefined;",
+    "    if (!bucket) throw new Error(`workspace purge: binding ${o.binding} is missing`);",
+    '    const prefix = o.prefix.split("{workspaceId}").join(workspaceId);',
+    "    let cursor: string | undefined;",
+    "    do {",
+    "      const page = await bucket.list({ prefix, ...(cursor ? { cursor } : {}) });",
+    "      const keys = page.objects.map((obj) => obj.key);",
+    "      if (keys.length > 0) await bucket.delete(keys);",
+    "      cursor = page.truncated ? page.cursor : undefined;",
+    "    } while (cursor);",
+    "  }",
+    "  for (let i = 0; i < WORKSPACE_PURGE_SQL.length; i += 25) {",
+    "    await env.DB.batch(WORKSPACE_PURGE_SQL.slice(i, i + 25).map((sql) => env.DB.prepare(sql).bind(workspaceId)));",
+    "  }",
+    "}",
+    "",
+  ];
 }

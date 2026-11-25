@@ -36,6 +36,16 @@
       "reason": "Workflow step execution logs scoped via run_id foreign key to wf_runs"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "wf_definitions"
+      },
+      {
+        "table": "wf_runs"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/workflow-dag",
     "routes": [

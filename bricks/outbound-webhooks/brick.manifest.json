@@ -35,6 +35,16 @@
       "reason": "Both mount routes under the /api/subscriptions prefix"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "owh_endpoints"
+      },
+      {
+        "table": "owh_deliveries"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/outbound-webhooks",
     "routes": [

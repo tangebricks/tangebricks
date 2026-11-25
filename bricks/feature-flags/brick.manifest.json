@@ -40,6 +40,13 @@
       "reason": "Global feature flag definitions with workspace-level overrides in flag_overrides"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "flag_overrides"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/feature-flags",
     "routes": [

@@ -5,6 +5,7 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration1 from "../migrations/0001_identity_federation.sql?raw";
 import migration2 from "../migrations/0002_auth_requests.sql?raw";
+import workspaceMigration from "../../multi-workspace/migrations/0001_multi_workspace.sql?raw";
 import {
   IdentityFederationService,
   createSsoRoutes,
@@ -22,6 +23,12 @@ async function resetDb(): Promise<void> {
   await db.prepare("DROP TABLE IF EXISTS sso_connections").run();
   await applyMigration(db, migration1);
   await applyMigration(db, migration2);
+  // SCIM checks the connection's workspace (story 1.10), so the workspaces exist here.
+  await db.prepare("DROP TABLE IF EXISTS mw_invites").run();
+  await db.prepare("DROP TABLE IF EXISTS mw_members").run();
+  await db.prepare("DROP TABLE IF EXISTS mw_workspaces").run();
+  await applyMigration(db, workspaceMigration);
+  await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, 'Alpha', 'o'), (?, 'Beta', 'o')").bind(WS_ALPHA, WS_BETA).run();
 }
 
 beforeEach(async () => {
@@ -290,5 +297,55 @@ describe("SSO connection authorisation and secret masking (story 0.6, audit risk
     const discText = await disc.text();
     expect(discText).not.toContain("client-secret-value-123");
     expect(discText).not.toContain("scim-secret-token-456");
+  });
+});
+
+describe("SCIM refuses a suspended workspace (story 1.10)", () => {
+  async function scim(connId: string) {
+    const app = new Hono<SsoEnv>();
+    app.route("/api", createSsoRoutes());
+    return app.request(
+      "/api/sso/scim/v2/Users",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer scim_tok_suspend", "x-connection-id": connId },
+        body: JSON.stringify({ id: "scim_usr_s", userName: "s@susp.example" }),
+      },
+      { DB: db },
+    );
+  }
+  async function connection(): Promise<string> {
+    const conn = await new IdentityFederationService(db).createConnection({
+      workspaceId: WS_ALPHA,
+      domain: "susp.example",
+      providerType: "oidc",
+      displayName: "Suspend Test",
+      clientId: "client_s",
+      issuerUrl: "https://idp.susp.example",
+      scimToken: "scim_tok_suspend",
+    });
+    return conn.id;
+  }
+
+  it("answers 403 WORKSPACE_SUSPENDED and writes nothing while the workspace is suspended", async () => {
+    const connId = await connection();
+    await db.prepare("UPDATE mw_workspaces SET suspended = 1 WHERE id = ?").bind(WS_ALPHA).run();
+    const res = await scim(connId);
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("WORKSPACE_SUSPENDED");
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM sso_federated_identities").first<{ n: number }>()).toEqual({ n: 0 });
+
+    await db.prepare("UPDATE mw_workspaces SET suspended = 0 WHERE id = ?").bind(WS_ALPHA).run();
+    expect((await scim(connId)).status).toBe(201);
+  });
+
+  it("fails closed with 503 when the workspace table cannot be read", async () => {
+    const connId = await connection();
+    await db.prepare("DROP TABLE IF EXISTS mw_invites").run();
+    await db.prepare("DROP TABLE IF EXISTS mw_members").run();
+    await db.prepare("DROP TABLE mw_workspaces").run();
+    const res = await scim(connId);
+    expect(res.status).toBe(503);
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM sso_federated_identities").first<{ n: number }>()).toEqual({ n: 0 });
   });
 });

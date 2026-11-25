@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "6a6e87aa5db159101c49458dcd776fcb48af16c9f66e3e94b2ad6a48077a7cca",
+  "catalogVersion": "978a679275a08e2db843dd5a31cb4d606d45d3dca1ccdf8226236b755a879714",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -140,6 +140,19 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "mcp_tools"
+            },
+            {
+              "table": "mcp_agent_sessions"
+            },
+            {
+              "table": "mcp_tool_invocations"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/agent-sandbox",
           "routes": [
@@ -203,6 +216,14 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "audit_events",
+              "tombstone": true
+            }
+          ]
         },
         "worker": {
           "package": "@poc/audit-trail",
@@ -278,6 +299,19 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "asset_files"
+            }
+          ],
+          "objectPrefixes": [
+            {
+              "binding": "BUCKET",
+              "prefix": "workspaces/{workspaceId}/assets/"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/binary-assets",
@@ -360,6 +394,18 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "pay_checkout_sessions",
+              "tombstone": true
+            },
+            {
+              "table": "pay_invoices",
+              "tombstone": true
+            }
+          ]
         },
         "worker": {
           "package": "@poc/checkout-gateway",
@@ -737,6 +783,27 @@ export const catalog: Catalog = {
             "credit_ledger_v2"
           ]
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "credit_wallets"
+            },
+            {
+              "table": "credit_ledger",
+              "tombstone": true
+            },
+            {
+              "table": "credit_orders",
+              "tombstone": true
+            }
+          ],
+          "exempt": [
+            {
+              "table": "credit_ledger_v2",
+              "reason": "Transient migration table; renamed to credit_ledger, which is declared"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/credit-wallet",
           "routes": [
@@ -830,6 +897,16 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "cron_schedules"
+            },
+            {
+              "table": "cron_history"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/cron-alarms",
@@ -982,6 +1059,20 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "dpr_consents"
+            },
+            {
+              "table": "dpr_erasure_requests",
+              "tombstone": true
+            },
+            {
+              "table": "dpr_export_requests"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/data-privacy-gdpr",
           "routes": [
@@ -1068,6 +1159,19 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "docp_documents"
+            },
+            {
+              "table": "docp_chunks"
+            },
+            {
+              "table": "docp_extractions"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/document-parsing",
           "routes": [
@@ -1141,6 +1245,16 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "doc_templates"
+            },
+            {
+              "table": "doc_renders"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/document-pdf",
@@ -1319,6 +1433,16 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "arm_ip_rules"
+            },
+            {
+              "table": "arm_blocked_requests"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/edge-traffic-armor",
           "routes": [
@@ -1393,6 +1517,13 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "flag_overrides"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/feature-flags",
@@ -1474,6 +1605,19 @@ export const catalog: Catalog = {
               "export": false
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "sso_connections"
+            },
+            {
+              "table": "sso_federated_identities"
+            },
+            {
+              "table": "sso_auth_requests"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/identity-federation",
@@ -1566,6 +1710,13 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "notif_notifications"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/in-app-notifications",
           "routes": [
@@ -1575,8 +1726,7 @@ export const catalog: Catalog = {
               "options": {},
               "guardPaths": [
                 "/api/notifications",
-                "/api/notifications/unread-count",
-                "/api/notifications/mark-all-read"
+                "/api/notifications/*"
               ],
               "guardWith": "workspace-context"
             }
@@ -1652,6 +1802,16 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "int_connections"
+            },
+            {
+              "table": "int_oauth_states"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/integration-connections",
@@ -1735,6 +1895,19 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "chat_conversations"
+            },
+            {
+              "table": "chat_messages"
+            },
+            {
+              "table": "chat_canned_replies"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/live-chat",
           "routes": [
@@ -1815,6 +1988,16 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "ai_prompt_templates"
+            },
+            {
+              "table": "ai_generation_logs"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/llm-gateway",
           "routes": [
@@ -1892,6 +2075,22 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "split_contracts",
+              "tombstone": true
+            },
+            {
+              "table": "split_transactions",
+              "tombstone": true
+            },
+            {
+              "table": "split_payouts",
+              "tombstone": true
+            }
+          ]
         },
         "worker": {
           "package": "@poc/marketplace-splits",
@@ -1973,6 +2172,22 @@ export const catalog: Catalog = {
             "meter_events_v2"
           ]
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "meter_events"
+            },
+            {
+              "table": "meter_aggregates"
+            }
+          ],
+          "exempt": [
+            {
+              "table": "meter_events_v2",
+              "reason": "Transient migration table; renamed to meter_events, which is declared"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/metered-usage",
           "routes": [
@@ -2050,17 +2265,35 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [],
+          "exempt": [
+            {
+              "table": "mw_members",
+              "reason": "Removed by this brick's own workspace delete route, in the same batch as the purge"
+            },
+            {
+              "table": "mw_invites",
+              "reason": "Removed by this brick's own workspace delete route, in the same batch as the purge"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/multi-workspace",
           "guard": {
             "export": "workspaceMiddleware",
-            "capability": "workspace-context"
+            "capability": "workspace-context",
+            "suspension": "requireNotSuspended"
           },
           "routes": [
             {
               "factory": "createWorkspaceRoutes",
               "mountAt": "/api",
-              "options": {},
+              "options": {
+                "workspaceDataPurge": {
+                  "$workspaceData": "purgeWorkspaceData"
+                }
+              },
               "guardPaths": []
             }
           ]
@@ -2357,6 +2590,16 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "msg_channels"
+            },
+            {
+              "table": "msg_dispatches"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/omnichannel-outbound",
           "routes": [
@@ -2435,6 +2678,16 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "owh_endpoints"
+            },
+            {
+              "table": "owh_deliveries"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/outbound-webhooks",
           "routes": [
@@ -2504,6 +2757,16 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "evt_analytics_events"
+            },
+            {
+              "table": "evt_funnels"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/product-analytics",
           "routes": [
@@ -2566,6 +2829,13 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "key_api_keys"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/public-api-keys",
@@ -2645,6 +2915,16 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "job_queues"
+            },
+            {
+              "table": "job_batch_items"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/queue-jobs",
@@ -2728,6 +3008,16 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "rbac_roles"
+            },
+            {
+              "table": "rbac_role_assignments"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/rbac-policy",
           "routes": [
@@ -2802,6 +3092,16 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "pres_rooms"
+            },
+            {
+              "table": "pres_sessions"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/realtime-presence",
@@ -2901,6 +3201,16 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "scr_scripts"
+            },
+            {
+              "table": "scr_executions"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/scripting-sandbox",
           "routes": [
@@ -2964,6 +3274,13 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "search_documents"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/search-faceted",
@@ -3051,6 +3368,13 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "sub_subscriptions"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/subscription-plans",
           "routes": [
@@ -3124,6 +3448,16 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "tab_import_jobs"
+            },
+            {
+              "table": "tab_grid_views"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/tabular-engine",
           "routes": [
@@ -3194,6 +3528,16 @@ export const catalog: Catalog = {
             }
           }
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "cmt_threads"
+            },
+            {
+              "table": "cmt_comments"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/threaded-discussions",
           "routes": [
@@ -3262,6 +3606,16 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "onb_flows"
+            },
+            {
+              "table": "onb_user_progress"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/user-onboarding",
@@ -3390,6 +3744,16 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "vec_indexes"
+            },
+            {
+              "table": "vec_documents"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/vector-memory",
@@ -3528,6 +3892,32 @@ export const catalog: Catalog = {
             "wh_subscriptions_v2"
           ]
         },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "wh_endpoints"
+            },
+            {
+              "table": "wh_deliveries"
+            },
+            {
+              "table": "wh_subscriptions"
+            },
+            {
+              "table": "px_webhook_deliveries"
+            }
+          ],
+          "exempt": [
+            {
+              "table": "wh_subscriptions_v2",
+              "reason": "Transient migration table; renamed to wh_subscriptions, which is declared"
+            },
+            {
+              "table": "px_connections",
+              "reason": "runtime connection vault, project-scoped; scope decided in 1.17"
+            }
+          ]
+        },
         "worker": {
           "package": "@poc/webhook-gateway",
           "routes": [
@@ -3608,6 +3998,16 @@ export const catalog: Catalog = {
               "export": true
             }
           }
+        },
+        "workspaceData": {
+          "tables": [
+            {
+              "table": "wf_definitions"
+            },
+            {
+              "table": "wf_runs"
+            }
+          ]
         },
         "worker": {
           "package": "@poc/workflow-dag",

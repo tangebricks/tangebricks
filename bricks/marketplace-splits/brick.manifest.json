@@ -30,6 +30,22 @@
     "behaviourTest": "test/splits.test.ts",
     "maturityReason": "QUARANTINED: payouts can double-spend (threat-model risk 6) and contracts/balances answer 200 for any vendor id from another workspace (attack suite ID_GUESS)"
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "split_contracts",
+        "tombstone": true
+      },
+      {
+        "table": "split_transactions",
+        "tombstone": true
+      },
+      {
+        "table": "split_payouts",
+        "tombstone": true
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/marketplace-splits",
     "routes": [

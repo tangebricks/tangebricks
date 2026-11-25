@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { global, scoped, systemScope } from "@poc/sdk";
+import type { D1Like } from "@poc/sdk";
 import type { WorkspaceEnv, WorkspaceRole } from "./middleware.ts";
 
 const CreateWorkspaceSchema = z.object({ name: z.string().trim().min(1).max(100) });
@@ -8,12 +9,33 @@ const InviteSchema = z.object({ role: z.enum(["owner", "admin", "member"]).defau
 
 const err = (code: string, message: string) => ({ error: { code, message } });
 
+/** The same answer `requireNotSuspended` gives (story 1.10). */
+const SUSPENDED = { error: "Workspace suspended", code: "WORKSPACE_SUSPENDED" } as const;
+
+/** A workspace id the delete route accepts: one plain path segment, so it can never widen an object-store prefix. */
+const WORKSPACE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** `suspended_reason` while a delete is in progress (story 1.10): the fence that lets only the delete itself retry. */
+const DELETING = "deleting";
+
+/** Role order for invites and member removal. */
+const ROLE_RANK: Record<WorkspaceRole, number> = { member: 1, admin: 2, owner: 3 };
+
+export interface WorkspaceRoutesOptions {
+  /**
+   * Story 1.10: removes a workspace's data from every other brick (rows, and objects under declared prefixes). The
+   * assembled app wires its generated `purgeWorkspaceData` here. The delete route awaits it before deleting its own
+   * rows. Without it (this brick used standalone) a delete removes only this brick's rows, as before.
+   */
+  workspaceDataPurge?: (env: { DB: D1Like }, workspaceId: string) => Promise<void>;
+}
+
 /**
  * Workspace routes. They expect `user` to have been set by the host's auth middleware, and answer 401 if it was not.
  * Every query is parameterised and either filters by the caller's own user id or by a workspace the caller was
  * resolved into, so one tenant cannot list or touch another's workspaces.
  */
-export function createWorkspaceRoutes(): Hono<WorkspaceEnv> {
+export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hono<WorkspaceEnv> {
   const router = new Hono<WorkspaceEnv>();
 
   // List the workspaces the caller belongs to.
@@ -75,16 +97,41 @@ export function createWorkspaceRoutes(): Hono<WorkspaceEnv> {
     try {
       // tenant-lint: allow the invitee is not yet a member, so the invite is found by its unguessable single-use token
       const invite = await systemScope(c.env.DB, "invite token lookup")
-        .raw("SELECT token, workspace_id, role, used FROM mw_invites WHERE token = ?", [token])
-        .first<{ token: string; workspace_id: string; role: WorkspaceRole; used: number }>();
+        .raw(
+          "SELECT i.token AS token, i.workspace_id AS workspace_id, i.role AS role, i.used AS used, i.created_by AS created_by, " +
+            "w.suspended AS suspended FROM mw_invites i JOIN mw_workspaces w ON i.workspace_id = w.id WHERE i.token = ?",
+          [token],
+        )
+        .first<{ token: string; workspace_id: string; role: WorkspaceRole; used: number; created_by: string | null; suspended: number }>();
       if (!invite) return c.json(err("NOT_FOUND", "Invite not found"), 404);
       if (invite.used) return c.json(err("INVITE_ALREADY_USED", "Invite token has already been used"), 409);
+      if (invite.suspended) return c.json(SUSPENDED, 403);
 
-      await c.env.DB.batch([
+      // An existing member cannot accept (it would change their own role); the invite stays open.
+      const existing = await systemScope(c.env.DB, "invite accept existing membership")
+        .raw("SELECT role FROM mw_members WHERE workspace_id = ? AND user_id = ?", [invite.workspace_id, user.uid])
+        .first<{ role: WorkspaceRole }>();
+      if (existing) return c.json(err("ALREADY_MEMBER", "Already a member of this workspace"), 409);
+
+      // Story 1.10: the inviter must still be a member at or above the invite's role; otherwise the invite is revoked
+      // (and not consumed).
+      const inviter = invite.created_by
+        ? await systemScope(c.env.DB, "invite accept inviter check")
+            .raw("SELECT role FROM mw_members WHERE workspace_id = ? AND user_id = ?", [invite.workspace_id, invite.created_by])
+            .first<{ role: WorkspaceRole }>()
+        : null;
+      if (!inviter || ROLE_RANK[inviter.role] < ROLE_RANK[invite.role]) {
+        return c.json(err("INVITE_REVOKED", "The inviter can no longer grant this invite"), 403);
+      }
+
+      // One atomic batch: the membership is inserted only when this request is the one that claimed the invite, so two
+      // concurrent accepts of one token give exactly one member.
+      const [, inserted] = await c.env.DB.batch([
         // tenant-lint: allow consumes the same single-use token just looked up, before the invitee is a member
         c.env.DB.prepare("UPDATE mw_invites SET used = 1, used_by = ? WHERE token = ? AND used = 0").bind(user.uid, token),
-        c.env.DB.prepare("INSERT OR REPLACE INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, ?)").bind(invite.workspace_id, user.uid, invite.role),
+        c.env.DB.prepare("INSERT INTO mw_members (workspace_id, user_id, role) SELECT ?, ?, ? WHERE changes() = 1").bind(invite.workspace_id, user.uid, invite.role),
       ]);
+      if ((inserted?.meta.changes ?? 0) !== 1) return c.json(err("INVITE_ALREADY_USED", "Invite token has already been used"), 409);
 
       return c.json({ workspaceId: invite.workspace_id, role: invite.role });
     } catch (error) {
@@ -125,22 +172,40 @@ export function createWorkspaceRoutes(): Hono<WorkspaceEnv> {
     }
   });
 
-  // Delete workspace: cascading deletion to members; refuses non-owners with 403 (or 404 if non-member).
+  // Delete workspace: refuses an id that is not one plain segment with 400, non-owners with 403 (or 404 if non-member),
+  // and a suspended workspace with 403 WORKSPACE_SUSPENDED. It first marks the workspace suspended (reason "deleting"),
+  // so no new request for it is served while the purge runs. In an assembled app, `options.workspaceDataPurge` then
+  // removes every other brick's data for this workspace: declared object prefixes, then the rows in batches of at most
+  // 25 statements. This brick's own rows (invites, members, the workspace) go last, in one batch. Every purge statement
+  // is an idempotent DELETE or UPDATE, so if any step fails the workspace is still in place, still fenced, and the owner
+  // can retry the delete. Background jobs already in flight are not fenced; once the delete completes the workspace has
+  // no membership, so nothing can act for it. Standalone (no hook), other bricks' rows are left.
   router.delete("/workspaces/:id", async (c) => {
     const user = c.get("user");
     if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
+    // Story 1.10: the id names an object-store prefix in the purge, so it must be one plain segment.
+    if (!WORKSPACE_ID.test(workspaceId)) return c.json(err("VALIDATION_ERROR", "Invalid workspace id"), 400);
     try {
       const membership = await systemScope(c.env.DB, "workspace delete role check")
-        .raw("SELECT role FROM mw_members WHERE workspace_id = ? AND user_id = ?", [workspaceId, user.uid])
-        .first<{ role: WorkspaceRole }>();
+        .raw(
+          "SELECT m.role AS role, w.suspended AS suspended, w.suspended_reason AS suspended_reason FROM mw_members m JOIN mw_workspaces w ON m.workspace_id = w.id WHERE m.workspace_id = ? AND m.user_id = ?",
+          [workspaceId, user.uid],
+        )
+        .first<{ role: WorkspaceRole; suspended: number; suspended_reason: string | null }>();
       if (!membership) {
         return c.json(err("NOT_FOUND", "Workspace not found"), 404);
       }
+      // A workspace suspended by a delete that failed part-way may be deleted again (the retry); any other suspension
+      // refuses.
+      if (membership.suspended && membership.suspended_reason !== DELETING) return c.json(SUSPENDED, 403);
       if (membership.role !== "owner") {
         return c.json(err("FORBIDDEN", "Only workspace owner can delete workspace"), 403);
       }
 
+      // The fence: from here on the suspension checks refuse every new request for this workspace.
+      await c.env.DB.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = ? WHERE id = ?").bind(DELETING, workspaceId).run();
+      if (options.workspaceDataPurge) await options.workspaceDataPurge(c.env, workspaceId);
       await c.env.DB.batch([
         c.env.DB.prepare("DELETE FROM mw_invites WHERE workspace_id = ?").bind(workspaceId),
         c.env.DB.prepare("DELETE FROM mw_members WHERE workspace_id = ?").bind(workspaceId),
@@ -154,7 +219,7 @@ export function createWorkspaceRoutes(): Hono<WorkspaceEnv> {
     }
   });
 
-  // Create single-use invite token (owner/admin only)
+  // Create single-use invite token (owner/admin only, at a role at or below the inviter's)
   router.post("/workspaces/:id/invites", async (c) => {
     const user = c.get("user");
     if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
@@ -164,11 +229,19 @@ export function createWorkspaceRoutes(): Hono<WorkspaceEnv> {
 
     try {
       const membership = await systemScope(c.env.DB, "workspace invite permission check")
-        .raw("SELECT role FROM mw_members WHERE workspace_id = ? AND user_id = ?", [workspaceId, user.uid])
-        .first<{ role: WorkspaceRole }>();
+        .raw(
+          "SELECT m.role AS role, w.suspended AS suspended FROM mw_members m JOIN mw_workspaces w ON m.workspace_id = w.id WHERE m.workspace_id = ? AND m.user_id = ?",
+          [workspaceId, user.uid],
+        )
+        .first<{ role: WorkspaceRole; suspended: number }>();
       if (!membership) return c.json(err("NOT_FOUND", "Workspace not found"), 404);
+      if (membership.suspended) return c.json(SUSPENDED, 403);
       if (membership.role !== "owner" && membership.role !== "admin") {
         return c.json(err("FORBIDDEN", "Only owner or admin can create invites"), 403);
+      }
+      // Story 1.10: no invite above the inviter's own role (an admin cannot mint an owner invite).
+      if (ROLE_RANK[body.data.role] > ROLE_RANK[membership.role]) {
+        return c.json(err("FORBIDDEN", "Cannot invite at a role above your own"), 403);
       }
 
       const token = `inv_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
@@ -192,14 +265,30 @@ export function createWorkspaceRoutes(): Hono<WorkspaceEnv> {
 
     try {
       const callerMembership = await systemScope(c.env.DB, "member removal permission check")
-        .raw("SELECT role FROM mw_members WHERE workspace_id = ? AND user_id = ?", [workspaceId, user.uid])
-        .first<{ role: WorkspaceRole }>();
+        .raw(
+          "SELECT m.role AS role, w.suspended AS suspended FROM mw_members m JOIN mw_workspaces w ON m.workspace_id = w.id WHERE m.workspace_id = ? AND m.user_id = ?",
+          [workspaceId, user.uid],
+        )
+        .first<{ role: WorkspaceRole; suspended: number }>();
       if (!callerMembership) return c.json(err("NOT_FOUND", "Workspace not found"), 404);
-      if (callerMembership.role !== "owner" && callerMembership.role !== "admin" && user.uid !== targetUserId) {
+      if (callerMembership.suspended) return c.json(SUSPENDED, 403);
+      const target = await systemScope(c.env.DB, "member removal target check")
+        .raw("SELECT role FROM mw_members WHERE workspace_id = ? AND user_id = ?", [workspaceId, targetUserId])
+        .first<{ role: WorkspaceRole }>();
+      if (!target) return c.json(err("NOT_FOUND", "Member not found"), 404);
+      // Story 1.10: a caller removes only themselves or members of strictly lower rank.
+      if (user.uid !== targetUserId && ROLE_RANK[callerMembership.role] <= ROLE_RANK[target.role]) {
         return c.json(err("FORBIDDEN", "Insufficient permissions to remove member"), 403);
       }
 
-      await c.env.DB.prepare("DELETE FROM mw_members WHERE workspace_id = ? AND user_id = ?").bind(workspaceId, targetUserId).run();
+      // Nobody removes the last owner (the workspace could then never be deleted). The count is part of the delete, so
+      // two concurrent removals cannot both pass it.
+      const removed = await c.env.DB.prepare(
+        "DELETE FROM mw_members WHERE workspace_id = ? AND user_id = ? AND (role <> 'owner' OR (SELECT COUNT(*) FROM mw_members WHERE workspace_id = ? AND role = 'owner') > 1)",
+      )
+        .bind(workspaceId, targetUserId, workspaceId)
+        .run();
+      if (removed.meta.changes !== 1) return c.json(err("LAST_OWNER", "The last owner cannot be removed"), 409);
       return c.json({ removed: true, userId: targetUserId });
     } catch (error) {
       console.error("DELETE /workspaces/:id/members/:userId:", error);

@@ -211,6 +211,8 @@ export function createSsoRoutes({ adapter }: { adapter?: SsoRouteAdapter } = {})
     const service = c.get("ssoService") || new IdentityFederationService(c.env.DB);
     const result = await service.scimSyncUser(connId, token, parsed.data);
 
+    if (result.code === "WORKSPACE_SUSPENDED") return c.json({ error: "Workspace suspended", code: "WORKSPACE_SUSPENDED" }, 403);
+    if (result.code === "WORKSPACE_STATE_UNAVAILABLE") return c.json({ error: result.error, code: result.code }, 503);
     if (!result.ok) {
       return c.json({ error: result.error }, 400);
     }

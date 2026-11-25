@@ -29,6 +29,19 @@
     "behaviourTest": "test/chat.test.ts",
     "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "chat_conversations"
+      },
+      {
+        "table": "chat_messages"
+      },
+      {
+        "table": "chat_canned_replies"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/live-chat",
     "routes": [

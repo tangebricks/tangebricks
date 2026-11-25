@@ -39,6 +39,19 @@
   "bindings": {
     "BUCKET": "r2"
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "asset_files"
+      }
+    ],
+    "objectPrefixes": [
+      {
+        "binding": "BUCKET",
+        "prefix": "workspaces/{workspaceId}/assets/"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/binary-assets",
     "routes": [

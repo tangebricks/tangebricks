@@ -39,6 +39,18 @@
     "maturityReason": "Persists checkout sessions, tax calculations, and invoices in D1, but external Stripe, Razorpay, and LemonSqueezy API calls are stubbed with synthetic URLs",
     "behaviourTest": "test/checkout.test.ts"
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "pay_checkout_sessions",
+        "tombstone": true
+      },
+      {
+        "table": "pay_invoices",
+        "tombstone": true
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/checkout-gateway",
     "routes": [

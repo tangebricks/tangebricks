@@ -29,6 +29,16 @@
     "maturityReason": "QUARANTINED: room and user lookups answer 200 for a room name or user id from another workspace (attack suite ID_GUESS); HTTP polling in D1, no WebSocket push",
     "behaviourTest": "test/presence.test.ts"
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "pres_rooms"
+      },
+      {
+        "table": "pres_sessions"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/realtime-presence",
     "routes": [

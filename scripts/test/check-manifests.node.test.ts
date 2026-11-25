@@ -68,6 +68,7 @@ function createFakeBricksWorkspace(spec: FakeBrickSpec): string {
         },
       },
     },
+    workspaceData: { tables: [{ table: "fake_items" }] },
     ui: {
       displayName: "Fake Brick",
       category: "data",
@@ -256,6 +257,7 @@ export function createItemRoutes(options: { maxItems?: number } = {}) {
   test("table without workspace_id fails with migrations violation unless listed in globalTables with a reason", () => {
     const bricksDir = createFakeBricksWorkspace({
       id: "no-workspace-id",
+      manifest: { workspaceData: undefined },
       migrationSql: `CREATE TABLE IF NOT EXISTS global_audit_items (
   id TEXT PRIMARY KEY,
   action TEXT NOT NULL
@@ -272,6 +274,7 @@ export function createItemRoutes(options: { maxItems?: number } = {}) {
       id: "global-table-ok",
       manifest: {
         globalTables: [{ table: "global_audit_items", reason: "System-wide table intentionally not scoped to a workspace." }],
+        workspaceData: undefined,
       },
       migrationSql: `CREATE TABLE IF NOT EXISTS global_audit_items (
   id TEXT PRIMARY KEY,
@@ -294,6 +297,71 @@ export function createItemRoutes(options: { maxItems?: number } = {}) {
     const lines = checkAllBricks(bricksDir).map(formatViolationLine);
     expect(lines).toEqual([
       'missing-privacy: privacy: table "fake_items" has workspace_id but no privacy rule in manifest.privacy.tables',
+    ]);
+  });
+
+  test("story 1.10: a tenant table not in workspaceData fails; one exempt with a reason passes; a declared table must exist and have workspace_id", () => {
+    const twoTables = `CREATE TABLE IF NOT EXISTS fake_items (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  title TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS fake_cache (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL
+);
+`;
+    const privacy = {
+      tables: {
+        fake_items: { subject: "workspace", erase: "delete", export: true },
+        fake_cache: { subject: "workspace", erase: "delete", export: false },
+      },
+    };
+    const undeclared = createFakeBricksWorkspace({ id: "undeclared-data", manifest: { privacy }, migrationSql: twoTables });
+    expect(checkAllBricks(undeclared).map(formatViolationLine)).toEqual([
+      'undeclared-data: workspaceData: tenant table "fake_cache" is neither declared in workspaceData.tables nor exempt with a reason',
+    ]);
+
+    const exempt = createFakeBricksWorkspace({
+      id: "exempt-data",
+      manifest: {
+        privacy,
+        workspaceData: { tables: [{ table: "fake_items" }], exempt: [{ table: "fake_cache", reason: "Rebuilt from fake_items on demand" }] },
+      },
+      migrationSql: twoTables,
+    });
+    expect(checkAllBricks(exempt)).toEqual([]);
+
+    const itemsAndGlobal = `CREATE TABLE IF NOT EXISTS fake_items (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS global_items (
+  id TEXT PRIMARY KEY
+);
+`;
+    const globalTables = [{ table: "global_items", reason: "Shared across workspaces." }];
+    // A global table may not be declared for purging (the manifest schema refuses it).
+    const globalDeclared = createFakeBricksWorkspace({
+      id: "global-declared",
+      manifest: { globalTables, workspaceData: { tables: [{ table: "fake_items" }, { table: "global_items", tombstone: true }] } },
+      migrationSql: itemsAndGlobal,
+    });
+    expect(checkAllBricks(globalDeclared).map(formatViolationLine)).toEqual([
+      'global-declared: schema: workspaceData: workspaceData table "global_items" is a global table; global tables are never purged',
+    ]);
+
+    // A declared table must be created by the brick's migrations and have workspace_id.
+    const notTenant = createFakeBricksWorkspace({
+      id: "not-tenant-data",
+      manifest: { globalTables, workspaceData: { tables: [{ table: "fake_items" }, { table: "ghost_items" }], exempt: [{ table: "global_items", reason: "Global anyway" }] } },
+      migrationSql: itemsAndGlobal,
+    });
+    expect(checkAllBricks(notTenant).map(formatViolationLine)).toEqual([
+      `not-tenant-data: workspaceData: table "ghost_items" is not created by any of the brick's migrations`,
+      'not-tenant-data: workspaceData: table "global_items" has no workspace_id column',
     ]);
   });
 

@@ -40,6 +40,16 @@
       "reason": "Shared rate-limiter counters (SDK rateLimit), keyed by bucket and a sha256 of the client key; no workspace data"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "arm_ip_rules"
+      },
+      {
+        "table": "arm_blocked_requests"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/edge-traffic-armor",
     "routes": [

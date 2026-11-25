@@ -29,6 +29,19 @@
     "maturityReason": "QUARANTINED: stub; only four built-in handlers run, inline_js, http_webhook and workflow_call tools fail NOT_CONFIGURED, and there is no isolate sandbox",
     "behaviourTest": "test/agent.test.ts"
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "mcp_tools"
+      },
+      {
+        "table": "mcp_agent_sessions"
+      },
+      {
+        "table": "mcp_tool_invocations"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/agent-sandbox",
     "routes": [

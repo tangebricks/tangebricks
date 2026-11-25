@@ -34,6 +34,7 @@
 | 1.4 | Workspace-keyed telemetry and logs |
 | 1.5 | Proposals by default; approval for destructive tools |
 | 1.9 | Metering correctness: no negative values, atomic aggregation (filed from PROPOSED-2) |
+| 1.10 | Workspace delete cascade and suspension enforcement (filed from PROPOSED-3) |
 
 `PROPOSED-n` ids are new tickets defined in [Proposed tickets](#proposed-tickets). They are not filed yet.
 
@@ -112,7 +113,7 @@ Every audit risk appears once.
 | 19 | Medium | JWTs without `exp` accepted | 0.14 |
 | 20 | Medium | `poc_graphs` and telemetry have no tenant dimension | 0.10 (`poc_graphs`), 1.4 (telemetry) |
 | 21 | Medium | Unauthenticated notification create; spoofable audit actor | 0.6 |
-| 22 | Medium | Workspace delete leaves other bricks' rows; suspension never enforced | PROPOSED-3 |
+| 22 | Medium | Workspace delete leaves other bricks' rows; suspension never enforced | 1.10 |
 | 23 | Low | No Dependabot/Renovate, no audit step in CI | 0.2 |
 | 24 | Low | API keys issued but nothing authenticates with them | PROPOSED-4 |
 | R-A | Critical | Connection-vault key falls back to a source constant (`runtime/src/connections.ts:4`) | 0.8 |
@@ -150,7 +151,7 @@ Every sweep finding appears once. Locations are as the sweep gives them (see [Ci
 
 | # | Area | Sev | Finding | Location | Covered by |
 |---|---|---|---|---|---|
-| A1 | llm-gateway | High | `/ai/generate` never debits the wallet (only logs cost); `/api/ai` not behind `requireNotSuspended`, so generation is unlimited at operator cost once a real provider is connected | `bricks/llm-gateway/src/gateway.ts:226-245`; `out/max-compatible/src/index.ts:349-351` | PROPOSED-7 (wallet debit); PROPOSED-3 (`requireNotSuspended` on `/api/ai`) |
+| A1 | llm-gateway | High | `/ai/generate` never debits the wallet (only logs cost); `/api/ai` not behind `requireNotSuspended`, so generation is unlimited at operator cost once a real provider is connected | `bricks/llm-gateway/src/gateway.ts:226-245`; `out/max-compatible/src/index.ts:349-351` | PROPOSED-7 (wallet debit); 1.10 (`requireNotSuspended` on `/api/ai`) |
 | A2 | llm-gateway | Medium | Caller picks any model name; cost ignores model | `routes.ts:25`; `gateway.ts:180,227-229` | PROPOSED-7 |
 | A3 | llm-gateway | Low | `maxTokens` accepted but not passed to the adapter | `routes.ts:17`; `gateway.ts:208` | PROPOSED-7 |
 | A4 | llm-gateway | Low | Raw provider error text returned | `gateway.ts:220`; `routes.ts:66` | PROPOSED-7 |
@@ -206,11 +207,11 @@ These are not filed. A human should file each one; the PR for this story lists t
 |---|---|---|---|
 | PROPOSED-1 | Rate limiting on auth, money and fan-out paths (wire edge-traffic-armor) | Audit 18; B16 | Phase 0 (filed as 0.21) |
 | PROPOSED-2 | Metering correctness: reject negative values, atomic aggregation | Audit 16 (negative values, aggregation race) | Phase 1 (filed as 1.9) |
-| PROPOSED-3 | Workspace delete cascade and suspension enforcement (mount `requireNotSuspended` on every brick route, including `/api/ai`) | Audit 22; A1 (suspension part) | Phase 1 |
+| PROPOSED-3 | Workspace delete cascade and suspension enforcement (mount `requireNotSuspended` on every brick route, including `/api/ai`) | Audit 22; A1 (suspension part) | Phase 1 (filed as 1.10) |
 | PROPOSED-4 | API-key authentication, or remove key issuance | Audit 24 | Phase 1 |
 | PROPOSED-5 | rbac-policy: block grant escalation, restrict permission strings, member check, no raw DB errors | B4, B5, B6, B7 | Phase 0 (filed as 0.19) |
 | PROPOSED-6 | feature-flags: honour `allowOverrides` on clear | B3 | Phase 1 |
-| PROPOSED-7 | llm-gateway: debit wallet, model allowlist and per-model cost, pass `maxTokens`, redact provider errors | A1 (wallet debit; suspension is PROPOSED-3), A2, A3, A4 | Phase 1 (before any real provider is connected) |
+| PROPOSED-7 | llm-gateway: debit wallet, model allowlist and per-model cost, pass `maxTokens`, redact provider errors | A1 (wallet debit; suspension is 1.10), A2, A3, A4 | Phase 1 (before any real provider is connected) |
 | PROPOSED-8 | binary-assets upload hardening: size precheck and quota, safe Content-Type, filename sanitising, `nosniff`, bounded paging | A14, A15, A16, A17, A18 | Phase 1 |
 | PROPOSED-9 | omnichannel-outbound: sender ownership and recipient limits, encrypt and redact channel secrets, CR/LF validation, bounded paging | B8 (sender ownership), B9, B10, B12 | Phase 1 (before any real adapter) |
 | PROPOSED-10 | cron-alarms: allowlist of target Workflow bindings | B13 | Phase 0 (filed as 0.20) |

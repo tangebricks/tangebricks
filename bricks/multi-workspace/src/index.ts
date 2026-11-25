@@ -2,3 +2,4 @@ export { getRequestContext, isAdminOrOwner, requireNotSuspended, requireWorkspac
 export type { AuthUser, RequestContext, WorkspaceContext, WorkspaceEnv, WorkspaceRole } from "./middleware.ts";
 export { rejectForeignWorkspace } from "./foreign-workspace.ts";
 export { createWorkspaceRoutes } from "./routes.ts";
+export type { WorkspaceRoutesOptions } from "./routes.ts";

@@ -47,6 +47,16 @@
     "behaviourTest": "test/isolation.workerd.test.ts",
     "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "int_connections"
+      },
+      {
+        "table": "int_oauth_states"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/integration-connections",
     "routes": [
