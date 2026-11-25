@@ -280,9 +280,9 @@
       "behaviourTest": "bricks/omnichannel-outbound/test/dispatcher.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 10,
+      "testsRun": 64,
       "testsSkipped": 0,
-      "assertionCount": 50
+      "assertionCount": 307
     },
     {
       "id": "outbound-webhooks",
@@ -496,8 +496,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T09:07:19.159Z",
-    "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
+    "generatedAt": "2026-11-25T11:22:03.878Z",
+    "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

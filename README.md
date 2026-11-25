@@ -24,11 +24,11 @@ Everything in this section is generated from the committed evidence by `pnpm rea
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | H0 | Infrastructure: tests run inside workerd | pass | 1/1 checks | — | — | 1 | local re-measure 2026-11-25 |
 | H1 | A graph validator is small and catches eight error classes | pass | 114 lines | ≤ 120 lines | ≥ 201 lines | 2 | local re-measure 2026-11-25 |
-| H2 | The runtime interprets graphs with no code generation and runs branches concurrently | pass | 0.483 ratio | < 1 ratio | — | 3 | local re-measure 2026-11-25 |
+| H2 | The runtime interprets graphs with no code generation and runs branches concurrently | pass | 0.474 ratio | < 1 ratio | — | 3 | local re-measure 2026-11-25 |
 | H3 | Executors cannot read secrets their manifest does not declare | pass | 4/4 checks | — | — | 4 | local re-measure 2026-11-25 |
 | H5 | The extracted wallet stays correct under concurrency | pass | 0 runs of 20 | ≤ 0 runs of 20 | ≥ 1 runs of 20 | 5 | local re-measure 2026-11-25; hosted D1 half: live run, **stale (run 2026-10-21)** |
 | H6 | Bricks compose from a blueprint without hand edits | pass | 5/5 checks | — | — | 5 | local re-measure 2026-11-25 |
-| H7 | Assembly is deterministic, offline and fast | pass | 0.893 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-25 |
+| H7 | Assembly is deterministic, offline and fast | pass | 0.376 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-25 |
 | H8 | An entity declaration yields tenant-safe CRUD | pass | 7/7 checks | — | — | 7 | local re-measure 2026-11-25 |
 | H9 | An MCP session builds the project at a fraction of the source tokens | pass | 6.3 percent | ≤ 15 percent | > 40 percent | 3 | local re-measure 2026-11-25; deployed MCP Worker half: live run, **stale (run 2026-10-21)** |
 | H10 | The project deploys to the owner's Cloudflare account over REST, idempotently | pass | 16.695 seconds | ≤ 120 seconds | > 600 seconds | 7 | live run, **stale (run 2026-10-21)** |
@@ -64,8 +64,8 @@ Quarantined (8): hidden from the default catalog listing and from `list_bricks`;
 
 ### Cross-tenant attack suite
 
-From `evidence/cross-tenant-fuzz.json`: 1622 cases over 176 mounted routes (39 OpenAPI paths); by attack: HEADER_B 888, QUERY_B 222, BODY_B 114, ID_GUESS 170, ROLE_ESCALATION 24, UNAUTH 204.
-Violations 0, failures 0; known failures matched 0; known-failures registry (`packages/assembler/test/attack-suite.known-failures.json`): 0 entries; route/attack pairs not attacked (no fitting row): 260.
+From `evidence/cross-tenant-fuzz.json`: 1674 cases over 180 mounted routes (40 OpenAPI paths); by attack: HEADER_B 912, QUERY_B 228, BODY_B 118, ID_GUESS 182, ROLE_ESCALATION 26, UNAUTH 208.
+Violations 0, failures 0; known failures matched 0; known-failures registry (`packages/assembler/test/attack-suite.known-failures.json`): 0 entries; route/attack pairs not attacked (no fitting row): 262.
 
 ### Tests
 
