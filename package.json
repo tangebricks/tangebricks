@@ -137,7 +137,7 @@
     "three": "0.187.0",
     "three-bvh-csg": "0.0.18",
     "twilio": "5.13.1",
-    "typescript": "5.9.3",
+    "typescript": "7.0.2",
     "uuid": "13.0.2",
     "vitest": "5.1.1",
     "wellknown": "0.5.0",
