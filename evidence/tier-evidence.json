@@ -244,9 +244,9 @@
       "behaviourTest": "bricks/multi-workspace/test/multi-workspace.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 15,
+      "testsRun": 16,
       "testsSkipped": 0,
-      "assertionCount": 105,
+      "assertionCount": 111,
       "skipped": [
         {
           "check": "CONF_IDEMPOTENT_WRITE",
@@ -293,6 +293,16 @@
       "testsRun": 8,
       "testsSkipped": 0,
       "assertionCount": 62
+    },
+    {
+      "id": "platform-admin",
+      "kind": "brick",
+      "behaviourTest": "bricks/platform-admin/test/platform-admin.test.ts",
+      "executed": true,
+      "passed": true,
+      "testsRun": 27,
+      "testsSkipped": 0,
+      "assertionCount": 395
     },
     {
       "id": "product-analytics",
@@ -496,8 +506,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T13:30:34.444Z",
-    "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+    "generatedAt": "2026-11-25T15:26:51.065Z",
+    "gitSha": "4476effda77879bd7387be166ec57acb8fd76c11",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
