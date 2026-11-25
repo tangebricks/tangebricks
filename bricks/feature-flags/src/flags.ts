@@ -139,6 +139,8 @@ export class FeatureFlagService {
    * Clears a workspace-level override.
    */
   async clearOverride(workspaceId: string, flagKeyRaw: string): Promise<boolean> {
+    // Story 1.12 (threat model B3): clearing is a change to the override, so it obeys allowOverrides like setOverride.
+    if (!this.allowOverrides) return false;
     const flagKey = flagKeyRaw.toLowerCase().trim();
     const res = await scoped(this.db, workspaceId).delete("flag_overrides", "flag_key = ?", [flagKey]);
 
