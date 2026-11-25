@@ -1,6 +1,6 @@
 {
   "routeCount": 40,
-  "honoRouteCount": 180,
+  "honoRouteCount": 185,
   "specOnlyRoutes": [
     "GET /api/ai",
     "POST /api/ai",
@@ -51,14 +51,14 @@
     "GET /api/webhooks",
     "POST /api/webhooks"
   ],
-  "cases": 1674,
+  "cases": 1707,
   "casesByAttack": {
-    "HEADER_B": 912,
-    "QUERY_B": 228,
-    "BODY_B": 118,
+    "HEADER_B": 932,
+    "QUERY_B": 233,
+    "BODY_B": 121,
     "ID_GUESS": 182,
     "ROLE_ESCALATION": 26,
-    "UNAUTH": 208
+    "UNAUTH": 213
   },
   "attacks": [
     "HEADER_B",
@@ -191,6 +191,12 @@
       "reason": "no B row id fits every path param after seeding"
     },
     {
+      "method": "PUT",
+      "route": "/api/wallet/costs/:action",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
       "method": "GET",
       "route": "/api/flags/:key/evaluate",
       "attack": "ID_GUESS",
@@ -265,6 +271,12 @@
     {
       "method": "GET",
       "route": "/api/onboarding/flows/:key/analytics",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/wallet/costs/:action",
       "attack": "ID_GUESS",
       "reason": "no B row id fits every path param after seeding"
     },
@@ -1934,6 +1946,18 @@
       "failures": []
     },
     {
+      "route": "/api/wallet/charge",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
+      "route": "/api/wallet/transfer",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
       "route": "/api/payments/create-order",
       "method": "POST",
       "cases": 7,
@@ -1961,6 +1985,18 @@
       "route": "/api/wallet/history",
       "method": "GET",
       "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/wallet/costs",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/wallet/costs/:action",
+      "method": "PUT",
+      "cases": 7,
       "failures": []
     },
     {
@@ -3056,6 +3092,12 @@
       "failures": []
     },
     {
+      "route": "/api/wallet/costs/:action",
+      "method": "DELETE",
+      "cases": 6,
+      "failures": []
+    },
+    {
       "route": "/api/schedules/:id",
       "method": "DELETE",
       "cases": 10,
@@ -3129,8 +3171,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T11:22:03.878Z",
-    "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+    "generatedAt": "2026-11-25T13:30:34.444Z",
+    "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
