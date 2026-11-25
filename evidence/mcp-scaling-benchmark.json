@@ -1,17 +1,17 @@
 {
   "tokenizer": "gpt-tokenizer 4.1.0, o200k_base",
-  "timestamp": "2026-11-25T08:41:16.816Z",
+  "timestamp": "2026-11-25T09:07:27.529Z",
   "tenBrickSessionRatioPercent": 2.8,
   "tenBrickSession": {
     "tier": "Tier 3: 10-Brick App (10 Bricks, 2 Tables)",
     "bricksCount": 10,
     "entitiesCount": 2,
     "filesCount": 24,
-    "conversationTokens": 2271,
+    "conversationTokens": 2275,
     "firstPartySourceTokens": 82144,
     "generatedFilesOnlyTokens": 22573,
     "ratioPercent": 2.8,
-    "projectHash": "25d545a0313eba80651b9ab9345e6dbcb49e9e27d045cf83130952697b5be1f7",
+    "projectHash": "6fe3b5ffdf4f0d294fa6e830ca544ffb66e5c4f5d721b74aab49c2adddcaf634",
     "status": "SUB-4% REACHED"
   },
   "results": [
@@ -20,11 +20,11 @@
       "bricksCount": 3,
       "entitiesCount": 1,
       "filesCount": 14,
-      "conversationTokens": 2117,
+      "conversationTokens": 2113,
       "firstPartySourceTokens": 33534,
       "generatedFilesOnlyTokens": 9885,
       "ratioPercent": 6.3,
-      "projectHash": "96eb7809930bcafcc0f9e2ab2a8c5e6856452dacc0f3354cc4c5ecd3b9cfa87f",
+      "projectHash": "f2bb4b65d5d495af380976763cf8ae15b82d54d8d3aaa8be25fb2aaaa9d365af",
       "status": "PASS"
     },
     {
@@ -32,11 +32,11 @@
       "bricksCount": 7,
       "entitiesCount": 2,
       "filesCount": 20,
-      "conversationTokens": 2223,
+      "conversationTokens": 2226,
       "firstPartySourceTokens": 60200,
       "generatedFilesOnlyTokens": 17995,
       "ratioPercent": 3.7,
-      "projectHash": "4e366d8be50600201be57f216980acdfee8cf3a0c483466dcd8cc4ae8b5a98bf",
+      "projectHash": "9b63f5c8b466a0a0f5aa98ccc8900a4b1205d0c04161ce86eb0f750eded934dc",
       "status": "SUB-4% REACHED"
     },
     {
@@ -44,11 +44,11 @@
       "bricksCount": 10,
       "entitiesCount": 2,
       "filesCount": 24,
-      "conversationTokens": 2271,
+      "conversationTokens": 2275,
       "firstPartySourceTokens": 82144,
       "generatedFilesOnlyTokens": 22573,
       "ratioPercent": 2.8,
-      "projectHash": "25d545a0313eba80651b9ab9345e6dbcb49e9e27d045cf83130952697b5be1f7",
+      "projectHash": "6fe3b5ffdf4f0d294fa6e830ca544ffb66e5c4f5d721b74aab49c2adddcaf634",
       "status": "SUB-4% REACHED"
     },
     {
@@ -56,11 +56,11 @@
       "bricksCount": 12,
       "entitiesCount": 4,
       "filesCount": 29,
-      "conversationTokens": 2395,
+      "conversationTokens": 2399,
       "firstPartySourceTokens": 113223,
       "generatedFilesOnlyTokens": 31903,
       "ratioPercent": 2.1,
-      "projectHash": "221579ea470feba574436e5e70c68d93c6dd2495bd433fafca66fbc75fc41441",
+      "projectHash": "5f796051fa59df2224840c1c8d446f6dc0da7d161615cdc55de9d6397b52610e",
       "status": "SUB-4% REACHED"
     },
     {
@@ -68,11 +68,11 @@
       "bricksCount": 16,
       "entitiesCount": 4,
       "filesCount": 34,
-      "conversationTokens": 2478,
+      "conversationTokens": 2471,
       "firstPartySourceTokens": 144350,
       "generatedFilesOnlyTokens": 38569,
       "ratioPercent": 1.7,
-      "projectHash": "08b8c4b17abeb41cdace08717a551cf22a3212aab2e47b22b4be393db4d3bba0",
+      "projectHash": "837547bb850865511b46d7b79775710bd5a6b2e7d6723290bbb223707a730293",
       "status": "SUB-4% REACHED"
     },
     {
@@ -80,11 +80,11 @@
       "bricksCount": 25,
       "entitiesCount": 4,
       "filesCount": 47,
-      "conversationTokens": 2823,
+      "conversationTokens": 2817,
       "firstPartySourceTokens": 206673,
       "generatedFilesOnlyTokens": 53010,
       "ratioPercent": 1.4,
-      "projectHash": "5e69d31954ce8b2111758c2e2d450327e53e9946e1a2410ad176acb4b0ddd8f7",
+      "projectHash": "9952bdf7d474d10a25d847eb727657682f4bf4b68aa153cf1fc44faaa9113029",
       "status": "SUB-4% REACHED"
     },
     {
@@ -92,17 +92,17 @@
       "bricksCount": 38,
       "entitiesCount": 4,
       "filesCount": 61,
-      "conversationTokens": 3524,
+      "conversationTokens": 3531,
       "firstPartySourceTokens": 288792,
       "generatedFilesOnlyTokens": 69895,
       "ratioPercent": 1.2,
-      "projectHash": "48d74d7530844ae556786e86ea88861c9dd203a3b2978b5fd99ccacce52a57fd",
+      "projectHash": "8b38104d8396cf0a2f3542ca134ccee79404e3b5e8f9b6202239e3c21c7a631f",
       "status": "SUB-4% REACHED"
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T08:41:13.085Z",
-    "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+    "generatedAt": "2026-11-25T09:07:19.159Z",
+    "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
     "gitDirty": false,
     "generator": "scripts/benchmark-mcp-scale.ts",
     "inputKind": "measured"
