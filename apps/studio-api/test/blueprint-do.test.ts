@@ -316,7 +316,7 @@ describe("BlueprintDO SQLite ops log and apps/studio-api command bus (Story 1.2)
     expect(readyBuild1.status).toBe(200);
     expect(readyBuild1.body.project).toBe(project);
     expect(readyBuild1.body.revision).toBe(2);
-    expect(readyBuild1.body.files).toBe(12); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003
+    expect(readyBuild1.body.files).toBe(13); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003; story 2.5 its 0004
     expect(readyBuild1.body.bytes).toBeGreaterThan(0);
 
     // Compare against direct assemble()

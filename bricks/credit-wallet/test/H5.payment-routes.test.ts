@@ -10,6 +10,7 @@ import { stubIdentity } from "../../multi-workspace/test/support/stub-identity.t
 import walletMigration from "../migrations/0001_credit_wallet.sql?raw";
 import walletMigration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
 import walletMigration0003 from "../migrations/0003_order_currency.sql?raw";
+import walletMigration0004 from "../migrations/0004_milli_credits.sql?raw";
 import { createFakeGateway, createWallet, createWalletRoutes } from "../src/index.ts";
 import type { FakeGateway } from "../src/index.ts";
 
@@ -21,11 +22,12 @@ const db = env.DB as D1Like;
 let gateway: FakeGateway;
 
 async function reset(): Promise<void> {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, mwMigration);
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
   await applyMigration(db, walletMigration0003);
+  await applyMigration(db, walletMigration0004);
 }
 async function addMember(workspaceId: string, userId: string, role = "owner", suspended = false): Promise<void> {
   await db.prepare("INSERT OR IGNORE INTO mw_workspaces (id, name, owner_id, suspended) VALUES (?, ?, 'o', ?)").bind(workspaceId, workspaceId, suspended ? 1 : 0).run();
@@ -58,7 +60,11 @@ const call = (path: string, user: string | null, workspace: string | null, body?
     { DB: db },
   );
 const json = async (res: Response) => (await res.json()) as Record<string, any>;
-const balance = (workspace: string) => createWallet(db, undefined).getBalance(workspace);
+// In credits, as the routes speak them; the wallet holds thousandths (story 2.5).
+const balance = async (workspace: string) => {
+  const milli = await createWallet(db, undefined).getBalanceMilli(workspace);
+  return milli === null ? null : milli / 1000;
+};
 const ledgerRows = async (workspace: string) => (await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
 const orderRows = async () => (await db.prepare("SELECT COUNT(*) AS n FROM credit_orders").first<{ n: number }>())!.n;
 
@@ -156,6 +162,7 @@ describe("paymentsRouter - Security and Coverage Tests", () => {
       expect(data.status).toBe("PAID");
       expect(data.credited).toBe(true);
       expect(data.credits).toBe(1000); // 100 * CREDITS_PER_RUPEE (10)
+      expect(data.creditsMilli).toBe(1_000_000);
       expect(await balance("ws-abc")).toBe(1000);
       expect(await ledgerRows("ws-abc")).toBe(1);
     });
@@ -252,22 +259,22 @@ describe("the wallet routes beyond the ported tests", () => {
     await addMember("ws-other", "user-other");
     await call("/api/payments/verify", "user-123", null, { order_id: await paidOrder() });
     const wallet = createWallet(db, gateway, { currency: "INR" });
-    await wallet.deduct({ workspaceId: "ws-abc", userId: "user-123", amount: 250, reason: "usage", metadata: { job: 1 } });
-    await wallet.openWallet("ws-other", 5);
-    await wallet.deduct({ workspaceId: "ws-other", userId: "user-other", amount: 1, reason: "secret-other-usage" });
+    await wallet.deduct({ workspaceId: "ws-abc", userId: "user-123", amountMilli: 250_000, reason: "usage", metadata: { job: 1 } });
+    await wallet.openWallet("ws-other", 5_000);
+    await wallet.deduct({ workspaceId: "ws-other", userId: "user-other", amountMilli: 1_000, reason: "secret-other-usage" });
 
     const history = await json(await call("/api/wallet/history", "user-123", "ws-abc"));
     expect(history.ledgers.map((l: { type: string; amount: number; balanceAfter: number }) => [l.type, l.amount, l.balanceAfter])).toEqual([
       ["deduction", -250, 750],
       ["topup", 1000, 1000],
     ]);
-    expect(history.ledgers[0].metadata).toEqual({ job: 1 });
+    expect(history.ledgers[0].metadata).toEqual({ job: 1, op: "wallet" }); // story 2.5: every deduction records its operation tag
     expect(JSON.stringify(history)).not.toContain("secret-other-usage");
   });
 
   it("a member of one workspace cannot read or fund another's wallet by naming it", async () => {
     await addMember("ws-other", "user-other");
-    await createWallet(db, gateway, { currency: "INR" }).openWallet("ws-other", 77);
+    await createWallet(db, gateway, { currency: "INR" }).openWallet("ws-other", 77_000);
     for (const path of ["/api/wallet", "/api/wallet/history"]) expect((await call(path, "user-123", "ws-other")).status).toBe(403);
     expect((await call("/api/payments/create-order", "user-123", "ws-other", { amount: 100 })).status).toBe(403);
     expect(await orderRows()).toBe(0);

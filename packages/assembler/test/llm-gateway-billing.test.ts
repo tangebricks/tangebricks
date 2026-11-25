@@ -50,7 +50,8 @@ async function newWorkspace(owner: string, name: string): Promise<string> {
 
 async function setBalance(workspaceId: string, credits: number): Promise<void> {
   await createWallet(db, undefined).openWallet(workspaceId, 0);
-  await db.prepare("UPDATE credit_wallets SET balance = ? WHERE workspace_id = ?").bind(credits, workspaceId).run();
+  // The wallet holds thousandths of a credit (story 2.5).
+  await db.prepare("UPDATE credit_wallets SET balance_milli = ? WHERE workspace_id = ?").bind(credits * 1000, workspaceId).run();
 }
 
 async function balanceOf(workspaceId: string): Promise<number> {
@@ -62,7 +63,7 @@ async function balanceOf(workspaceId: string): Promise<number> {
 async function ledger(workspaceId: string) {
   return (
     await db
-      .prepare("SELECT amount, idempotency_key, user_id FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid")
+      .prepare("SELECT amount_milli / 1000 AS amount, idempotency_key, user_id FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid")
       .bind(workspaceId)
       .all<{ amount: number; idempotency_key: string; user_id: string }>()
   ).results;
@@ -208,7 +209,7 @@ describe("AI generation is billed to the workspace wallet in the assembled max-c
       get(target, prop) {
         if (prop === "prepare") {
           return (q: string) => {
-            if (q.startsWith("UPDATE credit_wallets SET balance = balance - ?")) debitPrepared = true;
+            if (q.startsWith("UPDATE credit_wallets SET balance_milli = balance_milli - ?")) debitPrepared = true;
             return target.prepare(q);
           };
         }

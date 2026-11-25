@@ -5,6 +5,7 @@ import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_credit_wallet.sql?raw";
 import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
 import migration0003 from "../migrations/0003_order_currency.sql?raw";
+import migration0004 from "../migrations/0004_milli_credits.sql?raw";
 import { createWallet, createFakeGateway, type Wallet } from "../src/index.ts";
 
 const db = env.DB as D1Like;
@@ -26,9 +27,11 @@ async function resetDb(): Promise<void> {
   await db.prepare("DROP TABLE IF EXISTS credit_ledger").run();
   await db.prepare("DROP TABLE IF EXISTS credit_orders").run();
   await db.prepare("DROP TABLE IF EXISTS credit_wallets").run();
+  await db.prepare("DROP TABLE IF EXISTS credit_action_costs").run();
   await applyMigration(db, migration);
   await applyMigration(db, migration0002);
   await applyMigration(db, migration0003);
+  await applyMigration(db, migration0004);
 }
 
 beforeEach(async () => {
@@ -42,33 +45,33 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     const wallet = createWallet(db, gateway, { currency: "INR" });
 
     await wallet.openWallet(WS_TEST, 100);
-    const bal1 = await wallet.getBalance(WS_TEST);
+    const bal1 = await wallet.getBalanceMilli(WS_TEST);
     expect(bal1).toBe(100);
 
     const dedRes = await wallet.deduct({
       workspaceId: WS_TEST,
       userId: "usr_alice",
-      amount: 40,
+      amountMilli: 40,
       reason: "API usage deduction",
     });
     expect(dedRes.ok).toBe(true);
 
-    const bal2 = await wallet.getBalance(WS_TEST);
+    const bal2 = await wallet.getBalanceMilli(WS_TEST);
     expect(bal2).toBe(60);
 
     const overdrawRes = await wallet.deduct({
       workspaceId: WS_TEST,
       userId: "usr_alice",
-      amount: 100,
+      amountMilli: 100,
       reason: "Excessive deduction",
     });
     expect(overdrawRes.ok).toBe(false);
     if (!overdrawRes.ok) {
       expect(overdrawRes.reason).toBe("insufficient_balance");
-      expect(overdrawRes.balance).toBe(60);
+      expect(overdrawRes.balanceMilli).toBe(60);
     }
 
-    const bal3 = await wallet.getBalance(WS_TEST);
+    const bal3 = await wallet.getBalanceMilli(WS_TEST);
     expect(bal3).toBe(60);
   });
 
@@ -84,7 +87,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
       wallet.deduct({
         workspaceId: WS_TEST,
         userId: `usr_concurrent_${i}`,
-        amount: 15,
+        amountMilli: 15,
         reason: `Concurrent deduction ${i}`,
         idempotencyKey: `concurrent_deduct_${i}`,
       })
@@ -104,7 +107,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
       }
     }
 
-    const finalBalance = await wallet.getBalance(WS_TEST);
+    const finalBalance = await wallet.getBalanceMilli(WS_TEST);
     expect(finalBalance).not.toBeNull();
     expect(finalBalance!).toBeGreaterThanOrEqual(0);
     expect(finalBalance).toBe(100 - successes.length * 15);
@@ -131,8 +134,8 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     expect(conf1.status).toBe("PAID");
     expect(conf1.credited).toBe(true);
 
-    const balAfter1 = await wallet.getBalance(WS_TEST);
-    expect(balAfter1).toBe(50);
+    const balAfter1 = await wallet.getBalanceMilli(WS_TEST);
+    expect(balAfter1).toBe(50_000);
 
     // Second confirmation: duplicate webhook callback
     const conf2 = await wallet.confirmOrder(order.orderId);
@@ -147,9 +150,9 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     expect(c3.credited).toBe(false);
     expect(c4.credited).toBe(false);
 
-    // Final balance remains strictly 50
-    const finalBal = await wallet.getBalance(WS_TEST);
-    expect(finalBal).toBe(50);
+    // Final balance remains strictly 50 credits (thousandths since story 2.5)
+    const finalBal = await wallet.getBalanceMilli(WS_TEST);
+    expect(finalBal).toBe(50_000);
 
     // Ledger must contain exactly 1 topup row
     const ledgerRows = await db
@@ -157,7 +160,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
       .bind(WS_TEST)
       .all<any>();
     expect(ledgerRows.results).toHaveLength(1);
-    expect(ledgerRows.results![0].amount).toBe(50);
+    expect(ledgerRows.results![0].amount_milli).toBe(50_000);
   });
 
   it("supports a refund or reversal path that atomically restores balance", async () => {
@@ -169,37 +172,37 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     const deductRes = await wallet.deduct({
       workspaceId: WS_TEST,
       userId: "usr_buyer",
-      amount: 40,
+      amountMilli: 40,
       reason: "Order purchase",
       idempotencyKey: "charge_order_99",
     });
     expect(deductRes.ok).toBe(true);
-    expect(await wallet.getBalance(WS_TEST)).toBe(60);
+    expect(await wallet.getBalanceMilli(WS_TEST)).toBe(60);
 
     // Refund 40 credits
     const refundRes = await (wallet as any).refund({
       workspaceId: WS_TEST,
       userId: "usr_buyer",
-      amount: 40,
+      amountMilli: 40,
       reason: "Order cancelled refund",
       idempotencyKey: "refund_order_99",
     });
     expect(refundRes.ok).toBe(true);
-    expect(refundRes.balanceAfter).toBe(100);
+    expect(refundRes.balanceAfterMilli).toBe(100);
 
     // Replaying same refund idempotency key is a duplicate and does not increase balance
     const dupRefund = await (wallet as any).refund({
       workspaceId: WS_TEST,
       userId: "usr_buyer",
-      amount: 40,
+      amountMilli: 40,
       reason: "Order cancelled duplicate refund",
       idempotencyKey: "refund_order_99",
     });
     expect(dupRefund.ok).toBe(true);
     expect(dupRefund.duplicate).toBe(true);
-    expect(dupRefund.balanceAfter).toBe(100);
+    expect(dupRefund.balanceAfterMilli).toBe(100);
 
-    expect(await wallet.getBalance(WS_TEST)).toBe(100);
+    expect(await wallet.getBalanceMilli(WS_TEST)).toBe(100);
   });
 
   it("enforces rounding and smallest currency units (integer units)", async () => {
@@ -212,7 +215,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
       wallet.deduct({
         workspaceId: WS_TEST,
         userId: "usr_alice",
-        amount: 10.5,
+        amountMilli: 10.5,
         reason: "Fractional",
       })
     ).rejects.toThrow(RangeError);
@@ -221,7 +224,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
       wallet.deduct({
         workspaceId: WS_TEST,
         userId: "usr_alice",
-        amount: -5,
+        amountMilli: -5,
         reason: "Negative amount",
       })
     ).rejects.toThrow(RangeError);
@@ -230,7 +233,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
       wallet.deduct({
         workspaceId: WS_TEST,
         userId: "usr_alice",
-        amount: 0,
+        amountMilli: 0,
         reason: "Zero amount",
       })
     ).rejects.toThrow(RangeError);
@@ -244,7 +247,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     ).rejects.toThrow(RangeError);
 
     // Balance untouched
-    expect(await wallet.getBalance(WS_TEST)).toBe(50);
+    expect(await wallet.getBalanceMilli(WS_TEST)).toBe(50);
   });
 
   it("verifies ledger sums to final balance after 100 random ops (property test with fixed seed)", async () => {
@@ -265,7 +268,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
         const refundRes = await (wallet as any).refund({
           workspaceId: WS_TEST,
           userId: "usr_sim",
-          amount,
+          amountMilli: amount,
           reason: `Sim topup ${i}`,
           idempotencyKey: `sim_topup_${i}`,
         });
@@ -275,7 +278,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
         const deductRes = await wallet.deduct({
           workspaceId: WS_TEST,
           userId: "usr_sim",
-          amount,
+          amountMilli: amount,
           reason: `Sim deduct ${i}`,
           idempotencyKey: `sim_deduct_${i}`,
         });
@@ -288,12 +291,12 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
       }
     }
 
-    const actualBalance = await wallet.getBalance(WS_TEST);
+    const actualBalance = await wallet.getBalanceMilli(WS_TEST);
     expect(actualBalance).toBe(expectedBalance);
 
     // Verify database ledger integrity
     const ledgerRows = await db
-      .prepare("SELECT amount, balance_after FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid ASC")
+      .prepare("SELECT amount_milli AS amount, balance_after_milli AS balance_after FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid ASC")
       .bind(WS_TEST)
       .all<{ amount: number; balance_after: number }>();
 
@@ -318,20 +321,20 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     const crossRes = await wallet.deduct({
       workspaceId: WS_OTHER,
       userId: "usr_mallory",
-      amount: 100,
+      amountMilli: 100,
       reason: "Attempted cross-workspace drain",
     });
     expect(crossRes.ok).toBe(false);
     if (!crossRes.ok) {
       expect(crossRes.reason).toBe("insufficient_balance");
-      expect(crossRes.balance).toBe(10);
+      expect(crossRes.balanceMilli).toBe(10);
     }
 
     // Attempting to deduct from non-existent workspace
     const missingRes = await wallet.deduct({
       workspaceId: "ws_completely_nonexistent",
       userId: "usr_mallory",
-      amount: 10,
+      amountMilli: 10,
       reason: "Non-existent wallet",
     });
     expect(missingRes.ok).toBe(false);
@@ -340,8 +343,8 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     }
 
     // WS_TEST remains completely untouched
-    expect(await wallet.getBalance(WS_TEST)).toBe(500);
-    expect(await wallet.getBalance(WS_OTHER)).toBe(10);
+    expect(await wallet.getBalanceMilli(WS_TEST)).toBe(500);
+    expect(await wallet.getBalanceMilli(WS_OTHER)).toBe(10);
 
     // Ledger for WS_TEST has 0 rows
     const testLedger = await db

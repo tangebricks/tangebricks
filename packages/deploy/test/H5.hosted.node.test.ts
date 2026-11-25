@@ -216,6 +216,21 @@ describe("each rule of the definition, on its own", () => {
     expect(hostedViolations(ok(10, []))).toEqual([]);
   });
 
+  test("story 2.5: a run in thousandths (scale 1000) is judged with the workload's amounts scaled up, in integers", () => {
+    const run = ok(7_000, [dedRow(3_000, 7_000)], { scale: 1000, deducts: [{ amount: 3, result: "accepted", status: 200 }], ops: [{ kind: "deduct", amount: 3 }] });
+    expect(hostedViolations(run)).toEqual([]);
+    // A row of an amount no operation asked for (here 3 thousandths, not 3 credits) is a violation.
+    const stray = ok(9_997, [dedRow(3, 9_997)], { scale: 1000, ops: [{ kind: "deduct", amount: 3 }], deducts: [{ amount: 3, result: "refused", status: 402 }] });
+    expect(hostedViolations(stray).join("|")).toMatch(/1 ledger rows for deductions of an amount no operation asked for/);
+  });
+
+  test("story 2.5: a scale other than absent, 1 or 1000 is not believed", () => {
+    for (const scale of [0, 10, 1000.5, -1000, "1000" as unknown as number]) {
+      expect(hostedViolations(ok(10, [], { scale }))).toEqual([expect.stringMatching(/unknown scale/)]);
+    }
+    expect(tampered((c) => void (c.facts.runs[0]!.scale = 100)).checks).toEqual({});
+  });
+
   test("a row whose balance_after is negative in the middle of the run is a violation even when the replay is consistent and the final balance is not negative", () => {
     const run = ok(10, [dedRow(15, -5), topRow("o1", 15, 10)], {
       deducts: [{ amount: 15, result: "accepted", status: 200 }],
@@ -324,7 +339,7 @@ describe("outcomes that are not known", () => {
     const lost = new Set<string>();
     const r = await hosted({
       rest: ({ sql, params }) => {
-        if (!sql.includes("UPDATE credit_wallets SET balance = balance +")) return undefined;
+        if (!sql.includes("UPDATE credit_wallets SET balance_milli = balance_milli +")) return undefined;
         const order = /order_[0-9a-f]{16}/.exec(params)?.[0];
         if (!order) return undefined;
         if (!seen.includes(order)) seen.push(order);
@@ -354,7 +369,7 @@ describe("outcomes that are not known", () => {
       const d = run.deducts.find((x) => x.result === "accepted")!;
       d.result = "unknown";
       d.status = 502;
-      const row = run.final!.ledger.find((x) => x.type === "deduction" && x.amount === -d.amount)!;
+      const row = run.final!.ledger.find((x) => x.type === "deduction" && x.amount === -d.amount * (run.scale ?? 1))!;
       run.final!.ledger.push({ ...row });
       run.final!.balance! += row.amount;
     });
@@ -421,8 +436,8 @@ describe("pieces", () => {
   test("the adapter carries the database's own error text, which is how the wallet tells a refused overdraw from a failure", async () => {
     const world = await rehearsalWorld();
     const db = restD1(world.cloudflareClient(() => performance.now()), "db-1", async () => undefined);
-    await db.prepare("INSERT INTO credit_wallets (workspace_id, balance) VALUES (?, ?)").bind("w", 1).run();
-    await expect(db.batch([db.prepare("UPDATE credit_wallets SET balance = balance - ? WHERE workspace_id = ?").bind(5, "w")])).rejects.toThrow(/CHECK constraint failed: balance >= 0/);
-    expect((await db.prepare("SELECT balance FROM credit_wallets WHERE workspace_id = ?").bind("w").first<{ balance: number }>())!.balance).toBe(1); // rolled back
+    await db.prepare("INSERT INTO credit_wallets (workspace_id, balance_milli) VALUES (?, ?)").bind("w", 1).run();
+    await expect(db.batch([db.prepare("UPDATE credit_wallets SET balance_milli = balance_milli - ? WHERE workspace_id = ?").bind(5, "w")])).rejects.toThrow(/CHECK constraint failed: balance_milli >= 0/);
+    expect((await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind("w").first<{ balance_milli: number }>())!.balance_milli).toBe(1); // rolled back
   });
 });

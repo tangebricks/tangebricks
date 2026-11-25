@@ -28,9 +28,10 @@ describe("a blueprint that declares entities", () => {
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
       // Story 2.3: credit-wallet's order currency column.
       "migrations/0004_credit-wallet__0003_order_currency.sql",
-      "migrations/0005_entity__invoices.sql",
+      "migrations/0005_credit-wallet__0004_milli_credits.sql",
+      "migrations/0006_entity__invoices.sql",
       // Story 0.21: credit-wallet's rate limits bring the shared limiter's table, after every brick and entity table.
-      "migrations/0006_shell__px_rate_limits.sql",
+      "migrations/0007_shell__px_rate_limits.sql",
       "openapi.json",
       "package.json",
       "project.json",
@@ -54,7 +55,7 @@ describe("a blueprint that declares entities", () => {
   test("the table's migration is exactly what the shared contract generates, and comes after every brick's", () => {
     const parsed = parseEntities(INVOICE_FLOW_BLUEPRINT.entities);
     if (!parsed.ok) throw new Error("declaration should parse");
-    expect(result.files["migrations/0005_entity__invoices.sql"]).toBe(entityDdl(parsed.entities[0]!));
+    expect(result.files["migrations/0006_entity__invoices.sql"]).toBe(entityDdl(parsed.entities[0]!));
   });
 
   test("the entry reads the declaration as data and mounts the guard in front of the entity's routes", () => {
@@ -87,10 +88,10 @@ describe("a blueprint that declares entities", () => {
 
   test("two entities get two tables and guards for both, in name order", () => {
     const both = ok({ project: "p", bricks, entities: [widgets, INVOICE_FLOW_BLUEPRINT.entities[0]] });
-    expect(Object.keys(both.files).filter((f) => f.startsWith("migrations/")).slice(4)).toEqual(["migrations/0005_entity__invoices.sql", "migrations/0006_entity__widgets.sql", "migrations/0007_shell__px_rate_limits.sql"]);
+    expect(Object.keys(both.files).filter((f) => f.startsWith("migrations/")).slice(5)).toEqual(["migrations/0006_entity__invoices.sql", "migrations/0007_entity__widgets.sql", "migrations/0008_shell__px_rate_limits.sql"]);
     const entry = both.files["src/index.ts"]!;
     expect(entry.indexOf('"/api/invoices"')).toBeLessThan(entry.indexOf('"/api/widgets"'));
-    expect(both.files["migrations/0006_entity__widgets.sql"]).toContain('"done" INTEGER CHECK ("done" IN (0, 1))');
+    expect(both.files["migrations/0007_entity__widgets.sql"]).toContain('"done" INTEGER CHECK ("done" IN (0, 1))');
   });
 });
 

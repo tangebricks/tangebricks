@@ -184,8 +184,8 @@ describe("Story UC9.6 / AC3: Blueprint assembly and denial suite with identity '
     await call("/api/wallet", bobToken, wsB);
 
     // Seed balances
-    await db.prepare("UPDATE credit_wallets SET balance = 100 WHERE workspace_id = ?").bind(wsA).run();
-    await db.prepare("UPDATE credit_wallets SET balance = 50 WHERE workspace_id = ?").bind(wsB).run();
+    await db.prepare("UPDATE credit_wallets SET balance_milli = 100000 WHERE workspace_id = ?").bind(wsA).run();
+    await db.prepare("UPDATE credit_wallets SET balance_milli = 50000 WHERE workspace_id = ?").bind(wsB).run();
 
     // 1. Unauthenticated request without bearer token -> 401
     const unauthRes = await call("/api/wallet", null, wsA);
@@ -209,10 +209,10 @@ describe("Story UC9.6 / AC3: Blueprint assembly and denial suite with identity '
     const deductAttackRes = await call("/api/wallet/deduct", aliceToken, wsB, { amount: 20 });
     expect(deductAttackRes.status).toBe(403);
     const bobBal = await db
-      .prepare("SELECT balance FROM credit_wallets WHERE workspace_id = ?")
+      .prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?")
       .bind(wsB)
-      .first<{ balance: number }>();
-    expect(bobBal?.balance).toBe(50);
+      .first<{ balance_milli: number }>();
+    expect(bobBal?.balance_milli).toBe(50_000);
 
     // 6. Mallory (stranger with valid token but no memberships) attacked both -> 403 Forbidden
     expect((await call("/api/wallet", malloryToken, wsA)).status).toBe(403);

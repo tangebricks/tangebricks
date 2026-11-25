@@ -761,7 +761,7 @@ describe("build_project", () => {
     const reply = await callTool("build_project", { project: "invoice-flow" });
     expect(reply.body.result.isError).toBeUndefined();
     const summary = toolJson(reply);
-    expect(summary).toMatchObject({ project: "invoice-flow", files: 14, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
+    expect(summary).toMatchObject({ project: "invoice-flow", files: 15, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
     expect(summary.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(summary.bytes).toBeGreaterThan(1000);
     // the answer is short and holds none of the project's source
@@ -782,7 +782,7 @@ describe("build_project", () => {
     expect(Object.fromEntries(stored.map((r) => [r.path, r.sha256]))).toEqual(await hashFiles(direct.files));
     expect(summary.hash).toBe(await projectHash(direct.files));
     const build = await db.prepare("SELECT project_hash, file_count, byte_count FROM mcp_builds WHERE project = 'invoice-flow'").first<{ project_hash: string; file_count: number; byte_count: number }>();
-    expect(build).toEqual({ project_hash: summary.hash, file_count: 14, byte_count: summary.bytes }); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003
+    expect(build).toEqual({ project_hash: summary.hash, file_count: 15, byte_count: summary.bytes }); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003; story 2.5 its 0004
   });
 
   it("the order the tools were called in does not change the project", async () => {
@@ -802,16 +802,16 @@ describe("build_project", () => {
     const first = toolJson(await callTool("build_project", { project: "again" }));
     const second = toolJson(await callTool("build_project", { project: "again" }));
     expect(second.hash).toBe(first.hash);
-    expect(await count("mcp_files", "again")).toBe(14);
+    expect(await count("mcp_files", "again")).toBe(15);
   });
 
   it("a rebuild after a change replaces the old files entirely: nothing from the earlier build is left", async () => {
     await readyProject("grow");
     await callTool("build_project", { project: "grow" });
-    expect(await count("mcp_files", "grow")).toBe(14); // story 2.3 (credit-wallet 0003); story 0.21: credit-wallet's rate limits add the px_rate_limits migration
+    expect(await count("mcp_files", "grow")).toBe(15); // story 2.3 (credit-wallet 0003); story 0.21: credit-wallet's rate limits add the px_rate_limits migration
     await callTool("define_entity", { project: "grow", entities: [{ name: "tasks", fields: [{ name: "title", type: "text" }] }] });
-    expect(toolJson(await callTool("build_project", { project: "grow" })).files).toBe(15);
-    expect(await count("mcp_files", "grow")).toBe(15);
+    expect(toolJson(await callTool("build_project", { project: "grow" })).files).toBe(16);
+    expect(await count("mcp_files", "grow")).toBe(16);
   });
 
   it("a project that cannot be built says why, builds nothing, and leaves an earlier build in place", async () => {
@@ -846,7 +846,7 @@ describe("build_project", () => {
     const hashes = new Set(replies.map((r) => toolJson(r).hash));
     expect(hashes.size).toBe(1);
     const stored = (await db.prepare("SELECT path, content FROM mcp_files WHERE project = 'race' ORDER BY path").all<{ path: string; content: string }>()).results;
-    expect(stored).toHaveLength(14);
+    expect(stored).toHaveLength(15);
     expect(await projectHash(Object.fromEntries(stored.map((r) => [r.path, r.content])))).toBe([...hashes][0]);
   });
 

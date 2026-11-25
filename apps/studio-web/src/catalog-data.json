@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "36956d3a40caa0826448cc3524b3d782461ae6192436145542a6150e12287c6b",
+  "catalogVersion": "9cfc00172768c466fba5b3b262b438301446c6d34d1c4368d5aaafd3b0cec4d5",
   "bricks": {
     "admin-console": {
       "manifestVersion": 2,
@@ -39,8 +39,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 0
         }
       },
@@ -127,8 +127,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 0
         }
       },
@@ -214,8 +214,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 29
         }
       },
@@ -311,8 +311,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 32
         }
       },
@@ -415,8 +415,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 42
         }
       },
@@ -531,8 +531,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 126
         }
       },
@@ -690,7 +690,8 @@
       "migrations": [
         "migrations/0001_credit_wallet.sql",
         "migrations/0002_workspace_scoped_idempotency.sql",
-        "migrations/0003_order_currency.sql"
+        "migrations/0003_order_currency.sql",
+        "migrations/0004_milli_credits.sql"
       ],
       "routePrefixes": [
         "wallet",
@@ -718,6 +719,13 @@
           "pattern": "^(|A(OA|[EMU]D|[NW]G|LL|[FZ]N|RS)|B(OB|[BHMNSZ]D|IF|RL|AM|[GTY]N|WP|DT|OV)|C(RC|AD|[HV]E|[DHL]F|ZK|[LOU]P|OU|HW|NY)|D(JF|KK|OP|ZD)|E(GP|RN|TB|UR)|F(JD|KP)|G(BP|EL|HS|IP|MD|NF|TQ|YD)|H(KD|NL|TG|UF)|I(QD|SK|[DNR]R|LS)|J(MD|OD|PY)|K(ES|GS|HR|MF|PW|RW|WD|YD|ZT)|L(AK|BP|KR|RD|SL|YD)|M(GA|[AK]D|[MW]K|DL|[XZ]N|OP|[UVY]R|NT|RU|XV)|N(AD|GN|IO|OK|PR|ZD)|OMR|P(AB|EN|GK|HP|KR|LN|YG)|QAR|R(ON|SD|UB|WF)|S(VC|[BGR]D|LE|DG|EK|ZL|TN|[HSY]P|[AC]R|OS)|T(HB|[NTW]D|OP|[JZ]S|MT|RY)|U(AH|GX|S[DN]|Y[IUW]|ZS)|V(E[DS]|ND|UV)|WST|X(CD|[AOP]F|CG)|YER|Z(AR|MW|WG))$",
           "example": "INR",
           "maxLength": 3,
+          "default": ""
+        },
+        "defaultActionCosts": {
+          "type": "string",
+          "pattern": "^(|[a-z][a-z0-9_.:-]{0,63}:[0-9]{1,6}([.][0-9]{1,3})?(,[a-z][a-z0-9_.:-]{0,63}:[0-9]{1,6}([.][0-9]{1,3})?)*)$",
+          "example": "email.send:0.2,message.send:0.5",
+          "maxLength": 512,
           "default": ""
         }
       },
@@ -802,8 +810,8 @@
           "DEFAULT_ADAPTER_FAKE"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 235
         }
       },
@@ -813,6 +821,22 @@
           "path": "/wallet/deduct",
           "bucket": "wallet-deduct",
           "limit": 60,
+          "windowSeconds": 60,
+          "key": "workspace"
+        },
+        {
+          "method": "POST",
+          "path": "/wallet/charge",
+          "bucket": "wallet-charge",
+          "limit": 600,
+          "windowSeconds": 60,
+          "key": "workspace"
+        },
+        {
+          "method": "POST",
+          "path": "/wallet/transfer",
+          "bucket": "wallet-transfer",
+          "limit": 30,
           "windowSeconds": 60,
           "key": "workspace"
         },
@@ -857,7 +881,8 @@
           "credit_ledger": {
             "subject": "user",
             "userColumn": "user_id",
-            "erase": "delete",
+            "erase": "retain",
+            "retainReason": "Financial records, kept on both user and workspace erasure under the owner's decision that money records are retained: every balance is the sum of its ledger rows, and a transfer is two rows in two workspaces, so an erasure must not delete half of a money record (user_id cannot be anonymized: the ledger requires it)",
             "export": true
           },
           "credit_orders": {
@@ -865,10 +890,16 @@
             "userColumn": "user_id",
             "erase": "delete",
             "export": true
+          },
+          "credit_action_costs": {
+            "subject": "workspace",
+            "erase": "delete",
+            "export": true
           }
         },
         "hookTables": [
-          "credit_ledger_v2"
+          "credit_ledger_v2",
+          "credit_ledger_v3"
         ]
       },
       "workspaceData": {
@@ -883,11 +914,18 @@
           {
             "table": "credit_orders",
             "tombstone": true
+          },
+          {
+            "table": "credit_action_costs"
           }
         ],
         "exempt": [
           {
             "table": "credit_ledger_v2",
+            "reason": "Transient migration table; renamed to credit_ledger, which is declared"
+          },
+          {
+            "table": "credit_ledger_v3",
             "reason": "Transient migration table; renamed to credit_ledger, which is declared"
           }
         ]
@@ -912,6 +950,9 @@
               },
               "currency": {
                 "$setting": "paymentCurrency"
+              },
+              "defaultActionCosts": {
+                "$setting": "defaultActionCosts"
               }
             },
             "guardPaths": [
@@ -969,8 +1010,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 135
         }
       },
@@ -1065,8 +1106,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 0
         }
       },
@@ -1138,8 +1179,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 72
         }
       },
@@ -1240,8 +1281,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 56
         }
       },
@@ -1337,8 +1378,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 0
         }
       },
@@ -1462,8 +1503,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 78
         }
       },
@@ -1528,8 +1569,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 33
         }
       },
@@ -1625,8 +1666,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 59
         }
       },
@@ -1712,8 +1753,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 60
         }
       },
@@ -1829,8 +1870,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 46
         }
       },
@@ -1925,8 +1966,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 74
         }
       },
@@ -2022,8 +2063,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 48
         }
       },
@@ -2153,8 +2194,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 48
         }
       },
@@ -2261,8 +2302,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 0
         }
       },
@@ -2357,8 +2398,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 76
         }
       },
@@ -2453,8 +2494,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 105
         }
       },
@@ -2551,8 +2592,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 0
         }
       },
@@ -2701,8 +2742,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 59
         }
       },
@@ -2808,9 +2849,9 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
-          "assertionCount": 50
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
+          "assertionCount": 307
         }
       },
       "secrets": [
@@ -2948,8 +2989,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 62
         }
       },
@@ -3036,8 +3077,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 26
         }
       },
@@ -3120,8 +3161,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 92
         }
       },
@@ -3198,8 +3239,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 51
         }
       },
@@ -3296,8 +3337,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 78
         }
       },
@@ -3392,8 +3433,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 0
         }
       },
@@ -3502,8 +3543,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 0
         }
       },
@@ -3589,8 +3630,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 28
         }
       },
@@ -3674,8 +3715,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 75
         }
       },
@@ -3765,8 +3806,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 36
         }
       },
@@ -3848,8 +3889,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 34
         }
       },
@@ -3931,8 +3972,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 31
         }
       },
@@ -4015,8 +4056,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 39
         }
       },
@@ -4078,8 +4119,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 33
         }
       },
@@ -4187,8 +4228,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 76
         }
       },
@@ -4334,8 +4375,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-          "runAt": "2026-11-25T09:19:29.859Z",
+          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+          "runAt": "2026-11-25T11:30:35.213Z",
           "assertionCount": 0
         }
       },
@@ -5008,8 +5049,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-            "runAt": "2026-11-25T09:19:29.946Z",
+            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+            "runAt": "2026-11-25T11:30:35.323Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -6420,8 +6461,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-            "runAt": "2026-11-25T09:19:29.946Z",
+            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+            "runAt": "2026-11-25T11:30:35.323Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -8092,8 +8133,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-            "runAt": "2026-11-25T09:19:29.946Z",
+            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+            "runAt": "2026-11-25T11:30:35.323Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -9767,8 +9808,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-            "runAt": "2026-11-25T09:19:29.946Z",
+            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+            "runAt": "2026-11-25T11:30:35.323Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -11062,8 +11103,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
-            "runAt": "2026-11-25T09:19:29.946Z",
+            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+            "runAt": "2026-11-25T11:30:35.323Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {

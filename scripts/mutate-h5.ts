@@ -38,14 +38,15 @@ const MW_ROUTES = "bricks/multi-workspace/src/routes.ts";
 const WALLET_ROUTES = "bricks/credit-wallet/src/routes.ts";
 const PAYMENT_TESTS = "bricks/credit-wallet/test/H5.payment-routes.test.ts";
 const MIGRATION = "bricks/credit-wallet/migrations/0001_credit_wallet.sql";
-// 0002 rebuilds credit_ledger (per-workspace idempotency key), so the ledger's constraints now live there.
-const LEDGER_MIGRATION = "bricks/credit-wallet/migrations/0002_workspace_scoped_idempotency.sql";
+// 0002 rebuilt credit_ledger (per-workspace idempotency key); 0004 (story 2.5) renames the wallet's balance to
+// balance_milli and rebuilds the ledger again in thousandths, so the live constraints are 0004's.
+const LEDGER_MIGRATION = "bricks/credit-wallet/migrations/0004_milli_credits.sql";
 const cases: Case[] = [
   {
     name: "top-up reads the balance, adds in JavaScript, writes it back",
     file: WALLET,
-    from: 'db.prepare("UPDATE credit_wallets SET balance = balance + ? WHERE workspace_id = ?").bind(credits, order.workspace_id),',
-    to: 'db.prepare("UPDATE credit_wallets SET balance = ? WHERE workspace_id = ?").bind(((await getBalance(order.workspace_id)) ?? 0) + credits, order.workspace_id),',
+    from: 'db.prepare("UPDATE credit_wallets SET balance_milli = balance_milli + ? WHERE workspace_id = ?").bind(creditsMilli, order.workspace_id),',
+    to: 'db.prepare("UPDATE credit_wallets SET balance_milli = ? WHERE workspace_id = ?").bind(((await getBalanceMilli(order.workspace_id)) ?? 0) + creditsMilli, order.workspace_id),',
   },
   {
     name: "ledger no longer has a unique idempotency key",
@@ -65,13 +66,13 @@ const cases: Case[] = [
     from: "balance_after INTEGER NOT NULL CHECK (balance_after >= 0),",
     to: "balance_after INTEGER NOT NULL,",
     also: [["balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),", "balance INTEGER NOT NULL DEFAULT 0,"]],
-    alsoIn: [{ file: LEDGER_MIGRATION, from: "balance_after INTEGER NOT NULL CHECK (balance_after >= 0),", to: "balance_after INTEGER NOT NULL," }],
+    alsoIn: [{ file: LEDGER_MIGRATION, from: "balance_after_milli INTEGER NOT NULL CHECK (balance_after_milli >= 0),", to: "balance_after_milli INTEGER NOT NULL," }],
   },
   {
     name: "deduction writes a wrong balance_after into the ledger",
     file: WALLET,
-    from: "SELECT ?, workspace_id, ?, 'deduction', ?, balance, ?, ?, ? FROM credit_wallets",
-    to: "SELECT ?, workspace_id, ?, 'deduction', ?, balance + 1, ?, ?, ? FROM credit_wallets",
+    from: "SELECT ?, workspace_id, ?, 'deduction', ?, balance_milli, ?, ?, ? FROM credit_wallets",
+    to: "SELECT ?, workspace_id, ?, 'deduction', ?, balance_milli + 1, ?, ?, ? FROM credit_wallets",
   },
   {
     name: "an order is closed even when no ledger row was written",
@@ -88,7 +89,7 @@ const cases: Case[] = [
   {
     name: "an overdraw is not recognised and surfaces as an error",
     file: WALLET,
-    from: "const isOverdraw = (error: unknown) => /CHECK constraint failed: (balance|balance_after) >= 0/.test(errorText(error));",
+    from: "const isOverdraw = (error: unknown) => /CHECK constraint failed: (balance_milli|balance_after_milli) >= 0/.test(errorText(error));",
     to: "const isOverdraw = (_error: unknown) => false;",
   },
   {
@@ -100,8 +101,8 @@ const cases: Case[] = [
   {
     name: "the audit's unsafe design: conditional debit (WHERE balance >= ?) plus an unconditional ledger insert",
     file: WALLET,
-    from: 'db.prepare("UPDATE credit_wallets SET balance = balance - ? WHERE workspace_id = ?").bind(amount, workspaceId),',
-    to: 'db.prepare("UPDATE credit_wallets SET balance = balance - ? WHERE workspace_id = ? AND balance >= ?").bind(amount, workspaceId, amount),',
+    from: 'db.prepare("UPDATE credit_wallets SET balance_milli = balance_milli - ? WHERE workspace_id = ?").bind(amountMilli, workspaceId),',
+    to: 'db.prepare("UPDATE credit_wallets SET balance_milli = balance_milli - ? WHERE workspace_id = ? AND balance_milli >= ?").bind(amountMilli, workspaceId, amountMilli),',
   },
   {
     name: "runtime hands out any binding, ignoring the manifest",

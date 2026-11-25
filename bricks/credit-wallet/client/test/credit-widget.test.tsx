@@ -8,6 +8,8 @@ import mwMigration from "../../../multi-workspace/migrations/0001_multi_workspac
 import { stubIdentity } from "../../../multi-workspace/test/support/stub-identity.ts";
 import walletMigration from "../../migrations/0001_credit_wallet.sql?raw";
 import walletMigration0002 from "../../migrations/0002_workspace_scoped_idempotency.sql?raw";
+import walletMigration0003 from "../../migrations/0003_order_currency.sql?raw";
+import walletMigration0004 from "../../migrations/0004_milli_credits.sql?raw";
 import { createFakeGateway, createWallet, createWalletRoutes } from "../../src/index.ts";
 import { CreditWidget } from "../CreditWidget.tsx";
 import { createWalletClient } from "../wallet-client.ts";
@@ -44,16 +46,18 @@ function clientFor(workspaceId: string, user = "alice", override?: (input: strin
 }
 
 beforeEach(async () => {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, mwMigration);
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
+  await applyMigration(db, walletMigration0003);
+  await applyMigration(db, walletMigration0004);
   for (const [id, user] of [["ws-a", "alice"], ["ws-b", "bob"]] as const) {
     await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(id, id, user).run();
     await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").bind(id, user).run();
   }
-  await wallet.openWallet("ws-a", 1000);
-  await wallet.openWallet("ws-b", 42);
+  await wallet.openWallet("ws-a", 1_000_000);
+  await wallet.openWallet("ws-b", 42_000);
 });
 afterEach(() => cleanup());
 
@@ -73,9 +77,18 @@ describe("the credit widget against the brick's own routes", () => {
     expect(await balanceText()).toBe("42");
   });
 
+  test("story 2.5: fractional credits are shown exactly, to the thousandth", async () => {
+    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amountMilli: 200, reason: "email" });
+    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amountMilli: 1_001, reason: "message" });
+    mount(clientFor("ws-a").client);
+    expect(await balanceText()).toBe("998.799");
+    const items = (await screen.findAllByRole("listitem")).map((li) => li.textContent);
+    expect(items).toEqual(["message: -1.001 (balance 998.799)", "email: -0.2 (balance 999.8)"]);
+  });
+
   test("lists recent transactions, newest first, with the amount and the balance after", async () => {
-    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amount: 250, reason: "report export" });
-    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amount: 100, reason: "email send" });
+    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amountMilli: 250_000, reason: "report export" });
+    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amountMilli: 100_000, reason: "email send" });
     mount(clientFor("ws-a").client);
     expect(await balanceText()).toBe("650");
     const items = (await screen.findAllByRole("listitem")).map((li) => li.textContent);
@@ -90,7 +103,7 @@ describe("the credit widget against the brick's own routes", () => {
   });
 
   test("shows only the most recent entries up to its limit", async () => {
-    for (let i = 1; i <= 8; i += 1) await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amount: 1, reason: `job ${i}` });
+    for (let i = 1; i <= 8; i += 1) await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amountMilli: 1_000, reason: `job ${i}` });
     mount(clientFor("ws-a").client);
     await balanceText();
     expect((await screen.findAllByRole("listitem")).map((li) => li.textContent?.split(":")[0])).toEqual(["job 8", "job 7", "job 6", "job 5", "job 4"]);
@@ -99,7 +112,7 @@ describe("the credit widget against the brick's own routes", () => {
   test("Refresh picks up a change made after the widget loaded", async () => {
     mount(clientFor("ws-a").client);
     expect(await balanceText()).toBe("1,000");
-    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amount: 400, reason: "late job" });
+    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amountMilli: 400_000, reason: "late job" });
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     await waitFor(() => expect(screen.getByTestId("balance").textContent).toBe("600"));
   });
@@ -168,7 +181,7 @@ describe("when something goes wrong", () => {
 describe("what the server sends is shown as text", () => {
   test("a ledger description containing markup is rendered as text, not as elements", async () => {
     const hostile = '<img src=x onerror="document.title=\'pwned\'"><script>document.title="pwned"</script>';
-    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amount: 5, reason: hostile });
+    await wallet.deduct({ workspaceId: "ws-a", userId: "alice", amountMilli: 5_000, reason: hostile });
     const { container } = mount(clientFor("ws-a").client);
     await balanceText();
     expect(container.querySelector("img")).toBeNull();

@@ -147,7 +147,7 @@ describe("a first deploy to an empty account", () => {
     const assembled = assemble(INVOICE_FLOW_BLUEPRINT, catalog);
     if (!assembled.ok) throw new Error(assembled.errors.join("; "));
     const migrations = migrationsFrom(assembled.files);
-    expect(migrations.map((m) => m.name)).toEqual(["0001_multi-workspace__0001_multi_workspace.sql", "0002_credit-wallet__0001_credit_wallet.sql", "0003_credit-wallet__0002_workspace_scoped_idempotency.sql", "0004_credit-wallet__0003_order_currency.sql", "0005_entity__invoices.sql", "0006_shell__px_rate_limits.sql"]);
+    expect(migrations.map((m) => m.name)).toEqual(["0001_multi-workspace__0001_multi_workspace.sql", "0002_credit-wallet__0001_credit_wallet.sql", "0003_credit-wallet__0002_workspace_scoped_idempotency.sql", "0004_credit-wallet__0003_order_currency.sql", "0005_credit-wallet__0004_milli_credits.sql", "0006_entity__invoices.sql", "0007_shell__px_rate_limits.sql"]);
     const w = world();
     await deploy(w.input({ migrations }));
     const tables = w.fake.state().databases[0]!.tables;

@@ -84,8 +84,8 @@ describe("Data Privacy GDPR - Erasure Coverage (UC9.2)", () => {
     await db.prepare("INSERT INTO chat_messages (id, conversation_id, workspace_id, sender_type, sender_id, sender_name, body) VALUES ('msg_1', 'chat_1', ?, 'customer', ?, 'Target User', 'Chat text')").bind(WS_TEST, USER_TEST).run();
 
     // Credit wallet & ledger
-    await db.prepare("INSERT INTO credit_wallets (workspace_id, balance) VALUES (?, 100)").bind(WS_TEST).run();
-    await db.prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason) VALUES ('led_1', ?, ?, 'topup', 100, 100, 'initial topup')").bind(WS_TEST, USER_TEST).run();
+    await db.prepare("INSERT INTO credit_wallets (workspace_id, balance_milli) VALUES (?, 100000)").bind(WS_TEST).run();
+    await db.prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason) VALUES ('led_1', ?, ?, 'topup', 100000, 100000, 'initial topup')").bind(WS_TEST, USER_TEST).run();
     await db.prepare("INSERT INTO credit_orders (order_id, workspace_id, user_id, amount, processed) VALUES ('ord_1', ?, ?, 100, 1)").bind(WS_TEST, USER_TEST).run();
 
     // Identity federation (only if included in max-compatible)
@@ -190,7 +190,8 @@ describe("Data Privacy GDPR - Erasure Coverage (UC9.2)", () => {
     expect(await checkUserCount("notif_notifications", "user_id")).toBe(0);
     expect(await checkUserCount("cmt_comments", "author_id")).toBe(0);
     expect(await checkUserCount("chat_messages", "sender_id")).toBe(0);
-    expect(await checkUserCount("credit_ledger", "user_id")).toBe(0);
+    // Story 2.5: credit_ledger is retained (financial records; a transfer is two rows in two workspaces).
+    expect(await checkUserCount("credit_ledger", "user_id")).toBe(1);
     expect(await checkUserCount("credit_orders", "user_id")).toBe(0);
     if (maxResult.bricks.includes("identity-federation")) {
       expect(await checkUserCount("sso_federated_identities", "user_id")).toBe(0);
@@ -240,6 +241,8 @@ describe("Data Privacy GDPR - Erasure Coverage (UC9.2)", () => {
       expect.arrayContaining([
         expect.objectContaining({ table: "audit_events" }),
         expect.objectContaining({ table: "asset_files" }),
+        // Story 2.5: money records are kept on workspace erasure too, with the reason the brick declares.
+        expect.objectContaining({ table: "credit_ledger", reason: expect.stringMatching(/^Financial records, kept on both user and workspace erasure/) }),
       ])
     );
 

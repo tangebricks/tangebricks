@@ -26,8 +26,10 @@ describe("the two-brick blueprint", () => {
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
       // Story 2.3: credit-wallet's order currency column.
       "migrations/0004_credit-wallet__0003_order_currency.sql",
+      // Story 2.5: credit-wallet's milli-credit migration.
+      "migrations/0005_credit-wallet__0004_milli_credits.sql",
       // Story 0.21: credit-wallet declares rate-limited routes, so the shared limiter's table comes with it.
-      "migrations/0005_shell__px_rate_limits.sql",
+      "migrations/0006_shell__px_rate_limits.sql",
       "openapi.json",
       "package.json",
       "project.json",
@@ -78,7 +80,7 @@ describe("the two-brick blueprint", () => {
     const configured = { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 10, minOrderAmount: 100 } }] };
     const entry = files(configured).files["src/index.ts"]!;
     expect(entry).toContain("creditsPerUnit: 10, minOrderAmount: 100");
-    expect(JSON.parse(files(configured).files["project.json"]!).bricks[1].settings).toEqual({ creditsPerUnit: 10, minOrderAmount: 100, paymentCurrency: "" });
+    expect(JSON.parse(files(configured).files["project.json"]!).bricks[1].settings).toEqual({ creditsPerUnit: 10, minOrderAmount: 100, paymentCurrency: "", defaultActionCosts: "" });
   });
 
   test("the emitted JSON files parse, and the project name and the database name agree", () => {
@@ -86,7 +88,7 @@ describe("the two-brick blueprint", () => {
     const wrangler = JSON.parse(result.files["wrangler.jsonc"]!.replace(/^\/\/.*\n/, ""));
     expect(wrangler).toMatchObject({ name: "invoice-flow", main: "src/index.ts", d1_databases: [{ binding: "DB", database_name: "invoice-flow", migrations_dir: "migrations" }] });
     expect(JSON.parse(result.files["package.json"]!)).toMatchObject({ name: "invoice-flow", dependencies: { "@poc/credit-wallet": "workspace:*", "@poc/multi-workspace": "workspace:*", hono: "4.13.20", zod: "4.6.7" } });
-    expect(JSON.parse(result.files["project.json"]!).migrations).toHaveLength(5);
+    expect(JSON.parse(result.files["project.json"]!).migrations).toHaveLength(6);
   });
 
   test("the identity stub is in the project and says it is a stub", () => {
@@ -140,7 +142,7 @@ describe("a blueprint that cannot be assembled is refused with a reason that nam
     ["an unknown brick", { project: "p", bricks: ["multi-workspace", "no-such-brick"] }, new RegExp(`unknown brick "no-such-brick" \\(available: ${Object.keys(catalog.bricks).sort().join(", ")}\\)`)],
     ["a brick listed twice", { project: "p", bricks: ["multi-workspace", "multi-workspace"] }, /"multi-workspace" is listed more than once/],
     ["the wallet without the workspace brick", { project: "p", bricks: ["credit-wallet"] }, /credit-wallet requires "workspace-context", which no enabled brick provides \(enable one of: multi-workspace\)/],
-    ["an unknown setting", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditPerUnit: 2 } }] }, /credit-wallet: unknown setting "creditPerUnit" \(known: creditsPerUnit, minOrderAmount, paymentCurrency\)/],
+    ["an unknown setting", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditPerUnit: 2 } }] }, /credit-wallet: unknown setting "creditPerUnit" \(known: creditsPerUnit, defaultActionCosts, minOrderAmount, paymentCurrency\)/],
     ["a setting of the wrong type", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: "ten" } }] }, /setting "creditsPerUnit" must be a whole number from 1 to 1000000/],
     ["a setting below its minimum", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 0 } }] }, /setting "creditsPerUnit" must be a whole number/],
     ["a fractional setting", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { minOrderAmount: 1.5 } }] }, /setting "minOrderAmount" must be a whole number/],
@@ -366,14 +368,19 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       // Story 2.3: credit-wallet's migration 0003 (new, so the limiter's table moves to 0005), project.json (which lists
       // it and the paymentCurrency setting) and the entry (the currency option and the webhook's rate limit) changed.
       "migrations/0004_credit-wallet__0003_order_currency.sql": "93a348efbe24eeccf8e252308153a3499c6ac1265a4677707af13f3b7a5f91e0",
-      "migrations/0005_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
+      // Story 2.5: credit-wallet's migration 0004 (new, so the limiter's table moves to 0006), project.json (which lists
+      // it and the defaultActionCosts setting), the entry (the new option and the charge and transfer rate limits) and the
+      // privacy manifest (credit_action_costs, and credit_ledger now retained on user erasure) changed. Every other file
+      // is as before.
+      "migrations/0005_credit-wallet__0004_milli_credits.sql": "64881c99f808c5139e20c16415f289f51a746e4bca84e7c5150116d0e02ad57e",
+      "migrations/0006_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "c77c2e7c33606f6a369cf1b1a90809da38adaa3a5145d15159f30fb704c49487",
       "package.json": "c9446d18c11331be16e33709dfedeaa73710f0da02f82d5392b71a330699ffbc",
-      "project.json": "71f1bc94dc8be40109a43a604fac755238d0539e809e5c81b86ef267341d716a",
+      "project.json": "2c047e5cfba75453158a721eae9c374d34db8e5aa0e5a230268587316500ae2b",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       // Story 1.10: only the entry changed (the workspace-data purge, the suspension check and its app.use lines).
-      "src/index.ts": "c06797a6b5dbc2347e3d05731c9957bea61f7750d2cb281388487d4e1c4ddbd6",
-      "src/privacy.generated.ts": "a029b2ce67225928903d85b59be098fd44f1d04384f286178f42a3715d19d396",
+      "src/index.ts": "fe5f4fb27fd5a28b587d756d0d10da15fc1b3fd20b27df62ddd3a3340c173ace",
+      "src/privacy.generated.ts": "ba26b34aa0ccb0c17252bd363257922513fec8cd5e9f0524960cab369667d1cb",
       "wrangler.jsonc": "d678c83f4dd70ff4bfc1dc7e2e75953a9a8d0e0216061d82308bd562c1f4625b",
     });
 
@@ -384,16 +391,18 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql": "6274abf0fb0de6ab68cf97d00ccf245cbb67fa0f7a319b5012e60cbec682bead",
       // Story 2.3: as in the two-brick blueprint, credit-wallet's 0003 moves the later migrations up by one.
       "migrations/0004_credit-wallet__0003_order_currency.sql": "93a348efbe24eeccf8e252308153a3499c6ac1265a4677707af13f3b7a5f91e0",
-      "migrations/0005_entity__invoices.sql": "43c67676212cbfd376e0479b1fe3e955c054eb127b09e84ad0922012e1a445ff",
-      "migrations/0006_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
+      // Story 2.5: credit-wallet's 0004 moves the later migrations up by one again.
+      "migrations/0005_credit-wallet__0004_milli_credits.sql": "64881c99f808c5139e20c16415f289f51a746e4bca84e7c5150116d0e02ad57e",
+      "migrations/0006_entity__invoices.sql": "43c67676212cbfd376e0479b1fe3e955c054eb127b09e84ad0922012e1a445ff",
+      "migrations/0007_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "fc78a27cbc505836cef15723d4c63e5feed04a53f4071a2ef1f7868d8a7fe902",
       "package.json": "58b30a29bfd0e01247373021a5a6073c63b86dbd13d1c34355c4324abb134c50",
-      "project.json": "90e68a35fbc3b36f5a152bf9bd393b57f92f909e7385e785b29c3e50f63470d1",
+      "project.json": "6fc5cffb58586d141228f9f75d0fc5cdbab7bc0861d924810511c706d8fd8afc",
       "src/entities.json": "5b153446783e693c0ada62b9c2626071e38f3e3e9bb047dd5a3a39c24179ba0a",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       // Story 1.10: only the entry changed (purge, including the declared entity's table, and the suspension check).
-      "src/index.ts": "473511c1063da1eede38f5f2c38b1bd18e1b6ac7e6390096712b478f0dd1abba",
-      "src/privacy.generated.ts": "5c0f6d193d3f6d332a415d2cfa7b9e571bdf3b6ca71f8ae177e053227170e804",
+      "src/index.ts": "ecf983fe1c4886596560834d2d5dbd1a8c5bd3144c8c5dc3c8bbf87faec2b4f3",
+      "src/privacy.generated.ts": "bc55b8ec274212576be78816651cd415ba40a3bc82e750fd25267acc576917dd",
       "wrangler.jsonc": "d7c0046626c2da81eca662bc64f38619da75b0d48f4978b1dc37ecf5eb8c3c0b",
     });
   });
@@ -932,7 +941,7 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
     const entry = files(INVOICE_FLOW_BLUEPRINT).files["src/index.ts"]!;
     // Only guard lines and the readiness manifest's migration names may name an entity (as test/support/scan.ts checks).
     const named = entry.split("\n").filter((line) => line.includes("invoices"));
-    expect(named.every((line) => line.startsWith('app.use("/api/invoices') || line.includes('"name": "0005_entity__invoices.sql"'))).toBe(true);
+    expect(named.every((line) => line.startsWith('app.use("/api/invoices') || line.includes('"name": "0006_entity__invoices.sql"'))).toBe(true);
     expect(entry).not.toContain("ent_invoices");
     expect(entry).toContain("tableName(entity)");
     expect(entry).toContain('import entities from "./entities.json";');

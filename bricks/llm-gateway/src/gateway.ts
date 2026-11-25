@@ -1,5 +1,5 @@
 import type { D1Like } from "@poc/sdk";
-import { isProductionEnvironment, scoped } from "@poc/sdk";
+import { MILLI_PER_CREDIT, isProductionEnvironment, scoped } from "@poc/sdk";
 
 export interface TemplateRecord {
   id: string;
@@ -52,23 +52,24 @@ export type ChargeOutcome = { ok: true } | { ok: false; code: string };
 /**
  * Story 1.13: how a generation is paid for. The assembler hands llm-gateway credit-wallet's `walletCharger` through a
  * `$capability` route option; llm-gateway never imports credit-wallet. Structurally compatible with credit-wallet's
- * `WalletCharger`. `debit` and `refund` are atomic and idempotent per (workspace, key), in whole credits. `refund`
+ * `WalletCharger`. `debit` and `refund` are atomic and idempotent per (workspace, key). Story 2.5: the charger speaks
+ * thousandths of a credit (`milli`); this gateway prices in whole credits and multiplies by 1000 at the call. `refund`
  * returns at most what the debit under `againstKey` took, and nothing (code NOTHING_TO_REFUND) if that debit is not
  * recorded. `settled` reports the ledger entry under a key, or null.
  */
 export interface CreditCharger {
-  balance(db: D1Like, workspaceId: string): Promise<number>;
-  debit(db: D1Like, workspaceId: string, credits: number, idempotencyKey: string, reason: string, userId?: string): Promise<ChargeOutcome>;
+  balanceMilli(db: D1Like, workspaceId: string): Promise<number>;
+  debit(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId?: string): Promise<ChargeOutcome>;
   refund(
     db: D1Like,
     workspaceId: string,
-    credits: number,
+    milli: number,
     idempotencyKey: string,
     againstKey: string,
     reason: string,
     userId?: string,
   ): Promise<ChargeOutcome>;
-  settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ credits: number } | null>;
+  settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ milli: number } | null>;
 }
 
 export type BillingMode = "wallet" | "none";
@@ -635,7 +636,7 @@ export class LlmGatewayService {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       let outcome: ChargeOutcome;
       try {
-        outcome = await money.charger.debit(this.db, money.workspaceId, credits, money.reserveKey, "AI generation (reserved)", money.userId);
+        outcome = await money.charger.debit(this.db, money.workspaceId, credits * MILLI_PER_CREDIT, money.reserveKey, "AI generation (reserved)", money.userId);
       } catch (err: unknown) {
         errors.push(err);
         continue;
@@ -665,7 +666,7 @@ export class LlmGatewayService {
         const refunded = await money.charger.refund(
           this.db,
           money.workspaceId,
-          credits,
+          credits * MILLI_PER_CREDIT,
           money.refundKey,
           money.reserveKey,
           "AI generation (unused reservation)",

@@ -6,8 +6,23 @@ export { createWalletRoutes } from "./routes.ts";
 export type { WalletEnv, WalletRoutesOptions } from "./routes.ts";
 export { createWallet } from "./wallet.ts";
 export { walletCharger } from "./charger.ts";
-export type { ChargeResult, RefundResult, WalletCharger } from "./charger.ts";
-export type { ConfirmResult, DeductResult, OrderRow, Wallet, WalletOptions } from "./wallet.ts";
+export type { ChargeActionOptions, ChargeResult, RefundResult, WalletCharger } from "./charger.ts";
+export {
+  ACTION_NAME,
+  MAX_ACTION_COST_MILLI,
+  MAX_CHARGE_QUANTITY,
+  chargeAction,
+  deleteActionCost,
+  isActionName,
+  listActionCosts,
+  parseDefaultActionCosts,
+  resolveActionCost,
+  setActionCost,
+} from "./costs.ts";
+export type { ActionCost, ChargeActionInput, ChargeActionResult } from "./costs.ts";
+export { importWalletBalances, parseBalanceFile } from "./import-balances.ts";
+export type { BalanceImportReport, BalanceImportRow, ImportBalancesOptions } from "./import-balances.ts";
+export type { ConfirmResult, DeductResult, IdempotencyMatch, OrderRow, TransferResult, Wallet, WalletOptions } from "./wallet.ts";
 import { NotConfiguredError, type Executor } from "@poc/sdk";
 import { deductCreditsExecutor } from "./brick.ts";
 export { DEDUCT_CREDITS, WALLET_DB_BINDING, WorkspaceMismatchError, creditWalletBricks, creditWalletExecutors, deductCreditsExecutor, deductCreditsManifest } from "./brick.ts";

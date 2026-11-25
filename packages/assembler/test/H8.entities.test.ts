@@ -45,7 +45,11 @@ interface World {
 const ALL_TABLES = ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces", "ent_invoices"];
 const snapshot = async (workspace: string) => JSON.stringify((await db.prepare('SELECT * FROM "ent_invoices" WHERE workspace_id = ? ORDER BY id').bind(workspace).all()).results);
 const countRows = async (workspace: string) => (await db.prepare('SELECT COUNT(*) AS n FROM "ent_invoices" WHERE workspace_id = ?').bind(workspace).first<{ n: number }>())!.n;
-const balanceOf = async (workspace: string) => (await db.prepare("SELECT balance FROM credit_wallets WHERE workspace_id = ?").bind(workspace).first<{ balance: number }>())?.balance;
+// In whole credits: the wallet holds thousandths since credit-wallet's migration 0004 (story 2.5).
+const balanceOf = async (workspace: string) => {
+  const milli = (await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind(workspace).first<{ balance_milli: number }>())?.balance_milli;
+  return milli === undefined ? undefined : milli / 1000;
+};
 
 /** An empty database with the project's own migrations; two tenants made through the project's API; three invoices for A, two for B. */
 async function world(): Promise<World> {
@@ -56,7 +60,7 @@ async function world(): Promise<World> {
   const b = await workspace("bob", "B");
   for (const [user, ws, balance] of [["alice", a, 100], ["bob", b, 50]] as const) {
     await call("GET", "/api/wallet", user, ws);
-    await db.prepare("UPDATE credit_wallets SET balance = ? WHERE workspace_id = ?").bind(balance, ws).run();
+    await db.prepare("UPDATE credit_wallets SET balance_milli = ? WHERE workspace_id = ?").bind(balance * 1000, ws).run();
   }
   await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, 'carol', 'member')").bind(a).run();
   const seed = async (user: string, ws: string, names: string[]) => {

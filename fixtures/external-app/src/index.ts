@@ -40,6 +40,8 @@ for (const path of ["/wallet", "/wallet/*", "/payments/create-order", "/audit", 
 
 // 3. credit-wallet's manifest `rateLimits`, mounted with the SDK's limiter (it counts in the px_rate_limits table).
 app.on("POST", `${PREFIX}/wallet/deduct`, rateLimit({ bucket: "wallet-deduct", limit: 60, windowSeconds: 60, key: "workspace" }));
+app.on("POST", `${PREFIX}/wallet/charge`, rateLimit({ bucket: "wallet-charge", limit: 600, windowSeconds: 60, key: "workspace" }));
+app.on("POST", `${PREFIX}/wallet/transfer`, rateLimit({ bucket: "wallet-transfer", limit: 30, windowSeconds: 60, key: "workspace" }));
 app.on("POST", `${PREFIX}/payments/create-order`, rateLimit({ bucket: "wallet-create-order", limit: 60, windowSeconds: 60, key: "workspace" }));
 app.on("POST", `${PREFIX}/payments/verify`, rateLimit({ bucket: "wallet-verify", limit: 60, windowSeconds: 60, key: "ip" }));
 app.on("POST", `${PREFIX}/payments/webhook`, rateLimit({ bucket: "wallet-webhook", limit: 300, windowSeconds: 60, key: "ip" }));

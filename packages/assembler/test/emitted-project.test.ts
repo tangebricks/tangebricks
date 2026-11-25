@@ -40,7 +40,8 @@ describe("the project the setup step wrote", () => {
       "migrations/0002_credit-wallet__0001_credit_wallet.sql",
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
       "migrations/0004_credit-wallet__0003_order_currency.sql", // story 2.3: credit-wallet's order currency
-      "migrations/0005_shell__px_rate_limits.sql", // story 0.21: credit-wallet declares rate limits
+      "migrations/0005_credit-wallet__0004_milli_credits.sql", // story 2.5: credit-wallet's milli-credits
+      "migrations/0006_shell__px_rate_limits.sql", // story 0.21: credit-wallet declares rate limits
       "openapi.json",
       "package.json",
       "project.json",
@@ -82,14 +83,14 @@ describe("the emitted project runs", () => {
 
     const wallet = await call("/api/wallet", { "x-test-user": "alice", "x-workspace-id": workspaceId });
     expect(wallet.status).toBe(200);
-    expect(wallet.body).toEqual({ currentBalance: 0, creditsPerUnit: 1, minOrderAmount: 1 });
+    expect(wallet.body).toEqual({ currentBalance: 0, currentBalanceMilli: 0, creditsPerUnit: 1, minOrderAmount: 1 });
   });
 
   test("the wallet shows what the database holds", async () => {
     const created = await call("/api/workspaces", { "x-test-user": "alice", "content-type": "application/json" }, { method: "POST", body: JSON.stringify({ name: "Acme" }) });
     const workspaceId = created.body!.workspace.id as string;
     await call("/api/wallet", { "x-test-user": "alice", "x-workspace-id": workspaceId }); // opens the wallet
-    await db.prepare("UPDATE credit_wallets SET balance = 77 WHERE workspace_id = ?").bind(workspaceId).run();
+    await db.prepare("UPDATE credit_wallets SET balance_milli = 77000 WHERE workspace_id = ?").bind(workspaceId).run();
     expect((await call("/api/wallet", { "x-test-user": "alice", "x-workspace-id": workspaceId })).body!.currentBalance).toBe(77);
   });
 

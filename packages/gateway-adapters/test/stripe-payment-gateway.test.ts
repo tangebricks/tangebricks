@@ -3,45 +3,24 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { IntegrationCallError } from "@poc/runtime";
 import { applyMigration, type D1Like } from "@poc/sdk";
 import { createFakeGateway, createWallet } from "@poc/credit-wallet";
+import walletMigration from "../../../bricks/credit-wallet/migrations/0001_credit_wallet.sql?raw";
+import walletMigration0002 from "../../../bricks/credit-wallet/migrations/0002_workspace_scoped_idempotency.sql?raw";
+import walletMigration0003 from "../../../bricks/credit-wallet/migrations/0003_order_currency.sql?raw";
+import walletMigration0004 from "../../../bricks/credit-wallet/migrations/0004_milli_credits.sql?raw";
 import { stripeManifest } from "./support/stripe-manifest.ts";
 import { createStripePaymentGateway } from "../src/stripe-payment-gateway.ts";
 
 const db = env.DB as D1Like;
 
-const walletMigration = `
-CREATE TABLE IF NOT EXISTS credit_wallets (
-  workspace_id TEXT PRIMARY KEY,
-  balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0)
-);
-
-CREATE TABLE IF NOT EXISTS credit_orders (
-  order_id TEXT PRIMARY KEY,
-  workspace_id TEXT NOT NULL,
-  user_id TEXT NOT NULL,
-  amount INTEGER NOT NULL,
-  currency TEXT,
-  provider_ref TEXT,
-  processed INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS credit_ledger (
-  id TEXT PRIMARY KEY,
-  workspace_id TEXT NOT NULL,
-  user_id TEXT NOT NULL,
-  type TEXT NOT NULL,
-  amount INTEGER NOT NULL,
-  balance_after INTEGER NOT NULL CHECK (balance_after >= 0),
-  reason TEXT NOT NULL,
-  metadata TEXT,
-  idempotency_key TEXT UNIQUE
-);
-`;
-
 async function resetDb(): Promise<void> {
   await db.prepare("DROP TABLE IF EXISTS credit_ledger").run();
   await db.prepare("DROP TABLE IF EXISTS credit_orders").run();
   await db.prepare("DROP TABLE IF EXISTS credit_wallets").run();
+  await db.prepare("DROP TABLE IF EXISTS credit_action_costs").run();
   await applyMigration(db, walletMigration);
+  await applyMigration(db, walletMigration0002);
+  await applyMigration(db, walletMigration0003);
+  await applyMigration(db, walletMigration0004);
 }
 
 beforeEach(async () => {
@@ -246,13 +225,13 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
     const fakeConf = await fakeWallet.confirmOrder(fakeOrder.orderId);
     expect(fakeConf.status).toBe("PAID");
     expect(fakeConf.credited).toBe(true);
-    expect(await fakeWallet.getBalance(WS_FAKE)).toBe(250);
+    expect(await fakeWallet.getBalanceMilli(WS_FAKE)).toBe(250_000);
 
     // Duplicate confirmation does not credit again
     const fakeDup = await fakeWallet.confirmOrder(fakeOrder.orderId);
     expect(fakeDup.status).toBe("already_processed");
     expect(fakeDup.credited).toBe(false);
-    expect(await fakeWallet.getBalance(WS_FAKE)).toBe(250);
+    expect(await fakeWallet.getBalanceMilli(WS_FAKE)).toBe(250_000);
 
     // 2. Run identical wallet lifecycle against Stripe adapter backed by recorded fixtures
     const orderStore = new Map<string, { orderId: string; status: string; amount: number; secret: string; currency: string; customerId: string }>();
@@ -324,13 +303,13 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
     const stripeConf = await stripeWallet.confirmOrder(stripeOrder.orderId);
     expect(stripeConf.status).toBe("PAID");
     expect(stripeConf.credited).toBe(true);
-    expect(await stripeWallet.getBalance(WS_STRIPE)).toBe(250);
+    expect(await stripeWallet.getBalanceMilli(WS_STRIPE)).toBe(250_000);
 
     // Duplicate confirmation does not credit again
     const stripeDup = await stripeWallet.confirmOrder(stripeOrder.orderId);
     expect(stripeDup.status).toBe("already_processed");
     expect(stripeDup.credited).toBe(false);
-    expect(await stripeWallet.getBalance(WS_STRIPE)).toBe(250);
+    expect(await stripeWallet.getBalanceMilli(WS_STRIPE)).toBe(250_000);
   });
 });
 

@@ -6,6 +6,7 @@ import type { D1Like } from "../src/index.ts";
 import migration from "../migrations/0001_credit_wallet.sql?raw";
 import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
 import migration0003 from "../migrations/0003_order_currency.sql?raw";
+import migration0004 from "../migrations/0004_milli_credits.sql?raw";
 import { BRICK_TABLES, type Op, type Outcome, violations, workload } from "./support/workload.ts";
 
 const db = env.DB as D1Like;
@@ -13,10 +14,11 @@ const WS = "ws-brick";
 const RUNS = 20;
 
 async function reset(): Promise<void> {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, migration);
   await applyMigration(db, migration0002);
   await applyMigration(db, migration0003);
+  await applyMigration(db, migration0004);
 }
 
 async function ledgerCount(workspaceId = WS): Promise<number> {
@@ -49,7 +51,8 @@ async function brickRun(run: number): Promise<RunReport> {
   await reset();
   const gateway = createFakeGateway();
   const wallet = createWallet(db, gateway, { currency: "INR" });
-  await wallet.openWallet(WS, w.start);
+  // The workload is in whole credits; the wallet holds thousandths (story 2.5), converted here at the boundary.
+  await wallet.openWallet(WS, w.start * 1000);
 
   const orderFor = new Map<Op, string>();
   for (const op of w.ops) {
@@ -70,7 +73,7 @@ async function brickRun(run: number): Promise<RunReport> {
         if (credited === 0) extra.push(`order ${id} was credited zero times (${a.status}, ${b.status})`);
         return { op, accepted: credited >= 1 };
       }
-      const result = await wallet.deduct({ workspaceId: WS, userId: "user-1", amount: op.amount, reason: "usage" });
+      const result = await wallet.deduct({ workspaceId: WS, userId: "user-1", amountMilli: op.amount * 1000, reason: "usage" });
       if (!result.ok && result.reason !== "insufficient_balance") extra.push(`deduction refused for ${result.reason}`);
       return { op, accepted: result.ok };
     }),
@@ -80,7 +83,7 @@ async function brickRun(run: number): Promise<RunReport> {
   return {
     run,
     start: w.start,
-    end: await wallet.getBalance(WS),
+    end: await wallet.getBalanceMilli(WS),
     acceptedTopups: outcomes.filter((o) => o.op.kind === "topup" && o.accepted).length,
     acceptedDeductions: outcomes.filter((o) => o.op.kind === "deduct" && o.accepted).length,
     refusedDeductions: outcomes.filter((o) => o.op.kind === "deduct" && !o.accepted).length,
@@ -101,14 +104,14 @@ const orderScenario = once(async () => {
   await reset();
   const gateway = createFakeGateway();
   const wallet = createWallet(db, gateway, { currency: "INR" });
-  await wallet.openWallet(WS, 7);
+  await wallet.openWallet(WS, 7_000);
   const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: "user-1", amount: 100 });
   gateway.setOrder(orderId, { status: "PAID" });
 
   const results = await Promise.all(Array.from({ length: 30 }, () => wallet.confirmOrder(orderId)));
   const order = await db.prepare("SELECT processed FROM credit_orders WHERE order_id = ?").bind(orderId).first<{ processed: number }>();
   const creditedResults = results.filter((r) => r.credited).length;
-  const balance = await wallet.getBalance(WS);
+  const balance = await wallet.getBalanceMilli(WS);
   const rows = await ledgerCount();
   return {
     creditedResults,
@@ -116,7 +119,7 @@ const orderScenario = once(async () => {
     rows,
     processed: order?.processed,
     others: [...new Set(results.filter((r) => !r.credited).map((r) => r.status))],
-    ok: creditedResults === 1 && balance === 107 && rows === 1 && order?.processed === 1,
+    ok: creditedResults === 1 && balance === 107_000 && rows === 1 && order?.processed === 1,
   };
 });
 
@@ -127,14 +130,14 @@ const refusalScenario = once(async () => {
   await reset();
   const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
 
-  await wallet.openWallet(WS, 5);
-  const single = await wallet.deduct({ workspaceId: WS, userId: "user-1", amount: 10, reason: "usage" });
-  const afterSingle = { balance: await wallet.getBalance(WS), rows: await ledgerCount() };
+  await wallet.openWallet(WS, 5_000);
+  const single = await wallet.deduct({ workspaceId: WS, userId: "user-1", amountMilli: 10_000, reason: "usage" });
+  const afterSingle = { balance: await wallet.getBalanceMilli(WS), rows: await ledgerCount() };
 
-  await wallet.openWallet("ws-race", 10);
-  const results = await Promise.all(Array.from({ length: 5 }, () => wallet.deduct({ workspaceId: "ws-race", userId: "user-1", amount: 4, reason: "usage" })));
+  await wallet.openWallet("ws-race", 10_000);
+  const results = await Promise.all(Array.from({ length: 5 }, () => wallet.deduct({ workspaceId: "ws-race", userId: "user-1", amountMilli: 4_000, reason: "usage" })));
   const accepted = results.filter((r) => r.ok).length;
-  const afterRace = { balance: await wallet.getBalance("ws-race"), rows: await ledgerCount("ws-race") };
+  const afterRace = { balance: await wallet.getBalanceMilli("ws-race"), rows: await ledgerCount("ws-race") };
 
   return {
     single,
@@ -144,10 +147,10 @@ const refusalScenario = once(async () => {
     ok:
       !single.ok &&
       single.reason === "insufficient_balance" &&
-      afterSingle.balance === 5 &&
+      afterSingle.balance === 5_000 &&
       afterSingle.rows === 0 &&
       accepted === 2 &&
-      afterRace.balance === 2 &&
+      afterRace.balance === 2_000 &&
       afterRace.rows === 2,
   };
 });
@@ -176,7 +179,7 @@ describe("one payment order confirmed by thirty parallel calls", () => {
   test("is credited once: one success, balance up by the order, one ledger row, order closed", async () => {
     const s = await orderScenario();
     expect(s.creditedResults).toBe(1);
-    expect(s.balance).toBe(107);
+    expect(s.balance).toBe(107_000);
     expect(s.rows).toBe(1);
     expect(s.processed).toBe(1);
   });
@@ -190,13 +193,13 @@ describe("a deduction the wallet cannot cover", () => {
   test("is refused with the balance unchanged and no ledger row", async () => {
     const s = await refusalScenario();
     expect(s.single.ok).toBe(false);
-    expect(s.afterSingle).toEqual({ balance: 5, rows: 0 });
+    expect(s.afterSingle).toEqual({ balance: 5_000, rows: 0 });
   });
 
   test("five parallel deductions of 4 from a balance of 10: exactly two succeed, balance 2, two ledger rows", async () => {
     const s = await refusalScenario();
     expect(s.accepted).toBe(2);
-    expect(s.afterRace).toEqual({ balance: 2, rows: 2 });
+    expect(s.afterRace).toEqual({ balance: 2_000, rows: 2 });
   });
 });
 
@@ -204,19 +207,21 @@ describe("the rest of the wallet's behaviour", () => {
   test("the database itself refuses a negative balance, even for a write that goes around the wallet code", async () => {
     await reset();
     const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
-    await wallet.openWallet(WS, 5);
-    await expect(db.prepare("UPDATE credit_wallets SET balance = balance - 6 WHERE workspace_id = ?").bind(WS).run()).rejects.toThrow(/CHECK constraint failed: balance >= 0/);
-    expect(await wallet.getBalance(WS)).toBe(5);
+    await wallet.openWallet(WS, 5_000);
+    await expect(db.prepare("UPDATE credit_wallets SET balance_milli = balance_milli - 5001 WHERE workspace_id = ?").bind(WS).run()).rejects.toThrow(
+      /CHECK constraint failed: balance_milli >= 0/,
+    );
+    expect(await wallet.getBalanceMilli(WS)).toBe(5_000);
   });
 
   test("the ledger refuses a negative balance_after on its own, and a second row with the same idempotency key", async () => {
     await reset();
     const insert = (id: string, balanceAfter: number, key: string | null) =>
       db
-        .prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, idempotency_key) VALUES (?, 'w', 'u', 'topup', 1, ?, 'r', ?)")
+        .prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, idempotency_key) VALUES (?, 'w', 'u', 'topup', 1, ?, 'r', ?)")
         .bind(id, balanceAfter, key)
         .run();
-    await expect(insert("a", -1, null)).rejects.toThrow(/CHECK constraint failed: balance_after >= 0/);
+    await expect(insert("a", -1, null)).rejects.toThrow(/CHECK constraint failed: balance_after_milli >= 0/);
     await insert("b", 1, "k");
     // Unique per workspace since migration 0002 (story 0.7): the constraint names both columns.
     await expect(insert("c", 2, "k")).rejects.toThrow(/UNIQUE constraint failed: credit_ledger\.workspace_id, credit_ledger\.idempotency_key/);
@@ -225,29 +230,29 @@ describe("the rest of the wallet's behaviour", () => {
   test("a deduction with an idempotency key made twice takes the money once", async () => {
     await reset();
     const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
-    await wallet.openWallet(WS, 50);
-    const first = await wallet.deduct({ workspaceId: WS, userId: "u", amount: 10, reason: "usage", idempotencyKey: "job-1" });
-    const second = await wallet.deduct({ workspaceId: WS, userId: "u", amount: 10, reason: "usage", idempotencyKey: "job-1" });
-    expect(first).toMatchObject({ ok: true, duplicate: false, balanceAfter: 40 });
+    await wallet.openWallet(WS, 50_000);
+    const first = await wallet.deduct({ workspaceId: WS, userId: "u", amountMilli: 10_000, reason: "usage", idempotencyKey: "job-1" });
+    const second = await wallet.deduct({ workspaceId: WS, userId: "u", amountMilli: 10_000, reason: "usage", idempotencyKey: "job-1" });
+    expect(first).toMatchObject({ ok: true, duplicate: false, balanceAfterMilli: 40_000 });
     expect(second).toMatchObject({ ok: true, duplicate: true });
-    expect(await wallet.getBalance(WS)).toBe(40);
+    expect(await wallet.getBalanceMilli(WS)).toBe(40_000);
     expect(await ledgerCount()).toBe(1);
   });
 
   test("a deduction from a workspace with no wallet changes nothing", async () => {
     await reset();
     const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
-    const result = await wallet.deduct({ workspaceId: "nobody", userId: "u", amount: 1, reason: "usage" });
-    expect(result).toEqual({ ok: false, reason: "wallet_not_found", balance: null });
+    const result = await wallet.deduct({ workspaceId: "nobody", userId: "u", amountMilli: 1, reason: "usage" });
+    expect(result).toEqual({ ok: false, reason: "wallet_not_found", balanceMilli: null });
     expect(await ledgerCount("nobody")).toBe(0);
   });
 
   test.each([0, -3, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 60])("an amount of %s is rejected before touching the database", async (amount) => {
     await reset();
     const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
-    await wallet.openWallet(WS, 10);
-    await expect(wallet.deduct({ workspaceId: WS, userId: "u", amount, reason: "usage" })).rejects.toThrow(RangeError);
-    expect(await wallet.getBalance(WS)).toBe(10);
+    await wallet.openWallet(WS, 10_000);
+    await expect(wallet.deduct({ workspaceId: WS, userId: "u", amountMilli: amount, reason: "usage" })).rejects.toThrow(RangeError);
+    expect(await wallet.getBalanceMilli(WS)).toBe(10_000);
   });
 
   test("an order the gateway has not marked PAID credits nothing and stays open", async () => {
@@ -257,7 +262,7 @@ describe("the rest of the wallet's behaviour", () => {
     await wallet.openWallet(WS, 0);
     const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: "u", amount: 100 });
     expect(await wallet.confirmOrder(orderId)).toEqual({ status: "ACTIVE", credited: false });
-    expect(await wallet.getBalance(WS)).toBe(0);
+    expect(await wallet.getBalanceMilli(WS)).toBe(0);
     const row = await db.prepare("SELECT processed FROM credit_orders WHERE order_id = ?").bind(orderId).first<{ processed: number }>();
     expect(row?.processed).toBe(0);
   });
@@ -271,11 +276,11 @@ describe("the rest of the wallet's behaviour", () => {
     gateway.setOrder(orderId, { status: "PAID" });
     gateway.failFetches(true);
     expect(await wallet.confirmOrder(orderId)).toEqual({ status: "gateway_error", credited: false });
-    expect(await wallet.getBalance(WS)).toBe(0);
+    expect(await wallet.getBalanceMilli(WS)).toBe(0);
     gateway.failFetches(false);
-    expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, credits: 100, balanceAfter: 100 });
+    expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, creditsMilli: 100_000, balanceAfterMilli: 100_000 });
     expect(await wallet.confirmOrder(orderId)).toEqual({ status: "already_processed", credited: false });
-    expect(await wallet.getBalance(WS)).toBe(100);
+    expect(await wallet.getBalanceMilli(WS)).toBe(100_000);
   });
 
   test("an order that does not exist credits nothing", async () => {
@@ -291,7 +296,7 @@ describe("the rest of the wallet's behaviour", () => {
     await wallet.openWallet(WS, 0);
     const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: "u", amount: 100 });
     gateway.setOrder(orderId, { status: "PAID" });
-    expect(await wallet.confirmOrder(orderId)).toMatchObject({ credited: true, credits: 1000 });
+    expect(await wallet.confirmOrder(orderId)).toMatchObject({ credited: true, creditsMilli: 1_000_000 });
   });
 
   test("a top-up for a workspace whose wallet is missing credits nothing and leaves the order open", async () => {

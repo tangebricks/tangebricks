@@ -10,6 +10,17 @@ import type {
 } from "../api.ts";
 import { getActiveOrg, useStudioStore } from "../store.ts";
 
+/**
+ * Story 2.5: a credit amount as exact decimal text (up to three decimals). Whole thousandths are formatted with integer
+ * arithmetic when the server sent them; an older server's plain number is shown as it came.
+ */
+export function formatLedgerCredits(credits: number, milli?: number): string {
+  if (typeof milli !== "number" || !Number.isSafeInteger(milli)) return String(credits);
+  const abs = Math.abs(milli);
+  const fraction = String(abs % 1000).padStart(3, "0").replace(/0+$/, "");
+  return `${milli < 0 ? "-" : ""}${Math.floor(abs / 1000)}${fraction ? `.${fraction}` : ""}`;
+}
+
 const STORAGE_KEY_PREFIX = "px_studio_data_browser_";
 
 function readPersistedValue(key: string, fallback: string): string {
@@ -54,9 +65,10 @@ export function WalletLedgerView() {
     readPersistedValue(`${STORAGE_KEY_PREFIX}ws_${activeProject}`, ""),
   );
 
-  const [balance, setBalance] = useState<number>(0);
+  const [balance, setBalance] = useState<string>("0");
   const [currencyOrUnit, setCurrencyOrUnit] = useState<string>("credits");
   const [netChange30d, setNetChange30d] = useState<number>(0);
+  const [netChange30dText, setNetChange30dText] = useState<string>("0");
   const [updatedAt, setUpdatedAt] = useState<string>("");
   const [usageSummary, setUsageSummary] = useState<
     WorkspaceUsageSummaryItemPayload[]
@@ -106,9 +118,10 @@ export function WalletLedgerView() {
           limit: 50,
           orgId,
         });
-        setBalance(ledgerRes.wallet?.balance ?? 0);
+        setBalance(formatLedgerCredits(ledgerRes.wallet?.balance ?? 0, ledgerRes.wallet?.balanceMilli));
         setCurrencyOrUnit(ledgerRes.wallet?.currencyOrUnit ?? "credits");
         setNetChange30d(ledgerRes.wallet?.netChange30d ?? 0);
+        setNetChange30dText(formatLedgerCredits(ledgerRes.wallet?.netChange30d ?? 0, ledgerRes.wallet?.netChange30dMilli));
         setUpdatedAt(ledgerRes.wallet?.updatedAt ?? "");
         setUsageSummary(ledgerRes.usageSummary ?? []);
         setJournalEntries(ledgerRes.journalEntries ?? []);
@@ -147,7 +160,7 @@ export function WalletLedgerView() {
   };
 
   const formattedNetChange =
-    netChange30d > 0 ? `+${netChange30d}` : `${netChange30d}`;
+    netChange30d > 0 ? `+${netChange30dText}` : netChange30dText;
 
   return (
     <div
@@ -416,9 +429,8 @@ export function WalletLedgerView() {
               ) : (
                 journalEntries.map((entry) => {
                   const isPositive = entry.delta >= 0;
-                  const formattedDelta = isPositive
-                    ? `+${entry.delta}`
-                    : `${entry.delta}`;
+                  const deltaText = formatLedgerCredits(entry.delta, entry.deltaMilli);
+                  const formattedDelta = isPositive ? `+${deltaText}` : deltaText;
                   return (
                     <tr
                       key={entry.entryId}
@@ -445,7 +457,7 @@ export function WalletLedgerView() {
                         data-testid={`ledger-entry-balance-${entry.entryId}`}
                         className="py-2 px-2.5 text-text-primary font-semibold"
                       >
-                        {entry.balanceAfter}
+                        {formatLedgerCredits(entry.balanceAfter, entry.balanceAfterMilli)}
                       </td>
                       <td className="py-2 px-2.5 font-sans text-text-primary">
                         {entry.reason}

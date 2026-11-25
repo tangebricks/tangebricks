@@ -10,6 +10,7 @@ import type { D1Like } from "../src/index.ts";
 import migration from "../migrations/0001_credit_wallet.sql?raw";
 import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
 import migration0003 from "../migrations/0003_order_currency.sql?raw";
+import migration0004 from "../migrations/0004_milli_credits.sql?raw";
 
 const db = env.DB as D1Like;
 const WS = "ws-graph";
@@ -18,14 +19,19 @@ const node = (id: string, type: string, data: Record<string, unknown> = {}): Gra
 const wire = (source: string, target: string): GraphEdge => ({ id: `${source}-${target}`, source, target, sourceHandle: "out", targetHandle: "in" });
 
 async function reset(): Promise<void> {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, migration);
   await applyMigration(db, migration0002);
   await applyMigration(db, migration0003);
+  await applyMigration(db, migration0004);
 }
 const ledgerRows = async (workspaceId: string) =>
   (await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ?").bind(workspaceId).first<{ n: number }>())!.n;
-const balanceOf = (workspaceId: string) => createWallet(db, undefined).getBalance(workspaceId);
+// In credits: the wallet holds thousandths (story 2.5) and the graph's amounts are whole credits.
+const balanceOf = async (workspaceId: string) => {
+  const milli = await createWallet(db, undefined).getBalanceMilli(workspaceId);
+  return milli === null ? null : milli / 1000;
+};
 
 // What the graph does after the paid step: stands for the work the credits pay for. Counts how often it ran.
 let paidWorkRuns = 0;
@@ -63,10 +69,10 @@ describe("a deduct-credits step in a graph", () => {
   test("changes the balance once, writes one ledger row, and lets the paid work run", async () => {
     await reset();
     paidWorkRuns = 0;
-    await createWallet(db, undefined).openWallet(WS, 10);
+    await createWallet(db, undefined).openWallet(WS, 10_000);
     const result = await runPaid(3, { workspaceId: WS, userId: "u1" });
     expect(result.ok).toBe(true);
-    expect(result.outputs.pay?.out).toEqual({ charged: 3, balanceAfter: 7, duplicate: false });
+    expect(result.outputs.pay?.out).toEqual({ charged: 3, chargedMilli: 3_000, balanceAfter: 7, balanceAfterMilli: 7_000, duplicate: false });
     expect(await balanceOf(WS)).toBe(7);
     expect(await ledgerRows(WS)).toBe(1);
     expect(paidWorkRuns).toBe(1);
@@ -75,7 +81,7 @@ describe("a deduct-credits step in a graph", () => {
   test("an insufficient balance refuses: the step fails, nothing downstream runs, balance and ledger are unchanged", async () => {
     await reset();
     paidWorkRuns = 0;
-    await createWallet(db, undefined).openWallet(WS, 2);
+    await createWallet(db, undefined).openWallet(WS, 2_000);
     const result = await runPaid(3, { workspaceId: WS, userId: "u1" });
     expect(result.ok).toBe(false);
     expect(result.failed.pay).toBe("insufficient balance: need 3, have 2");
@@ -87,11 +93,11 @@ describe("a deduct-credits step in a graph", () => {
 
   test("a retried run with the same idempotency key is charged once", async () => {
     await reset();
-    await createWallet(db, undefined).openWallet(WS, 10);
+    await createWallet(db, undefined).openWallet(WS, 10_000);
     const payload = { workspaceId: WS, userId: "u1", idempotencyKey: "workflow-step-9" };
     const first = await runPaid(4, payload);
     const second = await runPaid(4, payload);
-    expect(first.outputs.pay?.out).toMatchObject({ charged: 4, balanceAfter: 6, duplicate: false });
+    expect(first.outputs.pay?.out).toMatchObject({ charged: 4, chargedMilli: 4_000, balanceAfter: 6, balanceAfterMilli: 6_000, duplicate: false });
     expect(second.outputs.pay?.out).toMatchObject({ charged: 4, duplicate: true });
     expect(await balanceOf(WS)).toBe(6);
     expect(await ledgerRows(WS)).toBe(1);
@@ -100,7 +106,7 @@ describe("a deduct-credits step in a graph", () => {
   test("fifteen runs of the graph at once against a balance of ten: exactly ten succeed", async () => {
     await reset();
     paidWorkRuns = 0;
-    await createWallet(db, undefined).openWallet(WS, 10);
+    await createWallet(db, undefined).openWallet(WS, 10_000);
     const results = await Promise.all(Array.from({ length: 15 }, () => runPaid(1, { workspaceId: WS, userId: "u1" })));
     expect(results.filter((r) => r.ok).length).toBe(10);
     expect(results.filter((r) => !r.ok).every((r) => r.failed.pay?.startsWith("insufficient balance"))).toBe(true);
@@ -112,8 +118,8 @@ describe("a deduct-credits step in a graph", () => {
   test("the workspace comes from the caller, not from the graph: a workspaceId in the node's stored data is ignored", async () => {
     await reset();
     const wallet = createWallet(db, undefined);
-    await wallet.openWallet(WS, 10);
-    await wallet.openWallet("ws-other", 10);
+    await wallet.openWallet(WS, 10_000);
+    await wallet.openWallet("ws-other", 10_000);
     const result = await runPaid(3, { workspaceId: WS, userId: "u1" }, { workspaceId: "ws-other" });
     expect(result.ok).toBe(true);
     expect(await balanceOf(WS)).toBe(7);
@@ -123,7 +129,7 @@ describe("a deduct-credits step in a graph", () => {
 
   test("the workspace is the run's, not the payload's: an input that names no workspace is charged to the run's", async () => {
     await reset();
-    await createWallet(db, undefined).openWallet(WS, 10);
+    await createWallet(db, undefined).openWallet(WS, 10_000);
     const result = await runPaid(3, { userId: "u1" });
     expect(result.ok).toBe(true);
     expect(await balanceOf(WS)).toBe(7);
@@ -136,7 +142,7 @@ describe("a deduct-credits step in a graph", () => {
   ])("%s: the run is refused NO_WORKSPACE before any step, and nothing changes", async (_name, workspaceId) => {
     await reset();
     paidWorkRuns = 0;
-    await createWallet(db, undefined).openWallet(WS, 10);
+    await createWallet(db, undefined).openWallet(WS, 10_000);
     const options = { payload: { workspaceId: WS, userId: "u1" }, env: { DB: db }, ...(workspaceId === undefined ? {} : { workspaceId: workspaceId as string }) };
     const refused = await runGraph(paidGraph(3), registry, executors(), options as never).then(() => null, (e: unknown) => e);
     expect(refused).toBeInstanceOf(RunRefusedError);
@@ -149,8 +155,8 @@ describe("a deduct-credits step in a graph", () => {
   test("PAYLOAD_SPOOF: an input naming another workspace fails WORKSPACE_MISMATCH, and neither wallet is debited", async () => {
     await reset();
     const wallet = createWallet(db, undefined);
-    await wallet.openWallet(WS, 10);
-    await wallet.openWallet("ws-other", 10);
+    await wallet.openWallet(WS, 10_000);
+    await wallet.openWallet("ws-other", 10_000);
     const result = await runPaid(3, { workspaceId: "ws-other", userId: "u1" });
     expect(result.ok).toBe(false);
     expect(result.failed.pay).toMatch(/^WORKSPACE_MISMATCH: /);
@@ -168,7 +174,7 @@ describe("a deduct-credits step in a graph", () => {
     ["no payload at all", undefined, "invalid input: (value): Invalid input: expected object, received undefined"],
   ])("%s: the step fails with a readable reason and nothing changes", async (_name, payload, message) => {
     await reset();
-    await createWallet(db, undefined).openWallet(WS, 10);
+    await createWallet(db, undefined).openWallet(WS, 10_000);
     const result = await runPaid(3, payload);
     expect(result.ok).toBe(false);
     expect(result.failed.pay).toBe(message);
@@ -186,7 +192,7 @@ describe("a deduct-credits step in a graph", () => {
 
   test.each([0, -1, 1.5, "3"])("an amount of %j in the node's config is rejected by the validator before anything runs", async (amount) => {
     await reset();
-    await createWallet(db, undefined).openWallet(WS, 10);
+    await createWallet(db, undefined).openWallet(WS, 10_000);
     await expect(runPaid(amount as number, { workspaceId: WS, userId: "u1" })).rejects.toThrow(GraphInvalidError);
     expect(await balanceOf(WS)).toBe(10);
   });
@@ -227,7 +233,7 @@ describe("bindings are scoped by the manifest, as secrets are", () => {
 
   test("the deduct brick cannot be pointed at a database under another name", async () => {
     await reset();
-    await createWallet(db, undefined).openWallet(WS, 10);
+    await createWallet(db, undefined).openWallet(WS, 10_000);
     const result = await runGraph(paidGraph(3), registry, executors(), { payload: { workspaceId: WS, userId: "u1" }, env: { OTHER: db }, workspaceId: WS });
     expect(result.failed.pay).toBe('binding "DB" is declared by credit-wallet.deduct but was not provided');
     expect(await balanceOf(WS)).toBe(10);
@@ -256,7 +262,7 @@ describe("bindings are scoped by the manifest, as secrets are", () => {
 test("H5 graph report", async ({ task }) => {
   await reset();
   paidWorkRuns = 0;
-  await createWallet(db, undefined).openWallet(WS, 10);
+  await createWallet(db, undefined).openWallet(WS, 10_000);
   const payload = { workspaceId: WS, userId: "u1", idempotencyKey: "report-1" };
   const first = await runPaid(3, payload);
   const retry = await runPaid(3, payload);

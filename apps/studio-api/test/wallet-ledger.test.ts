@@ -179,8 +179,8 @@ describe("Story 6.2 — Studio API Read-Only Credit Wallet & Usage Ledger (/api/
         ],
         tables: {
           credit_wallets: [
-            { workspace_id: "workspace_A", balance: 650, created_at: "2026-04-19T10:00:00Z" },
-            { workspace_id: "workspace_B", balance: 3000, created_at: "2026-04-19T11:00:00Z" },
+            { workspace_id: "workspace_A", balance_milli: 650_000, created_at: "2026-04-19T10:00:00Z" },
+            { workspace_id: "workspace_B", balance_milli: 3_000_000, created_at: "2026-04-19T11:00:00Z" },
           ],
           credit_ledger: [
             {
@@ -188,8 +188,8 @@ describe("Story 6.2 — Studio API Read-Only Credit Wallet & Usage Ledger (/api/
               workspace_id: "workspace_A",
               user_id: "alice",
               type: "topup",
-              amount: 1000,
-              balance_after: 1000,
+              amount_milli: 1_000_000,
+              balance_after_milli: 1_000_000,
               reason: "Initial credit grant",
               metadata: JSON.stringify({ orderId: "ord_a_1" }),
               idempotency_key: "idem_a_1",
@@ -200,8 +200,8 @@ describe("Story 6.2 — Studio API Read-Only Credit Wallet & Usage Ledger (/api/
               workspace_id: "workspace_A",
               user_id: "alice",
               type: "deduction",
-              amount: -350,
-              balance_after: 650,
+              amount_milli: -350_000,
+              balance_after_milli: 650_000,
               reason: "Workflow step execution",
               metadata: JSON.stringify({ runId: "run_inv_01", nodeId: "node-pick" }),
               idempotency_key: "idem_a_2",
@@ -212,8 +212,8 @@ describe("Story 6.2 — Studio API Read-Only Credit Wallet & Usage Ledger (/api/
               workspace_id: "workspace_B",
               user_id: "bob",
               type: "topup",
-              amount: 3000,
-              balance_after: 3000,
+              amount_milli: 3_000_000,
+              balance_after_milli: 3_000_000,
               reason: "Workspace B credit grant",
               metadata: JSON.stringify({ orderId: "ord_b_1" }),
               idempotency_key: "idem_b_1",
@@ -253,7 +253,7 @@ describe("Story 6.2 — Studio API Read-Only Credit Wallet & Usage Ledger (/api/
       workspaceId: string;
       readOnly: boolean;
       immutable: boolean;
-      wallet: { balance: number; netChange30d: number };
+      wallet: { balance: number; netChange30d: number; balanceMilli?: number; netChange30dMilli?: number };
       usageSummary: Array<{ metricKey: string; totalQuantity: number }>;
       journalEntries: Array<{
         entryId: string;
@@ -273,6 +273,8 @@ describe("Story 6.2 — Studio API Read-Only Credit Wallet & Usage Ledger (/api/
     expect(body.immutable).toBe(true);
     expect(body.wallet.balance).toBe(650);
     expect(body.wallet.netChange30d).toBe(650);
+    // Story 2.5: credit-wallet holds thousandths; the ledger reads them exactly and also returns them.
+    expect(body.wallet).toMatchObject({ balanceMilli: 650_000, netChange30dMilli: 650_000 });
     expect(body.usageSummary).toEqual([
       expect.objectContaining({
         metricKey: "ai_tokens_used",

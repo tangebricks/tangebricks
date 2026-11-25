@@ -40,15 +40,20 @@ type Entry = { workspaceId: string; credits: number; key: string; reason: string
  * An in-memory wallet with the charger's shape, in the real wallet's order: a debit checks the balance first and the
  * key second (so a retry after a committed attempt can be refused for the balance), refuses an overdraw, and is atomic
  * per call. A refund pays back at most what the debit under `againstKey` took, and nothing if there is none.
+ * Story 2.5: the charger interface speaks thousandths of a credit; this fake keeps whole credits for readable
+ * expectations, converts at its boundary, and records every raw thousandths amount it was handed in `milliSeen`.
  */
 class FakeCharger implements CreditCharger {
   balances = new Map<string, number>();
   debits: Entry[] = [];
   refunds: Entry[] = [];
-  async balance(_db: D1Like, workspaceId: string) {
-    return this.balances.get(workspaceId) ?? 0;
+  milliSeen: number[] = [];
+  async balanceMilli(_db: D1Like, workspaceId: string) {
+    return (this.balances.get(workspaceId) ?? 0) * 1000;
   }
-  async debit(_db: D1Like, workspaceId: string, credits: number, key: string, reason: string, userId?: string): Promise<ChargeOutcome> {
+  async debit(_db: D1Like, workspaceId: string, milli: number, key: string, reason: string, userId?: string): Promise<ChargeOutcome> {
+    this.milliSeen.push(milli);
+    const credits = milli / 1000;
     const balance = this.balances.get(workspaceId) ?? 0;
     if (balance < credits) return { ok: false, code: "INSUFFICIENT_CREDITS" };
     if (this.debits.some((d) => d.workspaceId === workspaceId && d.key === key)) return { ok: true };
@@ -56,7 +61,9 @@ class FakeCharger implements CreditCharger {
     this.debits.push({ workspaceId, credits, key, reason, ...(userId ? { userId } : {}) });
     return { ok: true };
   }
-  async refund(_db: D1Like, workspaceId: string, credits: number, key: string, againstKey: string, reason: string, userId?: string): Promise<ChargeOutcome> {
+  async refund(_db: D1Like, workspaceId: string, milli: number, key: string, againstKey: string, reason: string, userId?: string): Promise<ChargeOutcome> {
+    this.milliSeen.push(milli);
+    const credits = milli / 1000;
     const debit = this.debits.find((d) => d.workspaceId === workspaceId && d.key === againstKey);
     if (!debit) return { ok: false, code: "NOTHING_TO_REFUND" };
     if (this.refunds.some((d) => d.workspaceId === workspaceId && d.key === key)) return { ok: true };
@@ -67,7 +74,7 @@ class FakeCharger implements CreditCharger {
   }
   async settled(_db: D1Like, workspaceId: string, key: string) {
     const entry = [...this.debits, ...this.refunds].find((d) => d.workspaceId === workspaceId && d.key === key);
-    return entry ? { credits: entry.credits } : null;
+    return entry ? { milli: entry.credits * 1000 } : null;
   }
 }
 
@@ -76,7 +83,7 @@ function untouchableCharger() {
   const fail = () => {
     throw new Error("the charger must not be called");
   };
-  return { balance: vi.fn(fail), debit: vi.fn(fail), refund: vi.fn(fail), settled: vi.fn(fail) };
+  return { balanceMilli: vi.fn(fail), debit: vi.fn(fail), refund: vi.fn(fail), settled: vi.fn(fail) };
 }
 
 function appWith(options: AiRouteOptions, role = "member", ws = WS_A): Hono<AiEnv> {
@@ -180,6 +187,8 @@ describe("wallet billing on POST /api/ai/generate (story 1.13)", () => {
     expect(charger.refunds).toEqual([{ workspaceId: WS_A, credits: 1, key: `ai:${rows[0]!.id}:refund`, reason: "AI generation (unused reservation)", userId: USER }]);
     expect(charger.balances.get(WS_A)).toBe(97);
     expect(charger.balances.get(WS_B)).toBe(100);
+    // Story 2.5: the charger was handed thousandths: 3 reserved, 1 reserved, 1 refunded.
+    expect(charger.milliSeen).toEqual([3_000, 1_000, 1_000]);
   });
 
   it("a wallet that cannot cover the reservation gets 402 INSUFFICIENT_CREDITS before anything is generated or charged", async () => {
@@ -411,7 +420,7 @@ describe("wallet billing on POST /api/ai/generate (story 1.13)", () => {
       expect(res.status, res.text).toBe(200);
       expect((res.json.result as { billed: boolean }).billed).toBe(false);
     }
-    for (const method of [charger.balance, charger.debit, charger.refund, charger.settled]) expect(method).not.toHaveBeenCalled();
+    for (const method of [charger.balanceMilli, charger.debit, charger.refund, charger.settled]) expect(method).not.toHaveBeenCalled();
     expect((await logRows()).map((r) => r.billing_status)).toEqual(["not_billed", "not_billed"]);
   });
 });

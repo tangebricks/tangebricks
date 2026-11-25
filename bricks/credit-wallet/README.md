@@ -3,8 +3,10 @@
 A per-workspace credit wallet: an atomic double-entry ledger in D1, a balance that cannot go below zero, workspace-scoped
 idempotency keys, and payment routes that credit the wallet once a payment provider says an order is paid.
 
-Exports: `createWalletRoutes`, `createWallet` (the service the routes use), `walletCharger`, `createFakeGateway`
-(tests only), the `PaymentGateway` interface, and the workflow node executors.
+Exports: `createWalletRoutes`, `createWallet` (the service the routes use), `walletCharger`, the action-cost helpers
+(`chargeAction`, `setActionCost`, `listActionCosts`, `parseDefaultActionCosts`), the balance import library
+(`importWalletBalances`, `parseBalanceFile`), `createFakeGateway` (tests only), the `PaymentGateway` interface, and the
+workflow node executors.
 
 ## Using outside the monorepo
 
@@ -16,8 +18,8 @@ See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-mono
   `@poc/sdk`, `hono` and `zod`. The tarball ships `src/`, `migrations/` and `brick.manifest.json`; the React widget in
   `client/` is not included.
 - **TypeScript sources.** `exports` point at `src/index.ts`; bundle with wrangler or esbuild.
-- **Mount.** The routes are `/wallet`, `/wallet/history`, `/wallet/deduct`, `/payments/create-order`,
-  `/payments/verify` and `/payments/webhook`, relative to your prefix. Put multi-workspace's `workspaceMiddleware` in
+- **Mount.** The routes are `/wallet`, `/wallet/history`, `/wallet/deduct`, `/wallet/costs`, `/wallet/costs/:action`,
+  `/wallet/charge`, `/wallet/transfer`, `/payments/create-order`, `/payments/verify` and `/payments/webhook`, relative to your prefix. Put multi-workspace's `workspaceMiddleware` in
   front of `/wallet`, `/wallet/*` and `/payments/create-order` (not `/payments/verify`, which finds the workspace from
   the order, and not `/payments/webhook`, which the payment provider calls):
 
@@ -32,6 +34,8 @@ See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-mono
   }
   // the manifest's rateLimits
   app.on("POST", "/v1/wallet/deduct", rateLimit({ bucket: "wallet-deduct", limit: 60, windowSeconds: 60, key: "workspace" }));
+  app.on("POST", "/v1/wallet/charge", rateLimit({ bucket: "wallet-charge", limit: 600, windowSeconds: 60, key: "workspace" }));
+  app.on("POST", "/v1/wallet/transfer", rateLimit({ bucket: "wallet-transfer", limit: 30, windowSeconds: 60, key: "workspace" }));
   app.on("POST", "/v1/payments/create-order", rateLimit({ bucket: "wallet-create-order", limit: 60, windowSeconds: 60, key: "workspace" }));
   app.on("POST", "/v1/payments/verify", rateLimit({ bucket: "wallet-verify", limit: 60, windowSeconds: 60, key: "ip" }));
   app.on("POST", "/v1/payments/webhook", rateLimit({ bucket: "wallet-webhook", limit: 300, windowSeconds: 60, key: "ip" }));
@@ -50,6 +54,12 @@ See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-mono
   multi-workspace's, to the D1 database bound as `DB`. With wrangler, rename the copies so they sort in that order
   across bricks (every brick's files start at `0001_`); `applyMigration` from
   `@poc/sdk` works only from bundled worker code.
+- **Workspace registry (optional).** Transfers and the balance import check that a named workspace exists and is not
+  suspended by reading multi-workspace's `mw_workspaces` table (`findWorkspaceState` / `hasWorkspaceRegistry` in
+  `@poc/sdk`, which look the table up in `sqlite_master` once per database). A host with its own workspace guard and no
+  `mw_workspaces` table still works: the check falls back to whether the workspace has a wallet, a transfer's batch
+  leaves out the in-batch registry condition, and the import tool cannot create wallets (it has nothing to check an id
+  against).
 - **Identity.** The brick authenticates no one. Your identity middleware sets `user` (`{ uid }`), and the workspace
   guard sets `workspace` and `ctx`; a route reached without them answers 401 or 400.
 
@@ -78,3 +88,80 @@ See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-mono
   409 for a mismatch and 502 when the provider could not be asked (so it retries). A repeated delivery credits once.
   The manifest rate-limits it per IP (`wallet-webhook`). Point the provider's webhook at
   `<your prefix>/payments/webhook`.
+
+## Credits, action costs and transfers (story 2.5)
+
+- **Units.** Every credit amount is stored as a whole number of thousandths of a credit ("milli-credits"): 1 credit is
+  1000, 0.2 credits is 200. Migration `0004` renames the columns (`credit_wallets.balance_milli`,
+  `credit_ledger.amount_milli` and `balance_after_milli`) and multiplies every existing value by 1000 in the same
+  migration, so a query still written for whole credits fails ("no such column") instead of misreading the units. The
+  CHECKs (`balance_milli >= 0`, `balance_after_milli >= 0`) and the per-workspace idempotency key are unchanged. Order
+  amounts (`credit_orders.amount`) are money, not credits, and stay whole major units.
+- **Converting.** `toMilli`, `fromMilli` and `formatMilli` in `@poc/sdk` are the one conversion. `toMilli` reads a
+  number through its shortest decimal text, or a decimal string, exactly, and refuses more than three decimals, a
+  negative, NaN, Infinity, exponent notation (`"1e-3"`) and anything past a safe integer. Nothing adds or subtracts
+  credits as floats.
+- **Routes.** A credit amount in a body may be a number or a decimal string with up to three decimals (`0.2`,
+  `"12.345"`); `0.0001` or the string `"1e-3"` is 400. A JSON *number* written `1e-3` is a different matter: JSON
+  parsing turns it into 0.001 before the route sees it, so it is accepted as 0.001 (exactly 1 thousandth). Only the
+  string form of exponent notation is refused. Every amount comes back twice: in credits (`currentBalance`, `amount`,
+  `balanceAfter`, `charged`, `credits`) and in thousandths (`currentBalanceMilli`, `amountMilli`, `balanceAfterMilli`,
+  `chargedMilli`, `creditsMilli`).
+- **Library API.** `createWallet` speaks thousandths only, and its names say so: `openWallet(ws, initialBalanceMilli)`,
+  `getBalanceMilli`, `deduct({ amountMilli })`, `refund({ amountMilli })`, results with `balanceAfterMilli` and
+  `creditsMilli`. `walletCharger` likewise: `balanceMilli`, `debit(db, ws, milli, ...)`, `refund(db, ws, milli, ...)`
+  and `settled()` returning `{ milli, type }`. A caller written for whole credits fails to compile.
+- **Workflow node.** `credit-wallet.deduct` keeps a whole-credit `amount` in its config (the catalog declares it an
+  integer) and converts it to thousandths; its output carries `charged`/`balanceAfter` and their `...Milli` pairs.
+- **Top-ups.** The `creditsPerUnit` route option may be a decimal with up to three places (`"2.125"`); it is held as
+  thousandths and multiplies the order's whole amount in integers. The `creditsPerUnit` setting of an assembled app is
+  still a whole number, because manifest settings have no decimal type.
+- **Action costs.** `credit_action_costs` holds a workspace's price per action name (`^[a-z][a-z0-9_.:-]{0,63}$`), in
+  thousandths, 0 or more. `GET /wallet/costs` (any member) lists the workspace's own costs and the defaults that still
+  apply; `PUT /wallet/costs/:action { cost }` and `DELETE /wallet/costs/:action` are owner/admin only.
+  `POST /wallet/charge { action, quantity?, idempotencyKey, reason? }` takes cost x quantity (quantity 1 to 10000) from
+  the caller's workspace once per key: 404 `UNKNOWN_ACTION` when nothing prices the action, 402 `INSUFFICIENT_CREDITS`
+  when the balance cannot cover it, and a retry with the same key answers `duplicate: true`. The optional
+  `defaultActionCosts` setting (`email.send:0.2,message.send:0.5`, empty by default) prices an action only for a
+  workspace with no row of its own. A free action (cost 0) takes nothing but still records a zero-amount deduction
+  under its key, so a retry after a price change is a duplicate. An action listed twice keeps its first cost, and a cost is at most 999999.999 (the
+  pattern and the parser agree, so a value the assembler accepts never fails when the routes are built). Nothing has a
+  built-in price. Other bricks charge through
+  `walletCharger.chargeAction(db, ws, action, quantity, key, reason, { defaultCosts?, userId? })`.
+- **Idempotency keys.** Deductions, top-ups, charges and transfers share one key space per workspace. Every deduction
+  records an operation tag in its metadata: `op: "deduct"` (the route), `op: "node"` with the `node_id` (the workflow
+  node), `op: "charger"` (`walletCharger.debit`), `op: "action"` with the action and quantity (charges), `op: "wallet"`
+  (any other library call). A retry answers `duplicate: true` only when the row already under its key is the same
+  operation: a deduction of the same amount with the same tags, a top-up of the same amount, or a transfer to the same
+  destination of the same amount. A row written before the tags existed matches nothing new. Any other reuse is 409 `IDEMPOTENCY_KEY_REUSED`
+  (`idempotency_key_reused` / `IDEMPOTENCY_KEY_REUSED` from the library and `walletCharger`) and takes nothing.
+- **Transfers.** `POST /wallet/transfer { toWorkspaceId, amount, idempotencyKey, note? }` moves credits from the
+  caller's workspace to another workspace's existing wallet. Owner/admin of the source only, and never an API key (403
+  `API_KEY_FORBIDDEN`). One D1 batch debits the source (the CHECK refuses an overdraw and rolls everything back),
+  credits the destination and writes two ledger rows, `transfer_out` and `transfer_in`, sharing a generated
+  `transfer_code`; the destination's row carries the amount and the code and nothing else of the source. Idempotent per
+  (source workspace, key); the same key for another destination or amount is 409. 400 for a transfer to itself or an
+  amount below 0.001; 402 for more than the balance, checked before anything about the destination, so a caller who
+  cannot cover the amount learns nothing about it; 404 `DESTINATION_NOT_FOUND` for a destination that is not a live
+  workspace, is suspended (read from `mw_workspaces` with `findWorkspaceState` from `@poc/sdk`, the row the workspace
+  guard reads) or has no wallet, the same answer in every case. The destination's state is checked again inside the
+  transfer's batch, so a suspension or deletion that lands between the check and the batch rolls the transfer back.
+- **Importing balances.** `node scripts/import-wallet-balances.ts <file.json|file.csv> [--sqlite <db>] [--apply]
+  [--round half-up|down] [--allow-existing] [--create-wallets] [--out report.json]` loads `{ workspaceId, balance }` rows, the balance as decimal text in
+  credits (`"12.345"`, `"0.2"`, `"7"`). Conversion is exact string parsing; more than three decimals is refused unless
+  `--round` is given, and then every rounded row is reported. In JSON the balance must be a string; a JSON number is
+  refused (it has already been through a float). Every id must be an existing workspace (suspended ones included); one without a wallet is refused
+  unless `--create-wallets` (which still needs the workspace to exist), and one whose wallet already holds credits or an
+  import from any file is refused unless `--allow-existing` (recorded in the report). Every row and the totals are
+  checked before anything is written. A dry run is the default; `--apply` writes one top-up per
+  workspace under the key `import:<file-sha256>:<workspaceId>` through the wallet's own code, so a re-run credits
+  nothing twice. The report gives the source total and the imported total, exact to the thousandth, compares each
+  workspace's resulting balance (read back) with its source balance, and counts every row that differs. Mapping another system's export to `{ workspaceId, balance }` happens before the tool. The library
+  (`importWalletBalances`) runs against any `D1Like`; the script opens a local SQLite file. For a hosted D1 database,
+  call `importWalletBalances` with a `D1Like` over the D1 REST endpoint against the live database (as
+  `packages/deploy/src/h5-hosted.ts` does with `restD1`), or quiesce the wallet before reloading a copy. A row that fails
+  while writing is reported and the rest go on; `reconciled` is true only with no refused row.
+- **Erasure.** `credit_ledger` is retained when a user or a workspace is erased (`erase: "retain"`): it is the financial record every
+  balance is the sum of, and a transfer is two rows in two workspaces, so deleting one user's rows would leave half a
+  transfer. `user_id` cannot be anonymized because the ledger requires it. This follows the owner's
+  decision that money records are kept.

@@ -91,10 +91,10 @@ describe("Story 6.3 — Studio API Structured Logs & Errors Panel (/api/projects
       studioDb.prepare("DROP TABLE IF EXISTS credit_wallets"),
       studioDb.prepare("DROP TABLE IF EXISTS credit_orders"),
       studioDb.prepare(
-        "CREATE TABLE IF NOT EXISTS credit_wallets (workspace_id TEXT PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0), updated_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        "CREATE TABLE IF NOT EXISTS credit_wallets (workspace_id TEXT PRIMARY KEY, balance_milli INTEGER NOT NULL DEFAULT 0 CHECK (balance_milli >= 0), updated_at TEXT NOT NULL DEFAULT (datetime('now')))",
       ),
       studioDb.prepare(
-        "CREATE TABLE IF NOT EXISTS credit_ledger (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, type TEXT NOT NULL, amount INTEGER NOT NULL, balance_after INTEGER NOT NULL CHECK (balance_after >= 0), reason TEXT NOT NULL, metadata TEXT, idempotency_key TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        "CREATE TABLE IF NOT EXISTS credit_ledger (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, type TEXT NOT NULL, amount_milli INTEGER NOT NULL, balance_after_milli INTEGER NOT NULL CHECK (balance_after_milli >= 0), reason TEXT NOT NULL, metadata TEXT, idempotency_key TEXT UNIQUE, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
       ),
       studioDb.prepare(
         "CREATE TABLE IF NOT EXISTS credit_orders (order_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, amount INTEGER NOT NULL, processed INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')))",

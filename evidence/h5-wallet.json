@@ -6,7 +6,7 @@
     {
       "run": 1,
       "start": 35,
-      "end": 292,
+      "end": 292000,
       "acceptedTopups": 24,
       "acceptedDeductions": 9,
       "refusedDeductions": 17,
@@ -15,7 +15,7 @@
     {
       "run": 2,
       "start": 20,
-      "end": 178,
+      "end": 178000,
       "acceptedTopups": 24,
       "acceptedDeductions": 2,
       "refusedDeductions": 24,
@@ -24,7 +24,7 @@
     {
       "run": 3,
       "start": 8,
-      "end": 141,
+      "end": 141000,
       "acceptedTopups": 18,
       "acceptedDeductions": 3,
       "refusedDeductions": 29,
@@ -33,7 +33,7 @@
     {
       "run": 4,
       "start": 8,
-      "end": 265,
+      "end": 265000,
       "acceptedTopups": 24,
       "acceptedDeductions": 3,
       "refusedDeductions": 23,
@@ -42,7 +42,7 @@
     {
       "run": 5,
       "start": 39,
-      "end": 247,
+      "end": 247000,
       "acceptedTopups": 24,
       "acceptedDeductions": 7,
       "refusedDeductions": 19,
@@ -51,7 +51,7 @@
     {
       "run": 6,
       "start": 26,
-      "end": 302,
+      "end": 302000,
       "acceptedTopups": 28,
       "acceptedDeductions": 4,
       "refusedDeductions": 18,
@@ -60,7 +60,7 @@
     {
       "run": 7,
       "start": 28,
-      "end": 281,
+      "end": 281000,
       "acceptedTopups": 26,
       "acceptedDeductions": 5,
       "refusedDeductions": 19,
@@ -69,7 +69,7 @@
     {
       "run": 8,
       "start": 5,
-      "end": 265,
+      "end": 265000,
       "acceptedTopups": 22,
       "acceptedDeductions": 2,
       "refusedDeductions": 26,
@@ -78,7 +78,7 @@
     {
       "run": 9,
       "start": 19,
-      "end": 253,
+      "end": 253000,
       "acceptedTopups": 24,
       "acceptedDeductions": 6,
       "refusedDeductions": 20,
@@ -87,7 +87,7 @@
     {
       "run": 10,
       "start": 27,
-      "end": 165,
+      "end": 165000,
       "acceptedTopups": 23,
       "acceptedDeductions": 5,
       "refusedDeductions": 22,
@@ -96,7 +96,7 @@
     {
       "run": 11,
       "start": 11,
-      "end": 272,
+      "end": 272000,
       "acceptedTopups": 27,
       "acceptedDeductions": 3,
       "refusedDeductions": 20,
@@ -105,7 +105,7 @@
     {
       "run": 12,
       "start": 7,
-      "end": 241,
+      "end": 241000,
       "acceptedTopups": 24,
       "acceptedDeductions": 4,
       "refusedDeductions": 22,
@@ -114,7 +114,7 @@
     {
       "run": 13,
       "start": 9,
-      "end": 301,
+      "end": 301000,
       "acceptedTopups": 25,
       "acceptedDeductions": 2,
       "refusedDeductions": 23,
@@ -123,7 +123,7 @@
     {
       "run": 14,
       "start": 27,
-      "end": 266,
+      "end": 266000,
       "acceptedTopups": 30,
       "acceptedDeductions": 5,
       "refusedDeductions": 15,
@@ -132,7 +132,7 @@
     {
       "run": 15,
       "start": 34,
-      "end": 303,
+      "end": 303000,
       "acceptedTopups": 25,
       "acceptedDeductions": 4,
       "refusedDeductions": 21,
@@ -141,7 +141,7 @@
     {
       "run": 16,
       "start": 2,
-      "end": 264,
+      "end": 264000,
       "acceptedTopups": 23,
       "acceptedDeductions": 1,
       "refusedDeductions": 26,
@@ -150,7 +150,7 @@
     {
       "run": 17,
       "start": 18,
-      "end": 258,
+      "end": 258000,
       "acceptedTopups": 28,
       "acceptedDeductions": 2,
       "refusedDeductions": 20,
@@ -159,7 +159,7 @@
     {
       "run": 18,
       "start": 5,
-      "end": 303,
+      "end": 303000,
       "acceptedTopups": 27,
       "acceptedDeductions": 2,
       "refusedDeductions": 21,
@@ -168,7 +168,7 @@
     {
       "run": 19,
       "start": 36,
-      "end": 233,
+      "end": 233000,
       "acceptedTopups": 24,
       "acceptedDeductions": 8,
       "refusedDeductions": 18,
@@ -177,7 +177,7 @@
     {
       "run": 20,
       "start": 25,
-      "end": 270,
+      "end": 270000,
       "acceptedTopups": 27,
       "acceptedDeductions": 6,
       "refusedDeductions": 17,
@@ -186,7 +186,7 @@
   ],
   "orderScenario": {
     "creditedResults": 1,
-    "balance": 107,
+    "balance": 107000,
     "rows": 1,
     "processed": 1,
     "others": [
@@ -198,22 +198,22 @@
     "single": {
       "ok": false,
       "reason": "insufficient_balance",
-      "balance": 5
+      "balanceMilli": 5000
     },
     "afterSingle": {
-      "balance": 5,
+      "balance": 5000,
       "rows": 0
     },
     "accepted": 2,
     "afterRace": {
-      "balance": 2,
+      "balance": 2000,
       "rows": 2
     },
     "ok": true
   },
   "provenance": {
-    "generatedAt": "2026-11-25T11:22:03.878Z",
-    "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
+    "generatedAt": "2026-11-25T13:30:34.444Z",
+    "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

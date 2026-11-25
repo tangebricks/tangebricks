@@ -52,11 +52,18 @@ export const EXCLUDED_DATA_BROWSER_TABLES = new Set<string>([
   "mcp_builds",
 ]);
 
+/** A credit amount read from a table in whole (or decimal) credits, as whole thousandths; 0 when it is not a number. */
+function toMilliOrZero(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n * 1000) : 0;
+}
+
 export const IMMUTABLE_LEDGER_TABLES = new Set<string>([
   "credit_accounts",
   "credit_wallets",
   "credit_orders",
   "credit_ledger",
+  "credit_action_costs",
   "wallet_balances",
   "wallet_ledger",
   "usage_events",
@@ -99,9 +106,12 @@ export interface DataBrowserFilterClause {
 
 export interface DataBrowserWalletSummary {
   balance: number;
+  /** Story 2.5: the balance in whole thousandths of a credit (credit-wallet's unit since its migration 0004). */
+  balanceMilli: number;
   currencyOrUnit: string;
   updatedAt: string;
   netChange30d: number;
+  netChange30dMilli: number;
 }
 
 export interface DataBrowserUsageSummaryItem {
@@ -116,6 +126,9 @@ export interface DataBrowserLedgerEntry {
   workspaceId: string;
   delta: number;
   balanceAfter: number;
+  /** Story 2.5: the same two amounts in whole thousandths of a credit, exact. */
+  deltaMilli: number;
+  balanceAfterMilli: number;
   reason: string;
   idempotencyKey: string | null;
   runId?: string | null;
@@ -581,14 +594,23 @@ export async function queryWorkspaceLedger(
     for (const row of rowsRes.results ?? []) {
       const entryId = String(row.id ?? row.entry_id ?? "");
       const rawType = String(row.type ?? row.entry_type ?? "topup").toLowerCase();
-      const rawAmount = Number(row.amount ?? row.delta ?? row.delta_credits ?? 0);
-      const delta =
-        rawAmount < 0
-          ? rawAmount
-          : rawType === "deduction" || rawType === "debit"
-            ? -Math.abs(rawAmount)
-            : rawAmount;
-      const balanceAfter = Number(row.balance_after ?? 0);
+      // credit-wallet holds thousandths since its migration 0004 (story 2.5); a table still in whole credits is scaled.
+      const rawMilli =
+        row.amount_milli !== undefined && row.amount_milli !== null
+          ? Number(row.amount_milli)
+          : toMilliOrZero(row.amount ?? row.delta ?? row.delta_credits ?? 0);
+      const deltaMilli =
+        rawMilli < 0
+          ? rawMilli
+          : rawType === "deduction" || rawType === "debit" || rawType === "transfer_out"
+            ? -Math.abs(rawMilli)
+            : rawMilli;
+      const balanceAfterMilli =
+        row.balance_after_milli !== undefined && row.balance_after_milli !== null
+          ? Number(row.balance_after_milli)
+          : toMilliOrZero(row.balance_after ?? 0);
+      const delta = deltaMilli / 1000;
+      const balanceAfter = balanceAfterMilli / 1000;
       const reason = String(row.reason ?? "");
       const idempotencyKey =
         typeof row.idempotency_key === "string" && row.idempotency_key.length > 0
@@ -630,6 +652,8 @@ export async function queryWorkspaceLedger(
         workspaceId,
         delta,
         balanceAfter,
+        deltaMilli,
+        balanceAfterMilli,
         reason,
         idempotencyKey,
         runId,
@@ -651,14 +675,16 @@ export async function queryWorkspaceLedger(
     for (const row of rowsRes.results ?? []) {
       const entryId = String(row.entry_id ?? row.id ?? "");
       const rawType = String(row.entry_type ?? row.type ?? "grant").toLowerCase();
-      const rawDelta = Number(row.delta_credits ?? row.delta ?? row.amount ?? 0);
-      const delta =
-        rawDelta < 0
-          ? rawDelta
+      const rawDeltaMilli = toMilliOrZero(row.delta_credits ?? row.delta ?? row.amount ?? 0);
+      const deltaMilli =
+        rawDeltaMilli < 0
+          ? rawDeltaMilli
           : rawType === "deduction" || rawType === "debit"
-            ? -Math.abs(rawDelta)
-            : rawDelta;
-      const balanceAfter = Number(row.balance_after ?? 0);
+            ? -Math.abs(rawDeltaMilli)
+            : rawDeltaMilli;
+      const balanceAfterMilli = toMilliOrZero(row.balance_after ?? 0);
+      const delta = deltaMilli / 1000;
+      const balanceAfter = balanceAfterMilli / 1000;
       const reason = String(row.reason ?? "");
       const idempotencyKey =
         typeof row.idempotency_key === "string" && row.idempotency_key.length > 0
@@ -700,6 +726,8 @@ export async function queryWorkspaceLedger(
         workspaceId,
         delta,
         balanceAfter,
+        deltaMilli,
+        balanceAfterMilli,
         reason,
         idempotencyKey,
         runId,
@@ -716,7 +744,7 @@ export async function queryWorkspaceLedger(
   });
 
   // 2. Determine live wallet balance for workspaceId
-  let walletBalance: number | null = null;
+  let walletBalanceMilli: number | null = null;
   let currencyOrUnit = "credits";
   let walletUpdatedAt = allEntries[0]?.createdAt ?? new Date(0).toISOString();
 
@@ -729,7 +757,8 @@ export async function queryWorkspaceLedger(
       .first<Record<string, unknown>>()
       .catch(() => null);
     if (wRow) {
-      walletBalance = Number(wRow.balance ?? 0);
+      walletBalanceMilli =
+        wRow.balance_milli !== undefined && wRow.balance_milli !== null ? Number(wRow.balance_milli) : toMilliOrZero(wRow.balance ?? 0);
       if (typeof wRow.updated_at === "string" && wRow.updated_at) {
         walletUpdatedAt = wRow.updated_at;
       } else if (typeof wRow.created_at === "string" && wRow.created_at && allEntries.length === 0) {
@@ -738,7 +767,7 @@ export async function queryWorkspaceLedger(
     }
   }
 
-  if (walletBalance === null && existingTableNames.has("wallet_balances")) {
+  if (walletBalanceMilli === null && existingTableNames.has("wallet_balances")) {
     const wRow = await db
       .prepare(
         `SELECT * FROM "wallet_balances" WHERE "workspace_id" = ?1 LIMIT 1`,
@@ -747,7 +776,7 @@ export async function queryWorkspaceLedger(
       .first<Record<string, unknown>>()
       .catch(() => null);
     if (wRow) {
-      walletBalance = Number(wRow.balance ?? wRow.credits ?? 0);
+      walletBalanceMilli = toMilliOrZero(wRow.balance ?? wRow.credits ?? 0);
       if (typeof wRow.currency_or_unit === "string" && wRow.currency_or_unit) {
         currencyOrUnit = wRow.currency_or_unit;
       }
@@ -757,11 +786,12 @@ export async function queryWorkspaceLedger(
     }
   }
 
-  if (walletBalance === null) {
-    walletBalance = allEntries.length > 0 ? allEntries[0]!.balanceAfter : 0;
+  if (walletBalanceMilli === null) {
+    walletBalanceMilli = allEntries.length > 0 ? allEntries[0]!.balanceAfterMilli : 0;
   }
 
-  const netChange30d = allEntries.reduce((acc, entry) => acc + entry.delta, 0);
+  // Summed in whole thousandths, never as floats (story 2.5).
+  const netChange30dMilli = allEntries.reduce((acc, entry) => acc + entry.deltaMilli, 0);
 
   // 3. Collect usage summaries strictly scoped by WHERE "workspace_id" = ?1
   const usageSummary: DataBrowserUsageSummaryItem[] = [];
@@ -860,10 +890,12 @@ export async function queryWorkspaceLedger(
     immutable: true,
     workspaceId,
     wallet: {
-      balance: walletBalance,
+      balance: walletBalanceMilli / 1000,
+      balanceMilli: walletBalanceMilli,
       currencyOrUnit,
       updatedAt: walletUpdatedAt,
-      netChange30d,
+      netChange30d: netChange30dMilli / 1000,
+      netChange30dMilli,
     },
     usageSummary,
     journalEntries: pagedEntries,

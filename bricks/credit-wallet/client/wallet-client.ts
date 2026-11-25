@@ -4,15 +4,30 @@ import { z } from "zod";
 // outside src/ (which holds only worker code) and has its own tsconfig. Responses are checked with Zod rather than
 // trusted, so a server that answers with something unexpected becomes an error the widget can show, not a crash.
 
-const BalanceSchema = z.object({ currentBalance: z.number().int().nonnegative(), creditsPerUnit: z.number(), minOrderAmount: z.number() });
-const LedgerRowSchema = z.object({
-  id: z.string(),
-  type: z.enum(["topup", "deduction"]),
-  amount: z.number().int(),
-  balanceAfter: z.number().int().nonnegative(),
-  description: z.string(),
-  createdAt: z.string(),
-});
+// Story 2.5: credits have up to three decimals. Each amount comes as a number of credits (for display) and as whole
+// thousandths (`...Milli`, exact); the two must agree, or the answer is not trusted.
+const agrees = (credits: number, milli: number) => Math.round(credits * 1000) === milli;
+const BalanceSchema = z
+  .object({
+    currentBalance: z.number().nonnegative(),
+    currentBalanceMilli: z.number().int().nonnegative(),
+    creditsPerUnit: z.number(),
+    minOrderAmount: z.number(),
+  })
+  .refine((b) => agrees(b.currentBalance, b.currentBalanceMilli));
+const LedgerRowSchema = z
+  .object({
+    id: z.string(),
+    type: z.enum(["topup", "deduction", "transfer_out", "transfer_in"]),
+    amount: z.number(),
+    amountMilli: z.number().int(),
+    balanceAfter: z.number().nonnegative(),
+    balanceAfterMilli: z.number().int().nonnegative(),
+    description: z.string(),
+    transferCode: z.string().optional(),
+    createdAt: z.string(),
+  })
+  .refine((r) => agrees(r.amount, r.amountMilli) && agrees(r.balanceAfter, r.balanceAfterMilli));
 const HistorySchema = z.object({ ledgers: z.array(LedgerRowSchema) });
 
 export type WalletBalance = z.infer<typeof BalanceSchema>;
