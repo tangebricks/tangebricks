@@ -10,7 +10,7 @@
     "@poc/oidc-verify": "workspace:*",
     "@poc/runtime": "workspace:*",
     "@poc/sdk": "workspace:*",
-    "hono": "4.13.19",
+    "hono": "4.13.20",
     "zod": "4.6.7"
   }
 }
