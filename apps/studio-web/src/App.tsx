@@ -13,6 +13,7 @@ import { createSynthetic200NodeBlueprint } from "./components/WorkflowCanvasView
 import { useStudioStore } from "./store.ts";
 import type { StudioState } from "./store.ts";
 
+// Dev-only test hooks; see the `import.meta.env.DEV` block in StudioApp.
 declare global {
   interface Window {
     __STUDIO_STORE__?: typeof useStudioStore;
@@ -26,23 +27,27 @@ export function StudioApp(props: StudioShellProps = {}) {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      window.__STUDIO_STORE__ = useStudioStore;
-      if (window.__STUDIO_BOOTSTRAP__) {
-        useStudioStore.getState().resetStore(window.__STUDIO_BOOTSTRAP__);
-        return;
-      }
       const params = new URLSearchParams(window.location.search);
-      if (params.get("benchmark") === "200") {
-        const synthetic = createSynthetic200NodeBlueprint();
-        useStudioStore.getState().resetStore({
-          user: { id: "usr_bench", email: "bench@example.com", name: "Benchmark Runner" },
-          orgs: [{ id: "org_bench", slug: "bench", name: "Benchmark Org", role: "owner" }],
-          activeOrgId: "org_bench",
-          projectState: synthetic,
-          activeNav: "workflows",
-          activeWorkflowId: "wf-200-nodes",
-        });
-        return;
+      // Test-only hooks for the e2e suite and the jsdom unit tests. `import.meta.env.DEV` is a literal `false` in a
+      // production `vite build`, so this whole block (and the fake benchmark session) is dropped from the bundle.
+      if (import.meta.env.DEV) {
+        window.__STUDIO_STORE__ = useStudioStore;
+        if (window.__STUDIO_BOOTSTRAP__) {
+          useStudioStore.getState().resetStore(window.__STUDIO_BOOTSTRAP__);
+          return;
+        }
+        if (params.get("benchmark") === "200") {
+          const synthetic = createSynthetic200NodeBlueprint();
+          useStudioStore.getState().resetStore({
+            user: { id: "usr_bench", email: "bench@example.com", name: "Benchmark Runner" },
+            orgs: [{ id: "org_bench", slug: "bench", name: "Benchmark Org", role: "owner" }],
+            activeOrgId: "org_bench",
+            projectState: synthetic,
+            activeNav: "workflows",
+            activeWorkflowId: "wf-200-nodes",
+          });
+          return;
+        }
       }
       if (!useStudioStore.getState().user) {
         let cancelled = false;

@@ -5,6 +5,7 @@ import {
   postCloudflareFunnelEvent,
   verifyAndSaveCloudflareToken,
 } from "../api.ts";
+import { safeHref } from "../safe-href.ts";
 import type {
   CloudflareAccountChoice,
   CloudflarePermissionStatusRow,
@@ -235,7 +236,7 @@ export function ConnectCloudflareModal({
               </p>
             </div>
             <a
-              href={templateUrl}
+              href={safeHref(templateUrl)}
               target="_blank"
               rel="noreferrer"
               data-testid="cf-create-token-link"
@@ -314,7 +315,7 @@ export function ConnectCloudflareModal({
                   data-testid="cf-account-id-input"
                   value={accountIdInput}
                   onChange={(e) => setAccountIdInput(e.target.value)}
-                  placeholder="abcdef0123456789abcdef0123456789"
+                  placeholder="32-character hex account ID"
                   className="w-full px-3 py-1.5 rounded bg-surface-control border border-border-strong font-mono text-xs text-text-primary"
                 />
               </div>
@@ -399,7 +400,7 @@ export function ConnectCloudflareModal({
                       >
                         <span>{perm.plainError}</span>
                         <a
-                          href={perm.remediationUrl || remediationUrl}
+                          href={safeHref(perm.remediationUrl) ?? safeHref(remediationUrl)}
                           target="_blank"
                           rel="noreferrer"
                           data-testid={`cf-fix-link-${perm.id}`}
@@ -424,7 +425,7 @@ export function ConnectCloudflareModal({
               <div className="font-semibold">✕ {errorBanner}</div>
               <div className="flex items-center gap-3">
                 <a
-                  href={remediationUrl}
+                  href={safeHref(remediationUrl)}
                   target="_blank"
                   rel="noreferrer"
                   data-testid="cf-fix-in-cloudflare-link"

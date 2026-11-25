@@ -138,15 +138,9 @@ export function StudioShell({
   const [moveToByocModalOpen, setMoveToByocModalOpen] = useState(false);
   const [deployingSandbox, setDeployingSandbox] = useState(false);
   const [promotingToByoc, setPromotingToByoc] = useState(false);
-  const [byocTokenInput, setByocTokenInput] = useState(
-    "cf_ut_valid_promote_byoc_token_1234567890",
-  );
-  const [byocAccountIdInput, setByocAccountIdInput] = useState(
-    "abcdef0123456789abcdef0123456789",
-  );
-  const [byocAccountNameInput, setByocAccountNameInput] = useState(
-    "Promoted BYOC Account",
-  );
+  const [byocTokenInput, setByocTokenInput] = useState("");
+  const [byocAccountIdInput, setByocAccountIdInput] = useState("");
+  const [byocAccountNameInput, setByocAccountNameInput] = useState("");
   const [promotedByocResult, setPromotedByocResult] = useState<{
     buildHash: string;
     sandboxBuildHash: string;
@@ -1227,9 +1221,9 @@ export function StudioShell({
                         displayProjectName,
                         {
                           orgId: activeOrg?.id,
-                          token: byocTokenInput.trim(),
-                          accountId: byocAccountIdInput.trim(),
-                          accountName: byocAccountNameInput.trim(),
+                          token: byocTokenInput.trim() || undefined,
+                          accountId: byocAccountIdInput.trim() || undefined,
+                          accountName: byocAccountNameInput.trim() || undefined,
                         },
                       );
                       setPromotedByocResult({
