@@ -177,3 +177,47 @@ describe("walletCharger.chargeAction (story 2.5)", () => {
     expect(await walletCharger.chargeAction(db, "ws-without-wallet", "ping", 1, "free", "x")).toEqual({ ok: false, code: "WALLET_NOT_FOUND" });
   });
 });
+
+describe("walletCharger.grant (story 2.6)", () => {
+  async function withRegistry(): Promise<void> {
+    await db.prepare("DROP TABLE IF EXISTS mw_workspaces").run();
+    await db.prepare("CREATE TABLE mw_workspaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, owner_id TEXT NOT NULL, suspended INTEGER NOT NULL DEFAULT 0, suspended_reason TEXT)").run();
+    await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id, suspended) VALUES ('ws-live', 'Live', 'o', 0), ('ws-held', 'Held', 'o', 1)").run();
+  }
+
+  test("adds the amount once per key, as a top-up tagged op: grant; a retry is a duplicate", async () => {
+    expect(await walletCharger.grant(db, WS_A, 12500, "g1", "goodwill", "op")).toEqual({ ok: true, balanceAfterMilli: 12510, duplicate: false, opened: false });
+    expect(await walletCharger.grant(db, WS_A, 12500, "g1", "goodwill", "op")).toEqual({ ok: true, balanceAfterMilli: 12510, duplicate: true, opened: false });
+    expect(await walletCharger.balanceMilli(db, WS_A)).toBe(12510);
+    expect(await walletCharger.balanceMilli(db, WS_B)).toBe(10);
+    const row = await db.prepare("SELECT type, amount_milli, user_id, metadata FROM credit_ledger WHERE workspace_id = ? AND idempotency_key = 'g1'").bind(WS_A).first();
+    expect(row).toEqual({ type: "topup", amount_milli: 12500, user_id: "op", metadata: JSON.stringify({ op: "grant" }) });
+  });
+
+  test("a key used for anything else, or for another amount, is IDEMPOTENCY_KEY_REUSED with nothing added", async () => {
+    expect((await walletCharger.debit(db, WS_A, 1, "k-debit", "usage")).ok).toBe(true);
+    expect(await walletCharger.grant(db, WS_A, 1, "k-debit", "grant")).toEqual({ ok: false, code: "IDEMPOTENCY_KEY_REUSED", balanceMilli: 0 });
+    await createWallet(db, undefined).refund({ workspaceId: WS_A, userId: "u", amountMilli: 5, reason: "refund", idempotencyKey: "k-refund" });
+    expect(await walletCharger.grant(db, WS_A, 5, "k-refund", "grant")).toEqual({ ok: false, code: "IDEMPOTENCY_KEY_REUSED", balanceMilli: 0 });
+    expect((await walletCharger.grant(db, WS_A, 5, "k-grant", "grant")).ok).toBe(true);
+    expect(await walletCharger.grant(db, WS_A, 6, "k-grant", "grant")).toEqual({ ok: false, code: "IDEMPOTENCY_KEY_REUSED", balanceMilli: 0 });
+    expect(await walletCharger.balanceMilli(db, WS_A)).toBe(10 - 1 + 5 + 5);
+  });
+
+  test("a missing wallet is opened only for a live registered workspace", async () => {
+    // No registry: nothing shows the workspace is live.
+    expect(await walletCharger.grant(db, "ws-unknown", 1000, "g", "grant")).toEqual({ ok: false, code: "WALLET_NOT_FOUND", balanceMilli: 0 });
+    await withRegistry();
+    expect(await walletCharger.grant(db, "ws-live", 1000, "g", "grant")).toEqual({ ok: true, balanceAfterMilli: 1000, duplicate: false, opened: true });
+    expect(await walletCharger.grant(db, "ws-held", 1000, "g", "grant")).toEqual({ ok: false, code: "WALLET_NOT_FOUND", balanceMilli: 0 });
+    expect(await walletCharger.grant(db, "ws-gone", 1000, "g", "grant")).toEqual({ ok: false, code: "WALLET_NOT_FOUND", balanceMilli: 0 });
+    expect(await db.prepare("SELECT workspace_id FROM credit_wallets WHERE workspace_id IN ('ws-held', 'ws-gone')").all().then((r) => r.results)).toEqual([]);
+    await db.prepare("DROP TABLE mw_workspaces").run();
+  });
+
+  test("refuses an amount that is not a positive whole number of thousandths, and a bad key", async () => {
+    for (const milli of [0, -1, 1.5, Number.NaN]) await expect(walletCharger.grant(db, WS_A, milli, "k", "grant")).rejects.toThrow(RangeError);
+    await expect(walletCharger.grant(db, WS_A, 1, "", "grant")).rejects.toThrow(RangeError);
+    expect(await walletCharger.balanceMilli(db, WS_A)).toBe(10);
+  });
+});

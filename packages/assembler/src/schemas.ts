@@ -86,8 +86,20 @@ export const valueExpr = z.union([
    */
   z.strictObject({
     $capability: z.string().regex(CAPABILITY_EXPORT),
-    requiredWhen: z.strictObject({ setting: identifier, equals: z.union([z.number().finite(), z.string().max(200), z.boolean()]) }).optional(),
+    /**
+     * Story 2.6: `"provided"` makes the option optional on the provider: it is wired whenever an enabled brick provides
+     * the capability (and checked like any other `$capability`), and left out, never refused, when none does.
+     */
+    requiredWhen: z
+      .union([z.strictObject({ setting: identifier, equals: z.union([z.number().finite(), z.string().max(200), z.boolean()]) }), z.literal("provided")])
+      .optional(),
   }),
+  /**
+   * Story 2.6: the value of a setting of whichever enabled brick provides a capability, written `<capability>.<setting>`
+   * (for example `some-capability.someSetting`), so a brick that takes that provider's export can keep the provider's own
+   * rule. Left out when no enabled brick provides the capability; refused at assembly when the provider has no such setting.
+   */
+  z.strictObject({ $capabilitySetting: z.string().regex(CAPABILITY_EXPORT) }),
 ]);
 
 const JS_RESERVED = new Set(
@@ -221,7 +233,7 @@ const rateLimitDefinition = z.strictObject({
   bucket: z.string().regex(RATE_LIMIT_BUCKET),
   limit: z.number().int().positive().max(1_000_000),
   windowSeconds: z.number().int().positive().max(86_400),
-  key: z.union([z.enum(["ip", "workspace"]), z.string().regex(RATE_LIMIT_FIELD_OR_PARAM_KEY)]),
+  key: z.union([z.enum(["ip", "workspace", "user"]), z.string().regex(RATE_LIMIT_FIELD_OR_PARAM_KEY)]),
   failClosed: z.boolean().optional(),
 });
 export type BrickRateLimitDefinition = z.infer<typeof rateLimitDefinition>;
@@ -245,6 +257,12 @@ export const privacyTableDefinition = z.strictObject({
   anonymize: z.array(identifier).optional(),
   retainReason: z.string().min(1).max(500).optional(),
   export: z.boolean(),
+  /**
+   * Story 2.6: the table has no workspace_id (a platform-wide record about a user, such as an approval decision). Only
+   * `subject: "user"` with a `userColumn` and `erase: "retain"` is accepted: a user's export includes their rows, and
+   * an erasure reports the table as retained.
+   */
+  platformWide: z.literal(true).optional(),
 });
 export type PrivacyTableDefinition = z.infer<typeof privacyTableDefinition>;
 
@@ -1232,6 +1250,12 @@ export const ManifestSchema = z
        */
       identityAlternative: z.strictObject({ export: identifier }).optional(),
       /**
+       * Story 2.6: a middleware export that refuses a signed-in user the brick has not approved. The assembler mounts it
+       * on every workspace-guarded path, after the identity steps and before the workspace guard, and only while the
+       * boolean `setting` of this brick is true; with it false nothing is mounted and the assembled app is unchanged.
+       */
+      approvalGuard: z.strictObject({ export: identifier, setting: identifier }).optional(),
+      /**
        * Story 1.13: the exports this brick offers other bricks through a `$capability` route option, by capability (one
        * it provides). A reference to an export not listed here is refused at assembly.
        */
@@ -1244,6 +1268,15 @@ export const ManifestSchema = z
     const problem = (message: string, path?: (string | number)[]) => ctx.addIssue({ code: "custom", message, path });
     if (m.privacy?.tables) {
       for (const [table, rule] of Object.entries(m.privacy.tables)) {
+        if (rule.platformWide && (rule.subject !== "user" || !rule.userColumn || rule.erase !== "retain")) {
+          problem(`privacy table "${table}" is platformWide, so it must be subject "user" with a userColumn and erase "retain"`, ["privacy", "tables", table]);
+        }
+        if (rule.platformWide && (m.trust !== "first-party" || m.isolation !== "none")) {
+          problem(`privacy table "${table}" is platformWide, which only a first-party, non-isolated brick may declare`, ["privacy", "tables", table]);
+        }
+        if (rule.platformWide && !(m.globalTables ?? []).some((g) => g.table === table)) {
+          problem(`privacy table "${table}" is platformWide but is not one of this brick's globalTables`, ["privacy", "tables", table]);
+        }
         if (rule.erase === "retain" && (!rule.retainReason || rule.retainReason.trim().length === 0)) {
           problem(`privacy table "${table}" erase "retain" requires retainReason`, ["privacy", "tables", table, "retainReason"]);
         }
@@ -1289,6 +1322,12 @@ export const ManifestSchema = z
       }
       if (compiled && !compiled.test(sDef.default)) problem(`setting "${name}" default does not match its pattern`, ["settings", name, "default"]);
     }
+    if (m.worker.approvalGuard) {
+      const gate = m.worker.approvalGuard;
+      if (m.settings[gate.setting]?.type !== "boolean") problem(`worker.approvalGuard setting "${gate.setting}" must be a boolean setting of this brick`, ["worker", "approvalGuard", "setting"]);
+      const clash = entryBindingClash(gate.export);
+      if (clash) problem(`worker.approvalGuard "${gate.export}" cannot be imported into the assembled entry: ${clash}`, ["worker", "approvalGuard", "export"]);
+    }
     if (m.worker.guard) {
       const guardCap = m.worker.guard.capability;
       const providesGuard = m.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === guardCap);
@@ -1310,7 +1349,7 @@ export const ManifestSchema = z
       }
       for (const [name, value] of Object.entries(route.options)) {
         if (typeof value === "object" && "$setting" in value && !(value.$setting in m.settings)) problem(`route ${route.factory} option ${name} uses unknown setting "${value.$setting}"`);
-        if (typeof value === "object" && "$capability" in value && value.requiredWhen && !(value.requiredWhen.setting in m.settings)) {
+        if (typeof value === "object" && "$capability" in value && typeof value.requiredWhen === "object" && !(value.requiredWhen.setting in m.settings)) {
           problem(`route ${route.factory} option ${name} is required when unknown setting "${value.requiredWhen.setting}" is set`);
         }
       }

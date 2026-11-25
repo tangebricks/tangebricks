@@ -70,7 +70,19 @@ export interface Wallet {
    * other row, including one written before tags existed, is `idempotency_key_reused` and nothing is taken.
    */
   deduct(input: { workspaceId: string; userId: string; amountMilli: number; reason: string; metadata?: Record<string, unknown>; idempotencyKey?: string; match?: IdempotencyMatch }): Promise<DeductResult>;
-  refund(input: { workspaceId: string; userId: string; amountMilli: number; reason: string; metadata?: Record<string, unknown>; idempotencyKey?: string }): Promise<DeductResult>;
+  /**
+   * Adds `amountMilli` once per key (a top-up row). Story 2.6: `match` tags the row like a deduction's (e.g. `{ op: "grant" }`),
+   * and a retry is a duplicate only when the row under its key is a top-up of the same amount carrying the same tags.
+   */
+  refund(input: {
+    workspaceId: string;
+    userId: string;
+    amountMilli: number;
+    reason: string;
+    metadata?: Record<string, unknown>;
+    idempotencyKey?: string;
+    match?: IdempotencyMatch;
+  }): Promise<DeductResult>;
   /**
    * Story 2.5: moves `amountMilli` from one workspace's wallet to another's in one D1 batch, idempotent per (source
    * workspace, key). The caller has already decided that `userId` may spend the source workspace's credits.
@@ -223,9 +235,11 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
       }
     },
 
-    async refund({ workspaceId, userId, amountMilli, reason, metadata = {}, idempotencyKey }) {
+    async refund({ workspaceId, userId, amountMilli, reason, metadata = {}, idempotencyKey, match }) {
       if (!isWholeAmount(amountMilli)) throw new RangeError("amountMilli must be a positive whole number of thousandths");
       const ledgerId = crypto.randomUUID();
+      // Without `match` the recorded metadata is exactly the caller's, as before story 2.6.
+      const recorded = match ? { ...metadata, ...match } : metadata;
       try {
         const [credit] = await db.batch([
           db.prepare("UPDATE credit_wallets SET balance_milli = balance_milli + ? WHERE workspace_id = ?").bind(amountMilli, workspaceId),
@@ -234,14 +248,14 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
               "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key) " +
                 "SELECT ?, workspace_id, ?, 'topup', ?, balance_milli, ?, ?, ? FROM credit_wallets WHERE workspace_id = ?",
             )
-            .bind(ledgerId, userId, amountMilli, reason, JSON.stringify(metadata), idempotencyKey ?? null, workspaceId),
+            .bind(ledgerId, userId, amountMilli, reason, JSON.stringify(recorded), idempotencyKey ?? null, workspaceId),
         ]);
         if (credit!.meta.changes === 0) return { ok: false, reason: "wallet_not_found", balanceMilli: null };
         const own = await ownLedgerRow(workspaceId, ledgerId);
         return { ok: true, balanceAfterMilli: own!.balance_after_milli, duplicate: false };
       } catch (error) {
         if (idempotencyKey && isDuplicateKey(error)) {
-          const earlier = await sameOperation(workspaceId, idempotencyKey, "topup", amountMilli);
+          const earlier = await sameOperation(workspaceId, idempotencyKey, "topup", amountMilli, match);
           if (earlier.verdict === "same") return { ok: true, balanceAfterMilli: earlier.balanceAfterMilli, duplicate: true };
           return { ok: false, reason: "idempotency_key_reused", balanceMilli: null };
         }

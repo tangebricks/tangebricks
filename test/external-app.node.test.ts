@@ -307,6 +307,7 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       "@poc/credit-wallet/migrations/0003_order_currency.sql",
       "@poc/credit-wallet/migrations/0004_milli_credits.sql",
       "@poc/audit-trail/migrations/0001_audit_trail.sql",
+      "@poc/audit-trail/migrations/0002_capability_rows.sql",
     ]);
     const db = (await mf!.getD1Database("DB")) as unknown as D1Like;
     const { results } = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all<{ name: string }>();

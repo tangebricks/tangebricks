@@ -1,0 +1,155 @@
+{
+  "manifestVersion": 2,
+  "kind": "brick",
+  "id": "platform-admin",
+  "version": "1.0.0",
+  "trust": "first-party",
+  "provides": [
+    "platform-admin"
+  ],
+  "requires": [
+    "workspace-context",
+    "audit-logging"
+  ],
+  "migrations": [
+    "migrations/0001_platform_admin.sql"
+  ],
+  "routePrefixes": [
+    "platform"
+  ],
+  "rateLimits": [
+    {
+      "method": "POST",
+      "path": "/platform/workspaces/:id/credits",
+      "bucket": "platform-admin-write",
+      "limit": 120,
+      "windowSeconds": 60,
+      "key": "user"
+    },
+    {
+      "method": "POST",
+      "path": "/platform/workspaces/:id/suspend",
+      "bucket": "platform-admin-write",
+      "limit": 120,
+      "windowSeconds": 60,
+      "key": "user"
+    },
+    {
+      "method": "POST",
+      "path": "/platform/workspaces/:id/unsuspend",
+      "bucket": "platform-admin-write",
+      "limit": 120,
+      "windowSeconds": 60,
+      "key": "user"
+    },
+    {
+      "method": "PUT",
+      "path": "/platform/workspaces/:id/flags/:flagKey",
+      "bucket": "platform-admin-write",
+      "limit": 120,
+      "windowSeconds": 60,
+      "key": "user"
+    },
+    {
+      "method": "DELETE",
+      "path": "/platform/workspaces/:id/flags/:flagKey",
+      "bucket": "platform-admin-write",
+      "limit": 120,
+      "windowSeconds": 60,
+      "key": "user"
+    },
+    {
+      "method": "POST",
+      "path": "/platform/users/:uid/approve",
+      "bucket": "platform-admin-write",
+      "limit": 120,
+      "windowSeconds": 60,
+      "key": "user"
+    },
+    {
+      "method": "POST",
+      "path": "/platform/users/:uid/reject",
+      "bucket": "platform-admin-write",
+      "limit": 120,
+      "windowSeconds": 60,
+      "key": "user"
+    }
+  ],
+  "npmDependencies": {
+    "hono": "4.13.20",
+    "zod": "4.6.7"
+  },
+  "settings": {
+    "maxGrantCredits": {
+      "type": "integer",
+      "min": 1,
+      "max": 1000000000,
+      "default": 1000000
+    },
+    "requireUserApproval": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "ui": {
+    "displayName": "Platform Operator Console",
+    "category": "governance",
+    "summary": "Audited operator actions across workspaces: credit grants, suspension, flag overrides and user approval.",
+    "maturity": "beta",
+    "maturityReason": "NEW_BRICK: Operator routes are covered by the attack suite; promotion to production needs the shared conformance kit (UC5.3).",
+    "behaviourTest": "test/platform-admin.test.ts"
+  },
+  "globalTables": [
+    {
+      "table": "pa_user_approvals",
+      "reason": "Platform-wide by design: approval is a decision about a person across every workspace, keyed by user id; only the operator routes and the approval gate read or write it"
+    }
+  ],
+  "worker": {
+    "package": "@poc/platform-admin",
+    "approvalGuard": {
+      "export": "requireApprovedUser",
+      "setting": "requireUserApproval"
+    },
+    "routes": [
+      {
+        "factory": "createPlatformAdminRoutes",
+        "mountAt": "/api",
+        "options": {
+          "maxGrantCredits": {
+            "$setting": "maxGrantCredits"
+          },
+          "requireUserApproval": {
+            "$setting": "requireUserApproval"
+          },
+          "auditRecorder": {
+            "$capability": "audit-logging.auditRecorder"
+          },
+          "charger": {
+            "$capability": "credit-wallet.walletCharger",
+            "requiredWhen": "provided"
+          },
+          "flagOverrides": {
+            "$capability": "feature-flags.flagOverrides",
+            "requiredWhen": "provided"
+          },
+          "flagOverridesAllowed": {
+            "$capabilitySetting": "feature-flags.allowWorkspaceOverrides"
+          }
+        }
+      }
+    ]
+  },
+  "privacy": {
+    "tables": {
+      "pa_user_approvals": {
+        "subject": "user",
+        "userColumn": "user_id",
+        "erase": "retain",
+        "retainReason": "Access-governance record: whether an operator approved or rejected this person, by whom and why, is kept so access decisions stay accountable after an erasure request",
+        "export": true,
+        "platformWide": true
+      }
+    }
+  }
+}

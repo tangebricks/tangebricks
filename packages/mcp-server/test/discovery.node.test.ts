@@ -165,7 +165,7 @@ describe("compact, paged discovery and get_brick (AC 1, AC 2, AC 3)", () => {
 
     expect(defaultIds).not.toContain("scripting-sandbox");
     for (const id of QUARANTINED) expect(defaultIds, `${id} is quarantined`).not.toContain(id);
-    expect(defaultIds).toHaveLength(33); // 42 bricks minus scripting-sandbox and the 8 quarantined (story 0.11)
+    expect(defaultIds).toHaveLength(34); // 43 bricks minus scripting-sandbox and the 8 quarantined (story 0.11)
 
     // LIST_EXPERIMENTAL: asked for explicitly, the quarantined bricks are listed (paged, max 10 per page), and each one's
     // QUARANTINED reason is in get_brick (list pages stay compact to keep the 400-token page budget).

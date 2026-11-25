@@ -467,6 +467,14 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
     });
   }
 
+  if (manifest.worker.approvalGuard && !exportedFns.has(manifest.worker.approvalGuard.export)) {
+    violations.push({
+      brick: brickName,
+      field: "worker.approvalGuard",
+      detail: `approval guard "${manifest.worker.approvalGuard.export}" is not exported as a function by ${entryRel}`,
+    });
+  }
+
   if (manifest.triggers) {
     for (const sched of manifest.triggers.schedules ?? []) {
       if (!exportedFns.has(sched.handler)) {
@@ -552,6 +560,18 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
           });
         }
       }
+    }
+  }
+
+  // 4a. Story 2.6: a platformWide privacy table must be one this brick's own migrations create, without workspace_id.
+  for (const [table, rule] of Object.entries(manifest.privacy?.tables ?? {})) {
+    if (!rule.platformWide) continue;
+    if (createdTables.get(table) !== false) {
+      violations.push({
+        brick: brickName,
+        field: "privacy",
+        detail: `platformWide privacy table "${table}" must be created by this brick's own migrations, without a workspace_id column`,
+      });
     }
   }
 
@@ -699,7 +719,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   const optionToSetting = new Map<string, string>();
   for (const route of manifest.worker.routes) {
     for (const [optName, optVal] of Object.entries(route.options)) {
-      if (typeof optVal === "object" && ("$call" in optVal || "$entities" in optVal || "$privacy" in optVal || "$workspaceData" in optVal || "$capability" in optVal)) {
+      if (typeof optVal === "object" && ("$call" in optVal || "$entities" in optVal || "$privacy" in optVal || "$workspaceData" in optVal || "$capability" in optVal || "$capabilitySetting" in optVal)) {
         nonSettingOptions.add(optName);
       } else if (typeof optVal === "object" && "$setting" in optVal) {
         optionToSetting.set(optName, optVal.$setting);

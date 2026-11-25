@@ -133,7 +133,8 @@ export function createPrivacyRoutes(options?: PrivacyServiceHooks): Hono<Privacy
     }
 
     const service = c.get("privacyService") || new DataPrivacyService(c.env.DB);
-    const exportRecord = await service.requestDataExport(workspaceId, userId);
+    // Story 2.6: the verified caller, so platform-wide records (such as an approval decision) go only into a self-export.
+    const exportRecord = await service.requestDataExport(workspaceId, userId, ctx.userId);
     return c.json(exportRecord, 201);
   });
 

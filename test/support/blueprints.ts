@@ -33,3 +33,12 @@ export const PRIVACY_PRESENCE_BLUEPRINT = {
   project: "privacy-presence",
   bricks: ["multi-workspace", "core-auth", "data-privacy-gdpr", "realtime-presence"],
 } as const;
+
+/**
+ * Story 2.6: platform-admin with its opt-in user approval gate turned on, so the gate the assembler mounts can be tested
+ * in a real assembled app (max-compatible keeps the default, off).
+ */
+export const APPROVAL_GATE_BLUEPRINT = {
+  project: "approval-gate",
+  bricks: ["multi-workspace", "audit-trail", "credit-wallet", "public-api-keys", { id: "platform-admin", config: { requireUserApproval: true } }],
+} as const;

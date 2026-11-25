@@ -16,6 +16,7 @@
 // RATE_LIMIT_UNAVAILABLE; any other rule logs the error and lets the request through. Auth rules always fail closed.
 import type { MiddlewareHandler } from "hono";
 import type { D1Like } from "./d1.ts";
+import { authUserId } from "./authorise.ts";
 import { systemScope } from "./scoped.ts";
 import { sha256HexString } from "./session-token-hash.ts";
 
@@ -46,10 +47,11 @@ export const PX_RATE_LIMITS_DDL = [
  * What a request is counted by:
  * - `ip`: `cf-connecting-ip`, else the first `x-forwarded-for` entry, else `"unknown"`;
  * - `workspace`: the verified workspace (the `ctx` / `workspace` the workspace middleware set), else the IP;
+ * - `user`: the signed-in user the identity middleware set (story 2.6), else the IP;
  * - `field:<name>`: that JSON body field, lower-cased and trimmed, else the IP;
  * - `param:<name>`: that route param, else the IP.
  */
-export type RateLimitKey = "ip" | "workspace" | `field:${string}` | `param:${string}`;
+export type RateLimitKey = "ip" | "workspace" | "user" | `field:${string}` | `param:${string}`;
 
 export interface RateLimitRule {
   /** The counter's name. Each bucket counts separately, and `PX_RATE_LIMITS` overrides by bucket. */
@@ -213,6 +215,10 @@ async function keyValueFor(c: Parameters<MiddlewareHandler>[0], key: RateLimitKe
   if (key === "workspace") {
     const ws = verifiedWorkspaceId(c);
     return ws ? `workspace:${ws}` : `ip:${ip}`;
+  }
+  if (key === "user") {
+    const uid = authUserId(c.get("user"));
+    return uid ? `user:${uid}` : `ip:${ip}`;
   }
   if (key.startsWith("field:")) {
     const value = await bodyField(c, key.slice("field:".length));

@@ -11,7 +11,7 @@ import { join, resolve } from "node:path";
 import { assemble } from "../../packages/assembler/src/index.ts";
 import { catalog } from "../../packages/assembler/catalog.generated.ts";
 import { computeMaxCompatible } from "../../scripts/max-compatible.ts";
-import { INVOICE_FLOW_BLUEPRINT, PRIVACY_PRESENCE_BLUEPRINT, TWO_BRICK_BLUEPRINT, WORKFLOW_SHELL_BLUEPRINT } from "./blueprints.ts";
+import { APPROVAL_GATE_BLUEPRINT, INVOICE_FLOW_BLUEPRINT, PRIVACY_PRESENCE_BLUEPRINT, TWO_BRICK_BLUEPRINT, WORKFLOW_SHELL_BLUEPRINT } from "./blueprints.ts";
 import { OUT_DIR, compareProject, hashesPath, verifiedPath, writeProject } from "./emitted.ts";
 
 /** Every project the tests import. scripts/verify.ts reads the same list. */
@@ -56,7 +56,7 @@ export default async function setup(): Promise<() => Promise<void>> {
     written.push({ project, dir, expected: Object.keys(result.files).length });
   }
 
-  for (const blueprint of [...getBootBlueprints(), WORKFLOW_SHELL_BLUEPRINT, PRIVACY_PRESENCE_BLUEPRINT]) {
+  for (const blueprint of [...getBootBlueprints(), WORKFLOW_SHELL_BLUEPRINT, PRIVACY_PRESENCE_BLUEPRINT, APPROVAL_GATE_BLUEPRINT]) {
     const project = blueprint.project;
     const result = assemble(blueprint, catalog);
     if (!result.ok) throw new Error(`the ${project} blueprint did not assemble:\n  ${result.errors.join("\n  ")}`);

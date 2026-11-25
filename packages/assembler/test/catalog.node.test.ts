@@ -24,7 +24,7 @@ describe("the committed catalog", () => {
 
   test("holds every brick that has a manifest, and nothing else", () => {
     expect(Object.keys(catalog.bricks).sort()).toEqual(brickDirs.sort());
-    expect(brickDirs.length).toBe(42);
+    expect(brickDirs.length).toBe(43);
   });
 
   test("every brick entry has a non-empty ui.summary, ui.category, and ui.displayName, and standardize-bricks.ts is removed", () => {

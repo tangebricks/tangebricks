@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { AuditTrailService, type ActorType } from "./audit.ts";
 import { auditContextMiddleware, type AuditEnv } from "./middleware.ts";
+import { RESERVED_AUDIT_ACTION } from "./recorder.ts";
 
 const RecordEventSchema = z.object({
   actorId: z.string().min(1).max(128).optional(),
@@ -35,6 +36,11 @@ export function createAuditRoutes(): Hono<AuditEnv> {
     const parsed = RecordEventSchema.safeParse(body);
     if (!parsed.success) {
       return c.json({ error: { code: "VALIDATION_ERROR", message: parsed.error.issues.map((i) => i.message).join(", ") } }, 400);
+    }
+    // Story 2.6: the action namespaces other bricks write through the auditRecorder capability are not for anyone to
+    // post here, so nobody can plant a row that looks like an operator action or an outcome.
+    if (RESERVED_AUDIT_ACTION.test(parsed.data.action.trim())) {
+      return c.json({ error: { code: "RESERVED_ACTION", message: "platform.* and audit.* actions are reserved" } }, 400);
     }
 
     // The workspace is the verified one; a workspaceId in the body is stripped by the schema and never read.

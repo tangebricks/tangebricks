@@ -135,6 +135,10 @@ See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-mono
   operation: a deduction of the same amount with the same tags, a top-up of the same amount, or a transfer to the same
   destination of the same amount. A row written before the tags existed matches nothing new. Any other reuse is 409 `IDEMPOTENCY_KEY_REUSED`
   (`idempotency_key_reused` / `IDEMPOTENCY_KEY_REUSED` from the library and `walletCharger`) and takes nothing.
+- **Operator grants (story 2.6).** `walletCharger.grant(db, ws, milli, key, reason, userId?)` adds credits as a top-up
+  tagged `op: "grant"`, once per key (a retry of the same grant is a duplicate; any other use of the key is
+  `IDEMPOTENCY_KEY_REUSED`). A workspace with no wallet gets one only while it is live (registered and not suspended).
+  platform-admin's `POST /api/platform/workspaces/:id/credits` uses it.
 - **Transfers.** `POST /wallet/transfer { toWorkspaceId, amount, idempotencyKey, note? }` moves credits from the
   caller's workspace to another workspace's existing wallet. Owner/admin of the source only, and never an API key (403
   `API_KEY_FORBIDDEN`). One D1 batch debits the source (the CHECK refuses an overdraw and rolls everything back),

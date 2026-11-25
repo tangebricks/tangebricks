@@ -210,8 +210,15 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
         return c.json(err("FORBIDDEN", "Only workspace owner can delete workspace"), 403);
       }
 
-      // The fence: from here on the suspension checks refuse every new request for this workspace.
-      await c.env.DB.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = ? WHERE id = ?").bind(DELETING, workspaceId).run();
+      // The fence: from here on the suspension checks refuse every new request for this workspace. Story 2.6: it applies
+      // only while the workspace is still unsuspended (or already fenced by an earlier delete), so a suspension that
+      // lands between the check above and here (an operator's) is never overwritten: the delete is refused as above.
+      const fenced = await c.env.DB.prepare(
+        "UPDATE mw_workspaces SET suspended = 1, suspended_reason = ? WHERE id = ? AND (suspended = 0 OR suspended_reason = ?)",
+      )
+        .bind(DELETING, workspaceId, DELETING)
+        .run();
+      if (fenced.meta.changes === 0) return c.json(SUSPENDED, 403);
       if (options.workspaceDataPurge) await options.workspaceDataPurge(c.env, workspaceId);
       await c.env.DB.batch([
         c.env.DB.prepare("DELETE FROM mw_invites WHERE workspace_id = ?").bind(workspaceId),

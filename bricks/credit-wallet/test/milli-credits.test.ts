@@ -712,13 +712,13 @@ describe("the destination's state inside the transfer's batch, and the optional 
   test("with a registry an unknown workspace is null; without one every id is unchecked, and transfers and imports fall back to the wallet", async () => {
     expect(await hasWorkspaceRegistry(freshHandle(db))).toBe(true);
     expect(await findWorkspaceState(freshHandle(db), "ws-unknown")).toBeNull();
-    expect(await findWorkspaceState(freshHandle(db), A)).toEqual({ suspended: false, checked: true });
+    expect(await findWorkspaceState(freshHandle(db), A)).toEqual({ suspended: false, reason: null, deleting: false, checked: true });
 
     await db.prepare("DROP TABLE mw_members").run();
     await db.prepare("DROP TABLE mw_workspaces").run();
     const bare = freshHandle(db);
     expect(await hasWorkspaceRegistry(bare)).toBe(false);
-    expect(await findWorkspaceState(bare, "anything")).toEqual({ suspended: false, checked: false });
+    expect(await findWorkspaceState(bare, "anything")).toEqual({ suspended: false, reason: null, deleting: false, checked: false });
     const wallet = createWallet(bare, undefined);
     expect(await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: B, userId: "u", amountMilli: 1_000, idempotencyKey: "nr" })).toMatchObject({ ok: true });
     expect(await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: "ws-no-wallet", userId: "u", amountMilli: 1_000, idempotencyKey: "nr-2" })).toMatchObject({

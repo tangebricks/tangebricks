@@ -410,20 +410,23 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
   test("story 0.21 NO_RULES_BLUEPRINT: a blueprint whose bricks declare no rate limits assembles byte-identical to before the limiter", async () => {
     // Hashes recorded from the assembler at the story's baseline revision (16ee1eb), before rateLimits existed.
     // (edge-traffic-armor is left out: since story 0.21 it ships the px_rate_limits table as its own migration.)
+    // Story 2.6: audit-trail adds migration 0002 (capability marker and dedupe key). The migrations after it are
+    // renumbered, and the entry's MIGRATIONS list and project.json name them; every other file is as before.
     const noRules = files({ project: "no-rules", bricks: ["multi-workspace", "audit-trail", "cron-alarms"] });
     expect(noRules.files["src/index.ts"]).not.toContain("rateLimit");
     expect(Object.keys(noRules.files).some((f) => f.includes("px_rate_limits"))).toBe(false);
     expect(await hashFiles(noRules.files)).toEqual({
       "migrations/0001_multi-workspace__0001_multi_workspace.sql": "44330d96d93fc7c48c859437e2f78c3ec8daea0381cfab30c94fa80cb0bcaaef",
       "migrations/0002_audit-trail__0001_audit_trail.sql": "d1d8192cea9a17cc12dde86feb5288e361625590e2c0db652a74edfba10a73a2",
-      "migrations/0003_cron-alarms__0001_cron_alarms.sql": "95631dcb80615aee290bfe058373b28e21881d6409b339709670e034ae062926",
-      "migrations/0004_cron-alarms__0002_catch_up.sql": "4d7aa86c89511f06dbf65e841ce31bb7f84d825da41d3317bb84a21921f52011",
-      "migrations/0005_shell__px_schedules.sql": "5876bb9226cf588bb29d757b10c46b24ed970f60e1d0964964b734285e11e752",
+      "migrations/0003_audit-trail__0002_capability_rows.sql": "b1eb19ad77def858554ce31dc5850dc4f0a9a36fb2aa8897e1ad2b12bf7af782",
+      "migrations/0004_cron-alarms__0001_cron_alarms.sql": "95631dcb80615aee290bfe058373b28e21881d6409b339709670e034ae062926",
+      "migrations/0005_cron-alarms__0002_catch_up.sql": "4d7aa86c89511f06dbf65e841ce31bb7f84d825da41d3317bb84a21921f52011",
+      "migrations/0006_shell__px_schedules.sql": "5876bb9226cf588bb29d757b10c46b24ed970f60e1d0964964b734285e11e752",
       "openapi.json": "c3964d819bb933d81d0c6e576db76ab8e01a0c3ff8ce7ebc94b36d87b7f8956c",
       "package.json": "44606884d6a042dad2cb29c771257621676d21cb0e390e8b1ef12ba833426bef",
-      "project.json": "2115551c1b468de5bb4ceb23c44d6e348790b307265fefa91329cff9b40db02d",
+      "project.json": "49e454fa2cd49ee9bc81e40ff2ddbac38a88773d934ea1850a27292c938d2753",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "a470154be1eac25c0fdc667fcea5892b971661385ed9049a0482e50f915b564e",
+      "src/index.ts": "02ec458aebf4212dac60bef961b279847cb5dd17f52c3f9a5d93fb2a7a3faae1",
       "src/privacy.generated.ts": "7f4322f58ee6a55f3804d2083a792725f779a951b2694709249a8e20159bfe3d",
       "wrangler.jsonc": "85a0ab37dcde7ee01d8eba1e1549a27580973cbc6620000388435027176f298c",
     });

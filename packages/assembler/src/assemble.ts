@@ -289,6 +289,27 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
   for (const brick of chosen) {
     for (const route of brick.manifest.worker.routes) {
       for (const [name, value] of Object.entries(route.options)) {
+        if (typeof value === "object" && value !== null && "$capabilitySetting" in value) {
+          // Story 2.6: a provider's setting value, under the same trust rule as a `$capability` export. Checked first, so
+          // an isolated brick is refused here with a clear message.
+          const where = `${brick.id}: option "${name}" of ${route.factory} names "${value.$capabilitySetting}"`;
+          if (brick.manifest.isolation === "dispatch") {
+            errors.push(`${where}, which an isolated brick cannot take`);
+            continue;
+          }
+          const ref = capabilityReference(value.$capabilitySetting);
+          const provider = providerOf.get(ref.capability);
+          if (!provider) continue; // nothing to check: the option is left out
+          const providing = chosen.find((b) => b.id === provider.brickId)!;
+          if (providing.manifest.isolation === "dispatch" || providing.manifest.trust !== "first-party") {
+            errors.push(`${where}, but ${providing.id} is not a first-party, non-isolated brick`);
+          } else if (isQuarantinedManifest(providing.manifest)) {
+            errors.push(`${where}, but ${providing.id} is quarantined`);
+          } else if (!(ref.export in providing.manifest.settings)) {
+            errors.push(`${where}, but ${providing.id} has no setting "${ref.export}"`);
+          }
+          continue;
+        }
         if (typeof value !== "object" || value === null || !("$capability" in value)) continue;
         const ref = capabilityReference(value.$capability);
         if (brick.manifest.isolation === "dispatch") {
@@ -316,6 +337,8 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
           }
           continue;
         }
+        // Story 2.6: optional on the provider; with none enabled the option is simply left out.
+        if (value.requiredWhen === "provided") continue;
         const when = value.requiredWhen;
         const offers = available.filter((id) =>
           catalog.bricks[id]?.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === ref.capability),
@@ -326,6 +349,30 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
             `${when ? `; or set ${brick.id}'s setting "${when.setting}" to something other than ${JSON.stringify(when.equals)}` : ""}`,
         );
       }
+    }
+  }
+  // Story 2.6: a platform-wide privacy table is read by user id across every workspace, so only a trusted brick may
+  // declare one, and only for a table it owns (one of its own global tables; check-manifests also checks that its own
+  // migrations create it).
+  for (const brick of chosen) {
+    for (const [table, rule] of Object.entries(brick.manifest.privacy?.tables ?? {})) {
+      if (!rule.platformWide) continue;
+      if (brick.manifest.isolation === "dispatch" || brick.manifest.trust !== "first-party" || isQuarantinedManifest(brick.manifest)) {
+        errors.push(`${brick.id}: privacy table "${table}" is platformWide, which only a first-party, non-isolated, non-quarantined brick may declare`);
+      } else if (!(brick.manifest.globalTables ?? []).some((g) => g.table === table)) {
+        errors.push(`${brick.id}: privacy table "${table}" is platformWide but is not one of ${brick.id}'s own global tables`);
+      }
+    }
+  }
+  // Story 2.6: an approval gate runs in front of every workspace route, so only a trusted brick may declare one: the
+  // same rule a `$capability` provider follows.
+  for (const brick of chosen) {
+    const gate = brick.manifest.worker.approvalGuard;
+    if (!gate) continue;
+    if (brick.manifest.isolation === "dispatch" || brick.manifest.trust !== "first-party") {
+      errors.push(`${brick.id}: worker.approvalGuard "${gate.export}" is refused: only a first-party, non-isolated brick may mount an approval gate`);
+    } else if (isQuarantinedManifest(brick.manifest)) {
+      errors.push(`${brick.id}: worker.approvalGuard "${gate.export}" is refused: ${brick.id} is quarantined`);
     }
   }
   const reportedConflicts = new Set<string>();
@@ -881,6 +928,7 @@ function expression(value: ValueExpr, settings: Record<string, SettingValue>): s
     if ("$privacy" in value) return value.$privacy;
     if ("$workspaceData" in value) return value.$workspaceData;
     if ("$capability" in value) return capabilityReference(value.$capability).export; // imported by renderEntry
+    if ("$capabilitySetting" in value) throw new Error("a $capabilitySetting option is rendered by renderEntry"); // needs the provider's settings
     return `${value.$call}()`;
   }
   return JSON.stringify(value);
@@ -921,9 +969,16 @@ class ImportConflictError extends Error {
   }
 }
 
-/** Whether a `$capability` option applies: always, or while its `requiredWhen` setting has the given value. */
-function capabilityRequired(value: { requiredWhen?: { setting: string; equals: SettingValue } | undefined }, settings: Record<string, SettingValue>): boolean {
-  return !value.requiredWhen || settings[value.requiredWhen.setting] === value.requiredWhen.equals;
+/**
+ * Whether a `$capability` option applies: always, while its `requiredWhen` setting has the given value, or (story 2.6,
+ * `requiredWhen: "provided"`) whenever a provider is enabled, which the caller checks.
+ */
+function capabilityRequired(
+  value: { requiredWhen?: { setting: string; equals: SettingValue } | "provided" | undefined },
+  settings: Record<string, SettingValue>,
+): boolean {
+  if (!value.requiredWhen || value.requiredWhen === "provided") return true;
+  return settings[value.requiredWhen.setting] === value.requiredWhen.equals;
 }
 
 /** A quarantined brick (story 0.11): experimental, with a maturity reason starting "QUARANTINED:". */
@@ -977,8 +1032,22 @@ function renderEntry(
   }
   // Story 1.13: the package of the enabled brick that provides each capability, for `$capability` route options.
   const capabilityProviders = new Map<string, string>();
+  // Story 2.6: the resolved settings of the brick that provides each capability, for `$capabilitySetting` options.
+  const capabilitySettings = new Map<string, Record<string, SettingValue>>();
   for (const brick of ordered) {
-    for (const p of brick.manifest.provides) capabilityProviders.set(p.includes("@") ? p.slice(0, p.indexOf("@")) : p, brick.manifest.worker.package);
+    for (const p of brick.manifest.provides) {
+      const cap = p.includes("@") ? p.slice(0, p.indexOf("@")) : p;
+      capabilityProviders.set(cap, brick.manifest.worker.package);
+      capabilitySettings.set(cap, brick.settings);
+    }
+  }
+  // Story 2.6: user-approval gates, mounted only while the brick's own boolean setting is true.
+  const approvalGates: string[] = [];
+  for (const brick of ordered) {
+    const gate = brick.manifest.worker.approvalGuard;
+    if (!gate || brick.settings[gate.setting] !== true) continue;
+    use(brick.manifest.worker.package, gate.export);
+    approvalGates.push(gate.export);
   }
   const guardOf = new Map<string, { pkg: string; export: string; suspension?: string }>();
   for (const brick of ordered) {
@@ -1025,6 +1094,13 @@ function renderEntry(
       } else {
         use(brick.manifest.worker.package, route.factory);
         const options = Object.entries(route.options).flatMap(([name, value]) => {
+          if (typeof value === "object" && value !== null && "$capabilitySetting" in value) {
+            // Story 2.6: the provider's resolved setting, as a literal; left out with no provider enabled.
+            const ref = capabilityReference(value.$capabilitySetting);
+            const providerSettings = capabilitySettings.get(ref.capability);
+            if (!providerSettings || providerSettings[ref.export] === undefined) return [];
+            return `${name}: ${JSON.stringify(providerSettings[ref.export])}`;
+          }
           if (typeof value === "object" && value !== null && "$capability" in value) {
             // Story 1.13: the provider's export, imported from the provider's package. With no provider enabled the
             // option is left out (assemble() has already refused the blueprint if the option was required).
@@ -1191,6 +1267,7 @@ function renderEntry(
       "// CSRF (Origin check on cookie-authenticated writes) and CORS allow-list (PX_ALLOWED_ORIGINS); signed webhook ingress is exempt.",
       `app.use(${JSON.stringify(API_PREFIX + "/*")}, createHttpGuard({ exemptPaths: ${JSON.stringify([API_PREFIX + "/webhooks/in/", API_PREFIX + "/webhooks/ingress/"])} }));`,
       ...renderIdentity(identityGuard?.export, identityAlternatives, guardedPaths),
+      ...renderApprovalGates(approvalGates, guardedPaths),
       "",
       ...(needsWorkspaceData ? renderWorkspaceDataPurge(workspaceData, workspaceObjects, purgeEntities) : []),
       ...(suspensionChecks.size > 0 ? renderSuspensionChecks([...suspensionChecks.values()]) : []),
@@ -1218,6 +1295,19 @@ function renderIdentity(sessionExport: string | undefined, alternatives: string[
     ...alternatives.flatMap((name) => guardedPaths.map((path) => `app.use(${JSON.stringify(path)}, ${name});`)),
     ...lines,
     `app.use(${all}, (c: any, next: any) => (c.get("authenticatedBy") ? next() : ${session}(c, next)));`,
+  ];
+}
+
+/**
+ * Story 2.6: each enabled approval gate on every guarded path (the routes that act inside one workspace, where the
+ * alternative identities go too), after the identity steps (so the signed-in user is known) and before the guards and
+ * the brick routes. Nothing at all when no gate is enabled.
+ */
+function renderApprovalGates(gates: string[], paths: string[]): string[] {
+  if (gates.length === 0) return [];
+  return [
+    "// User approval gate (story 2.6): a signed-in user the operators have not approved is refused on workspace routes.",
+    ...gates.flatMap((name) => paths.map((path) => `app.use(${JSON.stringify(path)}, ${name});`)),
   ];
 }
 
@@ -1513,12 +1603,20 @@ function renderPrivacyGenerated(ordered: Chosen[], entities: Entity[]): string {
     exportTenant?: string;
     eraseTenant?: string;
   }> = [];
+  // Story 2.6: platform-wide user tables (no workspace_id). Their code is emitted only when there is one, so the file is
+  // unchanged for every app without them.
+  const platformTables: Array<{ table: string; userColumn: string; retainReason?: string; export: boolean }> = [];
 
   for (const brick of [...ordered].reverse()) {
     const p = brick.manifest.privacy;
     if (p?.tables) {
       const entries = Object.entries(p.tables).reverse();
       for (const [table, rule] of entries) {
+        if (rule.platformWide) {
+          // Story 2.6: no workspace_id, so it is read by user only and never erased (retained, with its reason).
+          platformTables.push({ table, userColumn: rule.userColumn!, retainReason: rule.retainReason, export: rule.export });
+          continue;
+        }
         tables.push({
           table,
           subject: rule.subject,
@@ -1567,11 +1665,27 @@ function renderPrivacyGenerated(ordered: Chosen[], entities: Entity[]): string {
       "}",
       "",
       `const PRIVACY_TABLES: Array<{ table: string; subject: "workspace" | "user"; userColumn?: string; erase: "delete" | "anonymize" | "retain"; anonymize?: string[]; retainReason?: string; export: boolean }> = ${JSON.stringify(tables, null, 2)};`,
+      ...(platformTables.length > 0
+        ? [`const PRIVACY_PLATFORM_TABLES: Array<{ table: string; userColumn: string; retainReason?: string; export: boolean }> = ${JSON.stringify(platformTables, null, 2)};`]
+        : []),
       "",
       "export async function exportTenant(db: D1Like, subject: PrivacySubject): Promise<Record<string, unknown>> {",
       "  const sDb = scoped(db, subject.workspaceId);",
       "  const result: Record<string, unknown> = {};",
       "",
+      ...(platformTables.length > 0
+        ? [
+            "  // Platform-wide user tables (no workspace_id): read by user id, and only for a self-export (the requester is the",
+            "  // subject), never when someone else in the workspace exports this user.",
+            "  if (subject.userId && (subject as { requesterId?: string }).requesterId === subject.userId) {",
+            "    for (const rule of PRIVACY_PLATFORM_TABLES) {",
+            "      if (!rule.export) continue;",
+            '      result[rule.table] = (await db.prepare(`SELECT * FROM "${rule.table}" WHERE "${rule.userColumn}" = ?`).bind(subject.userId).all()).results;',
+            "    }",
+            "  }",
+            "",
+          ]
+        : []),
       "  for (const rule of PRIVACY_TABLES) {",
       "    if (!rule.export) continue;",
       "    if (subject.userId) {",
@@ -1602,6 +1716,9 @@ function renderPrivacyGenerated(ordered: Chosen[], entities: Entity[]): string {
       "export async function eraseTenant(db: D1Like, subject: PrivacySubject): Promise<ErasureResult> {",
       "  const sDb = scoped(db, subject.workspaceId);",
       "  const retain: Array<{ table: string; reason?: string }> = [];",
+      ...(platformTables.length > 0
+        ? ["  if (subject.userId) for (const rule of PRIVACY_PLATFORM_TABLES) retain.push({ table: rule.table, reason: rule.retainReason });"]
+        : []),
       "  const statements: any[] = [];",
       "",
       "  for (const rule of PRIVACY_TABLES) {",

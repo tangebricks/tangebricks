@@ -447,6 +447,40 @@ describe("story 1.10: invites, suspension and the workspace delete hook", () => 
     expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_b'").first<{ n: number }>()).toEqual({ n: 3 });
   });
 
+  it("story 2.6: a suspension that lands between the delete's check and its fence is kept, and the delete is refused", async () => {
+    await seedWorkspace("ws_race");
+    let ran = false;
+    const app = appWith({ workspaceDataPurge: async () => { ran = true; } });
+    // A database whose fence statement first lets an operator suspension land (the race), then runs as usual.
+    const racing = {
+      prepare(sql: string) {
+        if (sql.startsWith("UPDATE mw_workspaces SET suspended = 1, suspended_reason = ?")) {
+          const real = db.prepare(sql);
+          return {
+            bind: (...values: unknown[]) => ({
+              run: async () => {
+                await db.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = 'operator' WHERE id = 'ws_race'").run();
+                return real.bind(...values).run();
+              },
+            }),
+          };
+        }
+        return db.prepare(sql);
+      },
+      batch: (s: never) => db.batch(s),
+      exec: (q: string) => db.exec(q),
+    };
+    const res = await app.request("http://localhost/workspaces/ws_race", { method: "DELETE", headers: { "x-test-user": "usr_owner" } }, { DB: racing as never });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code?: string }).code).toBe("WORKSPACE_SUSPENDED");
+    expect(ran).toBe(false);
+    expect(await db.prepare("SELECT suspended, suspended_reason FROM mw_workspaces WHERE id = 'ws_race'").first()).toEqual({ suspended: 1, suspended_reason: "operator" });
+    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_race'").first<{ n: number }>()).toEqual({ n: 3 });
+    // An unsuspended workspace is still deleted as before.
+    await seedWorkspace("ws_plain");
+    expect((await send(appWith(), "DELETE", "/workspaces/ws_plain", "usr_owner")).status).toBe(200);
+  });
+
   it("an id that is not one plain segment is refused with 400 before anything runs", async () => {
     let ran = false;
     const app = appWith({ workspaceDataPurge: async () => { ran = true; } });

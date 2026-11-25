@@ -1,6 +1,6 @@
 {
-  "routeCount": 40,
-  "honoRouteCount": 185,
+  "routeCount": 41,
+  "honoRouteCount": 196,
   "specOnlyRoutes": [
     "GET /api/ai",
     "POST /api/ai",
@@ -33,6 +33,8 @@
     "POST /api/onboarding",
     "GET /api/payments",
     "POST /api/payments",
+    "GET /api/platform",
+    "POST /api/platform",
     "GET /api/policies",
     "POST /api/policies",
     "GET /api/privacy",
@@ -51,14 +53,15 @@
     "GET /api/webhooks",
     "POST /api/webhooks"
   ],
-  "cases": 1707,
+  "cases": 1870,
   "casesByAttack": {
-    "HEADER_B": 932,
-    "QUERY_B": 233,
-    "BODY_B": 121,
-    "ID_GUESS": 182,
+    "HEADER_B": 984,
+    "QUERY_B": 246,
+    "BODY_B": 128,
+    "ID_GUESS": 194,
     "ROLE_ESCALATION": 26,
-    "UNAUTH": 213
+    "UNAUTH": 226,
+    "NOT_OPERATOR": 66
   },
   "attacks": [
     "HEADER_B",
@@ -66,7 +69,8 @@
     "BODY_B",
     "ID_GUESS",
     "ROLE_ESCALATION",
-    "UNAUTH"
+    "UNAUTH",
+    "NOT_OPERATOR"
   ],
   "failures": 0,
   "knownFailures": 0,
@@ -108,6 +112,19 @@
     "DELETE ^\\/api\\/roles(\\/|$) (rbac role delete/unassign)",
     "POST ^\\/api\\/policies(\\/|$) (rbac policy write)",
     "* ^\\/api\\/oauth\\/authorize$ (oauth-server code issuance (risk 13))"
+  ],
+  "operatorClassRoutes": [
+    "POST /api/platform/workspaces/:id/credits",
+    "POST /api/platform/workspaces/:id/suspend",
+    "POST /api/platform/workspaces/:id/unsuspend",
+    "PUT /api/platform/workspaces/:id/flags/:flagKey",
+    "DELETE /api/platform/workspaces/:id/flags/:flagKey",
+    "POST /api/platform/users/:uid/approve",
+    "POST /api/platform/users/:uid/reject",
+    "GET /api/platform/workspaces",
+    "GET /api/platform/workspaces/:id",
+    "GET /api/platform/users",
+    "GET /api/platform/audit/pending"
   ],
   "publicRoutes": [
     {
@@ -239,6 +256,24 @@
       "reason": "no B row id fits every path param after seeding"
     },
     {
+      "method": "PUT",
+      "route": "/api/platform/workspaces/:id/flags/:flagKey",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "POST",
+      "route": "/api/platform/users/:uid/approve",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "POST",
+      "route": "/api/platform/users/:uid/reject",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
       "method": "GET",
       "route": "/api/onboarding/flows/:key",
       "attack": "ID_GUESS",
@@ -283,6 +318,12 @@
     {
       "method": "DELETE",
       "route": "/api/flags/:key/override",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/platform/workspaces/:id/flags/:flagKey",
       "attack": "ID_GUESS",
       "reason": "no B row id fits every path param after seeding"
     },
@@ -1410,6 +1451,12 @@
     },
     {
       "method": "ALL",
+      "route": "/api/platform/*",
+      "attack": "*",
+      "reason": "middleware (anonymous), not an endpoint"
+    },
+    {
+      "method": "ALL",
       "route": "/api/analytics",
       "attack": "*",
       "reason": "middleware (workspaceMiddleware), not an endpoint"
@@ -2414,6 +2461,66 @@
       "failures": []
     },
     {
+      "route": "/api/platform/workspaces/:id/credits",
+      "method": "POST",
+      "cases": 16,
+      "failures": []
+    },
+    {
+      "route": "/api/platform/workspaces/:id/suspend",
+      "method": "POST",
+      "cases": 16,
+      "failures": []
+    },
+    {
+      "route": "/api/platform/workspaces/:id/unsuspend",
+      "method": "POST",
+      "cases": 16,
+      "failures": []
+    },
+    {
+      "route": "/api/platform/workspaces/:id/flags/:flagKey",
+      "method": "PUT",
+      "cases": 13,
+      "failures": []
+    },
+    {
+      "route": "/api/platform/users/:uid/approve",
+      "method": "POST",
+      "cases": 13,
+      "failures": []
+    },
+    {
+      "route": "/api/platform/users/:uid/reject",
+      "method": "POST",
+      "cases": 13,
+      "failures": []
+    },
+    {
+      "route": "/api/platform/workspaces",
+      "method": "GET",
+      "cases": 12,
+      "failures": []
+    },
+    {
+      "route": "/api/platform/workspaces/:id",
+      "method": "GET",
+      "cases": 15,
+      "failures": []
+    },
+    {
+      "route": "/api/platform/users",
+      "method": "GET",
+      "cases": 12,
+      "failures": []
+    },
+    {
+      "route": "/api/platform/audit/pending",
+      "method": "GET",
+      "cases": 12,
+      "failures": []
+    },
+    {
       "route": "/api/analytics/track",
       "method": "POST",
       "cases": 7,
@@ -2978,6 +3085,18 @@
       "failures": []
     },
     {
+      "route": "/api/platform",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/platform",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
       "route": "/api/policies",
       "method": "GET",
       "cases": 6,
@@ -3146,6 +3265,12 @@
       "failures": []
     },
     {
+      "route": "/api/platform/workspaces/:id/flags/:flagKey",
+      "method": "DELETE",
+      "cases": 12,
+      "failures": []
+    },
+    {
       "route": "/api/api-keys/:id",
       "method": "DELETE",
       "cases": 9,
@@ -3171,8 +3296,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T13:30:34.444Z",
-    "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+    "generatedAt": "2026-11-25T15:26:51.065Z",
+    "gitSha": "4476effda77879bd7387be166ec57acb8fd76c11",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

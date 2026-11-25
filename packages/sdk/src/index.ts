@@ -63,8 +63,10 @@ export type { NotConfiguredCode } from "./not-configured.ts";
 export type { RequestContext } from "./request-context.ts";
 export {
   API_KEY_AUTHENTICATION,
+  API_KEY_CREATOR_VAR,
   API_KEY_USER_PREFIX,
   AUTHENTICATED_BY_VAR,
+  apiKeyCreatorId,
   isApiKeyRequest,
   refuseApiKeyCaller,
 } from "./request-context.ts";
@@ -104,8 +106,19 @@ export {
   withHashedSessionTokens,
 } from "./session-token-hash.ts";
 export type { HashedSessionOptions, SessionAdapterLike } from "./session-token-hash.ts";
-export { WORKSPACE_REGISTRY_TABLE, findWorkspaceMembership, findWorkspaceState, hasWorkspaceRegistry } from "./workspace-membership.ts";
-export type { WorkspaceMembership, WorkspaceState } from "./workspace-membership.ts";
+export {
+  DELETING_REASON,
+  MAX_WORKSPACE_PAGE,
+  OPERATOR_SUSPENSION_REASON,
+  WORKSPACE_REGISTRY_TABLE,
+  findWorkspaceMembership,
+  findWorkspaceRecord,
+  findWorkspaceState,
+  hasWorkspaceRegistry,
+  listWorkspaces,
+  setWorkspaceSuspended,
+} from "./workspace-membership.ts";
+export type { SetWorkspaceSuspendedResult, WorkspaceMembership, WorkspaceRecord, WorkspaceState } from "./workspace-membership.ts";
 export { hardenedBetterAuthOptions, hashedSessionDatabase } from "./better-auth-hardening.ts";
 export type { BetterAuthHardeningInput } from "./better-auth-hardening.ts";
 export {
@@ -144,3 +157,13 @@ export {
   toMilliRounded,
 } from "./credits.ts";
 export type { CreditRounding, ToMilliOptions } from "./credits.ts";
+export {
+  AUDIT_ACTOR_TYPES,
+  MAX_AUDIT_METADATA_CHARS,
+  auditStatement,
+  auditStatementsOnly,
+  isAuditStatement,
+  workspaceGuardParts,
+  workspaceNotDeletingGuard,
+} from "./audit-statement.ts";
+export type { AuditActorType, AuditStatement, AuditStatementInput, AuditStatementOptions, WorkspaceGuard } from "./audit-statement.ts";
