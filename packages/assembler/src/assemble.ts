@@ -1,4 +1,4 @@
-import { BlueprintSchema, formatIssues } from "./schemas.ts";
+import { BlueprintSchema, capabilityReference, entryBindingClash, formatIssues } from "./schemas.ts";
 import type { ObservabilityConfig } from "./schemas.ts";
 import { lintMigration } from "../../deploy/src/migration-lint.ts";
 import { PX_RATE_LIMITS_DDL, entityDdl, parseEntities, tableName } from "@poc/sdk";
@@ -284,6 +284,50 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
       }
     }
   }
+  // Story 1.13: a route option naming another capability's export (`$capability`) needs a brick that provides it,
+  // unless the option is only required while one of the brick's settings has a given value and it has another.
+  for (const brick of chosen) {
+    for (const route of brick.manifest.worker.routes) {
+      for (const [name, value] of Object.entries(route.options)) {
+        if (typeof value !== "object" || value === null || !("$capability" in value)) continue;
+        const ref = capabilityReference(value.$capability);
+        if (brick.manifest.isolation === "dispatch") {
+          // An isolated brick runs in its own worker and cannot be handed another brick's code.
+          errors.push(`${brick.id}: option "${name}" of ${route.factory} names "${value.$capability}", which an isolated brick cannot take`);
+          continue;
+        }
+        // Story 1.13: an option that is not required under this brick's settings is neither checked nor wired, so a
+        // setting that turns the feature off is never refused over a provider it does not use.
+        if (!capabilityRequired(value, brick.settings)) continue;
+        const provider = providerOf.get(ref.capability);
+        if (provider) {
+          const providing = chosen.find((b) => b.id === provider.brickId)!;
+          const where = `${brick.id}: option "${name}" of ${route.factory} names "${value.$capability}"`;
+          if (providing.manifest.isolation === "dispatch" || providing.manifest.trust !== "first-party") {
+            // Its code would run inside this brick's worker, outside the isolation it was given.
+            errors.push(`${where}, but ${providing.id} is not a first-party, non-isolated brick, so its code cannot be handed to another brick`);
+          } else if (isQuarantinedManifest(providing.manifest)) {
+            errors.push(`${where}, but ${providing.id} is quarantined`);
+          } else if (entryBindingClash(ref.export)) {
+            errors.push(`${where}, which cannot be imported into the assembled entry: ${entryBindingClash(ref.export)}`);
+          } else if (!(providing.manifest.worker.capabilityExports?.[ref.capability] ?? []).includes(ref.export)) {
+            const offered = providing.manifest.worker.capabilityExports?.[ref.capability] ?? [];
+            errors.push(`${where}, but ${providing.id} does not offer "${ref.export}" for "${ref.capability}" (it offers: ${offered.join(", ") || "nothing"})`);
+          }
+          continue;
+        }
+        const when = value.requiredWhen;
+        const offers = available.filter((id) =>
+          catalog.bricks[id]?.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === ref.capability),
+        );
+        errors.push(
+          `${brick.id}: option "${name}" of ${route.factory} needs "${ref.capability}" (its ${ref.export}), which no enabled brick provides` +
+            `${offers.length > 0 ? ` (enable one of: ${offers.join(", ")})` : ""}` +
+            `${when ? `; or set ${brick.id}'s setting "${when.setting}" to something other than ${JSON.stringify(when.equals)}` : ""}`,
+        );
+      }
+    }
+  }
   const reportedConflicts = new Set<string>();
   for (const brick of [...chosen].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
     for (const conflict of brick.manifest.conflicts ?? []) {
@@ -520,18 +564,23 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
   );
 
   files["openapi.json"] = json(generateOpenApiSpec(blueprint, ordered, entities));
-  files["src/index.ts"] = renderEntry(
-    ordered,
-    entities,
-    schedules,
-    queues,
-    migrationEntries,
-    requiredBindings,
-    buildSha,
-    identityGuard,
-    workspaceData,
-    workspaceObjects,
-  );
+  try {
+    files["src/index.ts"] = renderEntry(
+      ordered,
+      entities,
+      schedules,
+      queues,
+      migrationEntries,
+      requiredBindings,
+      buildSha,
+      identityGuard,
+      workspaceData,
+      workspaceObjects,
+    );
+  } catch (error) {
+    if (error instanceof ImportConflictError) return { ok: false, errors: error.conflicts };
+    throw error;
+  }
   files["src/privacy.generated.ts"] = renderPrivacyGenerated(ordered, entities);
   if (handlers.length > 0) files["src/entities.json"] = json(entities);
   if (workflows) files["src/workflows.json"] = json(workflows);
@@ -766,6 +815,11 @@ function resolveSettings(id: string, definitions: Record<string, SettingDefiniti
         errors.push(`${id}: setting "${name}" must be at most ${maxLen} characters`);
         continue;
       }
+      // Story 1.13: a declared pattern is checked here, so a malformed value never reaches the running app.
+      if (definition.pattern !== undefined && !new RegExp(definition.pattern).test(value)) {
+        errors.push(`${id}: setting "${name}" is not in the expected format${definition.example !== undefined ? ` (for example ${JSON.stringify(definition.example)})` : ""}`);
+        continue;
+      }
       if (value.length > 0 && definition.format) {
         if (definition.format === "url") {
           try {
@@ -826,6 +880,7 @@ function expression(value: ValueExpr, settings: Record<string, SettingValue>): s
     if ("$entities" in value) return "entities"; // the identifier imported from ./entities.json
     if ("$privacy" in value) return value.$privacy;
     if ("$workspaceData" in value) return value.$workspaceData;
+    if ("$capability" in value) return capabilityReference(value.$capability).export; // imported by renderEntry
     return `${value.$call}()`;
   }
   return JSON.stringify(value);
@@ -857,6 +912,26 @@ function expandGuardPath(path: string, entities: Entity[]): string[] {
   return path.includes("{entity}") ? entities.map((entity) => path.replaceAll("{entity}", entity.name)) : [path];
 }
 
+/** Thrown by renderEntry when two packages would be imported under one name (story 1.13); assemble() reports it. */
+class ImportConflictError extends Error {
+  readonly conflicts: string[];
+  constructor(conflicts: string[]) {
+    super(conflicts.join("; "));
+    this.conflicts = conflicts;
+  }
+}
+
+/** Whether a `$capability` option applies: always, or while its `requiredWhen` setting has the given value. */
+function capabilityRequired(value: { requiredWhen?: { setting: string; equals: SettingValue } | undefined }, settings: Record<string, SettingValue>): boolean {
+  return !value.requiredWhen || settings[value.requiredWhen.setting] === value.requiredWhen.equals;
+}
+
+/** A quarantined brick (story 0.11): experimental, with a maturity reason starting "QUARANTINED:". */
+function isQuarantinedManifest(manifest: BrickManifestFile): boolean {
+  const ui = manifest.ui;
+  return ui?.maturity === "experimental" && typeof ui.maturityReason === "string" && ui.maturityReason.startsWith("QUARANTINED:");
+}
+
 function renderEntry(
   ordered: Chosen[],
   entities: Entity[],
@@ -870,7 +945,19 @@ function renderEntry(
   workspaceObjects: WorkspaceObjectPrefix[] = [],
 ): string {
   const imports = new Map<string, Set<string>>();
-  const use = (pkg: string, name: string) => imports.set(pkg, (imports.get(pkg) ?? new Set()).add(name));
+  // Story 1.13: one identifier may be imported from one package only; two would be a duplicate binding in the entry.
+  const boundTo = new Map<string, string>();
+  const conflicts: string[] = [];
+  const use = (pkg: string, name: string) => {
+    const earlier = boundTo.get(name);
+    if (earlier !== undefined && earlier !== pkg) {
+      const conflict = `"${name}" would be imported from both ${earlier} and ${pkg}; the entry cannot bind one name twice`;
+      if (!conflicts.includes(conflict)) conflicts.push(conflict);
+      return;
+    }
+    boundTo.set(name, pkg);
+    imports.set(pkg, (imports.get(pkg) ?? new Set()).add(name));
+  };
   let needsEntities = false;
   let needsPrivacy = false;
   // Story 1.10: set when a brick's route takes the generated workspace-data purge (the workspace delete route).
@@ -887,6 +974,11 @@ function renderEntry(
     if (!alternative) continue;
     use(brick.manifest.worker.package, alternative.export);
     identityAlternatives.push(alternative.export);
+  }
+  // Story 1.13: the package of the enabled brick that provides each capability, for `$capability` route options.
+  const capabilityProviders = new Map<string, string>();
+  for (const brick of ordered) {
+    for (const p of brick.manifest.provides) capabilityProviders.set(p.includes("@") ? p.slice(0, p.indexOf("@")) : p, brick.manifest.worker.package);
   }
   const guardOf = new Map<string, { pkg: string; export: string; suspension?: string }>();
   for (const brick of ordered) {
@@ -932,7 +1024,15 @@ function renderEntry(
         emitRoute(`app.all(${JSON.stringify(route.mountAt + "/*")}, (c) => (c.env as any).${bindingName}.fetch(c.req.raw));`);
       } else {
         use(brick.manifest.worker.package, route.factory);
-        const options = Object.entries(route.options).map(([name, value]) => {
+        const options = Object.entries(route.options).flatMap(([name, value]) => {
+          if (typeof value === "object" && value !== null && "$capability" in value) {
+            // Story 1.13: the provider's export, imported from the provider's package. With no provider enabled the
+            // option is left out (assemble() has already refused the blueprint if the option was required).
+            const ref = capabilityReference(value.$capability);
+            const provider = capabilityProviders.get(ref.capability);
+            if (!provider || !capabilityRequired(value, brick.settings)) return [];
+            use(provider, ref.export);
+          }
           if (typeof value === "object" && value !== null && "$call" in value) use(brick.manifest.worker.package, value.$call);
           if (typeof value === "object" && value !== null && "$entities" in value) needsEntities = true;
           if (typeof value === "object" && value !== null && "$privacy" in value) needsPrivacy = true;
@@ -947,6 +1047,7 @@ function renderEntry(
 
   for (const sched of schedules) use(sched.pkg, sched.handler);
   for (const q of queues) use(q.pkg, q.handler);
+  if (conflicts.length > 0) throw new ImportConflictError(conflicts);
 
   const importLines = [...imports.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

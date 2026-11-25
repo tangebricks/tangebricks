@@ -11,7 +11,8 @@
     "workspace-context"
   ],
   "migrations": [
-    "migrations/0001_llm_gateway.sql"
+    "migrations/0001_llm_gateway.sql",
+    "migrations/0002_billing_status.sql"
   ],
   "routePrefixes": [
     "ai"
@@ -30,6 +31,34 @@
         "gemini"
       ],
       "default": "workers-ai"
+    },
+    "models": {
+      "type": "string",
+      "maxLength": 200,
+      "pattern": "^ *[A-Za-z0-9@][A-Za-z0-9@._/:-]{0,63}:[0-9]{1,6}(\\.[0-9]{1,6})?:[0-9]{1,6}(\\.[0-9]{1,6})? *(, *[A-Za-z0-9@][A-Za-z0-9@._/:-]{0,63}:[0-9]{1,6}(\\.[0-9]{1,6})?:[0-9]{1,6}(\\.[0-9]{1,6})? *)*$",
+      "example": "gpt-4o-mini:1:2,@cf/meta/llama-3.1-8b-instruct:0.5:1",
+      "default": "gpt-4o-mini:1:2"
+    },
+    "maxTokens": {
+      "type": "integer",
+      "min": 1,
+      "max": 131072,
+      "default": 4096
+    },
+    "billingMode": {
+      "type": "enum",
+      "values": [
+        "wallet",
+        "none"
+      ],
+      "default": "wallet"
+    },
+    "fallbackProviders": {
+      "type": "string",
+      "maxLength": 200,
+      "pattern": "^( *[A-Za-z0-9_-]{1,30} *(, *[A-Za-z0-9_-]{1,30} *){0,2})?$",
+      "example": "openai,anthropic",
+      "default": ""
     }
   },
   "ui": {
@@ -64,6 +93,25 @@
         "options": {
           "provider": {
             "$setting": "defaultProvider"
+          },
+          "billing": {
+            "$setting": "billingMode"
+          },
+          "models": {
+            "$setting": "models"
+          },
+          "maxTokens": {
+            "$setting": "maxTokens"
+          },
+          "charger": {
+            "$capability": "credit-wallet.walletCharger",
+            "requiredWhen": {
+              "setting": "billingMode",
+              "equals": "wallet"
+            }
+          },
+          "fallbackProviders": {
+            "$setting": "fallbackProviders"
           }
         }
       }

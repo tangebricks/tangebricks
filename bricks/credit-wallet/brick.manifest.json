@@ -168,6 +168,11 @@
   },
   "worker": {
     "package": "@poc/credit-wallet",
+    "capabilityExports": {
+      "credit-wallet": [
+        "walletCharger"
+      ]
+    },
     "routes": [
       {
         "factory": "createWalletRoutes",

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_llm_gateway.sql?raw";
+import migration0002 from "../migrations/0002_billing_status.sql?raw";
 import { createAiRoutes, LlmGatewayService, MockLlmAdapter } from "../src/index.ts";
 import type { AiEnv } from "../src/routes.ts";
 
@@ -17,6 +18,7 @@ async function resetDb(): Promise<void> {
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   }
   await applyMigration(db, migration);
+  await applyMigration(db, migration0002);
 }
 
 beforeEach(async () => {
@@ -37,7 +39,7 @@ describe("LLM Gateway & Prompt Router Core Logic", () => {
 
   it("completes LLM generation, logs token metrics and computes credits in D1", async () => {
     const primary = new MockLlmAdapter("primary");
-    const service = new LlmGatewayService(db, [primary], "primary");
+    const service = new LlmGatewayService(db, [primary], "primary", { billing: "none", models: "gpt-4o-mini:1:2,gpt-4o:5:15" });
 
     const tmplRes = await service.createTemplate(
       WS_A,
@@ -72,12 +74,10 @@ describe("LLM Gateway & Prompt Router Core Logic", () => {
     const flakyPrimary = new MockLlmAdapter("flaky_openai", true); // will throw
     const reliableBackup = new MockLlmAdapter("backup_anthropic", false); // will succeed
 
-    const service = new LlmGatewayService(db, [flakyPrimary, reliableBackup], "flaky_openai");
+    const service = new LlmGatewayService(db, [flakyPrimary, reliableBackup], "flaky_openai", { billing: "none", fallbackProviders: ["backup_anthropic"] });
 
     const compRes = await service.complete(WS_A, USER_A, {
       prompt: "Explain quantum computing simply",
-      provider: "flaky_openai",
-      fallbackProviders: ["backup_anthropic"],
     });
 
     expect(compRes.ok).toBe(true);
@@ -92,18 +92,19 @@ describe("LLM Gateway & Prompt Router Core Logic", () => {
     const dead1 = new MockLlmAdapter("dead1", true);
     const dead2 = new MockLlmAdapter("dead2", true);
 
-    const service = new LlmGatewayService(db, [dead1, dead2], "dead1");
+    const service = new LlmGatewayService(db, [dead1, dead2], "dead1", { billing: "none", fallbackProviders: "dead2" });
 
     const compRes = await service.complete(WS_A, USER_A, {
       prompt: "Test query",
-      provider: "dead1",
-      fallbackProviders: ["dead2"],
     });
 
     expect(compRes.ok).toBe(false);
     if (compRes.ok) return;
     expect(compRes.code).toBe(502);
-    expect(compRes.error).toMatch(/All LLM providers failed/i);
+    // Story 1.13: the provider's own message (here "rate_limit_exceeded") is never returned.
+    expect(compRes.errorCode).toBe("PROVIDER_ERROR");
+    expect(compRes.error).toBe("The AI provider could not complete the request");
+    expect(compRes.error).not.toMatch(/rate_limit|dead/);
   });
 
   it("enforces multi-tenant isolation: Workspace B cannot see Workspace A templates or telemetry", async () => {
@@ -136,7 +137,7 @@ describe("AI Route Handlers (/api/ai/*)", () => {
       await next();
     });
 
-    app.route("/api", createAiRoutes({ adapters: [adapter], provider: "mock_router" }));
+    app.route("/api", createAiRoutes({ adapters: [adapter], provider: "mock_router", billing: "none" }));
     return app;
   };
 
@@ -226,7 +227,7 @@ describe("the test-only mock is refused in production (story 0.9)", () => {
       c.set("ctx", Object.freeze({ userId: USER_A, workspaceId: WS_A, role: "member" }));
       await next();
     });
-    app.route("/api", createAiRoutes({ adapters: [new MockLlmAdapter("mock_router")], provider: "mock_router" }));
+    app.route("/api", createAiRoutes({ adapters: [new MockLlmAdapter("mock_router")], provider: "mock_router", billing: "none" }));
     const req = () =>
       new Request("http://localhost/api/ai/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: "Hello" }) });
     const prod = await app.fetch(req(), { DB: db, PX_ENVIRONMENT: "production" });

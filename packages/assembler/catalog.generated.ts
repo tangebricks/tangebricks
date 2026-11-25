@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "be240c9c8b4f784f4ca9c0efec284aff4b4c13e6c189c4778c971c0afd824b5c",
+  "catalogVersion": "4477e69020ff607b8741c722044949ab913a94e0b1574af34d9e1a64c0bc8c4b",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -806,6 +806,11 @@ export const catalog: Catalog = {
         },
         "worker": {
           "package": "@poc/credit-wallet",
+          "capabilityExports": {
+            "credit-wallet": [
+              "walletCharger"
+            ]
+          },
           "routes": [
             {
               "factory": "createWalletRoutes",
@@ -1943,7 +1948,8 @@ export const catalog: Catalog = {
           "workspace-context"
         ],
         "migrations": [
-          "migrations/0001_llm_gateway.sql"
+          "migrations/0001_llm_gateway.sql",
+          "migrations/0002_billing_status.sql"
         ],
         "routePrefixes": [
           "ai"
@@ -1962,6 +1968,34 @@ export const catalog: Catalog = {
               "gemini"
             ],
             "default": "workers-ai"
+          },
+          "models": {
+            "type": "string",
+            "pattern": "^ *[A-Za-z0-9@][A-Za-z0-9@._/:-]{0,63}:[0-9]{1,6}(\\.[0-9]{1,6})?:[0-9]{1,6}(\\.[0-9]{1,6})? *(, *[A-Za-z0-9@][A-Za-z0-9@._/:-]{0,63}:[0-9]{1,6}(\\.[0-9]{1,6})?:[0-9]{1,6}(\\.[0-9]{1,6})? *)*$",
+            "example": "gpt-4o-mini:1:2,@cf/meta/llama-3.1-8b-instruct:0.5:1",
+            "maxLength": 200,
+            "default": "gpt-4o-mini:1:2"
+          },
+          "maxTokens": {
+            "type": "integer",
+            "min": 1,
+            "max": 131072,
+            "default": 4096
+          },
+          "billingMode": {
+            "type": "enum",
+            "values": [
+              "wallet",
+              "none"
+            ],
+            "default": "wallet"
+          },
+          "fallbackProviders": {
+            "type": "string",
+            "pattern": "^( *[A-Za-z0-9_-]{1,30} *(, *[A-Za-z0-9_-]{1,30} *){0,2})?$",
+            "example": "openai,anthropic",
+            "maxLength": 200,
+            "default": ""
           }
         },
         "nodes": [],
@@ -2007,6 +2041,25 @@ export const catalog: Catalog = {
               "options": {
                 "provider": {
                   "$setting": "defaultProvider"
+                },
+                "billing": {
+                  "$setting": "billingMode"
+                },
+                "models": {
+                  "$setting": "models"
+                },
+                "maxTokens": {
+                  "$setting": "maxTokens"
+                },
+                "charger": {
+                  "$capability": "credit-wallet.walletCharger",
+                  "requiredWhen": {
+                    "setting": "billingMode",
+                    "equals": "wallet"
+                  }
+                },
+                "fallbackProviders": {
+                  "$setting": "fallbackProviders"
                 }
               },
               "guardPaths": [
@@ -2019,7 +2072,8 @@ export const catalog: Catalog = {
         }
       },
       "files": {
-        "migrations/0001_llm_gateway.sql": "-- llm-gateway 0001: Prompt templates, generation sessions, and token telemetry.\n-- Hardened: template bounded to 64KB, cost and tokens checked non-negative.\n-- Prefixed with ai_ to prevent collisions.\n\nCREATE TABLE IF NOT EXISTS ai_prompt_templates (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 100),\n  template_text TEXT NOT NULL CHECK (length(template_text) <= 65536),\n  default_model TEXT NOT NULL CHECK (length(default_model) <= 64),\n  temperature REAL NOT NULL DEFAULT 0.7 CHECK (temperature BETWEEN 0.0 AND 2.0),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS ai_prompt_workspace_idx ON ai_prompt_templates(workspace_id);\n\nCREATE TABLE IF NOT EXISTS ai_generation_logs (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  provider TEXT NOT NULL CHECK (length(provider) <= 64),\n  model TEXT NOT NULL CHECK (length(model) <= 64),\n  prompt_tokens INTEGER NOT NULL DEFAULT 0 CHECK (prompt_tokens >= 0),\n  completion_tokens INTEGER NOT NULL DEFAULT 0 CHECK (completion_tokens >= 0),\n  cost_credits INTEGER NOT NULL DEFAULT 0 CHECK (cost_credits >= 0),\n  latency_ms INTEGER NOT NULL DEFAULT 0 CHECK (latency_ms >= 0),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS ai_logs_workspace_idx ON ai_generation_logs(workspace_id);\n"
+        "migrations/0001_llm_gateway.sql": "-- llm-gateway 0001: Prompt templates, generation sessions, and token telemetry.\n-- Hardened: template bounded to 64KB, cost and tokens checked non-negative.\n-- Prefixed with ai_ to prevent collisions.\n\nCREATE TABLE IF NOT EXISTS ai_prompt_templates (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 100),\n  template_text TEXT NOT NULL CHECK (length(template_text) <= 65536),\n  default_model TEXT NOT NULL CHECK (length(default_model) <= 64),\n  temperature REAL NOT NULL DEFAULT 0.7 CHECK (temperature BETWEEN 0.0 AND 2.0),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS ai_prompt_workspace_idx ON ai_prompt_templates(workspace_id);\n\nCREATE TABLE IF NOT EXISTS ai_generation_logs (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  provider TEXT NOT NULL CHECK (length(provider) <= 64),\n  model TEXT NOT NULL CHECK (length(model) <= 64),\n  prompt_tokens INTEGER NOT NULL DEFAULT 0 CHECK (prompt_tokens >= 0),\n  completion_tokens INTEGER NOT NULL DEFAULT 0 CHECK (completion_tokens >= 0),\n  cost_credits INTEGER NOT NULL DEFAULT 0 CHECK (cost_credits >= 0),\n  latency_ms INTEGER NOT NULL DEFAULT 0 CHECK (latency_ms >= 0),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS ai_logs_workspace_idx ON ai_generation_logs(workspace_id);\n",
+        "migrations/0002_billing_status.sql": "-- llm-gateway 0002 (story 1.13): each generation log row says what happened to its money. A call first reserves its\n-- maximum cost from the workspace wallet (key ai:<log id>), writes its row as 'reserved', generates, then refunds what\n-- it did not use (key ai:<log id>:refund) and updates the row.\n--   reserved        the maximum is held and the call has not finished. Still 'reserved' well after the request time\n--                   limit means a cancelled or crashed call whose cost_credits are held: reconcile it;\n--   charged         the text was returned; cost_credits is the actual cost, the rest was refunded;\n--   refund_failed   the text was returned but the refund failed; cost_credits is the whole reservation, still held;\n--   refunded        every provider failed and the whole reservation was refunded; cost_credits is 0;\n--   billing_failed  no text, and credits may still be held (the refund failed, or it is unknown whether the reservation\n--                   was taken); cost_credits is what is held as far as is known;\n--   not_billed      the app runs with billing \"none\", and every row written before 1.13 (nothing was ever charged then).\n\nALTER TABLE ai_generation_logs ADD COLUMN billing_status TEXT NOT NULL DEFAULT 'not_billed' CHECK (billing_status IN ('reserved', 'charged', 'refund_failed', 'refunded', 'billing_failed', 'not_billed'));\n"
       }
     },
     "marketplace-splits": {

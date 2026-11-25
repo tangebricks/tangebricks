@@ -5,6 +5,8 @@ export type { FakeGateway, GatewayOrder, PaymentGateway } from "./gateway.ts";
 export { createWalletRoutes } from "./routes.ts";
 export type { WalletEnv, WalletRoutesOptions } from "./routes.ts";
 export { createWallet } from "./wallet.ts";
+export { walletCharger } from "./charger.ts";
+export type { ChargeResult, RefundResult, WalletCharger } from "./charger.ts";
 export type { ConfirmResult, DeductResult, OrderRow, Wallet } from "./wallet.ts";
 import { NotConfiguredError, type Executor } from "@poc/sdk";
 import { deductCreditsExecutor } from "./brick.ts";
