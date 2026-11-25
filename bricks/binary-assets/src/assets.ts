@@ -299,7 +299,7 @@ export class AssetService {
       this.publicBaseUrl && !active
         ? `${this.publicBaseUrl.replace(/\/$/, "")}/${r2Key.split("/").map(encodeURIComponent).join("/")}`
         : null;
-    if (r2Key.length > MAX_R2_KEY_LENGTH || (publicUrl !== null && publicUrl.length > MAX_PUBLIC_URL_LENGTH)) {
+    if (MAX_R2_KEY_LENGTH < r2Key.length || (publicUrl !== null && publicUrl.length > MAX_PUBLIC_URL_LENGTH)) {
       return { ok: false, error: "Filename too long", code: 400, errorCode: "INVALID_FILENAME" };
     }
     const now = new Date().toISOString();
