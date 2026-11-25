@@ -11,7 +11,8 @@
     "workspace-context"
   ],
   "migrations": [
-    "migrations/0001_public_api_keys.sql"
+    "migrations/0001_public_api_keys.sql",
+    "migrations/0002_key_role_and_creator.sql"
   ],
   "routePrefixes": [
     "api-keys"
@@ -38,6 +39,9 @@
   },
   "worker": {
     "package": "@poc/public-api-keys",
+    "identityAlternative": {
+      "export": "apiKeyIdentity"
+    },
     "routes": [
       {
         "factory": "createApiKeyRoutes",

@@ -1,7 +1,7 @@
 import type { Context, MiddlewareHandler } from "hono";
 import { z } from "zod";
 import type { AuthUser, D1Like, RequestContext } from "@poc/sdk";
-import { WORKSPACE_ADMIN_ROLES, systemScope } from "@poc/sdk";
+import { WORKSPACE_ADMIN_ROLES, isApiKeyRequest, systemScope } from "@poc/sdk";
 
 export type { AuthUser, RequestContext };
 
@@ -41,6 +41,29 @@ const INTERNAL = { error: "Internal error" } as const;
 export const workspaceMiddleware: MiddlewareHandler<WorkspaceEnv> = async (c, next) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  // Story 1.11: an API-key identity step (and only it sets the `authenticatedBy` marker) already set a verified,
+  // workspace-bound ctx: the key's own workspace and role, so there is no membership to look up. The header is optional;
+  // naming any other workspace is refused. The suspension state is still read here, so `requireNotSuspended` applies to
+  // keys as to people. Any other caller, whatever its user id looks like, goes through the membership check below.
+  const bound = c.get("ctx");
+  if (isApiKeyRequest(c) && bound && bound.userId === user.uid) {
+    const named = c.req.header("x-workspace-id");
+    if (named !== undefined && named !== bound.workspaceId) {
+      return c.json({ error: "This API key belongs to another workspace", code: "WORKSPACE_MISMATCH" }, 403);
+    }
+    try {
+      const row = await systemScope(c.env.DB, "workspace middleware api-key workspace check")
+        .raw("SELECT suspended FROM mw_workspaces WHERE id = ?", [bound.workspaceId])
+        .first<{ suspended: number }>();
+      if (!row) return c.json({ error: "Not a member of this workspace" }, 403);
+      c.set("workspace", { id: bound.workspaceId, role: bound.role as WorkspaceRole, suspended: Boolean(row.suspended) });
+      return await next();
+    } catch (error) {
+      console.error("workspaceMiddleware:", error);
+      return c.json(INTERNAL, 500);
+    }
+  }
 
   const requested = WorkspaceIdSchema.safeParse(c.req.header("x-workspace-id"));
   if (!requested.success) return c.json({ error: "Missing workspace context" }, 400);

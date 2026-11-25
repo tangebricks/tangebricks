@@ -1180,6 +1180,12 @@ export const ManifestSchema = z
        * after this guard on every path the guard is mounted at, apart from a short allowlist kept in the assembler.
        */
       guard: z.strictObject({ export: identifier, capability, suspension: identifier.optional() }).optional(),
+      /**
+       * Story 1.11: a middleware export that resolves an alternative credential (for example an API key) into the
+       * verified identity and workspace context. The assembler mounts it on the API routes before the session identity;
+       * a request without that credential passes through it unchanged, and the session identity then runs as before.
+       */
+      identityAlternative: z.strictObject({ export: identifier }).optional(),
       routes: z.array(routeDefinition).default([]),
       privacy: workerPrivacyDefinition.optional(),
     }),

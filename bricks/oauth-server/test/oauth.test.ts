@@ -331,3 +331,33 @@ describe("OAuth 2.0 REST Endpoints", () => {
     });
   });
 });
+
+describe("API-key callers cannot mint OAuth credentials (story 1.11)", () => {
+  it("refuses client registration, authorize and token exchange with 403 API_KEY_FORBIDDEN", async () => {
+    const app = new Hono<OAuthEnv>();
+    app.use("*", async (c, next) => {
+      // What the API-key identity step sets: an admin-role key for WS_ALPHA, marked as key-authenticated.
+      const uid = "apikey:key_test";
+      (c as unknown as { set(k: string, v: unknown): void }).set("authenticatedBy", "api-key");
+      c.set("workspace", { id: WS_ALPHA, role: "admin" });
+      c.set("ctx", Object.freeze({ userId: uid, workspaceId: WS_ALPHA, role: "admin" }));
+      c.set("user", { uid, name: "key" });
+      await next();
+    });
+    app.route("/", createOAuthRoutes());
+
+    const post = (path: string, body: unknown) =>
+      app.request(`http://localhost${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }, { DB: db });
+    const attempts = [
+      await post("/oauth/clients", { clientName: "c", redirectUris: ["https://x.example.com/cb"], allowedScopes: ["read"] }),
+      await post("/oauth/authorize", { clientId: "x", redirectUri: "https://x.example.com/cb", scopes: ["read"] }),
+      await post("/oauth/token", { grant_type: "client_credentials", client_id: "x", client_secret: "y" }),
+    ];
+    for (const res of attempts) {
+      expect(res.status).toBe(403);
+      expect(((await res.json()) as { code: string }).code).toBe("API_KEY_FORBIDDEN");
+    }
+    const clients = await db.prepare("SELECT COUNT(*) AS n FROM oauth_clients").first<{ n: number }>();
+    expect(clients?.n).toBe(0);
+  });
+});

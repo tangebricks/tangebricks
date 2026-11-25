@@ -50,6 +50,13 @@ export type {
 export { NotConfiguredError, isProductionEnvironment, pxEnvironment } from "./not-configured.ts";
 export type { NotConfiguredCode } from "./not-configured.ts";
 export type { RequestContext } from "./request-context.ts";
+export {
+  API_KEY_AUTHENTICATION,
+  API_KEY_USER_PREFIX,
+  AUTHENTICATED_BY_VAR,
+  isApiKeyRequest,
+  refuseApiKeyCaller,
+} from "./request-context.ts";
 export { PLATFORM_OPERATORS_ENV, isPlatformOperator, platformOperatorIds } from "./platform-operator.ts";
 export {
   WORKSPACE_ADMIN_ROLES,

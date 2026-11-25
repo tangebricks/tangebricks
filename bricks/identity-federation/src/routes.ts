@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { WORKSPACE_ADMIN_ROLES, workspaceRoleRefusal } from "@poc/sdk";
+import { WORKSPACE_ADMIN_ROLES, refuseApiKeyCaller, workspaceRoleRefusal } from "@poc/sdk";
 import { IdentityFederationService, type SsoConnection, type SsoProviderType } from "./federation.ts";
 import { ssoMiddleware, type SsoEnv } from "./middleware.ts";
 
@@ -57,6 +57,9 @@ export function createSsoRoutes({ adapter }: { adapter?: SsoRouteAdapter } = {})
   // POST /sso/connections - create or update (by domain) the workspace's SSO connection. Owner/admin only, checked
   // before the body is read (audit risk 9).
   app.post("/sso/connections", async (c) => {
+    // Story 1.11: an API key never mints credentials that would outlive it.
+    const keyRefused = refuseApiKeyCaller(c);
+    if (keyRefused) return keyRefused;
     const denied = workspaceRoleRefusal(c.get("user"), c.get("ctx"), WORKSPACE_ADMIN_ROLES);
     if (denied) return c.json(denied.body, denied.status);
     const ctx = c.get("ctx");

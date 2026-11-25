@@ -358,9 +358,393 @@
     },
     {
       "method": "ALL",
-      "route": "/api/*",
+      "route": "/api/audit",
       "attack": "*",
-      "reason": "middleware (stubIdentity), not an endpoint"
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/audit/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/assets",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/assets/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/checkout/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/wallet",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/wallet/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/payments/create-order",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/schedules",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/schedules/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/privacy",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/privacy/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/docs",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/docs/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/records",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/records/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/armor",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/armor/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/flags",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/flags/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/notifications",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/notifications/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/integrations",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/integrations/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/connect/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/chat",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/chat/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/ai",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/ai/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/meters",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/meters/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/events",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/events/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/usage",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/usage/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/messages",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/messages/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/subscriptions",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/subscriptions/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/analytics",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/analytics/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/api-keys",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/api-keys/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/jobs",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/jobs/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/roles",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/roles/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/policies",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/policies/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/scripts",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/scripts/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/search",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/search/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/tabular",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/tabular/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/threads",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/threads/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/onboarding",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/onboarding/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/vectors",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/vectors/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/webhooks/endpoints",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/webhooks/endpoints/*",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/webhooks/subscriptions",
+      "attack": "*",
+      "reason": "middleware (apiKeyIdentity), not an endpoint"
     },
     {
       "method": "ALL",
@@ -373,6 +757,18 @@
       "route": "/api/auth/*",
       "attack": "*",
       "reason": "catch-all handler, public auth (core-auth Better Auth; sign-up/sign-in are public by design)"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/workspaces",
+      "attack": "*",
+      "reason": "middleware (refuseApiKey), not an endpoint"
+    },
+    {
+      "method": "ALL",
+      "route": "/api/workspaces/*",
+      "attack": "*",
+      "reason": "middleware (refuseApiKey), not an endpoint"
     },
     {
       "method": "ALL",
@@ -2587,8 +2983,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T00:59:39.706Z",
-    "gitSha": "302e7cfcb66b8687c22c74904ea9e829d3e3cdd5",
+    "generatedAt": "2026-11-25T01:45:18.373Z",
+    "gitSha": "3f7f7c8fabfaf0c2bdba5472778033fa0e849d27",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "978a679275a08e2db843dd5a31cb4d606d45d3dca1ccdf8226236b755a879714",
+  "catalogVersion": "be240c9c8b4f784f4ca9c0efec284aff4b4c13e6c189c4778c971c0afd824b5c",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -2802,7 +2802,8 @@ export const catalog: Catalog = {
           "workspace-context"
         ],
         "migrations": [
-          "migrations/0001_public_api_keys.sql"
+          "migrations/0001_public_api_keys.sql",
+          "migrations/0002_key_role_and_creator.sql"
         ],
         "routePrefixes": [
           "api-keys"
@@ -2839,6 +2840,9 @@ export const catalog: Catalog = {
         },
         "worker": {
           "package": "@poc/public-api-keys",
+          "identityAlternative": {
+            "export": "apiKeyIdentity"
+          },
           "routes": [
             {
               "factory": "createApiKeyRoutes",
@@ -2854,7 +2858,8 @@ export const catalog: Catalog = {
         }
       },
       "files": {
-        "migrations/0001_public_api_keys.sql": "-- public-api-keys 0001: API keys, hash storage, scopes and revocation.\n-- Hardened: 64-hex SHA-256 hashes, prefix bounds, composite indexes to prevent tenant leaks.\n-- Prefixed with key_ to prevent collisions.\n\nCREATE TABLE IF NOT EXISTS key_api_keys (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  key_prefix TEXT NOT NULL CHECK (length(key_prefix) BETWEEN 8 AND 24),\n  key_hash TEXT NOT NULL UNIQUE CHECK (length(key_hash) = 64),\n  name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 100),\n  scopes_json TEXT NOT NULL DEFAULT '[\"*\"]' CHECK (length(scopes_json) <= 4096),\n  revoked INTEGER NOT NULL DEFAULT 0 CHECK (revoked IN (0, 1)),\n  last_used_at TEXT,\n  expires_at TEXT,\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS key_api_keys_lookup_idx ON key_api_keys(key_prefix, revoked);\nCREATE INDEX IF NOT EXISTS key_api_keys_hash_idx ON key_api_keys(key_hash, revoked);\nCREATE INDEX IF NOT EXISTS key_api_keys_workspace_idx ON key_api_keys(workspace_id);\n"
+        "migrations/0001_public_api_keys.sql": "-- public-api-keys 0001: API keys, hash storage, scopes and revocation.\n-- Hardened: 64-hex SHA-256 hashes, prefix bounds, composite indexes to prevent tenant leaks.\n-- Prefixed with key_ to prevent collisions.\n\nCREATE TABLE IF NOT EXISTS key_api_keys (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  key_prefix TEXT NOT NULL CHECK (length(key_prefix) BETWEEN 8 AND 24),\n  key_hash TEXT NOT NULL UNIQUE CHECK (length(key_hash) = 64),\n  name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 100),\n  scopes_json TEXT NOT NULL DEFAULT '[\"*\"]' CHECK (length(scopes_json) <= 4096),\n  revoked INTEGER NOT NULL DEFAULT 0 CHECK (revoked IN (0, 1)),\n  last_used_at TEXT,\n  expires_at TEXT,\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS key_api_keys_lookup_idx ON key_api_keys(key_prefix, revoked);\nCREATE INDEX IF NOT EXISTS key_api_keys_hash_idx ON key_api_keys(key_hash, revoked);\nCREATE INDEX IF NOT EXISTS key_api_keys_workspace_idx ON key_api_keys(workspace_id);\n",
+        "migrations/0002_key_role_and_creator.sql": "-- public-api-keys 0002 (story 1.11): a key carries a workspace role and the user who created it.\n-- role: the most a key may do in its workspace. Never 'owner'. Keys made before this migration become 'member'.\n-- created_by: the creating user. At authentication the creator must still be a member at or above the key's role,\n-- otherwise the key is refused. Keys made before this migration have no creator and are therefore refused.\n-- last_used_at already exists (0001). The key_hash index is created again only if it is missing.\nALTER TABLE key_api_keys ADD COLUMN role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'admin'));\nALTER TABLE key_api_keys ADD COLUMN created_by TEXT;\nCREATE INDEX IF NOT EXISTS key_api_keys_hash_idx ON key_api_keys(key_hash, revoked);\n"
       }
     },
     "queue-jobs": {

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { WORKSPACE_ADMIN_ROLES, authUserId, workspaceRoleRefusal } from "@poc/sdk";
+import { WORKSPACE_ADMIN_ROLES, authUserId, refuseApiKeyCaller, workspaceRoleRefusal } from "@poc/sdk";
 import { OAuthServerService } from "./oauth.ts";
 import { oauthMiddleware, type OAuthEnv } from "./middleware.ts";
 
@@ -46,6 +46,9 @@ export function createOAuthRoutes(): Hono<OAuthEnv> {
 
   // POST /oauth/clients - Register OAuth client. Owner/admin only (story 0.6).
   app.post("/oauth/clients", async (c) => {
+    // Story 1.11: an API key never mints credentials that would outlive it.
+    const keyRefused = refuseApiKeyCaller(c);
+    if (keyRefused) return keyRefused;
     const denied = workspaceRoleRefusal(c.get("user"), c.get("ctx"), WORKSPACE_ADMIN_ROLES);
     if (denied) return c.json(denied.body, denied.status);
     const ctx = c.get("ctx");
@@ -91,6 +94,9 @@ export function createOAuthRoutes(): Hono<OAuthEnv> {
   // must be owner or admin (checked before the body is read), and the code is always for the signed-in user: a body
   // `userId` naming anyone else is refused (audit risk 13).
   app.post("/oauth/authorize", async (c) => {
+    // Story 1.11: an API key never mints credentials that would outlive it.
+    const keyRefused = refuseApiKeyCaller(c);
+    if (keyRefused) return keyRefused;
     const denied = workspaceRoleRefusal(c.get("user"), c.get("ctx"), WORKSPACE_ADMIN_ROLES);
     if (denied) return c.json(denied.body, denied.status);
     const ctx = c.get("ctx");
@@ -136,6 +142,9 @@ export function createOAuthRoutes(): Hono<OAuthEnv> {
 
   // POST /oauth/token - Token Exchange Endpoint
   app.post("/oauth/token", async (c) => {
+    // Story 1.11: an API key never mints credentials that would outlive it.
+    const keyRefused = refuseApiKeyCaller(c);
+    if (keyRefused) return keyRefused;
     let body: unknown;
     try {
       // Handles both JSON and application/x-www-form-urlencoded

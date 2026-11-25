@@ -878,6 +878,16 @@ function renderEntry(
   // Story 1.10: one suspension check per guard capability that has one, keyed by capability.
   const suspensionChecks = new Map<string, { name: string; suspension: string }>();
   if (identityGuard) use(identityGuard.pkg, identityGuard.export);
+  // Story 1.11: alternative identities (credentials other than the session), in install order.
+  const identityAlternatives: string[] = [];
+  // Every concrete path a guard is mounted at: alternative identities are mounted only there (story 1.11).
+  const guardedPaths: string[] = [];
+  for (const brick of ordered) {
+    const alternative = brick.manifest.worker.identityAlternative;
+    if (!alternative) continue;
+    use(brick.manifest.worker.package, alternative.export);
+    identityAlternatives.push(alternative.export);
+  }
   const guardOf = new Map<string, { pkg: string; export: string; suspension?: string }>();
   for (const brick of ordered) {
     const guard = brick.manifest.worker.guard;
@@ -912,6 +922,7 @@ function renderEntry(
         for (const path of route.guardPaths) {
           for (const concrete of expandGuardPath(path, entities)) {
             emitGuard(`app.use(${JSON.stringify(concrete)}, ${guard.export});`);
+            if (!guardedPaths.includes(concrete)) guardedPaths.push(concrete);
             // Story 1.10: right after the guard that resolved the workspace, refuse a suspended one.
             if (check) emitGuard(`app.use(${JSON.stringify(concrete)}, ${check});`);
           }
@@ -1078,12 +1089,7 @@ function renderEntry(
       '});',
       "// CSRF (Origin check on cookie-authenticated writes) and CORS allow-list (PX_ALLOWED_ORIGINS); signed webhook ingress is exempt.",
       `app.use(${JSON.stringify(API_PREFIX + "/*")}, createHttpGuard({ exemptPaths: ${JSON.stringify([API_PREFIX + "/webhooks/in/", API_PREFIX + "/webhooks/ingress/"])} }));`,
-      ...(identityGuard
-        ? [`app.use(${JSON.stringify(API_PREFIX + "/*")}, ${identityGuard.export});`]
-        : [
-            "// STUB IDENTITY (proof only): trusts a request header. Replace before real use.",
-            `app.use(${JSON.stringify(API_PREFIX + "/*")}, stubIdentity);`,
-          ]),
+      ...renderIdentity(identityGuard?.export, identityAlternatives, guardedPaths),
       "",
       ...(needsWorkspaceData ? renderWorkspaceDataPurge(workspaceData, workspaceObjects, purgeEntities) : []),
       ...(suspensionChecks.size > 0 ? renderSuspensionChecks([...suspensionChecks.values()]) : []),
@@ -1091,6 +1097,27 @@ function renderEntry(
       ...footerLines,
     ].join("\n") + "\n"
   );
+}
+
+/**
+ * The identity steps on the API routes. Without alternatives: the session identity (or the stub) alone, as before.
+ * With them (story 1.11): each alternative first, mounted only on the guarded paths (the routes that act inside one
+ * workspace), so on every other path their credential header is ignored. An alternative that resolves its credential
+ * sets the `authenticatedBy` marker (or refuses the request); the session identity is skipped only for a request
+ * carrying that marker.
+ */
+function renderIdentity(sessionExport: string | undefined, alternatives: string[], guardedPaths: string[]): string[] {
+  const all = JSON.stringify(API_PREFIX + "/*");
+  const session = sessionExport ?? "stubIdentity";
+  const lines = sessionExport ? [] : ["// STUB IDENTITY (proof only): trusts a request header. Replace before real use."];
+  if (alternatives.length === 0) return [...lines, `app.use(${all}, ${session});`];
+  return [
+    "// Alternative identities first, on the workspace-guarded paths only: a request carrying one of their credentials is",
+    "// resolved (or refused) there and skips the session identity; any other request goes on to the session identity.",
+    ...alternatives.flatMap((name) => guardedPaths.map((path) => `app.use(${JSON.stringify(path)}, ${name});`)),
+    ...lines,
+    `app.use(${all}, (c: any, next: any) => (c.get("authenticatedBy") ? next() : ${session}(c, next)));`,
+  ];
 }
 
 function isBinaryOperation(op: any): boolean {
