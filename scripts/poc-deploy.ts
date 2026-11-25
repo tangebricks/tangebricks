@@ -17,7 +17,7 @@ import { bundleWorker } from "../packages/deploy/src/bundle.ts";
 import { canonical, evaluateH10, runH10, withLeakScan } from "../packages/deploy/src/h10.ts";
 import type { H10Calls, H10Result } from "../packages/deploy/src/h10.ts";
 import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
-import { CredentialsError, createClient, createRedactor, fileKeyStore, fileStore, findSecrets, loadCredentials, loadOrCreateAccessKey, memoryKeyStore, memoryStore, migrationsFrom, newSuffix, openLedger, formatPlan, planDeploy, resourceNames } from "../packages/deploy/src/provisioner/index.ts";
+import { CredentialsError, createClient, createRedactor, fileKeyStore, fileStore, findSecrets, loadCredentials, loadOrCreateAccessKey, memoryKeyStore, memoryStore, migrationsFrom, newSuffix, openLedger, formatPlan, planDeploy, resourceNames, telemetryWebhookConfig } from "../packages/deploy/src/provisioner/index.ts";
 import { INVOICE_FLOW_BLUEPRINT } from "../test/support/blueprints.ts";
 import { OUT_DIR, writeProject } from "../test/support/emitted.ts";
 
@@ -109,14 +109,22 @@ if (existing) {
 const ledger = openLedger(store, () => newSuffix((n) => randomBytes(n)));
 const names = resourceNames(ledger.suffix);
 const accessKey = loadOrCreateAccessKey(fileKeyStore(join(stateDir, "access-key.txt")), (n) => randomBytes(n));
-const hide = createRedactor([credentials.token, credentials.accountId, accessKey]);
+// Story 1.17: when Studio's root PX_TELEMETRY_SECRET is in this environment, the Worker gets its project's derived
+// control-plane and webhook secrets (telemetryWebhookConfig), never the root itself. The project id is PX_PROJECT_ID, or
+// the deploy's script name; scripts/poc-graphs.ts derives the same control-plane secret to sign its runs.
+const rootSecret = process.env.PX_TELEMETRY_SECRET?.trim() ?? "";
+const telemetryWebhook = rootSecret
+  ? await telemetryWebhookConfig(process.env.PX_TELEMETRY_WEBHOOK_URL?.trim() || undefined, process.env.PX_PROJECT_ID?.trim() || names.script, rootSecret)
+  : undefined;
+const derivedSecrets = telemetryWebhook ? [rootSecret, telemetryWebhook.controlPlaneSecret, telemetryWebhook.signingSecret] : [];
+const hide = createRedactor([credentials.token, credentials.accountId, accessKey, ...derivedSecrets]);
 
 // ---- the plan, printed before anything is written. It reads the account with its own client (so the timed run's recorded calls are
 // untouched) and its duration is taken off the clock, so the measurement still covers only the deploy. A blocking plan stops here.
 {
   const started = performance.now();
   const built = await build("base");
-  const preflightClient = createClient({ credentials, fetch: (request) => fetch(request), now: clock, alsoHide: [accessKey] });
+  const preflightClient = createClient({ credentials, fetch: (request) => fetch(request), now: clock, alsoHide: [accessKey, ...derivedSecrets] });
   const plan = await planDeploy({ client: preflightClient, ledger, names, accessKey, bundle: built.bundle, migrations: built.migrations, compatibilityDate: COMPATIBILITY_DATE, lock: built.lock, catalog: catalog as never });
   out("plan (read-only, not timed):");
   for (const line of formatPlan(plan).split(/\r?\n/)) out(`  ${line}`);
@@ -132,7 +140,7 @@ const { calls, result: first } = await runH10({
   clock,
   commandStart: 0,
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
-  createClient: (now) => createClient({ credentials, fetch: (request) => fetch(request), now, alsoHide: [accessKey] }),
+  createClient: (now) => createClient({ credentials, fetch: (request) => fetch(request), now, alsoHide: [accessKey, ...derivedSecrets] }),
   names,
   ledger,
   accessKey,
@@ -144,10 +152,16 @@ const { calls, result: first } = await runH10({
   log: out,
   environment,
   lock: { identity: (variantBlueprint("base") as { identity?: string }).identity ?? "stub" },
+  ...(telemetryWebhook ? { telemetryWebhook } : {}),
 });
 
 // ---- writing the evidence: first in memory through the secret scan, then to disk, then the repositories are scanned
-const secrets = { token: credentials.token, accountId: credentials.accountId, accessKey };
+const secrets: Record<string, string> = {
+  token: credentials.token,
+  accountId: credentials.accountId,
+  accessKey,
+  ...(telemetryWebhook ? { rootSecret, controlPlaneSecret: telemetryWebhook.controlPlaneSecret, webhookSecret: telemetryWebhook.signingSecret } : {}),
+};
 const callsText = canonical(calls);
 const dir = join(root, "evidence", "deployed");
 mkdirSync(dir, { recursive: true });

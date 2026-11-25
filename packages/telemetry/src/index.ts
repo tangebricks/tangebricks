@@ -786,19 +786,49 @@ export async function signTelemetryPayload(
   return `sha256=${bytesToHex(new Uint8Array(sigBuffer))}`;
 }
 
+/** What a per-project derived secret is for (story 1.17). A secret derived for one purpose never verifies for another. */
+export type ProjectSecretPurpose = "control-plane" | "telemetry-webhook";
+
 /**
- * The secret one project's telemetry webhook is signed with (story 1.4): HMAC-SHA256(PX_TELEMETRY_SECRET,
- * "telemetry-webhook:" + projectId), hex. Studio verifies a webhook with the secret of the URL's project, so a payload
- * signed for project A is never accepted on project B's URL. Note: this isolates projects from each other only once
- * workers stop holding the root PX_TELEMETRY_SECRET; today a deployed Worker still needs the root secret for its
- * control-plane routes, so anyone holding it can derive any project's webhook secret (tracked in story 1.17).
+ * The secret project `projectId` uses for `purpose` (story 1.17): HMAC-SHA256(root, `${purpose}:${projectId}`), hex.
+ * Studio holds the root secret and derives the same value when it signs or verifies; a project's workers hold only their
+ * own derived values, never the root, so nothing a worker signs verifies for another project or another purpose. The
+ * `telemetry-webhook` derivation is byte-for-byte the story 1.4 `deriveProjectTelemetrySecret`.
  */
-export async function deriveProjectTelemetrySecret(rootSecret: string, projectId: string): Promise<string> {
+export async function deriveProjectSecret(rootSecret: string, projectId: string, purpose: ProjectSecretPurpose): Promise<string> {
   if (typeof projectId !== "string" || projectId.trim().length === 0) {
-    throw new Error("deriveProjectTelemetrySecret needs a projectId");
+    throw new Error("deriveProjectSecret needs a projectId");
   }
-  const mac = await signTelemetryPayload(`telemetry-webhook:${projectId}`, rootSecret);
+  if (purpose !== "control-plane" && purpose !== "telemetry-webhook") {
+    throw new Error(`deriveProjectSecret: unknown purpose "${String(purpose)}"`);
+  }
+  const mac = await signTelemetryPayload(`${purpose}:${projectId}`, rootSecret);
   return mac.slice("sha256=".length);
+}
+
+/** The secret one project's telemetry webhook is signed with: deriveProjectSecret(root, projectId, "telemetry-webhook"). */
+export async function deriveProjectTelemetrySecret(rootSecret: string, projectId: string): Promise<string> {
+  return deriveProjectSecret(rootSecret, projectId, "telemetry-webhook");
+}
+
+/** The fixed prefix of a telemetry webhook's signed string (story 1.17), so it never verifies as a control-plane request. */
+export const TELEMETRY_WEBHOOK_DOMAIN = "px-telemetry-webhook/v1";
+
+/** The string a telemetry webhook signature covers: `px-telemetry-webhook/v1\n${body}`. */
+export const telemetryWebhookCanonical = (bodyText: string) => `${TELEMETRY_WEBHOOK_DOMAIN}\n${bodyText}`;
+
+/** The `x-px-signature` value of one telemetry webhook body, signed over telemetryWebhookCanonical. */
+export async function signTelemetryWebhook(bodyText: string, secret: string): Promise<string> {
+  return signTelemetryPayload(telemetryWebhookCanonical(bodyText), secret);
+}
+
+/** Whether `signatureHeader` is the telemetry webhook signature of `bodyText` under `secret`. */
+export async function verifyTelemetryWebhook(
+  bodyText: string,
+  signatureHeader: string | null | undefined,
+  secret: string | null | undefined,
+): Promise<boolean> {
+  return verifyTelemetrySignature(telemetryWebhookCanonical(bodyText), signatureHeader, secret);
 }
 
 export async function verifyTelemetrySignature(
@@ -832,7 +862,7 @@ export async function verifyTelemetrySignature(
 // --- Control-plane signatures (story 1.1 scheme; story 1.4 puts the pull and data routes on it) -----------------------
 //
 // One signed request: header x-px-signed-at (epoch seconds) and x-px-signature, the HMAC-SHA256 of
-// `${METHOD}\n${path}\n${signedAt}\n${body}`, where `path` is the request's pathname together with its query string. A
+// `px-control-plane/v1\n${METHOD}\n${path}\n${signedAt}\n${body}` (story 1.17 adds the domain prefix), where `path` is the request's pathname together with its query string. A
 // signature therefore covers the method, every query parameter (the workspace a read names among them), the time and the
 // body: replaying it with another query, another body or after 300 s does not verify.
 
@@ -840,9 +870,15 @@ export const SIGNED_AT_HEADER = "x-px-signed-at";
 /** How far a signed request's timestamp may be from the verifier's clock, either way. */
 export const SIGNATURE_WINDOW_SECONDS = 300;
 
-/** What a control-plane signature covers: the method, the path with its query string, the signing time and the body. */
+/** The fixed prefix of every control-plane signed string (story 1.17): domain separation from the webhook signature. */
+export const CONTROL_PLANE_DOMAIN = "px-control-plane/v1";
+
+/**
+ * What a control-plane signature covers: a fixed domain prefix, the method, the path with its query string, the signing
+ * time and the body. Built here only, so every signed route moves together.
+ */
 export const controlPlaneCanonical = (method: string, path: string, signedAt: string, body: string) =>
-  `${method.toUpperCase()}\n${path}\n${signedAt}\n${body}`;
+  `${CONTROL_PLANE_DOMAIN}\n${method.toUpperCase()}\n${path}\n${signedAt}\n${body}`;
 
 /** The signed path of a URL: its pathname and its whole query string, exactly as the URL serialises them. */
 export function controlPlanePath(url: URL | string): string {
@@ -908,6 +944,129 @@ export async function checkControlPlaneSignature(
   return valid
     ? null
     : { status: 401, code: "UNAUTHORIZED_TELEMETRY_SIGNATURE", message: "Missing or invalid X-Px-Signature" };
+}
+
+// --- One-time request ids (story 1.17) ---------------------------------------------------------------------------------
+//
+// The routes that execute bricks inline (/__px/rehearse, /__px/runs, /__px/runs/rerun) take a `requestId` (a UUID) in
+// their signed body. It is recorded in px_control_requests before any executor runs; a second use of the same id is
+// refused with 409 DUPLICATE_REQUEST, so a captured request replayed inside the 300 s window executes (and debits) once.
+
+/** A control-plane request id: a UUID. */
+export const CONTROL_REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Rows older than this may be pruned: far longer than the signature window, so a pruned id can no longer verify. */
+export const CONTROL_REQUEST_RETENTION_MS = 60 * 60 * 1000;
+
+export const PX_CONTROL_REQUESTS_DDL = `CREATE TABLE IF NOT EXISTS px_control_requests (
+  request_id TEXT PRIMARY KEY,
+  path TEXT NOT NULL,
+  workspace_id TEXT,
+  created_at INTEGER NOT NULL
+)`;
+
+/** Pruning runs on about one claim in this many, so most claims are a single insert. */
+export const CONTROL_REQUEST_PRUNE_ONE_IN = 50;
+
+const ensuredControlRequestDbs = new WeakSet<object>();
+
+/** Creates px_control_requests and its created_at index if missing (idempotent, like the other px_* tables). */
+export async function ensureControlRequestsTable(db: D1Like): Promise<void> {
+  if (ensuredControlRequestDbs.has(db as object)) return;
+  await db.prepare(PX_CONTROL_REQUESTS_DDL).run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_px_control_requests_created ON px_control_requests(created_at)").run();
+  ensuredControlRequestDbs.add(db as object);
+}
+
+/**
+ * Records `requestId` as used. True when this is its first use; false when it was already recorded (a replay). Rows
+ * older than CONTROL_REQUEST_RETENTION_MS (1 hour) are pruned on the way, on about one claim in fifty.
+ */
+export async function claimControlRequest(
+  db: D1Like,
+  claim: { requestId: string; path: string; workspaceId?: string | null; nowMs?: number; prune?: boolean },
+): Promise<boolean> {
+  await ensureControlRequestsTable(db);
+  const nowMs = claim.nowMs ?? Date.now();
+  const requestId = claim.requestId.toLowerCase();
+  // Occasional, index-backed pruning (about one claim in CONTROL_REQUEST_PRUNE_ONE_IN); `prune` forces or skips it.
+  if (claim.prune ?? Math.random() < 1 / CONTROL_REQUEST_PRUNE_ONE_IN) {
+    try {
+      await db.prepare("DELETE FROM px_control_requests WHERE created_at < ?1").bind(nowMs - CONTROL_REQUEST_RETENTION_MS).run();
+    } catch {
+      // pruning is best effort
+    }
+  }
+  try {
+    const result = await db
+      .prepare("INSERT INTO px_control_requests (request_id, path, workspace_id, created_at) VALUES (?1, ?2, ?3, ?4)")
+      .bind(requestId, claim.path, claim.workspaceId ?? null, nowMs)
+      .run();
+    if (result && typeof result.meta?.changes === "number" && result.meta.changes === 0) return false;
+    return true;
+  } catch (error) {
+    if (/UNIQUE|PRIMARY KEY|constraint/i.test(error instanceof Error ? error.message : String(error))) return false;
+    throw error;
+  }
+}
+
+/**
+ * The checks every executing control-plane route makes before anything runs (story 1.17): the control-plane signature
+ * (method, path, time, body), a JSON body with a UUID `requestId`, and the id's first use. Returns the parsed body, or the
+ * response that refuses the request.
+ */
+export async function admitExecutingControlRequest(
+  request: Request,
+  options: { secret: string | null | undefined; rawBody: string; db: D1Like | undefined; nowMs?: number },
+): Promise<{ ok: true; body: unknown } | { ok: false; response: Response }> {
+  const nowMs = options.nowMs ?? Date.now();
+  const path = controlPlanePath(new URL(request.url));
+  const refusal = await checkControlPlaneSignature(request, { secret: options.secret, body: options.rawBody, nowMs, path });
+  if (refusal) return { ok: false, response: refusalResponse(refusal) };
+  let body: unknown;
+  try {
+    body = JSON.parse(options.rawBody);
+  } catch {
+    return {
+      ok: false,
+      response: Response.json({ error: { code: "INVALID_JSON", message: "Request body must be valid JSON" } }, { status: 400 }),
+    };
+  }
+  const requestId = (body as { requestId?: unknown } | null)?.requestId;
+  if (typeof requestId !== "string" || !CONTROL_REQUEST_ID_PATTERN.test(requestId)) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: { code: "BAD_REQUEST_ID", message: "the signed body must carry a requestId (a UUID), used once" } },
+        { status: 400 },
+      ),
+    };
+  }
+  if (!options.db) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: { code: "NO_REQUEST_LEDGER", message: "this route needs a database to record its one-time request ids" } },
+        { status: 503 },
+      ),
+    };
+  }
+  const ws = (body as { workspaceId?: unknown }).workspaceId;
+  const fresh = await claimControlRequest(options.db, {
+    requestId,
+    path: new URL(request.url).pathname,
+    workspaceId: typeof ws === "string" ? ws : null,
+    nowMs,
+  });
+  if (!fresh) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: { code: "DUPLICATE_REQUEST", message: "this requestId has already been used; nothing was executed" } },
+        { status: 409 },
+      ),
+    };
+  }
+  return { ok: true, body };
 }
 
 const refusalResponse = (refusal: ControlPlaneRefusal) =>
@@ -1168,6 +1327,8 @@ export async function ensureTelemetryTables(db: D1Like): Promise<void> {
   }
 
   await db.batch(PX_TELEMETRY_SCOPE_INDEX_DDL.map((statement) => db.prepare(statement)));
+  // Story 1.17: the one-time request ids of the executing control-plane routes live beside the telemetry tables.
+  await ensureControlRequestsTable(db);
   ensuredTelemetryDbs.add(db as object);
 }
 

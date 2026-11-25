@@ -34,7 +34,7 @@ In your project blueprint (`blueprint.json`), add the `observability` configurat
 - **`logpush` (boolean, optional):** Enables Logpush ingestion for the Worker (`logpush: true`) in `wrangler.jsonc` and upload metadata.
 - **`alerts` (object, optional):**
   - **`webhookSecret` (string, optional):** Environment variable or secret name holding the destination webhook URL (defaults to `"PX_ALERT_WEBHOOK_URL"`).
-  - **`signingSecret` (string, optional):** Environment variable holding the HMAC secret used to sign alert POSTs (defaults to checking `PX_ALERT_SIGNING_SECRET`, `PX_ALERT_SECRET`, or `PX_TELEMETRY_SECRET`).
+  - **`signingSecret` (string, optional):** Environment variable holding the HMAC secret used to sign alert POSTs (defaults to checking `PX_ALERT_SIGNING_SECRET`, then `PX_ALERT_SECRET`; since story 1.17 the control-plane `PX_TELEMETRY_SECRET` is never used to sign alerts).
 
 When `alerts` is specified, the assembler emits:
 - `wrangler.jsonc`: configures `tail_consumers: [{ service: "<project>-tail" }]`.

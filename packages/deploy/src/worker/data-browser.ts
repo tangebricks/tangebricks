@@ -1,5 +1,5 @@
 import type { D1Like } from "@poc/sdk";
-import { checkControlPlaneSignature } from "@poc/telemetry";
+import { CONTROL_REQUEST_ID_PATTERN, checkControlPlaneSignature, claimControlRequest } from "@poc/telemetry";
 
 export const EXCLUDED_DATA_BROWSER_TABLES = new Set<string>([
   "px_connections",
@@ -13,6 +13,8 @@ export const EXCLUDED_DATA_BROWSER_TABLES = new Set<string>([
   "px_http_rollups",
   "px_queue_metrics",
   "px_schedules",
+  // Story 1.17: the one-time request ids of the signed control-plane routes (keyed by workspace, but not app data).
+  "px_control_requests",
   "deploy_tokens",
   "deploy_token_audit_log",
   "data_browser_audit_log",
@@ -355,6 +357,40 @@ export async function discoverBrowsableTables(
   }
 
   return tables;
+}
+
+/**
+ * Whether `workspaceId` has any row in the data store's browsable tables (or is an id in its `workspaces` table). One
+ * `SELECT 1 ... LIMIT 1` per table, so it holds for any workspace, not only the first hundred a listing would return
+ * (story 1.17: Studio's preview-workspace check).
+ */
+export async function workspaceHasBrowsableData(db: D1Like, workspaceId: string): Promise<boolean> {
+  const ws = workspaceId.trim();
+  if (!ws) return false;
+  for (const table of await discoverBrowsableTables(db)) {
+    try {
+      const hit = await db
+        .prepare(`SELECT 1 AS hit FROM "${table.tableName}" WHERE "workspace_id" = ?1 LIMIT 1`)
+        .bind(ws)
+        .first<{ hit: number }>();
+      if (hit) return true;
+    } catch {
+      // a table that cannot be read names no workspace
+    }
+  }
+  try {
+    const wsTable = await db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'workspaces' LIMIT 1")
+      .bind()
+      .first<{ name: string }>();
+    if (wsTable?.name === "workspaces") {
+      const hit = await db.prepare("SELECT 1 AS hit FROM workspaces WHERE id = ?1 LIMIT 1").bind(ws).first<{ hit: number }>();
+      if (hit) return true;
+    }
+  } catch {
+    // a workspaces table of another shape names no workspace
+  }
+  return false;
 }
 
 export async function listBrowsableWorkspaces(
@@ -858,6 +894,29 @@ export async function handleDataBrowserRequest(
   });
   if (refusal) {
     return json(refusal.status, { error: { code: refusal.code, message: refusal.message } });
+  }
+
+  // Story 1.17: a signed write carries a one-time `requestId` (a UUID) in its signed query string, claimed in
+  // px_control_requests before anything is written, so a captured write replayed inside the window is 409 and writes
+  // nothing.
+  if (!isReadMethod) {
+    const requestId = url.searchParams.get("requestId") ?? "";
+    if (!CONTROL_REQUEST_ID_PATTERN.test(requestId)) {
+      return json(400, {
+        error: { code: "BAD_REQUEST_ID", message: "a signed write needs a requestId (a UUID) in its query string, used once" },
+      });
+    }
+    const fresh = await claimControlRequest(options.db, {
+      requestId,
+      path: url.pathname,
+      workspaceId: signedWorkspaceOf(url) || null,
+      nowMs: (options.clock ?? Date.now)(),
+    });
+    if (!fresh) {
+      return json(409, {
+        error: { code: "DUPLICATE_REQUEST", message: "this requestId has already been used; nothing was written" },
+      });
+    }
   }
 
   const secretColSet = new Set<string>();

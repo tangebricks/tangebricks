@@ -1,10 +1,9 @@
 import { describe, expect, test } from "vitest";
 import type { D1Like, D1Statement, Executor, Executors } from "@poc/sdk";
 import {
-  TELEMETRY_SIGNATURE_HEADER,
   insertStepEvent,
   listStepEventsForRun,
-  signTelemetryPayload,
+  signControlPlaneRequest,
   upsertRunRecord,
 } from "@poc/telemetry";
 import {
@@ -252,6 +251,7 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
     shouldFailNodeB = false;
 
     const rerunPayload = JSON.stringify({
+      requestId: crypto.randomUUID(),
       runId: "run_2_retry_from_b",
       sourceRunId: "run_1_failed",
       fromNodeId: "node_b",
@@ -267,13 +267,12 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
         edges: graph.edges,
       },
     });
-    const sig = await signTelemetryPayload(rerunPayload, secret);
 
     const rerunReq = new Request("http://runtime.internal/__px/runs/rerun", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        [TELEMETRY_SIGNATURE_HEADER]: sig,
+        ...(await signControlPlaneRequest(secret, "POST", "/__px/runs/rerun", rerunPayload)),
       },
       body: rerunPayload,
     });
@@ -366,6 +365,7 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
     });
 
     const payload = JSON.stringify({
+      requestId: crypto.randomUUID(),
       sourceRunId: "run_truncated_upstream",
       fromNodeId: "node_b",
       workflowId: "wf_trunc",
@@ -386,13 +386,12 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
         ],
       },
     });
-    const sig = await signTelemetryPayload(payload, secret);
 
     const req = new Request("http://runtime.internal/__px/runs/rerun", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        [TELEMETRY_SIGNATURE_HEADER]: sig,
+        ...(await signControlPlaneRequest(secret, "POST", "/__px/runs/rerun", payload)),
       },
       body: payload,
     });

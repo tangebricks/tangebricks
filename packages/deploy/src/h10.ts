@@ -6,7 +6,7 @@ import type { Observation } from "./scripted-check.ts";
 import { CloudflareApiError } from "./provisioner/cloudflare.ts";
 import type { CallRecord, Client } from "./provisioner/cloudflare.ts";
 import { UploadFailed, deploy, isWriteCall, readAccountState } from "./provisioner/deploy.ts";
-import type { AccountState, DeployResult, Migration } from "./provisioner/deploy.ts";
+import type { AccountState, DeployResult, Migration, TelemetryWebhookConfig } from "./provisioner/deploy.ts";
 import type { Ledger } from "./provisioner/ledger.ts";
 import type { ResourceNames } from "./provisioner/names.ts";
 
@@ -117,6 +117,8 @@ export interface H10Deps {
   /** Where this deploy goes (default dev) and the project's lock; production refuses a stub identity. */
   environment?: "dev" | "preview" | "production";
   lock?: { identity?: string };
+  /** Story 1.17: the project's derived control-plane and webhook secrets (telemetryWebhookConfig), bound to the Worker. */
+  telemetryWebhook?: TelemetryWebhookConfig;
 }
 
 const DEFAULT_POLL_TIMEOUT_MS = 700_000;
@@ -170,6 +172,7 @@ export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: 
     nowIso: deps.nowIso,
     ...(deps.environment ? { environment: deps.environment } : {}),
     ...(deps.lock ? { lock: deps.lock } : {}),
+    ...(deps.telemetryWebhook ? { telemetryWebhook: deps.telemetryWebhook } : {}),
   });
   const reading = async (label: string) => readAccountState(newClient(label), deps.names);
 

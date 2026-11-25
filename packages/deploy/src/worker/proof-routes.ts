@@ -33,15 +33,21 @@ import { createDeployBricks } from "./catalog-bricks.ts";
 //                             Workflow with params {graphId, workspaceId, payload} under the instance id requestId (a UUID);
 //                             returns 202 {id, workspaceId}. A requestId that was already used is 409 DUPLICATE_REQUEST and
 //                             nothing new runs, so a replayed request cannot run (or debit) twice. The signed body's
-//                             workspaceId is the run's verified workspace: it is whatever the signer put there. Studio
-//                             authorises its caller for the project before it signs; the workspace inside that project's
-//                             preview data is the one the Studio client names. A body without workspaceId gets 400
+//                             workspaceId is the run's verified workspace: it is whatever the signer put there (Studio
+//                             does not sign this route; its preview-workspace check is on its own in-process /runs, /run
+//                             and test-step). A body without workspaceId gets 400
 //                             NO_WORKSPACE. The signing secret must be PX_TELEMETRY_SECRET itself, distinct from the shared
 //                             access key, so holding the access key alone can never start a run for a workspace it chooses.
 //
 // The control-plane signature on these two routes (story 1.1): header x-px-signed-at (epoch seconds) and x-px-signature, the
-// HMAC-SHA256 of `${method}\n${path}\n${signedAt}\n${body}`. A timestamp more than 300 s from the Worker's clock is refused,
-// and a signature made for another method, path or body does not verify.
+// HMAC-SHA256 of `px-control-plane/v1\n${method}\n${path}\n${signedAt}\n${body}` (the domain prefix is story 1.17's). A
+// timestamp more than 300 s from the Worker's clock is refused, and a signature made for another method, path or body does
+// not verify. The Worker's PX_TELEMETRY_SECRET is its project's derived control-plane secret (story 1.17), never Studio's
+// root secret, so a signature made for another project does not verify here.
+//
+// The routes that execute bricks inline (story 1.17): POST /__px/rehearse, /__px/runs and /__px/runs/rerun take the same
+// signature and a one-time `requestId` (a UUID) in the signed body, recorded in px_control_requests before anything runs;
+// a second use is 409 DUPLICATE_REQUEST and executes nothing. No body-only signature is accepted on them.
 //
 // The read routes (story 1.4): GET /__px/events, /__px/logs, /__px/metrics and every /__px/data/* route take the same
 // signature, made with PX_TELEMETRY_SECRET only (never the shared access key), where `path` is the pathname together with
@@ -190,8 +196,10 @@ export function createProofRoutes(
           ? env.PX_TELEMETRY_WEBHOOK_URL
           : undefined;
 
-      // The routes that execute bricks (rehearse, runs, rerun) accept only a signature made with PX_TELEMETRY_SECRET itself,
-      // never the shared access key: the signed body names the workspace, so the key alone must not be able to name one.
+      // The routes that execute bricks (rehearse, runs, rerun) accept only the control-plane signature made with
+      // PX_TELEMETRY_SECRET itself (the project's derived control-plane secret, story 1.17), never the shared access key:
+      // the signed body names the workspace, so the key alone must not be able to name one. Each body carries a one-time
+      // requestId recorded in px_control_requests before anything runs, so a replay gets 409 and executes nothing.
       const executionSecret = controlPlaneSecret(env) ?? undefined;
       const rehearsed = await handleStepRehearsalRequest(request, {
         registry,
@@ -200,6 +208,7 @@ export function createProofRoutes(
         db: env.DB,
         pxEnv,
         telemetrySecret: executionSecret,
+        clock,
       });
       if (rehearsed) return rehearsed;
 
@@ -210,6 +219,7 @@ export function createProofRoutes(
         db: env.DB,
         pxEnv,
         telemetrySecret: executionSecret,
+        clock,
         telemetryWebhookUrl,
       });
       if (ran) return ran;
@@ -221,6 +231,7 @@ export function createProofRoutes(
         db: env.DB,
         pxEnv,
         telemetrySecret: executionSecret,
+        clock,
         telemetryWebhookUrl,
       });
       if (reran) return reran;

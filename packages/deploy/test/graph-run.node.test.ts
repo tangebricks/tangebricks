@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import {
-  TELEMETRY_SIGNATURE_HEADER,
   runGraph,
   signControlPlaneRequest,
-  signTelemetryPayload,
   stepPolicyFor,
 } from "@poc/runtime";
 import type { Graph } from "@poc/runtime";
@@ -427,6 +425,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
 
     // 1. POST /__px/rehearse
     const rehearseBody = JSON.stringify({
+      requestId: crypto.randomUUID(),
       workflowId: "g1",
       revision: 2,
       nodeId: "pa",
@@ -435,13 +434,12 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       input: PAYLOAD,
       workspaceId: RUN_WS,
     });
-    const rehearseSig = await signTelemetryPayload(rehearseBody, secret);
     const rehearseRes = await routes(
       new Request("http://deployed.invalid/__px/rehearse", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: rehearseSig,
+          ...(await signControlPlaneRequest(secret, "POST", "/__px/rehearse", rehearseBody)),
         },
         body: rehearseBody,
       }),
@@ -465,6 +463,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       edges: [wire("t", "out", "pa", "in"), wire("pa", "out", "bad", "in")],
     };
     const runBody = JSON.stringify({
+      requestId: crypto.randomUUID(),
       runId: "run_px_route_failed_1",
       workflowId: "g_boom",
       revision: 1,
@@ -473,13 +472,12 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       workspaceId: RUN_WS,
       graph: boomGraph,
     });
-    const runSig = await signTelemetryPayload(runBody, secret);
     const runRes = await routes(
       new Request("http://deployed.invalid/__px/runs", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: runSig,
+          ...(await signControlPlaneRequest(secret, "POST", "/__px/runs", runBody)),
         },
         body: runBody,
       }),
@@ -499,6 +497,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       edges: [wire("t", "out", "pa", "in"), wire("pa", "out", "bad", "in")],
     };
     const rerunBody = JSON.stringify({
+      requestId: crypto.randomUUID(),
       sourceRunId: "run_px_route_failed_1",
       runId: "run_px_route_rerun_2",
       fromNodeId: "bad",
@@ -507,13 +506,12 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       workspaceId: RUN_WS,
       graph: fixedGraph,
     });
-    const rerunSig = await signTelemetryPayload(rerunBody, secret);
     const rerunRes = await routes(
       new Request("http://deployed.invalid/__px/runs/rerun", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: rerunSig,
+          ...(await signControlPlaneRequest(secret, "POST", "/__px/runs/rerun", rerunBody)),
         },
         body: rerunBody,
       }),

@@ -11,13 +11,11 @@ import {
 } from "@poc/runtime";
 import {
   REDACTED_PLACEHOLDER,
-  TELEMETRY_SIGNATURE_HEADER,
   TelemetryWsFrameSchema,
   ensureTelemetryTables,
   handleTelemetryEventsPullRequest,
   redactTelemetryPayload,
   signControlPlaneRequest,
-  signTelemetryPayload,
 } from "../src/index.ts";
 import type { StepEvent, TelemetryWebhookPayload, TelemetryWsFrame } from "../src/index.ts";
 
@@ -223,6 +221,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
 
     // 1. Run a passing workflow via POST /__px/runs
     const passingRunPayload = JSON.stringify({
+      requestId: crypto.randomUUID(),
       runId: "run_canary_pass",
       project: "cp4-canary-proj",
       workflowId: "wf_canary",
@@ -255,16 +254,12 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
         ],
       },
     });
-    const passingSig = await signTelemetryPayload(
-      passingRunPayload,
-      telemetrySecret,
-    );
     const passingRunRes = await handleWorkflowRunRequest(
       new Request("http://preview.local/__px/runs", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: passingSig,
+          ...(await signControlPlaneRequest(telemetrySecret, "POST", "/__px/runs", passingRunPayload)),
         },
         body: passingRunPayload,
       }),
@@ -285,6 +280,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
 
     // 2. Run a failing workflow (echoing all secrets in its thrown Error) via POST /__px/runs
     const failingRunPayload = JSON.stringify({
+      requestId: crypto.randomUUID(),
       runId: "run_canary_fail",
       project: "cp4-canary-proj",
       workflowId: "wf_canary",
@@ -315,16 +311,12 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
         ],
       },
     });
-    const failingSig = await signTelemetryPayload(
-      failingRunPayload,
-      telemetrySecret,
-    );
     const failingRunRes = await handleWorkflowRunRequest(
       new Request("http://preview.local/__px/runs", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: failingSig,
+          ...(await signControlPlaneRequest(telemetrySecret, "POST", "/__px/runs", failingRunPayload)),
         },
         body: failingRunPayload,
       }),
@@ -345,6 +337,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
 
     // 3. Run a single-node Test Step rehearsal (both pass and fail) via POST /__px/rehearse
     const rehearsePassPayload = JSON.stringify({
+      requestId: crypto.randomUUID(),
       workspaceId: "ws_canary",
       workflowId: "wf_canary",
       revision: 1,
@@ -357,16 +350,12 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
         "X-Api-Key": CANARY_HTTP_X_API_KEY,
       },
     });
-    const rehearsePassSig = await signTelemetryPayload(
-      rehearsePassPayload,
-      telemetrySecret,
-    );
     const rehearsePassRes = await handleStepRehearsalRequest(
       new Request("http://preview.local/__px/rehearse", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: rehearsePassSig,
+          ...(await signControlPlaneRequest(telemetrySecret, "POST", "/__px/rehearse", rehearsePassPayload)),
         },
         body: rehearsePassPayload,
       }),
@@ -384,6 +373,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
     const rehearsePassHttpText = await rehearsePassRes!.text();
 
     const rehearseFailPayload = JSON.stringify({
+      requestId: crypto.randomUUID(),
       workspaceId: "ws_canary",
       workflowId: "wf_canary",
       revision: 1,
@@ -394,16 +384,12 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
         Authorization: `Bearer ${CANARY_HTTP_AUTH}`,
       },
     });
-    const rehearseFailSig = await signTelemetryPayload(
-      rehearseFailPayload,
-      telemetrySecret,
-    );
     const rehearseFailRes = await handleStepRehearsalRequest(
       new Request("http://preview.local/__px/rehearse", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: rehearseFailSig,
+          ...(await signControlPlaneRequest(telemetrySecret, "POST", "/__px/rehearse", rehearseFailPayload)),
         },
         body: rehearseFailPayload,
       }),
@@ -422,6 +408,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
 
     // 4. Re-run the failed run from `step_probe` via POST /__px/runs/rerun
     const rerunPayload = JSON.stringify({
+      requestId: crypto.randomUUID(),
       workspaceId: "ws_canary",
       runId: "run_canary_rerun_ok",
       sourceRunId: "run_canary_fail",
@@ -449,13 +436,12 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
         ],
       },
     });
-    const rerunSig = await signTelemetryPayload(rerunPayload, telemetrySecret);
     const rerunRes = await handleWorkflowRerunRequest(
       new Request("http://preview.local/__px/runs/rerun", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: rerunSig,
+          ...(await signControlPlaneRequest(telemetrySecret, "POST", "/__px/runs/rerun", rerunPayload)),
         },
         body: rerunPayload,
       }),

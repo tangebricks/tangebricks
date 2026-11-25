@@ -41,6 +41,7 @@
 | 1.14 | binary-assets: upload size precheck and quota, Content-Type allowlist, filename sanitising, safe download headers, bounded paging (filed from PROPOSED-8) |
 | 1.15 | integration-connections OAuth hardening: provider account data wins, `redirect_uri` allowlist, CSRF guard on the redirecting connect, OAuth state bound to the user (filed from PROPOSED-11) |
 | 1.16 | studio-web: no production test hooks or fake values: store, bootstrap and `?benchmark=200` hooks gated on `import.meta.env.DEV` and stripped from `vite build`, BYOC inputs start empty, server hrefs http(s)-only (filed from PROPOSED-12) |
+| 1.17 | Control-plane signing everywhere: one domain-separated, replay-resistant signature (method, path, time, body, one-time `requestId`) on every signed route, a separate webhook signature domain, per-project per-purpose derived secrets (workers never hold the root), Studio runs confined to the project's own preview workspaces, Case-A connections confined to the run's workspace or the project-shared `default` |
 
 `PROPOSED-n` ids are new tickets defined in [Proposed tickets](#proposed-tickets). They are not filed yet.
 
@@ -117,14 +118,14 @@ Every audit risk appears once.
 | 17 | Medium | Non-secure cookies, unhashed session tokens, no CSRF/CORS policy | 0.14 |
 | 18 | Medium | No rate limiting on login, signup, wallet or webhooks | 0.21 |
 | 19 | Medium | JWTs without `exp` accepted | 0.14 |
-| 20 | Medium | `poc_graphs` and telemetry have no tenant dimension | 0.10 (`poc_graphs`), 1.4 (telemetry) |
+| 20 | Medium | `poc_graphs` and telemetry have no tenant dimension | 0.10 (`poc_graphs`), 1.4 (telemetry), 1.17 (per-project signing keys; replay-resistant executing routes) |
 | 21 | Medium | Unauthenticated notification create; spoofable audit actor | 0.6 |
 | 22 | Medium | Workspace delete leaves other bricks' rows; suspension never enforced | 1.10 |
 | 23 | Low | No Dependabot/Renovate, no audit step in CI | 0.2 |
 | 24 | Low | API keys issued but nothing authenticates with them | 1.11 |
 | R-A | Critical | Connection-vault key falls back to a source constant (`runtime/src/connections.ts:4`) | 0.8 |
 | R-B | High | Placeholder executors and fabricated HTTP 200 make workflows "succeed" | 0.9 |
-| R-C | High | Runtime workspace defaults to `ws_default`; `core.batch` takes workspace from payload | 1.1 (+0.4) |
+| R-C | High | Runtime workspace defaults to `ws_default`; `core.batch` takes workspace from payload | 1.1 (+0.4); 1.17 (Studio preview workspace bound to the project; Case-A connection lookup confined to the run's workspace) |
 | R-D | High | Unrestricted `fetch` in `core.http_request` (SSRF) | 0.8 |
 | R-E | Critical | MCP endpoint guarded by one shared bearer, no per-project authorisation (`mcp.ts:84-141`) | 0.10 |
 | R-F | High | `deploy_apply` reports fabricated deploy success | 0.9 |

@@ -8,7 +8,7 @@ import {
   ensureTelemetryTables,
   getRunRecord,
   listStepEventsForRun,
-  signTelemetryPayload,
+  signControlPlaneRequest,
 } from "@poc/telemetry";
 import {
   GraphWorkflow,
@@ -52,17 +52,18 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
     },
   ): Promise<Response> {
     // The signer always names the verified workspace (story 1.1); a call that names none uses the test's preview workspace.
-    const rawBody = JSON.stringify({ workspaceId: "ws_test", ...payload });
-    const sig =
-      opts?.signatureOverride !== undefined
-        ? opts.signatureOverride
-        : await signTelemetryPayload(rawBody, TELEMETRY_SECRET);
+    // Story 1.17: the control-plane signature over method, path, time and body, with a one-time requestId.
+    const rawBody = JSON.stringify({ requestId: crypto.randomUUID(), workspaceId: "ws_test", ...payload });
+    const signed = await signControlPlaneRequest(TELEMETRY_SECRET, "POST", "/__px/rehearse", rawBody);
 
     const headers: Record<string, string> = {
       "content-type": "application/json",
+      ...signed,
     };
-    if (sig !== null) {
-      headers[TELEMETRY_SIGNATURE_HEADER] = sig;
+    if (opts?.signatureOverride === null) {
+      delete headers[TELEMETRY_SIGNATURE_HEADER];
+    } else if (opts?.signatureOverride !== undefined) {
+      headers[TELEMETRY_SIGNATURE_HEADER] = opts.signatureOverride;
     }
 
     const req = new Request("http://preview-worker.local/__px/rehearse", {
@@ -293,15 +294,15 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
       config: { apiSecretWidget: "whsec_widget_canary_554433" },
       input: { userId: "u_1" },
       workspaceId: "ws_test",
+      requestId: crypto.randomUUID(),
     });
-    const sig = await signTelemetryPayload(payload, TELEMETRY_SECRET);
 
     const res = await handleStepRehearsalRequest(
       new Request("http://preview-worker.local/__px/rehearse", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: sig,
+          ...(await signControlPlaneRequest(TELEMETRY_SECRET, "POST", "/__px/rehearse", payload)),
         },
         body: payload,
       }),

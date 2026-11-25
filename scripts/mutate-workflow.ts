@@ -85,7 +85,8 @@ const cases: Case[] = [
   one("the timed writes are not written", ROUTES, "await writeScratch(env.DB, LATENCY_ROW, JSON.stringify({ write: i }));", "await Promise.resolve(JSON.stringify({ write: i }));"),
   one("the route shows a graph stored for any workspace", ROUTES, "WHERE workspace_id = ?1 AND id = ?2`).bind(APP_WORKSPACE, id)", "WHERE id = ?2`).bind(APP_WORKSPACE, id)"),
   one("POST /poc/runs starts a run with the shared key alone (story 1.1)", ROUTES, 'return json(403, { error: { code: "NO_VERIFIED_WORKSPACE"', 'if (workflow) await workflow.create({ params: { graphId: "x", workspaceId: "ws-a" } });\n      return json(403, { error: { code: "NO_VERIFIED_WORKSPACE"'),
-  one("the signed run route does not check the signature (story 1.1)", ROUTES, "if (!(await verifyTelemetrySignature(rawBody, request.headers.get(TELEMETRY_SIGNATURE_HEADER), secret))) {", "if (false as boolean) {"),
+  one("the signed run route does not check the signature (story 1.1)", ROUTES, "const unsigned = await refuseUnsignedControlPlane(request, WORKFLOW_RUNS_PATH, rawBody, secret, nowMs);\n  if (unsigned) return unsigned;\n", ""),
+  one("the executing routes take a replayed requestId (story 1.17)", "packages/telemetry/src/index.ts", "  if (!fresh) {\n    return {", "  if (false as boolean) {\n    return {"),
   one("the access key alone can sign a run (story 1.1)", ROUTES, 'if (typeof env.POC_ACCESS_KEY === "string" && secret === env.POC_ACCESS_KEY) return null;', ""),
   one("any graph id is accepted when reading", ROUTES, 'if (!ID_PATTERN.test(id)) return json(400, { error: "graph ids', 'if (false as boolean) return json(400, { error: "graph ids'),
   one("any graph id is accepted when starting a run", ROUTES, 'if (typeof body?.graphId !== "string" || !ID_PATTERN.test(body.graphId))', 'if (typeof body?.graphId !== "string")'),
@@ -103,7 +104,7 @@ const cases: Case[] = [
   one("the shipped bundle runs no real executors (story 1.1)", BUNDLE, "`const bricks = createDeployBricks({ ${deployOptions} });`", "`const bricks = { registry: new Map(), executors: new Map() };`"),
 ];
 
-const suites = ["packages/deploy/test/graph-run", "packages/deploy/test/graph-workflow", "packages/deploy/test/poc-graphs-workspace", "packages/deploy/test/bundle", "packages/deploy/test/gate"];
+const suites = ["packages/deploy/test/graph-run", "packages/deploy/test/graph-workflow", "packages/deploy/test/poc-graphs-workspace", "packages/deploy/test/bundle", "packages/deploy/test/gate", "packages/deploy/test/executing-routes-replay.node.test.ts", "packages/telemetry/test/control-plane-v1.test.ts"];
 function run(): string {
   const result = spawnSync(process.execPath, [join(root, "node_modules", "vitest", "vitest.mjs"), "run", ...suites], { cwd: root, encoding: "utf8", timeout: 300_000 });
   const out = (result.stdout + result.stderr).replace(/\x1B\[[0-9;]*m/g, "");

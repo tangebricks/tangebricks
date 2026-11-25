@@ -377,4 +377,45 @@ describe("Story 10.2 — OAuth2 PKCE S256 Start/Callback, Case A Connections Vau
     );
     expect(resStart.status).toBe(403);
   });
+
+  test("5. Story 1.17: a connection's workspace is trimmed and must be `default` or one of the project's own workspaces", async () => {
+    const { aliceCookie, orgId } = await seedHumanOwnerAndAgentToken();
+    const create = (ref: string, workspaceId: string) =>
+      callStudio("/api/projects/oauth-proj/connections", {
+        cookie: aliceCookie,
+        orgId,
+        body: { ref, app: "resend", authType: "apiKey", value: "re_test_api_key_s117_0001", workspaceId },
+      });
+    const shared = await create("sec_s117_default", " default ");
+    expect(shared.status).toBe(200);
+    const stored = await envDb
+      .prepare("SELECT workspace_id FROM px_connections WHERE ref = ?")
+      .bind("sec_s117_default")
+      .first<{ workspace_id: string }>();
+    expect(stored?.workspace_id).toBe("default");
+
+    // Studio's preview workspace is the project's own; a foreign workspace is 403; a malformed one is 400.
+    expect((await create("sec_s117_preview", " ws_default ")).status).toBe(200);
+    const trimmed = await envDb
+      .prepare("SELECT workspace_id FROM px_connections WHERE ref = ?")
+      .bind("sec_s117_preview")
+      .first<{ workspace_id: string }>();
+    expect(trimmed?.workspace_id).toBe("ws_default");
+    const foreign = await create("sec_s117_foreign", "ws_someone_else");
+    expect(foreign.status).toBe(403);
+    expect(((await foreign.json()) as { error: { code: string } }).error.code).toBe("WORKSPACE_NOT_IN_PROJECT");
+    expect((await create("sec_s117_bad", "ws bad")).status).toBe(400);
+    const rows = await envDb
+      .prepare("SELECT COUNT(*) AS c FROM px_connections WHERE ref IN ('sec_s117_foreign', 'sec_s117_bad')")
+      .first<{ c: number }>();
+    expect(Number(rows?.c ?? 0)).toBe(0);
+
+    // The OAuth start refuses a foreign workspace the same way, before any state is stored.
+    const start = await callStudio("/api/projects/oauth-proj/connections/oauth/slack/start", {
+      cookie: aliceCookie,
+      orgId,
+      body: { workspaceId: "ws_someone_else" },
+    });
+    expect(start.status).toBe(403);
+  });
 });

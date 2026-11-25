@@ -19,7 +19,7 @@ import {
   insertStepEvent,
   insertStructuredLog,
   redactTelemetryString,
-  signTelemetryPayload,
+  signTelemetryWebhook,
   truncateTelemetryPreview,
   upsertRunRecord,
 } from "@poc/telemetry";
@@ -143,8 +143,19 @@ export function isValidRunWorkspaceId(value: unknown): value is string {
  * refused. One rule for every signed route (story 1.1).
  */
 const TENANT_WORKSPACE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+/**
+ * Workspace ids no tenant may carry (story 1.17): `default` is the project-shared Case-A connection bucket
+ * (SHARED_CONNECTION_WORKSPACE), so a tenant named `default` would share every project-wide connection. Studio's preview
+ * workspace `ws_default` stays a usable workspace.
+ */
+const RESERVED_TENANT_WORKSPACE_IDS: ReadonlySet<string> = new Set(["default"]);
 export function isTenantWorkspaceId(value: unknown): value is string {
-  return typeof value === "string" && TENANT_WORKSPACE_ID.test(value) && !value.includes("__");
+  return (
+    typeof value === "string" &&
+    TENANT_WORKSPACE_ID.test(value) &&
+    !value.includes("__") &&
+    !RESERVED_TENANT_WORKSPACE_IDS.has(value.toLowerCase())
+  );
 }
 
 /**
@@ -534,10 +545,8 @@ export async function runGraph(
       "content-type": "application/json",
     };
     if (telemetrySecret) {
-      headers[TELEMETRY_SIGNATURE_HEADER] = await signTelemetryPayload(
-        bodyText,
-        telemetrySecret,
-      );
+      // Story 1.17: the webhook signature is domain-separated (px-telemetry-webhook/v1), never a control-plane one.
+      headers[TELEMETRY_SIGNATURE_HEADER] = await signTelemetryWebhook(bodyText, telemetrySecret);
     }
     try {
       await webhookFetcher(webhookUrl, {
@@ -836,11 +845,13 @@ export async function runGraph(
                 db: connectionDb,
                 connKey,
                 telemetryWrite,
-                projectId:
-                  telemetryCfg?.project ??
-                  (typeof options.env?.PX_PROJECT_ID === "string"
-                    ? options.env.PX_PROJECT_ID
-                    : "default"),
+                // The project the runtime knows (bound PX_PROJECT_ID first, then the run's project); none means no
+                // project filter. The workspace rule always applies (story 1.17).
+                ...(typeof options.env?.PX_PROJECT_ID === "string" && options.env.PX_PROJECT_ID
+                  ? { projectId: options.env.PX_PROJECT_ID }
+                  : telemetryCfg?.project
+                    ? { projectId: telemetryCfg.project }
+                    : {}),
                 envName: typeof options.env?.PX_ENV === "string" ? options.env.PX_ENV : "preview",
                 workspaceId,
                 defaultApp: inferredApp,
