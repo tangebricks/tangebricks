@@ -1,6 +1,6 @@
 {
-  "routeCount": 39,
-  "honoRouteCount": 176,
+  "routeCount": 40,
+  "honoRouteCount": 180,
   "specOnlyRoutes": [
     "GET /api/ai",
     "POST /api/ai",
@@ -25,6 +25,8 @@
     "POST /api/jobs",
     "GET /api/me",
     "POST /api/me",
+    "GET /api/message-webhooks",
+    "POST /api/message-webhooks",
     "GET /api/messages",
     "POST /api/messages",
     "GET /api/onboarding",
@@ -49,14 +51,14 @@
     "GET /api/webhooks",
     "POST /api/webhooks"
   ],
-  "cases": 1622,
+  "cases": 1674,
   "casesByAttack": {
-    "HEADER_B": 888,
-    "QUERY_B": 222,
-    "BODY_B": 114,
-    "ID_GUESS": 170,
-    "ROLE_ESCALATION": 24,
-    "UNAUTH": 204
+    "HEADER_B": 912,
+    "QUERY_B": 228,
+    "BODY_B": 118,
+    "ID_GUESS": 182,
+    "ROLE_ESCALATION": 26,
+    "UNAUTH": 208
   },
   "attacks": [
     "HEADER_B",
@@ -89,6 +91,8 @@
     "POST /api/ai/templates",
     "POST /api/messages/send",
     "POST /api/messages/channels",
+    "POST /api/messages/channels/:id/verify",
+    "PATCH /api/messages/channels/:id",
     "POST /api/roles",
     "POST /api/roles/assign",
     "POST /api/roles/revoke",
@@ -157,6 +161,14 @@
     {
       "route": "POST /api/payments/webhook",
       "reason": "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature"
+    },
+    {
+      "route": "POST /api/message-webhooks/:channelId",
+      "reason": "outbound delivery-status webhooks (story 2.4) are called by the provider and authenticated by the channel's signature"
+    },
+    {
+      "route": "GET /api/message-webhooks/:channelId",
+      "reason": "outbound delivery-status webhooks (story 2.4) are called by the provider and authenticated by the channel's signature"
     },
     {
       "route": "GET /api/users/:id/profile",
@@ -339,6 +351,18 @@
       "route": "/api/payments/webhook",
       "attack": "UNAUTH",
       "reason": "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature"
+    },
+    {
+      "method": "POST",
+      "route": "/api/message-webhooks/:channelId",
+      "attack": "UNAUTH",
+      "reason": "outbound delivery-status webhooks (story 2.4) are called by the provider and authenticated by the channel's signature"
+    },
+    {
+      "method": "GET",
+      "route": "/api/message-webhooks/:channelId",
+      "attack": "UNAUTH",
+      "reason": "outbound delivery-status webhooks (story 2.4) are called by the provider and authenticated by the channel's signature"
     },
     {
       "method": "GET",
@@ -2282,6 +2306,30 @@
       "failures": []
     },
     {
+      "route": "/api/messages/channels",
+      "method": "POST",
+      "cases": 8,
+      "failures": []
+    },
+    {
+      "route": "/api/messages/channels/:id/verify",
+      "method": "POST",
+      "cases": 11,
+      "failures": []
+    },
+    {
+      "route": "/api/message-webhooks/:channelId",
+      "method": "POST",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/message-webhooks/:channelId",
+      "method": "GET",
+      "cases": 8,
+      "failures": []
+    },
+    {
       "route": "/api/messages/history",
       "method": "GET",
       "cases": 6,
@@ -2294,9 +2342,9 @@
       "failures": []
     },
     {
-      "route": "/api/messages/channels",
-      "method": "POST",
-      "cases": 8,
+      "route": "/api/messages/channels/:id",
+      "method": "PATCH",
+      "cases": 11,
       "failures": []
     },
     {
@@ -2846,6 +2894,18 @@
       "failures": []
     },
     {
+      "route": "/api/message-webhooks",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
+      "route": "/api/message-webhooks",
+      "method": "POST",
+      "cases": 7,
+      "failures": []
+    },
+    {
       "route": "/api/messages",
       "method": "GET",
       "cases": 6,
@@ -3069,8 +3129,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T09:07:19.159Z",
-    "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
+    "generatedAt": "2026-11-25T11:22:03.878Z",
+    "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

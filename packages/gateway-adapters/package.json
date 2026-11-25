@@ -6,7 +6,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./stripe": "./src/stripe-payment-gateway.ts",
-    "./cashfree": "./src/cashfree-payment-gateway.ts"
+    "./cashfree": "./src/cashfree-payment-gateway.ts",
+    "./zeptomail": "./src/zeptomail.ts",
+    "./meta-whatsapp": "./src/meta-whatsapp.ts"
   },
   "scripts": {
     "test": "cd ../.. && vitest run packages/gateway-adapters/test"

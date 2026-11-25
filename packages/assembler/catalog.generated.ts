@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "2d41891582b008604a603c3a84dcd8e86ba6df6d543161a83802a56523b7cd5c",
+  "catalogVersion": "36956d3a40caa0826448cc3524b3d782461ae6192436145542a6150e12287c6b",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -2637,10 +2637,12 @@ export const catalog: Catalog = {
           "workspace-context"
         ],
         "migrations": [
-          "migrations/0001_omnichannel_outbound.sql"
+          "migrations/0001_omnichannel_outbound.sql",
+          "migrations/0002_sender_verification_and_credentials.sql"
         ],
         "routePrefixes": [
-          "messages"
+          "messages",
+          "message-webhooks"
         ],
         "npmDependencies": {
           "hono": "4.13.20",
@@ -2691,6 +2693,12 @@ export const catalog: Catalog = {
                 "default": "email"
               }
             },
+            "secrets": [
+              "PX_CHANNEL_CREDENTIALS_KEY"
+            ],
+            "bindings": [
+              "DB"
+            ],
             "executor": "executeSendOutboundMessage",
             "durable": true,
             "sideEffects": "write"
@@ -2701,9 +2709,54 @@ export const catalog: Catalog = {
           "category": "communication",
           "summary": "Outbound messaging across email, SMS, chat, and Slack.",
           "maturity": "beta",
-          "maturityReason": "Persists channels, templates, suppressions and dispatch logs in D1; no delivery adapter by default (send answers 503 NOT_CONFIGURED); no built-in email, SMS or Slack adapters",
+          "maturityReason": "Verified senders, sealed credentials, dispatch logs and delivery status in D1; no delivery adapter by default (send answers 503 NOT_CONFIGURED); a host wires provider adapters",
           "behaviourTest": "test/dispatcher.test.ts"
         },
+        "secrets": [
+          "PX_CHANNEL_CREDENTIALS_KEY"
+        ],
+        "rateLimits": [
+          {
+            "method": "POST",
+            "path": "/messages/send",
+            "bucket": "messages-send",
+            "limit": 60,
+            "windowSeconds": 60,
+            "key": "workspace"
+          },
+          {
+            "method": "POST",
+            "path": "/messages/channels",
+            "bucket": "messages-channel-create",
+            "limit": 5,
+            "windowSeconds": 60,
+            "key": "workspace"
+          },
+          {
+            "method": "POST",
+            "path": "/messages/channels/:id/verify",
+            "bucket": "messages-verify",
+            "limit": 10,
+            "windowSeconds": 60,
+            "key": "workspace"
+          },
+          {
+            "method": "POST",
+            "path": "/message-webhooks/:channelId",
+            "bucket": "messages-webhook",
+            "limit": 300,
+            "windowSeconds": 60,
+            "key": "ip"
+          },
+          {
+            "method": "GET",
+            "path": "/message-webhooks/:channelId",
+            "bucket": "messages-webhook-challenge",
+            "limit": 30,
+            "windowSeconds": 60,
+            "key": "ip"
+          }
+        ],
         "privacy": {
           "tables": {
             "msg_channels": {
@@ -2716,7 +2769,10 @@ export const catalog: Catalog = {
               "erase": "delete",
               "export": true
             }
-          }
+          },
+          "hookTables": [
+            "msg_dispatches_v2"
+          ]
         },
         "workspaceData": {
           "tables": [
@@ -2725,6 +2781,12 @@ export const catalog: Catalog = {
             },
             {
               "table": "msg_dispatches"
+            }
+          ],
+          "exempt": [
+            {
+              "table": "msg_dispatches_v2",
+              "reason": "Transient migration table; renamed to msg_dispatches, which is declared"
             }
           ]
         },
@@ -2749,7 +2811,8 @@ export const catalog: Catalog = {
         }
       },
       "files": {
-        "migrations/0001_omnichannel_outbound.sql": "-- omnichannel-outbound 0001: Messaging channels, credentials, and outbound dispatch records.\n-- Hardened: message body capped at 64KB, sender/recipient bounded.\n-- Prefixed with msg_ to prevent collisions.\n\nCREATE TABLE IF NOT EXISTS msg_channels (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  channel_type TEXT NOT NULL CHECK (channel_type IN ('email', 'sms', 'whatsapp', 'slack', 'discord')),\n  provider TEXT NOT NULL CHECK (length(provider) BETWEEN 1 AND 64),\n  sender_address TEXT NOT NULL CHECK (length(sender_address) BETWEEN 1 AND 255),\n  active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),\n  config_json TEXT NOT NULL DEFAULT '{}' CHECK (length(config_json) <= 4096),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS msg_channels_workspace_idx ON msg_channels(workspace_id);\n\nCREATE TABLE IF NOT EXISTS msg_dispatches (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  channel_id TEXT NOT NULL,\n  recipient TEXT NOT NULL CHECK (length(recipient) BETWEEN 1 AND 255),\n  subject TEXT CHECK (subject IS NULL OR length(subject) <= 255),\n  body_text TEXT NOT NULL CHECK (length(body_text) <= 65536),\n  status TEXT NOT NULL CHECK (status IN ('queued', 'sent', 'delivered', 'failed')),\n  external_id TEXT CHECK (external_id IS NULL OR length(external_id) <= 255),\n  error_text TEXT CHECK (error_text IS NULL OR length(error_text) <= 2048),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  sent_at TEXT,\n  FOREIGN KEY (channel_id) REFERENCES msg_channels(id) ON DELETE CASCADE\n);\n\nCREATE INDEX IF NOT EXISTS msg_dispatches_workspace_idx ON msg_dispatches(workspace_id);\nCREATE INDEX IF NOT EXISTS msg_dispatches_status_idx ON msg_dispatches(status);\n"
+        "migrations/0001_omnichannel_outbound.sql": "-- omnichannel-outbound 0001: Messaging channels, credentials, and outbound dispatch records.\n-- Hardened: message body capped at 64KB, sender/recipient bounded.\n-- Prefixed with msg_ to prevent collisions.\n\nCREATE TABLE IF NOT EXISTS msg_channels (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  channel_type TEXT NOT NULL CHECK (channel_type IN ('email', 'sms', 'whatsapp', 'slack', 'discord')),\n  provider TEXT NOT NULL CHECK (length(provider) BETWEEN 1 AND 64),\n  sender_address TEXT NOT NULL CHECK (length(sender_address) BETWEEN 1 AND 255),\n  active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),\n  config_json TEXT NOT NULL DEFAULT '{}' CHECK (length(config_json) <= 4096),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS msg_channels_workspace_idx ON msg_channels(workspace_id);\n\nCREATE TABLE IF NOT EXISTS msg_dispatches (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  channel_id TEXT NOT NULL,\n  recipient TEXT NOT NULL CHECK (length(recipient) BETWEEN 1 AND 255),\n  subject TEXT CHECK (subject IS NULL OR length(subject) <= 255),\n  body_text TEXT NOT NULL CHECK (length(body_text) <= 65536),\n  status TEXT NOT NULL CHECK (status IN ('queued', 'sent', 'delivered', 'failed')),\n  external_id TEXT CHECK (external_id IS NULL OR length(external_id) <= 255),\n  error_text TEXT CHECK (error_text IS NULL OR length(error_text) <= 2048),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  sent_at TEXT,\n  FOREIGN KEY (channel_id) REFERENCES msg_channels(id) ON DELETE CASCADE\n);\n\nCREATE INDEX IF NOT EXISTS msg_dispatches_workspace_idx ON msg_dispatches(workspace_id);\nCREATE INDEX IF NOT EXISTS msg_dispatches_status_idx ON msg_dispatches(status);\n",
+        "migrations/0002_sender_verification_and_credentials.sql": "-- omnichannel-outbound 0002 (story 2.4, PROPOSED-9): sender ownership, sealed channel credentials, send attempts and\n-- delivery status.\n--\n-- msg_channels gains:\n--   verified                 0 until the sender is proven to belong to the channel (B8); sending needs 1.\n--   credentials_ciphertext   the channel's secrets, AES-GCM sealed with associated data workspace_id:channel_id (B9).\n--   verify_code_hash         SHA-256 of a pending one-time sender code; the code itself is never stored.\n--   verify_code_expires_at   when that code stops working (15 minutes after it was sent).\n--   verify_code_attempts     confirmations tried against that code (at most 5).\n--   verify_code_sends        codes sent in the current one-hour window (at most 5).\n--   verify_code_window_start when that window started.\n--   workflow_send_allowed    1 when an owner/admin lets workflow runs send through this channel (default 0).\n--\n-- msg_dispatches is rebuilt to add `attempts` and the status `read` (a webhook can move sent -> delivered -> read).\n-- SQLite cannot change a CHECK in place, so the table is created as msg_dispatches_v2, every row copied, the old table\n-- dropped and the new one renamed; every other column, type, default and CHECK of 0001 is kept as it was.\n\nALTER TABLE msg_channels ADD COLUMN verified INTEGER NOT NULL DEFAULT 0 CHECK (verified IN (0, 1));\nALTER TABLE msg_channels ADD COLUMN credentials_ciphertext TEXT CHECK (credentials_ciphertext IS NULL OR length(credentials_ciphertext) <= 16384);\nALTER TABLE msg_channels ADD COLUMN verify_code_hash TEXT CHECK (verify_code_hash IS NULL OR length(verify_code_hash) = 64);\nALTER TABLE msg_channels ADD COLUMN verify_code_expires_at TEXT;\nALTER TABLE msg_channels ADD COLUMN verify_code_attempts INTEGER NOT NULL DEFAULT 0 CHECK (verify_code_attempts >= 0);\nALTER TABLE msg_channels ADD COLUMN verify_code_sends INTEGER NOT NULL DEFAULT 0 CHECK (verify_code_sends >= 0);\nALTER TABLE msg_channels ADD COLUMN verify_code_window_start TEXT;\nALTER TABLE msg_channels ADD COLUMN workflow_send_allowed INTEGER NOT NULL DEFAULT 0 CHECK (workflow_send_allowed IN (0, 1));\n\nCREATE TABLE IF NOT EXISTS msg_dispatches_v2 (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  channel_id TEXT NOT NULL,\n  recipient TEXT NOT NULL CHECK (length(recipient) BETWEEN 1 AND 255),\n  subject TEXT CHECK (subject IS NULL OR length(subject) <= 255),\n  body_text TEXT NOT NULL CHECK (length(body_text) <= 65536),\n  status TEXT NOT NULL CHECK (status IN ('queued', 'sent', 'delivered', 'read', 'failed')),\n  external_id TEXT CHECK (external_id IS NULL OR length(external_id) <= 255),\n  error_text TEXT CHECK (error_text IS NULL OR length(error_text) <= 2048),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  sent_at TEXT,\n  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),\n  FOREIGN KEY (channel_id) REFERENCES msg_channels(id) ON DELETE CASCADE\n);\n\nINSERT INTO msg_dispatches_v2 (id, workspace_id, channel_id, recipient, subject, body_text, status, external_id, error_text, created_at, sent_at, attempts)\nSELECT id, workspace_id, channel_id, recipient, subject, body_text, status, external_id, error_text, created_at, sent_at,\n  CASE WHEN status = 'queued' THEN 0 ELSE 1 END\nFROM msg_dispatches\nORDER BY rowid;\n\nDROP TABLE msg_dispatches;\n\nALTER TABLE msg_dispatches_v2 RENAME TO msg_dispatches;\n\nCREATE INDEX IF NOT EXISTS msg_dispatches_workspace_idx ON msg_dispatches(workspace_id);\nCREATE INDEX IF NOT EXISTS msg_dispatches_status_idx ON msg_dispatches(status);\nCREATE INDEX IF NOT EXISTS msg_dispatches_external_idx ON msg_dispatches(channel_id, external_id);\n"
       }
     },
     "outbound-webhooks": {

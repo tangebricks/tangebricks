@@ -1,6 +1,8 @@
 # @poc/gateway-adapters
 
-Payment provider adapters behind the provider-neutral `PaymentGateway` from `@poc/sdk` (`createOrder`, `fetchOrder`,
+Payment provider adapters behind the provider-neutral `PaymentGateway` from `@poc/sdk`, and (story 2.4) message
+delivery adapters behind `DeliveryAdapter` (see [Outbound delivery adapters](#outbound-delivery-adapters-story-24)).
+Payment adapters sit behind `PaymentGateway` (`createOrder`, `fetchOrder`,
 `verifyWebhook`). credit-wallet and checkout-gateway take any `PaymentGateway`; no provider's name appears in their
 code. The bricks check every payment themselves: a provider's "paid" is credited only if the order id, amount,
 currency and customer it reports equal the order the brick stored.
@@ -23,6 +25,8 @@ bricks refuse webhook bodies over 64 KiB with 413 before any signature check.
 |--------|----------|
 | `@poc/gateway-adapters/cashfree` | Cashfree Payment Gateway (PG API): `createCashfreePaymentGateway` |
 | `@poc/gateway-adapters/stripe` | Stripe Payment Intents through the Stripe integration manifest: `createStripePaymentGateway` |
+| `@poc/gateway-adapters/zeptomail` | ZeptoMail email delivery: `createZeptoMailAdapter` |
+| `@poc/gateway-adapters/meta-whatsapp` | WhatsApp Cloud API delivery: `createMetaWhatsAppAdapter` |
 
 ## Cashfree
 
@@ -105,3 +109,77 @@ integration manifest's `createPaymentIntent` and `getPaymentIntent` operations.
   `verifyWebhook` fails `NOT_CONFIGURED`. The `Stripe-Signature` header (`t=...,v1=...`) must hold an HMAC-SHA256 of
   `${t}.${rawBody}` with that secret, within five minutes; a `payment_intent.*` event names its intent's
   `metadata.order_id` and its intent id. Any other correctly signed event is `ignored` (the route answers 200).
+
+## Outbound delivery adapters (story 2.4)
+
+Message delivery adapters behind the provider-neutral `DeliveryAdapter` from `@poc/sdk`, for the omnichannel-outbound
+brick. The brick passes each call the channel (non-secret `config`, `sender_address`) and that channel's credentials,
+decrypted for the call; the adapter itself holds no key. A host builds one adapter per provider string:
+
+```ts
+import { createMessageRoutes } from "@poc/omnichannel-outbound";
+import { createZeptoMailAdapter } from "@poc/gateway-adapters/zeptomail";
+import { createMetaWhatsAppAdapter } from "@poc/gateway-adapters/meta-whatsapp";
+
+app.route("/api", createMessageRoutes({
+  adapters: { zeptomail: createZeptoMailAdapter(), "meta-whatsapp": createMetaWhatsAppAdapter() },
+}));
+```
+
+Common to both:
+
+- **No defaults.** No endpoint region, API version or key is built in; a channel without them is refused when it is
+  created (`checkConfig`) and nothing is sent.
+- **Answers.** `sent` only with the provider's id. Retryable only when the provider said the message was not
+  processed: an explicit 429, a 503 with `Retry-After`, or a throttling code; a `Retry-After` is passed on. Every other
+  4xx and 5xx is `failed`, not retryable. A network error or timeout (10 s per request, reading the body included)
+  is `failed` with `<PROVIDER>_UNKNOWN_OUTCOME`, not retryable, because the provider may have accepted the message;
+  for a sender check it is `unavailable`. A request the egress guard refused before sending (URL, host or DNS check,
+  a redirect) is `<PROVIDER>_EGRESS_REFUSED`. The brick does the
+  retrying (3 attempts and 20 s at most).
+- **Egress.** Every request goes through the SDK's `createPublicUrlFetch` guard, and no redirect is followed (the
+  credentials travel in headers). Tests inject `fetch` and `resolveHost: null` and stay offline.
+- **Errors.** A short code (`ZEPTOMAIL_HTTP_400_TM_3201`, `META_HTTP_400_130429`, `META_UNREACHABLE`), never a key or
+  the provider's own text.
+
+### ZeptoMail (`@poc/gateway-adapters/zeptomail`)
+
+| | |
+|---|---|
+| Channel type | `email` |
+| Config | `region` (required): the API domain suffix, e.g. `com`, `in`, `eu` (`https://api.zeptomail.<region>`). Optional `fromName` (no CR, LF or NUL), `bodyFormat` (`text`, the default, or `html`). |
+| Credentials | `apiKey`: the Send Mail token, with or without its `Zoho-enczapikey ` prefix |
+| Send | `POST /v1.1/email` with `Authorization: Zoho-enczapikey <token>`; body `from`, `to[].email_address.address`, `subject`, `textbody`/`htmlbody`. 2xx with `request_id` is `sent` with that id. |
+| Templates | `POST /v1.1/email/template` with `mail_template_key` (the template name) and `merge_info` (the variables) |
+| Sender verification | `code`: ZeptoMail has no API that ties an address to a token, so the brick mails a one-time code to the sender address |
+| Delivery webhook | **Not handled.** Zoho's public pages describe a `producer-signature` HMAC-SHA256 header, but the exact signing input (whether its timestamp is signed) and the delivered-event payload were not documented clearly enough to implement a check that could be trusted, and an unsigned webhook is never accepted. ZeptoMail dispatches therefore stay `sent`; delivery status is deferred. |
+
+### WhatsApp Cloud API (`@poc/gateway-adapters/meta-whatsapp`)
+
+| | |
+|---|---|
+| Channel type | `whatsapp` |
+| Sender address | the WhatsApp phone-number id (digits) |
+| Config | `apiVersion` (required), e.g. `v21.0`. Optional `defaultLanguage` for templates (like `en` or `en_US`). |
+| Credentials | `accessToken` (a system-user token), `appSecret` (signs webhooks), `verifyToken` (the GET subscription check) |
+| Send | `POST https://graph.facebook.com/<apiVersion>/<phone-number-id>/messages`, `Authorization: Bearer <token>`. Text: `{ messaging_product: "whatsapp", to, type: "text", text: { body } }`. `messages[0].id` is `sent` with that id. |
+| Templates | `type: "template"` with `name`, `language.code` (required) and body parameters: numeric variable keys (`"1"`, `"2"`) are positional, any other keys named (`parameter_name`) |
+| Retryable errors | HTTP 429, a 503 with `Retry-After`, and the throttling / unavailable Graph codes 4, 17, 80007, 130429, 131016, 131056 |
+| Sender verification | `credential`: `GET /<apiVersion>/<phone-number-id>?fields=id` with the token must answer that id. 429, 5xx or a network error is `unavailable` (not a "no"). |
+| Status webhook | `X-Hub-Signature-256: sha256=<hex HMAC-SHA256(raw body, appSecret)>`, compared in constant time; then `entry[].changes[].value.statuses[]` for this channel's phone-number id map to `delivered`, `read` or `failed`. No `appSecret` means every webhook is refused. |
+| GET verify | echoes `hub.challenge` when `hub.mode=subscribe` and `hub.verify_token` equals the `verifyToken` credential |
+
+In the Meta app's webhook settings, use `https://<your app>/api/message-webhooks/<channel id>` as the callback URL and
+the channel's `verifyToken` as the verify token.
+
+**Limit: one webhook URL per Meta app.** A Meta app has a single callback URL, so only the channel named in it
+receives status updates. A second WhatsApp channel on the same Meta app gets none (its dispatches stay `sent`) unless it
+uses a Meta app of its own.
+
+### Contract fixtures
+
+`test/fixtures/zeptomail/` and `test/fixtures/meta-whatsapp/` hold **documented samples, not live recordings**: they
+are written from the response and webhook shapes in each provider's public documentation, because no accounts or
+tokens were available. The contract tests (`test/zeptomail.test.ts`, `test/meta-whatsapp.test.ts`) prove the adapters
+against those shapes only; neither adapter has been run against the real service. Replacing them with real recordings
+is an owner follow-up (see each fixtures README).

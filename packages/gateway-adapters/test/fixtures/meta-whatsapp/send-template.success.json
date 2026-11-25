@@ -1,0 +1,15 @@
+{
+  "messaging_product": "whatsapp",
+  "contacts": [
+    {
+      "input": "+919876543210",
+      "wa_id": "919876543210"
+    }
+  ],
+  "messages": [
+    {
+      "id": "wamid.HBgMOTE5ODc2NTQzMjEwFQIAERgSNkQ5RjA4QjE2QzJCMzRBNUE3AA==",
+      "message_status": "accepted"
+    }
+  ]
+}
