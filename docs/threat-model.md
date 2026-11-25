@@ -38,6 +38,7 @@
 | 1.11 | API-key authentication: keys are a workspace-bound identity with a role ceiling (filed from PROPOSED-4) |
 | 1.12 | feature-flags: honour allowOverrides on clear (filed from PROPOSED-6) |
 | 1.13 | llm-gateway: wallet debit, model allowlist, maxTokens, error redaction (filed from PROPOSED-7) |
+| 1.14 | binary-assets: upload size precheck and quota, Content-Type allowlist, filename sanitising, safe download headers, bounded paging (filed from PROPOSED-8) |
 
 `PROPOSED-n` ids are new tickets defined in [Proposed tickets](#proposed-tickets). They are not filed yet.
 
@@ -167,11 +168,11 @@ Every sweep finding appears once. Locations are as the sweep gives them (see [Ci
 | A11 | integration-connections | Low | Caller `redirect_uri` unchecked; GET connect with `redirect=1` has no CSRF guard | `routes.ts:76,81,96`; `service.ts:247-248` | PROPOSED-11 |
 | A12 | integration-connections | Low | OAuth state bound to the workspace, not the initiating user | `service.ts:302-337` | PROPOSED-11 |
 | A13 | integration-connections | Low | Placeholder client id `px_<slug>_client` when unconfigured | `service.ts:263,376` | 0.9 (scope addition) |
-| A14 | binary-assets | Medium | Whole body read before the size check; no Content-Length precheck; no per-workspace quota | `bricks/binary-assets/src/routes.ts:86`; `assets.ts:136` | PROPOSED-8 |
-| A15 | binary-assets | Medium (needs `publicBaseUrl`) | Uploader-chosen Content-Type on a public R2 URL allows stored XSS (HTML/SVG) | `assets.ts:128,146,150` | PROPOSED-8 |
-| A16 | binary-assets | Low | Raw filename (`/`, `..`, control chars) in R2 key and public URL | `assets.ts:145-146` | PROPOSED-8 |
-| A17 | binary-assets | Low | Unescaped filename in Content-Disposition; no `nosniff` | `routes.ts:64-70` | PROPOSED-8 |
-| A18 | binary-assets | Low | `limit=-1` means unlimited, `offset=Infinity` gives 500; raw DB error echoed | `routes.ts:30-31`; `assets.ts:168,236` | PROPOSED-8 |
+| A14 | binary-assets | Medium | Whole body read before the size check; no Content-Length precheck; no per-workspace quota | `bricks/binary-assets/src/routes.ts:86`; `assets.ts:136` | 1.14 |
+| A15 | binary-assets | Medium (needs `publicBaseUrl`) | Uploader-chosen Content-Type on a public R2 URL allows stored XSS (HTML/SVG) | `assets.ts:128,146,150` | 1.14 |
+| A16 | binary-assets | Low | Raw filename (`/`, `..`, control chars) in R2 key and public URL | `assets.ts:145-146` | 1.14 |
+| A17 | binary-assets | Low | Unescaped filename in Content-Disposition; no `nosniff` | `routes.ts:64-70` | 1.14 |
+| A18 | binary-assets | Low | `limit=-1` means unlimited, `offset=Infinity` gives 500; raw DB error echoed | `routes.ts:30-31`; `assets.ts:168,236` | 1.14 |
 | A19 | binary-assets | Low | Any member deletes any asset | `routes.ts:106` | 0.6 (scope addition: `DELETE /api/assets/:id`) |
 | A20 | gateway-adapters | Medium (unwired) | Stripe `fetchOrder` looks up the intent by wallet order id and never checks order id, currency or customer: replay risk once wired | `packages/gateway-adapters/src/stripe-payment-gateway.ts:50-71` | PROPOSED-13 |
 | A21 | gateway-adapters | Medium | `createOrder` ignores the Stripe response status; an empty session id is recorded as created | `packages/gateway-adapters/src/stripe-payment-gateway.ts:42-47` | 0.9 (scope addition) |
@@ -215,7 +216,7 @@ These are not filed. A human should file each one; the PR for this story lists t
 | PROPOSED-5 | rbac-policy: block grant escalation, restrict permission strings, member check, no raw DB errors | B4, B5, B6, B7 | Phase 0 (filed as 0.19) |
 | PROPOSED-6 | feature-flags: honour `allowOverrides` on clear | B3 | Phase 1 (filed as 1.12) |
 | PROPOSED-7 | llm-gateway: debit wallet, model allowlist and per-model cost, pass `maxTokens`, redact provider errors | A1 (wallet debit; suspension is 1.10), A2, A3, A4 | Phase 1 (filed as 1.13) |
-| PROPOSED-8 | binary-assets upload hardening: size precheck and quota, safe Content-Type, filename sanitising, `nosniff`, bounded paging | A14, A15, A16, A17, A18 | Phase 1 |
+| PROPOSED-8 | binary-assets upload hardening: size precheck and quota, safe Content-Type, filename sanitising, `nosniff`, bounded paging | A14, A15, A16, A17, A18 | Phase 1 (filed as 1.14) |
 | PROPOSED-9 | omnichannel-outbound: sender ownership and recipient limits, encrypt and redact channel secrets, CR/LF validation, bounded paging | B8 (sender ownership), B9, B10, B12 | Phase 1 (before any real adapter) |
 | PROPOSED-10 | cron-alarms: allowlist of target Workflow bindings | B13 | Phase 0 (filed as 0.20) |
 | PROPOSED-11 | integration-connections OAuth hardening: provider data wins, `redirect_uri` allowlist, CSRF on connect, bind state to user | A10, A11, A12 | Phase 1 |

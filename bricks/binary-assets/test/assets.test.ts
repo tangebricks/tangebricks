@@ -50,7 +50,7 @@ describe("Binary Asset Pipeline Core Engine", () => {
     // Verify binary download from R2
     const fileData = await service.getAssetData(WS_A, upload.asset.id);
     expect(fileData).not.toBeNull();
-    const downloadedText = new TextDecoder().decode(fileData!.data);
+    const downloadedText = await new Response(fileData!.body).text();
     expect(downloadedText).toBe("Hello Cloudflare R2 Asset Storage!");
   });
 
