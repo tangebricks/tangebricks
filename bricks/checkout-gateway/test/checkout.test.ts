@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_checkout_gateway.sql?raw";
+import migration0002 from "../migrations/0002_verified_payments.sql?raw";
 import {
   CheckoutService,
   createCheckoutRoutes,
@@ -20,6 +21,7 @@ async function resetDb(): Promise<void> {
   await db.prepare("DROP TABLE IF EXISTS pay_invoices").run();
   await db.prepare("DROP TABLE IF EXISTS pay_checkout_sessions").run();
   await applyMigration(db, migration);
+  await applyMigration(db, migration0002);
 }
 
 beforeEach(async () => {
@@ -57,6 +59,13 @@ describe("Checkout & Tax Engine Core Logic", () => {
     // Country with no tax / unknown -> 0
     const us = calculateTax(10000, "US");
     expect(us.taxCents).toBe(0);
+
+    // Story 2.3: integer basis points, rounded half-up exactly (no floating point): 18% of 1 paisa..
+    expect(calculateTax(3, "IN").taxCents).toBe(1); // 0.54 -> 1
+    expect(calculateTax(2, "IN").taxCents).toBe(0); // 0.36 -> 0
+    expect(calculateTax(25, "DE").taxCents).toBe(5); // 4.75 -> 5
+    expect(calculateTax(50, "JP").taxCents).toBe(5); // exactly 5
+    expect(calculateTax(Number.MAX_SAFE_INTEGER, "IN").taxCents).toBe(Number((BigInt(Number.MAX_SAFE_INTEGER) * 1800n + 5000n) / 10000n));
   });
 
   it("creates checkout session with tax computation and line items", async () => {

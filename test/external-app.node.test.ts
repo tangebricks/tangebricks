@@ -304,6 +304,7 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       "@poc/multi-workspace/migrations/0001_multi_workspace.sql",
       "@poc/credit-wallet/migrations/0001_credit_wallet.sql",
       "@poc/credit-wallet/migrations/0002_workspace_scoped_idempotency.sql",
+      "@poc/credit-wallet/migrations/0003_order_currency.sql",
       "@poc/audit-trail/migrations/0001_audit_trail.sql",
     ]);
     const db = (await mf!.getD1Database("DB")) as unknown as D1Like;
@@ -346,7 +347,7 @@ describe("story 2.2: smoke test of the mounted bricks in workerd", () => {
     const order = await call("POST", "/v1/payments/create-order", { user: A, ws: wsA, body: { amount: 5 } });
     expect(order.status, order.text).toBe(200);
     const orderId = order.json.order_id as string;
-    expect((await call("POST", `/__test__/gateway/orders/${orderId}/paid`, { body: { amount: 5 } })).status).toBe(200);
+    expect((await call("POST", `/__test__/gateway/orders/${orderId}/paid`)).status).toBe(200);
 
     // B cannot confirm A's order: it answers like a missing one.
     expect((await call("POST", "/v1/payments/verify", { user: B, body: { order_id: orderId } })).status).toBe(404);

@@ -155,7 +155,7 @@ export const settingDefinition = z.discriminatedUnion("type", [
      * Story 1.13: a whole-value regular expression (anchor it with ^ and $) the value must match, checked at assembly so
      * a malformed value is refused there rather than at run time. `example` is shown in the refusal.
      */
-    pattern: z.string().min(1).max(500).optional(),
+    pattern: z.string().min(1).max(1000).optional(),
     example: z.string().max(200).optional(),
     maxLength: z.number().int().positive().max(512).default(512),
     default: z.string().max(512),

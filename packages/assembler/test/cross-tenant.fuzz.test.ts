@@ -318,6 +318,7 @@ const PUBLIC_ROUTES: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /^\/(healthz|readyz|openapi\.json)$/, reason: "health and OpenAPI endpoints, no tenant data" },
   { pattern: /^\/api\/auth(\/|$)/, reason: "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design" },
   { pattern: /^\/api\/webhooks\/(in|ingress)\//, reason: "webhook ingress is called by third parties and authenticated by signature" },
+  { pattern: /^\/api\/(payments|checkout)\/webhook$/, reason: "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature" },
   { pattern: /^\/api\/sso\/(discover|authorize|callback)(\/|$)/, reason: "public SSO login/callback" },
   { pattern: /^\/api\/users\/:[^/]+\/profile$/, reason: "user-profile public profile lookup by design (returns only public fields)" },
 ];

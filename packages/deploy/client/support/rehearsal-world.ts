@@ -6,6 +6,7 @@ import mwMigration from "../../../../bricks/multi-workspace/migrations/0001_mult
 import { stubIdentity } from "../../../../bricks/multi-workspace/test/support/stub-identity.ts";
 import walletMigration from "../../../../bricks/credit-wallet/migrations/0001_credit_wallet.sql?raw";
 import walletMigration0002 from "../../../../bricks/credit-wallet/migrations/0002_workspace_scoped_idempotency.sql?raw";
+import walletMigration0003 from "../../../../bricks/credit-wallet/migrations/0003_order_currency.sql?raw";
 import { createFakeGateway, createWalletRoutes } from "../../../../bricks/credit-wallet/src/index.ts";
 import { createSqliteD1 } from "../../../../bricks/credit-wallet/client/test/support/sqlite-d1.ts";
 import { existsSync, readFileSync } from "node:fs";
@@ -38,13 +39,14 @@ export async function rehearsalWorld(breaks: Breaks = {}) {
   await applyMigration(db, mwMigration);
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
+  await applyMigration(db, walletMigration0003);
   const app = new Hono<WorkspaceEnv>();
   app.use("/api/*", stubIdentity);
   app.route("/api", createWorkspaceRoutes());
   app.use("/api/wallet", workspaceMiddleware);
   app.use("/api/wallet/*", workspaceMiddleware);
   app.use("/api/payments/create-order", workspaceMiddleware);
-  app.route("/api", createWalletRoutes({ gateway: createFakeGateway(), creditsPerUnit: 1, minOrderAmount: 1 }));
+  app.route("/api", createWalletRoutes({ gateway: createFakeGateway(), currency: "INR", creditsPerUnit: 1, minOrderAmount: 1 }));
   const gated = createGatedWorker({ app: app as never, demoHtml: existsSync(DEMO_PAGE_FILE) ? readFileSync(DEMO_PAGE_FILE, "utf8") : "<!doctype html><title>stand-in</title>" });
   const env = { DB: db, POC_ACCESS_KEY: KEY };
   const requestsToWorker: Array<{ method: string; path: string }> = [];

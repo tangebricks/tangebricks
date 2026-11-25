@@ -11,7 +11,8 @@
     "workspace-context"
   ],
   "migrations": [
-    "migrations/0001_checkout_gateway.sql"
+    "migrations/0001_checkout_gateway.sql",
+    "migrations/0002_verified_payments.sql"
   ],
   "routePrefixes": [
     "checkout"
@@ -24,13 +25,29 @@
       "limit": 30,
       "windowSeconds": 60,
       "key": "workspace"
+    },
+    {
+      "method": "POST",
+      "path": "/checkout/webhook",
+      "bucket": "checkout-webhook",
+      "limit": 300,
+      "windowSeconds": 60,
+      "key": "ip"
     }
   ],
   "npmDependencies": {
     "hono": "4.13.19",
     "zod": "4.6.7"
   },
-  "settings": {},
+  "settings": {
+    "paymentCurrency": {
+      "type": "string",
+      "pattern": "^(|A(OA|[EMU]D|[NW]G|LL|[FZ]N|RS)|B(OB|[BHMNSZ]D|IF|RL|AM|[GTY]N|WP|DT|OV)|C(RC|AD|[HV]E|[DHL]F|ZK|[LOU]P|OU|HW|NY)|D(JF|KK|OP|ZD)|E(GP|RN|TB|UR)|F(JD|KP)|G(BP|EL|HS|IP|MD|NF|TQ|YD)|H(KD|NL|TG|UF)|I(QD|SK|[DNR]R|LS)|J(MD|OD|PY)|K(ES|GS|HR|MF|PW|RW|WD|YD|ZT)|L(AK|BP|KR|RD|SL|YD)|M(GA|[AK]D|[MW]K|DL|[XZ]N|OP|[UVY]R|NT|RU|XV)|N(AD|GN|IO|OK|PR|ZD)|OMR|P(AB|EN|GK|HP|KR|LN|YG)|QAR|R(ON|SD|UB|WF)|S(VC|[BGR]D|LE|DG|EK|ZL|TN|[HSY]P|[AC]R|OS)|T(HB|[NTW]D|OP|[JZ]S|MT|RY)|U(AH|GX|S[DN]|Y[IUW]|ZS)|V(E[DS]|ND|UV)|WST|X(CD|[AOP]F|CG)|YER|Z(AR|MW|WG))$",
+      "example": "INR",
+      "maxLength": 3,
+      "default": ""
+    }
+  },
   "ui": {
     "displayName": "Multi-Gateway Checkout & Taxes",
     "category": "billing",
@@ -60,8 +77,16 @@
         "guardWith": "workspace-context",
         "guardPaths": [
           "/api/checkout",
-          "/api/checkout/*"
-        ]
+          "/api/checkout/sessions",
+          "/api/checkout/sessions/*",
+          "/api/checkout/invoices",
+          "/api/checkout/invoices/*"
+        ],
+        "options": {
+          "currency": {
+            "$setting": "paymentCurrency"
+          }
+        }
       }
     ]
   },

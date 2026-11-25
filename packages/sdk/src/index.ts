@@ -48,6 +48,17 @@ export type {
   PublicUrlFetcher,
 } from "./egress-guard.ts";
 export { NotConfiguredError, isProductionEnvironment, pxEnvironment } from "./not-configured.ts";
+export {
+  MAX_WEBHOOK_BODY_BYTES,
+  PAYMENT_CURRENCIES,
+  checkGatewayOrder,
+  fromMinorUnits,
+  isPaymentCurrency,
+  minorUnitExponent,
+  readBoundedText,
+  toMinorUnits,
+} from "./payment-gateway.ts";
+export type { ExpectedPayment, GatewayOrder, PaymentCheck, PaymentGateway, PaymentMismatchField, WebhookVerification } from "./payment-gateway.ts";
 export type { NotConfiguredCode } from "./not-configured.ts";
 export type { RequestContext } from "./request-context.ts";
 export {

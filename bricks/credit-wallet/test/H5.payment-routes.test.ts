@@ -9,6 +9,7 @@ import mwMigration from "../../multi-workspace/migrations/0001_multi_workspace.s
 import { stubIdentity } from "../../multi-workspace/test/support/stub-identity.ts";
 import walletMigration from "../migrations/0001_credit_wallet.sql?raw";
 import walletMigration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
+import walletMigration0003 from "../migrations/0003_order_currency.sql?raw";
 import { createFakeGateway, createWallet, createWalletRoutes } from "../src/index.ts";
 import type { FakeGateway } from "../src/index.ts";
 
@@ -24,6 +25,7 @@ async function reset(): Promise<void> {
   await applyMigration(db, mwMigration);
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
+  await applyMigration(db, walletMigration0003);
 }
 async function addMember(workspaceId: string, userId: string, role = "owner", suspended = false): Promise<void> {
   await db.prepare("INSERT OR IGNORE INTO mw_workspaces (id, name, owner_id, suspended) VALUES (?, ?, 'o', ?)").bind(workspaceId, workspaceId, suspended ? 1 : 0).run();
@@ -39,7 +41,7 @@ const buildApp = (options: { mountWorkspace?: boolean } = {}) => {
     app.use("/api/wallet/*", workspaceMiddleware);
     app.use("/api/payments/create-order", workspaceMiddleware);
   }
-  app.route("/api", createWalletRoutes({ gateway, creditsPerUnit: 10, minOrderAmount: 100 }));
+  app.route("/api", createWalletRoutes({ gateway, currency: "INR", creditsPerUnit: 10, minOrderAmount: 100 }));
   return app;
 };
 const call = (path: string, user: string | null, workspace: string | null, body?: unknown, app = buildApp()) =>
@@ -62,10 +64,10 @@ const orderRows = async () => (await db.prepare("SELECT COUNT(*) AS n FROM credi
 
 /** A paid-for order for ws-abc owned by `owner`, ready to be confirmed. */
 async function paidOrder(owner = "user-123", amount = 100, workspace = "ws-abc"): Promise<string> {
-  const wallet = createWallet(db, gateway);
+  const wallet = createWallet(db, gateway, { currency: "INR" });
   await wallet.openWallet(workspace);
   const { orderId } = await wallet.createOrder({ workspaceId: workspace, userId: owner, amount });
-  gateway.setOrder(orderId, { status: "PAID", amount });
+  gateway.setOrder(orderId, { status: "PAID" });
   return orderId;
 }
 
@@ -129,7 +131,7 @@ describe("paymentsRouter - Security and Coverage Tests", () => {
 
     it("should reject if cashfree status is not PAID", async () => {
       const orderId = await paidOrder();
-      gateway.setOrder(orderId, { status: "ACTIVE", amount: 100 });
+      gateway.setOrder(orderId, { status: "ACTIVE" });
       const res = await call("/api/payments/verify", "user-123", "ws-abc", { order_id: orderId });
       expect(res.status).toBe(200);
       const data = await json(res);
@@ -176,9 +178,9 @@ describe("the wallet routes beyond the ported tests", () => {
   // ID_READ_FOREIGN (story 0.7): a credit order of another workspace is "not found" and is never credited.
   it("an order that belongs to another workspace is a 404, indistinguishable from a missing one", async () => {
     await addMember("ws-other", "user-other");
-    await createWallet(db, gateway).openWallet("ws-other", 0);
-    const { orderId } = await createWallet(db, gateway).createOrder({ workspaceId: "ws-other", userId: "user-other", amount: 100 });
-    gateway.setOrder(orderId, { status: "PAID", amount: 100 });
+    await createWallet(db, gateway, { currency: "INR" }).openWallet("ws-other", 0);
+    const { orderId } = await createWallet(db, gateway, { currency: "INR" }).createOrder({ workspaceId: "ws-other", userId: "user-other", amount: 100 });
+    gateway.setOrder(orderId, { status: "PAID" });
     const foreign = await call("/api/payments/verify", "user-123", "ws-abc", { order_id: orderId });
     const missing = await call("/api/payments/verify", "user-123", "ws-abc", { order_id: "order_nope" });
     expect(foreign.status).toBe(404);
@@ -249,7 +251,7 @@ describe("the wallet routes beyond the ported tests", () => {
   it("GET /wallet/history lists this workspace's ledger newest first, and nobody else's", async () => {
     await addMember("ws-other", "user-other");
     await call("/api/payments/verify", "user-123", null, { order_id: await paidOrder() });
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
     await wallet.deduct({ workspaceId: "ws-abc", userId: "user-123", amount: 250, reason: "usage", metadata: { job: 1 } });
     await wallet.openWallet("ws-other", 5);
     await wallet.deduct({ workspaceId: "ws-other", userId: "user-other", amount: 1, reason: "secret-other-usage" });
@@ -265,7 +267,7 @@ describe("the wallet routes beyond the ported tests", () => {
 
   it("a member of one workspace cannot read or fund another's wallet by naming it", async () => {
     await addMember("ws-other", "user-other");
-    await createWallet(db, gateway).openWallet("ws-other", 77);
+    await createWallet(db, gateway, { currency: "INR" }).openWallet("ws-other", 77);
     for (const path of ["/api/wallet", "/api/wallet/history"]) expect((await call(path, "user-123", "ws-other")).status).toBe(403);
     expect((await call("/api/payments/create-order", "user-123", "ws-other", { amount: 100 })).status).toBe(403);
     expect(await orderRows()).toBe(0);

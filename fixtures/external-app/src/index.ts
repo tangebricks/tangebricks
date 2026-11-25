@@ -42,16 +42,17 @@ for (const path of ["/wallet", "/wallet/*", "/payments/create-order", "/audit", 
 app.on("POST", `${PREFIX}/wallet/deduct`, rateLimit({ bucket: "wallet-deduct", limit: 60, windowSeconds: 60, key: "workspace" }));
 app.on("POST", `${PREFIX}/payments/create-order`, rateLimit({ bucket: "wallet-create-order", limit: 60, windowSeconds: 60, key: "workspace" }));
 app.on("POST", `${PREFIX}/payments/verify`, rateLimit({ bucket: "wallet-verify", limit: 60, windowSeconds: 60, key: "ip" }));
+app.on("POST", `${PREFIX}/payments/webhook`, rateLimit({ bucket: "wallet-webhook", limit: 300, windowSeconds: 60, key: "ip" }));
 
 // 4. The bricks' route factories, mounted under the project's prefix.
 app.route(PREFIX, createWorkspaceRoutes());
-app.route(PREFIX, createWalletRoutes({ gateway, creditsPerUnit: 10 }));
+app.route(PREFIX, createWalletRoutes({ gateway, currency: "INR", creditsPerUnit: 10 }));
 app.route(PREFIX, createAuditRoutes());
 
 // Test-only: plays the payment provider's part by marking an order paid. A real project has no such route.
 app.post("/__test__/gateway/orders/:orderId/paid", async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as { amount?: number };
-  gateway.setOrder(c.req.param("orderId"), { status: "PAID", amount: Number(body.amount) });
+  // The fake keeps the order's own amount, currency and customer, so the wallet's verification checks pass.
+  gateway.setOrder(c.req.param("orderId"), { status: "PAID" });
   return c.json({ ok: true });
 });
 

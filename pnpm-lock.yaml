@@ -881,6 +881,13 @@ importers:
       '@poc/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@poc/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+    devDependencies:
+      '@poc/checkout-gateway':
+        specifier: workspace:*
+        version: link:../../bricks/checkout-gateway
 
   packages/harness:
     dependencies:

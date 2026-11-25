@@ -382,7 +382,9 @@ const settingText = (
     ? `whole number ${definition.min} to ${definition.max}, default ${definition.default}`
     : definition.type === "enum"
       ? `one of ${definition.values.join("|")}, default ${definition.default}`
-      : `true or false, default ${definition.default}`;
+      : definition.type === "string"
+        ? `text${definition.example ? `, e.g. ${definition.example}` : ""}, default ${JSON.stringify(definition.default)}`
+        : `true or false, default ${definition.default}`;
 
 async function catalogHash(catalog: Catalog): Promise<string> {
   const signature = Object.keys(catalog.bricks)
