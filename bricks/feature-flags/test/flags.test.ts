@@ -114,6 +114,20 @@ describe("Feature Flags Service Core Logic", () => {
     await service.clearOverride(WS_ALPHA, "enterprise_sso");
     expect(await service.isEnabled("enterprise_sso", { workspaceId: WS_ALPHA })).toBe(true);
   });
+
+  it("clearOverride obeys allowOverrides=false and leaves the override in place (story 1.12)", async () => {
+    const open = new FeatureFlagService(db, true);
+    await open.defineFlag("beta_ui", "Beta UI", false, 0);
+    await open.setOverride(WS_ALPHA, "beta_ui", true);
+
+    const locked = new FeatureFlagService(db, false);
+    expect(await locked.clearOverride(WS_ALPHA, "beta_ui")).toBe(false);
+    expect(await locked.setOverride(WS_ALPHA, "beta_ui", false)).toBe(false);
+    const row = await db.prepare("SELECT enabled FROM flag_overrides WHERE workspace_id = ? AND flag_key = ?").bind(WS_ALPHA, "beta_ui").first<{ enabled: number }>();
+    expect(row?.enabled).toBe(1);
+    // The open service still clears it.
+    expect(await open.clearOverride(WS_ALPHA, "beta_ui")).toBe(true);
+  });
 });
 
 describe("Feature Flags HTTP API & Route Guards", () => {

@@ -36,6 +36,7 @@
 | 1.9 | Metering correctness: no negative values, atomic aggregation (filed from PROPOSED-2) |
 | 1.10 | Workspace delete cascade and suspension enforcement (filed from PROPOSED-3) |
 | 1.11 | API-key authentication: keys are a workspace-bound identity with a role ceiling (filed from PROPOSED-4) |
+| 1.12 | feature-flags: honour allowOverrides on clear (filed from PROPOSED-6) |
 
 `PROPOSED-n` ids are new tickets defined in [Proposed tickets](#proposed-tickets). They are not filed yet.
 
@@ -175,7 +176,7 @@ Every sweep finding appears once. Locations are as the sweep gives them (see [Ci
 | A21 | gateway-adapters | Medium | `createOrder` ignores the Stripe response status; an empty session id is recorded as created | `packages/gateway-adapters/src/stripe-payment-gateway.ts:42-47` | 0.9 (scope addition) |
 | B1 | feature-flags | Critical | `POST /api/flags` has no role check and writes the global `flag_definitions` table: any signed-in user can change kill switches, paid gates and rollouts for every tenant | `bricks/feature-flags/src/routes.ts:49-71`; `flags.ts:48-55` | 0.6 (scope addition: `POST /api/flags` operator-only, since it writes global definitions) |
 | B2 | feature-flags | Medium | Any member (not admin) can set or clear workspace overrides, enabling gated or paid features | `routes.ts:89-120` | 0.6 (scope addition: `POST`/`DELETE /api/flags/:key/override` admin-only) |
-| B3 | feature-flags | Low | `clearOverride` ignores `allowOverrides=false` | `flags.ts:141-146` | PROPOSED-6 |
+| B3 | feature-flags | Low | `clearOverride` ignores `allowOverrides=false` | `flags.ts:141-146` | 1.12 |
 | B4 | rbac-policy | High | `roles:assign` holder can assign any role (incl. `*:*`) to anyone, including self; no "cannot grant more than you hold" check | `routes.ts:77-92`; `rbac.ts:121-138` | 0.19 |
 | B5 | rbac-policy | High | `roles:write` holder can create a role with `*:*` or `roles:assign`; permission strings unrestricted | `routes.ts:43-67`; `rbac.ts:46-52,199-202` | 0.19 |
 | B6 | rbac-policy | Low | `assignRole` does not check the user is a workspace member | `rbac.ts:121-135` | 0.19 |
@@ -211,7 +212,7 @@ These are not filed. A human should file each one; the PR for this story lists t
 | PROPOSED-3 | Workspace delete cascade and suspension enforcement (mount `requireNotSuspended` on every brick route, including `/api/ai`) | Audit 22; A1 (suspension part) | Phase 1 (filed as 1.10) |
 | PROPOSED-4 | API-key authentication, or remove key issuance | Audit 24 | Phase 1 (filed as 1.11) |
 | PROPOSED-5 | rbac-policy: block grant escalation, restrict permission strings, member check, no raw DB errors | B4, B5, B6, B7 | Phase 0 (filed as 0.19) |
-| PROPOSED-6 | feature-flags: honour `allowOverrides` on clear | B3 | Phase 1 |
+| PROPOSED-6 | feature-flags: honour `allowOverrides` on clear | B3 | Phase 1 (filed as 1.12) |
 | PROPOSED-7 | llm-gateway: debit wallet, model allowlist and per-model cost, pass `maxTokens`, redact provider errors | A1 (wallet debit; suspension is 1.10), A2, A3, A4 | Phase 1 (before any real provider is connected) |
 | PROPOSED-8 | binary-assets upload hardening: size precheck and quota, safe Content-Type, filename sanitising, `nosniff`, bounded paging | A14, A15, A16, A17, A18 | Phase 1 |
 | PROPOSED-9 | omnichannel-outbound: sender ownership and recipient limits, encrypt and redact channel secrets, CR/LF validation, bounded paging | B8 (sender ownership), B9, B10, B12 | Phase 1 (before any real adapter) |
