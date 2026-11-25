@@ -162,7 +162,7 @@ describe("a complete run", () => {
   });
 
   test("the first run makes everything from nothing, in order, and puts the Worker's address on", () => {
-    expect(complete.calls.facts.runs.first!.changes).toEqual(["database_created", "bookkeeping_created", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "script_uploaded", "workflow_registered", "address_enabled"]);
+    expect(complete.calls.facts.runs.first!.changes).toEqual(["database_created", "bookkeeping_created", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "script_uploaded", "workflow_registered", "address_enabled"]);
     expect(complete.calls.facts.url).toBe(`https://${complete.w.names.script}.fake-subdomain.workers.dev`);
   });
 

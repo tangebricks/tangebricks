@@ -86,8 +86,8 @@ const round = (n: number, places = 1) => Math.round(n * 10 ** places) / 10 ** pl
 describe("the scored session: the whole invoices project", () => {
   test("every call succeeded, and the build produced the project's nine files", () => {
     expect(full.session.answers.every((a) => !a.isError)).toBe(true);
-    expect(full.session.summary).toMatchObject({ project: "invoice-flow", files: 14, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
-    expect(Object.keys(full.session.stored)).toHaveLength(14); // story 2.3: credit-wallet's order currency migration
+    expect(full.session.summary).toMatchObject({ project: "invoice-flow", files: 15, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
+    expect(Object.keys(full.session.stored)).toHaveLength(15); // story 2.3: credit-wallet's order currency migration
   });
 
   test("the files it stored are the files a direct assembly of the same blueprint produces, byte for byte and by hash", async () => {
@@ -111,8 +111,8 @@ describe("the scored session: the whole invoices project", () => {
   test("the denominator counts what it says: the three bricks' code plus the generated files, each distinct text once", () => {
     const bricks = new Set(full.source.files.filter((f) => f.origin === "brick").map((f) => f.path.split("/")[1]));
     expect(bricks).toEqual(new Set(["multi-workspace", "credit-wallet", "dynamic-entities"]));
-    expect(full.source.files.filter((f) => f.origin === "generated")).toHaveLength(14); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003
-    expect(full.source.deduplicated).toBe(4); // the bricks' four migrations are copied into the project (credit-wallet's 0003 since story 2.3)
+    expect(full.source.files.filter((f) => f.origin === "generated")).toHaveLength(15); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003
+    expect(full.source.deduplicated).toBe(5); // the bricks' five migrations are copied into the project (credit-wallet's 0003 since story 2.3, 0004 since 2.5)
     expect(full.source.files.some((f) => /node_modules|\.test\.|client\//.test(f.path))).toBe(false);
   });
 });

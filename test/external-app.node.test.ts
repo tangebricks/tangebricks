@@ -305,12 +305,13 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       "@poc/credit-wallet/migrations/0001_credit_wallet.sql",
       "@poc/credit-wallet/migrations/0002_workspace_scoped_idempotency.sql",
       "@poc/credit-wallet/migrations/0003_order_currency.sql",
+      "@poc/credit-wallet/migrations/0004_milli_credits.sql",
       "@poc/audit-trail/migrations/0001_audit_trail.sql",
     ]);
     const db = (await mf!.getD1Database("DB")) as unknown as D1Like;
     const { results } = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all<{ name: string }>();
     const tables = results.map((r) => r.name);
-    for (const table of ["mw_workspaces", "mw_members", "mw_invites", "credit_wallets", "credit_ledger", "credit_orders", "audit_events", "px_rate_limits"]) {
+    for (const table of ["mw_workspaces", "mw_members", "mw_invites", "credit_wallets", "credit_ledger", "credit_orders", "credit_action_costs", "audit_events", "px_rate_limits"]) {
       expect(tables).toContain(table);
     }
   });
@@ -366,6 +367,15 @@ describe("story 2.2: smoke test of the mounted bricks in workerd", () => {
     const history = await call("GET", "/v1/wallet/history", { user: A, ws: wsA });
     expect(history.status).toBe(200);
     expect(history.json.ledgers.map((l: { amount: number }) => l.amount)).toEqual([-7, 50]);
+
+    // Story 2.5: a fractional amount is taken exactly, and every amount comes back in credits and in thousandths.
+    const fraction = await call("POST", "/v1/wallet/deduct", { user: A, ws: wsA, body: { amount: "0.25", reason: "usage" } });
+    expect(fraction.status, fraction.text).toBe(200);
+    expect(fraction.json).toMatchObject({ charged: 0.25, chargedMilli: 250, balanceAfter: 42.75, balanceAfterMilli: 42_750 });
+    expect((await call("GET", "/v1/wallet", { user: A, ws: wsA })).json).toMatchObject({ currentBalance: 42.75, currentBalanceMilli: 42_750 });
+    // The new routes are mounted behind their rate limits too; neither request below moves anything.
+    expect((await call("POST", "/v1/wallet/charge", { user: A, ws: wsA, body: { action: "nothing.priced", idempotencyKey: "c-1" } })).status).toBe(404);
+    expect((await call("POST", "/v1/wallet/transfer", { user: A, ws: wsA, body: { toWorkspaceId: "ws-nowhere", amount: 1, idempotencyKey: "t-1" } })).status).toBe(404);
   });
 
   test("A records an audit entry and lists it", async () => {
@@ -403,12 +413,12 @@ describe("story 2.2: smoke test of the mounted bricks in workerd", () => {
     expect(audit.json.events).toEqual([]);
 
     // A's balance is untouched by B's attempts.
-    expect((await call("GET", "/v1/wallet", { user: A, ws: wsA })).json.currentBalance).toBe(43);
+    expect((await call("GET", "/v1/wallet", { user: A, ws: wsA })).json.currentBalance).toBe(42.75);
   });
 
   test("the mounted rate limits counted the wallet requests", async () => {
     const db = (await mf!.getD1Database("DB")) as unknown as D1Like;
-    for (const bucket of ["wallet-deduct", "wallet-create-order", "wallet-verify"]) {
+    for (const bucket of ["wallet-deduct", "wallet-create-order", "wallet-verify", "wallet-charge", "wallet-transfer"]) {
       const row = await db.prepare("SELECT COUNT(*) AS n FROM px_rate_limits WHERE key LIKE ?").bind(`${bucket}:%`).first<{ n: number }>();
       expect(row?.n, bucket).toBeGreaterThan(0);
     }
@@ -421,6 +431,6 @@ describe("story 2.2: smoke test of the mounted bricks in workerd", () => {
     expect(deduct.status, deduct.text).toBe(403);
     expect(deduct.json.code).toBe("WORKSPACE_SUSPENDED");
     await db.prepare("UPDATE mw_workspaces SET suspended = 0 WHERE id = ?").bind(wsA).run();
-    expect((await call("GET", "/v1/wallet", { user: A, ws: wsA })).json.currentBalance).toBe(43);
+    expect((await call("GET", "/v1/wallet", { user: A, ws: wsA })).json.currentBalance).toBe(42.75);
   });
 });

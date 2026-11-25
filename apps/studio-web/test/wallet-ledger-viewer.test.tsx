@@ -360,4 +360,49 @@ describe("Story 6.2 — Studio Web Read-Only Credit Wallet & Usage Ledger Viewer
       });
     });
   });
+
+  it("story 2.5: reads credit-wallet's thousandths columns (migration 0004) and shows fractional credits exactly", async () => {
+    // The real schema since 0004: balance_milli, amount_milli, balance_after_milli. The legacy case above stays.
+    sqlite.exec(`
+      DROP TABLE credit_wallets;
+      DROP TABLE credit_ledger;
+      CREATE TABLE credit_wallets (
+        workspace_id TEXT PRIMARY KEY,
+        balance_milli INTEGER NOT NULL DEFAULT 0 CHECK (balance_milli >= 0),
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE credit_ledger (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        amount_milli INTEGER NOT NULL,
+        balance_after_milli INTEGER NOT NULL CHECK (balance_after_milli >= 0),
+        reason TEXT NOT NULL,
+        metadata TEXT,
+        idempotency_key TEXT,
+        transfer_code TEXT,
+        created_at TEXT NOT NULL
+      );
+    `);
+    sqlite.prepare("INSERT INTO credit_wallets (workspace_id, balance_milli, created_at) VALUES (?, ?, ?)").run("workspace_A", 12_145, "2026-04-19T10:00:00Z");
+    sqlite.prepare("INSERT INTO credit_wallets (workspace_id, balance_milli, created_at) VALUES (?, ?, ?)").run("workspace_B", 7_000, "2026-04-19T11:00:00Z");
+    const insert = sqlite.prepare(
+      "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    insert.run("led_m_1", "workspace_A", "alice", "topup", 12_345, 12_345, "Balance import", "{}", "import:x:workspace_A", "2026-04-19T10:01:00Z");
+    insert.run("led_m_2", "workspace_A", "alice", "deduction", -200, 12_145, "email.send", "{}", "job-1", "2026-04-19T10:05:00Z");
+
+    render(<EntitiesView />);
+    fireEvent.click(screen.getByTestId("data-subtab-ledger"));
+    await waitFor(() => {
+      expect(screen.getByTestId("ledger-entry-row-led_m_2")).toBeTruthy();
+    });
+    expect(screen.getByTestId("ledger-current-balance-value").textContent).toContain("12.145");
+    expect(screen.getByTestId("ledger-net-change-30d-value").textContent).toContain("+12.145");
+    expect(screen.getByTestId("ledger-entry-delta-led_m_1").textContent).toBe("+12.345");
+    expect(screen.getByTestId("ledger-entry-delta-led_m_2").textContent).toBe("-0.2");
+    expect(screen.getByTestId("ledger-entry-balance-led_m_2").textContent).toBe("12.145");
+    expect(screen.getByTestId("ledger-entry-balance-led_m_1").textContent).toBe("12.345");
+  });
 });

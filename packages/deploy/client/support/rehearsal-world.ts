@@ -7,6 +7,7 @@ import { stubIdentity } from "../../../../bricks/multi-workspace/test/support/st
 import walletMigration from "../../../../bricks/credit-wallet/migrations/0001_credit_wallet.sql?raw";
 import walletMigration0002 from "../../../../bricks/credit-wallet/migrations/0002_workspace_scoped_idempotency.sql?raw";
 import walletMigration0003 from "../../../../bricks/credit-wallet/migrations/0003_order_currency.sql?raw";
+import walletMigration0004 from "../../../../bricks/credit-wallet/migrations/0004_milli_credits.sql?raw";
 import { createFakeGateway, createWalletRoutes } from "../../../../bricks/credit-wallet/src/index.ts";
 import { createSqliteD1 } from "../../../../bricks/credit-wallet/client/test/support/sqlite-d1.ts";
 import { existsSync, readFileSync } from "node:fs";
@@ -40,6 +41,7 @@ export async function rehearsalWorld(breaks: Breaks = {}) {
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
   await applyMigration(db, walletMigration0003);
+  await applyMigration(db, walletMigration0004);
   const app = new Hono<WorkspaceEnv>();
   app.use("/api/*", stubIdentity);
   app.route("/api", createWorkspaceRoutes());

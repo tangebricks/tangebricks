@@ -31,7 +31,7 @@ const cases: Case[] = [
   { name: "the spend is a different amount from the one expected", file: H, from: '{ amount: SPEND, reason: "h12 spend" }', to: '{ amount: 1, reason: "h12 spend" }' },
   { name: "the widget is not refreshed after the spend", file: H, from: '      await widgetA.refresh();\n      await look("A: after spending through the API"', to: '      await look("A: after spending through the API"' },
   { name: "the widget is not refreshed after the top-up", file: H, from: '      await widgetA.refresh();\n      await look("A: after a top-up"', to: '      await look("A: after a top-up"' },
-  { name: "the top-up takes credits away", file: H, from: "UPDATE credit_wallets SET balance = balance + ?2 WHERE workspace_id = ?1", to: "UPDATE credit_wallets SET balance = balance - ?2 WHERE workspace_id = ?1" },
+  { name: "the top-up takes credits away", file: H, from: "UPDATE credit_wallets SET balance_milli = balance_milli + ?2 WHERE workspace_id = ?1", to: "UPDATE credit_wallets SET balance_milli = balance_milli - ?2 WHERE workspace_id = ?1" },
   { name: "the two tenants get the same balance", file: H, from: "export const SEED = { A: 1234, B: 567 } as const;", to: "export const SEED = { A: 1234, B: 1234 } as const;" },
   { name: "tenant A gets no credit", file: H, from: "export const SEED = { A: 1234, B: 567 } as const;", to: "export const SEED = { A: 0, B: 567 } as const;" },
   { name: "tenant B's widget is pointed at tenant A's workspace", file: H, from: 'clientFor(B.id, B.user, "B")', to: 'clientFor(A.id, B.user, "B")' },

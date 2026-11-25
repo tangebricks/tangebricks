@@ -10,6 +10,7 @@ import { stubIdentity } from "../../multi-workspace/test/support/stub-identity.t
 import walletMigration from "../migrations/0001_credit_wallet.sql?raw";
 import walletMigration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
 import walletMigration0003 from "../migrations/0003_order_currency.sql?raw";
+import walletMigration0004 from "../migrations/0004_milli_credits.sql?raw";
 import { createFakeGateway, createWallet, createWalletRoutes } from "../src/index.ts";
 
 // POST /wallet/deduct: the HTTP way to spend. Written for H6 (the assembled project must refuse spending another
@@ -32,29 +33,34 @@ const spend = (user: string | null, workspace: string | null, body: unknown, ext
     { DB: db },
   );
 const json = async (res: Response) => (await res.json()) as Record<string, any>;
-const balance = (workspace: string) => createWallet(db, undefined).getBalance(workspace);
+// In credits, as the route speaks them; the wallet holds thousandths (story 2.5).
+const balance = async (workspace: string) => {
+  const milli = await createWallet(db, undefined).getBalanceMilli(workspace);
+  return milli === null ? null : milli / 1000;
+};
 const ledger = async (workspace: string) => (await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
 
 beforeEach(async () => {
   expect.hasAssertions();
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, mwMigration);
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
   await applyMigration(db, walletMigration0003);
+  await applyMigration(db, walletMigration0004);
   for (const [ws, owner] of [["ws-a", "alice"], ["ws-b", "bob"]] as const) {
     await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(ws, ws, owner).run();
     await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").bind(ws, owner).run();
   }
-  await createWallet(db, undefined).openWallet("ws-a", 100);
-  await createWallet(db, undefined).openWallet("ws-b", 50);
+  await createWallet(db, undefined).openWallet("ws-a", 100_000);
+  await createWallet(db, undefined).openWallet("ws-b", 50_000);
 });
 
 describe("POST /wallet/deduct", () => {
   it("spends from the caller's own workspace and says what is left", async () => {
     const res = await spend("alice", "ws-a", { amount: 30, reason: "report export" });
     expect(res.status).toBe(200);
-    expect(await json(res)).toEqual({ charged: 30, balanceAfter: 70, duplicate: false });
+    expect(await json(res)).toEqual({ charged: 30, chargedMilli: 30_000, balanceAfter: 70, balanceAfterMilli: 70_000, duplicate: false });
     expect(await balance("ws-a")).toBe(70);
     expect(await ledger("ws-a")).toBe(1);
   });
@@ -69,7 +75,7 @@ describe("POST /wallet/deduct", () => {
   it("an amount the wallet cannot cover is refused with 402 and nothing changes", async () => {
     const res = await spend("alice", "ws-a", { amount: 101 });
     expect(res.status).toBe(402);
-    expect(await json(res)).toEqual({ error: "Insufficient balance", balance: 100 });
+    expect(await json(res)).toEqual({ error: "Insufficient balance", balance: 100, balanceMilli: 100_000 });
     expect(await balance("ws-a")).toBe(100);
     expect(await ledger("ws-a")).toBe(0);
   });
@@ -90,8 +96,16 @@ describe("POST /wallet/deduct", () => {
     expect(await ledger("ws-a")).toBe(1);
   });
 
+  it("story 2.5: an amount with up to three decimals, as a number or decimal text, is taken exactly", async () => {
+    expect(await json(await spend("alice", "ws-a", { amount: 0.2 }))).toMatchObject({ charged: 0.2, chargedMilli: 200, balanceAfter: 99.8, balanceAfterMilli: 99_800 });
+    expect(await json(await spend("alice", "ws-a", { amount: "1.5" }))).toMatchObject({ chargedMilli: 1_500, balanceAfterMilli: 98_300 });
+    expect(await json(await spend("alice", "ws-a", { amount: "0.001" }))).toMatchObject({ chargedMilli: 1, balanceAfterMilli: 98_299 });
+    expect(await balance("ws-a")).toBe(98.299);
+    expect(await ledger("ws-a")).toBe(3);
+  });
+
   it("fifteen requests at once against a balance of ten: exactly ten succeed, over HTTP", async () => {
-    await db.prepare("UPDATE credit_wallets SET balance = 10 WHERE workspace_id = 'ws-a'").run();
+    await db.prepare("UPDATE credit_wallets SET balance_milli = 10000 WHERE workspace_id = 'ws-a'").run();
     const responses = await Promise.all(Array.from({ length: 15 }, () => spend("alice", "ws-a", { amount: 1 })));
     expect(responses.filter((r) => r.status === 200).length).toBe(10);
     expect(responses.filter((r) => r.status === 402).length).toBe(5);
@@ -99,7 +113,7 @@ describe("POST /wallet/deduct", () => {
     expect(await ledger("ws-a")).toBe(10);
   });
 
-  it.each([[0], [-5], [1.5], ["10"], [null], [1e12], [Number.NaN]])("an amount of %j is rejected with 400 and nothing changes", async (amount) => {
+  it.each([[0], [-5], [0.0001], ["0.0001"], ["1e-3"], [1e-7], ["abc"], [true], [null], [1e12], [Number.NaN]])("an amount of %j is rejected with 400 and nothing changes", async (amount) => {
     expect((await spend("alice", "ws-a", { amount })).status).toBe(400);
     expect(await balance("ws-a")).toBe(100);
     expect(await ledger("ws-a")).toBe(0);

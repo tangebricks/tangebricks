@@ -7,6 +7,7 @@ import { createFakeGateway, createWallet, createWalletRoutes } from "@poc/credit
 import walletMigration from "../../../bricks/credit-wallet/migrations/0001_credit_wallet.sql?raw";
 import walletMigration0002 from "../../../bricks/credit-wallet/migrations/0002_workspace_scoped_idempotency.sql?raw";
 import walletMigration0003 from "../../../bricks/credit-wallet/migrations/0003_order_currency.sql?raw";
+import walletMigration0004 from "../../../bricks/credit-wallet/migrations/0004_milli_credits.sql?raw";
 import { cashfreeProvider, fakeProvider, stripeProvider, type TamperField, type TestProvider } from "./support/providers.ts";
 
 // Story 2.3: the wallet's verification checks and its webhook route, run the same way against the fake gateway, the
@@ -24,10 +25,11 @@ const stubIdentity: MiddlewareHandler = async (c, next) => {
 };
 
 async function reset(): Promise<void> {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
   await applyMigration(db, walletMigration0003);
+  await applyMigration(db, walletMigration0004);
 }
 
 const providers: Array<[string, () => TestProvider]> = [
@@ -36,7 +38,8 @@ const providers: Array<[string, () => TestProvider]> = [
   ["stripe", stripeProvider],
 ];
 
-const balance = () => createWallet(db, undefined).getBalance(WS);
+// In credits; the wallet holds thousandths (story 2.5).
+const balance = async () => ((await createWallet(db, undefined).getBalanceMilli(WS)) ?? 0) / 1000;
 const ledgerRows = async () => (await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ?").bind(WS).first<{ n: number }>())!.n;
 
 beforeEach(async () => {
@@ -201,7 +204,7 @@ describe("amount units: the wallet's whole rupees cross the interface as paise (
     expect(sent.body).toContain('"order_amount":500.00,');
     expect(provider.orders.get(orderId)!.amount).toBe(500);
     provider.markPaid(orderId);
-    expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, credits: 500, amount: 500 });
+    expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, creditsMilli: 500_000, amount: 500 });
     expect(await balance()).toBe(500);
   });
 
@@ -212,7 +215,7 @@ describe("amount units: the wallet's whole rupees cross the interface as paise (
     const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: OWNER, amount: 500 });
     expect(provider.sentAmounts).toEqual([50000]);
     provider.markPaid(orderId);
-    expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, credits: 500 });
+    expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, creditsMilli: 500_000 });
   });
 
   it("a Cashfree order that reports 5.00 rupees for a 500-rupee order is refused", async () => {
@@ -234,7 +237,7 @@ describe("amount units: the wallet's whole rupees cross the interface as paise (
       const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: OWNER, amount: 500 });
       expect(provider.requests.find((r) => r.method === "POST")!.body).toContain(`"order_amount":${sentAmount},`);
       provider.markPaid(orderId);
-      expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, credits: 500 });
+      expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, creditsMilli: 500_000 });
     }
   });
 });

@@ -23,7 +23,7 @@ interface Case {
 }
 const cases: Case[] = [
   // ---- how a run is judged
-  { name: "a final balance the ledger does not explain is accepted", from: "if (f.balance !== run.start + sum) reasons.push(", to: "if (false as boolean) reasons.push(" },
+  { name: "a final balance the ledger does not explain is accepted", from: "if (f.balance !== start + sum) reasons.push(", to: "if (false as boolean) reasons.push(" },
   { name: "a negative final balance is accepted", from: "if (f.balance < 0) reasons.push(", to: "if (false as boolean) reasons.push(" },
   { name: "a balance_after that a replay does not reproduce is accepted", from: "if (row.balance_after !== running) mismatches += 1;", to: "" },
   { name: "a negative balance_after is accepted", from: "if (row.balance_after < 0) negatives += 1;", to: "" },
@@ -32,7 +32,7 @@ const cases: Case[] = [
   { name: "an unknown deduction is allowed any number of rows", from: "if (rows > accepted + unknown) reasons.push(", to: "if (rows > accepted + unknown + 99) reasons.push(" },
   { name: "an unknown deduction is allowed no row at all", from: "if (rows > accepted + unknown) reasons.push(", to: "if (rows > accepted) reasons.push(" },
   { name: "an order credited twice is accepted", from: "if (twice > 0) reasons.push(", to: "if (false as boolean) reasons.push(" },
-  { name: "an order credited for another amount is accepted", from: "if (row.amount !== requested.get(order)) reasons.push(", to: "if (false as boolean) reasons.push(" },
+  { name: "an order credited for another amount is accepted", from: "if (row.amount !== requested.get(order)! * scale) reasons.push(", to: "if (false as boolean) reasons.push(" },
   { name: "a top-up row for an order nobody requested is accepted", from: "if (!order || !requested.has(order)) {", to: "if (false as boolean) {" },
   { name: "an accepted top-up with no row is accepted", from: 'if (t.result === "accepted" && rows !== 1) reasons.push(', to: 'if (false as boolean) reasons.push(' },
   { name: "a top-up confirmed twice that did not credit exactly once is accepted", from: 'if (t.result === "violation") reasons.push(`order ${t.orderId} was confirmed twice', to: 'if (false as boolean) reasons.push(`order ${t.orderId} was confirmed twice' },

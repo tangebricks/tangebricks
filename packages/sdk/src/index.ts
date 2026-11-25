@@ -104,8 +104,8 @@ export {
   withHashedSessionTokens,
 } from "./session-token-hash.ts";
 export type { HashedSessionOptions, SessionAdapterLike } from "./session-token-hash.ts";
-export { findWorkspaceMembership } from "./workspace-membership.ts";
-export type { WorkspaceMembership } from "./workspace-membership.ts";
+export { WORKSPACE_REGISTRY_TABLE, findWorkspaceMembership, findWorkspaceState, hasWorkspaceRegistry } from "./workspace-membership.ts";
+export type { WorkspaceMembership, WorkspaceState } from "./workspace-membership.ts";
 export { hardenedBetterAuthOptions, hashedSessionDatabase } from "./better-auth-hardening.ts";
 export type { BetterAuthHardeningInput } from "./better-auth-hardening.ts";
 export {
@@ -134,3 +134,13 @@ export type {
   SenderVerification,
   StatusWebhookResult,
 } from "./outbound-delivery.ts";
+export {
+  CREDIT_DECIMALS,
+  MILLI_PER_CREDIT,
+  formatMilli,
+  fromMilli,
+  parseMilli,
+  toMilli,
+  toMilliRounded,
+} from "./credits.ts";
+export type { CreditRounding, ToMilliOptions } from "./credits.ts";

@@ -2341,6 +2341,9 @@ export interface WorkspaceLedgerEntryPayload {
   workspaceId: string;
   delta: number;
   balanceAfter: number;
+  /** Story 2.5: the same amounts in whole thousandths of a credit (exact); absent from an older data browser. */
+  deltaMilli?: number;
+  balanceAfterMilli?: number;
   reason: string;
   idempotencyKey: string | null;
   runId?: string | null;
@@ -2356,9 +2359,12 @@ export interface WorkspaceLedgerResponse {
   workspaceId: string;
   wallet: {
     balance: number;
+    /** Story 2.5: whole thousandths of a credit (exact); absent from an older data browser. */
+    balanceMilli?: number;
     currencyOrUnit: string;
     updatedAt: string;
     netChange30d: number;
+    netChange30dMilli?: number;
   };
   usageSummary: WorkspaceUsageSummaryItemPayload[];
   journalEntries: WorkspaceLedgerEntryPayload[];

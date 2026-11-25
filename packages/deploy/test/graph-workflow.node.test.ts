@@ -365,11 +365,15 @@ describe("real executors and a verified workspace", () => {
   const openWallets = async (balances: Record<string, number>) => {
     const d = await db();
     for (const [workspaceId, balance] of Object.entries(balances)) {
-      await d.prepare("INSERT INTO credit_wallets (workspace_id, balance) VALUES (?1, ?2) ON CONFLICT(workspace_id) DO UPDATE SET balance = excluded.balance").bind(workspaceId, balance).run();
+      // Whole credits here; the wallet holds thousandths (credit-wallet migration 0004, story 2.5).
+      await d.prepare("INSERT INTO credit_wallets (workspace_id, balance_milli) VALUES (?1, ?2) ON CONFLICT(workspace_id) DO UPDATE SET balance_milli = excluded.balance_milli").bind(workspaceId, balance * 1000).run();
     }
   };
-  const balance = async (workspaceId: string) => (await (await db()).prepare("SELECT balance FROM credit_wallets WHERE workspace_id = ?1").bind(workspaceId).first<{ balance: number }>())?.balance ?? null;
-  const ledger = async (workspaceId: string) => (await (await db()).prepare("SELECT workspace_id, user_id, amount, balance_after FROM credit_ledger WHERE workspace_id = ?1").bind(workspaceId).all()).results;
+  const balance = async (workspaceId: string) => {
+    const milli = (await (await db()).prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?1").bind(workspaceId).first<{ balance_milli: number }>())?.balance_milli;
+    return milli === undefined ? null : milli / 1000;
+  };
+  const ledger = async (workspaceId: string) => (await (await db()).prepare("SELECT workspace_id, user_id, amount_milli, balance_after_milli FROM credit_ledger WHERE workspace_id = ?1").bind(workspaceId).all()).results;
 
   test("BUNDLE_REAL_DEBIT: a signed run for workspace A debits A's wallet with the real executor; B's is untouched", async () => {
     await openWallets({ [WS_A]: 50, [WS_B]: 50 });
@@ -377,9 +381,9 @@ describe("real executors and a verified workspace", () => {
     const done = await finish(await start("debit", { userId: "u1" }, WS_A));
     expect(done.status).toBe("complete");
     expect(done.output!.ok).toBe(true);
-    expect(done.output!.outputs.pay).toEqual({ out: { charged: 5, balanceAfter: 45, duplicate: false } });
+    expect(done.output!.outputs.pay).toEqual({ out: { charged: 5, chargedMilli: 5_000, balanceAfter: 45, balanceAfterMilli: 45_000, duplicate: false } });
     expect(await balance(WS_A)).toBe(45);
-    expect(await ledger(WS_A)).toEqual([{ workspace_id: WS_A, user_id: "u1", amount: -5, balance_after: 45 }]);
+    expect(await ledger(WS_A)).toEqual([{ workspace_id: WS_A, user_id: "u1", amount_milli: -5_000, balance_after_milli: 45_000 }]);
     expect(await balance(WS_B)).toBe(50);
     expect(await ledger(WS_B)).toEqual([]);
   });

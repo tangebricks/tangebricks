@@ -32,7 +32,11 @@ interface World {
   a: string;
   b: string;
 }
-const balanceOf = async (workspace: string) => (await db.prepare("SELECT balance FROM credit_wallets WHERE workspace_id = ?").bind(workspace).first<{ balance: number }>())?.balance;
+// In whole credits: the wallet holds thousandths since credit-wallet's migration 0004 (story 2.5).
+const balanceOf = async (workspace: string) => {
+  const milli = (await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind(workspace).first<{ balance_milli: number }>())?.balance_milli;
+  return milli === undefined ? undefined : milli / 1000;
+};
 const ledgerRows = async (workspace: string) => (await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
 const orderRows = async (workspace: string) => (await db.prepare("SELECT COUNT(*) AS n FROM credit_orders WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
 
@@ -45,8 +49,8 @@ async function world(): Promise<World> {
   const b = await create("bob", "B");
   await call("/api/wallet", "alice", a); // opens the wallets
   await call("/api/wallet", "bob", b);
-  await db.prepare("UPDATE credit_wallets SET balance = 100 WHERE workspace_id = ?").bind(a).run();
-  await db.prepare("UPDATE credit_wallets SET balance = 50 WHERE workspace_id = ?").bind(b).run();
+  await db.prepare("UPDATE credit_wallets SET balance_milli = 100000 WHERE workspace_id = ?").bind(a).run();
+  await db.prepare("UPDATE credit_wallets SET balance_milli = 50000 WHERE workspace_id = ?").bind(b).run();
   await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, 'carol', 'member')").bind(a).run();
   return { a, b };
 }
@@ -75,7 +79,7 @@ describe("workspace A cannot reach workspace B's money", () => {
   });
 
   test("reading B's history", async () => {
-    await db.prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata) VALUES ('secret-row', ?, 'bob', 'topup', 50, 50, 'bob-private-memo', '{}')").bind(w.b).run();
+    await db.prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata) VALUES ('secret-row', ?, 'bob', 'topup', 50000, 50000, 'bob-private-memo', '{}')").bind(w.b).run();
     const reply = await call("/api/wallet/history", "alice", w.b);
     expect(reply.status).toBe(403);
     expect(JSON.stringify(reply.body)).not.toContain("bob-private-memo");

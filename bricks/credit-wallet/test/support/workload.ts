@@ -54,15 +54,31 @@ export interface LedgerRow {
   metadata: string | null;
 }
 
-/** Where a schema keeps the balance and the ledger, so one checker serves cephlow's tables and the brick's. */
+/**
+ * Where a schema keeps the balance and the ledger, so one checker serves cephlow's tables and the brick's. Story 2.5: the
+ * brick holds thousandths of a credit (migration 0004), so its columns are the `_milli` ones and its `scale` is 1000:
+ * the workload's whole-credit amounts are converted at this boundary, and the invariants are checked in thousandths.
+ */
 export interface Tables {
   wallet: string;
   walletKey: string;
   balance: string;
   ledger: string;
+  amount: string;
+  balanceAfter: string;
+  /** Stored units per whole credit of the workload. */
+  scale: number;
 }
-export const CEPHLOW2_TABLES: Tables = { wallet: "workspaces", walletKey: "id", balance: "current_balance", ledger: "ledgers" };
-export const BRICK_TABLES: Tables = { wallet: "credit_wallets", walletKey: "workspace_id", balance: "balance", ledger: "credit_ledger" };
+export const CEPHLOW2_TABLES: Tables = { wallet: "workspaces", walletKey: "id", balance: "current_balance", ledger: "ledgers", amount: "amount", balanceAfter: "balance_after", scale: 1 };
+export const BRICK_TABLES: Tables = {
+  wallet: "credit_wallets",
+  walletKey: "workspace_id",
+  balance: "balance_milli",
+  ledger: "credit_ledger",
+  amount: "amount_milli",
+  balanceAfter: "balance_after_milli",
+  scale: 1000,
+};
 
 /**
  * Applies the epic's definition of a violating run to what is in the database after the workload, and returns the
@@ -77,7 +93,7 @@ export const BRICK_TABLES: Tables = { wallet: "credit_wallets", walletKey: "work
 export async function violations(db: D1Like, workspaceId: string, start: number, outcomes: Outcome[], tables: Tables = CEPHLOW2_TABLES): Promise<string[]> {
   const reasons: string[] = [];
   const accepted = outcomes.filter((o) => o.accepted);
-  const expected = accepted.reduce((sum, o) => sum + (o.op.kind === "topup" ? o.op.amount : -o.op.amount), start);
+  const expected = accepted.reduce((sum, o) => sum + (o.op.kind === "topup" ? o.op.amount : -o.op.amount) * tables.scale, start * tables.scale);
 
   // Table and column names come from the two constants above, never from input.
   const ws = await db.prepare(`SELECT ${tables.balance} AS current_balance FROM ${tables.wallet} WHERE ${tables.walletKey} = ?`).bind(workspaceId).first<{ current_balance: number }>();
@@ -86,12 +102,12 @@ export async function violations(db: D1Like, workspaceId: string, start: number,
   if (ws.current_balance < 0) reasons.push(`final balance is negative: ${ws.current_balance}`);
 
   const { results: rows } = await db
-    .prepare(`SELECT id, type, amount, balance_after, metadata FROM ${tables.ledger} WHERE workspace_id = ? ORDER BY rowid`)
+    .prepare(`SELECT id, type, ${tables.amount} AS amount, ${tables.balanceAfter} AS balance_after, metadata FROM ${tables.ledger} WHERE workspace_id = ? ORDER BY rowid`)
     .bind(workspaceId)
     .all<LedgerRow>();
   if (rows.length !== accepted.length) reasons.push(`ledger has ${rows.length} rows for ${accepted.length} accepted operations`);
 
-  let running = start;
+  let running = start * tables.scale;
   let mismatches = 0;
   let negatives = 0;
   for (const row of rows) {

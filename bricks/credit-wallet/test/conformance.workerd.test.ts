@@ -19,12 +19,12 @@ runBrickConformance({
   brickDir: "bricks/credit-wallet",
   app,
   seed: async (db, { workspaceA, workspaceB }) => {
-    await db.prepare("INSERT OR IGNORE INTO credit_wallets (workspace_id, balance) VALUES (?, 1000)").bind(workspaceA).run();
+    await db.prepare("INSERT OR IGNORE INTO credit_wallets (workspace_id, balance_milli) VALUES (?, 1000000)").bind(workspaceA).run();
     // A different balance from A's, so the kit can tell B's own wallet from a leak of A's.
-    await db.prepare("INSERT OR IGNORE INTO credit_wallets (workspace_id, balance) VALUES (?, 500)").bind(workspaceB).run();
+    await db.prepare("INSERT OR IGNORE INTO credit_wallets (workspace_id, balance_milli) VALUES (?, 500000)").bind(workspaceB).run();
     // One ledger row for A only, so A's history is not the same (empty) list B gets for its own workspace.
     await db
-      .prepare("INSERT OR IGNORE INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason) VALUES ('led_conf_a', ?, 'usr_conf_test', 'topup', 1000, 1000, 'seed A')")
+      .prepare("INSERT OR IGNORE INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason) VALUES ('led_conf_a', ?, 'usr_conf_test', 'topup', 1000000, 1000000, 'seed A')")
       .bind(workspaceA)
       .run();
   },

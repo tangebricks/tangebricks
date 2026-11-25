@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MILLI_PER_CREDIT, fromMilli } from "@poc/sdk";
 import type { BrickManifest, Executor } from "@poc/sdk";
 import type { D1Like } from "./d1.ts";
 import { createWallet } from "./wallet.ts";
@@ -8,7 +9,11 @@ export const WALLET_DB_BINDING = "DB";
 
 export const DEDUCT_CREDITS = "credit-wallet.deduct";
 
-/** What the step is configured with in the graph: how much it costs and why. */
+/**
+ * What the step is configured with in the graph: how much it costs and why. The amount is whole credits (the catalog
+ * declares it an integer); the step converts it to thousandths for the wallet (story 2.5). Fractional prices belong to
+ * per-action costs (`POST /wallet/charge`), not to a graph literal.
+ */
 const ConfigSchema = z.object({
   amount: z.number().int().positive().max(1_000_000_000),
   reason: z.string().min(1).max(200).default("usage"),
@@ -69,27 +74,32 @@ export const deductCreditsExecutor: Executor = async (ctx) => {
   if (input.workspaceId !== undefined && input.workspaceId !== workspaceId) {
     throw new WorkspaceMismatchError("the step's input names a different workspace than the run's; nothing was debited");
   }
+  const amountMilli = config.amount * MILLI_PER_CREDIT;
   const wallet = createWallet(ctx.binding<D1Like>(WALLET_DB_BINDING), undefined);
   const result = await wallet.deduct({
     workspaceId,
     userId: input.userId,
-    amount: config.amount,
+    amountMilli,
     reason: config.reason,
     metadata: { node_id: ctx.nodeId },
     idempotencyKey: input.idempotencyKey,
+    // A retry is the same node; another node using the same key is refused, not answered with this one's debit.
+    match: { op: "node", node_id: ctx.nodeId },
   });
   if (!result.ok) {
     const errMsg =
       result.reason === "insufficient_balance"
-        ? `insufficient balance: need ${config.amount}, have ${result.balance ?? 0}`
-        : `no wallet for workspace ${workspaceId}`;
+        ? `insufficient balance: need ${config.amount}, have ${fromMilli(result.balanceMilli ?? 0)}`
+        : result.reason === "idempotency_key_reused"
+          ? "IDEMPOTENCY_KEY_REUSED: the idempotency key was already used for a different operation; nothing was debited"
+          : `no wallet for workspace ${workspaceId}`;
     await ctx.log?.error(errMsg, {
       brickId: "credit-wallet",
       workspaceId,
       userId: input.userId,
-      amount: config.amount,
+      amountMilli,
       reason: config.reason,
-      balance: result.balance ?? 0,
+      balanceMilli: result.balanceMilli ?? 0,
     });
     throw new Error(errMsg);
   }
@@ -97,10 +107,18 @@ export const deductCreditsExecutor: Executor = async (ctx) => {
     brickId: "credit-wallet",
     workspaceId,
     userId: input.userId,
-    charged: config.amount,
-    balanceAfter: result.balanceAfter,
+    chargedMilli: amountMilli,
+    balanceAfterMilli: result.balanceAfterMilli,
   });
-  return { out: { charged: config.amount, balanceAfter: result.balanceAfter, duplicate: result.duplicate } };
+  return {
+    out: {
+      charged: config.amount,
+      chargedMilli: amountMilli,
+      balanceAfter: fromMilli(result.balanceAfterMilli),
+      balanceAfterMilli: result.balanceAfterMilli,
+      duplicate: result.duplicate,
+    },
+  };
 };
 
 /** The bricks this package contributes to a registry, and the code behind them. */

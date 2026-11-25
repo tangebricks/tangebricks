@@ -331,7 +331,7 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
       hash: string;
     }>();
     expect(mcpBuildJson.revision).toBe(6);
-    expect(mcpBuildJson.files).toBe(16); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003
+    expect(mcpBuildJson.files).toBe(17); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003; story 2.5 its 0004
 
     const httpBuild = await studioApp.request(
       `/api/projects/${httpProject}/build`,

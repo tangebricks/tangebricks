@@ -1,4 +1,6 @@
 import { scoped } from "@poc/sdk";
+import { chargeAction, parseDefaultActionCosts } from "./costs.ts";
+import type { ChargeActionResult } from "./costs.ts";
 import type { D1Like } from "./d1.ts";
 import { createWallet } from "./wallet.ts";
 
@@ -7,41 +9,66 @@ import { createWallet } from "./wallet.ts";
  * (`credit-wallet.walletCharger`), so they can charge a workspace's wallet without importing this brick.
  *
  * It is the wallet's own atomic deduction and refund (story 0.7 / 0.9): one D1 batch each, refused by the database when
- * the wallet cannot cover a deduction, and recorded once per (workspace, idempotency key). Credits are whole numbers.
+ * the wallet cannot cover a deduction, and recorded once per (workspace, idempotency key).
  *
- * A debit with a key that is already on the ledger takes nothing and answers `{ ok: true, duplicate: true }`. The
- * wallet's deduction checks the balance before the key, so a retry whose earlier attempt committed (and left too little
- * for a second one) would be refused for the balance; `debit` therefore looks the key up before answering a refusal.
+ * Units (story 2.5): every amount is a whole number of thousandths of a credit ("milli-credits"); 1 credit is 1000.
+ * The names say so (`milli`, `balanceAfterMilli`), so a caller written for whole credits fails to compile instead of
+ * charging a thousandth of what it meant.
+ *
+ * A debit records the tag `op: "charger"`. Retried with a key that is already on the ledger, it takes nothing and answers
+ * `{ ok: true, duplicate: true }` only when that row is a charger debit of the same amount; the wallet's deduction makes
+ * that check itself, also when the balance left cannot cover a second one (it checks the balance before the key). A key
+ * used for anything else (a route deduction, an action charge, a transfer, a top-up) is `IDEMPOTENCY_KEY_REUSED`.
  */
 export type ChargeResult =
-  | { ok: true; balanceAfter: number; duplicate: boolean }
-  | { ok: false; code: "INSUFFICIENT_CREDITS" | "WALLET_NOT_FOUND"; balance: number };
+  | { ok: true; balanceAfterMilli: number; duplicate: boolean }
+  | { ok: false; code: "INSUFFICIENT_CREDITS" | "WALLET_NOT_FOUND" | "IDEMPOTENCY_KEY_REUSED"; balanceMilli: number };
 
 export type RefundResult =
-  | { ok: true; balanceAfter: number; duplicate: boolean; credits: number }
-  | { ok: false; code: "WALLET_NOT_FOUND" | "NOTHING_TO_REFUND"; balance: number };
+  | { ok: true; balanceAfterMilli: number; duplicate: boolean; milli: number }
+  | { ok: false; code: "WALLET_NOT_FOUND" | "NOTHING_TO_REFUND" | "IDEMPOTENCY_KEY_REUSED"; balanceMilli: number };
+
+export interface ChargeActionOptions {
+  /** Recorded on the ledger row. Default "system". */
+  userId?: string;
+  /** Costs that apply when the workspace has no row of its own: the `defaultActionCosts` setting's text, or a parsed map. */
+  defaultCosts?: string | ReadonlyMap<string, number>;
+}
 
 export interface WalletCharger {
-  /** The workspace's balance in credits; 0 when it has no wallet yet. */
-  balance(db: D1Like, workspaceId: string): Promise<number>;
-  /** Takes `credits` (a positive whole number) once for `idempotencyKey`; `userId` is recorded on the ledger row. */
-  debit(db: D1Like, workspaceId: string, credits: number, idempotencyKey: string, reason: string, userId?: string): Promise<ChargeResult>;
+  /** The workspace's balance in thousandths of a credit; 0 when it has no wallet yet. */
+  balanceMilli(db: D1Like, workspaceId: string): Promise<number>;
+  /** Takes `milli` (a positive whole number of thousandths) once for `idempotencyKey`; `userId` is recorded on the ledger row. */
+  debit(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId?: string): Promise<ChargeResult>;
   /**
-   * Gives back up to `credits` of the deduction recorded under `againstKey`, once for `idempotencyKey` (a key of its own).
+   * Gives back up to `milli` of the deduction recorded under `againstKey`, once for `idempotencyKey` (a key of its own).
    * Nothing is refunded (`NOTHING_TO_REFUND`) unless that deduction is on the ledger, and never more than it took, so
    * it is safe to call when it is unknown whether the deduction committed.
    */
   refund(
     db: D1Like,
     workspaceId: string,
-    credits: number,
+    milli: number,
     idempotencyKey: string,
     againstKey: string,
     reason: string,
     userId?: string,
   ): Promise<RefundResult>;
-  /** The ledger entry recorded under a key in this workspace, as a whole number of credits moved, or null if none. */
-  settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ credits: number; type: "deduction" | "topup" } | null>;
+  /** The ledger entry recorded under a key in this workspace, as thousandths moved, or null if none. */
+  settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ milli: number; type: "deduction" | "topup" } | null>;
+  /**
+   * Story 2.5: takes the workspace's cost for `action` times `quantity` (1 to 10000), once for `idempotencyKey`.
+   * UNKNOWN_ACTION when neither the workspace nor `options.defaultCosts` prices the action.
+   */
+  chargeAction(
+    db: D1Like,
+    workspaceId: string,
+    action: string,
+    quantity: number,
+    idempotencyKey: string,
+    reason: string,
+    options?: ChargeActionOptions,
+  ): Promise<ChargeActionResult>;
 }
 
 function checkKey(idempotencyKey: string): void {
@@ -50,64 +77,88 @@ function checkKey(idempotencyKey: string): void {
   }
 }
 
-async function settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ credits: number; type: "deduction" | "topup" } | null> {
+async function settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ milli: number; type: "deduction" | "topup" } | null> {
   checkKey(idempotencyKey);
-  const row = await scoped(db, workspaceId).first<{ amount: number; type: "deduction" | "topup" }>("credit_ledger", "idempotency_key = ?", [idempotencyKey]);
-  return row ? { credits: Math.abs(row.amount), type: row.type } : null;
+  const row = await scoped(db, workspaceId).first<{ amount_milli: number; type: string }>("credit_ledger", "idempotency_key = ?", [idempotencyKey]);
+  if (!row || (row.type !== "deduction" && row.type !== "topup")) return null;
+  return { milli: Math.abs(row.amount_milli), type: row.type };
 }
 
 export const walletCharger: WalletCharger = Object.freeze({
-  async balance(db: D1Like, workspaceId: string): Promise<number> {
-    return (await createWallet(db, undefined).getBalance(workspaceId)) ?? 0;
+  async balanceMilli(db: D1Like, workspaceId: string): Promise<number> {
+    return (await createWallet(db, undefined).getBalanceMilli(workspaceId)) ?? 0;
   },
 
-  async debit(db: D1Like, workspaceId: string, credits: number, idempotencyKey: string, reason: string, userId = "system"): Promise<ChargeResult> {
+  async debit(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId = "system"): Promise<ChargeResult> {
     checkKey(idempotencyKey);
     const wallet = createWallet(db, undefined);
-    // createWallet().deduct refuses an amount that is not a positive whole number (RangeError).
+    // createWallet().deduct refuses an amount that is not a positive whole number of thousandths (RangeError).
     const result = await wallet.deduct({
       workspaceId,
       userId,
-      amount: credits,
+      amountMilli: milli,
       reason: reason.slice(0, 200) || "usage",
       idempotencyKey,
+      match: { op: "charger" },
     });
-    if (result.ok) return { ok: true, balanceAfter: result.balanceAfter, duplicate: result.duplicate };
-    // The overdraw check runs before the key check: an earlier attempt with this key may have committed.
-    const earlier = await settled(db, workspaceId, idempotencyKey);
-    if (earlier && earlier.type === "deduction") return { ok: true, balanceAfter: (await wallet.getBalance(workspaceId)) ?? 0, duplicate: true };
+    if (result.ok) return { ok: true, balanceAfterMilli: result.balanceAfterMilli, duplicate: result.duplicate };
+    // The wallet answers a committed retry of the same deduction (same amount) as a duplicate even when the balance left
+    // cannot cover it again, and refuses a key used for anything else (story 2.5): never ok without a deduction.
     return {
       ok: false,
-      code: result.reason === "insufficient_balance" ? "INSUFFICIENT_CREDITS" : "WALLET_NOT_FOUND",
-      balance: result.balance ?? 0,
+      code:
+        result.reason === "insufficient_balance" ? "INSUFFICIENT_CREDITS" : result.reason === "idempotency_key_reused" ? "IDEMPOTENCY_KEY_REUSED" : "WALLET_NOT_FOUND",
+      balanceMilli: result.balanceMilli ?? 0,
     };
   },
 
   async refund(
     db: D1Like,
     workspaceId: string,
-    credits: number,
+    milli: number,
     idempotencyKey: string,
     againstKey: string,
     reason: string,
     userId = "system",
   ): Promise<RefundResult> {
     checkKey(idempotencyKey);
-    if (!Number.isSafeInteger(credits) || credits <= 0) throw new RangeError("credits must be a positive whole number");
+    if (!Number.isSafeInteger(milli) || milli <= 0) throw new RangeError("milli must be a positive whole number of thousandths");
     const debited = await settled(db, workspaceId, againstKey);
-    if (!debited || debited.type !== "deduction") return { ok: false, code: "NOTHING_TO_REFUND", balance: 0 };
-    const amount = Math.min(credits, debited.credits);
+    if (!debited || debited.type !== "deduction") return { ok: false, code: "NOTHING_TO_REFUND", balanceMilli: 0 };
+    const amountMilli = Math.min(milli, debited.milli);
     const result = await createWallet(db, undefined).refund({
       workspaceId,
       userId,
-      amount,
+      amountMilli,
       reason: reason.slice(0, 200) || "refund",
       metadata: { refunds: againstKey },
       idempotencyKey,
     });
-    if (result.ok) return { ok: true, balanceAfter: result.balanceAfter, duplicate: result.duplicate, credits: amount };
-    return { ok: false, code: "WALLET_NOT_FOUND", balance: 0 };
+    if (result.ok) return { ok: true, balanceAfterMilli: result.balanceAfterMilli, duplicate: result.duplicate, milli: amountMilli };
+    if (result.reason === "idempotency_key_reused") return { ok: false, code: "IDEMPOTENCY_KEY_REUSED", balanceMilli: 0 };
+    return { ok: false, code: "WALLET_NOT_FOUND", balanceMilli: 0 };
   },
 
   settled,
+
+  async chargeAction(
+    db: D1Like,
+    workspaceId: string,
+    action: string,
+    quantity: number,
+    idempotencyKey: string,
+    reason: string,
+    options: ChargeActionOptions = {},
+  ): Promise<ChargeActionResult> {
+    checkKey(idempotencyKey);
+    const defaults = typeof options.defaultCosts === "string" ? parseDefaultActionCosts(options.defaultCosts) : options.defaultCosts;
+    return chargeAction(db, workspaceId, {
+      userId: options.userId ?? "system",
+      action,
+      quantity,
+      idempotencyKey,
+      reason,
+      ...(defaults ? { defaults } : {}),
+    });
+  },
 });

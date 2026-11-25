@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { MILLI_PER_CREDIT } from "@poc/sdk";
 import type { D1Like, D1Result, D1Statement } from "@poc/sdk";
 import { createFakeGateway, createWallet } from "../../../bricks/credit-wallet/src/index.ts";
 import { workload } from "../../../bricks/credit-wallet/test/support/workload.ts";
@@ -77,6 +78,12 @@ export interface HostedRun {
   run: number;
   workspaceId: string;
   start: number;
+  /**
+   * Story 2.5: stored units per whole credit of the workload. The wallet holds thousandths since migration 0004, so a run
+   * made since records 1000 and its balance and ledger facts are thousandths; a run recorded before has no scale (1).
+   * The workload and the deduct route still speak whole credits; only what D1 holds is scaled.
+   */
+  scale?: number;
   /** Every operation asked for, in order; a top-up carries the id of the order made for it. */
   ops: Array<{ kind: "topup" | "deduct"; amount: number; orderId?: string }>;
   deducts: Array<{ amount: number; result: "accepted" | "refused" | "unknown"; status: number | null }>;
@@ -203,7 +210,7 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
 
     for (let run = 1; run <= runsWanted; run += 1) {
       const w = workload(run);
-      const report: HostedRun = { run, workspaceId: "", start: w.start, ops: [], deducts: [], topups: [], final: null };
+      const report: HostedRun = { run, workspaceId: "", start: w.start, scale: MILLI_PER_CREDIT, ops: [], deducts: [], topups: [], final: null };
       facts.runs.push(report);
       const user = `h5-user-${run}`;
       try {
@@ -216,7 +223,7 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
         const db = restD1(rest, deps.databaseId, space);
         const gateway = createFakeGateway();
         const wallet = createWallet(db, gateway, { currency: "INR" });
-        await wallet.openWallet(report.workspaceId, w.start);
+        await wallet.openWallet(report.workspaceId, w.start * MILLI_PER_CREDIT);
         for (const op of w.ops) {
           if (op.kind === "topup") {
             const { orderId } = await wallet.createOrder({ workspaceId: report.workspaceId, userId: user, amount: op.amount });
@@ -254,8 +261,8 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
         // what D1 holds, read by a client that is not the code under test
         const reader = newClient(`reader-run-${run}`);
         const [bal, ledger, orders] = await reader.queryDatabase(deps.databaseId, [
-          { sql: "SELECT balance FROM credit_wallets WHERE workspace_id = ?1", params: [report.workspaceId] },
-          { sql: "SELECT type, amount, balance_after, metadata, idempotency_key FROM credit_ledger WHERE workspace_id = ?1 ORDER BY rowid", params: [report.workspaceId] },
+          { sql: "SELECT balance_milli AS balance FROM credit_wallets WHERE workspace_id = ?1", params: [report.workspaceId] },
+          { sql: "SELECT type, amount_milli AS amount, balance_after_milli AS balance_after, metadata, idempotency_key FROM credit_ledger WHERE workspace_id = ?1 ORDER BY rowid", params: [report.workspaceId] },
           { sql: "SELECT order_id, processed FROM credit_orders WHERE workspace_id = ?1", params: [report.workspaceId] },
         ]);
         report.final = { balance: typeof (bal!.results[0] as { balance?: unknown } | undefined)?.balance === "number" ? ((bal!.results[0] as { balance: number }).balance) : null, ledger: ledger!.results as unknown as LedgerRowFact[], orders: orders!.results as unknown as Array<{ order_id: string; processed: number }> };
@@ -291,12 +298,16 @@ export function hostedViolations(rawRun: HostedRun): string[] {
   const f = run.final;
   if (!f) return ["the final state was not read"];
   if (f.balance === null) return ["the wallet row is missing"];
+  // What D1 holds is in stored units (thousandths since story 2.5); the workload's whole credits are scaled to match.
+  if (!isKnownScale(run.scale)) return [`the run records an unknown scale (${String(run.scale)}); only 1 or 1000 is believed`];
+  const scale = run.scale ?? 1;
+  const start = run.start * scale;
 
   const sum = f.ledger.reduce((s, r) => s + r.amount, 0);
-  if (f.balance !== run.start + sum) reasons.push(`final balance ${f.balance}, but the starting balance ${run.start} plus the ledger's ${sum} is ${run.start + sum}`);
+  if (f.balance !== start + sum) reasons.push(`final balance ${f.balance}, but the starting balance ${start} plus the ledger's ${sum} is ${start + sum}`);
   if (f.balance < 0) reasons.push(`final balance is negative: ${f.balance}`);
 
-  let running = run.start;
+  let running = start;
   let mismatches = 0;
   let negatives = 0;
   for (const row of f.ledger) {
@@ -308,9 +319,12 @@ export function hostedViolations(rawRun: HostedRun): string[] {
   if (negatives > 0) reasons.push(`${negatives} ledger rows with a negative balance_after`);
 
   // deductions, by amount: rows must lie between the accepted ones and the accepted plus the unknown ones
-  const amounts = new Set([...run.ops.filter((o) => o.kind === "deduct").map((o) => o.amount), ...f.ledger.filter((r) => r.type === "deduction").map((r) => -r.amount)]);
+  // Amounts come from the workload and are scaled up (integers), never from dividing what the ledger holds.
+  const amounts = new Set(run.ops.filter((o) => o.kind === "deduct").map((o) => o.amount));
+  const strays = f.ledger.filter((r) => r.type === "deduction" && ![...amounts].some((a) => r.amount === -a * scale)).length;
+  if (strays > 0) reasons.push(`${strays} ledger rows for deductions of an amount no operation asked for`);
   for (const a of amounts) {
-    const rows = f.ledger.filter((r) => r.type === "deduction" && r.amount === -a).length;
+    const rows = f.ledger.filter((r) => r.type === "deduction" && r.amount === -a * scale).length;
     const accepted = run.deducts.filter((d) => d.amount === a && d.result === "accepted").length;
     const unknown = run.deducts.filter((d) => d.amount === a && d.result === "unknown").length;
     if (rows < accepted) reasons.push(`${accepted} deductions of ${a} were accepted but only ${rows} ledger rows exist (credits were charged and not recorded, or recorded and lost)`);
@@ -332,7 +346,7 @@ export function hostedViolations(rawRun: HostedRun): string[] {
       reasons.push("a top-up row for an order that was never requested");
       continue;
     }
-    if (row.amount !== requested.get(order)) reasons.push(`order ${order} credited ${row.amount}, not the ${requested.get(order)} it was for`);
+    if (row.amount !== requested.get(order)! * scale) reasons.push(`order ${order} credited ${row.amount}, not the ${requested.get(order)! * scale} it was for`);
     credited.set(order, (credited.get(order) ?? 0) + 1);
   }
   const twice = [...credited.values()].filter((n) => n > 1).length;
@@ -377,6 +391,8 @@ export function evaluateHostedH5(input: { callsText: string; result: HostedResul
   if (wrote || !sameVersion) return { checks, notes: [...notes, "the log shows a write other than a database row, or the Worker's version moved or is not the one the deploy left: this run says nothing about the deployed wallet"], summary: null };
 
   // A stored classification that is not what the recorded answer means is an edited file, not a result.
+  // Story 2.5: a run's scale is absent (recorded before), 1 or 1000; anything else is an edited or foreign file.
+  if (f.runs.some((r) => !isKnownScale(r.scale))) return { checks, notes: [...notes, "a run records a scale other than 1 or 1000: nothing in the file is believed"], summary: null };
   const disagrees = f.runs.some((r) => r.deducts.some((d) => d.result !== classifyDeduct(d.status)) || r.topups.some((t) => t.result !== classifyTopup(t.confirmations)));
   if (disagrees) return { checks, notes: [...notes, "a recorded outcome disagrees with the answer recorded beside it: the file was edited, and nothing in it is believed"], summary: null };
   const judged = f.runs.filter((r) => r.final !== null);
@@ -392,4 +408,9 @@ export function evaluateHostedH5(input: { callsText: string; result: HostedResul
   else if (f.runsWanted === requiredRuns && f.runs.length === f.runsWanted && judged.length === f.runs.length && f.runs.every((r) => !r.setupError) && unknownShare <= UNKNOWN_SHARE_LIMIT && operations > 0) checks.holdsOnHostedD1 = true;
   else notes.push(`inconclusive: ${f.runsWanted !== requiredRuns ? `${f.runsWanted} runs were asked for, the rule needs ${requiredRuns}; ` : ""}${f.runs.length < f.runsWanted ? `only ${f.runs.length} of ${f.runsWanted} runs were made; ` : ""}${judged.length < f.runs.length || f.runs.some((r) => r.setupError) ? "some runs could not be set up or read; " : ""}${unknownShare > UNKNOWN_SHARE_LIMIT ? `more than ${UNKNOWN_SHARE_LIMIT * 100}% of operations had an unknown outcome` : ""}`.replace(/; $/, ""));
   return { checks, notes, summary };
+}
+
+/** Story 2.5: the stored units per whole credit a hosted run may record: none (before the change), 1 or 1000. */
+export function isKnownScale(scale: unknown): boolean {
+  return scale === undefined || scale === 1 || scale === 1000;
 }

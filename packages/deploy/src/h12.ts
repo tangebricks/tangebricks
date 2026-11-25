@@ -114,9 +114,12 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
 export const canonical12 = (calls: H12Calls): string => `${JSON.stringify(calls, null, 2)}\n`;
 export const formatCredits = (n: number): string => n.toLocaleString("en-US");
 
-const UPSERT_WALLET = `INSERT INTO credit_wallets (workspace_id, balance) VALUES (?1, ?2) ON CONFLICT(workspace_id) DO UPDATE SET balance = excluded.balance`;
-const INSERT_LEDGER = `INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, idempotency_key) VALUES (?1, ?2, ?3, 'topup', ?4, ?5, ?6, ?7)`;
-const READ_BALANCE = `SELECT balance FROM credit_wallets WHERE workspace_id = ?1`;
+// Story 2.5: D1 holds thousandths of a credit (credit-wallet migration 0004). This proof's facts stay in whole credits:
+// what it writes is multiplied by 1000 and what it reads is divided by 1000, here at the edge.
+const MILLI = 1000;
+const UPSERT_WALLET = `INSERT INTO credit_wallets (workspace_id, balance_milli) VALUES (?1, ?2) ON CONFLICT(workspace_id) DO UPDATE SET balance_milli = excluded.balance_milli`;
+const INSERT_LEDGER = `INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, idempotency_key) VALUES (?1, ?2, ?3, 'topup', ?4, ?5, ?6, ?7)`;
+const READ_BALANCE = `SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?1`;
 
 export async function runH12(deps: H12Deps): Promise<{ calls: H12Calls; result: H12Result }> {
   const rel = () => deps.clock() - deps.commandStart;
@@ -167,8 +170,8 @@ export async function runH12(deps: H12Deps): Promise<{ calls: H12Calls; result: 
   const clientFor = (workspaceId: string, user: string, label: string) => deps.widgetClient({ baseUrl: `${deps.url}/api`, workspaceId, headers: { "x-poc-key": deps.accessKey, "x-test-user": user }, send: widgetSend(label) });
   const restBalance = async (label: string, workspaceId: string): Promise<number | null> => {
     const [read] = await newClient(label).queryDatabase(deps.databaseId, [{ sql: READ_BALANCE, params: [workspaceId] }]);
-    const row = read!.results[0] as { balance?: unknown } | undefined;
-    return typeof row?.balance === "number" ? row.balance : null;
+    const row = read!.results[0] as { balance_milli?: unknown } | undefined;
+    return typeof row?.balance_milli === "number" ? row.balance_milli / MILLI : null;
   };
   const look = async (step: string, tenant: "A" | "B", user: string, workspace: string, widget: MountedWidget) => {
     const shown = await widget.shown();
@@ -198,8 +201,8 @@ export async function runH12(deps: H12Deps): Promise<{ calls: H12Calls; result: 
       const w = facts.workspaces[tenant];
       const amount = SEED[tenant];
       await newClient(`owner-seed-${tenant}`).queryDatabase(deps.databaseId, [
-        { sql: UPSERT_WALLET, params: [w.id, amount] },
-        { sql: INSERT_LEDGER, params: [`seed-${w.id}`, w.id, "proof-seed", amount, amount, "seeded by the proof", `h12-seed-${w.id}`] },
+        { sql: UPSERT_WALLET, params: [w.id, amount * MILLI] },
+        { sql: INSERT_LEDGER, params: [`seed-${w.id}`, w.id, "proof-seed", amount * MILLI, amount * MILLI, "seeded by the proof", `h12-seed-${w.id}`] },
       ]);
       facts.seeds[tenant] = await restBalance(`owner-check-seed-${tenant}`, w.id);
     }
@@ -231,8 +234,8 @@ export async function runH12(deps: H12Deps): Promise<{ calls: H12Calls; result: 
       const after = before + TOP_UP;
       const owner = newClient("owner-topup");
       await owner.queryDatabase(deps.databaseId, [
-        { sql: `UPDATE credit_wallets SET balance = balance + ?2 WHERE workspace_id = ?1`, params: [A.id, TOP_UP] },
-        { sql: INSERT_LEDGER, params: [`topup-${A.id}`, A.id, "proof-topup", TOP_UP, after, "topped up by the proof", `h12-topup-${A.id}`] },
+        { sql: `UPDATE credit_wallets SET balance_milli = balance_milli + ?2 WHERE workspace_id = ?1`, params: [A.id, TOP_UP * MILLI] },
+        { sql: INSERT_LEDGER, params: [`topup-${A.id}`, A.id, "proof-topup", TOP_UP * MILLI, after * MILLI, "topped up by the proof", `h12-topup-${A.id}`] },
       ]);
       facts.server.topUp = { via: "d1-rest", amount: TOP_UP, client: "owner-topup", why: "the deployed project's gateway is the fake one, which never reports an order as paid, so the API cannot complete a top-up" };
       await widgetA.refresh();

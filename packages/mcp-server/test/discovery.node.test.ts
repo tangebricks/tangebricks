@@ -232,6 +232,7 @@ describe("compact, paged discovery and get_brick (AC 1, AC 2, AC 3)", () => {
         creditsPerUnit: "whole number 1 to 1000000, default 1",
         minOrderAmount: "whole number 1 to 1000000000, default 1",
         paymentCurrency: 'text, e.g. INR, default ""',
+        defaultActionCosts: 'text, e.g. email.send:0.2,message.send:0.5, default ""',
       },
       servesEntities: false,
       routes: ["wallet", "payments"],

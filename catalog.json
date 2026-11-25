@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "36956d3a40caa0826448cc3524b3d782461ae6192436145542a6150e12287c6b",
+  "catalogVersion": "9cfc00172768c466fba5b3b262b438301446c6d34d1c4368d5aaafd3b0cec4d5",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -668,7 +668,8 @@
         "migrations": [
           "migrations/0001_credit_wallet.sql",
           "migrations/0002_workspace_scoped_idempotency.sql",
-          "migrations/0003_order_currency.sql"
+          "migrations/0003_order_currency.sql",
+          "migrations/0004_milli_credits.sql"
         ],
         "routePrefixes": [
           "wallet",
@@ -696,6 +697,13 @@
             "pattern": "^(|A(OA|[EMU]D|[NW]G|LL|[FZ]N|RS)|B(OB|[BHMNSZ]D|IF|RL|AM|[GTY]N|WP|DT|OV)|C(RC|AD|[HV]E|[DHL]F|ZK|[LOU]P|OU|HW|NY)|D(JF|KK|OP|ZD)|E(GP|RN|TB|UR)|F(JD|KP)|G(BP|EL|HS|IP|MD|NF|TQ|YD)|H(KD|NL|TG|UF)|I(QD|SK|[DNR]R|LS)|J(MD|OD|PY)|K(ES|GS|HR|MF|PW|RW|WD|YD|ZT)|L(AK|BP|KR|RD|SL|YD)|M(GA|[AK]D|[MW]K|DL|[XZ]N|OP|[UVY]R|NT|RU|XV)|N(AD|GN|IO|OK|PR|ZD)|OMR|P(AB|EN|GK|HP|KR|LN|YG)|QAR|R(ON|SD|UB|WF)|S(VC|[BGR]D|LE|DG|EK|ZL|TN|[HSY]P|[AC]R|OS)|T(HB|[NTW]D|OP|[JZ]S|MT|RY)|U(AH|GX|S[DN]|Y[IUW]|ZS)|V(E[DS]|ND|UV)|WST|X(CD|[AOP]F|CG)|YER|Z(AR|MW|WG))$",
             "example": "INR",
             "maxLength": 3,
+            "default": ""
+          },
+          "defaultActionCosts": {
+            "type": "string",
+            "pattern": "^(|[a-z][a-z0-9_.:-]{0,63}:[0-9]{1,6}([.][0-9]{1,3})?(,[a-z][a-z0-9_.:-]{0,63}:[0-9]{1,6}([.][0-9]{1,3})?)*)$",
+            "example": "email.send:0.2,message.send:0.5",
+            "maxLength": 512,
             "default": ""
           }
         },
@@ -787,6 +795,22 @@
           },
           {
             "method": "POST",
+            "path": "/wallet/charge",
+            "bucket": "wallet-charge",
+            "limit": 600,
+            "windowSeconds": 60,
+            "key": "workspace"
+          },
+          {
+            "method": "POST",
+            "path": "/wallet/transfer",
+            "bucket": "wallet-transfer",
+            "limit": 30,
+            "windowSeconds": 60,
+            "key": "workspace"
+          },
+          {
+            "method": "POST",
             "path": "/payments/create-order",
             "bucket": "wallet-create-order",
             "limit": 60,
@@ -826,7 +850,8 @@
             "credit_ledger": {
               "subject": "user",
               "userColumn": "user_id",
-              "erase": "delete",
+              "erase": "retain",
+              "retainReason": "Financial records, kept on both user and workspace erasure under the owner's decision that money records are retained: every balance is the sum of its ledger rows, and a transfer is two rows in two workspaces, so an erasure must not delete half of a money record (user_id cannot be anonymized: the ledger requires it)",
               "export": true
             },
             "credit_orders": {
@@ -834,10 +859,16 @@
               "userColumn": "user_id",
               "erase": "delete",
               "export": true
+            },
+            "credit_action_costs": {
+              "subject": "workspace",
+              "erase": "delete",
+              "export": true
             }
           },
           "hookTables": [
-            "credit_ledger_v2"
+            "credit_ledger_v2",
+            "credit_ledger_v3"
           ]
         },
         "workspaceData": {
@@ -852,11 +883,18 @@
             {
               "table": "credit_orders",
               "tombstone": true
+            },
+            {
+              "table": "credit_action_costs"
             }
           ],
           "exempt": [
             {
               "table": "credit_ledger_v2",
+              "reason": "Transient migration table; renamed to credit_ledger, which is declared"
+            },
+            {
+              "table": "credit_ledger_v3",
               "reason": "Transient migration table; renamed to credit_ledger, which is declared"
             }
           ]
@@ -881,6 +919,9 @@
                 },
                 "currency": {
                   "$setting": "paymentCurrency"
+                },
+                "defaultActionCosts": {
+                  "$setting": "defaultActionCosts"
                 }
               },
               "guardPaths": [
@@ -896,7 +937,8 @@
       "files": {
         "migrations/0001_credit_wallet.sql": "-- credit-wallet 0001: balances, ledger and payment orders.\n-- Reference: cephlow apps/api-worker/schema.sql (workspaces.current_balance, ledgers, payment_orders).\n--\n-- Differences from cephlow, each on purpose:\n--   * Credits are whole numbers (INTEGER). cephlow uses REAL, and sums of fractions such as its default 0.2\n--     email cost are not exact in floating point.\n--   * The balance lives in this brick's own table, keyed by workspace_id, so this brick never alters a table\n--     that belongs to multi-workspace. There is no foreign key, so the bricks migrate independently.\n--   * CHECK (balance >= 0): the database refuses an overdraw. A deduction that would overdraw raises, and D1\n--     rolls its whole batch back, ledger row included.\n--   * idempotency_key is UNIQUE: a payment order can be credited only once, because the ledger row that\n--     records the credit carries the order's key, and a second one violates the constraint.\n-- Table names carry the brick's prefix so two bricks can never collide.\n\nCREATE TABLE IF NOT EXISTS credit_wallets (\n  workspace_id TEXT PRIMARY KEY,\n  balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE TABLE IF NOT EXISTS credit_ledger (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  type TEXT NOT NULL CHECK (type IN ('topup', 'deduction')),\n  amount INTEGER NOT NULL,\n  balance_after INTEGER NOT NULL CHECK (balance_after >= 0),\n  reason TEXT NOT NULL,\n  metadata TEXT,\n  idempotency_key TEXT UNIQUE,\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS credit_ledger_workspace_idx ON credit_ledger(workspace_id);\n\nCREATE TABLE IF NOT EXISTS credit_orders (\n  order_id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  amount INTEGER NOT NULL CHECK (amount > 0),\n  processed INTEGER NOT NULL DEFAULT 0 CHECK (processed IN (0, 1)),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS credit_orders_workspace_idx ON credit_orders(workspace_id);\n",
         "migrations/0002_workspace_scoped_idempotency.sql": "-- credit-wallet 0002: idempotency keys are unique per workspace, not across the platform (AD-V2, story 0.7).\n--\n-- 0001 declared `credit_ledger.idempotency_key TEXT UNIQUE`, so one workspace's key could collide with another's:\n-- a second workspace that reused a key got the first workspace's \"duplicate\" answer (and its balance) without\n-- being charged. The key is now unique per (workspace_id, idempotency_key).\n--\n-- SQLite cannot drop a column-level UNIQUE, so the table is rebuilt: create the new table, copy every row, drop the\n-- old table, rename, and recreate its index. Every column, type, default and CHECK of 0001 is kept as it was\n-- (CHECK (balance_after >= 0) is part of the overdraw refusal); 0001 defines no triggers on this table.\n-- credit_wallets (CHECK (balance >= 0)) and credit_orders are not touched.\n\nCREATE TABLE IF NOT EXISTS credit_ledger_v2 (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  type TEXT NOT NULL CHECK (type IN ('topup', 'deduction')),\n  amount INTEGER NOT NULL,\n  balance_after INTEGER NOT NULL CHECK (balance_after >= 0),\n  reason TEXT NOT NULL,\n  metadata TEXT,\n  idempotency_key TEXT,\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  UNIQUE (workspace_id, idempotency_key)\n);\n\nINSERT INTO credit_ledger_v2 (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key, created_at)\nSELECT id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key, created_at\nFROM credit_ledger\nORDER BY rowid;\n\nDROP TABLE credit_ledger;\n\nALTER TABLE credit_ledger_v2 RENAME TO credit_ledger;\n\nCREATE INDEX IF NOT EXISTS credit_ledger_workspace_idx ON credit_ledger(workspace_id);\n",
-        "migrations/0003_order_currency.sql": "-- credit-wallet 0003: each payment order remembers its currency and the provider's reference (story 2.3).\n--\n-- A provider's \"PAID\" answer is credited only if its currency is the order's own. The columns are added, never\n-- back-filled: a row created before this migration has NULL currency, and confirmation holds it to the wallet's\n-- configured currency instead. provider_ref is the provider's own id for the order (a payment intent id, for\n-- example), which the order is fetched by. Nothing else in credit_orders changes.\n\nALTER TABLE credit_orders ADD COLUMN currency TEXT CHECK (currency IS NULL OR length(currency) = 3);\nALTER TABLE credit_orders ADD COLUMN provider_ref TEXT CHECK (provider_ref IS NULL OR length(provider_ref) BETWEEN 1 AND 255);\n"
+        "migrations/0003_order_currency.sql": "-- credit-wallet 0003: each payment order remembers its currency and the provider's reference (story 2.3).\n--\n-- A provider's \"PAID\" answer is credited only if its currency is the order's own. The columns are added, never\n-- back-filled: a row created before this migration has NULL currency, and confirmation holds it to the wallet's\n-- configured currency instead. provider_ref is the provider's own id for the order (a payment intent id, for\n-- example), which the order is fetched by. Nothing else in credit_orders changes.\n\nALTER TABLE credit_orders ADD COLUMN currency TEXT CHECK (currency IS NULL OR length(currency) = 3);\nALTER TABLE credit_orders ADD COLUMN provider_ref TEXT CHECK (provider_ref IS NULL OR length(provider_ref) BETWEEN 1 AND 255);\n",
+        "migrations/0004_milli_credits.sql": "-- credit-wallet 0004: credits are held as whole thousandths (\"milli-credits\"), per-action costs, and transfers (story 2.5).\n--\n-- Apps charge fractional amounts (0.2 credits for an email, 0.5 for a message). Floating point cannot sum those\n-- exactly, so every credit amount is now an INTEGER number of thousandths of a credit. Every existing value is\n-- multiplied by 1000 here, in the same migration, so 7 credits becomes 7000 exactly.\n--\n-- The columns are renamed (balance -> balance_milli, amount -> amount_milli, balance_after -> balance_after_milli) so a\n-- raw-SQL reader still written for whole credits fails loudly (\"no such column\") instead of misreading the units.\n--\n-- credit_wallets: RENAME COLUMN keeps the column's CHECK, rewritten to name the new column (balance_milli >= 0).\n--\n-- credit_ledger is rebuilt (the 0002 pattern), because the type CHECK gains the two transfer types and SQLite cannot\n-- change a CHECK in place: create credit_ledger_v3, copy every row in order with its amounts x1000, drop the old\n-- table, rename, and recreate its index. Every other column, default and constraint is kept: CHECK\n-- (balance_after_milli >= 0) is part of the overdraw refusal, and UNIQUE (workspace_id, idempotency_key) is the\n-- per-workspace idempotency of 0002. transfer_code links the two rows of one transfer; a transfer row must carry one\n-- and no other row may.\n--\n-- credit_orders keeps its whole major-unit `amount` (money paid, not credits; story 2.3).\n--\n-- credit_action_costs is new: a workspace's price per named action, in thousandths.\n\nALTER TABLE credit_wallets RENAME COLUMN balance TO balance_milli;\n\nUPDATE credit_wallets SET balance_milli = balance_milli * 1000;\n\nCREATE TABLE IF NOT EXISTS credit_ledger_v3 (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  type TEXT NOT NULL CHECK (type IN ('topup', 'deduction', 'transfer_out', 'transfer_in')),\n  amount_milli INTEGER NOT NULL,\n  balance_after_milli INTEGER NOT NULL CHECK (balance_after_milli >= 0),\n  reason TEXT NOT NULL,\n  metadata TEXT,\n  idempotency_key TEXT,\n  transfer_code TEXT CHECK ((transfer_code IS NOT NULL) = (type IN ('transfer_out', 'transfer_in'))),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  UNIQUE (workspace_id, idempotency_key)\n);\n\nINSERT INTO credit_ledger_v3 (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key, transfer_code, created_at)\nSELECT id, workspace_id, user_id, type, amount * 1000, balance_after * 1000, reason, metadata, idempotency_key, NULL, created_at\nFROM credit_ledger\nORDER BY rowid;\n\nDROP TABLE credit_ledger;\n\nALTER TABLE credit_ledger_v3 RENAME TO credit_ledger;\n\nCREATE INDEX IF NOT EXISTS credit_ledger_workspace_idx ON credit_ledger(workspace_id);\n\nCREATE INDEX IF NOT EXISTS credit_ledger_transfer_idx ON credit_ledger(transfer_code);\n\nCREATE TABLE IF NOT EXISTS credit_action_costs (\n  workspace_id TEXT NOT NULL,\n  action TEXT NOT NULL CHECK (length(action) BETWEEN 1 AND 64 AND action GLOB '[a-z]*' AND action NOT GLOB '*[^a-z0-9_.:-]*'),\n  cost_milli INTEGER NOT NULL CHECK (cost_milli >= 0),\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\n  PRIMARY KEY (workspace_id, action)\n);\n"
       }
     },
     "cron-alarms": {
