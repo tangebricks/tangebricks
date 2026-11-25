@@ -1,6 +1,7 @@
 import { Hono } from "hono";
+import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
-import { global, scoped, systemScope } from "@poc/sdk";
+import { global, refuseApiKeyCaller, scoped, systemScope } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import type { WorkspaceEnv, WorkspaceRole } from "./middleware.ts";
 
@@ -37,6 +38,12 @@ export interface WorkspaceRoutesOptions {
  */
 export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hono<WorkspaceEnv> {
   const router = new Hono<WorkspaceEnv>();
+
+  // Story 1.11: an API key is bound to the one workspace it was made in, and acts only through workspace routes. It can
+  // never create, join, list, manage or delete workspaces.
+  const refuseApiKey: MiddlewareHandler<WorkspaceEnv> = async (c, next) => refuseApiKeyCaller(c) ?? (await next());
+  router.use("/workspaces", refuseApiKey);
+  router.use("/workspaces/*", refuseApiKey);
 
   // List the workspaces the caller belongs to.
   router.get("/workspaces", async (c) => {

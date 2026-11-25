@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { D1Like, RequestContext } from "@poc/sdk";
-import { WORKSPACE_ADMIN_ROLES, workspaceRoleRefusal } from "@poc/sdk";
+import { WORKSPACE_ADMIN_ROLES, refuseApiKeyCaller, workspaceRoleRefusal } from "@poc/sdk";
 import { WebhookSignatureSchemeSchema } from "@poc/assembler";
 import { WebhookService } from "./gateway.ts";
 import type { WebhookGatewayAdapter } from "./gateway.ts";
@@ -120,6 +120,9 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
 
   // Register a Case A webhook subscription. Owner/admin only, checked before the body is read (audit risk 8).
   app.post("/webhooks/subscriptions", async (c) => {
+    // Story 1.11: an API key never mints credentials that would outlive it.
+    const keyRefused = refuseApiKeyCaller(c);
+    if (keyRefused) return keyRefused;
     const denied = workspaceRoleRefusal(c.get("user"), c.get("ctx"), WORKSPACE_ADMIN_ROLES);
     if (denied) return c.json(denied.body, denied.status);
     const ctx = c.get("ctx");
@@ -253,6 +256,9 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
 
   // Create endpoint. Owner/admin only (story 0.6).
   app.post("/webhooks/endpoints", async (c) => {
+    // Story 1.11: an API key never mints credentials that would outlive it.
+    const keyRefused = refuseApiKeyCaller(c);
+    if (keyRefused) return keyRefused;
     const denied = workspaceRoleRefusal(c.get("user"), c.get("ctx"), WORKSPACE_ADMIN_ROLES);
     if (denied) return c.json(denied.body, denied.status);
     const ctx = c.get("ctx");
@@ -300,6 +306,9 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
 
   // Rotate signing secret. Owner/admin only (story 0.6).
   app.post("/webhooks/endpoints/:id/rotate", async (c) => {
+    // Story 1.11: an API key never mints credentials that would outlive it.
+    const keyRefused = refuseApiKeyCaller(c);
+    if (keyRefused) return keyRefused;
     const denied = workspaceRoleRefusal(c.get("user"), c.get("ctx"), WORKSPACE_ADMIN_ROLES);
     if (denied) return c.json(denied.body, denied.status);
     const ctx = c.get("ctx");
