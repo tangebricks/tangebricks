@@ -7,6 +7,7 @@ import { applyMigration, createWallet, walletCharger } from "../src/index.ts";
 import type { D1Like } from "../src/index.ts";
 import migration from "../migrations/0001_credit_wallet.sql?raw";
 import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
+import migration0003 from "../migrations/0003_order_currency.sql?raw";
 
 const db = env.DB as D1Like;
 const WS_A = "ws-charger-a";
@@ -26,6 +27,7 @@ beforeEach(async () => {
   for (const table of ["credit_ledger", "credit_orders", "credit_wallets"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, migration);
   await applyMigration(db, migration0002);
+  await applyMigration(db, migration0003);
   const wallet = createWallet(db, undefined);
   await wallet.openWallet(WS_A, 10);
   await wallet.openWallet(WS_B, 10);

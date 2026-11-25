@@ -2,14 +2,17 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
 import type { D1Like, RequestContext, StructuredLogger } from "@poc/sdk";
-import { scoped } from "@poc/sdk";
+import { NotConfiguredError, isPaymentCurrency, readBoundedText, scoped } from "@poc/sdk";
+import type { WebhookVerification } from "@poc/sdk";
 import type { PaymentGateway } from "./gateway.ts";
 import { createWallet } from "./wallet.ts";
+import type { ConfirmResult } from "./wallet.ts";
 
 /**
  * The Hono environment the wallet routes expect. It matches the one the multi-workspace brick sets up, but is written
  * out here so the two bricks do not depend on each other: the host mounts a workspace middleware in front of
- * `/wallet` and `/payments/create-order`, and an identity middleware in front of everything.
+ * `/wallet` and `/payments/create-order`, and an identity middleware in front of everything. `/payments/webhook` is
+ * called by the payment provider, so it has no user and no workspace: its signature is its authentication.
  */
 export interface WalletEnv {
   Bindings: { DB: D1Like };
@@ -32,6 +35,12 @@ export interface WalletRoutesOptions {
   creditsPerUnit?: number;
   /** Smallest order accepted (cephlow's MIN_RECHARGE_AMOUNT). Default 1. */
   minOrderAmount?: number;
+  /**
+   * Story 2.3: the currency orders are created and verified in (ISO 4217, three uppercase letters, e.g. "INR"). There
+   * is no default: with a gateway and no currency (the `paymentCurrency` setting left empty) the payment routes answer
+   * 503 NOT_CONFIGURED.
+   */
+  currency?: string;
 }
 
 const CreateOrderSchema = z.object({ amount: z.number().int().positive().max(1_000_000_000) });
@@ -45,11 +54,20 @@ const DeductSchema = z.object({
 
 type Ctx = Context<WalletEnv>;
 
+/** The order ids `createOrder` generates; a provider event naming anything else is another brick's. */
+const WALLET_ORDER_ID = /^order_[0-9a-f]{16}$/;
+
 export function createWalletRoutes(options: WalletRoutesOptions): Hono<WalletEnv> {
   const minOrderAmount = options.minOrderAmount ?? 1;
   const router = new Hono<WalletEnv>();
+  // Payments need both a provider and a currency; either one missing is NOT_CONFIGURED, never a guessed default.
+  const paymentsConfigured = Boolean(options.gateway) && isPaymentCurrency(options.currency);
   const walletFor = (c: Ctx) =>
-    createWallet(c.env.DB, options.gateway, { creditsPerUnit: options.creditsPerUnit ?? 1, minOrderAmount });
+    createWallet(c.env.DB, options.gateway, {
+      creditsPerUnit: options.creditsPerUnit ?? 1,
+      minOrderAmount,
+      ...(options.currency !== undefined ? { currency: options.currency } : {}),
+    });
   const loggerFor = (c: Ctx, workspaceId?: string): StructuredLogger | undefined => {
     const base = c.get("log");
     if (!base) return undefined;
@@ -179,7 +197,7 @@ export function createWalletRoutes(options: WalletRoutesOptions): Hono<WalletEnv
   router.post("/payments/create-order", async (c) => {
     const ctx = needWorkspace(c);
     if ("failure" in ctx) return ctx.failure;
-    if (!options.gateway) return gatewayNotConfigured(c);
+    if (!paymentsConfigured) return gatewayNotConfigured(c);
     const rawJson = await c.req.json().catch(() => ({}));
     const body = CreateOrderSchema.safeParse(rawJson);
     if (!body.success) return c.json({ error: "Invalid amount" }, 400);
@@ -211,7 +229,7 @@ export function createWalletRoutes(options: WalletRoutesOptions): Hono<WalletEnv
   router.post("/payments/verify", async (c) => {
     const user = c.get("user");
     if (!user) return c.json({ error: "Unauthorized" }, 401);
-    if (!options.gateway) return gatewayNotConfigured(c);
+    if (!paymentsConfigured) return gatewayNotConfigured(c);
     const body = VerifySchema.safeParse(await c.req.json().catch(() => ({})));
     if (!body.success) return c.json({ error: "order_id is required" }, 400);
     const orderId = body.data.order_id;
@@ -236,6 +254,9 @@ export function createWalletRoutes(options: WalletRoutesOptions): Hono<WalletEnv
           return c.json({ error: "Could not verify with payment gateway" }, 502);
         case "invalid_amount":
           return c.json({ error: "Payment verification failed" }, 500);
+        case "verification_mismatch":
+          await logMismatch(c, orderId, result);
+          return c.json({ error: "Payment verification failed", status: "verification_mismatch", credited: false }, 409);
         default:
           return c.json({ status: result.status, credited: false });
       }
@@ -245,13 +266,84 @@ export function createWalletRoutes(options: WalletRoutesOptions): Hono<WalletEnv
     }
   });
 
+  // Story 2.3: the provider's payment notification. No user and no workspace (the provider calls it), so it is never
+  // behind the workspace guard; the signature over the raw body is what authenticates it. A verified webhook only
+  // names an order: the order is then re-fetched from the provider and checked against the stored one exactly as the
+  // client verify path does, and the ledger key `order:<id>` keeps a repeated delivery to one credit.
+  // Answers: 200 for credited, already processed, not paid yet, or an order this wallet does not know (so the
+  // provider stops retrying); 401 for a bad or stale signature; 409 for a mismatch; 502 when the provider could not
+  // be asked (the provider retries later).
+  router.post("/payments/webhook", async (c) => {
+    if (!paymentsConfigured || !options.gateway) return gatewayNotConfigured(c);
+    // Bounded before any HMAC: a declared or actual body over 64 KiB is refused.
+    const rawBody = await readBoundedText(c.req.raw);
+    if (rawBody === null) return c.json({ error: "Webhook body too large" }, 413);
+    let verified: WebhookVerification;
+    try {
+      verified = await options.gateway.verifyWebhook(rawBody, c.req.raw.headers);
+    } catch (error) {
+      if (error instanceof NotConfiguredError) return gatewayNotConfigured(c);
+      console.error("POST /payments/webhook: signature check failed:", error instanceof Error ? error.name : "error");
+      return c.json({ error: "Webhook verification failed" }, 500);
+    }
+    if (verified.kind === "invalid") return c.json({ error: "Invalid webhook signature" }, 401);
+    // Correctly signed but not about an order: acknowledged, so the provider stops retrying.
+    if (verified.kind === "ignored") return c.json({ received: true, status: "ignored", credited: false });
+    const orderId = verified.orderId;
+    // An id that is not a wallet order id is another brick's order on the same provider account (a checkout session,
+    // say): not ours, so acknowledged quietly.
+    if (!WALLET_ORDER_ID.test(orderId)) return c.json({ received: true, status: "ignored", credited: false });
+    try {
+      const result = await walletFor(c).confirmOrder(orderId);
+      switch (result.status) {
+        case "PAID":
+          return c.json({ received: true, status: "PAID", credited: true });
+        case "already_processed":
+          return c.json({ received: true, status: "already_processed", credited: false });
+        case "order_not_found":
+          // A signed event for an order this wallet never recorded (an orphan provider order, or another brick's).
+          // Acknowledged so the provider stops retrying, but loudly, so it can be reconciled.
+          console.error(`credit-wallet: signed payment webhook for an unknown order (order ${orderId}, provider ref ${verified.providerRef ?? "none"})`);
+          return c.json({ received: true, status: "ignored", credited: false });
+        case "wallet_not_found":
+          // A paid order whose credit cannot land: the provider will retry, but someone has to look.
+          console.error(`credit-wallet: paid order cannot be credited, its workspace has no wallet (order ${orderId}, provider ref ${verified.providerRef ?? "none"})`);
+          return c.json({ error: "Workspace not found" }, 404);
+        case "gateway_error":
+          return c.json({ error: "Could not verify with payment gateway" }, 502);
+        case "invalid_amount":
+          return c.json({ error: "Payment verification failed" }, 500);
+        case "verification_mismatch":
+          await logMismatch(c, orderId, result);
+          return c.json({ error: "Payment verification failed", status: "verification_mismatch", credited: false }, 409);
+        default:
+          return c.json({ received: true, status: result.status, credited: false });
+      }
+    } catch (error) {
+      console.error("POST /payments/webhook:", error);
+      return c.json({ error: "Payment verification failed" }, 500);
+    }
+  });
+
+  // Names the field that did not match, never a value from the provider or a secret.
+  async function logMismatch(c: Ctx, orderId: string, result: ConfirmResult) {
+    const detail = result as { field?: string; workspaceId?: string };
+    console.warn(`payment verification mismatch on ${detail.field ?? "unknown"} for order ${orderId}`);
+    await loggerFor(c, detail.workspaceId)?.warn("Payment verification mismatch", {
+      brickId: "credit-wallet",
+      ...(detail.workspaceId ? { workspaceId: detail.workspaceId } : {}),
+      orderId,
+      field: detail.field ?? "unknown",
+    });
+  }
+
   return router;
 }
 
 function gatewayNotConfigured(c: Ctx) {
   return c.json(
     {
-      error: "NOT_CONFIGURED: no payment gateway is configured; no order was created or verified.",
+      error: "NOT_CONFIGURED: no payment gateway or payment currency is configured; no order was created or verified.",
       code: "NOT_CONFIGURED",
     },
     503,

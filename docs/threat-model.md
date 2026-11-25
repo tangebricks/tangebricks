@@ -42,6 +42,7 @@
 | 1.15 | integration-connections OAuth hardening: provider account data wins, `redirect_uri` allowlist, CSRF guard on the redirecting connect, OAuth state bound to the user (filed from PROPOSED-11) |
 | 1.16 | studio-web: no production test hooks or fake values: store, bootstrap and `?benchmark=200` hooks gated on `import.meta.env.DEV` and stripped from `vite build`, BYOC inputs start empty, server hrefs http(s)-only (filed from PROPOSED-12) |
 | 1.17 | Control-plane signing everywhere: one domain-separated, replay-resistant signature (method, path, time, body, one-time `requestId`) on every signed route, a separate webhook signature domain, per-project per-purpose derived secrets (workers never hold the root), Studio runs confined to the project's own preview workspaces, Case-A connections confined to the run's workspace or the project-shared `default` |
+| 2.3 | Real Cashfree payment adapter: a provider-neutral gateway with webhook verification, and every payment (client verify and webhook, wallet and checkout) checked against the stored order's id, exact amount, currency and customer before an idempotent credit (filed from PROPOSED-13) |
 
 `PROPOSED-n` ids are new tickets defined in [Proposed tickets](#proposed-tickets). They are not filed yet.
 
@@ -177,7 +178,7 @@ Every sweep finding appears once. Locations are as the sweep gives them (see [Ci
 | A17 | binary-assets | Low | Unescaped filename in Content-Disposition; no `nosniff` | `routes.ts:64-70` | 1.14 |
 | A18 | binary-assets | Low | `limit=-1` means unlimited, `offset=Infinity` gives 500; raw DB error echoed | `routes.ts:30-31`; `assets.ts:168,236` | 1.14 |
 | A19 | binary-assets | Low | Any member deletes any asset | `routes.ts:106` | 0.6 (scope addition: `DELETE /api/assets/:id`) |
-| A20 | gateway-adapters | Medium (unwired) | Stripe `fetchOrder` looks up the intent by wallet order id and never checks order id, currency or customer: replay risk once wired | `packages/gateway-adapters/src/stripe-payment-gateway.ts:50-71` | PROPOSED-13 |
+| A20 | gateway-adapters | Medium (unwired) | Stripe `fetchOrder` looks up the intent by wallet order id and never checks order id, currency or customer: replay risk once wired | `packages/gateway-adapters/src/stripe-payment-gateway.ts:50-71` | 2.3 (filed from PROPOSED-13) |
 | A21 | gateway-adapters | Medium | `createOrder` ignores the Stripe response status; an empty session id is recorded as created | `packages/gateway-adapters/src/stripe-payment-gateway.ts:42-47` | 0.9 (scope addition) |
 | B1 | feature-flags | Critical | `POST /api/flags` has no role check and writes the global `flag_definitions` table: any signed-in user can change kill switches, paid gates and rollouts for every tenant | `bricks/feature-flags/src/routes.ts:49-71`; `flags.ts:48-55` | 0.6 (scope addition: `POST /api/flags` operator-only, since it writes global definitions) |
 | B2 | feature-flags | Medium | Any member (not admin) can set or clear workspace overrides, enabling gated or paid features | `routes.ts:89-120` | 0.6 (scope addition: `POST`/`DELETE /api/flags/:key/override` admin-only) |
@@ -224,7 +225,7 @@ These are not filed. A human should file each one; the PR for this story lists t
 | PROPOSED-10 | cron-alarms: allowlist of target Workflow bindings | B13 | Phase 0 (filed as 0.20) |
 | PROPOSED-11 | integration-connections OAuth hardening: provider data wins, `redirect_uri` allowlist, CSRF on connect, bind state to user | A10, A11, A12 | Phase 1 (filed as 1.15) |
 | PROPOSED-12 | studio-web: strip production test hooks and fake values; check href schemes | C4, C5, C6, C7 | Phase 1 (filed as 1.16) |
-| PROPOSED-13 | Payment adapter verification (order id, currency, customer) | A20 | Phase 2 |
+| PROPOSED-13 | Payment adapter verification (order id, currency, customer) | A20 | Phase 2 (filed as 2.3) |
 | PROPOSED-14 | Sub-resource routes answer 200 for another workspace's parent id instead of 404 | D1 | Phase 1 |
 
 ## Not covered / open
@@ -233,6 +234,6 @@ These are not filed. A human should file each one; the PR for this story lists t
 - **studio-api `index.ts`** (about 14.5k lines) was only sampled. Sweep C lists what the server must check (C1–C3, C8); those checks still need a server-side read, which 0.10 and 0.5 should do.
 - **`packages/runtime/src/egress.ts`** was not read line by line by the audit or the sweep. The audit notes it has real SSRF hardening; story 0.8 should confirm it before reusing it for webhooks, cron and `core.http_request`.
 - **Brick-level `use("*")` under `/api`:** whether one brick's middleware runs for other bricks' routes is still open.
-- **gateway-adapters** is imported by nothing today, so A20 and A21 are latent until it is wired.
+- **gateway-adapters** is imported by nothing in an assembled project: no gateway is wired by default, so the payment routes answer 503 `NOT_CONFIGURED`. Since 2.3 the bricks themselves check every provider answer (order id, exact amount, currency, customer) whichever adapter a host wires, and webhooks are signature-checked and rate-limited. The Cashfree contract fixtures are documented samples, not sandbox recordings: the adapter has not been run against Cashfree.
 - **The sweep was a read, not a test.** Findings were not reproduced against a running app. Stories 0.5 and 0.6 should turn the class (a) and (d) findings into failing tests first.
 - **Recon line numbers** come from commit `1838e18`; check them against this commit before editing.

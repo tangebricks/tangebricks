@@ -316,7 +316,7 @@ describe("Story 6.3 — Studio API Structured Logs & Errors Panel (/api/projects
       c.set("log", brickLogger);
       await next();
     });
-    walletApp.route("/", createWalletRoutes({ gateway }));
+    walletApp.route("/", createWalletRoutes({ gateway, currency: "INR" }));
 
     const deductRes = await walletApp.request(
       "http://wallet.local/wallet/deduct",

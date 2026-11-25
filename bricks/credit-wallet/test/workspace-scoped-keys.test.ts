@@ -4,6 +4,7 @@ import { applyMigration, createWallet } from "../src/index.ts";
 import type { D1Like } from "../src/index.ts";
 import migration0001 from "../migrations/0001_credit_wallet.sql?raw";
 import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
+import migration0003 from "../migrations/0003_order_currency.sql?raw";
 
 // Story 0.7 (AD-V2): idempotency keys belong to a workspace. Before migration 0002 the ledger's key was unique across
 // the platform and looked up without a workspace, so a second workspace that reused a key got the first workspace's
@@ -32,6 +33,7 @@ describe("idempotency keys are per workspace (wallet)", () => {
     await drop();
     await applyMigration(db, migration0001);
     await applyMigration(db, migration0002);
+    await applyMigration(db, migration0003);
   });
 
   test("KEY_REUSE_OTHER_TENANT: A is charged normally after B used the same key, and never sees B's balance", async () => {

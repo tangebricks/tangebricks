@@ -3,98 +3,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { IntegrationCallError } from "@poc/runtime";
 import { applyMigration, type D1Like } from "@poc/sdk";
 import { createFakeGateway, createWallet } from "@poc/credit-wallet";
-import type { IntegrationManifestFile } from "@poc/assembler";
+import { stripeManifest } from "./support/stripe-manifest.ts";
 import { createStripePaymentGateway } from "../src/stripe-payment-gateway.ts";
 
 const db = env.DB as D1Like;
-
-// Minimal valid stripe manifest fixture matching Stripe pack createPaymentIntent & getPaymentIntent
-const stripeManifest: IntegrationManifestFile = {
-  manifestVersion: 2,
-  kind: "integration",
-  app: "stripe",
-  version: "1.0.0",
-  baseUrl: "https://api.stripe.com",
-  allowedHosts: ["api.stripe.com"],
-  auth: {
-    type: "apiKey",
-    headerName: "Authorization",
-    prefix: "Bearer",
-  },
-  ui: {
-    displayName: "Stripe",
-    category: "billing",
-    summary: "Stripe payment integration",
-    maturity: "beta",
-    maturityReason: "Stripe payment gateway adapter verification",
-  },
-  fidelity: {
-    specHash: `sha256:${"0".repeat(64)}`,
-    importerVersion: "2.0.0",
-    level: "curated",
-    unsupported: [],
-  },
-  operations: [
-    {
-      operationId: "createPaymentIntent",
-      label: "Create payment intent",
-      summary: "Create payment intent",
-      method: "POST",
-      path: "/v1/payment_intents",
-      body: {
-        contentType: "application/x-www-form-urlencoded",
-        fields: [
-          { name: "amount", dataType: "number", required: true },
-          { name: "currency", dataType: "string", required: true },
-          { name: "customer", dataType: "string" },
-          { name: "metadata", dataType: "object" },
-        ],
-      },
-      response: {
-        status: 200,
-        outputs: [
-          { id: "id", dataType: "string" },
-          { id: "client_secret", dataType: "string" },
-          { id: "status", dataType: "string" },
-          { id: "amount", dataType: "number" },
-        ],
-        errorShape: {
-          codePath: "error.code",
-          messagePath: "error.message",
-          typePath: "error.type",
-        },
-      },
-      idempotency: {
-        header: "Idempotency-Key",
-      },
-      sideEffects: "write",
-    },
-    {
-      operationId: "getPaymentIntent",
-      label: "Retrieve payment intent",
-      summary: "Retrieve payment intent",
-      method: "GET",
-      path: "/v1/payment_intents/{intentId}",
-      params: [
-        { name: "intentId", in: "path", dataType: "string", required: true },
-      ],
-      response: {
-        status: 200,
-        outputs: [
-          { id: "id", dataType: "string" },
-          { id: "status", dataType: "string" },
-          { id: "amount", dataType: "number" },
-        ],
-        errorShape: {
-          codePath: "error.code",
-          messagePath: "error.message",
-          typePath: "error.type",
-        },
-      },
-      sideEffects: "read",
-    },
-  ],
-};
 
 const walletMigration = `
 CREATE TABLE IF NOT EXISTS credit_wallets (
@@ -107,6 +19,8 @@ CREATE TABLE IF NOT EXISTS credit_orders (
   workspace_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
   amount INTEGER NOT NULL,
+  currency TEXT,
+  provider_ref TEXT,
   processed INTEGER NOT NULL DEFAULT 0
 );
 
@@ -177,18 +91,18 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
       manifest: stripeManifest,
       connection: { apiKey: "sk_test_fake_stripe_key" },
       fetcher: recordingFetcher,
-      currency: "usd",
     });
 
     const result = await gateway.createOrder({
       orderId: "o1",
-      amount: 500,
+      amountMinor: 500,
+      currency: "USD",
       customerId: "c1",
     });
 
     expect(capturedUrl).toBe("https://api.stripe.com/v1/payment_intents");
     expect(capturedMethod).toBe("POST");
-    expect(capturedHeaders["idempotency-key"]).toBe("wallet:o1");
+    expect(capturedHeaders["idempotency-key"]).toBe("order:o1");
     expect(capturedHeaders["content-type"]).toBe("application/x-www-form-urlencoded");
 
     // Form body: amount=500&currency=usd&metadata[order_id]=o1&metadata[customer_id]=c1
@@ -197,10 +111,14 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
     expect(formParams.get("currency")).toBe("usd");
     expect(formParams.get("metadata[order_id]")).toBe("o1");
     expect(formParams.get("metadata[customer_id]")).toBe("c1");
+    // Story 2.3: the brick's user id is not a Stripe customer (cus_...), so it is never sent as `customer`.
+    expect(formParams.get("customer")).toBeNull();
 
+    // The intent id is the provider reference the brick stores and fetches by.
     expect(result).toEqual({
       paymentSessionId: "pi_sec_o1_secret_token",
       orderId: "o1",
+      providerRef: "pi_order_o1",
     });
   });
 
@@ -216,6 +134,8 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
           id: "pi_o1",
           status: currentStatus,
           amount: 500,
+          currency: "usd",
+          metadata: { order_id: "o1", customer_id: "c1" },
         }),
         {
           status: 200,
@@ -228,31 +148,39 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
       manifest: stripeManifest,
       connection: { apiKey: "sk_test_fake_stripe_key" },
       fetcher: recordingFetcher,
-      currency: "usd",
     });
 
     // Case 1: succeeded -> PAID
     currentStatus = "succeeded";
-    const paidOrder = await gateway.fetchOrder("pi_o1");
+    const paidOrder = await gateway.fetchOrder("o1", "pi_o1");
     expect(paidOrder).toEqual({
+      orderId: "o1",
       status: "PAID",
-      amount: 500,
+      amountMinor: 500,
+      currency: "USD",
+      customerId: "c1",
     });
 
     // Case 2: requires_payment_method passes through
     currentStatus = "requires_payment_method";
-    const pendingOrder = await gateway.fetchOrder("pi_o1");
+    const pendingOrder = await gateway.fetchOrder("o1", "pi_o1");
     expect(pendingOrder).toEqual({
+      orderId: "o1",
       status: "requires_payment_method",
-      amount: 500,
+      amountMinor: 500,
+      currency: "USD",
+      customerId: "c1",
     });
 
     // Case 3: processing passes through
     currentStatus = "processing";
-    const processingOrder = await gateway.fetchOrder("pi_o1");
+    const processingOrder = await gateway.fetchOrder("o1", "pi_o1");
     expect(processingOrder).toEqual({
+      orderId: "o1",
       status: "processing",
-      amount: 500,
+      amountMinor: 500,
+      currency: "USD",
+      customerId: "c1",
     });
   });
 
@@ -277,14 +205,14 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
       manifest: stripeManifest,
       connection: { apiKey: "sk_test_fake_stripe_key" },
       fetcher: errorFetcher,
-      currency: "usd",
     });
 
     let caughtError: unknown;
     try {
       await gateway.createOrder({
         orderId: "o_fail",
-        amount: 100,
+        amountMinor: 100,
+        currency: "USD",
         customerId: "c_fail",
       });
     } catch (err) {
@@ -304,7 +232,7 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
 
     // 1. Run wallet lifecycle against fake gateway
     const fakeGateway = createFakeGateway();
-    const fakeWallet = createWallet(db, fakeGateway);
+    const fakeWallet = createWallet(db, fakeGateway, { currency: "USD" });
 
     await fakeWallet.openWallet(WS_FAKE, 0);
     const fakeOrder = await fakeWallet.createOrder({
@@ -314,7 +242,7 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
     });
     expect(fakeOrder.orderId).toBeDefined();
 
-    fakeGateway.setOrder(fakeOrder.orderId, { status: "PAID", amount: 250 });
+    fakeGateway.setOrder(fakeOrder.orderId, { status: "PAID" });
     const fakeConf = await fakeWallet.confirmOrder(fakeOrder.orderId);
     expect(fakeConf.status).toBe("PAID");
     expect(fakeConf.credited).toBe(true);
@@ -327,7 +255,7 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
     expect(await fakeWallet.getBalance(WS_FAKE)).toBe(250);
 
     // 2. Run identical wallet lifecycle against Stripe adapter backed by recorded fixtures
-    const orderStore = new Map<string, { status: string; amount: number; secret: string }>();
+    const orderStore = new Map<string, { orderId: string; status: string; amount: number; secret: string; currency: string; customerId: string }>();
 
     const stripeRecordingFetcher = async (input: Request | string | URL, init?: RequestInit) => {
       const u = new URL(typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url);
@@ -338,7 +266,7 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
         const orderId = params.get("metadata[order_id]") ?? "unknown";
         const amount = Number(params.get("amount") ?? "0");
         const secret = `sec_${orderId}_live`;
-        orderStore.set(orderId, { status: "succeeded", amount, secret });
+        orderStore.set(`pi_${orderId}`, { orderId, status: "succeeded", amount, secret, currency: params.get("currency") ?? "", customerId: params.get("metadata[customer_id]") ?? "" });
 
         return new Response(
           JSON.stringify({
@@ -365,6 +293,8 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
             id: intentId,
             status: entry.status,
             amount: entry.amount,
+            currency: entry.currency,
+            metadata: { order_id: entry.orderId, customer_id: entry.customerId },
           }),
           { status: 200, headers: { "content-type": "application/json" } },
         );
@@ -377,10 +307,9 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
       manifest: stripeManifest,
       connection: { apiKey: "sk_test_fake" },
       fetcher: stripeRecordingFetcher,
-      currency: "usd",
     });
 
-    const stripeWallet = createWallet(db, stripeGateway);
+    const stripeWallet = createWallet(db, stripeGateway, { currency: "USD" });
     await stripeWallet.openWallet(WS_STRIPE, 0);
 
     const stripeOrder = await stripeWallet.createOrder({
@@ -420,7 +349,7 @@ describe("story 0.9 (A21): no order is recorded unless Stripe created one", () =
           headers: { "content-type": "application/json" },
         }),
     });
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "USD" });
     await wallet.openWallet(WS, 0);
     await expect(wallet.createOrder({ workspaceId: WS, userId: "usr_x", amount: 100 })).rejects.toBeInstanceOf(IntegrationCallError);
     expect(await orderCount()).toBe(0);
@@ -434,16 +363,65 @@ describe("story 0.9 (A21): no order is recorded unless Stripe created one", () =
     });
     let caught: unknown;
     try {
-      await gateway.createOrder({ orderId: "o_empty", amount: 100, customerId: "c_1" });
+      await gateway.createOrder({ orderId: "o_empty", amountMinor: 100, currency: "USD", customerId: "c_1" });
     } catch (err) {
       caught = err;
     }
     expect(caught).toBeInstanceOf(IntegrationCallError);
     expect((caught as IntegrationCallError).code).toBe("PROVIDER_ERROR");
 
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "USD" });
     await wallet.openWallet(WS, 0);
     await expect(wallet.createOrder({ workspaceId: WS, userId: "usr_x", amount: 100 })).rejects.toThrow(/PROVIDER_ERROR/);
     expect(await orderCount()).toBe(0);
+  });
+});
+
+describe("story 2.3: Stripe-Signature webhook verification", () => {
+  const SECRET = "whsec_unit_test_only";
+  const NOW = Date.parse("2026-11-25T10:00:00Z");
+  const gateway = createStripePaymentGateway({ manifest: stripeManifest, connection: { apiKey: "sk_test_x" }, fetcher: async () => new Response("{}"), webhookSecret: SECRET, now: () => NOW });
+  const event = (type: string) => JSON.stringify({ id: "evt_1", type, data: { object: { id: "pi_1", metadata: { order_id: "order_abc" } } } });
+  const sign = async (body: string, t: number, secret = SECRET) => {
+    const { hmacSha256, toHex } = await import("../src/webhook-signature.ts");
+    return new Headers({ "stripe-signature": `t=${t},v1=${toHex(await hmacSha256(secret, `${t}.${body}`))}` });
+  };
+  const t = Math.floor(NOW / 1000);
+
+  it("a payment_intent event signed with the endpoint secret names the intent's order", async () => {
+    const body = event("payment_intent.succeeded");
+    expect(await gateway.verifyWebhook(body, await sign(body, t))).toEqual({ kind: "order", orderId: "order_abc", providerRef: "pi_1" });
+  });
+
+  it("refuses (invalid) a forged signature, a stale or future timestamp and a missing header; ignores a signed non-payment_intent event", async () => {
+    const body = event("payment_intent.succeeded");
+    expect(await gateway.verifyWebhook(body, await sign(body, t, "whsec_other"))).toEqual({ kind: "invalid" });
+    expect(await gateway.verifyWebhook(body, await sign(body, t - 301))).toEqual({ kind: "invalid" });
+    expect(await gateway.verifyWebhook(body, await sign(body, t + 301))).toEqual({ kind: "invalid" });
+    expect(await gateway.verifyWebhook(body, new Headers())).toEqual({ kind: "invalid" });
+    const other = event("charge.refunded");
+    expect(await gateway.verifyWebhook(other, await sign(other, t))).toEqual({ kind: "ignored" });
+  });
+
+  it("without a webhook secret, verification fails NOT_CONFIGURED instead of accepting anything", async () => {
+    const unconfigured = createStripePaymentGateway({ manifest: stripeManifest, connection: { apiKey: "sk_test_x" }, fetcher: async () => new Response("{}") });
+    const body = event("payment_intent.succeeded");
+    await expect(unconfigured.verifyWebhook(body, await sign(body, t))).rejects.toThrow(/NOT_CONFIGURED/);
+  });
+});
+
+describe("story 2.3: Stripe currencies whose convention differs from ISO 4217 are refused", () => {
+  it.each(["HUF", "TWD", "ISK", "UGX", "MGA"])("%s fails NOT_SUPPORTED before any request", async (currency) => {
+    let called = false;
+    const gateway = createStripePaymentGateway({ manifest: stripeManifest, connection: { apiKey: "sk_test_x" }, fetcher: async () => ((called = true), new Response("{}")) });
+    await expect(gateway.createOrder({ orderId: "o1", amountMinor: 100, currency, customerId: "c1" })).rejects.toThrow(/^NOT_SUPPORTED/);
+    expect(called).toBe(false);
+  });
+
+  it("fetchOrder without a stored intent id fails (it never looks an intent up by the brick's order id)", async () => {
+    let called = false;
+    const gateway = createStripePaymentGateway({ manifest: stripeManifest, connection: { apiKey: "sk_test_x" }, fetcher: async () => ((called = true), new Response("{}")) });
+    await expect(gateway.fetchOrder("order_1", undefined)).rejects.toThrow(/PROVIDER_ERROR/);
+    expect(called).toBe(false);
   });
 });

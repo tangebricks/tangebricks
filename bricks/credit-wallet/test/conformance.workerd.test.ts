@@ -13,7 +13,7 @@ app.use("*", async (c, next) => {
   }
   await next();
 });
-app.route("/", createWalletRoutes({ gateway: createFakeGateway() }));
+app.route("/", createWalletRoutes({ gateway: createFakeGateway(), currency: "INR" }));
 
 runBrickConformance({
   brickDir: "bricks/credit-wallet",

@@ -39,7 +39,8 @@ describe("the project the setup step wrote", () => {
       "migrations/0001_multi-workspace__0001_multi_workspace.sql",
       "migrations/0002_credit-wallet__0001_credit_wallet.sql",
       "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
-      "migrations/0004_shell__px_rate_limits.sql", // story 0.21: credit-wallet declares rate limits
+      "migrations/0004_credit-wallet__0003_order_currency.sql", // story 2.3: credit-wallet's order currency
+      "migrations/0005_shell__px_rate_limits.sql", // story 0.21: credit-wallet declares rate limits
       "openapi.json",
       "package.json",
       "project.json",
@@ -60,6 +61,14 @@ describe("the project the setup step wrote", () => {
 
 describe("the emitted project runs", () => {
   beforeEach(freshDatabase);
+
+  // Story 2.3: the provider calls the payment webhook with no user and no workspace. In the assembled app it must reach
+  // the brick (which answers 503 NOT_CONFIGURED, since no gateway is wired), not be stopped by a guard's 400/401/403.
+  test("POST /api/payments/webhook with no user and no workspace reaches the brick: 503 NOT_CONFIGURED", async () => {
+    const res = await call("/api/payments/webhook", { "content-type": "application/json" }, { method: "POST", body: JSON.stringify({ data: {} }) });
+    expect(res.status).toBe(503);
+    expect(res.body).toMatchObject({ code: "NOT_CONFIGURED" });
+  });
 
   test("the emitted migrations apply, in order, to an empty database", async () => {
     const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_%' ESCAPE '\\' AND name NOT LIKE 'sqlite%' ORDER BY name").all<{ name: string }>()).results.map((r) => r.name);

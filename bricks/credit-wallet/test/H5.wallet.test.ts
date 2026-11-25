@@ -5,6 +5,7 @@ import { applyMigration, createFakeGateway, createWallet } from "../src/index.ts
 import type { D1Like } from "../src/index.ts";
 import migration from "../migrations/0001_credit_wallet.sql?raw";
 import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
+import migration0003 from "../migrations/0003_order_currency.sql?raw";
 import { BRICK_TABLES, type Op, type Outcome, violations, workload } from "./support/workload.ts";
 
 const db = env.DB as D1Like;
@@ -15,6 +16,7 @@ async function reset(): Promise<void> {
   for (const table of ["credit_ledger", "credit_orders", "credit_wallets"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, migration);
   await applyMigration(db, migration0002);
+  await applyMigration(db, migration0003);
 }
 
 async function ledgerCount(workspaceId = WS): Promise<number> {
@@ -46,14 +48,14 @@ async function brickRun(run: number): Promise<RunReport> {
   const w = workload(run);
   await reset();
   const gateway = createFakeGateway();
-  const wallet = createWallet(db, gateway);
+  const wallet = createWallet(db, gateway, { currency: "INR" });
   await wallet.openWallet(WS, w.start);
 
   const orderFor = new Map<Op, string>();
   for (const op of w.ops) {
     if (op.kind !== "topup") continue;
     const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: "user-1", amount: op.amount });
-    gateway.setOrder(orderId, { status: "PAID", amount: op.amount });
+    gateway.setOrder(orderId, { status: "PAID" });
     orderFor.set(op, orderId);
   }
 
@@ -98,10 +100,10 @@ const sweep = once(async () => {
 const orderScenario = once(async () => {
   await reset();
   const gateway = createFakeGateway();
-  const wallet = createWallet(db, gateway);
+  const wallet = createWallet(db, gateway, { currency: "INR" });
   await wallet.openWallet(WS, 7);
   const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: "user-1", amount: 100 });
-  gateway.setOrder(orderId, { status: "PAID", amount: 100 });
+  gateway.setOrder(orderId, { status: "PAID" });
 
   const results = await Promise.all(Array.from({ length: 30 }, () => wallet.confirmOrder(orderId)));
   const order = await db.prepare("SELECT processed FROM credit_orders WHERE order_id = ?").bind(orderId).first<{ processed: number }>();
@@ -123,7 +125,7 @@ const orderScenario = once(async () => {
 // ---------------------------------------------------------------------------------------------------------------
 const refusalScenario = once(async () => {
   await reset();
-  const wallet = createWallet(db, createFakeGateway());
+  const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
 
   await wallet.openWallet(WS, 5);
   const single = await wallet.deduct({ workspaceId: WS, userId: "user-1", amount: 10, reason: "usage" });
@@ -201,7 +203,7 @@ describe("a deduction the wallet cannot cover", () => {
 describe("the rest of the wallet's behaviour", () => {
   test("the database itself refuses a negative balance, even for a write that goes around the wallet code", async () => {
     await reset();
-    const wallet = createWallet(db, createFakeGateway());
+    const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
     await wallet.openWallet(WS, 5);
     await expect(db.prepare("UPDATE credit_wallets SET balance = balance - 6 WHERE workspace_id = ?").bind(WS).run()).rejects.toThrow(/CHECK constraint failed: balance >= 0/);
     expect(await wallet.getBalance(WS)).toBe(5);
@@ -222,7 +224,7 @@ describe("the rest of the wallet's behaviour", () => {
 
   test("a deduction with an idempotency key made twice takes the money once", async () => {
     await reset();
-    const wallet = createWallet(db, createFakeGateway());
+    const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
     await wallet.openWallet(WS, 50);
     const first = await wallet.deduct({ workspaceId: WS, userId: "u", amount: 10, reason: "usage", idempotencyKey: "job-1" });
     const second = await wallet.deduct({ workspaceId: WS, userId: "u", amount: 10, reason: "usage", idempotencyKey: "job-1" });
@@ -234,7 +236,7 @@ describe("the rest of the wallet's behaviour", () => {
 
   test("a deduction from a workspace with no wallet changes nothing", async () => {
     await reset();
-    const wallet = createWallet(db, createFakeGateway());
+    const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
     const result = await wallet.deduct({ workspaceId: "nobody", userId: "u", amount: 1, reason: "usage" });
     expect(result).toEqual({ ok: false, reason: "wallet_not_found", balance: null });
     expect(await ledgerCount("nobody")).toBe(0);
@@ -242,7 +244,7 @@ describe("the rest of the wallet's behaviour", () => {
 
   test.each([0, -3, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 60])("an amount of %s is rejected before touching the database", async (amount) => {
     await reset();
-    const wallet = createWallet(db, createFakeGateway());
+    const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
     await wallet.openWallet(WS, 10);
     await expect(wallet.deduct({ workspaceId: WS, userId: "u", amount, reason: "usage" })).rejects.toThrow(RangeError);
     expect(await wallet.getBalance(WS)).toBe(10);
@@ -251,7 +253,7 @@ describe("the rest of the wallet's behaviour", () => {
   test("an order the gateway has not marked PAID credits nothing and stays open", async () => {
     await reset();
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
     await wallet.openWallet(WS, 0);
     const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: "u", amount: 100 });
     expect(await wallet.confirmOrder(orderId)).toEqual({ status: "ACTIVE", credited: false });
@@ -263,10 +265,10 @@ describe("the rest of the wallet's behaviour", () => {
   test("a gateway outage leaves the order open, and confirming again after it credits once", async () => {
     await reset();
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
     await wallet.openWallet(WS, 0);
     const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: "u", amount: 100 });
-    gateway.setOrder(orderId, { status: "PAID", amount: 100 });
+    gateway.setOrder(orderId, { status: "PAID" });
     gateway.failFetches(true);
     expect(await wallet.confirmOrder(orderId)).toEqual({ status: "gateway_error", credited: false });
     expect(await wallet.getBalance(WS)).toBe(0);
@@ -278,27 +280,27 @@ describe("the rest of the wallet's behaviour", () => {
 
   test("an order that does not exist credits nothing", async () => {
     await reset();
-    const wallet = createWallet(db, createFakeGateway());
+    const wallet = createWallet(db, createFakeGateway(), { currency: "INR" });
     expect(await wallet.confirmOrder("order_missing")).toEqual({ status: "order_not_found", credited: false });
   });
 
   test("credits per unit scales the top-up", async () => {
     await reset();
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway, { creditsPerUnit: 10 });
+    const wallet = createWallet(db, gateway, { creditsPerUnit: 10, currency: "INR" });
     await wallet.openWallet(WS, 0);
     const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: "u", amount: 100 });
-    gateway.setOrder(orderId, { status: "PAID", amount: 100 });
+    gateway.setOrder(orderId, { status: "PAID" });
     expect(await wallet.confirmOrder(orderId)).toMatchObject({ credited: true, credits: 1000 });
   });
 
   test("a top-up for a workspace whose wallet is missing credits nothing and leaves the order open", async () => {
     await reset();
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
     await wallet.openWallet(WS, 0);
     const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: "u", amount: 100 });
-    gateway.setOrder(orderId, { status: "PAID", amount: 100 });
+    gateway.setOrder(orderId, { status: "PAID" });
     await db.prepare("DELETE FROM credit_wallets WHERE workspace_id = ?").bind(WS).run();
     expect(await wallet.confirmOrder(orderId)).toEqual({ status: "wallet_not_found", credited: false });
     const row = await db.prepare("SELECT processed FROM credit_orders WHERE order_id = ?").bind(orderId).first<{ processed: number }>();

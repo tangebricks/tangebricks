@@ -215,12 +215,12 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
         const rest = newClient(`rest-run-${run}`);
         const db = restD1(rest, deps.databaseId, space);
         const gateway = createFakeGateway();
-        const wallet = createWallet(db, gateway);
+        const wallet = createWallet(db, gateway, { currency: "INR" });
         await wallet.openWallet(report.workspaceId, w.start);
         for (const op of w.ops) {
           if (op.kind === "topup") {
             const { orderId } = await wallet.createOrder({ workspaceId: report.workspaceId, userId: user, amount: op.amount });
-            gateway.setOrder(orderId, { status: "PAID", amount: op.amount });
+            gateway.setOrder(orderId, { status: "PAID" });
             report.ops.push({ kind: "topup", amount: op.amount, orderId });
           } else report.ops.push({ kind: "deduct", amount: op.amount });
         }

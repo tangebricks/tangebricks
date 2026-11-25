@@ -1,4 +1,5 @@
-import { scoped } from "@poc/sdk";
+import { NotConfiguredError, checkGatewayOrder, isPaymentCurrency, scoped, toMinorUnits } from "@poc/sdk";
+import type { PaymentMismatchField } from "@poc/sdk";
 import type { D1Like } from "./d1.ts";
 import type { PaymentGateway } from "./gateway.ts";
 
@@ -23,6 +24,8 @@ export type DeductResult =
 export type ConfirmResult =
   | { status: "PAID"; credited: true; credits: number; amount: number; balanceAfter: number }
   | { status: "already_processed"; credited: false }
+  /** Story 2.3: the provider's order differs from the stored one in `field`. Nothing was credited. */
+  | { status: "verification_mismatch"; credited: false; field: PaymentMismatchField; workspaceId: string }
   | { status: "order_not_found" | "wallet_not_found" | "gateway_error" | "invalid_amount"; credited: false }
   | { status: string; credited: false };
 
@@ -51,9 +54,23 @@ const isOverdraw = (error: unknown) => /CHECK constraint failed: (balance|balanc
 const isDuplicateKey = (error: unknown) =>
   /UNIQUE constraint failed: credit_ledger\.workspace_id, credit_ledger\.idempotency_key/.test(errorText(error));
 
-export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, options: { creditsPerUnit?: number; minOrderAmount?: number } = {}): Wallet {
+export interface WalletOptions {
+  creditsPerUnit?: number;
+  minOrderAmount?: number;
+  /**
+   * Story 2.3: the currency every order is created and verified in (ISO 4217, three uppercase letters). Required
+   * whenever a gateway is used; there is no default, so creating or confirming an order without it fails NOT_CONFIGURED.
+   */
+  currency?: string;
+}
+
+export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, options: WalletOptions = {}): Wallet {
   const creditsPerUnit = options.creditsPerUnit ?? 1;
   const minOrderAmount = options.minOrderAmount ?? 1;
+  const requireCurrency = (): string => {
+    if (!isPaymentCurrency(options.currency)) throw new NotConfiguredError("no payment currency is configured (three uppercase letters, e.g. INR)");
+    return options.currency;
+  };
 
   async function getBalance(workspaceId: string): Promise<number | null> {
     const row = await scoped(db, workspaceId).first<{ balance: number }>("credit_wallets");
@@ -154,13 +171,23 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
       if (amount < minOrderAmount) throw new RangeError(`amount is below the minimum of ${minOrderAmount}`);
       const orderId = `order_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
       if (!gateway) throw new Error("this wallet was created without a payment gateway");
-      const created = await gateway.createOrder({ orderId, amount, customerId: userId });
-      await scoped(db, workspaceId).insert("credit_orders", {
-        order_id: orderId,
-        user_id: userId,
-        amount,
-        processed: 0,
-      });
+      const currency = requireCurrency();
+      // The wallet's orders are whole major units (rupees); the gateway interface speaks minor units (paise).
+      const created = await gateway.createOrder({ orderId, amountMinor: toMinorUnits(amount, currency), currency, customerId: userId });
+      try {
+        await scoped(db, workspaceId).insert("credit_orders", {
+          order_id: orderId,
+          user_id: userId,
+          amount,
+          currency,
+          provider_ref: created.providerRef,
+          processed: 0,
+        });
+      } catch (error) {
+        // The provider has an order this wallet has no row for: say which, so it can be found and cancelled.
+        console.error(`credit-wallet: provider order created but not recorded (order ${orderId}, provider ref ${created.providerRef})`);
+        throw error;
+      }
       return { orderId, paymentSessionId: created.paymentSessionId };
     },
 
@@ -168,22 +195,43 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
       // The order row is what names the workspace (see getOrder); every statement after this one binds it.
       // tenant-lint: allow payment confirmation resolves an order by its unguessable id to learn its workspace
       const order = await db
-        .prepare("SELECT workspace_id, user_id, amount, processed FROM credit_orders WHERE order_id = ?")
+        .prepare("SELECT workspace_id, user_id, amount, currency, provider_ref, processed FROM credit_orders WHERE order_id = ?")
         .bind(orderId)
-        .first<{ workspace_id: string; user_id: string; amount: number; processed: number }>();
+        .first<{ workspace_id: string; user_id: string; amount: number; currency: string | null; provider_ref: string | null; processed: number }>();
       if (!order) return { status: "order_not_found", credited: false };
       if (order.processed) return { status: "already_processed", credited: false };
 
       if (!gateway) throw new Error("this wallet was created without a payment gateway");
+      const configuredCurrency = requireCurrency();
       let gatewayOrder;
       try {
-        gatewayOrder = await gateway.fetchOrder(orderId);
+        gatewayOrder = await gateway.fetchOrder(orderId, order.provider_ref ?? undefined);
       } catch {
+        // A provider that fetches by its own reference cannot find an order stored without one: say so, or the
+        // retries end in a permanent, unexplained 502.
+        if (!order.provider_ref) console.error(`credit-wallet: order has no provider reference, so the provider could not be asked about it (order ${orderId})`);
         return { status: "gateway_error", credited: false };
       }
       if (gatewayOrder.status !== "PAID") return { status: gatewayOrder.status, credited: false };
 
-      const credits = (gatewayOrder.amount || order.amount) * creditsPerUnit;
+      // Story 2.3 (A20): a "PAID" answer is believed only for this very order: the same id, exactly the stored amount,
+      // the stored currency (a row from before migration 0003 has none and is held to the configured one) and the
+      // user who created it. Any difference credits nothing. The amount credited is always the stored one.
+      // The stored amount is in major units; the provider's is in minor units, so the stored one is converted (exactly).
+      const orderCurrency = order.currency ?? configuredCurrency;
+      let expectedMinor: number;
+      try {
+        expectedMinor = toMinorUnits(order.amount, orderCurrency);
+      } catch {
+        return { status: "invalid_amount", credited: false };
+      }
+      const check = checkGatewayOrder(
+        { orderId, amountMinor: expectedMinor, currency: orderCurrency, customerId: order.user_id },
+        gatewayOrder,
+      );
+      if (!check.ok) return { status: "verification_mismatch", credited: false, field: check.field, workspaceId: order.workspace_id };
+
+      const credits = order.amount * creditsPerUnit;
       if (!isWholeAmount(credits)) return { status: "invalid_amount", credited: false };
       const key = `order:${orderId}`;
 
@@ -197,7 +245,7 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
               "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key) " +
                 "SELECT ?, workspace_id, ?, 'topup', ?, balance, 'Top-up', ?, ? FROM credit_wallets WHERE workspace_id = ?",
             )
-            .bind(crypto.randomUUID(), order.user_id, credits, JSON.stringify({ order_id: orderId, amount_paid: gatewayOrder.amount, credits_per_unit: creditsPerUnit }), key, order.workspace_id),
+            .bind(crypto.randomUUID(), order.user_id, credits, JSON.stringify({ order_id: orderId, amount_paid: order.amount, credits_per_unit: creditsPerUnit }), key, order.workspace_id),
           // Marked processed only if the ledger row above exists, so an order can never be closed without a credit.
           db
             .prepare(
@@ -208,7 +256,7 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
         ]);
         if (results[0]!.meta.changes === 0) return { status: "wallet_not_found", credited: false };
         const balanceAfter = (await ledgerRowFor(order.workspace_id, key))?.balance_after ?? 0;
-        return { status: "PAID", credited: true, credits, amount: gatewayOrder.amount, balanceAfter };
+        return { status: "PAID", credited: true, credits, amount: order.amount, balanceAfter };
       } catch (error) {
         if (isDuplicateKey(error)) return { status: "already_processed", credited: false };
         throw error;

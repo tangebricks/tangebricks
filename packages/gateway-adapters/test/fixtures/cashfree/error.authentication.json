@@ -1,0 +1,5 @@
+{
+  "message": "authentication Failed",
+  "code": "request_failed",
+  "type": "authentication_error"
+}
