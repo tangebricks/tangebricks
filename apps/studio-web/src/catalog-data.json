@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "9cfc00172768c466fba5b3b262b438301446c6d34d1c4368d5aaafd3b0cec4d5",
+  "catalogVersion": "dc84f9ffc13b942aa3625951d1700bf37d4cea71fb48c15a94e72a2a96cfe0bd",
   "bricks": {
     "admin-console": {
       "manifestVersion": 2,
@@ -39,8 +39,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 0
         }
       },
@@ -127,8 +127,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 0
         }
       },
@@ -194,7 +194,8 @@
         "workspace-context"
       ],
       "migrations": [
-        "migrations/0001_audit_trail.sql"
+        "migrations/0001_audit_trail.sql",
+        "migrations/0002_capability_rows.sql"
       ],
       "routePrefixes": [
         "audit"
@@ -214,8 +215,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 29
         }
       },
@@ -240,6 +241,11 @@
       },
       "worker": {
         "package": "@poc/audit-trail",
+        "capabilityExports": {
+          "audit-logging": [
+            "auditRecorder"
+          ]
+        },
         "routes": [
           {
             "factory": "createAuditRoutes",
@@ -311,8 +317,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 32
         }
       },
@@ -415,8 +421,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 42
         }
       },
@@ -531,8 +537,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 126
         }
       },
@@ -810,8 +816,8 @@
           "DEFAULT_ADAPTER_FAKE"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 235
         }
       },
@@ -1010,8 +1016,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 135
         }
       },
@@ -1106,8 +1112,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 0
         }
       },
@@ -1179,8 +1185,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 72
         }
       },
@@ -1281,8 +1287,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 56
         }
       },
@@ -1378,8 +1384,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 0
         }
       },
@@ -1503,8 +1509,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 78
         }
       },
@@ -1569,8 +1575,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 33
         }
       },
@@ -1666,8 +1672,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 59
         }
       },
@@ -1695,6 +1701,11 @@
       },
       "worker": {
         "package": "@poc/feature-flags",
+        "capabilityExports": {
+          "feature-flags": [
+            "flagOverrides"
+          ]
+        },
         "routes": [
           {
             "factory": "createFlagRoutes",
@@ -1753,8 +1764,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 60
         }
       },
@@ -1870,8 +1881,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 46
         }
       },
@@ -1966,8 +1977,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 74
         }
       },
@@ -2063,8 +2074,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 48
         }
       },
@@ -2194,8 +2205,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 48
         }
       },
@@ -2302,8 +2313,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 0
         }
       },
@@ -2398,8 +2409,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 76
         }
       },
@@ -2494,8 +2505,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 105
         }
       },
@@ -2592,8 +2603,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 0
         }
       },
@@ -2742,8 +2753,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 59
         }
       },
@@ -2849,8 +2860,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 307
         }
       },
@@ -2989,8 +3000,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 62
         }
       },
@@ -3040,6 +3051,164 @@
         ]
       }
     },
+    "platform-admin": {
+      "manifestVersion": 2,
+      "kind": "brick",
+      "id": "platform-admin",
+      "version": "1.0.0",
+      "trust": "first-party",
+      "isolation": "none",
+      "provides": [
+        "platform-admin"
+      ],
+      "requires": [
+        "workspace-context",
+        "audit-logging"
+      ],
+      "migrations": [
+        "migrations/0001_platform_admin.sql"
+      ],
+      "routePrefixes": [
+        "platform"
+      ],
+      "npmDependencies": {
+        "hono": "4.13.20",
+        "zod": "4.6.7"
+      },
+      "settings": {
+        "maxGrantCredits": {
+          "type": "integer",
+          "min": 1,
+          "max": 1000000000,
+          "default": 1000000
+        },
+        "requireUserApproval": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "nodes": [],
+      "ui": {
+        "displayName": "Platform Operator Console",
+        "category": "governance",
+        "summary": "Audited operator actions across workspaces: credit grants, suspension, flag overrides and user approval.",
+        "maturity": "beta",
+        "maturityReason": "NEW_BRICK: Operator routes are covered by the attack suite; promotion to production needs the shared conformance kit (UC5.3).",
+        "behaviourTest": "test/platform-admin.test.ts"
+      },
+      "globalTables": [
+        {
+          "table": "pa_user_approvals",
+          "reason": "Platform-wide by design: approval is a decision about a person across every workspace, keyed by user id; only the operator routes and the approval gate read or write it"
+        }
+      ],
+      "rateLimits": [
+        {
+          "method": "POST",
+          "path": "/platform/workspaces/:id/credits",
+          "bucket": "platform-admin-write",
+          "limit": 120,
+          "windowSeconds": 60,
+          "key": "user"
+        },
+        {
+          "method": "POST",
+          "path": "/platform/workspaces/:id/suspend",
+          "bucket": "platform-admin-write",
+          "limit": 120,
+          "windowSeconds": 60,
+          "key": "user"
+        },
+        {
+          "method": "POST",
+          "path": "/platform/workspaces/:id/unsuspend",
+          "bucket": "platform-admin-write",
+          "limit": 120,
+          "windowSeconds": 60,
+          "key": "user"
+        },
+        {
+          "method": "PUT",
+          "path": "/platform/workspaces/:id/flags/:flagKey",
+          "bucket": "platform-admin-write",
+          "limit": 120,
+          "windowSeconds": 60,
+          "key": "user"
+        },
+        {
+          "method": "DELETE",
+          "path": "/platform/workspaces/:id/flags/:flagKey",
+          "bucket": "platform-admin-write",
+          "limit": 120,
+          "windowSeconds": 60,
+          "key": "user"
+        },
+        {
+          "method": "POST",
+          "path": "/platform/users/:uid/approve",
+          "bucket": "platform-admin-write",
+          "limit": 120,
+          "windowSeconds": 60,
+          "key": "user"
+        },
+        {
+          "method": "POST",
+          "path": "/platform/users/:uid/reject",
+          "bucket": "platform-admin-write",
+          "limit": 120,
+          "windowSeconds": 60,
+          "key": "user"
+        }
+      ],
+      "privacy": {
+        "tables": {
+          "pa_user_approvals": {
+            "subject": "user",
+            "userColumn": "user_id",
+            "erase": "retain",
+            "retainReason": "Access-governance record: whether an operator approved or rejected this person, by whom and why, is kept so access decisions stay accountable after an erasure request",
+            "export": true,
+            "platformWide": true
+          }
+        }
+      },
+      "worker": {
+        "package": "@poc/platform-admin",
+        "approvalGuard": {
+          "export": "requireApprovedUser",
+          "setting": "requireUserApproval"
+        },
+        "routes": [
+          {
+            "factory": "createPlatformAdminRoutes",
+            "mountAt": "/api",
+            "options": {
+              "maxGrantCredits": {
+                "$setting": "maxGrantCredits"
+              },
+              "requireUserApproval": {
+                "$setting": "requireUserApproval"
+              },
+              "auditRecorder": {
+                "$capability": "audit-logging.auditRecorder"
+              },
+              "charger": {
+                "$capability": "credit-wallet.walletCharger",
+                "requiredWhen": "provided"
+              },
+              "flagOverrides": {
+                "$capability": "feature-flags.flagOverrides",
+                "requiredWhen": "provided"
+              },
+              "flagOverridesAllowed": {
+                "$capabilitySetting": "feature-flags.allowWorkspaceOverrides"
+              }
+            },
+            "guardPaths": []
+          }
+        ]
+      }
+    },
     "product-analytics": {
       "manifestVersion": 2,
       "kind": "brick",
@@ -3077,8 +3246,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 26
         }
       },
@@ -3161,8 +3330,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 92
         }
       },
@@ -3239,8 +3408,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 51
         }
       },
@@ -3337,8 +3506,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 78
         }
       },
@@ -3433,8 +3602,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 0
         }
       },
@@ -3543,8 +3712,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 0
         }
       },
@@ -3630,8 +3799,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 28
         }
       },
@@ -3715,8 +3884,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 75
         }
       },
@@ -3806,8 +3975,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 36
         }
       },
@@ -3889,8 +4058,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 34
         }
       },
@@ -3972,8 +4141,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 31
         }
       },
@@ -4056,8 +4225,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 39
         }
       },
@@ -4119,8 +4288,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 33
         }
       },
@@ -4228,8 +4397,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 76
         }
       },
@@ -4375,8 +4544,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-          "runAt": "2026-11-25T11:30:35.213Z",
+          "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+          "runAt": "2026-11-25T13:35:27.765Z",
           "assertionCount": 0
         }
       },
@@ -5049,8 +5218,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-            "runAt": "2026-11-25T11:30:35.323Z",
+            "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+            "runAt": "2026-11-25T13:35:27.803Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -6461,8 +6630,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-            "runAt": "2026-11-25T11:30:35.323Z",
+            "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+            "runAt": "2026-11-25T13:35:27.803Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -8133,8 +8302,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-            "runAt": "2026-11-25T11:30:35.323Z",
+            "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+            "runAt": "2026-11-25T13:35:27.803Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -9808,8 +9977,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-            "runAt": "2026-11-25T11:30:35.323Z",
+            "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+            "runAt": "2026-11-25T13:35:27.803Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -11103,8 +11272,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "0741e3024debf438de41129fafa66e5132c740d9",
-            "runAt": "2026-11-25T11:30:35.323Z",
+            "gitSha": "a4303edc9131cdf69c7f60d7001a97d53cdb1511",
+            "runAt": "2026-11-25T13:35:27.803Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {

@@ -6,7 +6,7 @@ export { createWalletRoutes } from "./routes.ts";
 export type { WalletEnv, WalletRoutesOptions } from "./routes.ts";
 export { createWallet } from "./wallet.ts";
 export { walletCharger } from "./charger.ts";
-export type { ChargeActionOptions, ChargeResult, RefundResult, WalletCharger } from "./charger.ts";
+export type { ChargeActionOptions, ChargeResult, GrantResult, RefundResult, WalletCharger } from "./charger.ts";
 export {
   ACTION_NAME,
   MAX_ACTION_COST_MILLI,

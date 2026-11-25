@@ -38,7 +38,8 @@ export interface ExportRequestRecord {
 }
 
 export interface PrivacyServiceHooks {
-  exportTenant?: (db: D1Like, subject: { workspaceId: string; userId?: string }) => Promise<Record<string, unknown>>;
+  /** `requesterId` (story 2.6): who asked for the export; platform-wide records are included only for a self-export. */
+  exportTenant?: (db: D1Like, subject: { workspaceId: string; userId?: string; requesterId?: string }) => Promise<Record<string, unknown>>;
   eraseTenant?: (db: D1Like, subject: { workspaceId: string; userId?: string }) => Promise<{ deletedCount: number; retain: Array<{ table: string; reason?: string }> }>;
 }
 
@@ -127,7 +128,7 @@ export class DataPrivacyService {
   /**
    * Generates a GDPR Article 20 personal data export archive.
    */
-  async requestDataExport(workspaceId: string, userId: string): Promise<ExportRequestRecord> {
+  async requestDataExport(workspaceId: string, userId: string, requesterId?: string): Promise<ExportRequestRecord> {
     const expId = `exp_${crypto.randomUUID().replace(/-/g, "")}`;
     const now = new Date().toISOString();
 
@@ -144,7 +145,7 @@ export class DataPrivacyService {
     // 2. Gather data from generated exportTenant hook if provided
     if (this.hooks?.exportTenant) {
       try {
-        const tenantData = await this.hooks.exportTenant(this.db, { workspaceId, userId });
+        const tenantData = await this.hooks.exportTenant(this.db, { workspaceId, userId, ...(requesterId ? { requesterId } : {}) });
         Object.assign(collectedData, tenantData);
       } catch (err) {
         console.error("DataPrivacyService.requestDataExport hook error:", err);

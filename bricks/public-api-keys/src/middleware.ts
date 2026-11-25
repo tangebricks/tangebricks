@@ -13,6 +13,8 @@ export interface ApiKeyEnv {
     apiKey?: ApiKeyRecord;
     /** Set to "api-key" by this brick's identity step only (story 1.11). */
     authenticatedBy?: string;
+    /** Story 2.6: the user id of the key's creator (`API_KEY_CREATOR_VAR`), for checks about the person behind a key. */
+    apiKeyCreator?: string;
   };
 }
 
@@ -73,6 +75,8 @@ async function authenticateKey(c: Context<ApiKeyEnv>, presented: KeyHeader & { k
   c.set("ctx", Object.freeze<RequestContext>({ userId, workspaceId: key.workspace_id, role: key.role }));
   c.set("workspace", { id: key.workspace_id, role: key.role, suspended: workspaceSuspended });
   c.set("apiKey", key);
+  // authenticate() only answers a key whose creator is still a member, so created_by is set here.
+  if (key.created_by) c.set("apiKeyCreator", key.created_by);
 
   const touched = service.touch(key.workspace_id, key.id).catch((error: unknown) => {
     console.error("api key last_used_at:", error);

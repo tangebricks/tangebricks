@@ -1,4 +1,4 @@
-import { scoped } from "@poc/sdk";
+import { findWorkspaceState, hasWorkspaceRegistry, scoped } from "@poc/sdk";
 import { chargeAction, parseDefaultActionCosts } from "./costs.ts";
 import type { ChargeActionResult } from "./costs.ts";
 import type { D1Like } from "./d1.ts";
@@ -27,6 +27,11 @@ export type ChargeResult =
 export type RefundResult =
   | { ok: true; balanceAfterMilli: number; duplicate: boolean; milli: number }
   | { ok: false; code: "WALLET_NOT_FOUND" | "NOTHING_TO_REFUND" | "IDEMPOTENCY_KEY_REUSED"; balanceMilli: number };
+
+/** Story 2.6: the outcome of `grant`. Every refusal added nothing. */
+export type GrantResult =
+  | { ok: true; balanceAfterMilli: number; duplicate: boolean; opened: boolean }
+  | { ok: false; code: "WALLET_NOT_FOUND" | "IDEMPOTENCY_KEY_REUSED"; balanceMilli: number };
 
 export interface ChargeActionOptions {
   /** Recorded on the ledger row. Default "system". */
@@ -69,6 +74,14 @@ export interface WalletCharger {
     reason: string,
     options?: ChargeActionOptions,
   ): Promise<ChargeActionResult>;
+  /**
+   * Story 2.6: adds `milli` (a positive whole number of thousandths) to the workspace's wallet once for `idempotencyKey`,
+   * as a top-up tagged `op: "grant"`. A retry is `duplicate: true` only when the row under the key is a grant of the
+   * same amount; a key used for anything else is `IDEMPOTENCY_KEY_REUSED`. A workspace with no wallet gets one opened
+   * only when it is live (in the workspace registry and not suspended); otherwise, and with no registry, the answer is
+   * `WALLET_NOT_FOUND`.
+   */
+  grant(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId?: string): Promise<GrantResult>;
 }
 
 function checkKey(idempotencyKey: string): void {
@@ -140,6 +153,32 @@ export const walletCharger: WalletCharger = Object.freeze({
   },
 
   settled,
+
+  async grant(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId = "system"): Promise<GrantResult> {
+    checkKey(idempotencyKey);
+    if (!Number.isSafeInteger(milli) || milli <= 0) throw new RangeError("milli must be a positive whole number of thousandths");
+    const wallet = createWallet(db, undefined);
+    let opened = false;
+    if ((await wallet.getBalanceMilli(workspaceId)) === null) {
+      // A wallet is opened for a live workspace only: one the registry knows and that is not suspended.
+      const registry = await hasWorkspaceRegistry(db);
+      const state = registry ? await findWorkspaceState(db, workspaceId) : null;
+      if (!state || state.suspended) return { ok: false, code: "WALLET_NOT_FOUND", balanceMilli: 0 };
+      await wallet.openWallet(workspaceId);
+      opened = true;
+    }
+    const result = await wallet.refund({
+      workspaceId,
+      userId,
+      amountMilli: milli,
+      reason: reason.slice(0, 200) || "grant",
+      idempotencyKey,
+      match: { op: "grant" },
+    });
+    if (result.ok) return { ok: true, balanceAfterMilli: result.balanceAfterMilli, duplicate: result.duplicate, opened };
+    if (result.reason === "idempotency_key_reused") return { ok: false, code: "IDEMPOTENCY_KEY_REUSED", balanceMilli: 0 };
+    return { ok: false, code: "WALLET_NOT_FOUND", balanceMilli: 0 };
+  },
 
   async chargeAction(
     db: D1Like,

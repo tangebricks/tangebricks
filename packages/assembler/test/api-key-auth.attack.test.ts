@@ -13,6 +13,7 @@
 //   - a session user whose id merely looks like a key's (apikey:…) still needs membership;
 //   - a key whose creator was removed from A gets 401;
 //   - a key for a suspended workspace gets 403 WORKSPACE_SUSPENDED;
+//   - a key never reaches the platform operator routes (story 2.6);
 //   - a request with no key still uses the session identity as before.
 import { env } from "cloudflare:workers";
 import { describe, expect, test } from "vitest";
@@ -168,6 +169,32 @@ describe("API-key authentication on the assembled max-compatible app (story 1.11
         const unrelated = await api(method, path, { headers: { "x-api-key": "unrelated-vendor-key" }, ...(body ? { body } : {}) });
         expect(unrelated.status, `${method} ${path} unrelated header`).toBe(without.status);
       }
+      // Story 2.6: a key never reaches the platform operator routes: they are not guarded paths, so the key is no identity
+      // there and the request is refused as unauthenticated, even with the key's creator listed as an operator (inside
+      // the brick an API-key request is refused with API_KEY_FORBIDDEN as well).
+      const operatorEnv = { ...(env as unknown as Record<string, unknown>), PX_PLATFORM_OPERATORS: "alice" };
+      // Every one of the brick's 11 routes.
+      for (const [method, path, body] of [
+        ["GET", "/api/platform/workspaces", undefined],
+        ["GET", `/api/platform/workspaces/${wsA}`, undefined],
+        ["GET", "/api/platform/users?status=pending", undefined],
+        ["GET", "/api/platform/audit/pending", undefined],
+        ["POST", `/api/platform/workspaces/${wsA}/credits`, { amount: 5, reason: "via key", idempotencyKey: "k" }],
+        ["POST", `/api/platform/workspaces/${wsA}/suspend`, { reason: "via key" }],
+        ["POST", `/api/platform/workspaces/${wsA}/unsuspend`, { reason: "via key" }],
+        ["PUT", `/api/platform/workspaces/${wsA}/flags/beta`, { enabled: true, reason: "via key" }],
+        ["DELETE", `/api/platform/workspaces/${wsA}/flags/beta`, { reason: "via key" }],
+        ["POST", "/api/platform/users/mallory/approve", { reason: "via key" }],
+        ["POST", "/api/platform/users/mallory/reject", { reason: "via key" }],
+      ] as const) {
+        const { status } = await call(app!, method, path, { headers: { "x-api-key": adminKey.rawKey }, env: operatorEnv, ...(body ? { body } : {}) });
+        expect(status, `${method} ${path}`).toBe(401);
+      }
+      expect(await db.prepare("SELECT suspended FROM mw_workspaces WHERE id = ?").bind(wsA).first<{ suspended: number }>()).toEqual({ suspended: 0 });
+      expect((await db.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE action LIKE 'platform.%'").first<{ n: number }>())?.n).toBe(0);
+      expect((await db.prepare("SELECT COUNT(*) AS n FROM pa_user_approvals").first<{ n: number }>())?.n).toBe(0);
+      expect((await db.prepare("SELECT COUNT(*) AS n FROM flag_overrides").first<{ n: number }>())?.n).toBe(0);
+
       const profiles = await db.prepare("SELECT COUNT(*) AS n FROM profile_users WHERE user_id LIKE 'apikey:%'").first<{ n: number }>();
       expect(profiles?.n).toBe(0);
 

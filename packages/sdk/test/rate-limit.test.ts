@@ -93,6 +93,23 @@ describe("@poc/sdk rateLimit (story 0.21)", () => {
     expect((await post(app, "/in/sub_b", {})).status).toBe(200);
   });
 
+  test("user keys (story 2.6) count per signed-in user and fall back to the IP without one", async () => {
+    const app = new Hono<{ Bindings: Env; Variables: { user?: { uid: string } } }>();
+    app.use("*", async (c, next) => {
+      const uid = c.req.header("x-user");
+      if (uid) c.set("user", { uid });
+      await next();
+    });
+    app.post("/act", rateLimit({ bucket: "t-user", limit: 1, windowSeconds: 60, key: "user" }, { sweepProbability: 0 }), (c) => c.json({ ok: true }));
+    const ip = { "cf-connecting-ip": "198.51.100.20" };
+    expect((await post(app, "/act", {}, { ...ip, "x-user": "olivia" })).status).toBe(200);
+    expect((await post(app, "/act", {}, { ...ip, "x-user": "olivia" })).status).toBe(429);
+    // Another user from the same IP has a count of their own, and so does the anonymous IP.
+    expect((await post(app, "/act", {}, { ...ip, "x-user": "oscar" })).status).toBe(200);
+    expect((await post(app, "/act", {}, ip)).status).toBe(200);
+    expect((await post(app, "/act", {}, ip)).status).toBe(429);
+  });
+
   test("workspace keys use the verified workspace and fall back to the IP without one", async () => {
     const app = appWith(
       { bucket: "t-ws", limit: 1, windowSeconds: 60, key: "workspace" },

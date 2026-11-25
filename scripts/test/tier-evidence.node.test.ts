@@ -146,7 +146,7 @@ describe("UC5.2 tier evidence recording and assertion counting", () => {
     });
   });
 
-  it("maps all 42 bricks and 5 integrations from repository manifests (AC1)", async () => {
+  it("maps all 43 bricks and 5 integrations from repository manifests (AC1)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "tier-evidence-repo-"));
     tempDirs.push(tempDir);
 
@@ -173,12 +173,12 @@ describe("UC5.2 tier evidence recording and assertion counting", () => {
     const raw = JSON.parse(readFileSync(tierEvidencePath, "utf8"));
     const rows = Array.isArray(raw) ? raw : (raw.data ?? raw.items ?? []);
 
-    // 42 bricks + 5 integrations = 47 rows
-    expect(rows.length).toBe(47);
+    // 43 bricks + 5 integrations = 48 rows
+    expect(rows.length).toBe(48);
 
     const brickRows = rows.filter((r: any) => r.kind === "brick");
     const integrationRows = rows.filter((r: any) => r.kind === "integration");
-    expect(brickRows.length).toBe(42);
+    expect(brickRows.length).toBe(43);
     expect(integrationRows.length).toBe(5);
 
     // Each row has behaviourTest populated

@@ -45,6 +45,7 @@
 | 2.3 | Real Cashfree payment adapter: a provider-neutral gateway with webhook verification, and every payment (client verify and webhook, wallet and checkout) checked against the stored order's id, exact amount, currency and customer before an idempotent credit (filed from PROPOSED-13) |
 | 2.4 | omnichannel-outbound hardening and real ZeptoMail / WhatsApp Cloud API adapters: verified sender ownership before any send, channel credentials sealed (AES-GCM, `workspace_id:channel_id`) and never returned, CR/LF and multi-recipient refusal, bounded paging, send and verify rate limits, retries with honest `failed`, signed status webhooks (filed from PROPOSED-9) |
 | 2.5 | credit-wallet fractional credits, per-action costs and workspace transfers: amounts held as whole thousandths (migration 0004 renames the columns and converts every row x1000, CHECKs kept), exact decimal parsing with no float arithmetic, owner/admin-only action costs and a charge-by-action path, an atomic all-or-nothing transfer (owner/admin, never an API key; the destination sees only its own row and the transfer code), and an exact, idempotent balance import tool |
+| 2.6 | platform-admin, a safe operator brick that replaces admin-console's safe functions (admin-console stays quarantined): `/api/platform/*` only for the user ids in `PX_PLATFORM_OPERATORS` (fail closed; no workspace role, header or body field counts; API keys refused), credit grants, workspace suspension of the enforced `mw_workspaces.suspended` flag, per-workspace flag overrides and an opt-in user approval gate, each through the owning brick's declared capability or an sdk helper, each with an audit row that commits with the change (or is written first as pending), and no impersonation of any kind |
 
 `PROPOSED-n` ids are new tickets defined in [Proposed tickets](#proposed-tickets). They are not filed yet.
 
@@ -87,7 +88,7 @@
 |---|---|---|---|---|---|
 | 1 | Signed-in user of any workspace | Own workspace in the header, victim's workspace in the query or body, on any of 23 bricks | Read and write other tenants' rows; the existing fuzz stays green | 1, 15 | 0.4, 0.5 |
 | 2 | Workspace owner or member | Privacy export/erase routes with another workspace or user | Erase or export another tenant's data | 2, 3 | 0.6, 0.4 |
-| 3 | Any signed-in user | Admin-console self-registration | Becomes platform super-admin | 4 | 0.6, quarantined (0.11): admin-console |
+| 3 | Any signed-in user | Admin-console self-registration | Becomes platform super-admin | 4 | 0.6, quarantined (0.11): admin-console; its safe functions replaced by platform-admin (2.6), operator status from `PX_PLATFORM_OPERATORS` only |
 | 4 | Any signed-in user | `POST /api/flags` writes the global `flag_definitions` table with no role check | Flips kill switches, paid gates and rollouts for every tenant | none (sweep B1) | 0.6 |
 | 5 | Signed-in user of any workspace | Reuse another tenant's wallet idempotency key; parallel payout requests | Free charges, balance disclosure, double-spent payouts | 5, 6 | 0.7, quarantined (0.11): marketplace-splits |
 | 6 | Anyone with a session id, or any member | Mark a checkout session paid; overwrite plan prices or switch plans | Paid features and invoices without payment | 7, 14 | 0.9, 0.6 |
@@ -105,7 +106,7 @@ Every audit risk appears once.
 | 1 | Critical | Workspace from query/body overrides the header in 23 bricks: cross-tenant read and write | 0.4 (+0.5 proves) |
 | 2 | Critical | Workspace owner can erase another workspace's data across every brick table | 0.6 (+0.4) |
 | 3 | Critical | Any member can export or erase any user's data in any workspace | 0.6 (+0.4) |
-| 4 | Critical | Anyone can make themselves platform super-admin | 0.6, quarantined (0.11): admin-console |
+| 4 | Critical | Anyone can make themselves platform super-admin | 0.6, quarantined (0.11): admin-console; replaced by platform-admin (2.6), which has no super-admin table and no impersonation |
 | 5 | Critical | Wallet idempotency keys shared across tenants | 0.7 |
 | 6 | Critical | Marketplace payouts double-spend and cross-workspace vendor | quarantined (0.11): marketplace-splits |
 | 7 | High | Anyone with a checkout session id can mark it paid | 0.9 |

@@ -49,6 +49,11 @@
   },
   "worker": {
     "package": "@poc/feature-flags",
+    "capabilityExports": {
+      "feature-flags": [
+        "flagOverrides"
+      ]
+    },
     "routes": [
       {
         "factory": "createFlagRoutes",

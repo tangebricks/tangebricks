@@ -629,6 +629,18 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
 
+  bricks/platform-admin:
+    dependencies:
+      '@poc/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      hono:
+        specifier: 4.13.20
+        version: 4.13.20
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+
   bricks/product-analytics:
     dependencies:
       '@poc/sdk':

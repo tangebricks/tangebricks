@@ -8,6 +8,12 @@
 //   ID_GUESS        Alice, header A, fills path params with B's real row ids harvested from B's tenant tables.
 //   ROLE_ESCALATION Carol, a plain `member` of A, calls each admin-class route.
 //   UNAUTH          No x-test-user at all, on every route not on the public allow-list.
+//   NOT_OPERATOR    Story 2.6: on every platform operator route (OPERATOR_CLASS), Alice (owner of A) and Carol (member of
+//                   A) are refused with 403 NOT_PLATFORM_OPERATOR, with the suite's env (no PX_PLATFORM_OPERATORS, so
+//                   nobody is an operator) and with an env naming someone else as the operator; the operator's own id
+//                   with PX_PLATFORM_OPERATORS empty is refused the same way; an admin API key of A is refused (401: a key
+//                   is no identity outside the workspace-guarded paths, or 403 API_KEY_FORBIDDEN). Nothing changes: no
+//                   tenant row, no workspace's suspended state, no approval record.
 //
 // Violations that exist today and are not fixed yet live in attack-suite.known-failures.json, each tied to the story
 // that fixes it. The suite fails on any violation not in that registry (NEW_FAILURE) and on any registry entry that no
@@ -308,6 +314,37 @@ const ADMIN_CLASS: Array<{ method: string; pattern: RegExp; why: string }> = [
   { method: "POST", pattern: /^\/api\/ai\/templates$/, why: "prompt template create (A6)" },
 ];
 
+/**
+ * Story 2.6: the platform operator routes. Only the user ids in PX_PLATFORM_OPERATORS may call them; no workspace role,
+ * owner included, is enough. Every route of the platform-admin brick must match (checked in the coverage test).
+ */
+const OPERATOR_CLASS: Array<{ pattern: RegExp; why: string }> = [
+  { pattern: /^\/api\/platform\//, why: "platform operator console (story 2.6): PX_PLATFORM_OPERATORS only, fail closed" },
+];
+
+function operatorClassOf(route: RouteInfo): string | undefined {
+  return OPERATOR_CLASS.find((o) => o.pattern.test(route.path))?.why;
+}
+
+/** An env that names an operator other than every attacker, so the check is not passing only because the list is empty. */
+const OTHER_OPERATOR_ENV = { ...(env as unknown as Record<string, unknown>), PX_PLATFORM_OPERATORS: "olivia-operator" };
+/** The operator's own id with the list empty: fail closed. */
+const EMPTY_OPERATOR_ENV = { ...(env as unknown as Record<string, unknown>), PX_PLATFORM_OPERATORS: "" };
+
+/**
+ * Platform state the per-workspace snapshots do not cover: every workspace's suspended flag and reason, every approval
+ * record, and every audit row of every workspace (the platform scope `_platform` and any third workspace included). A
+ * missing table fails the read: the oracle never compares two "missing" markers.
+ */
+async function platformState(): Promise<string> {
+  const read = async (sql: string) => (await db.prepare(sql).all()).results;
+  return JSON.stringify([
+    await read("SELECT id, suspended, suspended_reason FROM mw_workspaces ORDER BY id"),
+    await read("SELECT * FROM pa_user_approvals ORDER BY user_id"),
+    await read("SELECT * FROM audit_events ORDER BY workspace_id, rowid"),
+  ]);
+}
+
 function adminClassOf(route: RouteInfo): string | undefined {
   return ADMIN_CLASS.find((a) => (a.method === "*" || a.method === route.method) && a.pattern.test(route.path))?.why;
 }
@@ -353,6 +390,8 @@ interface World {
   aIds: IdBag;
   bIds: IdBag;
   seeded: { attempted: number; createdA: number; createdB: number };
+  /** An admin API key of A (rich worlds only), for the NOT_OPERATOR class. */
+  aKey?: string;
 }
 
 function emptyBag(): IdBag {
@@ -502,13 +541,18 @@ async function seedWorld(options: { rich?: boolean } = {}): Promise<World> {
     seeded.createdA = a.created;
     seeded.createdB = b.created;
   }
+  let aKey: string | undefined;
+  if (options.rich) {
+    const minted = await call(app!, "POST", "/api/api-keys", { user: "alice", ws: wsA, body: { name: "fuzz-key", role: "admin" } });
+    if (minted.status === 201) aKey = (JSON.parse(minted.text) as { rawKey: string }).rawKey;
+  }
 
   const aIds = harvest(await readTenantRows(wsA));
   const bIds = harvest(await readTenantRows(wsB));
   // B's primary keys count as secrets when they are long enough not to match by accident (no small integers).
   const bPkSecrets = [...bIds.pkByTable.values()].flat().filter((v) => v.length >= 8);
   const bSecrets = [...new Set([wsB, "Workspace B", "secret-bob-records", bRecordId, B_MARKER, ...bPkSecrets])];
-  return { wsA, wsB, bRecordId, bSecrets, aIds, bIds, seeded };
+  return { wsA, wsB, bRecordId, bSecrets, aIds, bIds, seeded, ...(aKey ? { aKey } : {}) };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -577,8 +621,8 @@ function ownPath(route: RouteInfo, world: World): string {
 // The oracle
 // ---------------------------------------------------------------------------------------------------------------------
 
-type Attack = "HEADER_B" | "QUERY_B" | "BODY_B" | "ID_GUESS" | "ROLE_ESCALATION" | "UNAUTH";
-const ATTACKS: Attack[] = ["HEADER_B", "QUERY_B", "BODY_B", "ID_GUESS", "ROLE_ESCALATION", "UNAUTH"];
+type Attack = "HEADER_B" | "QUERY_B" | "BODY_B" | "ID_GUESS" | "ROLE_ESCALATION" | "UNAUTH" | "NOT_OPERATOR";
+const ATTACKS: Attack[] = ["HEADER_B", "QUERY_B", "BODY_B", "ID_GUESS", "ROLE_ESCALATION", "UNAUTH", "NOT_OPERATOR"];
 
 interface Violation {
   method: string;
@@ -596,6 +640,11 @@ interface Observation {
   bAfter: string;
   aBefore?: string;
   aAfter?: string;
+  /** NOT_OPERATOR: platform state (suspension flags, approvals) before and after. */
+  platformBefore?: string;
+  platformAfter?: string;
+  /** NOT_OPERATOR: the request carried an API key. */
+  viaKey?: boolean;
 }
 
 const DENIAL = [400, 401, 403, 404];
@@ -621,6 +670,12 @@ function judge(attack: Attack, route: RouteInfo, obs: Observation, secrets: stri
   // A spec-only path has no handler, so the router's 404 is the only answer it can give; it serves no data.
   const noHandler = obs.status === 404 && route.specOnly === true;
   if (attack === "ROLE_ESCALATION" && ![401, 403].includes(obs.status) && !noHandler) problems.push(`member got status ${obs.status}, expected 401/403`);
+  if (attack === "NOT_OPERATOR" && obs.viaKey) {
+    if (obs.status !== 401 && !(obs.status === 403 && /"code":"API_KEY_FORBIDDEN"/.test(obs.body))) problems.push(`API key got status ${obs.status}, expected 401 or 403 API_KEY_FORBIDDEN`);
+  } else if (attack === "NOT_OPERATOR" && (obs.status !== 403 || !/"code":"NOT_PLATFORM_OPERATOR"/.test(obs.body))) {
+    problems.push(`non-operator got status ${obs.status}, expected 403 NOT_PLATFORM_OPERATOR`);
+  }
+  if (attack === "NOT_OPERATOR" && obs.platformAfter !== obs.platformBefore) problems.push("workspace suspension, approval or audit records changed");
   if (attack === "UNAUTH") {
     const missingCtx = obs.status === 400 && route.guarded && /missing workspace context/i.test(obs.body);
     if (![401, 403].includes(obs.status) && !missingCtx && !noHandler) problems.push(`anonymous caller got status ${obs.status}, expected 401/403`);
@@ -632,7 +687,7 @@ function judge(attack: Attack, route: RouteInfo, obs: Observation, secrets: stri
     }
   }
   if (obs.bAfter !== obs.bBefore) problems.push("workspace B tenant rows changed");
-  if (attack === "ROLE_ESCALATION" && obs.aBefore !== undefined && obs.aAfter !== obs.aBefore) problems.push("workspace A tenant rows changed");
+  if ((attack === "ROLE_ESCALATION" || attack === "NOT_OPERATOR") && obs.aBefore !== undefined && obs.aAfter !== obs.aBefore) problems.push("workspace A tenant rows changed");
   return problems;
 }
 
@@ -678,10 +733,11 @@ async function runAttackClass(target: App, attack: Attack, routes: RouteInfo[], 
   const skip = (route: RouteInfo, reason: string) => result.notAttacked.push({ method: route.method, route: route.path, attack, reason });
 
   let bSnap = await snapshotTenantTables(world.wsB);
-  let aSnap = attack === "ROLE_ESCALATION" ? await snapshotTenantTables(world.wsA) : undefined;
+  const watchesA = attack === "ROLE_ESCALATION" || attack === "NOT_OPERATOR";
+  let aSnap = watchesA ? await snapshotTenantTables(world.wsA) : undefined;
 
   for (const route of runOrder(routes)) {
-    type Req = { path: string; user?: string; ws?: string; body?: unknown };
+    type Req = { path: string; user?: string; ws?: string; body?: unknown; env?: unknown; headers?: Record<string, string> };
     const reqs: Req[] = [];
     const mutating = MUTATING.has(route.method);
     const seed = `${A_MARKER}-${attack}-${route.path.replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -710,6 +766,17 @@ async function runAttackClass(target: App, attack: Attack, routes: RouteInfo[], 
     } else if (attack === "ROLE_ESCALATION") {
       if (!adminClassOf(route)) continue;
       reqs.push({ path: ownPath(route, world), user: "carol", ws: world.wsA, body });
+    } else if (attack === "NOT_OPERATOR") {
+      if (!operatorClassOf(route)) continue;
+      // A's own ids (the attacker's own workspace), so nothing but the operator check stands in the way.
+      const path = ownPath(route, world);
+      for (const user of ["alice", "carol"]) {
+        reqs.push({ path, user, ws: world.wsA, body });
+        reqs.push({ path, user, ws: world.wsA, body, env: OTHER_OPERATOR_ENV });
+      }
+      reqs.push({ path, user: "olivia-operator", ws: world.wsA, body, env: EMPTY_OPERATOR_ENV });
+      expect(world.aKey, "the rich world mints an admin API key of A").toBeDefined();
+      reqs.push({ path, body, env: OTHER_OPERATOR_ENV, headers: { "x-api-key": world.aKey! } });
     } else if (attack === "UNAUTH") {
       const why = publicReason(route);
       if (why) {
@@ -728,6 +795,7 @@ async function runAttackClass(target: App, attack: Attack, routes: RouteInfo[], 
       result.casesByAttack[attack] += 1;
       let status = 0;
       let text = "";
+      const platformBefore = attack === "NOT_OPERATOR" ? await platformState() : undefined;
       try {
         ({ status, text } = await call(target, route.method, req.path, req));
       } catch (err) {
@@ -744,6 +812,9 @@ async function runAttackClass(target: App, attack: Attack, routes: RouteInfo[], 
         bAfter,
         aBefore: aSnap,
         aAfter,
+        platformBefore,
+        platformAfter: attack === "NOT_OPERATOR" ? await platformState() : undefined,
+        viaKey: req.headers?.["x-api-key"] !== undefined,
       }, world.bSecrets);
       if (problems.length > 0) {
         const detail = `${req.path}: ${problems.join("; ")}`;
@@ -759,7 +830,7 @@ async function runAttackClass(target: App, attack: Attack, routes: RouteInfo[], 
     if (changed) {
       Object.assign(world, await seedWorld({ rich: true }));
       bSnap = await snapshotTenantTables(world.wsB);
-      aSnap = attack === "ROLE_ESCALATION" ? await snapshotTenantTables(world.wsA) : undefined;
+      aSnap = watchesA ? await snapshotTenantTables(world.wsA) : undefined;
     }
   }
 }
@@ -769,7 +840,7 @@ function emptyResult(): SuiteResult {
     violations: [],
     results: [],
     cases: 0,
-    casesByAttack: { HEADER_B: 0, QUERY_B: 0, BODY_B: 0, ID_GUESS: 0, ROLE_ESCALATION: 0, UNAUTH: 0 },
+    casesByAttack: { HEADER_B: 0, QUERY_B: 0, BODY_B: 0, ID_GUESS: 0, ROLE_ESCALATION: 0, UNAUTH: 0, NOT_OPERATOR: 0 },
     notAttacked: [],
   };
 }
@@ -896,6 +967,12 @@ describe("cross-tenant fuzz over every assembled route", () => {
       const comparison = compareWithRegistry(suite.violations, registry);
       const problems = describeComparison(comparison);
       const adminRoutes = allRoutes.filter((r) => adminClassOf(r));
+      // Story 2.6: every platform-admin route is in the operator class, and the class was attacked.
+      const operatorRoutes = allRoutes.filter((r) => operatorClassOf(r));
+      const platformRoutes = allRoutes.filter((r) => r.brick === "platform-admin");
+      expect(platformRoutes.length, "platform-admin is in max-compatible").toBeGreaterThanOrEqual(10);
+      expect(platformRoutes.filter((r) => !operatorClassOf(r)), "platform-admin routes outside OPERATOR_CLASS").toEqual([]);
+      expect(suite.casesByAttack.NOT_OPERATOR).toBe(operatorRoutes.length * 6);
       const unmountedAdmin = ADMIN_CLASS.filter((a) => !allRoutes.some((r) => (a.method === "*" || a.method === r.method) && a.pattern.test(r.path))).map(
         (a) => `${a.method} ${a.pattern.source} (${a.why})`,
       );
@@ -913,6 +990,7 @@ describe("cross-tenant fuzz over every assembled route", () => {
         violations: suite.violations.length,
         adminClassRoutes: adminRoutes.map((r) => `${r.method} ${r.path}`),
         adminClassNotMounted: unmountedAdmin,
+        operatorClassRoutes: operatorRoutes.map((r) => `${r.method} ${r.path}`),
         publicRoutes: allRoutes.filter((r) => publicReason(r)).map((r) => ({ route: `${r.method} ${r.path}`, reason: publicReason(r) })),
         notAttacked: suite.notAttacked,
         problems,

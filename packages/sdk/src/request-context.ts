@@ -29,6 +29,19 @@ export function isApiKeyRequest(c: unknown): boolean {
 }
 
 /**
+ * Story 2.6: the request variable an API-key identity step sets to the user id of the person who created the key (a
+ * key acts for its creator at most at their role, story 1.11). Read it with `apiKeyCreatorId`.
+ */
+export const API_KEY_CREATOR_VAR = "apiKeyCreator";
+
+/** The creator of the API key that authenticated this request, or undefined when it was not a key (or none was set). */
+export function apiKeyCreatorId(c: unknown): string | undefined {
+  if (!isApiKeyRequest(c)) return undefined;
+  const value = (c as { get: (key: string) => unknown }).get(API_KEY_CREATOR_VAR);
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/**
  * For routes only a person may call (minting keys, OAuth clients, codes or tokens, invites, signing secrets, workspace
  * management): the 403 `API_KEY_FORBIDDEN` response when an API key authenticated the request, otherwise undefined.
  */

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased (story 2.6: operator grants)
+
+- `walletCharger.grant(db, ws, milli, key, reason, userId?)`: an idempotent top-up tagged `op: "grant"`, for
+  platform-admin's credit grants. A retry is a duplicate only when the row under the key is a grant of the same amount;
+  any other use of the key is `IDEMPOTENCY_KEY_REUSED`. A missing wallet is opened only for a live workspace (registered
+  and not suspended), otherwise `WALLET_NOT_FOUND`.
+- `createWallet().refund` takes an optional `match` (tags recorded on the top-up and required of a duplicate), as
+  `deduct` already did. Without it, behaviour is unchanged.
+
 ## Unreleased (story 2.5: fractional credits, action costs, transfers)
 
 - **Breaking: credits are thousandths.** Migration 0004 stores every credit amount as a whole number of thousandths

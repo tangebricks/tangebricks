@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "9cfc00172768c466fba5b3b262b438301446c6d34d1c4368d5aaafd3b0cec4d5",
+  "catalogVersion": "dc84f9ffc13b942aa3625951d1700bf37d4cea71fb48c15a94e72a2a96cfe0bd",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -185,7 +185,8 @@
           "workspace-context"
         ],
         "migrations": [
-          "migrations/0001_audit_trail.sql"
+          "migrations/0001_audit_trail.sql",
+          "migrations/0002_capability_rows.sql"
         ],
         "routePrefixes": [
           "audit"
@@ -224,6 +225,11 @@
         },
         "worker": {
           "package": "@poc/audit-trail",
+          "capabilityExports": {
+            "audit-logging": [
+              "auditRecorder"
+            ]
+          },
           "routes": [
             {
               "factory": "createAuditRoutes",
@@ -239,7 +245,8 @@
         }
       },
       "files": {
-        "migrations/0001_audit_trail.sql": "-- audit-trail 0001: Immutable audit events and compliance ledger\n-- Modular: No cross-brick foreign key on workspace_id.\n-- Prefixed with audit_ to avoid schema collision.\n\nCREATE TABLE IF NOT EXISTS audit_events (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  actor_id TEXT NOT NULL CHECK (length(actor_id) <= 128),\n  actor_type TEXT NOT NULL DEFAULT 'user' CHECK (actor_type IN ('user', 'api_key', 'system', 'support_impersonator')),\n  actor_email TEXT CHECK (actor_email IS NULL OR length(actor_email) <= 255),\n  action TEXT NOT NULL CHECK (length(action) BETWEEN 1 AND 100),\n  target_type TEXT NOT NULL CHECK (length(target_type) <= 64),\n  target_id TEXT NOT NULL CHECK (length(target_id) <= 128),\n  ip_address TEXT CHECK (ip_address IS NULL OR length(ip_address) <= 45),\n  user_agent TEXT CHECK (user_agent IS NULL OR length(user_agent) <= 512),\n  metadata_json TEXT CHECK (metadata_json IS NULL OR length(metadata_json) <= 4096),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS audit_events_ws_time_idx ON audit_events(workspace_id, created_at DESC);\nCREATE INDEX IF NOT EXISTS audit_events_ws_action_idx ON audit_events(workspace_id, action, created_at DESC);\nCREATE INDEX IF NOT EXISTS audit_events_ws_actor_idx ON audit_events(workspace_id, actor_id, created_at DESC);\n"
+        "migrations/0001_audit_trail.sql": "-- audit-trail 0001: Immutable audit events and compliance ledger\n-- Modular: No cross-brick foreign key on workspace_id.\n-- Prefixed with audit_ to avoid schema collision.\n\nCREATE TABLE IF NOT EXISTS audit_events (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  actor_id TEXT NOT NULL CHECK (length(actor_id) <= 128),\n  actor_type TEXT NOT NULL DEFAULT 'user' CHECK (actor_type IN ('user', 'api_key', 'system', 'support_impersonator')),\n  actor_email TEXT CHECK (actor_email IS NULL OR length(actor_email) <= 255),\n  action TEXT NOT NULL CHECK (length(action) BETWEEN 1 AND 100),\n  target_type TEXT NOT NULL CHECK (length(target_type) <= 64),\n  target_id TEXT NOT NULL CHECK (length(target_id) <= 128),\n  ip_address TEXT CHECK (ip_address IS NULL OR length(ip_address) <= 45),\n  user_agent TEXT CHECK (user_agent IS NULL OR length(user_agent) <= 512),\n  metadata_json TEXT CHECK (metadata_json IS NULL OR length(metadata_json) <= 4096),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS audit_events_ws_time_idx ON audit_events(workspace_id, created_at DESC);\nCREATE INDEX IF NOT EXISTS audit_events_ws_action_idx ON audit_events(workspace_id, action, created_at DESC);\nCREATE INDEX IF NOT EXISTS audit_events_ws_actor_idx ON audit_events(workspace_id, actor_id, created_at DESC);\n",
+        "migrations/0002_capability_rows.sql": "-- audit-trail 0002 (story 2.6): rows written through the declared auditRecorder capability.\n-- via_capability marks a row written by another brick through the capability (always 1 there); the public\n-- POST /audit/events route never writes it, so readers that must trust a row (a pending operator grant, an outcome)\n-- ignore anything a workspace member posted. dedupe_key lets the capability write at most one row per key in a\n-- workspace, so concurrent first attempts of one operation share one row. Additive only: existing rows get 0 and NULL.\n\nALTER TABLE audit_events ADD COLUMN via_capability INTEGER NOT NULL DEFAULT 0 CHECK (via_capability IN (0, 1));\nALTER TABLE audit_events ADD COLUMN dedupe_key TEXT CHECK (dedupe_key IS NULL OR length(dedupe_key) <= 200);\n\nCREATE UNIQUE INDEX IF NOT EXISTS audit_events_ws_dedupe_idx ON audit_events(workspace_id, dedupe_key) WHERE dedupe_key IS NOT NULL;\nCREATE INDEX IF NOT EXISTS audit_events_capability_idx ON audit_events(via_capability, action, target_id);\n"
       }
     },
     "binary-assets": {
@@ -1635,6 +1642,11 @@
         },
         "worker": {
           "package": "@poc/feature-flags",
+          "capabilityExports": {
+            "feature-flags": [
+              "flagOverrides"
+            ]
+          },
           "routes": [
             {
               "factory": "createFlagRoutes",
@@ -2936,6 +2948,169 @@
       },
       "files": {
         "migrations/0001_outbound_webhooks.sql": "-- outbound-webhooks 0001: Developer webhook endpoints, HMAC secrets, and delivery logs\n-- Modular: No cross-brick foreign key on workspace_id.\n-- Prefixed with owh_ to avoid schema collision.\n\nCREATE TABLE IF NOT EXISTS owh_endpoints (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  target_url TEXT NOT NULL CHECK (length(target_url) BETWEEN 8 AND 512),\n  description TEXT CHECK (description IS NULL OR length(description) <= 255),\n  events_json TEXT NOT NULL CHECK (length(events_json) <= 2048),\n  secret TEXT NOT NULL CHECK (length(secret) BETWEEN 16 AND 128),\n  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS owh_endpoints_ws_idx ON owh_endpoints(workspace_id, is_active);\n\nCREATE TABLE IF NOT EXISTS owh_deliveries (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  endpoint_id TEXT NOT NULL REFERENCES owh_endpoints(id) ON DELETE CASCADE,\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  event_type TEXT NOT NULL CHECK (length(event_type) BETWEEN 1 AND 64),\n  payload_json TEXT NOT NULL CHECK (length(payload_json) <= 16384),\n  status_code INTEGER,\n  response_body TEXT CHECK (response_body IS NULL OR length(response_body) <= 2048),\n  success INTEGER NOT NULL CHECK (success IN (0, 1)),\n  attempt_number INTEGER NOT NULL DEFAULT 1 CHECK (attempt_number >= 1),\n  duration_ms INTEGER NOT NULL DEFAULT 0 CHECK (duration_ms >= 0),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS owh_deliveries_ep_time_idx ON owh_deliveries(endpoint_id, created_at DESC);\nCREATE INDEX IF NOT EXISTS owh_deliveries_ws_time_idx ON owh_deliveries(workspace_id, created_at DESC);\n"
+      }
+    },
+    "platform-admin": {
+      "manifest": {
+        "manifestVersion": 2,
+        "kind": "brick",
+        "id": "platform-admin",
+        "version": "1.0.0",
+        "trust": "first-party",
+        "isolation": "none",
+        "provides": [
+          "platform-admin"
+        ],
+        "requires": [
+          "workspace-context",
+          "audit-logging"
+        ],
+        "migrations": [
+          "migrations/0001_platform_admin.sql"
+        ],
+        "routePrefixes": [
+          "platform"
+        ],
+        "npmDependencies": {
+          "hono": "4.13.20",
+          "zod": "4.6.7"
+        },
+        "settings": {
+          "maxGrantCredits": {
+            "type": "integer",
+            "min": 1,
+            "max": 1000000000,
+            "default": 1000000
+          },
+          "requireUserApproval": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "nodes": [],
+        "ui": {
+          "displayName": "Platform Operator Console",
+          "category": "governance",
+          "summary": "Audited operator actions across workspaces: credit grants, suspension, flag overrides and user approval.",
+          "maturity": "beta",
+          "maturityReason": "NEW_BRICK: Operator routes are covered by the attack suite; promotion to production needs the shared conformance kit (UC5.3).",
+          "behaviourTest": "test/platform-admin.test.ts"
+        },
+        "globalTables": [
+          {
+            "table": "pa_user_approvals",
+            "reason": "Platform-wide by design: approval is a decision about a person across every workspace, keyed by user id; only the operator routes and the approval gate read or write it"
+          }
+        ],
+        "rateLimits": [
+          {
+            "method": "POST",
+            "path": "/platform/workspaces/:id/credits",
+            "bucket": "platform-admin-write",
+            "limit": 120,
+            "windowSeconds": 60,
+            "key": "user"
+          },
+          {
+            "method": "POST",
+            "path": "/platform/workspaces/:id/suspend",
+            "bucket": "platform-admin-write",
+            "limit": 120,
+            "windowSeconds": 60,
+            "key": "user"
+          },
+          {
+            "method": "POST",
+            "path": "/platform/workspaces/:id/unsuspend",
+            "bucket": "platform-admin-write",
+            "limit": 120,
+            "windowSeconds": 60,
+            "key": "user"
+          },
+          {
+            "method": "PUT",
+            "path": "/platform/workspaces/:id/flags/:flagKey",
+            "bucket": "platform-admin-write",
+            "limit": 120,
+            "windowSeconds": 60,
+            "key": "user"
+          },
+          {
+            "method": "DELETE",
+            "path": "/platform/workspaces/:id/flags/:flagKey",
+            "bucket": "platform-admin-write",
+            "limit": 120,
+            "windowSeconds": 60,
+            "key": "user"
+          },
+          {
+            "method": "POST",
+            "path": "/platform/users/:uid/approve",
+            "bucket": "platform-admin-write",
+            "limit": 120,
+            "windowSeconds": 60,
+            "key": "user"
+          },
+          {
+            "method": "POST",
+            "path": "/platform/users/:uid/reject",
+            "bucket": "platform-admin-write",
+            "limit": 120,
+            "windowSeconds": 60,
+            "key": "user"
+          }
+        ],
+        "privacy": {
+          "tables": {
+            "pa_user_approvals": {
+              "subject": "user",
+              "userColumn": "user_id",
+              "erase": "retain",
+              "retainReason": "Access-governance record: whether an operator approved or rejected this person, by whom and why, is kept so access decisions stay accountable after an erasure request",
+              "export": true,
+              "platformWide": true
+            }
+          }
+        },
+        "worker": {
+          "package": "@poc/platform-admin",
+          "approvalGuard": {
+            "export": "requireApprovedUser",
+            "setting": "requireUserApproval"
+          },
+          "routes": [
+            {
+              "factory": "createPlatformAdminRoutes",
+              "mountAt": "/api",
+              "options": {
+                "maxGrantCredits": {
+                  "$setting": "maxGrantCredits"
+                },
+                "requireUserApproval": {
+                  "$setting": "requireUserApproval"
+                },
+                "auditRecorder": {
+                  "$capability": "audit-logging.auditRecorder"
+                },
+                "charger": {
+                  "$capability": "credit-wallet.walletCharger",
+                  "requiredWhen": "provided"
+                },
+                "flagOverrides": {
+                  "$capability": "feature-flags.flagOverrides",
+                  "requiredWhen": "provided"
+                },
+                "flagOverridesAllowed": {
+                  "$capabilitySetting": "feature-flags.allowWorkspaceOverrides"
+                }
+              },
+              "guardPaths": []
+            }
+          ]
+        }
+      },
+      "files": {
+        "migrations/0001_platform_admin.sql": "-- platform-admin 0001: the opt-in user approval gate (story 2.6).\n-- One row per signed-in user the gate has seen or an operator has decided on. Platform-wide by design: approval is a\n-- decision about a person, not about any one workspace, so the table has no workspace_id.\n-- Prefixed with pa_ so it can never collide with another brick's table.\n\nCREATE TABLE IF NOT EXISTS pa_user_approvals (\n  user_id TEXT PRIMARY KEY CHECK (length(user_id) BETWEEN 1 AND 200),\n  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),\n  decided_by TEXT CHECK (decided_by IS NULL OR length(decided_by) <= 200),\n  decided_at TEXT,\n  reason TEXT CHECK (reason IS NULL OR length(reason) <= 500),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS pa_user_approvals_status_idx ON pa_user_approvals(status, user_id);\n"
       }
     },
     "product-analytics": {
