@@ -73,7 +73,7 @@ export function useLiveProjectSync(enabled = true) {
     if (typeof window === "undefined" || typeof WebSocket === "undefined") return;
     // Skip real WebSocket connections in synthetic benchmark mode or non-http environments
     if (
-      window.location.search.includes("benchmark=200") ||
+      (import.meta.env.DEV && window.location.search.includes("benchmark=200")) ||
       (!window.location.protocol.startsWith("http") &&
         window.location.hostname !== "localhost" &&
         window.location.hostname !== "127.0.0.1")

@@ -40,6 +40,7 @@
 | 1.13 | llm-gateway: wallet debit, model allowlist, maxTokens, error redaction (filed from PROPOSED-7) |
 | 1.14 | binary-assets: upload size precheck and quota, Content-Type allowlist, filename sanitising, safe download headers, bounded paging (filed from PROPOSED-8) |
 | 1.15 | integration-connections OAuth hardening: provider account data wins, `redirect_uri` allowlist, CSRF guard on the redirecting connect, OAuth state bound to the user (filed from PROPOSED-11) |
+| 1.16 | studio-web: no production test hooks or fake values: store, bootstrap and `?benchmark=200` hooks gated on `import.meta.env.DEV` and stripped from `vite build`, BYOC inputs start empty, server hrefs http(s)-only (filed from PROPOSED-12) |
 
 `PROPOSED-n` ids are new tickets defined in [Proposed tickets](#proposed-tickets). They are not filed yet.
 
@@ -197,10 +198,10 @@ Every sweep finding appears once. Locations are as the sweep gives them (see [Ci
 | C1 | studio-web | Medium (High if server trusts it) | "viewer" role enforced only in the UI; the server must role-check project ops, revert, import, proposal accept/reject, secrets, connections, environment plan/deploy/promote/rollback, data row writes, sandbox deploy and BYOC promote, retention settings, workflow pin/test-step, run rerun, org project create and Cloudflare tokens | `apps/studio-web/src/components/StudioShell.tsx:164,1240`; `apps/studio-web/src/components/DataBrowserView.tsx:291`; `apps/studio-web/src/components/ProposalReviewBar.tsx:240`; `apps/studio-web/src/components/HistoryAndLedgerView.tsx:741,1024`; `apps/studio-web/src/components/ConnectionsView.tsx:539` | 0.10 (scope addition: server-side role from project) + 0.5 (test cases) |
 | C2 | studio-web | Medium | Displayed role comes from the active org while `?project=` matches across all the user's orgs: an owner in org A gets edit UI on org B projects where they are a viewer; server must derive org and role from the project | `apps/studio-web/src/App.tsx:56-69`; `apps/studio-web/src/components/StudioShell.tsx:161-170` | 0.10 (scope addition: org and role from project) + 0.5 (test cases) |
 | C3 | studio-web | Medium | Some calls send `orgId` in the body (BYOC promote, data row writes); server must not use it for authorisation or tenancy | `apps/studio-web/src/components/StudioShell.tsx:1249`; `apps/studio-web/src/api.ts:2259` | 0.10 (scope addition: ignore body orgId) + 0.5 (test cases) |
-| C4 | studio-web | Low | Move-to-BYOC dialog pre-filled with a hard-coded fake Cloudflare token and account id in the production bundle | `apps/studio-web/src/components/StudioShell.tsx:141-146` | PROPOSED-12 |
-| C5 | studio-web | Low | Whole store exposed on `window.__STUDIO_STORE__`; bootstrap from `window.__STUDIO_BOOTSTRAP__` in production | `apps/studio-web/src/App.tsx:29-31` | PROPOSED-12 |
-| C6 | studio-web | Low | `?benchmark=200` loads a fake owner session in the production build | `apps/studio-web/src/App.tsx:35-44` | PROPOSED-12 |
-| C7 | studio-web | Low | Server-supplied hrefs used without a scheme check (React blocks `javascript:`) | `apps/studio-web/src/components/ConnectCloudflareModal.tsx:100-102,153,238,402,427` | PROPOSED-12 |
+| C4 | studio-web | Low | Move-to-BYOC dialog pre-filled with a hard-coded fake Cloudflare token and account id in the production bundle | `apps/studio-web/src/components/StudioShell.tsx:141-146` | 1.16 |
+| C5 | studio-web | Low | Whole store exposed on `window.__STUDIO_STORE__`; bootstrap from `window.__STUDIO_BOOTSTRAP__` in production | `apps/studio-web/src/App.tsx:29-31` | 1.16 |
+| C6 | studio-web | Low | `?benchmark=200` loads a fake owner session in the production build | `apps/studio-web/src/App.tsx:35-44` | 1.16 |
+| C7 | studio-web | Low | Server-supplied hrefs used without a scheme check (React blocks `javascript:`) | `apps/studio-web/src/components/ConnectCloudflareModal.tsx:100-102,153,238,402,427` | 1.16 |
 | C8 | studio-web | Low (server check) | Live-sync WebSocket is cookie-auth only; server must check Origin on `/api/projects/:p/ws` | `apps/studio-web/src/useLiveProjectSync.ts:122-128` | 0.14 (scope addition: WebSocket Origin check) |
 | D1 | cron-alarms, document-parsing, scripting-sandbox, webhook-gateway, in-app-notifications | Low | Sub-resource routes answer 200 (an empty list, or success with nothing changed) for another workspace's parent id instead of 404. No data leaks and nothing changes, but the answer does not deny the id. Found by the 0.5 attack suite (ID_GUESS), not by the sweep | `GET /api/schedules/:id/history`, `GET /api/docs/:id/chunks`, `GET /api/docs/:id/extractions`, `GET /api/scripts/:id/executions`, `GET /api/webhooks/endpoints/:id/deliveries`, `PATCH /api/notifications/:id/read`, `DELETE /api/notifications/:id` (`packages/assembler/test/attack-suite.known-failures.json`) | PROPOSED-14 |
 
@@ -221,7 +222,7 @@ These are not filed. A human should file each one; the PR for this story lists t
 | PROPOSED-9 | omnichannel-outbound: sender ownership and recipient limits, encrypt and redact channel secrets, CR/LF validation, bounded paging | B8 (sender ownership), B9, B10, B12 | Phase 1 (before any real adapter) |
 | PROPOSED-10 | cron-alarms: allowlist of target Workflow bindings | B13 | Phase 0 (filed as 0.20) |
 | PROPOSED-11 | integration-connections OAuth hardening: provider data wins, `redirect_uri` allowlist, CSRF on connect, bind state to user | A10, A11, A12 | Phase 1 (filed as 1.15) |
-| PROPOSED-12 | studio-web: strip production test hooks and fake values; check href schemes | C4, C5, C6, C7 | Phase 1 |
+| PROPOSED-12 | studio-web: strip production test hooks and fake values; check href schemes | C4, C5, C6, C7 | Phase 1 (filed as 1.16) |
 | PROPOSED-13 | Payment adapter verification (order id, currency, customer) | A20 | Phase 2 |
 | PROPOSED-14 | Sub-resource routes answer 200 for another workspace's parent id instead of 404 | D1 | Phase 1 |
 
