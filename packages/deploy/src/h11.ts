@@ -119,7 +119,8 @@ export interface H11Deps {
   url: string;
   accessKey: string;
   /**
-   * The control-plane signing secret (the Worker's PX_TELEMETRY_SECRET). Runs are started with a signed
+   * The control-plane signing secret (the Worker's PX_TELEMETRY_SECRET: its project's derived control-plane secret since
+   * story 1.17, never Studio's root). Runs are started with a signed
    * POST /__px/workflow-runs naming H11_WORKSPACE; the shared-key POST /poc/runs is refused since story 1.1.
    */
   signingSecret: string;

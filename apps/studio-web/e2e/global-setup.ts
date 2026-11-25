@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 import { sha256Hex } from "@poc/assembler";
 import type { Op } from "@poc/blueprint";
 import type { D1Like, D1Result, D1Statement } from "@poc/sdk";
+import { upsertRunRecord } from "../../../packages/telemetry/src/index.ts";
 import tailwindcss from "tailwindcss";
 import {
   BlueprintDO,
@@ -372,6 +373,24 @@ function extractSessionCookie(res: Response): string {
 
 async function seedRealStudioBackend(env: StudioApiEnv): Promise<void> {
   await ensureStudioD1Schema(env.STUDIO_DB);
+  // Story 1.17: a Studio run may name only one of the project's own preview workspaces. Here DB is the shared Studio
+  // database, which is not acme-saas's own data store and is never consulted, so the workspace the run specs use
+  // (ws_alpha) is made acme-saas's the other way: an earlier run of acme-saas names it.
+  await upsertRunRecord(
+    env.STUDIO_DB,
+    {
+      runId: "run_e2e_seed_ws_alpha",
+      workflowId: "wf_e2e_workspace_seed",
+      revision: 0,
+      triggerType: "manual",
+      workspaceId: "ws_alpha",
+      status: "succeeded",
+      durationMs: 0,
+      retries: 0,
+      startedAt: new Date().toISOString(),
+    },
+    { projectId: "acme-saas" },
+  );
 
   const apiCall = async (
     path: string,

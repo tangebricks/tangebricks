@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { splitStatements } from "@poc/sdk";
-import { deriveProjectTelemetrySecret } from "@poc/telemetry";
+import { deriveProjectSecret } from "@poc/telemetry";
 import type { Catalog, ProjectLock } from "@poc/assembler";
 import { lintMigration } from "../migration-lint.ts";
 import { planDeploy } from "./plan.ts";
@@ -103,31 +103,46 @@ export interface DeployInput {
   /** Acknowledges brick major-version bumps the plan would otherwise block. */
   allowMajor?: boolean;
   /**
-   * Story 1.4: when the Worker pushes telemetry to Studio, its webhook URL, its project and that project's derived
-   * webhook-signing secret (build it with telemetryWebhookConfig). Bound as PX_TELEMETRY_WEBHOOK_URL, PX_PROJECT_ID and
-   * the secret PX_TELEMETRY_WEBHOOK_SECRET; the URL is never bound without the other two.
+   * Story 1.4 / 1.17: the project's control-plane and telemetry bindings (build them with telemetryWebhookConfig): its
+   * project id, its derived control-plane secret, its derived webhook-signing secret and, when the Worker pushes telemetry
+   * to Studio, the webhook URL. Bound as PX_PROJECT_ID, the secrets PX_TELEMETRY_SECRET (the derived control-plane value;
+   * the binding keeps its name) and PX_TELEMETRY_WEBHOOK_SECRET, and PX_TELEMETRY_WEBHOOK_URL. Studio's root secret is
+   * never bound to a Worker; the URL is never bound without the others.
    */
   telemetryWebhook?: TelemetryWebhookConfig;
 }
 
 export interface TelemetryWebhookConfig {
-  url: string;
+  /** Where the Worker pushes telemetry; absent when it does not push (it is still signed for and pulled from). */
+  url?: string;
   projectId: string;
-  /** deriveProjectTelemetrySecret(PX_TELEMETRY_SECRET, projectId), never the root secret itself. */
+  /** deriveProjectSecret(root, projectId, "telemetry-webhook"), never the root secret itself. */
   signingSecret: string;
+  /** deriveProjectSecret(root, projectId, "control-plane"), never the root secret itself. */
+  controlPlaneSecret: string;
 }
 
-/** The webhook settings for one project's Worker: its URL, its project and the project's derived signing secret. */
-export async function telemetryWebhookConfig(url: string, projectId: string, rootSecret: string): Promise<TelemetryWebhookConfig> {
-  return { url, projectId, signingSecret: await deriveProjectTelemetrySecret(rootSecret, projectId) };
+/**
+ * One project's Worker secrets, derived from Studio's root secret (story 1.17): the control-plane secret its /__px routes
+ * verify with, and the webhook secret it signs telemetry pushes with. Only these derived values are ever bound.
+ */
+export async function telemetryWebhookConfig(url: string | undefined, projectId: string, rootSecret: string): Promise<TelemetryWebhookConfig> {
+  if (typeof rootSecret !== "string" || rootSecret.trim().length === 0) throw new Error("telemetryWebhookConfig needs the root secret to derive from");
+  return {
+    ...(url ? { url } : {}),
+    projectId,
+    signingSecret: await deriveProjectSecret(rootSecret, projectId, "telemetry-webhook"),
+    controlPlaneSecret: await deriveProjectSecret(rootSecret, projectId, "control-plane"),
+  };
 }
 
-/** The bindings a telemetryWebhook config adds to a Worker upload. */
+/** The bindings a telemetryWebhook config adds to a Worker upload: only derived values, never the root secret. */
 export function telemetryWebhookBindings(config: TelemetryWebhookConfig | undefined): Array<Record<string, unknown>> {
   if (!config) return [];
   return [
-    { type: "plain_text", name: "PX_TELEMETRY_WEBHOOK_URL", text: config.url },
+    ...(config.url ? [{ type: "plain_text", name: "PX_TELEMETRY_WEBHOOK_URL", text: config.url }] : []),
     { type: "plain_text", name: "PX_PROJECT_ID", text: config.projectId },
+    { type: "secret_text", name: "PX_TELEMETRY_SECRET", text: config.controlPlaneSecret },
     { type: "secret_text", name: "PX_TELEMETRY_WEBHOOK_SECRET", text: config.signingSecret },
   ];
 }

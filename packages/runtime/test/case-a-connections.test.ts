@@ -255,7 +255,7 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
           ],
           edges: [{ id: "e1", source: "trig", target: "post_slack" }],
         };
-        const result = await runGraph(graph, registry, runExecutors, { workspaceId: "ws_test",
+        const result = await runGraph(graph, registry, runExecutors, { workspaceId: "ws_case_a", // the connection's own workspace (story 1.17)
           payload: {
             channel: "#billing",
             text: `Invoice Paid: ${input.providerEventId}`,
@@ -429,7 +429,7 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
       edges: [{ id: "e1", source: "trig", target: "post_slack_fail" }],
     };
 
-    const result = await runGraph(graph, registry, executors, { workspaceId: "ws_test",
+    const result = await runGraph(graph, registry, executors, { workspaceId: "ws_case_a", // the connection's own workspace (story 1.17)
       payload: {
         channel: "#general",
         text: "Should fail with CONNECTION_EXPIRED",

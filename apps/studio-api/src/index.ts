@@ -224,6 +224,7 @@ import {
 import {
   handleDataBrowserRequest,
   isImmutableLedgerTable,
+  workspaceHasBrowsableData,
 } from "../../../packages/deploy/src/worker/data-browser.ts";
 import type {
   BlueprintDriftReport,
@@ -255,7 +256,7 @@ import {
   TELEMETRY_SIGNATURE_HEADER,
   TelemetryWebhookPayloadSchema,
   TelemetryWriteRefusedError,
-  deriveProjectTelemetrySecret,
+  deriveProjectSecret,
   ensureTelemetryTables,
   findTelemetryIdCollision,
   findResolvingRetryRunId,
@@ -276,14 +277,14 @@ import {
   redactStructuredLogEntry,
   redactTelemetryPayload,
   signControlPlaneRequest,
-  signTelemetryPayload,
   upsertHttpRollup,
   upsertQueueMetrics,
   upsertRunRecord,
-  verifyTelemetrySignature,
+  verifyTelemetryWebhook,
 } from "@poc/telemetry";
 import type {
   CloudflareAnalyticsSnapshot,
+  ProjectSecretPurpose,
   EnvironmentHealthSummary,
   HealthWindow,
   HttpRequestSampleInput,
@@ -307,6 +308,7 @@ import {
   handleStepRehearsalRequest,
   handleWorkflowRerunRequest,
   handleWorkflowRunRequest,
+  isTenantWorkspaceId,
   normalizeNodePortOutput,
   unsealConnectionCredentials,
   upsertSealedConnection,
@@ -331,10 +333,126 @@ export function studioTelemetryScope(project: string, workspaceId?: string | nul
   return { projectId: project, ...(ws && ws !== "all" ? { workspaceId: ws } : {}) };
 }
 
-/** PX_TELEMETRY_SECRET when Studio has one; null otherwise (never BETTER_AUTH_SECRET or another fallback). */
-function studioSigningSecret(env: { PX_TELEMETRY_SECRET?: string }): string | null {
-  const secret = env.PX_TELEMETRY_SECRET;
-  return typeof secret === "string" && secret.trim().length > 0 ? secret : null;
+/**
+ * Project `project`'s derived secret for `purpose` (story 1.17), from Studio's root PX_TELEMETRY_SECRET; null when Studio
+ * has no root secret (never BETTER_AUTH_SECRET or another fallback). Studio signs and verifies everything for a project
+ * with that project's derived secret only: the root secret itself never goes on the wire or into a worker's env.
+ */
+async function studioProjectSecret(
+  env: { PX_TELEMETRY_SECRET?: string },
+  project: string,
+  purpose: ProjectSecretPurpose,
+): Promise<string | null> {
+  const root = env.PX_TELEMETRY_SECRET;
+  if (typeof root !== "string" || root.trim().length === 0) return null;
+  return deriveProjectSecret(root, project, purpose);
+}
+
+/** As studioProjectSecret, but a missing root secret fails the request (the in-process run paths). */
+async function requireProjectSecret(
+  env: { PX_TELEMETRY_SECRET?: string },
+  project: string,
+  purpose: ProjectSecretPurpose,
+): Promise<string> {
+  return deriveProjectSecret(requireTelemetrySecret(env), project, purpose);
+}
+
+/**
+ * The env bindings an in-process Studio run gets for its project (story 1.17), as a deployed worker of that project would:
+ * the derived control-plane secret (under the PX_TELEMETRY_SECRET name), the derived webhook secret and the project id.
+ * Never the root secret.
+ */
+async function projectWorkerSecretBindings(env: { PX_TELEMETRY_SECRET?: string }, project: string): Promise<Record<string, string>> {
+  return {
+    PX_PROJECT_ID: project,
+    PX_TELEMETRY_SECRET: await requireProjectSecret(env, project, "control-plane"),
+    PX_TELEMETRY_WEBHOOK_SECRET: await requireProjectSecret(env, project, "telemetry-webhook"),
+  };
+}
+
+/**
+ * The workspace a Studio run, `/run` or Test Step uses (story 1.17). None named: STUDIO_PREVIEW_WORKSPACE. A named one
+ * (trimmed, and a tenant workspace id) must be one of the project's own preview workspaces: the preview workspace, a
+ * workspace present in the project's OWN preview data store (its active sandbox database), or one the project's own runs
+ * already name. A shared `env.DB` (every project's rows in one database) is never consulted: without a store of its own,
+ * only the preview workspace and the project's own px_runs count. A malformed id is
+ * 400 BAD_WORKSPACE; any other workspace is 403 WORKSPACE_NOT_IN_PROJECT; either way before anything is signed or run.
+ */
+async function resolveProjectPreviewWorkspace(params: {
+  studioDb: D1Like;
+  /** The project's own preview data store (resolveProjectDataStore); null when it has none. Never the shared `env.DB`. */
+  projectDataDb: D1Like | null;
+  project: string;
+  requested: unknown;
+}): Promise<{ ok: true; workspaceId: string } | { ok: false; response: Response }> {
+  if (params.requested === undefined || params.requested === null) return { ok: true, workspaceId: STUDIO_PREVIEW_WORKSPACE };
+  const refuse = () => ({
+    ok: false as const,
+    response: Response.json(
+      {
+        error: {
+          code: "WORKSPACE_NOT_IN_PROJECT",
+          message: "workspaceId must be this project's preview workspace or a workspace in the project's own preview data.",
+        },
+      },
+      { status: 403 },
+    ),
+  });
+  const ws = typeof params.requested === "string" ? params.requested.trim() : "";
+  if (!ws || !isTenantWorkspaceId(ws)) {
+    // A malformed id is the caller's error (400, as the runtime would answer); nothing is signed or run either way.
+    return {
+      ok: false,
+      response: Response.json(
+        {
+          error: {
+            code: "BAD_WORKSPACE",
+            message: "workspaceId must be a tenant workspace id (letters, digits, _ and -, up to 64, no double underscore).",
+          },
+        },
+        { status: 400 },
+      ),
+    };
+  }
+  if (ws === STUDIO_PREVIEW_WORKSPACE) return { ok: true, workspaceId: ws };
+  // The cheap indexed px_runs check first; the per-table scan of the project's own store only when it fails.
+  if (await projectOwnsWorkspace(params.studioDb, params.project, ws)) return { ok: true, workspaceId: ws };
+  if (params.projectDataDb && (await workspaceHasBrowsableData(params.projectDataDb, ws).catch(() => false))) {
+    return { ok: true, workspaceId: ws };
+  }
+  return refuse();
+}
+
+/**
+ * The workspace a Case-A connection is stored under (story 1.17): none named (or `default`) is the project-shared
+ * `default` bucket; any other is trimmed and must pass the same preview-workspace check as the run paths (400 for a
+ * malformed id, 403 for a workspace that is not the project's).
+ */
+async function resolveConnectionWorkspace(params: {
+  studioDb: D1Like;
+  projectDataDb: D1Like | null;
+  project: string;
+  requested: unknown;
+}): Promise<{ ok: true; workspaceId: string } | { ok: false; response: Response }> {
+  const requested = typeof params.requested === "string" ? params.requested.trim() : params.requested;
+  if (requested === undefined || requested === null || requested === "" || requested === "default") {
+    return { ok: true, workspaceId: "default" };
+  }
+  return resolveProjectPreviewWorkspace({ ...params, requested });
+}
+
+/** A signed in-process request to one of the executing /__px routes, with a fresh one-time requestId (story 1.17). */
+async function signedExecutingRequest(path: string, payload: Record<string, unknown>, controlPlaneSecret: string): Promise<Request> {
+  const url = `http://preview-worker.local${path}`;
+  const body = JSON.stringify({ requestId: crypto.randomUUID(), ...payload });
+  return new Request(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(await signControlPlaneRequest(controlPlaneSecret, "POST", path, body)),
+    },
+    body,
+  });
 }
 
 /**
@@ -4750,11 +4868,15 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       (typeof rawBody.envScope === "string" && rawBody.envScope.trim()
         ? rawBody.envScope.trim()
         : "preview");
-    const workspaceId =
-      c.req.query("workspaceId") ??
-      (typeof rawBody.workspaceId === "string" && rawBody.workspaceId.trim()
-        ? rawBody.workspaceId.trim()
-        : "default");
+    // Story 1.17: trimmed; `default` (the project-shared bucket) or one of the project's own preview workspaces.
+    const connectionWorkspace = await resolveConnectionWorkspace({
+      studioDb: db,
+      projectDataDb: ((await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null),
+      project,
+      requested: c.req.query("workspaceId") ?? rawBody.workspaceId,
+    });
+    if (!connectionWorkspace.ok) return connectionWorkspace.response;
+    const workspaceId = connectionWorkspace.workspaceId;
 
     const origin = (() => {
       try {
@@ -5478,6 +5600,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const data = parsedBody.data;
+    // Story 1.17: the stored workspace is trimmed and must be `default` or one of the project's own preview workspaces.
+    const connectionWorkspace = await resolveConnectionWorkspace({
+      studioDb: db,
+      projectDataDb: ((await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null),
+      project,
+      requested: data.workspaceId,
+    });
+    if (!connectionWorkspace.ok) return connectionWorkspace.response;
     const rawValue = data.value ?? "";
     const credentialsPayload: Record<string, unknown> = data.credentials
       ? { ...data.credentials }
@@ -5528,7 +5658,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         ref: data.ref,
         projectId: project,
         envName: data.envScope === "production" ? "production" : "preview",
-        workspaceId: data.workspaceId,
+        workspaceId: connectionWorkspace.workspaceId,
         app: data.app,
         authType: data.authType,
         label,
@@ -6263,10 +6393,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const signatureHeader = c.req.header(TELEMETRY_SIGNATURE_HEADER);
     // Story 1.4: each project's webhook is signed with its own derived secret, so a body signed for another project
     // (or with the shared root secret) does not verify on this project's URL.
-    const telemetrySecret = await deriveProjectTelemetrySecret(requireTelemetrySecret(c.env), project);
+    // Story 1.17: the webhook signature is domain-separated (px-telemetry-webhook/v1), so a control-plane signature never
+    // verifies here, and the reverse.
+    const telemetrySecret = await studioProjectSecret(c.env, project, "telemetry-webhook");
+    if (!telemetrySecret) return signingSecretNotConfigured();
     const rawBody = await c.req.raw.text();
 
-    const validSig = await verifyTelemetrySignature(
+    const validSig = await verifyTelemetryWebhook(
       rawBody,
       signatureHeader,
       telemetrySecret,
@@ -6532,15 +6665,18 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         400,
       );
     }
-    if (!(await projectOwnsWorkspace(db, project, workspaceId))) {
+    // Story 1.17: any valid tenant workspace of the project's own deploy target is accepted, including one Studio has
+    // not seen yet. The pull goes only to the project's target, its rows are kept only for this workspace and stamped
+    // with the project, and the id-collision check below still refuses ids held by another workspace or project.
+    if (!isTenantWorkspaceId(workspaceId)) {
       return c.json(
         {
           error: {
-            code: "WORKSPACE_NOT_IN_PROJECT",
-            message: "workspaceId must be this project's preview workspace or one of its own workspaces.",
+            code: "BAD_WORKSPACE",
+            message: "workspaceId must be a tenant workspace id (letters, digits, _ and -, no double underscore).",
           },
         },
-        403,
+        400,
       );
     }
 
@@ -6568,7 +6704,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
     const workerUrl = target.worker_url;
 
-    const telemetrySecret = studioSigningSecret(c.env);
+    const telemetrySecret = await studioProjectSecret(c.env, project, "control-plane");
     if (!telemetrySecret) {
       return signingSecretNotConfigured();
     }
@@ -6830,10 +6966,19 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       if (!rehearseDataDb) {
         return projectDataStoreNotConfigured(project, targetEnv === "production" ? "production" : "preview");
       }
+      // Story 1.17: the workspace is one of the project's own preview workspaces, checked before anything is signed.
+      const rehearsalWorkspace = await resolveProjectPreviewWorkspace({
+        studioDb: db,
+        projectDataDb: ((await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null),
+        project,
+        requested: rawBody.workspaceId,
+      });
+      if (!rehearsalWorkspace.ok) return rehearsalWorkspace.response;
+      // Without Studio's root secret nothing can be signed: 503, as the other signing routes answer.
+      if (!(await studioProjectSecret(c.env, project, "control-plane"))) return signingSecretNotConfigured();
       const rehearsalEnv: Record<string, unknown> = {
         DB: rehearseDataDb,
         PX_ENV: targetEnv,
-        PX_PROJECT_ID: project,
         ...(connKeySecret ? { PX_CONN_KEY: connKeySecret } : {}),
         ...(c.env.__OAUTH_FETCHER ? { __OAUTH_FETCHER: c.env.__OAUTH_FETCHER } : {}),
       };
@@ -6856,6 +7001,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           rehearsalEnv[binding.secretName] = val;
         }
       }
+      // Story 1.17: the project's own bindings, as its deployed worker holds them (derived secrets only, never the root),
+      // applied last so nothing the client sends replaces them.
+      Object.assign(rehearsalEnv, await projectWorkerSecretBindings(c.env, project));
 
       const connections =
         typeof rawBody.connections === "object" &&
@@ -6919,31 +7067,16 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         nodeType,
         config: mergedConfig,
         input: effectiveInput ?? {},
-        workspaceId:
-          typeof rawBody.workspaceId === "string"
-            ? rawBody.workspaceId
-            : STUDIO_PREVIEW_WORKSPACE,
+        workspaceId: rehearsalWorkspace.workspaceId,
         ...(Object.keys(mergedUpstreamSteps).length > 0
           ? { upstreamSteps: mergedUpstreamSteps }
           : {}),
       };
 
-      const telemetrySecret =
-        requireTelemetrySecret(c.env);
-      const serializedPayload = JSON.stringify(rehearsalPayload);
-      const signature = await signTelemetryPayload(
-        serializedPayload,
-        telemetrySecret,
-      );
-
-      const previewReq = new Request("http://preview-worker.local/__px/rehearse", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: signature,
-        },
-        body: serializedPayload,
-      });
+      // Story 1.17: signed with the project's derived control-plane secret over method, path, time and body, with a
+      // fresh one-time requestId.
+      const telemetrySecret = await requireProjectSecret(c.env, project, "control-plane");
+      const previewReq = await signedExecutingRequest("/__px/rehearse", rehearsalPayload, telemetrySecret);
 
       let runtimeExecutors: Executors;
       try {
@@ -7204,10 +7337,19 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       if (!runDataDb) {
         return projectDataStoreNotConfigured(project, targetEnv);
       }
+      // Story 1.17: the workspace is one of the project's own preview workspaces, checked before anything is signed.
+      const runWorkspace = await resolveProjectPreviewWorkspace({
+        studioDb: db,
+        projectDataDb: ((await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null),
+        project,
+        requested: rawBody.workspaceId,
+      });
+      if (!runWorkspace.ok) return runWorkspace.response;
+      // Without Studio's root secret nothing can be signed: 503, as the other signing routes answer.
+      if (!(await studioProjectSecret(c.env, project, "control-plane"))) return signingSecretNotConfigured();
       const runEnv: Record<string, unknown> = {
         DB: runDataDb,
         PX_ENV: targetEnv,
-        PX_PROJECT_ID: project,
         ...(connKeySecret ? { PX_CONN_KEY: connKeySecret } : {}),
         ...(c.env.__OAUTH_FETCHER ? { __OAUTH_FETCHER: c.env.__OAUTH_FETCHER } : {}),
       };
@@ -7230,6 +7372,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           runEnv[binding.secretName] = val;
         }
       }
+      // Story 1.17: the project's own bindings (derived secrets only, never the root), applied last.
+      Object.assign(runEnv, await projectWorkerSecretBindings(c.env, project));
 
       const connections =
         typeof rawBody.connections === "object" &&
@@ -7278,10 +7422,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         triggerType:
           typeof rawBody.triggerType === "string" ? rawBody.triggerType : "manual",
         triggerPayload,
-        workspaceId:
-          typeof rawBody.workspaceId === "string"
-            ? rawBody.workspaceId
-            : STUDIO_PREVIEW_WORKSPACE,
+        workspaceId: runWorkspace.workspaceId,
         ...(usePinnedOutputs
           ? { usePinnedOutputs: true, pinnedOutputs: pinnedOutputsMap }
           : {}),
@@ -7301,22 +7442,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         },
       };
 
-      const telemetrySecret =
-        requireTelemetrySecret(c.env);
-      const serializedPayload = JSON.stringify(runRequestPayload);
-      const signature = await signTelemetryPayload(
-        serializedPayload,
-        telemetrySecret,
-      );
-
-      const workerReq = new Request("http://preview-worker.local/__px/runs", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: signature,
-        },
-        body: serializedPayload,
-      });
+      // Story 1.17: signed with the project's derived control-plane secret, with a fresh one-time requestId.
+      const telemetrySecret = await requireProjectSecret(c.env, project, "control-plane");
+      const workerReq = await signedExecutingRequest("/__px/runs", runRequestPayload, telemetrySecret);
 
       const webhookUrl = `http://localhost/api/projects/${encodeURIComponent(
         project,
@@ -7338,7 +7466,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         pxEnv: targetEnv,
         telemetrySecret,
         telemetryWebhookUrl: webhookUrl,
-        telemetryWebhookSecret: await deriveProjectTelemetrySecret(telemetrySecret, project),
+        telemetryWebhookSecret: await requireProjectSecret(c.env, project, "telemetry-webhook"),
         telemetryWebhookFetcher: async (input, init) =>
           app.fetch(new Request(input, init), c.env),
         secretValues,
@@ -8094,6 +8222,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         runEnv[binding.secretName] = val;
       }
     }
+    // Without Studio's root secret nothing can be signed: 503, as the other signing routes answer.
+    if (!(await studioProjectSecret(c.env, project, "control-plane"))) return signingSecretNotConfigured();
+    // Story 1.17: the project's own bindings (derived secrets only, never the root), applied last.
+    Object.assign(runEnv, await projectWorkerSecretBindings(c.env, project));
 
     const newRunId =
       typeof rawBody.runId === "string" && rawBody.runId.trim().length > 0
@@ -8130,25 +8262,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       },
     };
 
-    const telemetrySecret =
-      requireTelemetrySecret(c.env);
-    const serializedPayload = JSON.stringify(rerunPayload);
-    const signature = await signTelemetryPayload(
-      serializedPayload,
-      telemetrySecret,
-    );
-
-    const workerReq = new Request(
-      "http://preview-worker.local/__px/runs/rerun",
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: signature,
-        },
-        body: serializedPayload,
-      },
-    );
+    // Story 1.17: signed with the project's derived control-plane secret, with a fresh one-time requestId. The rerun
+    // keeps the stored run's workspace.
+    const telemetrySecret = await requireProjectSecret(c.env, project, "control-plane");
+    const workerReq = await signedExecutingRequest("/__px/runs/rerun", rerunPayload, telemetrySecret);
 
     const webhookUrl = `http://localhost/api/projects/${encodeURIComponent(
       project,
@@ -8169,7 +8286,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       pxEnv: targetEnv,
       telemetrySecret,
       telemetryWebhookUrl: webhookUrl,
-        telemetryWebhookSecret: await deriveProjectTelemetrySecret(telemetrySecret, project),
+        telemetryWebhookSecret: await requireProjectSecret(c.env, project, "telemetry-webhook"),
       telemetryWebhookFetcher: async (input, init) =>
         app.fetch(new Request(input, init), c.env),
       secretValues,
@@ -13143,7 +13260,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
   }): Promise<Response> {
     // Story 1.4: the data routes take only the control-plane signature made with PX_TELEMETRY_SECRET; without it
     // Studio cannot sign, and answers 503 rather than signing with another secret.
-    const signingSecret = studioSigningSecret(params.env);
+    const signingSecret = await studioProjectSecret(params.env, params.project, "control-plane");
     if (!signingSecret) {
       return signingSecretNotConfigured();
     }
@@ -13924,7 +14041,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json({ error: authz.error }, authz.status);
     }
 
-    const telemetrySecret = studioSigningSecret(c.env);
+    const telemetrySecret = await studioProjectSecret(c.env, project, "control-plane");
     if (!telemetrySecret) {
       return signingSecretNotConfigured();
     }
@@ -14221,7 +14338,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json({ error: authz.error }, authz.status);
     }
 
-    const telemetrySecret = studioSigningSecret(c.env);
+    const telemetrySecret = await studioProjectSecret(c.env, project, "control-plane");
     if (!telemetrySecret) {
       return signingSecretNotConfigured();
     }

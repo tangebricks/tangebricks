@@ -10,6 +10,7 @@ import {
   getRunRecord,
   listStepEventsForRun,
   verifyTelemetrySignature,
+  verifyTelemetryWebhook,
 } from "@poc/telemetry";
 import { GraphWorkflow, toyExecutors } from "../src/index.ts";
 import type { Graph } from "../src/index.ts";
@@ -197,14 +198,11 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     // Verify all webhook payloads carry valid HMAC-SHA256 signatures and zero canary secrets
     expect(webhookCalls.length).toBeGreaterThanOrEqual(9);
     for (const call of webhookCalls) {
-      expect(
-        await verifyTelemetrySignature(
-          call.bodyText,
-          call.signature,
-          await deriveProjectTelemetrySecret(telemetrySecret, "acme-checkout"),
-        ),
-      ).toBe(true);
-      expect(await verifyTelemetrySignature(call.bodyText, call.signature, telemetrySecret)).toBe(false);
+      const projectWebhookSecret = await deriveProjectTelemetrySecret(telemetrySecret, "acme-checkout");
+      expect(await verifyTelemetryWebhook(call.bodyText, call.signature, projectWebhookSecret)).toBe(true);
+      expect(await verifyTelemetryWebhook(call.bodyText, call.signature, telemetrySecret)).toBe(false);
+      // Story 1.17: the webhook signature is domain-separated: it is not a body-only HMAC, nor a control-plane one.
+      expect(await verifyTelemetrySignature(call.bodyText, call.signature, projectWebhookSecret)).toBe(false);
       expect(call.bodyText).not.toContain(CANARY_STRIPE_KEY);
       expect(call.bodyText).not.toContain(btoa(CANARY_STRIPE_KEY));
       expect(call.bodyText).not.toContain(CANARY_CONN_SECRET);

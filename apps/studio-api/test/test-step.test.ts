@@ -6,6 +6,7 @@ import { ensureStudioD1Schema } from "../src/index.ts";
 import { appWithPlaceholderExecutors as app } from "./placeholder-executors.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { ensureTestProjectToken } from "./project-token.ts";
+import { seedPreviewWorkspace } from "./preview-workspace-seed.ts";
 
 const rawEnv = env as unknown as StudioApiEnv;
 const studioDb = rawEnv.STUDIO_DB as D1Like;
@@ -217,7 +218,25 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
     );
     expect(viewerRes.status).toBe(403);
 
-    // 3. Executes step_debit in preview mode and returns redacted result + writes rehearsal px_step_events row
+    // Story 1.17: a workspace outside the project's preview data is refused 403 before anything is signed or run.
+    const eventsBefore = Number(
+      (await studioDb.prepare("SELECT COUNT(*) AS c FROM px_step_events").first<{ c: number }>())?.c ?? 0,
+    );
+    const foreignRes = await app.fetch(
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`, {
+        method: "POST",
+        headers: { ...ownerHeaders, "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: "ws_preview_1", input: { balance: 120 } }),
+      }),
+      TEST_ENV,
+    );
+    expect(foreignRes.status).toBe(403);
+    expect(((await foreignRes.json()) as { error: { code: string } }).error.code).toBe("WORKSPACE_NOT_IN_PROJECT");
+    expect(Number((await studioDb.prepare("SELECT COUNT(*) AS c FROM px_step_events").first<{ c: number }>())?.c ?? 0)).toBe(eventsBefore);
+
+    // 3. Executes step_debit in preview mode and returns redacted result + writes rehearsal px_step_events row. Story
+    // 1.17: the named workspace is one of the project's own preview workspaces (an earlier run of the project names it).
+    await seedPreviewWorkspace(studioDb, project, "ws_preview_1");
     const previewRes = await app.fetch(
       new Request(
         `http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`,

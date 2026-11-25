@@ -404,8 +404,9 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     expect(crossPatchRes.status).toBe(404);
 
     // 4. Confirmed insert, update, and delete on workspace_A in preview succeed and write complete data_browser_audit_log rows
+    // Story 1.17: a client-supplied requestId is never signed; Studio mints a fresh one for the write.
     const insertRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables/invoices/rows`,
+      `/api/projects/${project}/environments/preview/data/tables/invoices/rows?requestId=x`,
       {
         method: "POST",
         token: ownerToken,
@@ -429,6 +430,11 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     };
     expect(insertBody.auditId).toMatch(/^dba_/);
     expect(insertBody.rowId).toBe("inv_A_99");
+    const claimed = await sandboxDb
+      .prepare("SELECT request_id FROM px_control_requests WHERE path = '/__px/data/tables/invoices/rows'")
+      .all<{ request_id: string }>();
+    expect((claimed.results ?? []).map((r) => r.request_id)).not.toContain("x");
+    expect((claimed.results ?? []).some((r) => /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(r.request_id))).toBe(true);
 
     const updateRes = await callStudio(
       `/api/projects/${project}/environments/preview/data/tables/invoices/rows/inv_A_99`,

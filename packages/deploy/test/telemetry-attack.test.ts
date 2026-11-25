@@ -4,6 +4,7 @@ import type { D1Like } from "@poc/sdk";
 import {
   SIGNED_AT_HEADER,
   TELEMETRY_SIGNATURE_HEADER,
+  claimControlRequest,
   controlPlaneCanonical,
   ensureTelemetryTables,
   insertStepEvent,
@@ -15,6 +16,7 @@ import {
   upsertRunRecord,
 } from "@poc/telemetry";
 import { createProofRoutes } from "../src/worker/proof-routes.ts";
+import { workspaceHasBrowsableData } from "../src/worker/data-browser.ts";
 
 // Story 1.4 attack suite for the deployed Worker's read routes: /__px/events, /__px/logs, /__px/metrics and /__px/data/*.
 // Every one of them takes only the control-plane signature made with PX_TELEMETRY_SECRET (method, path with the whole
@@ -239,18 +241,25 @@ describe("story 1.4 — deployed Worker telemetry and data routes: signing, work
   });
 
   it("a data mutation's signature covers its body and query: a changed body or workspace is 401, a body naming another workspace is 400", async () => {
-    const url = routeUrl("/__px/data/tables/invoices/rows", WS_A);
+    // Story 1.17: every signed write names a one-time requestId in its signed query string.
+    const writeUrl = (ws: string, requestId: string = crypto.randomUUID()) => {
+      const u = routeUrl("/__px/data/tables/invoices/rows", ws);
+      u.searchParams.set("requestId", requestId);
+      return u;
+    };
+    const url = writeUrl(WS_A);
     const body = JSON.stringify({ confirmWrite: true, row: { id: "inv_new_A", invoice_number: "INV_NEW", amount: 1 } });
     const signed = await signControlPlaneRequest(SECRET, "POST", url, body);
 
     const tampered = body.replace("INV_NEW", "INV_EVIL");
     expect((await call(url, signed, { method: "POST", body: tampered })).status).toBe(401);
-    expect((await call(routeUrl("/__px/data/tables/invoices/rows", WS_B), signed, { method: "POST", body })).status).toBe(401);
+    expect((await call(writeUrl(WS_B, url.searchParams.get("requestId")!), signed, { method: "POST", body })).status).toBe(401);
     // The old body-only signature is refused for writes too.
     expect((await call(url, { [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(body, SECRET) }, { method: "POST", body })).status).toBe(401);
 
     const crossBody = JSON.stringify({ workspaceId: WS_B, confirmWrite: true, row: { id: "inv_cross", invoice_number: "X", amount: 1 } });
-    const crossRes = await call(url, await signControlPlaneRequest(SECRET, "POST", url, crossBody), { method: "POST", body: crossBody });
+    const crossUrl = writeUrl(WS_A);
+    const crossRes = await call(crossUrl, await signControlPlaneRequest(SECRET, "POST", crossUrl, crossBody), { method: "POST", body: crossBody });
     expect(crossRes.status).toBe(400);
     expect(((await crossRes.json()) as { error: { code: string } }).error.code).toBe("WORKSPACE_MISMATCH");
 
@@ -260,6 +269,44 @@ describe("story 1.4 — deployed Worker telemetry and data routes: signing, work
     expect(row?.workspace_id).toBe(WS_A);
     const cross = await db.prepare("SELECT COUNT(*) AS c FROM ent_invoices WHERE id = 'inv_cross'").first<{ c: number }>();
     expect(Number(cross?.c ?? 0)).toBe(0);
+  });
+
+  it("story 1.17: a signed data write is used once: a replay is 409 and writes nothing; a write without a requestId is 400", async () => {
+    const url = routeUrl("/__px/data/tables/invoices/rows", WS_A);
+    url.searchParams.set("requestId", crypto.randomUUID());
+    const body = JSON.stringify({ confirmWrite: true, row: { id: "inv_replay_A", invoice_number: "INV_REPLAY", amount: 1 } });
+    const signed = await signControlPlaneRequest(SECRET, "POST", url, body);
+    expect((await call(url, signed, { method: "POST", body })).status).toBe(201);
+    const replay = await call(url, signed, { method: "POST", body });
+    expect(replay.status).toBe(409);
+    expect(((await replay.json()) as { error: { code: string } }).error.code).toBe("DUPLICATE_REQUEST");
+    // Re-signed with a fresh time but the same requestId: still refused.
+    expect((await call(url, await signControlPlaneRequest(SECRET, "POST", url, body), { method: "POST", body })).status).toBe(409);
+    const count = await db.prepare("SELECT COUNT(*) AS c FROM ent_invoices WHERE id = 'inv_replay_A'").first<{ c: number }>();
+    expect(Number(count?.c ?? 0)).toBe(1);
+
+    const noId = routeUrl("/__px/data/tables/invoices/rows", WS_A);
+    const noIdBody = JSON.stringify({ confirmWrite: true, row: { id: "inv_noid_A", invoice_number: "INV_NOID", amount: 1 } });
+    const noIdRes = await call(noId, await signControlPlaneRequest(SECRET, "POST", noId, noIdBody), { method: "POST", body: noIdBody });
+    expect(noIdRes.status).toBe(400);
+    expect(((await noIdRes.json()) as { error: { code: string } }).error.code).toBe("BAD_REQUEST_ID");
+    // The request-id ledger is not app data: the data browser neither lists it nor counts its workspaces.
+    await claimControlRequest(db, { requestId: crypto.randomUUID(), path: "/__px/runs", workspaceId: "ws_only_in_ledger" });
+    const tablesUrl = routeUrl("/__px/data/tables", WS_A);
+    const tables = await call(tablesUrl, await signControlPlaneRequest(SECRET, "GET", tablesUrl));
+    expect(tables.status).toBe(200);
+    expect(JSON.stringify(await tables.json())).not.toContain("px_control_requests");
+    const wsUrl = new URL("http://deployed.invalid/__px/data/workspaces");
+    const workspaces = await call(wsUrl, await signControlPlaneRequest(SECRET, "GET", wsUrl));
+    expect(((await workspaces.json()) as { workspaces: string[] }).workspaces).not.toContain("ws_only_in_ledger");
+    // Studio's preview-workspace check asks per workspace (no listing limit) and ignores the ledger too.
+    expect(await workspaceHasBrowsableData(db, WS_A)).toBe(true);
+    expect(await workspaceHasBrowsableData(db, "ws_only_in_ledger")).toBe(false);
+    expect(await workspaceHasBrowsableData(db, "ws_nowhere")).toBe(false);
+    await db.prepare("CREATE TABLE IF NOT EXISTS many_ws_s117 (id INTEGER PRIMARY KEY, workspace_id TEXT NOT NULL)").run();
+    await db.batch(Array.from({ length: 150 }, (_, i) => db.prepare("INSERT INTO many_ws_s117 (workspace_id) VALUES (?1)").bind(`ws_many_${String(i).padStart(3, "0")}`)));
+    expect(await workspaceHasBrowsableData(db, "ws_many_149")).toBe(true); // past the first hundred a listing returns
+    await db.prepare("DROP TABLE many_ws_s117").run();
   });
 
   it("a deployment without PX_TELEMETRY_SECRET (only the shared key) reads nothing: 503 whatever the request carries", async () => {

@@ -10,6 +10,7 @@ import { join, resolve, sep } from "node:path";
 import { canonical11, evaluateH11, runH11 } from "../packages/deploy/src/h11.ts";
 import type { H11Result } from "../packages/deploy/src/h11.ts";
 import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
+import { deriveProjectSecret } from "../packages/telemetry/src/index.ts";
 import { CredentialsError, createClient, createRedactor, fileKeyStore, fileStore, findSecrets, loadCredentials, loadOrCreateAccessKey } from "../packages/deploy/src/provisioner/index.ts";
 
 const clock = () => performance.now();
@@ -62,14 +63,16 @@ if (!url || !databaseId || !ledger || ledger.suffix !== names.suffix || ledger.e
 const accessKey = loadOrCreateAccessKey(fileKeyStore(join(stateDir, "access-key.txt")), () => {
   throw new Error("the access key is missing: this Worker cannot be reached");
 });
-// Story 1.1: a deployed run starts only from the signed control-plane route, signed with the Worker's PX_TELEMETRY_SECRET
-// (distinct from the access key). The Worker must have that secret set; this script reads the same value from the environment.
-const signingSecret = process.env.PX_TELEMETRY_SECRET?.trim() ?? "";
-if (signingSecret.length < 16 || signingSecret === accessKey) {
+// Story 1.1: a deployed run starts only from the signed control-plane route. Story 1.17: the Worker holds its project's
+// derived control-plane secret, never the root; this script reads Studio's root PX_TELEMETRY_SECRET and the project id
+// scripts/poc-deploy.ts bound (PX_PROJECT_ID, or the script name) and derives the same value to sign with.
+const rootSecret = process.env.PX_TELEMETRY_SECRET?.trim() ?? "";
+if (rootSecret.length < 16 || rootSecret === accessKey) {
   console.error("PX_TELEMETRY_SECRET is not set (16+ characters, not the access key): runs can only be started with a signed request since story 1.1");
   process.exit(2);
 }
-const hide = createRedactor([credentials.token, credentials.accountId, accessKey, signingSecret]);
+const signingSecret = await deriveProjectSecret(rootSecret, process.env.PX_PROJECT_ID?.trim() || names.script, "control-plane");
+const hide = createRedactor([credentials.token, credentials.accountId, accessKey, signingSecret, rootSecret]);
 
 out(`H11 against ${names.script}; no upload will be made`);
 const { calls, result: first } = await runH11({
@@ -90,7 +93,7 @@ const { calls, result: first } = await runH11({
 });
 
 // ---- the evidence: through the secret scan in memory, then to disk, then the repositories are scanned
-const secrets = { token: credentials.token, accountId: credentials.accountId, accessKey, signingSecret };
+const secrets = { token: credentials.token, accountId: credentials.accountId, accessKey, signingSecret, rootSecret };
 const callsText = canonical11(calls);
 for (const [name, text] of [["h11-calls.json", callsText], ["h11-result.json", JSON.stringify(first, null, 2)]] as const) {
   const hits = findSecrets(text, secrets);

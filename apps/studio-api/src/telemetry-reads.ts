@@ -64,6 +64,12 @@ export async function signedDataBrowserRequest(params: {
       // not JSON: the worker answers INVALID_JSON
     }
   }
+  // Story 1.17: every signed write carries a fresh one-time requestId in its (signed) query string.
+  // A client-supplied requestId is never kept: Studio always mints the id it signs.
+  if (params.method.toUpperCase() !== "GET") {
+    workerUrl.searchParams.delete("requestId");
+    workerUrl.searchParams.set("requestId", crypto.randomUUID());
+  }
   return new Request(workerUrl.toString(), {
     method: params.method,
     headers: {

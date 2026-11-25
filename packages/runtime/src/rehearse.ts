@@ -8,7 +8,6 @@ import type {
 } from "@poc/sdk";
 import {
   StepEventSchema,
-  TELEMETRY_SIGNATURE_HEADER,
   collectSecretKeyedValues,
   collectSecretStringsFromValue,
   ensureTelemetryTables,
@@ -18,8 +17,8 @@ import {
   redactTelemetryPayload,
   redactTelemetryString,
   truncateTelemetryPreview,
+  admitExecutingControlRequest,
   upsertRunRecord,
-  verifyTelemetrySignature,
 } from "@poc/telemetry";
 import type { RunRecord, StepEvent } from "@poc/telemetry";
 import { resolveCaseAConnection } from "./connections.ts";
@@ -38,6 +37,8 @@ import {
 import type { TelemetryRunOptions } from "./run.ts";
 
 export const StepRehearsalRequestSchema = z.object({
+  /** Story 1.17: the one-time id of the signed request (a UUID); checked and recorded before anything runs. */
+  requestId: z.string().optional(),
   workflowId: z.string().min(1).default("wf_default"),
   revision: z.number().int().min(0).default(0),
   nodeId: z.string().min(1),
@@ -96,6 +97,20 @@ export interface RehearseStepOptions {
    * STUDIO_DB holds every project's telemetry. A deployed Worker never sets it. Never read from the request body.
    */
   telemetryProjectId?: string;
+  /** Wall clock in epoch milliseconds, for checking signed timestamps on the executing routes (default Date.now). */
+  clock?: () => number;
+}
+
+/** The project a rehearsal's connection lookups are confined to, when known (story 1.17). */
+function projectIdForConnections(options: RehearseStepOptions): string | undefined {
+  const bound = options.env?.PX_PROJECT_ID;
+  if (typeof bound === "string" && bound.trim()) return bound.trim();
+  return options.telemetryProjectId?.trim() || undefined;
+}
+
+/** Where an executing route records its one-time request ids: the route's own database. */
+function requestLedgerDb(options: { db?: D1Like; env?: Readonly<Record<string, unknown>> }): D1Like | undefined {
+  return options.db ?? (isD1Like(options.env?.DB) ? (options.env!.DB as D1Like) : undefined);
 }
 
 function isD1Like(candidate: unknown): candidate is D1Like {
@@ -406,6 +421,7 @@ export async function rehearseStep(
           db: connectionDb,
           connKey,
           telemetryWrite: { projectId: options.telemetryProjectId },
+          ...(projectIdForConnections(options) ? { projectId: projectIdForConnections(options) } : {}),
           envName: pxEnv,
           workspaceId: request.workspaceId,
           defaultApp: inferredApp,
@@ -650,34 +666,17 @@ export async function handleStepRehearsalRequest(
     );
   }
 
+  // Story 1.17: the control-plane signature (domain, method, path, time, body) and a one-time requestId, recorded
+  // before any executor runs. A replay of a captured request gets 409 and executes nothing.
   const rawBody = await request.text();
-  const signature = request.headers.get(TELEMETRY_SIGNATURE_HEADER);
-  const validSig = await verifyTelemetrySignature(
+  const admitted = await admitExecutingControlRequest(request, {
+    secret: options.telemetrySecret,
     rawBody,
-    signature,
-    options.telemetrySecret,
-  );
-  if (!validSig) {
-    return Response.json(
-      {
-        error: {
-          code: "UNAUTHORIZED_TELEMETRY_SIGNATURE",
-          message: "Missing or invalid X-Px-Signature",
-        },
-      },
-      { status: 401 },
-    );
-  }
-
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(rawBody);
-  } catch {
-    return Response.json(
-      { error: { code: "INVALID_JSON", message: "Request body must be valid JSON" } },
-      { status: 400 },
-    );
-  }
+    db: requestLedgerDb(options),
+    ...(options.clock ? { nowMs: options.clock() } : {}),
+  });
+  if (!admitted.ok) return admitted.response;
+  const parsedJson: unknown = admitted.body;
 
   const noWorkspace = refuseMissingWorkspace(parsedJson);
   if (noWorkspace) return noWorkspace;
@@ -707,6 +706,8 @@ export async function handleStepRehearsalRequest(
 }
 
 export const WorkflowRunRequestSchema = z.object({
+  /** Story 1.17: the one-time id of the signed request (a UUID); checked and recorded before anything runs. */
+  requestId: z.string().optional(),
   runId: z.string().min(1).max(160).optional(),
   project: z.string().min(1).max(120).optional(),
   workflowId: z.string().min(1).max(120).default("wf_default"),
@@ -919,34 +920,17 @@ export async function handleWorkflowRunRequest(
     );
   }
 
+  // Story 1.17: the control-plane signature (domain, method, path, time, body) and a one-time requestId, recorded
+  // before any executor runs. A replay of a captured request gets 409 and executes nothing.
   const rawBody = await request.text();
-  const signature = request.headers.get(TELEMETRY_SIGNATURE_HEADER);
-  const validSig = await verifyTelemetrySignature(
+  const admitted = await admitExecutingControlRequest(request, {
+    secret: options.telemetrySecret,
     rawBody,
-    signature,
-    options.telemetrySecret,
-  );
-  if (!validSig) {
-    return Response.json(
-      {
-        error: {
-          code: "UNAUTHORIZED_TELEMETRY_SIGNATURE",
-          message: "Missing or invalid X-Px-Signature",
-        },
-      },
-      { status: 401 },
-    );
-  }
-
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(rawBody);
-  } catch {
-    return Response.json(
-      { error: { code: "INVALID_JSON", message: "Request body must be valid JSON" } },
-      { status: 400 },
-    );
-  }
+    db: requestLedgerDb(options),
+    ...(options.clock ? { nowMs: options.clock() } : {}),
+  });
+  if (!admitted.ok) return admitted.response;
+  const parsedJson: unknown = admitted.body;
 
   const noWorkspace = refuseMissingWorkspace(parsedJson);
   if (noWorkspace) return noWorkspace;
@@ -1113,39 +1097,17 @@ export async function handleWorkflowRerunRequest(
     );
   }
 
+  // Story 1.17: the control-plane signature (domain, method, path, time, body) and a one-time requestId, recorded
+  // before any executor runs. A replay of a captured request gets 409 and executes nothing.
   const rawBody = await request.text();
-  const signature = request.headers.get(TELEMETRY_SIGNATURE_HEADER);
-  const validSig = await verifyTelemetrySignature(
+  const admitted = await admitExecutingControlRequest(request, {
+    secret: options.telemetrySecret,
     rawBody,
-    signature,
-    options.telemetrySecret,
-  );
-  if (!validSig) {
-    return Response.json(
-      {
-        error: {
-          code: "UNAUTHORIZED_TELEMETRY_SIGNATURE",
-          message: "Missing or invalid X-Px-Signature",
-        },
-      },
-      { status: 401 },
-    );
-  }
-
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(rawBody);
-  } catch {
-    return Response.json(
-      {
-        error: {
-          code: "INVALID_JSON",
-          message: "Request body must be valid JSON",
-        },
-      },
-      { status: 400 },
-    );
-  }
+    db: requestLedgerDb(options),
+    ...(options.clock ? { nowMs: options.clock() } : {}),
+  });
+  if (!admitted.ok) return admitted.response;
+  const parsedJson: unknown = admitted.body;
 
   const noWorkspace = refuseMissingWorkspace(parsedJson);
   if (noWorkspace) return noWorkspace;

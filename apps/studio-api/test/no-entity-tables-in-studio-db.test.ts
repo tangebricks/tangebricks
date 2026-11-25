@@ -399,4 +399,43 @@ describe("story 17: generated-app entity tables stay out of STUDIO_DB", () => {
     expect(await listTableNames(sandboxDbA)).toContain("credit_wallets");
     expect(await listTableNames(studioDb)).toEqual(before);
   });
+
+  test("story 1.17: a workspace present only in the project's own sandbox data store is accepted for /runs, and refused for another project", async () => {
+    const workflowOps = (id: string) => [
+      {
+        opId: `op_wf_${id}`,
+        type: "add_workflow",
+        workflow: {
+          id: "wf_s117_ws",
+          name: "S117 workspace",
+          trigger: { kind: "manual" },
+          nodes: [{ id: "node_trigger", type: "trigger.manual", data: {} }],
+          edges: [],
+        },
+      },
+    ];
+    const alice = await createUser("s117-ws-a");
+    const bob = await createUser("s117-ws-b");
+    const projectA = await createInvoicesProject(alice, "s117-ws-a", workflowOps("a"));
+    const projectB = await createInvoicesProject(bob, "s117-ws-b", workflowOps("b"));
+    await activateTestSandbox(studioDb, { project: projectA, orgId: alice.orgId });
+    await activateTestSandbox(studioDb, { project: projectB, orgId: bob.orgId });
+    const seeded = await alice.req(`/api/projects/${projectA}/environments/preview/data/seed`, {
+      body: {
+        orgId: alice.orgId,
+        tables: { ent_invoices: [{ id: "inv_s117", workspace_id: "ws_sandbox_only", invoice_number: "S117-1", amount: 1 }] },
+      },
+    });
+    expect(seeded.status).toBe(200);
+    // No px_runs row names the workspace: only project A's own sandbox store does.
+    const named = await studioDb.prepare("SELECT 1 AS hit FROM px_runs WHERE workspace_id = 'ws_sandbox_only' LIMIT 1").first();
+    expect(named).toBeNull();
+
+    const body = (orgId: string) => ({ orgId, workspaceId: "ws_sandbox_only" });
+    const runA = await alice.req(`/api/projects/${projectA}/workflows/wf_s117_ws/runs`, { body: body(alice.orgId), env: envWithoutAppDb });
+    expect(runA.status).toBe(200);
+    const runB = await bob.req(`/api/projects/${projectB}/workflows/wf_s117_ws/runs`, { body: body(bob.orgId), env: envWithoutAppDb });
+    expect(runB.status).toBe(403);
+    expect(await errorCode(runB)).toBe("WORKSPACE_NOT_IN_PROJECT");
+  });
 });

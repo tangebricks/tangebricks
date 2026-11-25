@@ -124,6 +124,7 @@ export interface ResolveCaseAConnectionOptions {
   /** Studio only (story 1.4): the project stamp for the connection.expired log line. */
   telemetryWrite?: { projectId?: string | null };
   connKey?: string;
+  /** The run's project, when the runtime knows it: a connection row of another project is never used (story 1.17). */
   projectId?: string;
   envName?: string;
   workspaceId?: string;
@@ -447,17 +448,31 @@ function buildLookupCandidates(
   };
 }
 
+/**
+ * The Case-A workspace rule (story 1.17). A px_connections row is usable by a run only when its `workspace_id` is the
+ * run's own workspace or the project-shared value `default`, and, when the runtime knows the project id, its
+ * `project_id` is that project. Ref lookups apply the same filter; the app fallback tries the run's workspace first, then
+ * `default`, and never any other workspace. A connection held by another workspace (or project) is simply not found.
+ */
+export const SHARED_CONNECTION_WORKSPACE = "default";
+
 async function findPxConnectionRow(
   db: D1Like,
   candidates: string[],
   targetApp: string | undefined,
   targetWorkspaceId: string,
+  projectId: string | undefined,
 ): Promise<PxConnectionRow | null> {
   await ensureConnectionsTable(db);
+  const project = typeof projectId === "string" && projectId.trim().length > 0 ? projectId.trim() : undefined;
+  const projectClause = project ? " AND project_id = ?3" : "";
+  const withProject = (...values: unknown[]) => (project ? [...values, project] : values);
   for (const candidate of candidates) {
     const byRef = await db
-      .prepare("SELECT * FROM px_connections WHERE ref = ? LIMIT 1")
-      .bind(candidate)
+      .prepare(
+        `SELECT * FROM px_connections WHERE ref = ?1 AND workspace_id IN (?2, '${SHARED_CONNECTION_WORKSPACE}')${projectClause} LIMIT 1`,
+      )
+      .bind(...withProject(candidate, targetWorkspaceId))
       .first<PxConnectionRow>();
     if (byRef) return byRef;
   }
@@ -465,20 +480,15 @@ async function findPxConnectionRow(
   const appToSearch =
     targetApp ?? (candidates.length > 0 ? candidates[candidates.length - 1] : undefined);
   if (appToSearch) {
-    if (targetWorkspaceId && targetWorkspaceId !== "default" && targetWorkspaceId !== "ws_default") {
-      const byWsApp = await db
+    for (const workspace of [targetWorkspaceId, SHARED_CONNECTION_WORKSPACE]) {
+      const byApp = await db
         .prepare(
-          "SELECT * FROM px_connections WHERE app = ? AND workspace_id = ? ORDER BY updated_at DESC LIMIT 1",
+          `SELECT * FROM px_connections WHERE app = ?1 AND workspace_id = ?2${projectClause} ORDER BY updated_at DESC LIMIT 1`,
         )
-        .bind(appToSearch, targetWorkspaceId)
+        .bind(...withProject(appToSearch, workspace))
         .first<PxConnectionRow>();
-      if (byWsApp) return byWsApp;
+      if (byApp) return byApp;
     }
-    const byApp = await db
-      .prepare("SELECT * FROM px_connections WHERE app = ? ORDER BY updated_at DESC LIMIT 1")
-      .bind(appToSearch)
-      .first<PxConnectionRow>();
-    if (byApp) return byApp;
   }
 
   return null;
@@ -870,7 +880,7 @@ export async function resolveCaseAConnection(
     nameOrSelector,
     options,
   );
-  const row = await findPxConnectionRow(db, candidates, targetApp, targetWorkspaceId);
+  const row = await findPxConnectionRow(db, candidates, targetApp, targetWorkspaceId, options.projectId);
   if (!row) {
     const label = candidates[0] ?? targetApp ?? "unknown";
     throw new Error(`connection "${label}" was not found in px_connections`);

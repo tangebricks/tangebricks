@@ -28,7 +28,7 @@ import {
   deriveProjectTelemetrySecret,
   insertStepEvent,
   insertStructuredLog,
-  signTelemetryPayload,
+  signTelemetryWebhook,
   TELEMETRY_SIGNATURE_HEADER,
   upsertHttpRollup,
   upsertQueueMetrics,
@@ -602,7 +602,8 @@ describe("control-plane attack suite: Studio MCP and MCP token routes (story 0.1
 //   TELEMETRY_LISTS        runs list, events, logs, health, metrics, activity, data   -> no PB row (P1's own rows present)
 //   WEBHOOK_PROJECT        a signed webhook on P1's URL whose payload names PB, or none -> 400/401, nothing written;
 //                          a payload signed with P1's derived secret posted to PB's URL  -> 401, nothing written
-//   RECONCILE_TARGET       reconcile with a body workerUrl, or for PB's workspace          -> refused, nothing written
+//   RECONCILE_TARGET       reconcile with a body workerUrl                                  -> refused, nothing written;
+//                          P1 reconciles PB's workspace id from its own target (PB's ids) -> 409, nothing written, unreadable
 // The data and ledger rows of each project live in that project's own data store (its active sandbox database).
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -1292,28 +1293,57 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
         flag("POST", route, "TELEMETRY_LISTS", `fixture: Test Step did not use P1's own upstream output (status ${res.status})`);
     }
 
-    // RECONCILE_TARGET: Studio signs the pull, so it never goes to a caller-chosen address or for another project's
-    // workspace; neither request writes anything.
+    // RECONCILE_TARGET: Studio signs the pull, so it never goes to a caller-chosen address. Story 1.17: reconcile accepts
+    // any valid tenant workspace id, so P1 now has a registered deploy target and reconciles PB's workspace id. The pull
+    // goes only to P1's own target, and whatever comes back naming ids PB holds is refused (409 ID_COLLISION): nothing is
+    // written, and P1's reads of that workspace show none of PB's rows.
     {
       const route = "/api/projects/:project/telemetry/reconcile";
       const pbOnlyWs = `ws_pb_only_${tag}`;
-      await upsertRunRecord(
-        db,
-        { runId: `run_pbws_${tag}`, workflowId: "wf_pbws", revision: 0, triggerType: "manual", workspaceId: pbOnlyWs, status: "succeeded", durationMs: 1, retries: 0, startedAt: now },
-        { projectId: w.pb },
-      );
+      const pbRunId = `run_pbws_${tag}`;
+      const pbRunMarker = `PB-RECONCILE-MARKER-${tag}`;
+      const pbRun = { runId: pbRunId, workflowId: "wf_pbws", revision: 0, triggerType: "manual", workspaceId: pbOnlyWs, status: "succeeded" as const, durationMs: 1, retries: 0, errorStack: pbRunMarker, startedAt: now };
+      await upsertRunRecord(db, pbRun, { projectId: w.pb });
+      const p1Target = `https://p1-target-${tag}.example`;
+      await db
+        .prepare(
+          `INSERT INTO project_deployments (deploy_id, project_id, org_id, env_name, revision, build_hash, code_hash, graph_hash, action, worker_url, version_id, database_id, actor_id, state_json, created_at)
+           VALUES (?, ?, ?, 'preview', 1, 'b', 'c', 'g', 'deploy', ?, 'v', 'd', 'a', '{}', ?)`,
+        )
+        .bind(`dep_${crypto.randomUUID()}`, w.p1, w.alice.orgId, p1Target, now)
+        .run();
       const p1Rows = async () =>
         Number((await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE project_id = ?").bind(w.p1).first<{ c: number }>())?.c ?? 0);
-      for (const [label, body] of [
-        ["body workerUrl", { workspaceId: ws, workerUrl: "https://attacker.example" }],
-        ["PB's workspace", { workspaceId: pbOnlyWs }],
-      ] as const) {
-        count("RECONCILE_TARGET");
-        const before = await p1Rows();
-        const res = await hit("POST", `/api/projects/${w.p1}/telemetry/reconcile`, w.alice.token, { body });
-        if (isOk(res.status)) flag("POST", route, "RECONCILE_TARGET", `${label}: status ${res.status}, expected a refusal`);
-        if ((await p1Rows()) !== before) flag("POST", route, "RECONCILE_TARGET", `${label}: rows were written`);
+      const pulledFrom: string[] = [];
+      const realFetch = globalThis.fetch;
+      // P1's target answers with PB's run (as a compromised or confused worker might): its id is PB's.
+      globalThis.fetch = (async (input: string | URL | Request) => {
+        pulledFrom.push(String(input instanceof Request ? input.url : input));
+        return Response.json({ runs: [pbRun], events: [] });
+      }) as typeof fetch;
+      try {
+        for (const [label, body] of [
+          ["body workerUrl", { workspaceId: ws, workerUrl: "https://attacker.example" }],
+          ["PB's workspace", { workspaceId: pbOnlyWs }],
+        ] as const) {
+          count("RECONCILE_TARGET");
+          const before = await p1Rows();
+          const res = await hit("POST", `/api/projects/${w.p1}/telemetry/reconcile`, w.alice.token, { body });
+          if (isOk(res.status)) flag("POST", route, "RECONCILE_TARGET", `${label}: status ${res.status}, expected a refusal`);
+          if (label === "PB's workspace" && (res.status !== 409 || !/ID_COLLISION/.test(res.text)))
+            flag("POST", route, "RECONCILE_TARGET", `${label}: status ${res.status}, expected 409 ID_COLLISION`);
+          if ((await p1Rows()) !== before) flag("POST", route, "RECONCILE_TARGET", `${label}: rows were written`);
+        }
+      } finally {
+        globalThis.fetch = realFetch;
       }
+      if (pulledFrom.length !== 1 || !pulledFrom[0]!.startsWith(`${p1Target}/__px/events?workspaceId=${pbOnlyWs}`))
+        flag("POST", route, "RECONCILE_TARGET", `the pull did not go (only) to P1's own target: ${JSON.stringify(pulledFrom)}`);
+      const owner = await db.prepare("SELECT project_id FROM px_runs WHERE run_id = ?").bind(pbRunId).first<{ project_id: string }>();
+      if (owner?.project_id !== w.pb) flag("POST", route, "RECONCILE_TARGET", "PB's run changed project");
+      const p1View = await hit("GET", `/api/projects/${w.p1}/runs?workspaceId=${pbOnlyWs}&limit=200`, w.alice.token);
+      if (p1View.text.includes(pbRunId) || p1View.text.includes(pbRunMarker))
+        flag("GET", "/api/projects/:project/runs", "RECONCILE_TARGET", "P1's read of PB's workspace shows PB's run");
     }
 
     // WEBHOOK_PROJECT: a correctly signed payload posted to P1's URL that names PB (or no project) writes nothing.
@@ -1336,12 +1366,13 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
           `/api/projects/${project}/telemetry/webhook`,
           {
             method: "POST",
-            headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(body, secret) },
+            headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryWebhook(body, secret) },
             body,
           },
           studioEnv,
         );
-        if (res.status !== 400 && res.status !== 401) flag("POST", route, "WEBHOOK_PROJECT", `${label}: status ${res.status}, expected 400/401`);
+        // Story 1.17: correctly signed (webhook domain, P1's derived secret), so the refusal is the project check's 400.
+        if (res.status !== 400) flag("POST", route, "WEBHOOK_PROJECT", `${label}: status ${res.status}, expected 400`);
         const written = await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE run_id = ?").bind(runId).first<{ c: number }>();
         if (Number(written?.c ?? 0) !== 0) flag("POST", route, "WEBHOOK_PROJECT", `${label}: a run was written`);
       }
@@ -1352,7 +1383,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
         `/api/projects/${w.pb}/telemetry/webhook`,
         {
           method: "POST",
-          headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(forPb, secret) },
+          headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryWebhook(forPb, secret) },
           body: forPb,
         },
         studioEnv,

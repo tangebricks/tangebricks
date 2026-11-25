@@ -13,9 +13,12 @@ import {
   insertStepEvent,
   insertStructuredLog,
   listStepEventsForRun,
+  checkControlPlaneSignature,
+  deriveProjectSecret,
   deriveProjectTelemetrySecret,
   signControlPlaneRequest,
   signTelemetryPayload,
+  signTelemetryWebhook,
   upsertRunRecord,
 } from "@poc/telemetry";
 import { app, ensureStudioD1Schema } from "../src/index.ts";
@@ -134,7 +137,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     // Story 1.4: each project's webhook is signed with its own derived secret.
     const projectSecret = await deriveProjectTelemetrySecret(TELEMETRY_SECRET, project);
     const postSigned = (body: string) =>
-      signTelemetryPayload(body, projectSecret).then((sig) =>
+      signTelemetryWebhook(body, projectSecret).then((sig) =>
         app.fetch(
           new Request(`http://localhost/api/projects/${project}/telemetry/webhook`, {
             method: "POST",
@@ -172,6 +175,34 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
       testEnv,
     );
     expect(rootSigned.status).toBe(401);
+    // Without Studio's root secret the webhook cannot be verified: 503 NOT_CONFIGURED, not a 500.
+    const noRoot = await app.fetch(
+      new Request(`http://localhost/api/projects/${project}/telemetry/webhook`, {
+        method: "POST",
+        headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryWebhook(payload, projectSecret) },
+        body: payload,
+      }),
+      { ...testEnv, PX_TELEMETRY_SECRET: undefined } as unknown as StudioApiEnv,
+    );
+    expect(noRoot.status).toBe(503);
+    // Story 1.17: nor does the root secret with the webhook domain, nor a body-only HMAC with the project's own secret, nor
+    // a control-plane signature made with it (cross-purpose).
+    for (const headers of [
+      { [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryWebhook(payload, TELEMETRY_SECRET) },
+      { [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(payload, projectSecret) },
+      await signControlPlaneRequest(projectSecret, "POST", `/api/projects/${project}/telemetry/webhook`, payload),
+      await signControlPlaneRequest(await deriveProjectSecret(TELEMETRY_SECRET, project, "control-plane"), "POST", `/api/projects/${project}/telemetry/webhook`, payload),
+    ]) {
+      const refused = await app.fetch(
+        new Request(`http://localhost/api/projects/${project}/telemetry/webhook`, {
+          method: "POST",
+          headers: { "content-type": "application/json", ...headers },
+          body: payload,
+        }),
+        testEnv,
+      );
+      expect(refused.status).toBe(401);
+    }
 
     // ID_COLLISION: another project's webhook reusing this event's id is refused with 409, writes nothing and
     // broadcasts nothing; this project's row is unchanged.
@@ -186,7 +217,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(otherPayload, await deriveProjectTelemetrySecret(TELEMETRY_SECRET, other)),
+          [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryWebhook(otherPayload, await deriveProjectTelemetrySecret(TELEMETRY_SECRET, other)),
         },
         body: otherPayload,
       }),
@@ -562,7 +593,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
       return app.fetch(
         new Request(`http://localhost/api/projects/${intruder}/telemetry/webhook`, {
           method: "POST",
-          headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(text, intruderSecret) },
+          headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryWebhook(text, intruderSecret) },
           body: text,
         }),
         testEnv,
@@ -638,5 +669,53 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     }
     expect(pulledFrom[0]).toMatch(/^https:\/\/intruder-target\.example\/__px\/events\?workspaceId=ws_default/);
     expect(await runStored("run_reconcile_fresh")).toBe(0);
+
+    // Story 1.17: a valid tenant workspace Studio has never seen is accepted and pulled; the pull is signed with the
+    // project's derived control-plane secret (never the root), and only the pulled workspace's rows are kept, stamped
+    // with the project.
+    const unseen = "ws_never_seen_by_studio";
+    const pulls: Request[] = [];
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      pulls.push(new Request(String(input instanceof Request ? input.url : input), init));
+      return Response.json({
+        runs: [
+          { ...ownerRun, runId: "run_unseen_ws_1", workspaceId: unseen },
+          { ...ownerRun, runId: "run_unseen_other_ws", workspaceId: "ws_someone_else" },
+        ],
+        events: [],
+      });
+    }) as typeof fetch;
+    try {
+      const unseenRes = await app.fetch(
+        new Request(`http://localhost/api/projects/${intruder}/telemetry/reconcile`, {
+          method: "POST",
+          headers: { ...intruderHeaders, "content-type": "application/json" },
+          body: JSON.stringify({ workspaceId: unseen }),
+        }),
+        testEnv,
+      );
+      expect(unseenRes.status).toBe(200);
+      const malformed = await app.fetch(
+        new Request(`http://localhost/api/projects/${intruder}/telemetry/reconcile`, {
+          method: "POST",
+          headers: { ...intruderHeaders, "content-type": "application/json" },
+          body: JSON.stringify({ workspaceId: "ws a" }),
+        }),
+        testEnv,
+      );
+      expect(malformed.status).toBe(400);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(pulls).toHaveLength(1);
+    const derived = await deriveProjectSecret(TELEMETRY_SECRET, intruder, "control-plane");
+    expect(await checkControlPlaneSignature(pulls[0]!, { secret: derived })).toBeNull();
+    expect(await checkControlPlaneSignature(pulls[0]!, { secret: TELEMETRY_SECRET })).not.toBeNull();
+    // Another project's worker (holding its own derived secret) refuses the pull Studio signed for this project.
+    expect(await checkControlPlaneSignature(pulls[0]!, { secret: await deriveProjectSecret(TELEMETRY_SECRET, owner, "control-plane") })).not.toBeNull();
+    const kept = await studioDb
+      .prepare("SELECT run_id, project_id, workspace_id FROM px_runs WHERE run_id IN ('run_unseen_ws_1', 'run_unseen_other_ws')")
+      .all<{ run_id: string; project_id: string; workspace_id: string }>();
+    expect(kept.results).toEqual([{ run_id: "run_unseen_ws_1", project_id: intruder, workspace_id: unseen }]);
   });
 });

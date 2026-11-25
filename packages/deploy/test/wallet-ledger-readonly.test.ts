@@ -151,6 +151,8 @@ async function callLedgerRoute(
   const method = options.method ?? "GET";
   const rawBody = options.body ? JSON.stringify(options.body) : undefined;
   const fullUrl = new URL(`http://worker.internal${pathAndQuery}`);
+  // Story 1.17: a signed write carries a one-time requestId in its signed query string.
+  if (method !== "GET") fullUrl.searchParams.set("requestId", crypto.randomUUID());
   // Story 1.4: the control-plane signature over method, path with query, time and body.
   const signed = await signControlPlaneRequest(TEST_SECRET, method, fullUrl, rawBody ?? "");
 

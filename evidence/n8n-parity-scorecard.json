@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T04:35:52.252Z",
+  "generatedAt": "2026-11-25T06:19:39.740Z",
   "scorecardPath": "docs/n8n-parity-scorecard.md",
   "totalInScope": 12,
   "passedInScope": 12,
@@ -131,8 +131,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T04:35:52.252Z",
-    "gitSha": "cf19fc1b72683a6095ea04a058a600abb1674042",
+    "generatedAt": "2026-11-25T06:19:39.740Z",
+    "gitSha": "447a7ff83d97237fcebb0236f04643aec7204784",
     "gitDirty": false,
     "generator": "scripts/parity-scorecard.ts",
     "inputKind": "measured"

@@ -12,6 +12,7 @@ import type { D1Like } from "@poc/sdk";
 import {
   TELEMETRY_SIGNATURE_HEADER,
   listStepEventsForRun,
+  signControlPlaneRequest,
   signTelemetryPayload,
 } from "@poc/telemetry";
 import type { TelemetryWsFrame } from "@poc/telemetry";
@@ -19,6 +20,7 @@ import { ensureStudioD1Schema } from "../src/index.ts";
 import { appWithPlaceholderExecutors as app } from "./placeholder-executors.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { ensureTestProjectToken } from "./project-token.ts";
+import { seedPreviewWorkspace } from "./preview-workspace-seed.ts";
 
 const rawEnv = env as unknown as StudioApiEnv;
 const studioDb = rawEnv.STUDIO_DB as D1Like;
@@ -44,6 +46,7 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
     const executors = buildExecutorsFromCatalog(catalog, PLACEHOLDER_BRICK_EXECUTOR_MODULES);
 
     const payload = {
+      requestId: crypto.randomUUID(),
       runId: "run_worker_shell_1",
       workflowId: "wf_worker_direct",
       revision: 4,
@@ -87,6 +90,7 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
         method: "POST",
         headers: {
           "content-type": "application/json",
+          ...(await signControlPlaneRequest(TEST_ENV.PX_TELEMETRY_SECRET!, "POST", "/__px/runs", rawBody)),
           [TELEMETRY_SIGNATURE_HEADER]: "0000000000000000000000000000000000000000000000000000000000000000",
         },
         body: rawBody,
@@ -100,14 +104,24 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
     );
     expect(badRes?.status).toBe(401);
 
-    // 2. Valid signature -> 200
-    const sig = await signTelemetryPayload(rawBody, TEST_ENV.PX_TELEMETRY_SECRET!);
+    // 1b. Story 1.17: a legacy body-only signature -> 401, nothing runs
+    const legacyRes = await handleWorkflowRunRequest(
+      new Request("http://preview.worker/__px/runs", {
+        method: "POST",
+        headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(rawBody, TEST_ENV.PX_TELEMETRY_SECRET!) },
+        body: rawBody,
+      }),
+      { registry, executors, db: studioDb, telemetrySecret: TEST_ENV.PX_TELEMETRY_SECRET },
+    );
+    expect(legacyRes?.status).toBe(401);
+
+    // 2. Valid control-plane signature -> 200
     const okRes = await handleWorkflowRunRequest(
       new Request("http://preview.worker/__px/runs", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]: sig,
+          ...(await signControlPlaneRequest(TEST_ENV.PX_TELEMETRY_SECRET!, "POST", "/__px/runs", rawBody)),
         },
         body: rawBody,
       }),
@@ -139,6 +153,7 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
     const executors = buildExecutorsFromCatalog(catalog, PLACEHOLDER_BRICK_EXECUTOR_MODULES);
     for (const [workspaceId, code] of [["ws a", "BAD_WORKSPACE"], ["__app__", "BAD_WORKSPACE"], [undefined, "NO_WORKSPACE"]] as const) {
       const rawBody = JSON.stringify({
+        requestId: crypto.randomUUID(),
         runId: `run_bad_ws_${code}`,
         workflowId: "wf_bad_ws",
         ...(workspaceId === undefined ? {} : { workspaceId }),
@@ -147,7 +162,7 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
       const res = await handleWorkflowRunRequest(
         new Request("http://preview.worker/__px/runs", {
           method: "POST",
-          headers: { "content-type": "application/json", [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(rawBody, TEST_ENV.PX_TELEMETRY_SECRET!) },
+          headers: { "content-type": "application/json", ...(await signControlPlaneRequest(TEST_ENV.PX_TELEMETRY_SECRET!, "POST", "/__px/runs", rawBody)) },
           body: rawBody,
         }),
         { registry, executors, db: studioDb, telemetrySecret: TEST_ENV.PX_TELEMETRY_SECRET },
@@ -310,6 +325,54 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
         // Ignore non-JSON frames
       }
     });
+
+    // Story 1.17: a workspace outside the project's preview data is refused 403 before anything is signed or run.
+    const foreignRes = await app.fetch(
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_branching/runs`, {
+        method: "POST",
+        headers: { ...ownerHeaders, "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: "ws_vip_1", runId: "run_foreign_ws_1", triggerPayload: { tier: "vip", balance: 100 } }),
+      }),
+      TEST_ENV,
+    );
+    expect(foreignRes.status).toBe(403);
+    expect(((await foreignRes.json()) as { error: { code: string } }).error.code).toBe("WORKSPACE_NOT_IN_PROJECT");
+    expect(await studioDb.prepare("SELECT 1 AS hit FROM px_runs WHERE run_id = ?1").bind("run_foreign_ws_1").first()).toBeNull();
+    // The same path via /run is refused the same way.
+    const foreignRunRes = await app.fetch(
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_branching/run`, {
+        method: "POST",
+        headers: { ...ownerHeaders, "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: "ws_other_tenant", triggerPayload: { tier: "vip", balance: 100 } }),
+      }),
+      TEST_ENV,
+    );
+    expect(foreignRunRes.status).toBe(403);
+
+    // A workspace that is another project's (an earlier run of project A names it) is refused for this project; so is
+    // one that only has rows in the shared env.DB, which is not this project's own data store.
+    const runIn = async (workspaceId: string) =>
+      app.fetch(
+        new Request(`http://localhost/api/projects/${project}/workflows/wf_branching/runs`, {
+          method: "POST",
+          headers: { ...ownerHeaders, "content-type": "application/json" },
+          body: JSON.stringify({ workspaceId, triggerPayload: { tier: "vip", balance: 100 } }),
+        }),
+        TEST_ENV,
+      );
+    await seedPreviewWorkspace(studioDb, "wf-runs-other-project-a", "ws_of_project_a");
+    expect((await runIn("ws_of_project_a")).status).toBe(403);
+    const sharedDb = rawEnv.DB as D1Like;
+    await sharedDb.prepare("CREATE TABLE IF NOT EXISTS shared_rows_s117 (id INTEGER PRIMARY KEY, workspace_id TEXT NOT NULL)").run();
+    await sharedDb.prepare("INSERT INTO shared_rows_s117 (workspace_id) VALUES ('ws_only_in_shared_db')").run();
+    expect((await runIn("ws_only_in_shared_db")).status).toBe(403);
+    // `default` is the project-shared connection bucket, never a tenant workspace.
+    const defaultRes = await runIn("default");
+    expect(defaultRes.status).toBe(400);
+    expect(((await defaultRes.json()) as { error: { code: string } }).error.code).toBe("BAD_WORKSPACE");
+
+    // Once ws_vip_1 is one of the project's own workspaces (an earlier run of the project names it), a run in it goes ahead.
+    await seedPreviewWorkspace(studioDb, project, "ws_vip_1");
 
     // 3. Trigger successful branching run (tier === "vip" -> step_debit succeeds, step_notify skipped)
     const runRes = await app.fetch(

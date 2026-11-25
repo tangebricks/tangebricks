@@ -22,6 +22,7 @@ import { ensureStudioD1Schema } from "../src/index.ts";
 // Story 0.9: brick action placeholders are injected explicitly so the debit fails for insufficient balance.
 import { appWithPlaceholderExecutors as studioApp } from "./placeholder-executors.ts";
 import type { StudioApiEnv } from "../src/index.ts";
+import { seedPreviewWorkspace } from "./preview-workspace-seed.ts";
 
 const rawEnv = env as unknown as StudioApiEnv;
 const studioDb = rawEnv.STUDIO_DB as D1Like;
@@ -232,6 +233,8 @@ describe("Story 6.3 — Studio API Structured Logs & Errors Panel (/api/projects
     });
     expect(sealRes.status).toBe(200);
 
+    // Story 1.17: the run names ws_alpha, so ws_alpha must be one of the project's own workspaces (an earlier run names it).
+    await seedPreviewWorkspace(studioDb, project, "ws_alpha");
     // 1. Trigger a failing workflow run on wf_payment_flow (balance 40 < amount 250)
     const runRes = await callStudio(
       `/api/projects/${project}/workflows/wf_payment_flow/runs`,
