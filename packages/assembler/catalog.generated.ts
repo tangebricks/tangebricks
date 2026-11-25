@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "de30210f9f4373e999513de38d04c3046260049a87cf475d104abf0621a70d23",
+  "catalogVersion": "2d41891582b008604a603c3a84dcd8e86ba6df6d543161a83802a56523b7cd5c",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -25,7 +25,7 @@ export const catalog: Catalog = {
           "admin"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -108,7 +108,7 @@ export const catalog: Catalog = {
           "mcp"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -194,7 +194,7 @@ export const catalog: Catalog = {
           "audit"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -266,7 +266,7 @@ export const catalog: Catalog = {
           "assets"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -378,7 +378,7 @@ export const catalog: Catalog = {
           "checkout"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -491,8 +491,8 @@ export const catalog: Catalog = {
           "auth"
         ],
         "npmDependencies": {
-          "better-auth": "1.7.25",
-          "hono": "4.13.19",
+          "better-auth": "1.7.27",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -678,7 +678,7 @@ export const catalog: Catalog = {
           "payments"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -924,7 +924,7 @@ export const catalog: Catalog = {
           "schedules"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -1023,7 +1023,7 @@ export const catalog: Catalog = {
           "domains"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1092,7 +1092,7 @@ export const catalog: Catalog = {
           "privacy"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1190,7 +1190,7 @@ export const catalog: Catalog = {
           "docs"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1282,7 +1282,7 @@ export const catalog: Catalog = {
           "documents"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1362,7 +1362,7 @@ export const catalog: Catalog = {
         "migrations": [],
         "routePrefixes": [],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1465,7 +1465,7 @@ export const catalog: Catalog = {
           "armor"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1554,7 +1554,7 @@ export const catalog: Catalog = {
           "flags"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -1642,7 +1642,7 @@ export const catalog: Catalog = {
           "sso"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1730,7 +1730,7 @@ export const catalog: Catalog = {
           "notifications"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1828,7 +1828,7 @@ export const catalog: Catalog = {
           "connect"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -1941,7 +1941,7 @@ export const catalog: Catalog = {
           "chat"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2029,7 +2029,7 @@ export const catalog: Catalog = {
           "ai"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -2172,7 +2172,7 @@ export const catalog: Catalog = {
           "marketplace"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2264,7 +2264,7 @@ export const catalog: Catalog = {
           "usage"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2360,7 +2360,7 @@ export const catalog: Catalog = {
           "workspaces"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2452,7 +2452,7 @@ export const catalog: Catalog = {
           "oauth"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2536,7 +2536,7 @@ export const catalog: Catalog = {
         "migrations": [],
         "routePrefixes": [],
         "npmDependencies": {
-          "hono": "4.13.19"
+          "hono": "4.13.20"
         },
         "settings": {
           "issuer": {
@@ -2643,7 +2643,7 @@ export const catalog: Catalog = {
           "messages"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -2773,7 +2773,7 @@ export const catalog: Catalog = {
           "subscriptions"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2857,7 +2857,7 @@ export const catalog: Catalog = {
           "analytics"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2937,7 +2937,7 @@ export const catalog: Catalog = {
           "api-keys"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3012,7 +3012,7 @@ export const catalog: Catalog = {
           "jobs"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3102,7 +3102,7 @@ export const catalog: Catalog = {
           "policies"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -3198,7 +3198,7 @@ export const catalog: Catalog = {
           "presence"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3277,7 +3277,7 @@ export const catalog: Catalog = {
           "scripts"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3386,7 +3386,7 @@ export const catalog: Catalog = {
           "search"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3457,7 +3457,7 @@ export const catalog: Catalog = {
           "subscriptions"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -3554,7 +3554,7 @@ export const catalog: Catalog = {
           "tabular"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3633,7 +3633,7 @@ export const catalog: Catalog = {
           "threads"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3712,7 +3712,7 @@ export const catalog: Catalog = {
           "onboarding"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3792,7 +3792,7 @@ export const catalog: Catalog = {
           "users"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3851,7 +3851,7 @@ export const catalog: Catalog = {
           "vectors"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3930,7 +3930,7 @@ export const catalog: Catalog = {
           "webhooks"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -4099,7 +4099,7 @@ export const catalog: Catalog = {
           "runs"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},

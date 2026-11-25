@@ -85,7 +85,7 @@ describe("the two-brick blueprint", () => {
     const result = files(twoBricks);
     const wrangler = JSON.parse(result.files["wrangler.jsonc"]!.replace(/^\/\/.*\n/, ""));
     expect(wrangler).toMatchObject({ name: "invoice-flow", main: "src/index.ts", d1_databases: [{ binding: "DB", database_name: "invoice-flow", migrations_dir: "migrations" }] });
-    expect(JSON.parse(result.files["package.json"]!)).toMatchObject({ name: "invoice-flow", dependencies: { "@poc/credit-wallet": "workspace:*", "@poc/multi-workspace": "workspace:*", hono: "4.13.19", zod: "4.6.7" } });
+    expect(JSON.parse(result.files["package.json"]!)).toMatchObject({ name: "invoice-flow", dependencies: { "@poc/credit-wallet": "workspace:*", "@poc/multi-workspace": "workspace:*", hono: "4.13.20", zod: "4.6.7" } });
     expect(JSON.parse(result.files["project.json"]!).migrations).toHaveLength(5);
   });
 
@@ -368,7 +368,7 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "migrations/0004_credit-wallet__0003_order_currency.sql": "93a348efbe24eeccf8e252308153a3499c6ac1265a4677707af13f3b7a5f91e0",
       "migrations/0005_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "c77c2e7c33606f6a369cf1b1a90809da38adaa3a5145d15159f30fb704c49487",
-      "package.json": "24d1388075ec69744a13f379f37b38441588d2cdb511352eb58f6ab9d0e1a946",
+      "package.json": "c9446d18c11331be16e33709dfedeaa73710f0da02f82d5392b71a330699ffbc",
       "project.json": "71f1bc94dc8be40109a43a604fac755238d0539e809e5c81b86ef267341d716a",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       // Story 1.10: only the entry changed (the workspace-data purge, the suspension check and its app.use lines).
@@ -387,7 +387,7 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "migrations/0005_entity__invoices.sql": "43c67676212cbfd376e0479b1fe3e955c054eb127b09e84ad0922012e1a445ff",
       "migrations/0006_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "fc78a27cbc505836cef15723d4c63e5feed04a53f4071a2ef1f7868d8a7fe902",
-      "package.json": "95f5732b726396206cd43cc4916b7dcd19b5519f4c31ba4ac0996a1a3edb8e4f",
+      "package.json": "58b30a29bfd0e01247373021a5a6073c63b86dbd13d1c34355c4324abb134c50",
       "project.json": "90e68a35fbc3b36f5a152bf9bd393b57f92f909e7385e785b29c3e50f63470d1",
       "src/entities.json": "5b153446783e693c0ada62b9c2626071e38f3e3e9bb047dd5a3a39c24179ba0a",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
@@ -411,7 +411,7 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "migrations/0004_cron-alarms__0002_catch_up.sql": "4d7aa86c89511f06dbf65e841ce31bb7f84d825da41d3317bb84a21921f52011",
       "migrations/0005_shell__px_schedules.sql": "5876bb9226cf588bb29d757b10c46b24ed970f60e1d0964964b734285e11e752",
       "openapi.json": "c3964d819bb933d81d0c6e576db76ab8e01a0c3ff8ce7ebc94b36d87b7f8956c",
-      "package.json": "674a79407b61b5947fa4ed7fa2e190c5ac39a255ca61b47ec6b6097d37aff6ea",
+      "package.json": "44606884d6a042dad2cb29c771257621676d21cb0e390e8b1ef12ba833426bef",
       "project.json": "2115551c1b468de5bb4ceb23c44d6e348790b307265fefa91329cff9b40db02d",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       "src/index.ts": "a470154be1eac25c0fdc667fcea5892b971661385ed9049a0482e50f915b564e",

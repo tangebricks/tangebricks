@@ -34,7 +34,7 @@ In your project:
     "@poc/multi-workspace": "file:./vendor/poc-multi-workspace-1.0.0.tgz",
     "@poc/credit-wallet": "file:./vendor/poc-credit-wallet-1.0.0.tgz",
     "@poc/audit-trail": "file:./vendor/poc-audit-trail-1.0.0.tgz",
-    "hono": "4.13.19"
+    "hono": "4.13.20"
   },
   "pnpm": { "overrides": { "@poc/sdk": "file:./vendor/poc-sdk-0.0.0.tgz" } }
 }
