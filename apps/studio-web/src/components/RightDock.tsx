@@ -106,9 +106,12 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
   const handleSaveSettings = async () => {
     if (!enabledEntry || isViewer || isMutating || hasValidationErrors) return;
     const validatedConfig: Record<string, unknown> = {};
-    for (const [key] of settingsEntries) {
+    for (const [key, def] of settingsEntries) {
       const res = validationResults[key];
       if (!res || !res.ok) return;
+      // An empty string for a setting whose default is empty means "not set": leave it out, as MCP does, so the
+      // blueprint (and its semantic hash) is the same whichever surface configured the brick.
+      if (res.value === "" && (def.default ?? "") === "") continue;
       validatedConfig[key] = res.value;
     }
     const result = await commitOps(
