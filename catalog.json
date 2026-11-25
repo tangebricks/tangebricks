@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "536a8257a268e2bca80d3aed81c2c4ed2f721e54e72ef8eb684a71ca327536e1",
+  "catalogVersion": "de30210f9f4373e999513de38d04c3046260049a87cf475d104abf0621a70d23",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -368,7 +368,8 @@
           "workspace-context"
         ],
         "migrations": [
-          "migrations/0001_checkout_gateway.sql"
+          "migrations/0001_checkout_gateway.sql",
+          "migrations/0002_verified_payments.sql"
         ],
         "routePrefixes": [
           "checkout"
@@ -377,7 +378,15 @@
           "hono": "4.13.19",
           "zod": "4.6.7"
         },
-        "settings": {},
+        "settings": {
+          "paymentCurrency": {
+            "type": "string",
+            "pattern": "^(|A(OA|[EMU]D|[NW]G|LL|[FZ]N|RS)|B(OB|[BHMNSZ]D|IF|RL|AM|[GTY]N|WP|DT|OV)|C(RC|AD|[HV]E|[DHL]F|ZK|[LOU]P|OU|HW|NY)|D(JF|KK|OP|ZD)|E(GP|RN|TB|UR)|F(JD|KP)|G(BP|EL|HS|IP|MD|NF|TQ|YD)|H(KD|NL|TG|UF)|I(QD|SK|[DNR]R|LS)|J(MD|OD|PY)|K(ES|GS|HR|MF|PW|RW|WD|YD|ZT)|L(AK|BP|KR|RD|SL|YD)|M(GA|[AK]D|[MW]K|DL|[XZ]N|OP|[UVY]R|NT|RU|XV)|N(AD|GN|IO|OK|PR|ZD)|OMR|P(AB|EN|GK|HP|KR|LN|YG)|QAR|R(ON|SD|UB|WF)|S(VC|[BGR]D|LE|DG|EK|ZL|TN|[HSY]P|[AC]R|OS)|T(HB|[NTW]D|OP|[JZ]S|MT|RY)|U(AH|GX|S[DN]|Y[IUW]|ZS)|V(E[DS]|ND|UV)|WST|X(CD|[AOP]F|CG)|YER|Z(AR|MW|WG))$",
+            "example": "INR",
+            "maxLength": 3,
+            "default": ""
+          }
+        },
         "nodes": [],
         "ui": {
           "displayName": "Multi-Gateway Checkout & Taxes",
@@ -395,6 +404,14 @@
             "limit": 30,
             "windowSeconds": 60,
             "key": "workspace"
+          },
+          {
+            "method": "POST",
+            "path": "/checkout/webhook",
+            "bucket": "checkout-webhook",
+            "limit": 300,
+            "windowSeconds": 60,
+            "key": "ip"
           }
         ],
         "privacy": {
@@ -429,10 +446,17 @@
             {
               "factory": "createCheckoutRoutes",
               "mountAt": "/api",
-              "options": {},
+              "options": {
+                "currency": {
+                  "$setting": "paymentCurrency"
+                }
+              },
               "guardPaths": [
                 "/api/checkout",
-                "/api/checkout/*"
+                "/api/checkout/sessions",
+                "/api/checkout/sessions/*",
+                "/api/checkout/invoices",
+                "/api/checkout/invoices/*"
               ],
               "guardWith": "workspace-context"
             }
@@ -440,7 +464,8 @@
         }
       },
       "files": {
-        "migrations/0001_checkout_gateway.sql": "-- checkout-gateway 0001: Checkout sessions, tax calculation, and invoices\n-- Modular: No cross-brick foreign key on workspace_id.\n-- Prefixed with pay_ to avoid schema collision.\n\nCREATE TABLE IF NOT EXISTS pay_checkout_sessions (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  gateway TEXT NOT NULL CHECK (gateway IN ('stripe', 'lemonsqueezy', 'cashfree', 'paddle', 'custom')),\n  amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),\n  currency TEXT NOT NULL DEFAULT 'usd' CHECK (length(currency) = 3),\n  tax_cents INTEGER NOT NULL DEFAULT 0 CHECK (tax_cents >= 0),\n  total_cents INTEGER NOT NULL CHECK (total_cents >= amount_cents),\n  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'expired', 'canceled')),\n  customer_email TEXT CHECK (customer_email IS NULL OR length(customer_email) <= 255),\n  checkout_url TEXT NOT NULL CHECK (length(checkout_url) <= 512),\n  metadata_json TEXT CHECK (metadata_json IS NULL OR length(metadata_json) <= 2048),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  completed_at TEXT\n);\n\nCREATE INDEX IF NOT EXISTS pay_checkout_sessions_ws_idx ON pay_checkout_sessions(workspace_id, status);\n\nCREATE TABLE IF NOT EXISTS pay_invoices (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  session_id TEXT REFERENCES pay_checkout_sessions(id) ON DELETE SET NULL,\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  invoice_number TEXT UNIQUE NOT NULL CHECK (length(invoice_number) BETWEEN 1 AND 64),\n  subtotal_cents INTEGER NOT NULL CHECK (subtotal_cents >= 0),\n  tax_cents INTEGER NOT NULL DEFAULT 0 CHECK (tax_cents >= 0),\n  total_cents INTEGER NOT NULL CHECK (total_cents >= subtotal_cents),\n  currency TEXT NOT NULL DEFAULT 'usd' CHECK (length(currency) = 3),\n  status TEXT NOT NULL DEFAULT 'paid' CHECK (status IN ('draft', 'open', 'paid', 'void', 'uncollectible')),\n  billing_details_json TEXT CHECK (billing_details_json IS NULL OR length(billing_details_json) <= 2048),\n  line_items_json TEXT NOT NULL CHECK (length(line_items_json) <= 4096),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS pay_invoices_ws_idx ON pay_invoices(workspace_id, created_at);\n"
+        "migrations/0001_checkout_gateway.sql": "-- checkout-gateway 0001: Checkout sessions, tax calculation, and invoices\n-- Modular: No cross-brick foreign key on workspace_id.\n-- Prefixed with pay_ to avoid schema collision.\n\nCREATE TABLE IF NOT EXISTS pay_checkout_sessions (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  gateway TEXT NOT NULL CHECK (gateway IN ('stripe', 'lemonsqueezy', 'cashfree', 'paddle', 'custom')),\n  amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),\n  currency TEXT NOT NULL DEFAULT 'usd' CHECK (length(currency) = 3),\n  tax_cents INTEGER NOT NULL DEFAULT 0 CHECK (tax_cents >= 0),\n  total_cents INTEGER NOT NULL CHECK (total_cents >= amount_cents),\n  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'expired', 'canceled')),\n  customer_email TEXT CHECK (customer_email IS NULL OR length(customer_email) <= 255),\n  checkout_url TEXT NOT NULL CHECK (length(checkout_url) <= 512),\n  metadata_json TEXT CHECK (metadata_json IS NULL OR length(metadata_json) <= 2048),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  completed_at TEXT\n);\n\nCREATE INDEX IF NOT EXISTS pay_checkout_sessions_ws_idx ON pay_checkout_sessions(workspace_id, status);\n\nCREATE TABLE IF NOT EXISTS pay_invoices (\n  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),\n  session_id TEXT REFERENCES pay_checkout_sessions(id) ON DELETE SET NULL,\n  workspace_id TEXT NOT NULL CHECK (length(workspace_id) BETWEEN 1 AND 128),\n  invoice_number TEXT UNIQUE NOT NULL CHECK (length(invoice_number) BETWEEN 1 AND 64),\n  subtotal_cents INTEGER NOT NULL CHECK (subtotal_cents >= 0),\n  tax_cents INTEGER NOT NULL DEFAULT 0 CHECK (tax_cents >= 0),\n  total_cents INTEGER NOT NULL CHECK (total_cents >= subtotal_cents),\n  currency TEXT NOT NULL DEFAULT 'usd' CHECK (length(currency) = 3),\n  status TEXT NOT NULL DEFAULT 'paid' CHECK (status IN ('draft', 'open', 'paid', 'void', 'uncollectible')),\n  billing_details_json TEXT CHECK (billing_details_json IS NULL OR length(billing_details_json) <= 2048),\n  line_items_json TEXT NOT NULL CHECK (length(line_items_json) <= 4096),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS pay_invoices_ws_idx ON pay_invoices(workspace_id, created_at);\n",
+        "migrations/0002_verified_payments.sql": "-- checkout-gateway 0002: what a verified provider payment is checked against, and one invoice per session (story 2.3).\n--\n-- customer_id: the caller a provider order was created for (NULL for a session made without a gateway).\n-- payment_session_id: the provider's session id returned to the client instead of a placeholder URL.\n-- provider_ref: the provider's own reference for the order, which the order is fetched by.\n-- line_items_json: the session's line items, copied onto the invoice the verified webhook issues (gateway sessions only).\n-- The unique index makes a second invoice for one session impossible to commit.\n\nALTER TABLE pay_checkout_sessions ADD COLUMN customer_id TEXT CHECK (customer_id IS NULL OR length(customer_id) BETWEEN 1 AND 200);\nALTER TABLE pay_checkout_sessions ADD COLUMN payment_session_id TEXT CHECK (payment_session_id IS NULL OR length(payment_session_id) <= 512);\nALTER TABLE pay_checkout_sessions ADD COLUMN provider_ref TEXT CHECK (provider_ref IS NULL OR length(provider_ref) BETWEEN 1 AND 255);\nALTER TABLE pay_checkout_sessions ADD COLUMN line_items_json TEXT CHECK (line_items_json IS NULL OR length(line_items_json) <= 4096);\n\nCREATE UNIQUE INDEX IF NOT EXISTS pay_invoices_session_uidx ON pay_invoices(session_id) WHERE session_id IS NOT NULL;\n"
       }
     },
     "core-auth": {
@@ -642,7 +667,8 @@
         ],
         "migrations": [
           "migrations/0001_credit_wallet.sql",
-          "migrations/0002_workspace_scoped_idempotency.sql"
+          "migrations/0002_workspace_scoped_idempotency.sql",
+          "migrations/0003_order_currency.sql"
         ],
         "routePrefixes": [
           "wallet",
@@ -664,6 +690,13 @@
             "min": 1,
             "max": 1000000000,
             "default": 1
+          },
+          "paymentCurrency": {
+            "type": "string",
+            "pattern": "^(|A(OA|[EMU]D|[NW]G|LL|[FZ]N|RS)|B(OB|[BHMNSZ]D|IF|RL|AM|[GTY]N|WP|DT|OV)|C(RC|AD|[HV]E|[DHL]F|ZK|[LOU]P|OU|HW|NY)|D(JF|KK|OP|ZD)|E(GP|RN|TB|UR)|F(JD|KP)|G(BP|EL|HS|IP|MD|NF|TQ|YD)|H(KD|NL|TG|UF)|I(QD|SK|[DNR]R|LS)|J(MD|OD|PY)|K(ES|GS|HR|MF|PW|RW|WD|YD|ZT)|L(AK|BP|KR|RD|SL|YD)|M(GA|[AK]D|[MW]K|DL|[XZ]N|OP|[UVY]R|NT|RU|XV)|N(AD|GN|IO|OK|PR|ZD)|OMR|P(AB|EN|GK|HP|KR|LN|YG)|QAR|R(ON|SD|UB|WF)|S(VC|[BGR]D|LE|DG|EK|ZL|TN|[HSY]P|[AC]R|OS)|T(HB|[NTW]D|OP|[JZ]S|MT|RY)|U(AH|GX|S[DN]|Y[IUW]|ZS)|V(E[DS]|ND|UV)|WST|X(CD|[AOP]F|CG)|YER|Z(AR|MW|WG))$",
+            "example": "INR",
+            "maxLength": 3,
+            "default": ""
           }
         },
         "nodes": [
@@ -740,7 +773,7 @@
           "category": "billing",
           "summary": "Atomic double-entry credit ledger, balance invariant engine, and idempotency keys.",
           "maturity": "beta",
-          "maturityReason": "NO_DEFAULT_ADAPTER: No payment gateway is configured by default (payment routes answer 503 NOT_CONFIGURED); pending real provider adapter.",
+          "maturityReason": "NO_DEFAULT_ADAPTER: Provider adapters exist (@poc/gateway-adapters) but none is wired by default; payment routes answer 503 NOT_CONFIGURED until a host passes a gateway and a currency.",
           "behaviourTest": "test/credit-wallet.test.ts"
         },
         "rateLimits": [
@@ -765,6 +798,14 @@
             "path": "/payments/verify",
             "bucket": "wallet-verify",
             "limit": 60,
+            "windowSeconds": 60,
+            "key": "ip"
+          },
+          {
+            "method": "POST",
+            "path": "/payments/webhook",
+            "bucket": "wallet-webhook",
+            "limit": 300,
             "windowSeconds": 60,
             "key": "ip"
           }
@@ -837,6 +878,9 @@
                 },
                 "minOrderAmount": {
                   "$setting": "minOrderAmount"
+                },
+                "currency": {
+                  "$setting": "paymentCurrency"
                 }
               },
               "guardPaths": [
@@ -851,7 +895,8 @@
       },
       "files": {
         "migrations/0001_credit_wallet.sql": "-- credit-wallet 0001: balances, ledger and payment orders.\n-- Reference: cephlow apps/api-worker/schema.sql (workspaces.current_balance, ledgers, payment_orders).\n--\n-- Differences from cephlow, each on purpose:\n--   * Credits are whole numbers (INTEGER). cephlow uses REAL, and sums of fractions such as its default 0.2\n--     email cost are not exact in floating point.\n--   * The balance lives in this brick's own table, keyed by workspace_id, so this brick never alters a table\n--     that belongs to multi-workspace. There is no foreign key, so the bricks migrate independently.\n--   * CHECK (balance >= 0): the database refuses an overdraw. A deduction that would overdraw raises, and D1\n--     rolls its whole batch back, ledger row included.\n--   * idempotency_key is UNIQUE: a payment order can be credited only once, because the ledger row that\n--     records the credit carries the order's key, and a second one violates the constraint.\n-- Table names carry the brick's prefix so two bricks can never collide.\n\nCREATE TABLE IF NOT EXISTS credit_wallets (\n  workspace_id TEXT PRIMARY KEY,\n  balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE TABLE IF NOT EXISTS credit_ledger (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  type TEXT NOT NULL CHECK (type IN ('topup', 'deduction')),\n  amount INTEGER NOT NULL,\n  balance_after INTEGER NOT NULL CHECK (balance_after >= 0),\n  reason TEXT NOT NULL,\n  metadata TEXT,\n  idempotency_key TEXT UNIQUE,\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS credit_ledger_workspace_idx ON credit_ledger(workspace_id);\n\nCREATE TABLE IF NOT EXISTS credit_orders (\n  order_id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  amount INTEGER NOT NULL CHECK (amount > 0),\n  processed INTEGER NOT NULL DEFAULT 0 CHECK (processed IN (0, 1)),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS credit_orders_workspace_idx ON credit_orders(workspace_id);\n",
-        "migrations/0002_workspace_scoped_idempotency.sql": "-- credit-wallet 0002: idempotency keys are unique per workspace, not across the platform (AD-V2, story 0.7).\n--\n-- 0001 declared `credit_ledger.idempotency_key TEXT UNIQUE`, so one workspace's key could collide with another's:\n-- a second workspace that reused a key got the first workspace's \"duplicate\" answer (and its balance) without\n-- being charged. The key is now unique per (workspace_id, idempotency_key).\n--\n-- SQLite cannot drop a column-level UNIQUE, so the table is rebuilt: create the new table, copy every row, drop the\n-- old table, rename, and recreate its index. Every column, type, default and CHECK of 0001 is kept as it was\n-- (CHECK (balance_after >= 0) is part of the overdraw refusal); 0001 defines no triggers on this table.\n-- credit_wallets (CHECK (balance >= 0)) and credit_orders are not touched.\n\nCREATE TABLE IF NOT EXISTS credit_ledger_v2 (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  type TEXT NOT NULL CHECK (type IN ('topup', 'deduction')),\n  amount INTEGER NOT NULL,\n  balance_after INTEGER NOT NULL CHECK (balance_after >= 0),\n  reason TEXT NOT NULL,\n  metadata TEXT,\n  idempotency_key TEXT,\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  UNIQUE (workspace_id, idempotency_key)\n);\n\nINSERT INTO credit_ledger_v2 (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key, created_at)\nSELECT id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key, created_at\nFROM credit_ledger\nORDER BY rowid;\n\nDROP TABLE credit_ledger;\n\nALTER TABLE credit_ledger_v2 RENAME TO credit_ledger;\n\nCREATE INDEX IF NOT EXISTS credit_ledger_workspace_idx ON credit_ledger(workspace_id);\n"
+        "migrations/0002_workspace_scoped_idempotency.sql": "-- credit-wallet 0002: idempotency keys are unique per workspace, not across the platform (AD-V2, story 0.7).\n--\n-- 0001 declared `credit_ledger.idempotency_key TEXT UNIQUE`, so one workspace's key could collide with another's:\n-- a second workspace that reused a key got the first workspace's \"duplicate\" answer (and its balance) without\n-- being charged. The key is now unique per (workspace_id, idempotency_key).\n--\n-- SQLite cannot drop a column-level UNIQUE, so the table is rebuilt: create the new table, copy every row, drop the\n-- old table, rename, and recreate its index. Every column, type, default and CHECK of 0001 is kept as it was\n-- (CHECK (balance_after >= 0) is part of the overdraw refusal); 0001 defines no triggers on this table.\n-- credit_wallets (CHECK (balance >= 0)) and credit_orders are not touched.\n\nCREATE TABLE IF NOT EXISTS credit_ledger_v2 (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  type TEXT NOT NULL CHECK (type IN ('topup', 'deduction')),\n  amount INTEGER NOT NULL,\n  balance_after INTEGER NOT NULL CHECK (balance_after >= 0),\n  reason TEXT NOT NULL,\n  metadata TEXT,\n  idempotency_key TEXT,\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  UNIQUE (workspace_id, idempotency_key)\n);\n\nINSERT INTO credit_ledger_v2 (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key, created_at)\nSELECT id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key, created_at\nFROM credit_ledger\nORDER BY rowid;\n\nDROP TABLE credit_ledger;\n\nALTER TABLE credit_ledger_v2 RENAME TO credit_ledger;\n\nCREATE INDEX IF NOT EXISTS credit_ledger_workspace_idx ON credit_ledger(workspace_id);\n",
+        "migrations/0003_order_currency.sql": "-- credit-wallet 0003: each payment order remembers its currency and the provider's reference (story 2.3).\n--\n-- A provider's \"PAID\" answer is credited only if its currency is the order's own. The columns are added, never\n-- back-filled: a row created before this migration has NULL currency, and confirmation holds it to the wallet's\n-- configured currency instead. provider_ref is the provider's own id for the order (a payment intent id, for\n-- example), which the order is fetched by. Nothing else in credit_orders changes.\n\nALTER TABLE credit_orders ADD COLUMN currency TEXT CHECK (currency IS NULL OR length(currency) = 3);\nALTER TABLE credit_orders ADD COLUMN provider_ref TEXT CHECK (provider_ref IS NULL OR length(provider_ref) BETWEEN 1 AND 255);\n"
       }
     },
     "cron-alarms": {

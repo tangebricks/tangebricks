@@ -4,6 +4,7 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_credit_wallet.sql?raw";
 import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
+import migration0003 from "../migrations/0003_order_currency.sql?raw";
 import { createWallet, createFakeGateway, type Wallet } from "../src/index.ts";
 
 const db = env.DB as D1Like;
@@ -27,6 +28,7 @@ async function resetDb(): Promise<void> {
   await db.prepare("DROP TABLE IF EXISTS credit_wallets").run();
   await applyMigration(db, migration);
   await applyMigration(db, migration0002);
+  await applyMigration(db, migration0003);
 }
 
 beforeEach(async () => {
@@ -37,7 +39,7 @@ beforeEach(async () => {
 describe("Credit Wallet Brick Behaviour Suite", () => {
   it("initializes balance and performs atomic top-up and deduction", async () => {
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
 
     await wallet.openWallet(WS_TEST, 100);
     const bal1 = await wallet.getBalance(WS_TEST);
@@ -72,7 +74,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
 
   it("handles concurrent deductions without ever going negative", async () => {
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
 
     // Initial balance: 100
     await wallet.openWallet(WS_TEST, 100);
@@ -110,7 +112,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
 
   it("credits a duplicate payment webhook only once (idempotent confirmation)", async () => {
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
     await wallet.openWallet(WS_TEST, 0);
 
     // Create an order for 50 units (50 credits)
@@ -122,7 +124,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     expect(order.orderId).toBeDefined();
 
     // Set gateway status to PAID (simulating payment gateway webhook/completion)
-    gateway.setOrder(order.orderId, { status: "PAID", amount: 50 });
+    gateway.setOrder(order.orderId, { status: "PAID" });
 
     // First confirmation: PAID
     const conf1 = await wallet.confirmOrder(order.orderId);
@@ -160,7 +162,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
 
   it("supports a refund or reversal path that atomically restores balance", async () => {
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
     await wallet.openWallet(WS_TEST, 100);
 
     // Deduct 40 credits
@@ -202,7 +204,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
 
   it("enforces rounding and smallest currency units (integer units)", async () => {
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
     await wallet.openWallet(WS_TEST, 50);
 
     // Negative path: fractional amounts rejected
@@ -247,7 +249,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
 
   it("verifies ledger sums to final balance after 100 random ops (property test with fixed seed)", async () => {
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
     const rng = mulberry32(42);
 
     const initialBalance = 150;
@@ -307,7 +309,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
 
   it("refuses cross-workspace deduction and never leaks balance between tenants", async () => {
     const gateway = createFakeGateway();
-    const wallet = createWallet(db, gateway);
+    const wallet = createWallet(db, gateway, { currency: "INR" });
 
     await wallet.openWallet(WS_TEST, 500);
     await wallet.openWallet(WS_OTHER, 10);

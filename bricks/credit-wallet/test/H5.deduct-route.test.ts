@@ -9,6 +9,7 @@ import mwMigration from "../../multi-workspace/migrations/0001_multi_workspace.s
 import { stubIdentity } from "../../multi-workspace/test/support/stub-identity.ts";
 import walletMigration from "../migrations/0001_credit_wallet.sql?raw";
 import walletMigration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
+import walletMigration0003 from "../migrations/0003_order_currency.sql?raw";
 import { createFakeGateway, createWallet, createWalletRoutes } from "../src/index.ts";
 
 // POST /wallet/deduct: the HTTP way to spend. Written for H6 (the assembled project must refuse spending another
@@ -19,7 +20,7 @@ const app = new Hono<WorkspaceEnv>();
 app.use("/api/*", stubIdentity);
 app.use("/api/wallet", workspaceMiddleware);
 app.use("/api/wallet/*", workspaceMiddleware);
-app.route("/api", createWalletRoutes({ gateway: createFakeGateway() }));
+app.route("/api", createWalletRoutes({ gateway: createFakeGateway(), currency: "INR" }));
 
 const spend = (user: string | null, workspace: string | null, body: unknown, extra: Record<string, string> = {}) =>
   app.fetch(
@@ -40,6 +41,7 @@ beforeEach(async () => {
   await applyMigration(db, mwMigration);
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
+  await applyMigration(db, walletMigration0003);
   for (const [ws, owner] of [["ws-a", "alice"], ["ws-b", "bob"]] as const) {
     await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(ws, ws, owner).run();
     await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").bind(ws, owner).run();

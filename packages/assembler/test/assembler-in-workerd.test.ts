@@ -12,8 +12,9 @@ describe("the assembler in workerd", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.order).toEqual(["multi-workspace", "credit-wallet"]);
-    // 11 since story 0.21: credit-wallet's rate limits bring the px_rate_limits migration.
-    expect(Object.keys(result.files)).toHaveLength(11);
+    // 11 since story 0.21 (credit-wallet's rate limits bring the px_rate_limits migration); 12 since story 2.3
+    // (credit-wallet's order currency migration).
+    expect(Object.keys(result.files)).toHaveLength(12);
     expect(result.files["src/index.ts"]).toContain("creditsPerUnit: 10");
   });
 

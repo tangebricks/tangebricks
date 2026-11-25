@@ -6,6 +6,7 @@ import { applyMigration, createRegistry, toyRegistry } from "@poc/sdk";
 import type { D1Like, Executor, GraphEdge, GraphNode } from "@poc/sdk";
 import walletMigration from "../migrations/0001_credit_wallet.sql?raw";
 import walletMigration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
+import walletMigration0003 from "../migrations/0003_order_currency.sql?raw";
 import { createWallet, creditWalletBricks, creditWalletExecutors } from "../src/index.ts";
 
 // Rewritten from cephlow apps/api-worker/src/routes/clientGenerate.test.ts (see ported-tests.json). The originals drive
@@ -35,6 +36,7 @@ beforeEach(async () => {
   for (const table of ["credit_ledger", "credit_orders", "credit_wallets"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
+  await applyMigration(db, walletMigration0003);
 });
 
 describe("POST /batches/:batchId/client-generate - Credit Security & Regeneration Rates", () => {

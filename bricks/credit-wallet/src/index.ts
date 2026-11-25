@@ -1,13 +1,13 @@
 export type { D1Like, D1Result, D1Statement } from "./d1.ts";
 export { applyMigration, splitStatements } from "./migrate.ts";
-export { createFakeGateway } from "./gateway.ts";
-export type { FakeGateway, GatewayOrder, PaymentGateway } from "./gateway.ts";
+export { FAKE_WEBHOOK_SIGNATURE_HEADER, createFakeGateway } from "./gateway.ts";
+export type { FakeGateway, GatewayOrder, PaymentGateway, WebhookVerification } from "./gateway.ts";
 export { createWalletRoutes } from "./routes.ts";
 export type { WalletEnv, WalletRoutesOptions } from "./routes.ts";
 export { createWallet } from "./wallet.ts";
 export { walletCharger } from "./charger.ts";
 export type { ChargeResult, RefundResult, WalletCharger } from "./charger.ts";
-export type { ConfirmResult, DeductResult, OrderRow, Wallet } from "./wallet.ts";
+export type { ConfirmResult, DeductResult, OrderRow, Wallet, WalletOptions } from "./wallet.ts";
 import { NotConfiguredError, type Executor } from "@poc/sdk";
 import { deductCreditsExecutor } from "./brick.ts";
 export { DEDUCT_CREDITS, WALLET_DB_BINDING, WorkspaceMismatchError, creditWalletBricks, creditWalletExecutors, deductCreditsExecutor, deductCreditsManifest } from "./brick.ts";

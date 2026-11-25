@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./stripe": "./src/stripe-payment-gateway.ts"
+    "./stripe": "./src/stripe-payment-gateway.ts",
+    "./cashfree": "./src/cashfree-payment-gateway.ts"
   },
   "scripts": {
     "test": "cd ../.. && vitest run packages/gateway-adapters/test"
@@ -13,6 +14,10 @@
   "dependencies": {
     "@poc/assembler": "workspace:*",
     "@poc/credit-wallet": "workspace:*",
-    "@poc/runtime": "workspace:*"
+    "@poc/runtime": "workspace:*",
+    "@poc/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@poc/checkout-gateway": "workspace:*"
   }
 }

@@ -1,0 +1,27 @@
+{
+  "cf_order_id": "2149460581",
+  "created_at": "2023-08-11T18:02:46+05:30",
+  "customer_details": {
+    "customer_id": "user-123",
+    "customer_name": "Test Customer",
+    "customer_email": "customer@example.com",
+    "customer_phone": "9999999999",
+    "customer_uid": null
+  },
+  "entity": "order",
+  "order_amount": 150.00,
+  "order_currency": "INR",
+  "order_expiry_time": "2023-09-10T18:02:46+05:30",
+  "order_id": "order_0123456789abcdef",
+  "order_meta": {
+    "return_url": null,
+    "notify_url": null,
+    "payment_methods": null
+  },
+  "order_note": null,
+  "order_splits": [],
+  "order_status": "ACTIVE",
+  "order_tags": null,
+  "payment_session_id": "session_a1VXIPJo8kh7IBigVXX8LgTMupQW_cu0Iy4mDJbHPeW1y6AbMlQXlSRCb7RCMw3vC3OQ-HtCLNdxKsdC5ghqqyl0Fg6wl5UhSkCpEfUAarm",
+  "terminal_data": null
+}
