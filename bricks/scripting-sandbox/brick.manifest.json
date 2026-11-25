@@ -60,6 +60,16 @@
       "sideEffects": "none"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "scr_scripts"
+      },
+      {
+        "table": "scr_executions"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/scripting-sandbox",
     "routes": [

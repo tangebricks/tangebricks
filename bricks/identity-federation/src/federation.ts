@@ -565,12 +565,23 @@ export class IdentityFederationService {
     connectionId: string,
     scimToken: string,
     scimUser: { id: string; userName: string; displayName?: string }
-  ): Promise<{ ok: boolean; identity?: FederatedIdentity; error?: string }> {
+  ): Promise<{ ok: boolean; identity?: FederatedIdentity; error?: string; code?: "WORKSPACE_SUSPENDED" | "WORKSPACE_STATE_UNAVAILABLE" }> {
     const conn = await this.getConnection(connectionId);
     if (!conn) return { ok: false, error: "Connection not found" };
     if (!conn.scim_token || conn.scim_token !== scimToken) {
       return { ok: false, error: "Invalid SCIM bearer token" };
     }
+
+    // Story 1.10: SCIM has no workspace guard in front of it, so it checks the connection's workspace itself. A
+    // suspended (or missing) workspace is refused; when the workspace table cannot be read it fails closed.
+    let workspace: { suspended: number } | null;
+    try {
+      workspace = await global(this.db, "mw_workspaces", "SCIM sync refuses a suspended workspace")
+        .first<{ suspended: number }>("id = ?", [conn.workspace_id]);
+    } catch {
+      return { ok: false, code: "WORKSPACE_STATE_UNAVAILABLE", error: "Workspace state unavailable" };
+    }
+    if (!workspace || workspace.suspended) return { ok: false, code: "WORKSPACE_SUSPENDED", error: "Workspace suspended" };
 
     const fid = await this.linkFederatedIdentity(
       conn.id,

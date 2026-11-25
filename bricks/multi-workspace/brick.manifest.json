@@ -32,17 +32,36 @@
       "reason": "Root workspace tenant table whose primary key id is the workspace identifier"
     }
   ],
+  "workspaceData": {
+    "tables": [],
+    "exempt": [
+      {
+        "table": "mw_members",
+        "reason": "Removed by this brick's own workspace delete route, in the same batch as the purge"
+      },
+      {
+        "table": "mw_invites",
+        "reason": "Removed by this brick's own workspace delete route, in the same batch as the purge"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/multi-workspace",
     "routes": [
       {
         "factory": "createWorkspaceRoutes",
-        "mountAt": "/api"
+        "mountAt": "/api",
+        "options": {
+          "workspaceDataPurge": {
+            "$workspaceData": "purgeWorkspaceData"
+          }
+        }
       }
     ],
     "guard": {
       "export": "workspaceMiddleware",
-      "capability": "workspace-context"
+      "capability": "workspace-context",
+      "suspension": "requireNotSuspended"
     }
   },
   "privacy": {

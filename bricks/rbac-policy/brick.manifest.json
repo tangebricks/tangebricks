@@ -41,6 +41,16 @@
       "reason": "Global permission catalog referenced by workspace-scoped roles"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "rbac_roles"
+      },
+      {
+        "table": "rbac_role_assignments"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/rbac-policy",
     "routes": [

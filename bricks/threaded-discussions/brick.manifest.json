@@ -30,6 +30,16 @@
     "behaviourTest": "test/threads.test.ts",
     "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "cmt_threads"
+      },
+      {
+        "table": "cmt_comments"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/threaded-discussions",
     "routes": [

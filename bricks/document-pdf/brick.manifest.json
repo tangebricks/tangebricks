@@ -35,6 +35,16 @@
       "reason": "Both export route factory createDocumentRoutes in the documents domain"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "doc_templates"
+      },
+      {
+        "table": "doc_renders"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/document-pdf",
     "routes": [

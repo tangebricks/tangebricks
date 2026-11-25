@@ -40,6 +40,16 @@
     "maturityReason": "Persists prompt templates and token usage logs in D1; registers no provider adapter by default (generate answers 503 NOT_CONFIGURED); no built-in OpenAI, Anthropic, Gemini or Workers AI adapters",
     "behaviourTest": "test/gateway.test.ts"
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "ai_prompt_templates"
+      },
+      {
+        "table": "ai_generation_logs"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/llm-gateway",
     "routes": [

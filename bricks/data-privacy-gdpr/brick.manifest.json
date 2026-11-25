@@ -52,6 +52,20 @@
       }
     }
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "dpr_consents"
+      },
+      {
+        "table": "dpr_erasure_requests",
+        "tombstone": true
+      },
+      {
+        "table": "dpr_export_requests"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/data-privacy-gdpr",
     "routes": [

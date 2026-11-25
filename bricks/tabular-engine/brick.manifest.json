@@ -30,6 +30,16 @@
     "behaviourTest": "test/tabular.test.ts",
     "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "tab_import_jobs"
+      },
+      {
+        "table": "tab_grid_views"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/tabular-engine",
     "routes": [

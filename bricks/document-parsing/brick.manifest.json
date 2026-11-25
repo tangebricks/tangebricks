@@ -35,6 +35,19 @@
       "reason": "Both export route factory createDocumentRoutes in the documents domain"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "docp_documents"
+      },
+      {
+        "table": "docp_chunks"
+      },
+      {
+        "table": "docp_extractions"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/document-parsing",
     "routes": [

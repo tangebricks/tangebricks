@@ -38,6 +38,22 @@
       "reason": "Platform-wide billable meter catalog referenced by workspace usage events"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "meter_events"
+      },
+      {
+        "table": "meter_aggregates"
+      }
+    ],
+    "exempt": [
+      {
+        "table": "meter_events_v2",
+        "reason": "Transient migration table; renamed to meter_events, which is declared"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/metered-usage",
     "routes": [

@@ -28,6 +28,14 @@
     "maturity": "production",
     "behaviourTest": "test/audit.test.ts"
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "audit_events",
+        "tombstone": true
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/audit-trail",
     "routes": [

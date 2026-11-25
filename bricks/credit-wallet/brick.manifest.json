@@ -145,6 +145,27 @@
       "sideEffects": "write"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "credit_wallets"
+      },
+      {
+        "table": "credit_ledger",
+        "tombstone": true
+      },
+      {
+        "table": "credit_orders",
+        "tombstone": true
+      }
+    ],
+    "exempt": [
+      {
+        "table": "credit_ledger_v2",
+        "reason": "Transient migration table; renamed to credit_ledger, which is declared"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/credit-wallet",
     "routes": [

@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "6a6e87aa5db159101c49458dcd776fcb48af16c9f66e3e94b2ad6a48077a7cca",
+  "catalogVersion": "978a679275a08e2db843dd5a31cb4d606d45d3dca1ccdf8226236b755a879714",
   "bricks": {
     "admin-console": {
       "manifestVersion": 2,
@@ -39,8 +39,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 0
         }
       },
@@ -127,8 +127,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 0
         }
       },
@@ -150,6 +150,19 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "mcp_tools"
+          },
+          {
+            "table": "mcp_agent_sessions"
+          },
+          {
+            "table": "mcp_tool_invocations"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/agent-sandbox",
@@ -201,8 +214,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 29
         }
       },
@@ -216,6 +229,14 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "audit_events",
+            "tombstone": true
+          }
+        ]
       },
       "worker": {
         "package": "@poc/audit-trail",
@@ -277,8 +298,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 32
         }
       },
@@ -295,6 +316,19 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "asset_files"
+          }
+        ],
+        "objectPrefixes": [
+          {
+            "binding": "BUCKET",
+            "prefix": "workspaces/{workspaceId}/assets/"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/binary-assets",
@@ -353,8 +387,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 37
         }
       },
@@ -381,6 +415,18 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "pay_checkout_sessions",
+            "tombstone": true
+          },
+          {
+            "table": "pay_invoices",
+            "tombstone": true
+          }
+        ]
       },
       "worker": {
         "package": "@poc/checkout-gateway",
@@ -442,8 +488,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 126
         }
       },
@@ -705,8 +751,8 @@
           "DEFAULT_ADAPTER_FAKE"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 235
         }
       },
@@ -764,6 +810,27 @@
         },
         "hookTables": [
           "credit_ledger_v2"
+        ]
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "credit_wallets"
+          },
+          {
+            "table": "credit_ledger",
+            "tombstone": true
+          },
+          {
+            "table": "credit_orders",
+            "tombstone": true
+          }
+        ],
+        "exempt": [
+          {
+            "table": "credit_ledger_v2",
+            "reason": "Transient migration table; renamed to credit_ledger, which is declared"
+          }
         ]
       },
       "worker": {
@@ -835,8 +902,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 135
         }
       },
@@ -862,6 +929,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "cron_schedules"
+          },
+          {
+            "table": "cron_history"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/cron-alarms",
@@ -921,8 +998,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 0
         }
       },
@@ -994,8 +1071,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 72
         }
       },
@@ -1021,6 +1098,20 @@
             "export": false
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "dpr_consents"
+          },
+          {
+            "table": "dpr_erasure_requests",
+            "tombstone": true
+          },
+          {
+            "table": "dpr_export_requests"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/data-privacy-gdpr",
@@ -1082,8 +1173,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 56
         }
       },
@@ -1111,6 +1202,19 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "docp_documents"
+          },
+          {
+            "table": "docp_chunks"
+          },
+          {
+            "table": "docp_extractions"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/document-parsing",
@@ -1166,8 +1270,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 0
         }
       },
@@ -1190,6 +1294,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "doc_templates"
+          },
+          {
+            "table": "doc_renders"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/document-pdf",
@@ -1281,8 +1395,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 78
         }
       },
@@ -1347,8 +1461,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 33
         }
       },
@@ -1375,6 +1489,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "arm_ip_rules"
+          },
+          {
+            "table": "arm_blocked_requests"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/edge-traffic-armor",
@@ -1434,8 +1558,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 55
         }
       },
@@ -1453,6 +1577,13 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "flag_overrides"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/feature-flags",
@@ -1514,8 +1645,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 54
         }
       },
@@ -1538,6 +1669,19 @@
             "export": false
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "sso_connections"
+          },
+          {
+            "table": "sso_federated_identities"
+          },
+          {
+            "table": "sso_auth_requests"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/identity-federation",
@@ -1618,8 +1762,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 46
         }
       },
@@ -1633,6 +1777,13 @@
           }
         }
       },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "notif_notifications"
+          }
+        ]
+      },
       "worker": {
         "package": "@poc/in-app-notifications",
         "routes": [
@@ -1642,8 +1793,7 @@
             "options": {},
             "guardPaths": [
               "/api/notifications",
-              "/api/notifications/unread-count",
-              "/api/notifications/mark-all-read"
+              "/api/notifications/*"
             ],
             "guardWith": "workspace-context"
           }
@@ -1701,8 +1851,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 74
         }
       },
@@ -1723,6 +1873,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "int_connections"
+          },
+          {
+            "table": "int_oauth_states"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/integration-connections",
@@ -1785,8 +1945,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 48
         }
       },
@@ -1809,6 +1969,19 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "chat_conversations"
+          },
+          {
+            "table": "chat_messages"
+          },
+          {
+            "table": "chat_canned_replies"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/live-chat",
@@ -1874,8 +2047,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 46
         }
       },
@@ -1893,6 +2066,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "ai_prompt_templates"
+          },
+          {
+            "table": "ai_generation_logs"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/llm-gateway",
@@ -1953,8 +2136,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 0
         }
       },
@@ -1976,6 +2159,22 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "split_contracts",
+            "tombstone": true
+          },
+          {
+            "table": "split_transactions",
+            "tombstone": true
+          },
+          {
+            "table": "split_payouts",
+            "tombstone": true
+          }
+        ]
       },
       "worker": {
         "package": "@poc/marketplace-splits",
@@ -2033,9 +2232,9 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
-          "assertionCount": 51
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
+          "assertionCount": 76
         }
       },
       "globalTables": [
@@ -2059,6 +2258,22 @@
         },
         "hookTables": [
           "meter_events_v2"
+        ]
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "meter_events"
+          },
+          {
+            "table": "meter_aggregates"
+          }
+        ],
+        "exempt": [
+          {
+            "table": "meter_events_v2",
+            "reason": "Transient migration table; renamed to meter_events, which is declared"
+          }
         ]
       },
       "worker": {
@@ -2113,8 +2328,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 42
         }
       },
@@ -2139,17 +2354,35 @@
           }
         }
       },
+      "workspaceData": {
+        "tables": [],
+        "exempt": [
+          {
+            "table": "mw_members",
+            "reason": "Removed by this brick's own workspace delete route, in the same batch as the purge"
+          },
+          {
+            "table": "mw_invites",
+            "reason": "Removed by this brick's own workspace delete route, in the same batch as the purge"
+          }
+        ]
+      },
       "worker": {
         "package": "@poc/multi-workspace",
         "guard": {
           "export": "workspaceMiddleware",
-          "capability": "workspace-context"
+          "capability": "workspace-context",
+          "suspension": "requireNotSuspended"
         },
         "routes": [
           {
             "factory": "createWorkspaceRoutes",
             "mountAt": "/api",
-            "options": {},
+            "options": {
+              "workspaceDataPurge": {
+                "$workspaceData": "purgeWorkspaceData"
+              }
+            },
             "guardPaths": []
           }
         ]
@@ -2193,8 +2426,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 0
         }
       },
@@ -2343,8 +2576,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 59
         }
       },
@@ -2442,8 +2675,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 50
         }
       },
@@ -2460,6 +2693,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "msg_channels"
+          },
+          {
+            "table": "msg_dispatches"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/omnichannel-outbound",
@@ -2518,8 +2761,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 62
         }
       },
@@ -2542,6 +2785,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "owh_endpoints"
+          },
+          {
+            "table": "owh_deliveries"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/outbound-webhooks",
@@ -2596,8 +2849,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 26
         }
       },
@@ -2615,6 +2868,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "evt_analytics_events"
+          },
+          {
+            "table": "evt_funnels"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/product-analytics",
@@ -2669,8 +2932,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 23
         }
       },
@@ -2682,6 +2945,13 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "key_api_keys"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/public-api-keys",
@@ -2737,8 +3007,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 51
         }
       },
@@ -2765,6 +3035,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "job_queues"
+          },
+          {
+            "table": "job_batch_items"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/queue-jobs",
@@ -2825,8 +3105,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 78
         }
       },
@@ -2850,6 +3130,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "rbac_roles"
+          },
+          {
+            "table": "rbac_role_assignments"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/rbac-policy",
@@ -2911,8 +3201,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 0
         }
       },
@@ -2930,6 +3220,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "pres_rooms"
+          },
+          {
+            "table": "pres_sessions"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/realtime-presence",
@@ -3011,8 +3311,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 0
         }
       },
@@ -3033,6 +3333,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "scr_scripts"
+          },
+          {
+            "table": "scr_executions"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/scripting-sandbox",
@@ -3088,8 +3398,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 28
         }
       },
@@ -3101,6 +3411,13 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "search_documents"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/search-faceted",
@@ -3166,8 +3483,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 75
         }
       },
@@ -3191,6 +3508,13 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "sub_subscriptions"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/subscription-plans",
@@ -3250,8 +3574,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 36
         }
       },
@@ -3268,6 +3592,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "tab_import_jobs"
+          },
+          {
+            "table": "tab_grid_views"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/tabular-engine",
@@ -3323,8 +3657,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 34
         }
       },
@@ -3342,6 +3676,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "cmt_threads"
+          },
+          {
+            "table": "cmt_comments"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/threaded-discussions",
@@ -3396,8 +3740,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 31
         }
       },
@@ -3415,6 +3759,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "onb_flows"
+          },
+          {
+            "table": "onb_user_progress"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/user-onboarding",
@@ -3470,8 +3824,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 39
         }
       },
@@ -3533,8 +3887,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 33
         }
       },
@@ -3551,6 +3905,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "vec_indexes"
+          },
+          {
+            "table": "vec_documents"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/vector-memory",
@@ -3632,8 +3996,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 76
         }
       },
@@ -3691,6 +4055,32 @@
         },
         "hookTables": [
           "wh_subscriptions_v2"
+        ]
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "wh_endpoints"
+          },
+          {
+            "table": "wh_deliveries"
+          },
+          {
+            "table": "wh_subscriptions"
+          },
+          {
+            "table": "px_webhook_deliveries"
+          }
+        ],
+        "exempt": [
+          {
+            "table": "wh_subscriptions_v2",
+            "reason": "Transient migration table; renamed to wh_subscriptions, which is declared"
+          },
+          {
+            "table": "px_connections",
+            "reason": "runtime connection vault, project-scoped; scope decided in 1.17"
+          }
         ]
       },
       "worker": {
@@ -3753,8 +4143,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-          "runAt": "2026-11-24T16:39:50.475Z",
+          "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+          "runAt": "2026-11-24T20:20:31.038Z",
           "assertionCount": 0
         }
       },
@@ -3777,6 +4167,16 @@
             "export": true
           }
         }
+      },
+      "workspaceData": {
+        "tables": [
+          {
+            "table": "wf_definitions"
+          },
+          {
+            "table": "wf_runs"
+          }
+        ]
       },
       "worker": {
         "package": "@poc/workflow-dag",
@@ -4417,8 +4817,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-            "runAt": "2026-11-24T16:39:50.509Z",
+            "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+            "runAt": "2026-11-24T20:20:31.070Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -5829,8 +6229,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-            "runAt": "2026-11-24T16:39:50.509Z",
+            "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+            "runAt": "2026-11-24T20:20:31.070Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -7501,8 +7901,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-            "runAt": "2026-11-24T16:39:50.509Z",
+            "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+            "runAt": "2026-11-24T20:20:31.070Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -9176,8 +9576,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-            "runAt": "2026-11-24T16:39:50.509Z",
+            "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+            "runAt": "2026-11-24T20:20:31.070Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -10471,8 +10871,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "c844fbb979ea710d39120c0fe4ad138f36abec59",
-            "runAt": "2026-11-24T16:39:50.509Z",
+            "gitSha": "35d98fedbe26b8f2bcb9f96eeddaa0e550d191ed",
+            "runAt": "2026-11-24T20:20:31.070Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {

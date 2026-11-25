@@ -459,6 +459,13 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
       detail: `guard "${manifest.worker.guard.export}" is not exported as a function by ${entryRel}`,
     });
   }
+  if (manifest.worker.guard?.suspension && !exportedFns.has(manifest.worker.guard.suspension)) {
+    violations.push({
+      brick: brickName,
+      field: "worker.guard",
+      detail: `suspension check "${manifest.worker.guard.suspension}" is not exported as a function by ${entryRel}`,
+    });
+  }
 
   if (manifest.triggers) {
     for (const sched of manifest.triggers.schedules ?? []) {
@@ -495,6 +502,8 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   const globalTables = new Set(
     (manifest.globalTables ?? []).filter((g) => g.reason.trim().length > 0).map((g) => g.table),
   );
+  // Story 1.10: every table the migrations create, and whether it has workspace_id, for the workspaceData checks below.
+  const createdTables = new Map<string, boolean>();
   for (const mig of manifest.migrations) {
     const migPath = join(brickDir, mig);
     if (!existsSync(migPath)) {
@@ -522,6 +531,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
       }
     }
     for (const { table, hasWorkspaceId } of extractCreatedTables(sqlContent)) {
+      if (!createdTables.has(table)) createdTables.set(table, hasWorkspaceId);
       if (!hasWorkspaceId && !globalTables.has(table)) {
         violations.push({
           brick: brickName,
@@ -542,6 +552,28 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
           });
         }
       }
+    }
+  }
+
+  // 4b. Workspace data (story 1.10): every tenant table is purged when its workspace is deleted, or exempt with a reason;
+  // every declared table exists and has workspace_id.
+  const declaredData = new Set((manifest.workspaceData?.tables ?? []).map((t) => t.table));
+  const exemptData = new Set((manifest.workspaceData?.exempt ?? []).filter((e) => e.reason.trim().length > 0).map((e) => e.table));
+  for (const [table, hasWorkspaceId] of createdTables) {
+    if (hasWorkspaceId && !globalTables.has(table) && !declaredData.has(table) && !exemptData.has(table)) {
+      violations.push({
+        brick: brickName,
+        field: "workspaceData",
+        detail: `tenant table "${table}" is neither declared in workspaceData.tables nor exempt with a reason`,
+      });
+    }
+  }
+  for (const entry of [...(manifest.workspaceData?.tables ?? []), ...(manifest.workspaceData?.exempt ?? [])]) {
+    const hasWorkspaceId = createdTables.get(entry.table);
+    if (hasWorkspaceId === undefined) {
+      violations.push({ brick: brickName, field: "workspaceData", detail: `table "${entry.table}" is not created by any of the brick's migrations` });
+    } else if (!hasWorkspaceId) {
+      violations.push({ brick: brickName, field: "workspaceData", detail: `table "${entry.table}" has no workspace_id column` });
     }
   }
 
@@ -667,7 +699,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   const optionToSetting = new Map<string, string>();
   for (const route of manifest.worker.routes) {
     for (const [optName, optVal] of Object.entries(route.options)) {
-      if (typeof optVal === "object" && ("$call" in optVal || "$entities" in optVal)) {
+      if (typeof optVal === "object" && ("$call" in optVal || "$entities" in optVal || "$privacy" in optVal || "$workspaceData" in optVal)) {
         nonSettingOptions.add(optName);
       } else if (typeof optVal === "object" && "$setting" in optVal) {
         optionToSetting.set(optName, optVal.$setting);

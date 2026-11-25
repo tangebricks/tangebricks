@@ -52,6 +52,13 @@
       "reason": "Global subscription plan catalog referenced by workspace subscriptions"
     }
   ],
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "sub_subscriptions"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/subscription-plans",
     "routes": [

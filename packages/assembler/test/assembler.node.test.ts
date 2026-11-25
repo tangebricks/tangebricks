@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { assemble, hashFiles } from "../src/index.ts";
 import type { Catalog } from "../src/index.ts";
+import { SUSPENSION_EXEMPT, exemptPathPattern } from "../src/assemble.ts";
 import { catalog } from "../catalog.generated.ts";
 import { INVOICE_FLOW_BLUEPRINT, TWO_BRICK_BLUEPRINT } from "../../../test/support/blueprints.ts";
 
@@ -55,7 +56,12 @@ describe("the two-brick blueprint", () => {
     // Story 0.9: no payment gateway is wired by default; the fake is for tests that inject it.
     expect(entry).toContain('import { createWalletRoutes } from "@poc/credit-wallet";');
     expect(entry).not.toContain("createFakeGateway");
-    expect(entry).toContain('import { createWorkspaceRoutes, workspaceMiddleware } from "@poc/multi-workspace";');
+    expect(entry).toContain('import { createWorkspaceRoutes, requireNotSuspended, workspaceMiddleware } from "@poc/multi-workspace";');
+    // Story 1.10: right after each workspace guard, the suspension check, and the delete route gets the purge.
+    for (const path of ["/api/wallet", "/api/wallet/*", "/api/payments/create-order"]) {
+      expect(entry).toContain(`app.use("${path}", workspaceMiddleware);\napp.use("${path}", notSuspended_workspace_context);`);
+    }
+    expect(entry).toContain("createWorkspaceRoutes({ workspaceDataPurge: purgeWorkspaceData })");
   });
 
   test("the migrations are in dependency order and are the bricks' own text", () => {
@@ -360,7 +366,8 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "package.json": "24d1388075ec69744a13f379f37b38441588d2cdb511352eb58f6ab9d0e1a946",
       "project.json": "a89688bddaf9e606d383364a7a2b06a7069763437fea127ef64963f24986a56d",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "eb5b47f565a6db0b4a38ad73c5ddece51609dcba853c5d3d668f74b24b323f0f",
+      // Story 1.10: only the entry changed (the workspace-data purge, the suspension check and its app.use lines).
+      "src/index.ts": "8fa5ab3e62b73cfebdffb9753e3ed8def2d0e9abbf5f1a5f4911345ed86f79fe",
       "src/privacy.generated.ts": "a029b2ce67225928903d85b59be098fd44f1d04384f286178f42a3715d19d396",
       "wrangler.jsonc": "d678c83f4dd70ff4bfc1dc7e2e75953a9a8d0e0216061d82308bd562c1f4625b",
     });
@@ -377,7 +384,8 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "project.json": "444740d44ba274af64c0e12ecdeccb3f1ff86687374cf529b53f0f4ca22fb8bf",
       "src/entities.json": "5b153446783e693c0ada62b9c2626071e38f3e3e9bb047dd5a3a39c24179ba0a",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "96a5fee16726018e2016400e4ddd56e2b0826c57f39d635c8a884cfb2f514720",
+      // Story 1.10: only the entry changed (purge, including the declared entity's table, and the suspension check).
+      "src/index.ts": "8244f09363dad6775017104ed97194c8af56395b8d778c5555b367eaea62ad89",
       "src/privacy.generated.ts": "5c0f6d193d3f6d332a415d2cfa7b9e571bdf3b6ca71f8ae177e053227170e804",
       "wrangler.jsonc": "d7c0046626c2da81eca662bc64f38619da75b0d48f4978b1dc37ecf5eb8c3c0b",
     });
@@ -399,7 +407,7 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "package.json": "674a79407b61b5947fa4ed7fa2e190c5ac39a255ca61b47ec6b6097d37aff6ea",
       "project.json": "2115551c1b468de5bb4ceb23c44d6e348790b307265fefa91329cff9b40db02d",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "78063923acdcf5dfecf96e8dcdef86797875e6eece9e0305036027106c2c4286",
+      "src/index.ts": "55c1cb50d7e827ed559b81f4c84c969d34e7b65e621fc6a7464083daa8b2e09c",
       "src/privacy.generated.ts": "7f4322f58ee6a55f3804d2083a792725f779a951b2694709249a8e20159bfe3d",
       "wrangler.jsonc": "85a0ab37dcde7ee01d8eba1e1549a27580973cbc6620000388435027176f298c",
     });
@@ -726,3 +734,201 @@ describe("conditional INTEGRATION_BLOBS R2 binding emission (AC4)", () => {
   });
 });
 
+
+describe("story 1.10: workspace delete cascade and suspension enforcement", () => {
+  const ws = (guard: Record<string, unknown> = { suspension: "refuseSuspended" }, extra: Partial<Catalog["bricks"][string]["manifest"]> = {}) =>
+    brick("ws-brick", {
+      provides: ["workspace-context"],
+      worker: {
+        package: "@x/ws-brick",
+        guard: { export: "wsGuard", capability: "workspace-context", ...guard },
+        routes: [{ factory: "createWs", mountAt: "/api", options: { purge: { $workspaceData: "purgeWorkspaceData" } }, guardPaths: [] }],
+      },
+      ...extra,
+    });
+  const notesSql = [
+    "CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL);",
+    "CREATE TABLE IF NOT EXISTS note_tags (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, note_id TEXT REFERENCES notes(id));",
+    "CREATE TABLE IF NOT EXISTS note_audit (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL);",
+    "CREATE TABLE IF NOT EXISTS note_trash (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, deleted_at TEXT);",
+    "CREATE TABLE IF NOT EXISTS note_kinds (id TEXT PRIMARY KEY);",
+  ].join("\n");
+  const notes = (
+    workspaceData: NonNullable<Catalog["bricks"][string]["manifest"]["workspaceData"]>,
+    extra: Partial<Catalog["bricks"][string]["manifest"]> = {},
+  ) =>
+    brick(
+      "notes-brick",
+      {
+        requires: ["workspace-context"],
+        routePrefixes: ["notes"],
+        migrations: ["migrations/0001.sql"],
+        globalTables: [{ table: "note_kinds", reason: "Shared list of kinds." }],
+        privacy: { tables: {}, hookTables: ["notes", "note_tags", "note_audit", "note_trash"] },
+        workspaceData,
+        worker: { package: "@x/notes-brick", routes: [{ factory: "createNotes", mountAt: "/api", options: {}, guardWith: "workspace-context", guardPaths: ["/api/notes", "/api/notes/*"] }] },
+        ...extra,
+      },
+      { "migrations/0001.sql": notesSql },
+    );
+  const both = ["ws-brick", "notes-brick"];
+
+  test("the purge lists every declared table in reverse install order, tombstones by deleted_at, and never a global table", () => {
+    const c = catalogOf(ws(), notes({ tables: [{ table: "notes" }, { table: "note_audit", tombstone: true }, { table: "note_trash", tombstone: true }, { table: "note_tags" }] }));
+    const entry = files({ project: "p", bricks: both }, c).files["src/index.ts"]!;
+    const sql = /const WORKSPACE_PURGE_SQL: ReadonlyArray<string> = (\[[\s\S]*?\]);/.exec(entry)?.[1];
+    expect(JSON.parse(sql!)).toEqual([
+      'UPDATE "note_trash" SET deleted_at = datetime(\'now\') WHERE workspace_id = ? AND deleted_at IS NULL',
+      'DELETE FROM "note_tags" WHERE workspace_id = ?',
+      'DELETE FROM "notes" WHERE workspace_id = ?',
+    ]);
+    expect(entry).toContain("// Kept for audit (tombstone tables without a deleted_at column): note_audit.");
+    expect(entry).not.toContain('"note_kinds"');
+    expect(entry).toContain("createWs({ purge: purgeWorkspaceData })");
+    expect(entry).toContain("WORKSPACE_PURGE_SQL.slice(i, i + 25)");
+  });
+
+  test("px_schedules is purged when the shell table is emitted, and object prefixes are listed with their binding", () => {
+    const c = catalogOf(
+      ws(),
+      notes(
+        { tables: [{ table: "notes" }], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/notes/" }] },
+        { bindings: { FILES: "r2" }, triggers: { schedules: [{ id: "tick", cron: "* * * * *", handler: "onTick" }] } },
+      ),
+    );
+    const entry = files({ project: "p", bricks: both }, c).files["src/index.ts"]!;
+    const sql = JSON.parse(/const WORKSPACE_PURGE_SQL: ReadonlyArray<string> = (\[[\s\S]*?\]);/.exec(entry)![1]!);
+    expect(sql[0]).toBe('DELETE FROM "px_schedules" WHERE workspace_id = ?');
+    expect(entry).toContain('const WORKSPACE_PURGE_OBJECTS: ReadonlyArray<{ binding: string; prefix: string }> = [{"binding":"FILES","prefix":"ws/{workspaceId}/notes/"}];');
+    // Without schedules there is no px_schedules statement.
+    const plain = files({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [{ table: "notes" }] }))).files["src/index.ts"]!;
+    expect(plain).not.toContain("px_schedules");
+  });
+
+  test("a bad declaration is refused: a table not created, without workspace_id, an undeclared binding, a prefix that is not one workspace's", async () => {
+    expect(errors({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [{ table: "ghost" }] })))).toEqual([
+      'notes-brick declares workspaceData table "ghost", which its migrations do not create',
+    ]);
+    expect(errors({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [{ table: "note_kinds" }] })))).toEqual([
+      'notes-brick declares workspaceData table "note_kinds", which has no workspace_id column',
+    ]);
+    expect(errors({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/" }] })))).toEqual([
+      'notes-brick declares workspaceData objects in binding "FILES", which is not an R2 binding in its bindings',
+    ]);
+    // A binding of another type (a KV namespace here) is refused too: R2 is the only store listed and deleted by prefix.
+    const kv = notes({ tables: [], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/" }] }, { bindings: { FILES: "kv" } });
+    expect(errors({ project: "p", bricks: both }, catalogOf(ws(), kv))).toEqual([
+      'notes-brick declares workspaceData objects in binding "FILES", which is not an R2 binding in its bindings',
+    ]);
+    const { ManifestSchema } = await import("../src/schemas.ts");
+    const withPrefix = (prefix: string) =>
+      ManifestSchema.safeParse({ ...notes({ tables: [], objectPrefixes: [{ binding: "FILES", prefix }] }).manifest, bindings: { FILES: "r2" } }).success;
+    expect(withPrefix("ws/{workspaceId}/notes/")).toBe(true);
+    expect(withPrefix("ws/{workspaceId}")).toBe(false);
+    expect(withPrefix("ws/")).toBe(false);
+    expect(withPrefix("{workspaceId}/x/")).toBe(false);
+    // The schema (and so catalog:conformance) refuses a binding that is not declared as R2.
+    const issues = (bindings: unknown) =>
+      ManifestSchema.safeParse({ ...notes({ tables: [], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/" }] }).manifest, bindings }).error?.issues.map((i) => i.message) ?? [];
+    expect(issues({ FILES: "r2" })).toEqual([]);
+    for (const bindings of [{ FILES: "kv" }, ["FILES"], undefined]) {
+      expect(issues(bindings)).toContain('workspaceData objectPrefixes binding "FILES" must be declared as an R2 binding ("r2") in bindings');
+    }
+  });
+
+  test("the generated purge pages through the bucket, deletes only the workspace's keys, and refuses an id with a slash before any delete", async () => {
+    const ts = (await import("typescript")).default;
+    const c = catalogOf(ws(), notes({ tables: [{ table: "notes" }], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/notes/" }] }, { bindings: { FILES: "r2" } }));
+    const entry = files({ project: "p", bricks: both }, c).files["src/index.ts"]!;
+    const start = entry.indexOf("const WORKSPACE_PURGE_SQL");
+    const end = entry.indexOf("\n}\n", entry.indexOf("async function purgeWorkspaceData")) + 3;
+    const js = ts.transpileModule(`function make() {\n${entry.slice(start, end)}\nreturn purgeWorkspaceData;\n}`, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const purge = new Function(`${js}\nreturn make();`)() as (env: Record<string, unknown>, workspaceId: string) => Promise<void>;
+
+    const keys = new Set([
+      ...[1, 2, 3, 4, 5].map((n) => `ws/wsA/notes/${n}`),
+      "ws/wsA2/notes/1",
+      "ws/wsB/notes/1",
+      "ws/wsA/other/1",
+    ]);
+    const lists: Array<{ prefix: string; cursor?: string }> = [];
+    const bucket = {
+      async list(o: { prefix: string; cursor?: string }) {
+        lists.push(o);
+        const all = [...keys].filter((k) => k.startsWith(o.prefix)).sort();
+        const from = o.cursor ? Number(o.cursor) : 0;
+        const page = all.slice(from, from + 2);
+        const truncated = from + 2 < all.length;
+        return { objects: page.map((key) => ({ key })), truncated, ...(truncated ? { cursor: String(from + 2) } : {}) };
+      },
+      async delete(ks: string[]) {
+        // Deleting does not shift the fake's cursor (a cursor names a position in the original listing).
+        for (const k of ks) deleted.push(k);
+      },
+    };
+    const deleted: string[] = [];
+    const batches: string[][] = [];
+    const db = {
+      prepare: (sql: string) => ({ bind: (id: string) => `${sql} [${id}]` }),
+      batch: async (statements: string[]) => {
+        batches.push(statements);
+        return [];
+      },
+    };
+
+    await purge({ DB: db, FILES: bucket }, "wsA");
+    expect(deleted.sort()).toEqual([1, 2, 3, 4, 5].map((n) => `ws/wsA/notes/${n}`));
+    expect(lists).toEqual([{ prefix: "ws/wsA/notes/" }, { prefix: "ws/wsA/notes/", cursor: "2" }, { prefix: "ws/wsA/notes/", cursor: "4" }]);
+    expect(batches).toEqual([['DELETE FROM "notes" WHERE workspace_id = ? [wsA]']]);
+
+    deleted.length = 0;
+    batches.length = 0;
+    lists.length = 0;
+    for (const bad of ["ws/A", "wsA/", "", "a".repeat(65)]) {
+      await expect(purge({ DB: db, FILES: bucket }, bad)).rejects.toThrow("invalid workspace id");
+    }
+    expect(lists).toEqual([]);
+    expect(deleted).toEqual([]);
+    expect(batches).toEqual([]);
+  });
+
+  test("each guard's own suspension check is mounted right after it on every guarded path", () => {
+    const entry = files({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [{ table: "notes" }] }))).files["src/index.ts"]!;
+    for (const path of ["/api/notes", "/api/notes/*"]) expect(entry).toContain(`app.use("${path}", wsGuard);\napp.use("${path}", notSuspended_workspace_context);`);
+    expect(entry).toContain('import { createWs, refuseSuspended, wsGuard } from "@x/ws-brick";');
+    expect(entry).toContain("const notSuspended_workspace_context = (c: any, next: any) => (suspensionExempt(c) ? next() : refuseSuspended(c, next));");
+    for (const e of SUSPENSION_EXEMPT) expect(entry).toContain(`  // ${e.method} ${e.path}: ${e.reason}`);
+
+    // A second guard capability gets its own check, wrapping its own suspension export.
+    const other = brick("org-brick", {
+      provides: ["org-context"],
+      worker: { package: "@x/org-brick", guard: { export: "orgGuard", capability: "org-context", suspension: "refuseFrozenOrg" }, routes: [] },
+    });
+    const orgRoutes = brick("org-things", {
+      requires: ["org-context"],
+      routePrefixes: ["orgs"],
+      worker: { package: "@x/org-things", routes: [{ factory: "createOrgThings", mountAt: "/api", options: {}, guardWith: "org-context", guardPaths: ["/api/orgs/*"] }] },
+    });
+    const two = files({ project: "p", bricks: [...both, "org-brick", "org-things"] }, catalogOf(ws(), notes({ tables: [{ table: "notes" }] }), other, orgRoutes)).files["src/index.ts"]!;
+    expect(two).toContain('app.use("/api/orgs/*", orgGuard);\napp.use("/api/orgs/*", notSuspended_org_context);');
+    expect(two).toContain("const notSuspended_org_context = (c: any, next: any) => (suspensionExempt(c) ? next() : refuseFrozenOrg(c, next));");
+    expect(two).toContain('app.use("/api/notes/*", wsGuard);\napp.use("/api/notes/*", notSuspended_workspace_context);');
+
+    // A guard without a suspension export mounts no check.
+    const plain = catalogOf(ws({}), notes({ tables: [{ table: "notes" }] }));
+    expect(files({ project: "p", bricks: both }, plain).files["src/index.ts"]).not.toContain("notSuspended");
+  });
+
+  test("the allowlist matches on method and exact path shape only", () => {
+    const exempt = (method: string, path: string) => SUSPENSION_EXEMPT.some((e) => e.method === method && new RegExp(exemptPathPattern(e.path)).test(path));
+    expect(exempt("POST", "/api/privacy/export")).toBe(true);
+    expect(exempt("GET", "/api/privacy/erasure/req-1")).toBe(true);
+    expect(exempt("GET", "/api/privacy/export")).toBe(false);
+    expect(exempt("POST", "/api/privacy/consents")).toBe(false);
+    expect(exempt("DELETE", "/api/privacy/workspace")).toBe(false);
+    expect(exempt("GET", "/api/privacy/erasure/req-1/extra")).toBe(false);
+    expect(exempt("POST", "/api/privacy/exportx")).toBe(false);
+  });
+});

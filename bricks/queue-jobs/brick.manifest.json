@@ -40,6 +40,16 @@
       }
     ]
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "job_queues"
+      },
+      {
+        "table": "job_batch_items"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/queue-jobs",
     "routes": [

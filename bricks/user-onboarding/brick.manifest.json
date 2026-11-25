@@ -29,6 +29,16 @@
     "behaviourTest": "test/onboarding.test.ts",
     "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
   },
+  "workspaceData": {
+    "tables": [
+      {
+        "table": "onb_flows"
+      },
+      {
+        "table": "onb_user_progress"
+      }
+    ]
+  },
   "worker": {
     "package": "@poc/user-onboarding",
     "routes": [
