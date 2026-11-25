@@ -1,0 +1,14 @@
+{
+  "error": {
+    "code": "TM_3201",
+    "details": [
+      {
+        "code": "GE_102",
+        "message": "Mandatory Field 'subject' was set as Empty Value.",
+        "target": "subject"
+      }
+    ],
+    "message": "Mandatory Field Missing",
+    "request_id": "2d6f.3e5c1d6a2b8a8f3c.m1.9a1b2c30-0f5b-11ef-9b1f-525400d6cd4f.18f6e8a2d02"
+  }
+}

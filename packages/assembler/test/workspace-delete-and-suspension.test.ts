@@ -85,6 +85,7 @@ const NOT_WORKSPACE_SCOPED: ReadonlyArray<{ method: string; path: RegExp; reason
   { method: "POST", path: /^\/api\/payments\/verify$/, reason: "a payment already charged must still complete and be credited (story 0.21); no workspace guard" },
   { method: "POST", path: /^\/api\/webhooks\/(in\/:subscriptionId|ingress\/:slug)$/, reason: "inbound webhooks are signed by the sender and carry no workspace context" },
   { method: "POST", path: /^\/api\/(payments|checkout)\/webhook$/, reason: "payment provider webhooks (story 2.3) are signed by the provider and carry no workspace context; a payment already charged must still be recorded" },
+  { method: "*", path: /^\/api\/message-webhooks\/:[A-Za-z0-9_]+$/, reason: "outbound delivery-status webhooks (story 2.4) are signed by the provider and carry no workspace context; a message already sent must still get its status" },
   { method: "*", path: /^\/api\/workspaces(\/.*)?$/, reason: "multi-workspace's own routes: creating/listing take no workspace; the workspace-scoped writes check suspension in the handler" },
 ];
 
@@ -266,6 +267,16 @@ describe("payment webhooks in the assembled max-compatible app are unguarded (st
     const res = await call(app!, "POST", path, { body: { data: {} } });
     expect(res.status, res.text.slice(0, 300)).toBe(503);
     expect((JSON.parse(res.text) as { code?: string }).code).toBe("NOT_CONFIGURED");
+  });
+});
+
+describe("outbound status webhooks in the assembled max-compatible app are unguarded (story 2.4)", () => {
+  test("POST /api/message-webhooks/:channelId with no user and no workspace reaches the brick: 200 ignored for an unknown channel", async () => {
+    expect(app, "out/max-compatible/src/index.ts was not assembled").toBeDefined();
+    await resetAndMigrate(db, sql);
+    const res = await call(app!, "POST", "/api/message-webhooks/chn_00000000000000000000000000000000", { body: {} });
+    expect(res.status, res.text.slice(0, 300)).toBe(200);
+    expect(JSON.parse(res.text)).toMatchObject({ received: true, status: "ignored", updated: 0 });
   });
 });
 

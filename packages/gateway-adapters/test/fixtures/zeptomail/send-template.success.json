@@ -1,0 +1,12 @@
+{
+  "data": [
+    {
+      "code": "EM_104",
+      "additional_info": [],
+      "message": "Email request received"
+    }
+  ],
+  "message": "OK",
+  "request_id": "2d6f.3e5c1d6a2b8a8f3c.m1.7c9d2f10-0f5b-11ef-9b1f-525400d6cd4f.18f6e8a2c47",
+  "object": "email"
+}

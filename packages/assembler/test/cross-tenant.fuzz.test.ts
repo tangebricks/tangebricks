@@ -303,6 +303,8 @@ const ADMIN_CLASS: Array<{ method: string; pattern: RegExp; why: string }> = [
   { method: "PATCH", pattern: /^\/api\/schedules\/:[^/]+(\/toggle)?$/, why: "schedule toggle (B17)" },
   { method: "DELETE", pattern: /^\/api\/schedules\/:[^/]+$/, why: "schedule delete (B17)" },
   { method: "POST", pattern: /^\/api\/messages\/(channels|send)$/, why: "outbound channels and send (B8)" },
+  { method: "POST", pattern: /^\/api\/messages\/channels\/:[^/]+\/verify$/, why: "outbound sender verification (B8, story 2.4)" },
+  { method: "PATCH", pattern: /^\/api\/messages\/channels\/:[^/]+$/, why: "outbound channel settings: workflowSendAllowed (B8, story 2.4)" },
   { method: "POST", pattern: /^\/api\/ai\/templates$/, why: "prompt template create (A6)" },
 ];
 
@@ -319,6 +321,7 @@ const PUBLIC_ROUTES: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /^\/api\/auth(\/|$)/, reason: "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design" },
   { pattern: /^\/api\/webhooks\/(in|ingress)\//, reason: "webhook ingress is called by third parties and authenticated by signature" },
   { pattern: /^\/api\/(payments|checkout)\/webhook$/, reason: "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature" },
+  { pattern: /^\/api\/message-webhooks\/:[^/]+$/, reason: "outbound delivery-status webhooks (story 2.4) are called by the provider and authenticated by the channel's signature" },
   { pattern: /^\/api\/sso\/(discover|authorize|callback)(\/|$)/, reason: "public SSO login/callback" },
   { pattern: /^\/api\/users\/:[^/]+\/profile$/, reason: "user-profile public profile lookup by design (returns only public fields)" },
 ];
@@ -611,7 +614,10 @@ const DENIAL = [400, 401, 403, 404];
 function judge(attack: Attack, route: RouteInfo, obs: Observation, secrets: string[]): string[] {
   const problems: string[] = [];
   if (attack === "HEADER_B" && route.guarded && !DENIAL.includes(obs.status)) problems.push(`status ${obs.status} not in {400, 401, 403, 404} on a guarded route`);
-  if (attack === "ID_GUESS" && !DENIAL.includes(obs.status)) problems.push(`status ${obs.status} not in {400, 401, 403, 404}`);
+  // Story 2.4: a provider status webhook answers an id it cannot match with 200 "ignored" (so the provider stops
+  // retrying) and changes nothing; the leak and mutation checks below still apply to it.
+  const ignoredWebhook = route.path === "/api/message-webhooks/:channelId" && obs.status === 200 && /"status":"ignored"/.test(obs.body) && /"updated":0/.test(obs.body);
+  if (attack === "ID_GUESS" && !DENIAL.includes(obs.status) && !ignoredWebhook) problems.push(`status ${obs.status} not in {400, 401, 403, 404}`);
   // A spec-only path has no handler, so the router's 404 is the only answer it can give; it serves no data.
   const noHandler = obs.status === 404 && route.specOnly === true;
   if (attack === "ROLE_ESCALATION" && ![401, 403].includes(obs.status) && !noHandler) problems.push(`member got status ${obs.status}, expected 401/403`);

@@ -11,10 +11,57 @@
     "workspace-context"
   ],
   "migrations": [
-    "migrations/0001_omnichannel_outbound.sql"
+    "migrations/0001_omnichannel_outbound.sql",
+    "migrations/0002_sender_verification_and_credentials.sql"
   ],
   "routePrefixes": [
-    "messages"
+    "messages",
+    "message-webhooks"
+  ],
+  "secrets": [
+    "PX_CHANNEL_CREDENTIALS_KEY"
+  ],
+  "rateLimits": [
+    {
+      "method": "POST",
+      "path": "/messages/send",
+      "bucket": "messages-send",
+      "limit": 60,
+      "windowSeconds": 60,
+      "key": "workspace"
+    },
+    {
+      "method": "POST",
+      "path": "/messages/channels",
+      "bucket": "messages-channel-create",
+      "limit": 5,
+      "windowSeconds": 60,
+      "key": "workspace"
+    },
+    {
+      "method": "POST",
+      "path": "/messages/channels/:id/verify",
+      "bucket": "messages-verify",
+      "limit": 10,
+      "windowSeconds": 60,
+      "key": "workspace"
+    },
+    {
+      "method": "POST",
+      "path": "/message-webhooks/:channelId",
+      "bucket": "messages-webhook",
+      "limit": 300,
+      "windowSeconds": 60,
+      "key": "ip"
+    },
+    {
+      "method": "GET",
+      "path": "/message-webhooks/:channelId",
+      "bucket": "messages-webhook-challenge",
+      "limit": 30,
+      "windowSeconds": 60,
+      "key": "ip"
+    }
   ],
   "npmDependencies": {
     "hono": "4.13.20",
@@ -37,7 +84,7 @@
     "category": "communication",
     "summary": "Outbound messaging across email, SMS, chat, and Slack.",
     "maturity": "beta",
-    "maturityReason": "Persists channels, templates, suppressions and dispatch logs in D1; no delivery adapter by default (send answers 503 NOT_CONFIGURED); no built-in email, SMS or Slack adapters",
+    "maturityReason": "Verified senders, sealed credentials, dispatch logs and delivery status in D1; no delivery adapter by default (send answers 503 NOT_CONFIGURED); a host wires provider adapters",
     "behaviourTest": "test/dispatcher.test.ts"
   },
   "nodes": [
@@ -75,7 +122,13 @@
       },
       "executor": "executeSendOutboundMessage",
       "durable": true,
-      "sideEffects": "write"
+      "sideEffects": "write",
+      "secrets": [
+        "PX_CHANNEL_CREDENTIALS_KEY"
+      ],
+      "bindings": [
+        "DB"
+      ]
     }
   ],
   "workspaceData": {
@@ -85,6 +138,12 @@
       },
       {
         "table": "msg_dispatches"
+      }
+    ],
+    "exempt": [
+      {
+        "table": "msg_dispatches_v2",
+        "reason": "Transient migration table; renamed to msg_dispatches, which is declared"
       }
     ]
   },
@@ -119,6 +178,9 @@
         "erase": "delete",
         "export": true
       }
-    }
+    },
+    "hookTables": [
+      "msg_dispatches_v2"
+    ]
   }
 }

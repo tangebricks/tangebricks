@@ -121,3 +121,16 @@ export {
   rateLimitStorageKey,
 } from "./rate-limit.ts";
 export type { RateLimitKey, RateLimitOptions, RateLimitResult, RateLimitRule } from "./rate-limit.ts";
+export { SealedJsonError, hasSealingKey, sealJson, unsealJson } from "./sealed-json.ts";
+export type { SealOptions, SealedJsonErrorCode } from "./sealed-json.ts";
+export type {
+  ChannelCredentials,
+  DeliveryAdapter,
+  DeliveryChannel,
+  DeliveryResult,
+  DeliveryStatus,
+  OutboundMessage,
+  OutboundTemplate,
+  SenderVerification,
+  StatusWebhookResult,
+} from "./outbound-delivery.ts";

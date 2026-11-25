@@ -1,0 +1,13 @@
+{
+  "error": {
+    "code": "TM_3301",
+    "details": [
+      {
+        "code": "SERR_157",
+        "message": "Invalid API Token found"
+      }
+    ],
+    "message": "Invalid API Token found",
+    "request_id": "2d6f.3e5c1d6a2b8a8f3c.m1.b2c3d4e0-0f5b-11ef-9b1f-525400d6cd4f.18f6e8a2e15"
+  }
+}
