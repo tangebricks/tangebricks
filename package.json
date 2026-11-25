@@ -131,7 +131,7 @@
     "miniflare": "5.20261019.0-beta",
     "openai": "7.62.0",
     "polyclip-ts": "0.16.8",
-    "postal-mime": "2.7.6",
+    "postal-mime": "4.2.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "three": "0.187.0",
