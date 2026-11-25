@@ -367,7 +367,7 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "project.json": "a89688bddaf9e606d383364a7a2b06a7069763437fea127ef64963f24986a56d",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       // Story 1.10: only the entry changed (the workspace-data purge, the suspension check and its app.use lines).
-      "src/index.ts": "8fa5ab3e62b73cfebdffb9753e3ed8def2d0e9abbf5f1a5f4911345ed86f79fe",
+      "src/index.ts": "89e30b93cfbe32f549cf7e7e0222a79ef44b0ec52a346872339f27a0c17e6710",
       "src/privacy.generated.ts": "a029b2ce67225928903d85b59be098fd44f1d04384f286178f42a3715d19d396",
       "wrangler.jsonc": "d678c83f4dd70ff4bfc1dc7e2e75953a9a8d0e0216061d82308bd562c1f4625b",
     });
@@ -385,7 +385,7 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "src/entities.json": "5b153446783e693c0ada62b9c2626071e38f3e3e9bb047dd5a3a39c24179ba0a",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       // Story 1.10: only the entry changed (purge, including the declared entity's table, and the suspension check).
-      "src/index.ts": "8244f09363dad6775017104ed97194c8af56395b8d778c5555b367eaea62ad89",
+      "src/index.ts": "cb8d6fc3cba11786affb0b7718e4750b2fc5e3d89c4eea86b7b9307c7b9e473b",
       "src/privacy.generated.ts": "5c0f6d193d3f6d332a415d2cfa7b9e571bdf3b6ca71f8ae177e053227170e804",
       "wrangler.jsonc": "d7c0046626c2da81eca662bc64f38619da75b0d48f4978b1dc37ecf5eb8c3c0b",
     });
@@ -407,7 +407,7 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "package.json": "674a79407b61b5947fa4ed7fa2e190c5ac39a255ca61b47ec6b6097d37aff6ea",
       "project.json": "2115551c1b468de5bb4ceb23c44d6e348790b307265fefa91329cff9b40db02d",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "55c1cb50d7e827ed559b81f4c84c969d34e7b65e621fc6a7464083daa8b2e09c",
+      "src/index.ts": "a470154be1eac25c0fdc667fcea5892b971661385ed9049a0482e50f915b564e",
       "src/privacy.generated.ts": "7f4322f58ee6a55f3804d2083a792725f779a951b2694709249a8e20159bfe3d",
       "wrangler.jsonc": "85a0ab37dcde7ee01d8eba1e1549a27580973cbc6620000388435027176f298c",
     });
@@ -776,7 +776,7 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
   test("the purge lists every declared table in reverse install order, tombstones by deleted_at, and never a global table", () => {
     const c = catalogOf(ws(), notes({ tables: [{ table: "notes" }, { table: "note_audit", tombstone: true }, { table: "note_trash", tombstone: true }, { table: "note_tags" }] }));
     const entry = files({ project: "p", bricks: both }, c).files["src/index.ts"]!;
-    const sql = /const WORKSPACE_PURGE_SQL: ReadonlyArray<string> = (\[[\s\S]*?\]);/.exec(entry)?.[1];
+    const sql = /const WORKSPACE_PURGE_BRICK_SQL: ReadonlyArray<string> = (\[[\s\S]*?\]);/.exec(entry)?.[1];
     expect(JSON.parse(sql!)).toEqual([
       'UPDATE "note_trash" SET deleted_at = datetime(\'now\') WHERE workspace_id = ? AND deleted_at IS NULL',
       'DELETE FROM "note_tags" WHERE workspace_id = ?',
@@ -797,7 +797,7 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
       ),
     );
     const entry = files({ project: "p", bricks: both }, c).files["src/index.ts"]!;
-    const sql = JSON.parse(/const WORKSPACE_PURGE_SQL: ReadonlyArray<string> = (\[[\s\S]*?\]);/.exec(entry)![1]!);
+    const sql = JSON.parse(/const WORKSPACE_PURGE_SHELL_SQL: ReadonlyArray<string> = (\[[\s\S]*?\]);/.exec(entry)![1]!);
     expect(sql[0]).toBe('DELETE FROM "px_schedules" WHERE workspace_id = ?');
     expect(entry).toContain('const WORKSPACE_PURGE_OBJECTS: ReadonlyArray<{ binding: string; prefix: string }> = [{"binding":"FILES","prefix":"ws/{workspaceId}/notes/"}];');
     // Without schedules there is no px_schedules statement.
@@ -840,7 +840,7 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
     const ts = (await import("typescript")).default;
     const c = catalogOf(ws(), notes({ tables: [{ table: "notes" }], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/notes/" }] }, { bindings: { FILES: "r2" } }));
     const entry = files({ project: "p", bricks: both }, c).files["src/index.ts"]!;
-    const start = entry.indexOf("const WORKSPACE_PURGE_SQL");
+    const start = entry.indexOf("const WORKSPACE_PURGE_SHELL_SQL");
     const end = entry.indexOf("\n}\n", entry.indexOf("async function purgeWorkspaceData")) + 3;
     const js = ts.transpileModule(`function make() {\n${entry.slice(start, end)}\nreturn purgeWorkspaceData;\n}`, {
       compilerOptions: { target: ts.ScriptTarget.ES2022 },
@@ -919,6 +919,17 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
     // A guard without a suspension export mounts no check.
     const plain = catalogOf(ws({}), notes({ tables: [{ table: "notes" }] }));
     expect(files({ project: "p", bricks: both }, plain).files["src/index.ts"]).not.toContain("notSuspended");
+  });
+
+  test("the emitted entry names no declared entity and has no .test( call (H8, H6)", () => {
+    const entry = files(INVOICE_FLOW_BLUEPRINT).files["src/index.ts"]!;
+    // Only guard lines and the readiness manifest's migration names may name an entity (as test/support/scan.ts checks).
+    const named = entry.split("\n").filter((line) => line.includes("invoices"));
+    expect(named.every((line) => line.startsWith('app.use("/api/invoices') || line.includes('"name": "0004_entity__invoices.sql"'))).toBe(true);
+    expect(entry).not.toContain("ent_invoices");
+    expect(entry).toContain("tableName(entity)");
+    expect(entry).toContain('import entities from "./entities.json";');
+    expect(entry).not.toContain(".test(");
   });
 
   test("the allowlist matches on method and exact path shape only", () => {

@@ -941,6 +941,10 @@ function renderEntry(
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([pkg, names]) => `import { ${[...names].sort().join(", ")} } from ${JSON.stringify(pkg)};`);
 
+  // Story 1.10: the purge reads the declared entities from entities.json at run time, so no entity is named in code.
+  const purgeEntities = needsWorkspaceData && workspaceData.some((t) => t.brick === "entity");
+  if (purgeEntities) needsEntities = true;
+
   const hasTriggers = schedules.length > 0 || queues.length > 0;
   const footerLines: string[] = [];
   if (!hasTriggers) {
@@ -1000,7 +1004,7 @@ function renderEntry(
     [
       "// Assembled by @poc/assembler. Do not edit: change the blueprint and assemble again.",
       'import { Hono } from "hono";',
-      `import { createHttpGuard${hasRateLimits ? ", rateLimit" : ""} } from "@poc/sdk";`,
+      `import { createHttpGuard${hasRateLimits ? ", rateLimit" : ""}${purgeEntities ? ", tableName" : ""} } from "@poc/sdk";`,
       ...importLines,
       ...(identityGuard ? [] : ['import { stubIdentity } from "./identity.stub.ts";']),
       ...(needsEntities ? ['import entities from "./entities.json";'] : []),
@@ -1081,7 +1085,7 @@ function renderEntry(
             `app.use(${JSON.stringify(API_PREFIX + "/*")}, stubIdentity);`,
           ]),
       "",
-      ...(needsWorkspaceData ? renderWorkspaceDataPurge(workspaceData, workspaceObjects) : []),
+      ...(needsWorkspaceData ? renderWorkspaceDataPurge(workspaceData, workspaceObjects, purgeEntities) : []),
       ...(suspensionChecks.size > 0 ? renderSuspensionChecks([...suspensionChecks.values()]) : []),
       ...body,
       ...footerLines,
@@ -1539,7 +1543,7 @@ function renderSuspensionChecks(checks: Array<{ name: string; suspension: string
       `  { method: ${JSON.stringify(e.method)}, path: new RegExp(${JSON.stringify(exemptPathPattern(e.path))}) },`,
     ]),
     "];",
-    "const suspensionExempt = (c: any) => SUSPENSION_EXEMPT.some((e) => e.method === c.req.method && e.path.test(c.req.path));",
+    "const suspensionExempt = (c: any) => SUSPENSION_EXEMPT.some((e) => e.method === c.req.method && e.path.exec(c.req.path) !== null);",
     ...checks.map((k) => `const ${k.name} = (c: any, next: any) => (suspensionExempt(c) ? next() : ${k.suspension}(c, next));`),
     "",
   ];
@@ -1596,25 +1600,38 @@ function workspaceTablesOf(migrations: string[]): WorkspaceTableInfo[] {
  * batches of at most 25 statements. Every statement is an idempotent DELETE or UPDATE bound to that workspace only, so
  * a failed purge can be retried. Global tables are never listed.
  */
-function renderWorkspaceDataPurge(tables: WorkspaceDataTable[], objects: WorkspaceObjectPrefix[]): string[] {
-  const statements = tables
-    .filter((t) => t.mode !== "keep")
-    .map((t) =>
-      t.mode === "delete"
-        ? `DELETE FROM "${t.table}" WHERE workspace_id = ?`
-        : `UPDATE "${t.table}" SET deleted_at = datetime('now') WHERE workspace_id = ? AND deleted_at IS NULL`,
-    );
+function renderWorkspaceDataPurge(tables: WorkspaceDataTable[], objects: WorkspaceObjectPrefix[], withEntities: boolean): string[] {
+  const sql = (list: WorkspaceDataTable[]) =>
+    list
+      .filter((t) => t.mode !== "keep")
+      .map((t) =>
+        t.mode === "delete"
+          ? `DELETE FROM "${t.table}" WHERE workspace_id = ?`
+          : `UPDATE "${t.table}" SET deleted_at = datetime('now') WHERE workspace_id = ? AND deleted_at IS NULL`,
+      );
+  // Reverse install order: the shell's tables (installed last), then the declared entities, then the bricks' tables.
+  const shell = sql(tables.filter((t) => t.brick === "shell"));
+  const bricks = sql(tables.filter((t) => t.brick !== "shell" && t.brick !== "entity"));
   const kept = tables.filter((t) => t.mode === "keep").map((t) => t.table);
   return [
     "// Workspace delete (story 1.10): one statement per declared per-workspace table, in reverse install order, each bound",
-    "// to the deleted workspace's id only, run in batches of at most 25.",
+    `// to the deleted workspace's id only, run in batches of at most 25.${withEntities ? " Entity tables come from entities.json." : ""}`,
     ...(kept.length > 0 ? [`// Kept for audit (tombstone tables without a deleted_at column): ${kept.join(", ")}.`] : []),
-    `const WORKSPACE_PURGE_SQL: ReadonlyArray<string> = ${JSON.stringify(statements, null, 2)};`,
+    `const WORKSPACE_PURGE_SHELL_SQL: ReadonlyArray<string> = ${JSON.stringify(shell, null, 2)};`,
+    `const WORKSPACE_PURGE_BRICK_SQL: ReadonlyArray<string> = ${JSON.stringify(bricks, null, 2)};`,
+    "const WORKSPACE_PURGE_SQL: ReadonlyArray<string> = [",
+    "  ...WORKSPACE_PURGE_SHELL_SQL,",
+    ...(withEntities
+      ? ["  ...[...(entities as Array<{ name: string }>)].reverse().map((entity) => `DELETE FROM \"${tableName(entity)}\" WHERE workspace_id = ?`),"]
+      : []),
+    "  ...WORKSPACE_PURGE_BRICK_SQL,",
+    "];",
     `const WORKSPACE_PURGE_OBJECTS: ReadonlyArray<{ binding: string; prefix: string }> = ${JSON.stringify(objects.map((o) => ({ binding: o.binding, prefix: o.prefix })))};`,
+    "const WORKSPACE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;",
     "type PurgeBucket = { list(o: { prefix: string; cursor?: string }): Promise<{ objects: Array<{ key: string }>; truncated: boolean; cursor?: string }>; delete(keys: string[]): Promise<unknown> };",
     "async function purgeWorkspaceData(env: { DB: D1Like } & Record<string, unknown>, workspaceId: string): Promise<void> {",
     "  // One plain segment only: a '/' would widen an object prefix to other workspaces' objects.",
-    '  if (!/^[A-Za-z0-9_-]{1,64}$/.test(workspaceId)) throw new Error("workspace purge: invalid workspace id");',
+    '  if (WORKSPACE_ID_PATTERN.exec(workspaceId) === null) throw new Error("workspace purge: invalid workspace id");',
     "  for (const o of WORKSPACE_PURGE_OBJECTS) {",
     "    const bucket = env[o.binding] as PurgeBucket | undefined;",
     "    if (!bucket) throw new Error(`workspace purge: binding ${o.binding} is missing`);",
