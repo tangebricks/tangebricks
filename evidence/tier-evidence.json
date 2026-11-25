@@ -310,9 +310,9 @@
       "behaviourTest": "bricks/public-api-keys/test/keys.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 6,
+      "testsRun": 14,
       "testsSkipped": 0,
-      "assertionCount": 23
+      "assertionCount": 92
     },
     {
       "id": "queue-jobs",
@@ -496,8 +496,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-25T00:59:39.706Z",
-    "gitSha": "302e7cfcb66b8687c22c74904ea9e829d3e3cdd5",
+    "generatedAt": "2026-11-25T01:45:18.373Z",
+    "gitSha": "3f7f7c8fabfaf0c2bdba5472778033fa0e849d27",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

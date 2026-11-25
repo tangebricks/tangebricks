@@ -10,11 +10,11 @@
     "toolCalls": 4,
     "conversationTokens": 2118,
     "modelVisibleTokens": 1741,
-    "firstPartySourceTokens": 28241,
+    "firstPartySourceTokens": 28697,
     "generatedFilesOnlyTokens": 9799,
-    "ratioPercent": 7.5,
+    "ratioPercent": 7.4,
     "ratioAgainstGeneratedFilesOnlyPercent": 21.6,
-    "modelVisibleRatioPercent": 6.2,
+    "modelVisibleRatioPercent": 6.1,
     "projectHash": "e0174e84a8f8aa89bcc5e03d2b8c69d70c113f74ecee11558f6316e9195798ee",
     "files": 13,
     "byMessage": [
@@ -65,11 +65,11 @@
       },
       {
         "path": "bricks/multi-workspace/src/middleware.ts",
-        "tokens": 1034
+        "tokens": 1373
       },
       {
         "path": "bricks/multi-workspace/src/routes.ts",
-        "tokens": 4083
+        "tokens": 4200
       },
       {
         "path": "bricks/multi-workspace/migrations/0001_multi_workspace.sql",
@@ -193,23 +193,23 @@
       "session": "the whole invoices project with filtered list_bricks ({ query: 'workspace' })",
       "toolCalls": 4,
       "conversationTokens": 2006,
-      "firstPartySourceTokens": 28241,
-      "ratioPercent": 7.1
+      "firstPartySourceTokens": 28697,
+      "ratioPercent": 7
     },
     "tenBricks": {
       "session": "ten bricks and the invoices table in four calls",
       "toolCalls": 4,
-      "conversationTokens": 2224,
-      "firstPartySourceTokens": 63545,
-      "filesBuilt": 20,
-      "ratioPercent": 3.5
+      "conversationTokens": 2226,
+      "firstPartySourceTokens": 67133,
+      "filesBuilt": 21,
+      "ratioPercent": 3.3
     },
     "smallerProject": {
       "session": "workspaces and invoices without the wallet",
       "toolCalls": 4,
       "conversationTokens": 2103,
-      "firstPartySourceTokens": 16528,
-      "ratioPercent": 12.7
+      "firstPartySourceTokens": 16984,
+      "ratioPercent": 12.4
     },
     "eightTables": {
       "session": "three bricks and eight tables: in four calls with lists, and one item per call",
@@ -225,12 +225,12 @@
       "toolCalls": 6,
       "conversationTokens": 2303,
       "toolListTokens": 1216,
-      "ratioPercent": 8.2
+      "ratioPercent": 8
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-25T00:59:39.706Z",
-    "gitSha": "302e7cfcb66b8687c22c74904ea9e829d3e3cdd5",
+    "generatedAt": "2026-11-25T01:45:18.373Z",
+    "gitSha": "3f7f7c8fabfaf0c2bdba5472778033fa0e849d27",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
