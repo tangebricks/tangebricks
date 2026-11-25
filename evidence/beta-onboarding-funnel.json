@@ -84,8 +84,8 @@
   "dropOffRate": 0,
   "cp9TriggerFired": false,
   "provenance": {
-    "generatedAt": "2026-11-25T08:41:13.085Z",
-    "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+    "generatedAt": "2026-11-25T09:07:19.159Z",
+    "gitSha": "66a259929f40c15ced00dd63e46c766c24b13242",
     "gitDirty": false,
     "generator": "scripts/beta-funnel-report.ts",
     "inputKind": "measured"

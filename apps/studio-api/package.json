@@ -13,8 +13,8 @@
     "@poc/runtime": "workspace:*",
     "@poc/sdk": "workspace:*",
     "@poc/telemetry": "workspace:*",
-    "better-auth": "1.7.25",
-    "hono": "4.13.19",
+    "better-auth": "1.7.27",
+    "hono": "4.13.20",
     "zod": "4.6.7"
   }
 }

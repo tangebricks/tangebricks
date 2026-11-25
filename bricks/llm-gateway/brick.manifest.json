@@ -18,7 +18,7 @@
     "ai"
   ],
   "npmDependencies": {
-    "hono": "4.13.19",
+    "hono": "4.13.20",
     "zod": "4.6.7"
   },
   "settings": {

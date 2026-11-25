@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "de30210f9f4373e999513de38d04c3046260049a87cf475d104abf0621a70d23",
+  "catalogVersion": "2d41891582b008604a603c3a84dcd8e86ba6df6d543161a83802a56523b7cd5c",
   "bricks": {
     "admin-console": {
       "manifestVersion": 2,
@@ -21,7 +21,7 @@
         "admin"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -39,8 +39,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 0
         }
       },
@@ -109,7 +109,7 @@
         "mcp"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -127,8 +127,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 0
         }
       },
@@ -200,7 +200,7 @@
         "audit"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -214,8 +214,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 29
         }
       },
@@ -274,7 +274,7 @@
         "assets"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -311,8 +311,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 32
         }
       },
@@ -390,7 +390,7 @@
         "checkout"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -415,9 +415,9 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
-          "assertionCount": 37
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
+          "assertionCount": 42
         }
       },
       "rateLimits": [
@@ -506,8 +506,8 @@
         "auth"
       ],
       "npmDependencies": {
-        "better-auth": "1.7.25",
-        "hono": "4.13.19",
+        "better-auth": "1.7.27",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -531,8 +531,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 126
         }
       },
@@ -697,7 +697,7 @@
         "payments"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -802,8 +802,8 @@
           "DEFAULT_ADAPTER_FAKE"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 235
         }
       },
@@ -945,7 +945,7 @@
         "schedules"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -969,8 +969,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 135
         }
       },
@@ -1047,7 +1047,7 @@
         "domains"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -1065,8 +1065,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 0
         }
       },
@@ -1121,7 +1121,7 @@
         "privacy"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -1138,8 +1138,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 72
         }
       },
@@ -1223,7 +1223,7 @@
         "docs"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -1240,8 +1240,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 56
         }
       },
@@ -1319,7 +1319,7 @@
         "documents"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -1337,8 +1337,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 0
         }
       },
@@ -1404,7 +1404,7 @@
       "migrations": [],
       "routePrefixes": [],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -1462,8 +1462,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 78
         }
       },
@@ -1511,7 +1511,7 @@
         "armor"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -1528,8 +1528,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 33
         }
       },
@@ -1603,7 +1603,7 @@
         "flags"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -1625,8 +1625,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 59
         }
       },
@@ -1695,7 +1695,7 @@
         "sso"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -1712,8 +1712,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 60
         }
       },
@@ -1786,7 +1786,7 @@
         "notifications"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -1829,8 +1829,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 46
         }
       },
@@ -1888,7 +1888,7 @@
         "connect"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -1925,8 +1925,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 74
         }
       },
@@ -2005,7 +2005,7 @@
         "chat"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -2022,8 +2022,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 48
         }
       },
@@ -2097,7 +2097,7 @@
         "ai"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -2153,8 +2153,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 48
         }
       },
@@ -2243,7 +2243,7 @@
         "marketplace"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -2261,8 +2261,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 0
         }
       },
@@ -2340,7 +2340,7 @@
         "usage"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -2357,8 +2357,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 76
         }
       },
@@ -2439,7 +2439,7 @@
         "workspaces"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -2453,8 +2453,8 @@
         "derivedTier": "production",
         "blockers": [],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 105
         }
       },
@@ -2533,7 +2533,7 @@
         "oauth"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -2551,8 +2551,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 0
         }
       },
@@ -2622,7 +2622,7 @@
       "migrations": [],
       "routePrefixes": [],
       "npmDependencies": {
-        "hono": "4.13.19"
+        "hono": "4.13.20"
       },
       "settings": {
         "issuer": {
@@ -2701,8 +2701,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 59
         }
       },
@@ -2735,7 +2735,7 @@
         "messages"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -2800,8 +2800,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 50
         }
       },
@@ -2869,7 +2869,7 @@
         "subscriptions"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -2886,8 +2886,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 62
         }
       },
@@ -2957,7 +2957,7 @@
         "analytics"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -2974,8 +2974,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 26
         }
       },
@@ -3041,7 +3041,7 @@
         "api-keys"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -3058,8 +3058,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 92
         }
       },
@@ -3119,7 +3119,7 @@
         "jobs"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -3136,8 +3136,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 51
         }
       },
@@ -3212,7 +3212,7 @@
         "policies"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -3234,8 +3234,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 78
         }
       },
@@ -3312,7 +3312,7 @@
         "presence"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -3330,8 +3330,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 0
         }
       },
@@ -3396,7 +3396,7 @@
         "scripts"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -3440,8 +3440,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 0
         }
       },
@@ -3510,7 +3510,7 @@
         "search"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -3527,8 +3527,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 28
         }
       },
@@ -3585,7 +3585,7 @@
         "subscriptions"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -3612,8 +3612,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 75
         }
       },
@@ -3686,7 +3686,7 @@
         "tabular"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -3703,8 +3703,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 36
         }
       },
@@ -3769,7 +3769,7 @@
         "threads"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -3786,8 +3786,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 34
         }
       },
@@ -3852,7 +3852,7 @@
         "onboarding"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -3869,8 +3869,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 31
         }
       },
@@ -3936,7 +3936,7 @@
         "users"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -3953,8 +3953,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 39
         }
       },
@@ -3999,7 +3999,7 @@
         "vectors"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -4016,8 +4016,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 33
         }
       },
@@ -4082,7 +4082,7 @@
         "webhooks"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {
@@ -4125,8 +4125,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 76
         }
       },
@@ -4254,7 +4254,7 @@
         "runs"
       ],
       "npmDependencies": {
-        "hono": "4.13.19",
+        "hono": "4.13.20",
         "zod": "4.6.7"
       },
       "settings": {},
@@ -4272,8 +4272,8 @@
           "CONFORMANCE_KIT_MISSING"
         ],
         "evidence": {
-          "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-          "runAt": "2026-11-25T07:03:49.025Z",
+          "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+          "runAt": "2026-11-25T08:46:12.913Z",
           "assertionCount": 0
         }
       },
@@ -4946,8 +4946,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-            "runAt": "2026-11-25T07:03:49.059Z",
+            "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+            "runAt": "2026-11-25T08:46:12.957Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -6358,8 +6358,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-            "runAt": "2026-11-25T07:03:49.059Z",
+            "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+            "runAt": "2026-11-25T08:46:12.957Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -8030,8 +8030,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-            "runAt": "2026-11-25T07:03:49.059Z",
+            "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+            "runAt": "2026-11-25T08:46:12.957Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -9705,8 +9705,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-            "runAt": "2026-11-25T07:03:49.059Z",
+            "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+            "runAt": "2026-11-25T08:46:12.957Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {
@@ -11000,8 +11000,8 @@
             "LIVE_CANARY_STALE"
           ],
           "evidence": {
-            "gitSha": "185a8beee6abf2c5d793246f09d4499024fd4226",
-            "runAt": "2026-11-25T07:03:49.059Z",
+            "gitSha": "9b343b977ffeb448d42d4f0ffa200df3b0878fc5",
+            "runAt": "2026-11-25T08:46:12.957Z",
             "assertionCount": 167,
             "liveVerifiedAt": null,
             "fidelity": {

@@ -10,7 +10,7 @@
     "@poc/multi-workspace": "TARBALL:@poc/multi-workspace",
     "@poc/credit-wallet": "TARBALL:@poc/credit-wallet",
     "@poc/audit-trail": "TARBALL:@poc/audit-trail",
-    "hono": "4.13.19"
+    "hono": "4.13.20"
   },
   "pnpm": {
     "overrides": {

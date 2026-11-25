@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "de30210f9f4373e999513de38d04c3046260049a87cf475d104abf0621a70d23",
+  "catalogVersion": "2d41891582b008604a603c3a84dcd8e86ba6df6d543161a83802a56523b7cd5c",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -22,7 +22,7 @@
           "admin"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -105,7 +105,7 @@
           "mcp"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -191,7 +191,7 @@
           "audit"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -263,7 +263,7 @@
           "assets"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -375,7 +375,7 @@
           "checkout"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -488,8 +488,8 @@
           "auth"
         ],
         "npmDependencies": {
-          "better-auth": "1.7.25",
-          "hono": "4.13.19",
+          "better-auth": "1.7.27",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -675,7 +675,7 @@
           "payments"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -921,7 +921,7 @@
           "schedules"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -1020,7 +1020,7 @@
           "domains"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1089,7 +1089,7 @@
           "privacy"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1187,7 +1187,7 @@
           "docs"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1279,7 +1279,7 @@
           "documents"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1359,7 +1359,7 @@
         "migrations": [],
         "routePrefixes": [],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1462,7 +1462,7 @@
           "armor"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1551,7 +1551,7 @@
           "flags"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -1639,7 +1639,7 @@
           "sso"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1727,7 +1727,7 @@
           "notifications"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -1825,7 +1825,7 @@
           "connect"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -1938,7 +1938,7 @@
           "chat"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2026,7 +2026,7 @@
           "ai"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -2169,7 +2169,7 @@
           "marketplace"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2261,7 +2261,7 @@
           "usage"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2357,7 +2357,7 @@
           "workspaces"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2449,7 +2449,7 @@
           "oauth"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2533,7 +2533,7 @@
         "migrations": [],
         "routePrefixes": [],
         "npmDependencies": {
-          "hono": "4.13.19"
+          "hono": "4.13.20"
         },
         "settings": {
           "issuer": {
@@ -2640,7 +2640,7 @@
           "messages"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -2770,7 +2770,7 @@
           "subscriptions"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2854,7 +2854,7 @@
           "analytics"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -2934,7 +2934,7 @@
           "api-keys"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3009,7 +3009,7 @@
           "jobs"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3099,7 +3099,7 @@
           "policies"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -3195,7 +3195,7 @@
           "presence"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3274,7 +3274,7 @@
           "scripts"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3383,7 +3383,7 @@
           "search"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3454,7 +3454,7 @@
           "subscriptions"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -3551,7 +3551,7 @@
           "tabular"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3630,7 +3630,7 @@
           "threads"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3709,7 +3709,7 @@
           "onboarding"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3789,7 +3789,7 @@
           "users"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3848,7 +3848,7 @@
           "vectors"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},
@@ -3927,7 +3927,7 @@
           "webhooks"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {
@@ -4096,7 +4096,7 @@
           "runs"
         ],
         "npmDependencies": {
-          "hono": "4.13.19",
+          "hono": "4.13.20",
           "zod": "4.6.7"
         },
         "settings": {},

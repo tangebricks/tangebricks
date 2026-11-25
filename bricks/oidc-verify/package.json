@@ -9,6 +9,6 @@
   "dependencies": {
     "@poc/sdk": "workspace:*",
     "@poc/runtime": "workspace:*",
-    "hono": "4.13.19"
+    "hono": "4.13.20"
   }
 }
