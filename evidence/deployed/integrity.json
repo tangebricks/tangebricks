@@ -58,6 +58,11 @@
       "sha256": "e843270cc57470bc740db7e6480c0526fad80fa5113b860699be1e6501405cc8",
       "runTimestamp": "2026-11-26T07:37:20.114Z",
       "status": "recorded"
+    },
+    "evidence/restore-drill.json": {
+      "sha256": "7da76c99dd3983dea708c80dabd4181e4c27e176494d07c4f9410c7279d35c11",
+      "runTimestamp": "2026-11-26T17:22:23.678Z",
+      "status": "recorded"
     }
   }
 }
