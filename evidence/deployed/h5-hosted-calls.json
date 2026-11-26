@@ -40247,7 +40247,7 @@
       "database": "projectx-poc-c56a65d4-db",
       "workflow": "projectx-poc-c56a65d4-graphs"
     },
-    "url": "https://projectx-poc-c56a65d4.killerkingmega.workers.dev",
+    "url": "https://projectx-poc-c56a65d4.<account-subdomain>.workers.dev",
     "databaseId": "8cc2fe5f-5c56-4619-802b-2e00d2612a4e",
     "runsWanted": 20,
     "burstsPerRun": 5,

@@ -5,10 +5,28 @@ import type { Credentials } from "./provisioner/credentials.ts";
 import { fileKeyStore, loadOrCreateAccessKey } from "./provisioner/access-key.ts";
 import { fileStore } from "./provisioner/ledger.ts";
 import type { ResourceNames } from "./provisioner/names.ts";
+import { ACCOUNT_SUBDOMAIN_PLACEHOLDER } from "./redact-subdomain.ts";
 
 // What the later stories need to know about the deployment H10 left behind: where it is, what it is called, which database it
 // uses and which version of the Worker the deploy ended on. It comes from the H10 evidence, the ledger and the access key in the
 // state folder (outside both repositories), and it refuses to go on if they do not describe one finished deployment.
+
+/** In the state folder (outside both repositories): the account's workers.dev subdomain, written by scripts/poc-deploy.ts. */
+export const WORKERS_SUBDOMAIN_FILE = "workers-subdomain.txt";
+
+/**
+ * The real address of a Worker whose evidence URL was redacted: the placeholder is filled from the state folder's
+ * workers-subdomain.txt, else from PX_WORKERS_SUBDOMAIN. A URL without the placeholder is returned unchanged.
+ */
+export function resolveWorkerUrl(url: string, stateDir: string, env: Record<string, string | undefined>): string {
+  if (!url.includes(ACCOUNT_SUBDOMAIN_PLACEHOLDER)) return url;
+  const file = join(resolve(stateDir), WORKERS_SUBDOMAIN_FILE);
+  const sub = (existsSync(file) ? readFileSync(file, "utf8").trim() : "") || env.PX_WORKERS_SUBDOMAIN?.trim() || "";
+  if (!/^[a-z0-9-]+$/i.test(sub)) {
+    throw new Error(`the H10 evidence shows the Worker's address with the account's workers.dev subdomain redacted; put the subdomain in ${WORKERS_SUBDOMAIN_FILE} in the state folder (scripts/poc-deploy.ts writes it) or set PX_WORKERS_SUBDOMAIN`);
+  }
+  return url.split(ACCOUNT_SUBDOMAIN_PLACEHOLDER).join(sub);
+}
 
 export interface Deployment {
   credentials: Credentials;
@@ -34,5 +52,5 @@ export function loadDeployment(options: { root: string; planRepo: string; stateD
   const accessKey = loadOrCreateAccessKey(fileKeyStore(join(stateDir, "access-key.txt")), () => {
     throw new Error("the access key is missing: this Worker cannot be reached");
   });
-  return { credentials, accessKey, names, url, databaseId, deployedVersionId: h10.facts.readings.afterFourth?.latestVersionId ?? null };
+  return { credentials, accessKey, names, url: resolveWorkerUrl(url, stateDir, options.env), databaseId, deployedVersionId: h10.facts.readings.afterFourth?.latestVersionId ?? null };
 }

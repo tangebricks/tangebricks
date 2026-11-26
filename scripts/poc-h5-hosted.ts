@@ -14,6 +14,7 @@ import type { HostedResult } from "../packages/deploy/src/h5-hosted.ts";
 import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
 import { overTheNetwork } from "../packages/deploy/src/network.ts";
 import { CredentialsError, createClient, createRedactor, findSecrets } from "../packages/deploy/src/provisioner/index.ts";
+import { redactCallsAndResult } from "./lib/redact-subdomain.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const planRepo = resolve(root, "..", "ProjectX");
@@ -42,7 +43,7 @@ const runsArg = process.argv.indexOf("--runs");
 const runs = runsArg >= 0 ? Number(process.argv[runsArg + 1]) : undefined;
 
 out(`hosted money check against ${deployment.names.script}; no upload will be made`);
-const { calls, result: first } = await runHostedH5({
+const { calls, result: measured } = await runHostedH5({
   clock: () => performance.now(),
   commandStart: performance.now(),
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
@@ -60,7 +61,8 @@ const { calls, result: first } = await runHostedH5({
 });
 
 const secrets = { token: credentials.token, accountId: credentials.accountId, accessKey };
-const callsText = canonicalHosted(calls);
+// the account's workers.dev subdomain never reaches the evidence; callsSha256 is taken over the redacted calls text
+const { callsText, result: first } = redactCallsAndResult(canonicalHosted(calls), measured);
 for (const [name, text] of [["h5-hosted-calls.json", callsText], ["h5-hosted-result.json", JSON.stringify(first, null, 2)]] as const) {
   const hits = findSecrets(text, secrets);
   if (hits.length > 0) {

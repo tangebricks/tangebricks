@@ -10,6 +10,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CredentialsError, createClient, describeProbe, findSecrets, forEvidence, loadCredentials, onlyReads, runProbe } from "../packages/deploy/src/provisioner/index.ts";
+import { redactWorkersDevSubdomains } from "./lib/redact-subdomain.ts";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -42,7 +43,11 @@ if (!reads) {
   process.exit(3);
 }
 
-const evidence = { story: "5.4", at: new Date().toISOString(), allRequestsWereReads: reads, report: forEvidence(report), calls: client.calls };
+// The account's workers.dev subdomain (which the probe reads) is kept out of the evidence.
+const evidence = redactWorkersDevSubdomains(
+  { story: "5.4", at: new Date().toISOString(), allRequestsWereReads: reads, report: forEvidence(report), calls: client.calls },
+  { known: [report.checks.subdomain.value] },
+);
 const text = JSON.stringify(evidence, null, 2) + "\n";
 const leaked = findSecrets(text, { token: credentials.token, accountId: credentials.accountId });
 if (leaked.length > 0) {

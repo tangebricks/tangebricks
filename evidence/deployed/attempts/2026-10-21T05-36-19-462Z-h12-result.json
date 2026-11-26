@@ -3,7 +3,7 @@
   "commandStartedAt": "2026-10-21T05:24:35.628Z",
   "finishedAt": "2026-10-21T05:24:43.661Z",
   "completed": true,
-  "callsSha256": "ec650df3f38260414b2c787bd50758574efadf40dc3646c88a289b0c7e6a2aee",
+  "callsSha256": "d40afa758eddaa8dac4f15b77594fbbcfa86b35347958e98a8fa7915a105438c",
   "scanned": {
     "packages/deploy/client/demo-entry.tsx": "ee2d313d74d2257d6486349c455a781e7c99ce556d51ff2bbadfbd2bf2240296",
     "bricks/credit-wallet/client/CreditWidget.tsx": "581de07a149782b94551c314e5691ba924d28b77b0ee1cf1d701473d9c217d8a",

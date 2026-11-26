@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "commandStartedAt": "2026-10-21T09:39:29.698Z",
-  "url": "https://projectx-poc-c56a65d4-mcp.killerkingmega.workers.dev/mcp",
+  "url": "https://projectx-poc-c56a65d4-mcp.<account-subdomain>.workers.dev/mcp",
   "deploy": {
     "bytes": 863772,
     "gzipBytes": 144332,
@@ -14,7 +14,7 @@
       "created the tool's two bookkeeping tables in the project database",
       "applied migration 0001_mcp_server.sql",
       "uploaded Worker projectx-poc-c56a65d4-mcp",
-      "switched on https://projectx-poc-c56a65d4-mcp.killerkingmega.workers.dev"
+      "switched on https://projectx-poc-c56a65d4-mcp.<account-subdomain>.workers.dev"
     ],
     "reachableAfterMs": 582
   },

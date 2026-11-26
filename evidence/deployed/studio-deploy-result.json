@@ -31,14 +31,14 @@
     "deploy_preview": {
       "planAction": "create",
       "action": "create",
-      "workerUrl": "https://px-tangebricks-test-05402d83-preview.killerkingmega.workers.dev",
+      "workerUrl": "https://px-tangebricks-test-05402d83-preview.<account-subdomain>.workers.dev",
       "healthzStatus": 200,
       "mutatingCallCount": 17
     },
     "deploy_production": {
       "planAction": "create",
       "action": "create",
-      "workerUrl": "https://px-tangebricks-test-05402d83-production.killerkingmega.workers.dev",
+      "workerUrl": "https://px-tangebricks-test-05402d83-production.<account-subdomain>.workers.dev",
       "healthzStatus": 200,
       "mutatingCallCount": 17
     },

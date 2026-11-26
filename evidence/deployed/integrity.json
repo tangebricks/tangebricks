@@ -3,59 +3,59 @@
   "description": "sha256 and run timestamp of every live result file under evidence/deployed. proof:check fails when a file's hash changes while its run timestamp does not (edited without a re-run), or when a file has no entry. Record a genuine re-run with `pnpm evidence:record-live`; never edit this file by hand.",
   "files": {
     "evidence/deployed/attempts/2026-10-21T03-24-03-095Z-h10-result.json": {
-      "sha256": "4738125076273ee175a9c121aac60490a12e9f54fd8d11576ab2b28457d2639b",
+      "sha256": "6d75b07a8535712921b0dcbdb3292a49fc9f020d3912c3097de7dcf94449c37a",
       "runTimestamp": "2026-10-21T02:56:30.833Z",
       "status": "recorded"
     },
     "evidence/deployed/attempts/2026-10-21T05-36-19-462Z-h12-result.json": {
-      "sha256": "df7bee101194a95fe665d73eba740d1b07d829c69c202c6e97c3cea67b6d1245",
+      "sha256": "5621827b4ea078451b3c54dc13d375e77a71cb996a9b09e1fa546ba2bac7667d",
       "runTimestamp": "2026-10-21T05:24:35.628Z",
       "status": "hand-edited, unverified",
       "note": "one scanned-file path edited by hand on 2026-10-28 (commit 8f83415) without a re-run"
     },
     "evidence/deployed/attempts/2026-10-21T07-12-03-356Z-h5-hosted-result.json": {
-      "sha256": "c214fc4d1f80c021c6bd36e093c72c44e02e933ae3d471c81042e850feab0ad7",
+      "sha256": "a2c1190df7d59668c30d10844d3e9e881b5b5fe40fadd64b16c24a8afe7595dd",
       "runTimestamp": "2026-10-21T06:55:40.426Z",
       "status": "recorded"
     },
     "evidence/deployed/attempts/2026-10-21T09-40-29-907Z-mcp-result.json": {
-      "sha256": "2e59b6667e976766c9047f0bf90aee4fc946c5fe9cf8ab6efa48019403a6f3bb",
+      "sha256": "8a1a7b6fcb02b8d52777510597002266b2477d61b1e240ee3c4273fcdbee92cf",
       "runTimestamp": "2026-10-21T09:39:29.698Z",
       "status": "recorded"
     },
     "evidence/deployed/attempts/2026-11-26T07-17-54-428Z-studio-deploy-result.json": {
-      "sha256": "cc0fd52440b90870a76065fab9c7be86af79f790f7b1701c2b391b300c08edc4",
+      "sha256": "01381437ec4928c554bbb9d8aa2ccd04005412894f98636c3d144f3db6183aff",
       "runTimestamp": "2026-11-26T07:17:54.428Z",
       "status": "recorded"
     },
     "evidence/deployed/h10-result.json": {
-      "sha256": "eb13f500e4a6c67e7e13a4f1d02fef01b6dbf1b7353b4c0c51ffff8d981752fd",
+      "sha256": "f68a215c1a4aa8460a98e057a3bd3a86d12558e72ff1acbdf94f17e5705a89c6",
       "runTimestamp": "2026-10-21T03:23:00.872Z",
       "status": "recorded"
     },
     "evidence/deployed/h11-result.json": {
-      "sha256": "36db65b617e5bf90fa837fc7229e183b4b3ddf26bb887d519aa517f53a0e9517",
+      "sha256": "28e93f4dd870694c5027524ef7077831bce20dcdc38e0da9d88659e74f3fff75",
       "runTimestamp": "2026-10-21T04:16:18.083Z",
       "status": "recorded"
     },
     "evidence/deployed/h12-result.json": {
-      "sha256": "acbbcd32f69a6eac1b6d510d30c30c5861c0022f3a20b9208dcd83579e47a4e2",
+      "sha256": "6f97f7e206fdcd604d2f55dc7370637f8e9064109556ac91c095d08cdf214e8a",
       "runTimestamp": "2026-10-21T05:36:08.661Z",
       "status": "hand-edited, unverified",
       "note": "result file edited by hand on 2026-10-28 (commit 8f83415) without a re-run"
     },
     "evidence/deployed/h5-hosted-result.json": {
-      "sha256": "2460053daa64e3765612a9f6253f2f14235bb384ddf824c559890ba59997d52a",
+      "sha256": "b8d6aee4213845936606a0cdad81fd391dc73e91c07ae93ee6e7bb76c6827ef6",
       "runTimestamp": "2026-10-21T06:56:57.397Z",
       "status": "recorded"
     },
     "evidence/deployed/mcp-result.json": {
-      "sha256": "2af7a75cedd760c841e4ca2bb015fa17fefe1f5be949e919701f048b502b7d00",
+      "sha256": "fceaeee02da1b547e5348237888ef0687e71181b3ed9123b794b9b7eddce80a9",
       "runTimestamp": "2026-10-21T09:40:14.207Z",
       "status": "recorded"
     },
     "evidence/deployed/studio-deploy-result.json": {
-      "sha256": "610eeec601265ef1fc049359d00ba682d6bcc9a622ae6e07061a3404b7dd4ba0",
+      "sha256": "e843270cc57470bc740db7e6480c0526fad80fa5113b860699be1e6501405cc8",
       "runTimestamp": "2026-11-26T07:37:20.114Z",
       "status": "recorded"
     }

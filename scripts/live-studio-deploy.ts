@@ -40,6 +40,7 @@ import { WORKFLOW_RUNS_PATH } from "../packages/deploy/src/worker/proof-routes.t
 import { deriveProjectSecret, signControlPlaneRequest } from "../packages/telemetry/src/index.ts";
 import { INVOICE_FLOW_BLUEPRINT } from "../test/support/blueprints.ts";
 import { recordLiveIntegrity } from "./lib/live-evidence.ts";
+import { redactWorkersDevSubdomains } from "./lib/redact-subdomain.ts";
 import { createNodeStudioEnv } from "./lib/studio-node-env.ts";
 
 export const RESULT_FILE = "studio-deploy-result.json";
@@ -608,9 +609,10 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
 
   // ---- 8. evidence (after the teardown, so it records what was left): checked for secrets in memory, then the integrity record
   result.finishedAt = new Date().toISOString();
-  const callsText = `${JSON.stringify({ commandStartedAt, project, calls }, null, 2)}\n`;
+  // The account's workers.dev subdomain never reaches the evidence: both files are redacted before any hash is taken.
+  const callsText = `${JSON.stringify(redactWorkersDevSubdomains({ commandStartedAt, project, calls }), null, 2)}\n`;
   // The calls file is covered by the integrity record through its hash in the result file (only *-result.json are recorded).
-  const resultText = `${JSON.stringify({ ...result, callsFile: CALLS_FILE, callsSha256: createHash("sha256").update(callsText).digest("hex") }, null, 2)}\n`;
+  const resultText = `${JSON.stringify({ ...redactWorkersDevSubdomains(result), callsFile: CALLS_FILE, callsSha256: createHash("sha256").update(callsText).digest("hex") }, null, 2)}\n`;
   for (const [name, text] of [[RESULT_FILE, resultText], [CALLS_FILE, callsText]] as const) {
     const hits = findSecrets(text, secrets);
     if (hits.length > 0) throw new LiveProofRefusal(`refusing to write ${name}: it contains ${hits.join(" and ")}`);
