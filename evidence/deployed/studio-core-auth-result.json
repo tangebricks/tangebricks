@@ -1,0 +1,76 @@
+{
+  "commandStartedAt": "2026-11-26T20:10:55.041Z",
+  "finishedAt": "2026-11-26T20:11:40.959Z",
+  "completed": true,
+  "stoppedBecause": null,
+  "project": "tangebricks-test-b66e37c6",
+  "prefix": "px-tangebricks-test-b66e37c6-",
+  "steps": {
+    "connect": {
+      "httpStatus": 201,
+      "status": "active",
+      "permissions": [
+        {
+          "label": "Account Settings: Read",
+          "granted": true
+        },
+        {
+          "label": "Workers Scripts: Edit",
+          "granted": true
+        },
+        {
+          "label": "D1: Edit",
+          "granted": true
+        },
+        {
+          "label": "Queues: Edit",
+          "granted": true
+        }
+      ]
+    },
+    "deploy_preview": {
+      "approval": {
+        "code": "APPROVAL_REQUIRED",
+        "generate": [
+          "generate BETTER_AUTH_SECRET"
+        ],
+        "approvedStatus": 200
+      },
+      "action": "create",
+      "status": "deployed",
+      "workerUrl": "https://px-tangebricks-test-b66e37c6-preview.<account-subdomain>.workers.dev",
+      "healthzStatus": 200
+    },
+    "emailSignIn": {
+      "signUpStatus": 200,
+      "signInStatus": 200,
+      "sameUser": true
+    },
+    "secretScan": {
+      "studioAnswersScanned": 9,
+      "answersHoldingASecret": 0
+    }
+  },
+  "teardown": {
+    "removed": [
+      {
+        "kind": "workflow",
+        "name": "px-tangebricks-test-b66e37c6-preview-graphs"
+      },
+      {
+        "kind": "worker_script",
+        "name": "px-tangebricks-test-b66e37c6-preview"
+      },
+      {
+        "kind": "d1_database",
+        "name": "px-tangebricks-test-b66e37c6-preview-db"
+      }
+    ],
+    "alreadyGone": [],
+    "leftBehind": []
+  },
+  "writesDuringRedeploy": -1,
+  "blueprint": "core-auth",
+  "callsFile": "studio-core-auth-calls.json",
+  "callsSha256": "277a4aa0d869af84c40fc04adce094c2f036bd89c9ad155281f7600fd35617bb"
+}

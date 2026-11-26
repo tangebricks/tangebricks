@@ -59,6 +59,11 @@
       "runTimestamp": "2026-11-26T17:22:23.678Z",
       "status": "recorded"
     },
+    "evidence/deployed/studio-core-auth-result.json": {
+      "sha256": "36e2c0b4a2dee9de3d65369ff4633ddb699bbad6278ffbf30f3eaf03c636ff2e",
+      "runTimestamp": "2026-11-26T20:10:55.041Z",
+      "status": "recorded"
+    },
     "evidence/deployed/studio-deploy-result.json": {
       "sha256": "e843270cc57470bc740db7e6480c0526fad80fa5113b860699be1e6501405cc8",
       "runTimestamp": "2026-11-26T07:37:20.114Z",
