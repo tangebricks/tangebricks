@@ -24,13 +24,13 @@ Everything in this section is generated from the committed evidence by `pnpm rea
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | H0 | Infrastructure: tests run inside workerd | pass | 1/1 checks | — | — | 1 | local re-measure 2026-11-26 |
 | H1 | A graph validator is small and catches eight error classes | pass | 114 lines | ≤ 120 lines | ≥ 201 lines | 2 | local re-measure 2026-11-26 |
-| H2 | The runtime interprets graphs with no code generation and runs branches concurrently | pass | 0.505 ratio | < 1 ratio | — | 3 | local re-measure 2026-11-26 |
+| H2 | The runtime interprets graphs with no code generation and runs branches concurrently | pass | 0.487 ratio | < 1 ratio | — | 3 | local re-measure 2026-11-26 |
 | H3 | Executors cannot read secrets their manifest does not declare | pass | 4/4 checks | — | — | 4 | local re-measure 2026-11-26 |
 | H5 | The extracted wallet stays correct under concurrency | pass | 0 runs of 20 | ≤ 0 runs of 20 | ≥ 1 runs of 20 | 5 | local re-measure 2026-11-26; hosted D1 half: live run, **stale (run 2026-10-21)** |
 | H6 | Bricks compose from a blueprint without hand edits | pass | 5/5 checks | — | — | 5 | local re-measure 2026-11-26 |
-| H7 | Assembly is deterministic, offline and fast | pass | 0.42 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-26 |
+| H7 | Assembly is deterministic, offline and fast | pass | 0.456 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-26 |
 | H8 | An entity declaration yields tenant-safe CRUD | pass | 7/7 checks | — | — | 7 | local re-measure 2026-11-26 |
-| H9 | An MCP session builds the project at a fraction of the source tokens | pass | 5.3 percent | ≤ 15 percent | > 40 percent | 3 | local re-measure 2026-11-26; deployed MCP Worker half: live run, **stale (run 2026-10-21)** |
+| H9 | An MCP session builds the project at a fraction of the source tokens | pass | 5.4 percent | ≤ 15 percent | > 40 percent | 3 | local re-measure 2026-11-26; deployed MCP Worker half: live run, **stale (run 2026-10-21)** |
 | H10 | The project deploys to the owner's Cloudflare account over REST, idempotently | pass | 16.695 seconds | ≤ 120 seconds | > 600 seconds | 7 | live run, **stale (run 2026-10-21)** |
 | H11 | One Workflow class runs any graph stored in D1; edits need no re-upload | pass | 9/9 checks | — | — | 9 | live run, **stale (run 2026-10-21)** |
 | H12 | A brick's client layer works against its deployed API | pass | 4/4 checks | — | — | 4 | live run, **stale (run 2026-10-21)** |
@@ -56,9 +56,9 @@ Quarantined (8): hidden from the default catalog listing and from `list_bricks`;
 - `admin-console`: impersonation verify/end routes have no workspace-role check, so any member reaches them (attack suite ROLE_ESCALATION); super-admin powers sit inside a tenant app (risk 4)
 - `agent-sandbox`: stub; only four built-in handlers run, inline_js, http_webhook and workflow_call tools fail NOT_CONFIGURED, and there is no isolate sandbox
 - `custom-domains`: stub; verifyDomain() reports DNS verified and SSL active without any DNS-over-HTTPS or Cloudflare Custom Hostnames call (fabricated success)
-- `document-pdf`: stub; strips HTML/CSS into plain text on a single PDF page with no layout or pagination, and conflicts with document-parsing
+- `document-pdf`: stub; writes template text, HTML tags included, as plain lines on a single PDF page with no layout or pagination, and conflicts with document-parsing
 - `marketplace-splits`: payouts can double-spend (threat-model risk 6) and contracts/balances answer 200 for any vendor id from another workspace (attack suite ID_GUESS)
-- `oauth-server`: stub; issues access tokens that no brick or route accepts, and its authorize route issued codes for any user named in the body until 0.6 (threat-model risk 13)
+- `oauth-server`: stub; issues access tokens that no other brick accepts (only its own introspect route reads them); its authorize route issued codes for any user named in the body until 0.6 (risk 13)
 - `realtime-presence`: room and user lookups answer 200 for a room name or user id from another workspace (attack suite ID_GUESS); HTTP polling in D1, no WebSocket push
 - `workflow-dag`: overlaps blueprint workflows (architecture Open question 12) and runs in-process with toy executors rather than durable Cloudflare Workflows
 

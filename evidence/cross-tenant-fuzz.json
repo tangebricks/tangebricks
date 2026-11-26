@@ -3296,8 +3296,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-26T21:14:56.550Z",
-    "gitSha": "9c3796dd3833a600215d9f1c66c6a78940d05bc5",
+    "generatedAt": "2026-11-26T21:49:32.458Z",
+    "gitSha": "2f1d0529a5352c54415a76d7ae7a0e30b9a3388c",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
