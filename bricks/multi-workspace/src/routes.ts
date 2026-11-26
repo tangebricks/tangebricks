@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
-import { global, refuseApiKeyCaller, scoped, systemScope } from "@poc/sdk";
+import { refuseApiKeyCaller, systemScope } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import type { WorkspaceEnv, WorkspaceRole } from "./middleware.ts";
 

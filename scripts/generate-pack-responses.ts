@@ -1,7 +1,7 @@
 // UC3.2 generator. Run: node scripts/generate-pack-responses.ts   (needs `pnpm fidelity:fetch` first)
 // Copies the top-level response shape the importer extracts from the pinned
 // upstream corpus specs into the hand-trimmed pack fixtures, so pack ops carry response schemas.
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {

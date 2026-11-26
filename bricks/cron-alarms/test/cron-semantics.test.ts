@@ -6,7 +6,7 @@ import migration0001 from "../migrations/0001_cron_alarms.sql?raw";
 import migration0002 from "../migrations/0002_catch_up.sql?raw";
 import cronSource from "../src/cron.ts?raw";
 import { Hono } from "hono";
-import { CronService, MAX_CATCH_UP, createScheduleRoutes, validateCron, computeNextRun } from "../src/index.ts";
+import { CronService, MAX_CATCH_UP, createScheduleRoutes } from "../src/index.ts";
 import type { CronEnv } from "../src/index.ts";
 
 const db = env.DB as D1Like;
@@ -144,7 +144,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
 
     const createSkipFn = vi.fn();
     const serviceSkip = new CronService(db, 50, { DB: db, CRON_WORKFLOW_TARGETS: "wf_skip", wf_skip: { create: createSkipFn } });
-    const skipRuns = await serviceSkip.triggerDueSchedules(new Date());
+    await serviceSkip.triggerDueSchedules(new Date());
     expect(createSkipFn).not.toHaveBeenCalled();
 
     const skipHistory = await serviceSkip.getHistory(WS, schedSkip.schedule.id);

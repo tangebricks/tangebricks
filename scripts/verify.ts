@@ -263,7 +263,7 @@ const nodeSideChecks: Record<string, () => Record<string, boolean | null>> = {
 for (const [id, compute] of Object.entries(nodeSideChecks)) {
   if (!selected.some((h) => h.id === id)) continue;
   const into = (raw.results[id] ??= {});
-  const merged: Record<string, boolean> = { ...(into.checks ?? {}) };
+  const merged: Record<string, boolean> = { ...into.checks };
   for (const [name, value] of Object.entries(compute())) {
     if (value === null) delete merged[name];
     else merged[name] = value;
@@ -351,7 +351,7 @@ if (selected.some((h) => h.id === "H5") && raw.results.H5) {
   const resultPath = join(deployedDir, "h5-hosted-result.json");
   if (existsSync(callsPath) && existsSync(resultPath)) {
     const evaluation = evaluateHostedH5({ callsText: readLfText(callsPath), result: JSON.parse(readLfText(resultPath)) as HostedResult });
-    if ("holdsOnHostedD1" in evaluation.checks) raw.results.H5.checks = { ...(raw.results.H5.checks ?? {}), holdsOnHostedD1: evaluation.checks.holdsOnHostedD1! };
+    if ("holdsOnHostedD1" in evaluation.checks) raw.results.H5.checks = { ...raw.results.H5.checks, holdsOnHostedD1: evaluation.checks.holdsOnHostedD1! };
     extraNotes.H5 = evaluation.notes;
     for (const note of evaluation.notes) console.error(`H5 (hosted D1): ${note}`);
   }

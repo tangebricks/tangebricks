@@ -23,7 +23,6 @@ import {
   computeGraphHash,
   enabledSchedules,
   generateOpenApiSpec,
-  hashFiles,
   secretDeclarations,
   sha256Hex,
 } from "@poc/assembler";
@@ -56,7 +55,6 @@ import {
   ALL_TOOLS,
   PROTOCOL_VERSION,
   SERVER_INFO,
-  TOOLS,
   ProjectOutOfScopeError,
   checkArguments,
   classifyApplyRisk,
@@ -99,7 +97,6 @@ import {
 } from "./auth.ts";
 import type {
   StudioAuditLogInput,
-  StudioAuditLogRecord,
   StudioAuthSession,
   StudioAuthUser,
   StudioCaller,
@@ -315,7 +312,6 @@ import {
   findTelemetryIdCollision,
   findResolvingRetryRunId,
   getRunRecord,
-  handleTelemetryLogsPullRequest,
   handleTelemetryMetricsRequest,
   insertStepEvent,
   insertStructuredLog,
@@ -325,10 +321,8 @@ import {
   pruneExpiredTelemetryRuns,
   queryEnvironmentMetrics,
   queryRunHistory,
-  queryStructuredLogs,
   reconcileCloudflareAnalyticsWithD1Metrics,
   recordHttpRequestSamples,
-  redactStructuredLogEntry,
   redactTelemetryPayload,
   signControlPlaneRequest,
   upsertHttpRollup,
@@ -357,7 +351,6 @@ import {
   assertNoPlaceholderExecutors,
   buildExecutorsFromCatalog,
   buildRegistryFromCatalog,
-  computeConnectionKeyHint,
   ensureConnectionsTable,
   handleStepRehearsalRequest,
   handleWorkflowRerunRequest,
@@ -1489,7 +1482,7 @@ export class StudioDeployRefusal extends Error {
     if (detail) this.detail = detail;
   }
   getResponse(): Response {
-    return Response.json({ error: { code: this.code, message: this.message, ...(this.detail ?? {}) } }, { status: this.status });
+    return Response.json({ error: { code: this.code, message: this.message, ...this.detail } }, { status: this.status });
   }
 }
 
@@ -7425,7 +7418,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       }
 
       const mergedConfig: Record<string, unknown> = {
-        ...(bpNode?.data ?? {}),
+        ...bpNode?.data,
         ...(typeof rawBody.config === "object" &&
         rawBody.config !== null &&
         !Array.isArray(rawBody.config)
@@ -11303,7 +11296,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const partial = { deployId: p.deployId, steps: p.steps, writeCalls };
     const message = hide(error instanceof Error ? error.message : String(error));
     let refusal: StudioDeployRefusal;
-    if (error instanceof StudioDeployRefusal) refusal = new StudioDeployRefusal(error.code, error.message, error.status, { ...(error.detail ?? {}), partial });
+    if (error instanceof StudioDeployRefusal) refusal = new StudioDeployRefusal(error.code, error.message, error.status, { ...error.detail, partial });
     else if (message.startsWith("NO_WORKERS_DEV_SUBDOMAIN")) refusal = new StudioDeployRefusal("NO_WORKERS_DEV_SUBDOMAIN", message, 422, { partial });
     else if (error instanceof CloudflareApiError) refusal = new StudioDeployRefusal("CLOUDFLARE_ERROR", message, 502, { cloudflare: { status: error.status, codes: error.codes, details: error.details }, partial });
     else if (error instanceof CloudflareNetworkError) refusal = new StudioDeployRefusal("CLOUDFLARE_UNREACHABLE", message, 502, { partial });
@@ -11525,7 +11518,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       ]),
     );
     const mergedAppliedMigrationSql: Record<string, string> = {
-      ...(ctx.deployedState.appliedMigrationSql ?? {}),
+      ...ctx.deployedState.appliedMigrationSql,
     };
     for (const m of ctx.allMigrations) {
       mergedAppliedMigrationSql[m.name] = m.sql;
@@ -12547,9 +12540,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         ? rawBody.now
         : (c.req.query("now") ?? undefined);
 
-    const result = await pruneExpiredSandboxes(db, {
-      ...(nowInput !== undefined ? { now: nowInput } : {}),
-    });
+    const result = await pruneExpiredSandboxes(db, nowInput !== undefined ? { now: nowInput } : {});
 
     return c.json(result, 200);
   });
@@ -12697,7 +12688,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const vaultKeySecret = c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
     const configuredSecretValues: Record<string, string> = {
-      ...(bodyData?.secrets ?? {}),
+      ...bodyData?.secrets,
     };
 
     for (const [secName, secVal] of Object.entries(configuredSecretValues)) {
@@ -15538,7 +15529,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       const entityTables = description.entityTables;
 
       const mergedTables: Record<string, Array<Record<string, unknown>>> = {
-        ...(body.tables ?? {}),
+        ...body.tables,
       };
       if (Array.isArray(body.rows)) {
         for (const item of body.rows) {

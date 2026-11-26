@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const vitestBin = resolve(repoRoot, "node_modules", "vitest", "vitest.mjs");
@@ -28,7 +29,7 @@ function parseArgs(args: string[]) {
 }
 
 function stripAnsi(str: string): string {
-  return str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "");
+  return stripVTControlCharacters(str);
 }
 
 function extractFailures(output: string): string[] {

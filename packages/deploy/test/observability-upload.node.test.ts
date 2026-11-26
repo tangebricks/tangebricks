@@ -53,7 +53,7 @@ describe("UC9.4 — Observability provisioner and upload metadata", () => {
   });
 
   test("deploy uploads the tail Worker before the main Worker and teardown removes it", async () => {
-    const { fake, client, ledger, names, input } = setup();
+    const { client, ledger, names, input } = setup();
 
     (input as any).observability = {
       logs: true,

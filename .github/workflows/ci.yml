@@ -24,7 +24,8 @@ jobs:
   #   e2e               - `pnpm ci:e2e`: the full Playwright suite (covers studio:a11y, the cp5..cp7
   #                       test:e2e subsets and sandbox-to-byoc), then studio:scorecard, which reads
   #                       its JSON report.
-  #   gates             - `pnpm ci:gates`: lints, typecheck, catalog, evidence, story and MCP gates.
+  #   gates             - `pnpm lint` (oxlint correctness), then `pnpm ci:gates`: lints, typecheck,
+  #                       catalog, evidence, story and MCP gates.
   #                       Then the live-canary fetch (continue-on-error) and `pnpm ci:tiers`
   #                       (catalog:tiers), so evidence:check sees only committed evidence.
   #   proof             - `pnpm ci:proof`: boot, proof, restore drill and the studio/beta/sandbox gates.
@@ -113,6 +114,9 @@ jobs:
 
       - name: Install dependencies (frozen lockfile)
         run: pnpm install --frozen-lockfile
+
+      - name: Run oxlint correctness gate
+        run: pnpm lint
 
       # Runs first so evidence:check validates only the committed evidence/ files.
       - name: Run lint, typecheck, catalog, evidence, story and MCP gates

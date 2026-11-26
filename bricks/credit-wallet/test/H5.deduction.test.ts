@@ -1,6 +1,5 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
-import { z } from "zod";
 import { GraphInvalidError, runGraph, toyExecutors } from "@poc/runtime";
 import { applyMigration, createRegistry, toyRegistry } from "@poc/sdk";
 import type { D1Like, Executor, GraphEdge, GraphNode } from "@poc/sdk";

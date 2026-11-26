@@ -5,7 +5,7 @@ import { record } from "@poc/harness";
 import { GraphInvalidError, RunRefusedError, runGraph, toyExecutors } from "@poc/runtime";
 import { createRegistry, toyRegistry } from "@poc/sdk";
 import type { BrickManifest, ExecutionContext, Executor, GraphEdge, GraphNode } from "@poc/sdk";
-import { applyMigration, creditWalletBricks, creditWalletExecutors, createFakeGateway, createWallet } from "../src/index.ts";
+import { applyMigration, creditWalletBricks, creditWalletExecutors, createWallet } from "../src/index.ts";
 import type { D1Like } from "../src/index.ts";
 import migration from "../migrations/0001_credit_wallet.sql?raw";
 import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";

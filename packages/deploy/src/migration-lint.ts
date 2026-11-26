@@ -31,9 +31,9 @@ export interface MigrationLintResult {
 }
 
 export function cleanSqlIdentifier(raw: string): string {
-  const trimmed = raw.trim().replace(/^[`"\[]+|[`"\]]+$/g, "");
+  const trimmed = raw.trim().replace(/^[`"[]+|[`"\]]+$/g, "");
   const parts = trimmed.split(".");
-  return (parts[parts.length - 1] ?? trimmed).replace(/^[`"\[]+|[`"\]]+$/g, "");
+  return (parts[parts.length - 1] ?? trimmed).replace(/^[`"[]+|[`"\]]+$/g, "");
 }
 
 export interface ParsedSqlTypeInfo {
@@ -165,7 +165,7 @@ export function parseCreateTableColumns(
       continue;
     }
     const colMatch = clause.match(
-      /^([`"\[]?[A-Za-z0-9_]+[`"\]]?)\s+([A-Za-z0-9_]+(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)/,
+      /^([`"[]?[A-Za-z0-9_]+[`"\]]?)\s+([A-Za-z0-9_]+(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)/,
     );
     if (colMatch) {
       const colName = cleanSqlIdentifier(colMatch[1]!);
@@ -218,7 +218,7 @@ export function lintMigration(
           const parsed = parseCreateTableColumns(stmt);
           if (parsed) {
             knownTables[parsed.tableName] = {
-              ...(knownTables[parsed.tableName] ?? {}),
+              ...knownTables[parsed.tableName],
               ...parsed.columns,
             };
           }
@@ -230,7 +230,7 @@ export function lintMigration(
             const col = cleanSqlIdentifier(addColMatch[2]!);
             const colType = addColMatch[3]!.trim().toUpperCase();
             knownTables[tbl] = {
-              ...(knownTables[tbl] ?? {}),
+              ...knownTables[tbl],
               [col]: colType,
             };
           }
@@ -355,7 +355,7 @@ export function lintMigration(
       const colTypeMatch = rest.match(/^([A-Za-z0-9_]+(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)/);
       const colType = colTypeMatch ? colTypeMatch[1]!.trim().toUpperCase() : "TEXT";
       knownTables[tbl] = {
-        ...(knownTables[tbl] ?? {}),
+        ...knownTables[tbl],
         [col]: colType,
       };
       continue;
@@ -470,7 +470,7 @@ export function lintMigration(
         });
       }
       knownTables[affectedTable] = {
-        ...(knownTables[affectedTable] ?? {}),
+        ...knownTables[affectedTable],
         [affectedColumn]: nextTypeRaw.toUpperCase(),
       };
       continue;

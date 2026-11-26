@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import type { Reporter, TestModule, Vitest } from "vitest/node";
 import { mergeRecords, readAttachments, readReports } from "../packages/harness/src/results.ts";

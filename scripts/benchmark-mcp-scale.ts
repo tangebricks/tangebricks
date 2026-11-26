@@ -1,9 +1,8 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { assemble } from "../packages/assembler/src/index.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
 import { createInMemoryBlueprintClient, createMcpApp, createStaticTokenVerifier, projectHash } from "../packages/mcp-server/src/index.ts";
 import { createSqliteD1 } from "../bricks/credit-wallet/client/test/support/sqlite-d1.ts";
@@ -11,7 +10,6 @@ import { applyMigration } from "../packages/sdk/src/index.ts";
 import { TOKENIZER, countTokens, firstPartySource } from "../test/support/tokens.ts";
 
 const root = process.cwd();
-const bricksDir = join(root, "bricks");
 const TOKEN = "benchmark-token-0123456789abcdef";
 
 interface ScaleTier {

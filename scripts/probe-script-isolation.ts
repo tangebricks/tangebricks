@@ -1,9 +1,7 @@
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCredentials } from "../packages/deploy/src/provisioner/credentials.ts";
-import { createClient } from "../packages/deploy/src/provisioner/cloudflare.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,7 +40,7 @@ export async function probeScriptIsolation(): Promise<ScriptIsolationProbeRecord
   let credentials;
   try {
     credentials = loadCredentials(process.env);
-  } catch (err: any) {
+  } catch {
     credentials = null;
   }
 
@@ -68,7 +66,6 @@ export async function probeScriptIsolation(): Promise<ScriptIsolationProbeRecord
   }
 
   // Live account probe
-  const client = createClient({ credentials, fetch: (req) => fetch(req) });
   try {
     const record: ScriptIsolationProbeRecord = {
       gitSha,

@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import type { D1Like, RequestContext } from "@poc/sdk";
-import { AuditTrailService, type ActorType } from "./audit.ts";
+import { AuditTrailService } from "./audit.ts";
 
 export interface AuditEnv {
   Bindings: { DB: D1Like };

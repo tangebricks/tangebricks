@@ -4,6 +4,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
@@ -11,12 +12,12 @@ const write = (rel: string, text: string) => writeFileSync(join(root, rel), text
 
 function h6(): string {
   const run = spawnSync(process.execPath, [join(root, "scripts", "verify.ts"), "H6"], { cwd: root, encoding: "utf8" });
-  const out = (run.stdout + run.stderr).replace(/\x1B\[[0-9;]*m/g, "");
+  const out = stripVTControlCharacters(run.stdout + run.stderr);
   const lines = out.split(/\r?\n/);
-  const row = lines.find((l) => /^H6 /.test(l))?.replace(/\s{2,}/g, " ") ?? "(no H6 row)";
+  const row = lines.find((l) => l.startsWith("H6 "))?.replace(/\s{2,}/g, " ") ?? "(no H6 row)";
   const reasons = lines.filter((l) => /^\s+- /.test(l)).map((l) => l.trim().replace(/^- /, "")).join("; ");
   const extra = lines.filter((l) => /^(assembler names a brick|denial tests:)/.test(l)).map((l) => l.slice(0, 90)).slice(0, 2).join(" / ");
-  const tests = lines.find((l) => /^Tests:/.test(l))?.replace(/\. Verdicts.*/, "") ?? "";
+  const tests = lines.find((l) => l.startsWith("Tests:"))?.replace(/\. Verdicts.*/, "") ?? "";
   return `exit ${run.status} | ${row.slice(0, 40)} | ${tests} | ${reasons.slice(0, 150)}${extra ? " | " + extra : ""}`;
 }
 

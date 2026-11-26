@@ -49,7 +49,7 @@ export function measureSpecFidelity(
   const flag = (c: DefectClass, opId: string, detail?: Record<string, unknown>) => {
     (classes[c] ??= new Set<string>()).add(opId);
     if (!examples[c]) {
-      examples[c] = { op: opId, ...(detail ?? {}) };
+      examples[c] = { op: opId, ...detail };
     }
   };
 

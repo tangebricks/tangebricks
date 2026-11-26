@@ -219,7 +219,7 @@ export function mergeOperations(options: MergeOperationsOptions): MergedOperatio
     const body = overlay?.body ?? baseOp?.body;
     const response =
       overlay?.response !== undefined
-        ? { ...(baseOp?.response ?? {}), ...overlay.response }
+        ? { ...baseOp?.response, ...overlay.response }
         : (baseOp?.response ?? {});
     const pagination = overlay?.pagination ?? baseOp?.pagination;
     const errorWhen = overlay?.errorWhen ?? (baseOp as any)?.errorWhen;

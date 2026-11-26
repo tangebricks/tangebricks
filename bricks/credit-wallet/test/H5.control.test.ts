@@ -148,7 +148,10 @@ describe("the negative control: cephlow's own top-up and deduction logic, fifty 
       await seedControl(db, WS, w.start, w.ops);
       for (const op of w.ops) {
         const outcome = await runControlOp(db, WS, op);
-        if (op.kind === "deduct") outcome.accepted ? (acceptedDeductions += 1) : (refused += 1);
+        if (op.kind === "deduct") {
+          if (outcome.accepted) acceptedDeductions += 1;
+          else refused += 1;
+        }
       }
     }
     expect(refused).toBeGreaterThan(0);

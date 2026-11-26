@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { AuditTrailService, type ActorType } from "./audit.ts";
+import { AuditTrailService } from "./audit.ts";
 import { auditContextMiddleware, type AuditEnv } from "./middleware.ts";
 import { RESERVED_AUDIT_ACTION } from "./recorder.ts";
 

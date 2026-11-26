@@ -1222,8 +1222,8 @@ export class SandboxDispatchPlatform {
       telemetryHmacKey:
         existing?.telemetryHmacKey ?? `px_telemetry_hmac_${randomKeyHex()}`,
       secrets: {
-        ...(existing?.secrets ?? {}),
-        ...(input.secrets ?? {}),
+        ...existing?.secrets,
+        ...input.secrets,
       },
       cronTriggers: input.cronTriggers ?? existing?.cronTriggers ?? [],
       queues: input.queues ?? existing?.queues ?? [],

@@ -454,7 +454,7 @@ export function createFakeCloudflare(options: FakeOptions) {
         const annotations = (v.metadata?.annotations as Record<string, unknown> | undefined) ?? {};
         if (shape === "top-level") return { id: v.id, number: v.number, annotations, metadata: { created_on: v.createdOn, source: "api" } };
         if (shape === "detail-only") return { id: v.id, number: v.number, metadata: { created_on: v.createdOn, source: "api" } };
-        return { id: v.id, number: v.number, metadata: { created_on: v.createdOn, source: "api", annotations, ...(v.metadata ?? {}) } };
+        return { id: v.id, number: v.number, metadata: { created_on: v.createdOn, source: "api", annotations, ...v.metadata } };
       });
       const per = Math.min(Number(url.searchParams.get("per_page") ?? items.length) || items.length, opts.maxPerPage ?? Number.MAX_SAFE_INTEGER);
       const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));

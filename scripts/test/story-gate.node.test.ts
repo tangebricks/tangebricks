@@ -5,10 +5,8 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-  parseStoryFile,
   parseTaskFileStories,
   validateStoryFile,
-  validateStoryGate,
   validateTaskFileStory,
 } from "../lib/story-provenance.ts";
 import { buildStoryGateRepo, type StoryGateRepo } from "./support/story-gate-repo.ts";

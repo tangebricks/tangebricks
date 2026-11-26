@@ -47,7 +47,7 @@ describe("In-App Notification Service Core Logic", () => {
       actionUrl: "/invoices/1001",
     });
 
-    const n2 = await service.create({
+    await service.create({
       userId: USER_ALICE,
       workspaceId: WS_ALPHA,
       title: "Security Alert",

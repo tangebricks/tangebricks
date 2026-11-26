@@ -98,9 +98,7 @@ export class OutboundWebhookService {
     options: OutboundWebhookServiceOptions = {}
   ) {
     this.db = db;
-    this.guardedFetch = createPublicUrlFetch(customFetch, {
-      ...(options.resolveHost !== undefined ? { resolveHost: options.resolveHost } : {}),
-    });
+    this.guardedFetch = createPublicUrlFetch(customFetch, options.resolveHost !== undefined ? { resolveHost: options.resolveHost } : {});
   }
 
   private parseEndpoint(row: RawEndpointRow): WebhookEndpoint {

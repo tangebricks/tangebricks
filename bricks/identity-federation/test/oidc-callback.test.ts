@@ -220,7 +220,7 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
 
   it("Task 1 & AC2: replayed state gives 400 (state is single-use)", async () => {
     const service = new IdentityFederationService(db);
-    const conn = await service.createConnection({
+    await service.createConnection({
       workspaceId: WS_TEST,
       domain: "acme.corp",
       providerType: "oidc",

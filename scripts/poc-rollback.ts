@@ -19,7 +19,6 @@ import {
   rollback,
 } from "../packages/deploy/src/provisioner/index.ts";
 import type { Client, ResourceNames, RollbackResult } from "../packages/deploy/src/provisioner/index.ts";
-import { lintMigration } from "../packages/deploy/src/migration-lint.ts";
 
 export interface DeployHistoryRow {
   id: string;
@@ -222,7 +221,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const yes = process.argv.includes("--yes");
 
   runRollback({ to, stateDir, databaseId, yes })
-    .then((result) => {
+    .then((_result) => {
       process.exit(0);
     })
     .catch((err) => {

@@ -481,8 +481,8 @@ export async function recordStudioAuditLog(
       ? entry.actorId
       : `${actorPrefix}${entry.actorId}`;
   const mergedMetadata = {
-    ...(entry.details ?? {}),
-    ...(entry.metadata ?? {}),
+    ...entry.details,
+    ...entry.metadata,
   };
   const detailsJson =
     entry.details !== undefined

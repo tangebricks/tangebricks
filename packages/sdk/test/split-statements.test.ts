@@ -30,7 +30,7 @@ describe("SQL statement splitter (UC8.1)", () => {
     expect(stmts[0]).toBe("SELECT 'it''s; fine'");
   });
 
-  it('\"weird;col\" gives 1 statement', () => {
+  it('"weird;col" gives 1 statement', () => {
     const stmts = splitStatements('SELECT "weird;col" FROM t;');
     expect(stmts).toHaveLength(1);
     expect(stmts[0]).toBe('SELECT "weird;col" FROM t');

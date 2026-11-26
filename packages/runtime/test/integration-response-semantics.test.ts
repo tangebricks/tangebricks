@@ -4,7 +4,6 @@ import type { IntegrationManifestFile } from "@poc/assembler";
 import {
   callOperation,
   createIntegrationOperationExecutor,
-  IntegrationCallError,
 } from "../src/index.ts";
 
 describe("UC3.8: integration response semantics and pagination", () => {

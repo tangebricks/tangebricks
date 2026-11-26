@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { IntegrationManifestFile } from "@poc/assembler";
-import { callOperation, IntegrationCallError } from "../src/call-operation.ts";
+import { callOperation } from "../src/call-operation.ts";
 
 describe("UC3.5 Request body fidelity runtime tests", () => {
   const baseManifest: IntegrationManifestFile = {

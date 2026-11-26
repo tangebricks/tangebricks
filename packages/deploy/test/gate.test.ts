@@ -123,7 +123,7 @@ describe("a deployment with no usable key refuses everyone", () => {
     ["an empty key", { POC_ACCESS_KEY: "" }],
     ["a key that is too short", { POC_ACCESS_KEY: "short" }],
     ["a key one character under the minimum", { POC_ACCESS_KEY: "x".repeat(MIN_KEY_LENGTH - 1) }],
-    ["a key that is not text", { POC_ACCESS_KEY: 12345678901234567890 }],
+    ["a key that is not text", { POC_ACCESS_KEY: 1234567890123456 }],
     ["a key that is null", { POC_ACCESS_KEY: null }],
     ["a key that is an object", { POC_ACCESS_KEY: { toString: () => "x".repeat(40) } }],
   ])("%s is 503 for a caller with the matching header, an empty one, and none", async (_label, env) => {

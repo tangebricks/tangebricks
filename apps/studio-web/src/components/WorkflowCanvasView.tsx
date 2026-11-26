@@ -1067,7 +1067,7 @@ function InnerWorkflowCanvas({
     (nextLayoutPatch: Record<string, { x: number; y: number }>, flushImmediate: boolean) => {
       if (isViewer || workflow.id === "wf-200-nodes") return;
       const mergedLayout = {
-        ...(layout ?? {}),
+        ...layout,
         ...basePositions,
         ...localPositionsRef.current,
         ...nextLayoutPatch,
@@ -1225,7 +1225,7 @@ function InnerWorkflowCanvas({
         ...workflow.edges,
         ...(workflowVisualDiff ? [...workflowVisualDiff.removedEdges.values()] : []),
       ],
-      { ...(canvasVisualDiff?.fromState.metadata?.layout ?? {}), ...(layout ?? {}) },
+      { ...canvasVisualDiff?.fromState.metadata?.layout, ...layout },
     );
     return effectiveCanvasNodes.map((node) => {
       const pos =
@@ -1593,7 +1593,7 @@ function InnerWorkflowCanvas({
     const stamp = Date.now();
     const ops: Array<Record<string, unknown>> = [];
     const nextLayout: Record<string, { x: number; y: number }> = {
-      ...(layout ?? {}),
+      ...layout,
       ...positions,
     };
     const newSelectedIds: string[] = [];
@@ -1687,7 +1687,7 @@ function InnerWorkflowCanvas({
     const restoreNodes: WorkflowNode[] = [];
     const restoreEdgesMap = new Map<string, WorkflowEdge>();
     const restoreLayout: Record<string, { x: number; y: number }> = {
-      ...(layout ?? {}),
+      ...layout,
       ...positions,
     };
 
@@ -1905,7 +1905,7 @@ function InnerWorkflowCanvas({
       workflow.edges,
     );
     const mergedLayout = {
-      ...(layout ?? {}),
+      ...layout,
       ...freshDagLayout,
     };
     localPositionsRef.current = freshDagLayout;

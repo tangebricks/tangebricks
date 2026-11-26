@@ -124,7 +124,6 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
   it("verifies signed Stripe webhook, triggers GraphWorkflow that auto-refreshes expiring OAuth2 Slack token in px_connections, and deduplicates webhook retries", async () => {
     const testCatalog = withIntegrations({ slack: slackManifest });
     const registry = buildRegistryFromCatalog(testCatalog);
-    const executors = buildExecutorsFromCatalog(testCatalog);
 
     // 1. Seal Stripe webhook secret into px_connections
     const stripeSealed = await sealConnectionCredentials(

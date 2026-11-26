@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 const root = resolve(import.meta.dirname, "..");
 const backup = join(root, "out", "mutate-deploy-backup");
@@ -65,7 +66,7 @@ const cases: Case[] = [
 const suites = ["packages/deploy/test/gate.test", "packages/deploy/test/scripted-check.test", "packages/deploy/test/bundle.node", "packages/deploy/test/deploy-faults.node"];
 function run(filter: string): string {
   const result = spawnSync(process.execPath, [join(root, "node_modules", "vitest", "vitest.mjs"), "run", filter], { cwd: root, encoding: "utf8" });
-  const out = (result.stdout + result.stderr).replace(/\x1B\[[0-9;]*m/g, "");
+  const out = stripVTControlCharacters(result.stdout + result.stderr);
   const tests = out.split(/\r?\n/).find((l) => /^\s+Tests /.test(l))?.trim().replace(/^Tests\s+/, "") ?? (/FAIL|Error/.test(out) ? "(did not run)" : "(no summary)");
   return tests.replace(/ passed/g, "p").replace(/ failed/g, "f");
 }

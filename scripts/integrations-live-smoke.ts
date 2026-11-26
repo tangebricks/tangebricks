@@ -1,6 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
 import { measureIntegrationTokenMetrics } from "../packages/integrations/src/index.ts";
@@ -191,7 +189,6 @@ export async function runIntegrationsSmokeSuite(): Promise<IntegrationsPackV1Evi
 }
 
 async function main() {
-  const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const report = await runIntegrationsSmokeSuite();
   const outPath = resolve(getEvidenceDir(), "integrations-pack-v1.json");
   const prov = stampEvidence("scripts/integrations-live-smoke.ts", "measured");

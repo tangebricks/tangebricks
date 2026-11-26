@@ -18,7 +18,6 @@ import {
   insertStepEvent,
   insertStructuredLog,
   listRunRecords,
-  listStepEventsAfterCursor,
   listStepEventsForRun,
   redactTelemetryPayload,
   signControlPlaneRequest,
@@ -28,7 +27,6 @@ import {
   truncateTelemetryPreview,
   upsertRunRecord,
   utf8ByteLength,
-  verifyTelemetrySignature,
 } from "../src/index.ts";
 
 const db = (env as unknown as { DB: D1Like }).DB;

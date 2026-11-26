@@ -49,11 +49,11 @@ export function loadTierPolicy(policyPath?: string): TierPolicy {
       return {
         minAssertions: {
           ...defaultPolicy.minAssertions,
-          ...(parsed.minAssertions ?? {}),
+          ...parsed.minAssertions,
         },
         requireConformanceKit: {
           ...defaultPolicy.requireConformanceKit,
-          ...(parsed.requireConformanceKit ?? {}),
+          ...parsed.requireConformanceKit,
         },
         liveVerifiedMaxAgeDays:
           typeof parsed.liveVerifiedMaxAgeDays === "number"
@@ -61,7 +61,7 @@ export function loadTierPolicy(policyPath?: string): TierPolicy {
             : defaultPolicy.liveVerifiedMaxAgeDays,
         integrationFidelity: {
           ...defaultPolicy.integrationFidelity,
-          ...(parsed.integrationFidelity ?? {}),
+          ...parsed.integrationFidelity,
         },
       };
     } catch {

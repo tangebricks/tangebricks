@@ -7,7 +7,6 @@ import {
   runAppCanary,
   validateCanaryPlan,
   type CanaryPlan,
-  type CanaryResult,
 } from "../lib/live-canary.ts";
 
 describe("Live canary harness against provider sandboxes (UC5.5)", () => {
@@ -59,7 +58,7 @@ describe("Live canary harness against provider sandboxes (UC5.5)", () => {
 
   test("(c) A stub executor returning success writes evidence/live-canary/<app>.json with status: 'pass', verifiedAt and gitSha", async () => {
     const fakeToken = "sk_test_fake_sandbox_key_9900";
-    const mockFetcher = async (req: Request | string) => {
+    const mockFetcher = async (_req: Request | string) => {
       return new Response(JSON.stringify({ object: "list", data: [] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },

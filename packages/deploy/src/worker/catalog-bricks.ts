@@ -36,9 +36,7 @@ export interface DeployBricksOptions {
 
 export function createDeployBricks(options: DeployBricksOptions = {}): DeployBricks {
   const base = buildRegistryFromCatalog(catalog);
-  const real = buildExecutorsFromCatalog(catalog, DEPLOY_PACKAGE_EXPORTS, {
-    ...(options.environment !== undefined ? { environment: options.environment } : {}),
-  });
+  const real = buildExecutorsFromCatalog(catalog, DEPLOY_PACKAGE_EXPORTS, options.environment !== undefined ? { environment: options.environment } : {});
   if (!options.fixtures) return { registry: base, executors: real };
   return {
     registry: createRegistry([...base.values(), ...options.fixtures.manifests.filter((m) => !base.has(m.type))]),

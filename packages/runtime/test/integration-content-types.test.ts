@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { IntegrationManifestFile } from "@poc/assembler";
 import { createMemoryBlobStore } from "@poc/sdk";
-import type { BlobStore, BlobStorePutMeta, BlobStorePutResult, BlobStoreGetResult } from "@poc/sdk";
 import { callOperation, IntegrationCallError } from "../src/index.ts";
 import type { IntegrationFetcher } from "../src/index.ts";
 

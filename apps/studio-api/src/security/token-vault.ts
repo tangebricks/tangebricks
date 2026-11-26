@@ -339,7 +339,7 @@ function resolveKekConfig(
         ? env.PX_TOKEN_KEK.trim()
         : missingKek();
     const keyring: Record<number, string> = {
-      ...(env.PX_TOKEN_KEK_MAP ?? {}),
+      ...env.PX_TOKEN_KEK_MAP,
       [currentKekVersion]: currentKek,
     };
     return {
@@ -359,7 +359,7 @@ function resolveKekConfig(
       ? cfg.currentKek.trim()
       : (cfg.keyring?.[currentKekVersion] ?? missingKek());
   const keyring: Record<number, string> = {
-    ...(cfg.keyring ?? {}),
+    ...cfg.keyring,
     [currentKekVersion]: currentKek,
   };
   return {
@@ -1041,7 +1041,7 @@ export async function recordStudioOnboardingEvent(
   const createdAt = input.createdAt ?? new Date().toISOString();
   const projectId = input.projectId ?? null;
   const metadataObj: Record<string, unknown> = {
-    ...(input.metadata ?? {}),
+    ...input.metadata,
     ...(input.templateId !== undefined ? { templateId: input.templateId } : {}),
     ...(input.source !== undefined ? { source: input.source } : {}),
   };
@@ -1220,9 +1220,7 @@ export async function computeOnboardingFunnelAnalytics(
   db: D1Like,
   filter?: { orgId?: string },
 ): Promise<OnboardingFunnelAnalytics> {
-  const events = await listStudioOnboardingEvents(db, {
-    ...(filter?.orgId ? { orgId: filter.orgId } : {}),
-  });
+  const events = await listStudioOnboardingEvents(db, filter?.orgId ? { orgId: filter.orgId } : {});
 
   const stepCounts = Object.fromEntries(
     STUDIO_ONBOARDING_STEPS.map((s) => [s, 0]),

@@ -896,7 +896,7 @@ function resolveSettings(id: string, definitions: Record<string, SettingDefiniti
             continue;
           }
         } else if (definition.format === "claim-path") {
-          if (!/^[A-Za-z0-9_:.\/-]+(\.[A-Za-z0-9_:\/-]+)*$/.test(value)) {
+          if (!/^[A-Za-z0-9_:./-]+(\.[A-Za-z0-9_:/-]+)*$/.test(value)) {
             errors.push(`${id}: setting "${name}" must be a valid claim-path`);
             continue;
           }

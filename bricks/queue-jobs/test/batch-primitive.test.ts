@@ -7,7 +7,7 @@ import migration0002 from "../migrations/0002_batch_items.sql?raw";
 import { JobQueueService, consumeJobQueueBatch } from "../src/index.ts";
 import { runGraph } from "@poc/runtime";
 import { coreNodeExecutors, coreNodeRegistry } from "../../../packages/core-nodes/src/index.ts";
-import { checkGraphBudget, createRegistry, toyRegistry } from "@poc/sdk";
+import { checkGraphBudget } from "@poc/sdk";
 import type { GraphNode, GraphEdge } from "@poc/sdk";
 
 const db = env.DB as D1Like;

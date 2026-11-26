@@ -671,7 +671,6 @@ export function ChangeLedgerFeed({
   onViewDiff,
 }: ChangeLedgerProps) {
   const revisions = useStudioStore((s) => s.revisions);
-  const currentRevision = useStudioStore((s) => s.currentRevision);
   const isMutating = useStudioStore((s) => s.isMutating);
   const orgs = useStudioStore((s) => s.orgs);
   const activeOrgId = useStudioStore((s) => s.activeOrgId);

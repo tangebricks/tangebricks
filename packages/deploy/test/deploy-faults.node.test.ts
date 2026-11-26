@@ -5,7 +5,6 @@ import {
   MIGRATIONS_TABLE,
   createClient,
   deploy,
-  isWriteCall,
   memoryStore,
   openLedger,
   readAccountState,
@@ -286,7 +285,7 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
   });
 
   test("Fault 5: Migration batch fails mid-way -> D1 batch atomicity is asserted, _projectx_migrations is unchanged, and re-run retries", async () => {
-    const { fake, client, names, input } = setup();
+    const { client, names, input } = setup();
 
     const m1: Migration = { name: "0001_init.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY);" };
     await deploy(input({ migrations: [m1], bundle: BUNDLE_V1 }));

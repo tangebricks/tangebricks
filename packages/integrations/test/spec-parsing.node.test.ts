@@ -5,7 +5,6 @@ import {
   parseSpecDocument,
   detectSpecVersion,
   importIntegrationSpec,
-  analyzeSpec,
 } from "../src/importer.ts";
 
 const YAML_FIXTURES_DIR = resolve(__dirname, "fixtures/yaml");

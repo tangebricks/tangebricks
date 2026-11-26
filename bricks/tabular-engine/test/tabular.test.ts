@@ -97,7 +97,7 @@ describe("Tabular Service Core Logic", () => {
   it("creates and retrieves interactive grid views isolated per workspace", async () => {
     const service = new TabularService(db);
 
-    const viewAlpha = await service.createGridView(
+    await service.createGridView(
       WS_ALPHA,
       "deals",
       "High Value Pipeline",
@@ -109,7 +109,7 @@ describe("Tabular Service Core Logic", () => {
       [{ field: "amount", direction: "desc" }]
     );
 
-    const viewBeta = await service.createGridView(
+    await service.createGridView(
       WS_BETA,
       "deals",
       "Beta Pipeline",

@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFileSync, mkdtempSync, rmSync, existsSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, existsSync } from "node:fs";
 import { importIntegrationSpec } from "../src/importer.ts";
 import {
-  parseImportCliArgs,
   runOpenApiImportCli,
   runOpenApiImportFile,
 } from "../src/cli.ts";

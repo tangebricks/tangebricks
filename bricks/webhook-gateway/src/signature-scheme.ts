@@ -1,5 +1,5 @@
 import type { WebhookSignatureScheme } from "@poc/assembler";
-import { fromBase64, fromHex, timingSafeEqual, toHex } from "./crypto.ts";
+import { fromBase64, fromHex, timingSafeEqual } from "./crypto.ts";
 
 export type { WebhookSignatureScheme } from "@poc/assembler";
 

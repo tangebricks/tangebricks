@@ -639,17 +639,17 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
                         onClick={() => {
                           setDraftSettings((prev) => ({
                             ...prev,
-                            [key]: !Boolean(currentVal),
+                            [key]: !currentVal,
                           }));
                           setSaveSuccess(false);
                         }}
                         className={`px-2.5 py-1 rounded font-mono text-[11px] font-semibold border transition disabled:opacity-50 ${
-                          Boolean(currentVal)
+                          currentVal
                             ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
                             : "bg-surface-control border-border-strong text-text-muted"
                         }`}
                       >
-                        {Boolean(currentVal) ? "Enabled (true)" : "Disabled (false)"}
+                        {currentVal ? "Enabled (true)" : "Disabled (false)"}
                       </button>
                     </div>
                   )}
@@ -1263,10 +1263,10 @@ function NodeInspectorDetail({
   useEffect(() => {
     if (!node || !nodeDef) return;
     setDraftLabel(node.label ?? node.id);
-    const nextData: Record<string, unknown> = { ...(node.data ?? {}) };
+    const nextData: Record<string, unknown> = { ...node.data };
     const mergedSchema = {
-      ...(EXTRA_NODE_CONFIG_FIELDS[node.type] ?? {}),
-      ...(nodeDef.config ?? {}),
+      ...EXTRA_NODE_CONFIG_FIELDS[node.type],
+      ...nodeDef.config,
     };
     for (const [k, def] of Object.entries(mergedSchema)) {
       if (!(k in nextData) && def.default !== undefined) {
@@ -1294,7 +1294,7 @@ function NodeInspectorDetail({
     if (!node) return null;
     const previewNode = {
       ...node,
-      data: { ...(node.data ?? {}), ...draftData },
+      data: { ...node.data, ...draftData },
     };
     return getEffectiveNodePorts(previewNode, catalog, entities);
   }, [node, draftData, catalog, entities]);
@@ -1304,8 +1304,8 @@ function NodeInspectorDetail({
   }
 
   const mergedConfigMap: Record<string, CatalogSettingDefinition> = {
-    ...(EXTRA_NODE_CONFIG_FIELDS[node.type] ?? {}),
-    ...(nodeDef.config ?? {}),
+    ...EXTRA_NODE_CONFIG_FIELDS[node.type],
+    ...nodeDef.config,
   };
   for (const existingKey of Object.keys(draftData)) {
     if (existingKey === "entity" || existingKey === "lastAuthor") continue;
@@ -1451,7 +1451,7 @@ function NodeInspectorDetail({
 
   const handleSaveNode = async () => {
     if (isViewer || isMutating || hasValidationErrors) return;
-    const nextData: Record<string, unknown> = { ...(node.data ?? {}), ...draftData };
+    const nextData: Record<string, unknown> = { ...node.data, ...draftData };
     for (const [key] of configEntries) {
       const check = configValidation[key];
       if (!check || !check.ok) return;
@@ -1927,7 +1927,7 @@ function NodeInspectorDetail({
           workflowId={wf.id}
           nodeId={node.id}
           nodeType={node.type}
-          nodeConfig={{ ...(node.data ?? {}), ...draftData }}
+          nodeConfig={{ ...node.data, ...draftData }}
           isViewer={isViewer}
           isRunning={isRunningTestStep}
           testInputText={testInputText}
@@ -1964,7 +1964,7 @@ function NodeInspectorDetail({
           onRunTestStep={async (parsedInput) => {
             await runTestStep(wf.id, node.id, {
               nodeType: node.type,
-              config: { ...(node.data ?? {}), ...draftData },
+              config: { ...node.data, ...draftData },
               input: parsedInput,
             });
           }}
@@ -2632,7 +2632,6 @@ export function RightDock() {
   const tab = useStudioStore((s) => s.rightDockTab);
   const selection = useStudioStore((s) => s.selection);
   const projectState = useStudioStore((s) => s.projectState);
-  const readiness = useStudioStore((s) => s.readiness);
   const revisions = useStudioStore((s) => s.revisions);
   const toggleRightDock = useStudioStore((s) => s.toggleRightDock);
   const setRightDockTab = useStudioStore((s) => s.setRightDockTab);

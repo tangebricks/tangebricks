@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import { IntegrationManifestSchema } from "@poc/assembler";
 import { WebhookSignatureSchemeSchema } from "@poc/assembler";
 import migration from "../migrations/0001_webhook_gateway.sql?raw";
 import {
@@ -14,7 +13,6 @@ import type { WebhookEnv, WebhookRouteOptions } from "../src/routes.ts";
 import {
   verifyWithScheme,
   type WebhookSignatureScheme,
-  type WebhookVerifyReason,
 } from "../src/signature-scheme.ts";
 
 const db = env.DB as D1Like;
@@ -484,7 +482,6 @@ describe("Declarative Webhook Signature Schemes (UC4.1)", () => {
       });
 
       const timestamp = 1700000000;
-      const nowSeconds = 1700000050;
       const eventPayload = JSON.stringify({
         event_id: "evt_slack_999",
         event: { type: "app_mention", text: "bot help" },

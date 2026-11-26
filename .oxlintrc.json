@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrors": "all",
+        "caughtErrorsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_"
+      }
+    ]
+  },
+  "ignorePatterns": [
+    "**/evidence/**",
+    "**/catalog.json",
+    "packages/assembler/catalog.generated.ts",
+    "apps/studio-web/src/catalog-data.json",
+    "**/corpus/**",
+    "**/fixtures/**",
+    "**/out/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.wrangler/**",
+    "_bmad/**",
+    "_bmad-output/**",
+    ".claude/**",
+    ".agents/**",
+    "**/*.md"
+  ],
+  // H12.rehearsal.test.tsx is one of the "no glue code" files whose sha256 the recorded live H12 run pinned
+  // (packages/deploy/src/h12.ts GLUE_SCAN_FILES); editing it withholds H12's noGlueCode check until the live test is
+  // re-run, so its one prefer-string-starts-ends-with hit is left as it is, for that rule and that file only.
+  "overrides": [
+    {
+      "files": [
+        "packages/deploy/client/test/H12.rehearsal.test.tsx"
+      ],
+      "rules": {
+        "unicorn/prefer-string-starts-ends-with": "off"
+      }
+    }
+  ]
+}

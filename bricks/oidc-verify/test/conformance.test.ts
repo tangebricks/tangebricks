@@ -160,7 +160,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
     const issuer = "https://clerk.example.com";
     const jwksUri = `${issuer}/.well-known/jwks.json`;
 
-    const fetcher = async (url: string | URL | Request): Promise<Response> => {
+    const fetcher = async (_url: string | URL | Request): Promise<Response> => {
       return new Response(JSON.stringify({ keys: [publicJwk] }), {
         status: 200,
         headers: { "Content-Type": "application/json", "Cache-Control": "max-age=3600" },
@@ -468,7 +468,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
     const issuer = "https://rotation.example.com";
     const jwksUri = `${issuer}/jwks.json`;
 
-    const fetcher = async (url: string | URL | Request): Promise<Response> => {
+    const fetcher = async (_url: string | URL | Request): Promise<Response> => {
       fetchCount += 1;
       return new Response(JSON.stringify({ keys: publishedKeys }), {
         status: 200,

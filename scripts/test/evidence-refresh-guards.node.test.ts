@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FINALIZE_STEPS, isRefreshable, planRefresh, stampStaged } from "../lib/refresh-evidence-core.ts";

@@ -234,7 +234,7 @@ function enumerateRoutes(h: HonoLike, source: string): { routes: RouteInfo[]; dr
       const isMiddleware = (r.handler as { length?: number }).length === 2;
       const reason = isMiddleware
         ? `middleware (${r.handler?.name || "anonymous"}), not an endpoint`
-        : /^\/api\/auth\//.test(r.path)
+        : r.path.startsWith("/api/auth/")
           ? "catch-all handler, public auth (core-auth Better Auth; sign-up/sign-in are public by design)"
           : "catch-all handler with no fixed path to attack";
       const k = `ALL ${r.path} ${reason}`;

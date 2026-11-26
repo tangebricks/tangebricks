@@ -5,7 +5,6 @@ import {
   createRegistry,
   parseEntities,
   toyRegistry,
-  type BrickManifest,
   type GraphEdge,
   type GraphNode,
 } from "../src/index.ts";

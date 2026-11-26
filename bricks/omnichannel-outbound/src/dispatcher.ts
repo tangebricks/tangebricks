@@ -489,7 +489,7 @@ export class MessageDispatcherService {
       body: `Your sender verification code is ${code}. It expires in 15 minutes. If you did not ask for it, ignore this message.`,
     });
     if (outcome.result.status !== "sent") {
-      if (/UNKNOWN_OUTCOME$/.test(outcome.result.error)) {
+      if (outcome.result.error.endsWith("UNKNOWN_OUTCOME")) {
         // It may have arrived: the code is kept so it can still be confirmed.
         return {
           ok: false,

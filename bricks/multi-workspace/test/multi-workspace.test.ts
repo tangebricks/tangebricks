@@ -6,7 +6,6 @@ import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_multi_workspace.sql?raw";
 import {
   createWorkspaceRoutes,
-  workspaceMiddleware,
   type WorkspaceEnv,
 } from "../src/index.ts";
 

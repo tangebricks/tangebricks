@@ -8,7 +8,6 @@ import migrationSql from "../migrations/0001_integration_connections.sql?raw";
 import {
   createIntegrationConnectionsRoutes,
   resolveProviderConfig,
-  IntegrationConnectionsError,
 } from "../src/index.ts";
 import type { IntegrationConnectionsEnv } from "../src/index.ts";
 

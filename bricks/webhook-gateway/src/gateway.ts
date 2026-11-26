@@ -14,14 +14,12 @@ import {
 import {
   verifyWithScheme,
   type WebhookSignatureScheme,
-  type WebhookVerifyReason,
 } from "./signature-scheme.ts";
 import {
   getDefaultSignatureHeader,
   getPreset,
   mapToDbVerifier,
   PRESETS,
-  WEBHOOK_PRESETS,
   type PresetName,
 } from "./presets.ts";
 

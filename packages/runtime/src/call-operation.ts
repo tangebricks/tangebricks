@@ -5,7 +5,6 @@ import type {
 import type { BlobStore } from "@poc/sdk";
 import {
   DEFAULT_SECRET_HEADER_AND_FIELD_NAMES,
-  collectConnectionSecretValues,
   trackSecretValue,
 } from "./integration/redaction.ts";
 import {
@@ -164,7 +163,7 @@ export async function callOperation(
     // 3. Initialize request headers
     const requestHeaders: Record<string, string> = {
       accept: "application/json",
-      ...(manifest.defaultHeaders ?? {}),
+      ...manifest.defaultHeaders,
     };
 
     // 4. Apply connection auth

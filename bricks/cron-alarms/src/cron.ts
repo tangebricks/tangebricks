@@ -153,9 +153,7 @@ export class CronService {
     this.envBindings = envBindings;
     const base: Fetcher =
       fetcher ?? (envBindings?.["fetch"] as Fetcher | undefined) ?? ((url, init) => globalThis.fetch(url, init));
-    this.customFetch = createPublicUrlFetch((url, init) => base(url, init), {
-      ...(options.resolveHost !== undefined ? { resolveHost: options.resolveHost } : {}),
-    });
+    this.customFetch = createPublicUrlFetch((url, init) => base(url, init), options.resolveHost !== undefined ? { resolveHost: options.resolveHost } : {});
     this.allowedWorkflowTargets = new Set(
       options.allowedWorkflowTargets ?? parseWorkflowTargets(envBindings?.[CRON_WORKFLOW_TARGETS_ENV]),
     );

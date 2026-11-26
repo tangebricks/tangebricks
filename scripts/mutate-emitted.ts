@@ -5,6 +5,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
@@ -12,9 +13,9 @@ const write = (rel: string, text: string) => writeFileSync(join(root, rel), text
 
 function runAll(): string {
   const run = spawnSync(process.execPath, [join(root, "scripts", "verify.ts")], { cwd: root, encoding: "utf8" });
-  const out = (run.stdout + run.stderr).replace(/\x1B\[[0-9;]*m/g, "");
-  const tests = out.split(/\r?\n/).find((l) => /^Tests:/.test(l))?.replace(/\. Verdicts.*/, "") ?? "Tests: (no summary)";
-  const project = out.split(/\r?\n/).find((l) => /^Assembled project/.test(l))?.replace("Assembled project two-brick: ", "project ") ?? "project (no line)";
+  const out = stripVTControlCharacters(run.stdout + run.stderr);
+  const tests = out.split(/\r?\n/).find((l) => l.startsWith("Tests:"))?.replace(/\. Verdicts.*/, "") ?? "Tests: (no summary)";
+  const project = out.split(/\r?\n/).find((l) => l.startsWith("Assembled project"))?.replace("Assembled project two-brick: ", "project ") ?? "project (no line)";
   const first = [...out.matchAll(/^ FAIL .*? > (.*)$/gm)].map((m) => m[1]!.slice(0, 70))[0];
   return `exit ${run.status} | ${tests} | ${project}${first ? " | first: " + first : ""}`;
 }

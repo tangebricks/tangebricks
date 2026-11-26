@@ -9,10 +9,8 @@
  * writes `evidence/mcp-self-correction-eval.json`, and exits 0 if >= 8/10 (>= 80%) reach a
  * repaired passing state within <= 3 MCP tool calls (exits 1 otherwise).
  */
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { fileURLToPath } from "node:url";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
 import {
@@ -104,7 +102,6 @@ async function main() {
     },
   });
 
-  const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const outPath = resolve(getEvidenceDir(), "mcp-self-correction-eval.json");
   const prov = stampEvidence("scripts/mcp-self-correct-eval.ts", "measured");
   writeEvidence(outPath, report, prov);

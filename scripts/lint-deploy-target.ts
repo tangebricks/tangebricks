@@ -132,7 +132,7 @@ export function scanStudioSourceForFakeControlPlane(source: string, filePath: st
   const accessorStart = lines.findIndex((l) => /^export function getStudioFakeControlPlane\s*\(/.test(l));
   let accessorEnd = -1;
   if (accessorStart >= 0) {
-    accessorEnd = lines.findIndex((l, i) => i > accessorStart && /^\}/.test(l));
+    accessorEnd = lines.findIndex((l, i) => i > accessorStart && l.startsWith("}"));
     const firstStatement = lines.slice(accessorStart + 1).find((l) => stripCommentsFromLine(l).trim() !== "");
     if (!firstStatement || !ACCESSOR_OPENING_GUARD.test(firstStatement)) {
       issue(accessorStart, 'getStudioFakeControlPlane must open with if (studioDeployClientMode(env) !== "fake") throw new StudioDeployClientConfigError(...)');

@@ -9,7 +9,7 @@ function otherUserRefused(ctx: RequestContext, sessionUserId: string | undefined
 }
 import { rejectForeignWorkspace } from "@poc/multi-workspace";
 import { DataPrivacyService, type PrivacyServiceHooks } from "./privacy.ts";
-import { privacyMiddleware, type PrivacyEnv } from "./middleware.ts";
+import type { PrivacyEnv } from "./middleware.ts";
 
 const SetConsentsSchema = z.object({
   userId: z.string().min(1).max(128).optional(),

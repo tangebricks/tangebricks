@@ -325,7 +325,7 @@ export async function requireApproval(
     } else {
       id = `apr_${crypto.randomUUID().replace(/-/g, "")}`;
       const summary = {
-        ...(binding.summary ?? {}),
+        ...binding.summary,
         requestedBy: {
           tokenId: caller.tokenId,
           clientName: caller.clientName,

@@ -514,7 +514,8 @@ describe("AD-V8: approval binding, release on failure, and the other gated route
     expect(first.body.error?.code, JSON.stringify(first.body)).toBe("APPROVAL_REQUIRED");
     const id = first.body.error.approvalId as string;
     const row = await approvalRow(w, id);
-    const custom = (row?.summary.migrations as Array<{ name: string; sha256: string; bytes: number; destructive: boolean }>).find(
+    const migrations = row?.summary.migrations as Array<{ name: string; sha256: string; bytes: number; destructive: boolean }> | undefined;
+    const custom = migrations?.find(
       (m) => m.name === "9001_custom.sql",
     );
     expect(custom).toMatchObject({ destructive: false });

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { relative, resolve } from "node:path";
 
 export const OFFLINE_HYPOTHESES = ["H0", "H1", "H2", "H3", "H5", "H6", "H7", "H8", "H9"] as const;
 export const LIVE_HYPOTHESES = ["H10", "H11", "H12"] as const;
