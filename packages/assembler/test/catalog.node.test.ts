@@ -105,7 +105,7 @@ describe("the assembler knows no brick", () => {
     expect(names.size).toBeGreaterThan(10);
     expect(names.has("credit-wallet")).toBe(true);
     expect(names.has("createWalletRoutes")).toBe(true);
-    expect(sources.map((s) => s.file).sort()).toEqual(["assemble.ts", "hash.ts", "identity-stub.ts", "index.ts", "integration-fidelity-codes.ts", "openapi.ts", "schemas.ts", "semver.ts", "tail-worker.ts"]);
+    expect(sources.map((s) => s.file).sort()).toEqual(["assemble.ts", "hash.ts", "identity-stub.ts", "index.ts", "integration-fidelity-codes.ts", "openapi.ts", "schedules.ts", "schemas.ts", "semver.ts", "tail-worker.ts"]);
   });
 
   test("no brick id, package, export, capability or setting name appears in the assembler's source", () => {

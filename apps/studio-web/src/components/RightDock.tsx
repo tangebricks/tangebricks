@@ -86,7 +86,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
   }
 
   const maturity = formatMaturityBadge(manifest.ui?.maturity ?? "production");
-  const needsScheduling = hasSchedulingOrQueueTriggers(manifest);
+  const needsScheduling = hasSchedulingOrQueueTriggers(manifest, enabledEntry?.config ?? {});
   const settingsEntries = Object.entries(manifest.settings ?? {});
   const secretsList = brickSecretNames(manifest);
 

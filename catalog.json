@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "4513ea140d10da0bc2ec76be5fefeb3e86d168a4bd13624646566f78f629c781",
+  "catalogVersion": "49aa690b9d574b853a615e84b8387f7adb5d971da14d47792b68520e487b575b",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -3736,7 +3736,8 @@
           "workspace-context"
         ],
         "migrations": [
-          "migrations/0001_subscription_plans.sql"
+          "migrations/0001_subscription_plans.sql",
+          "migrations/0002_plan_credits.sql"
         ],
         "routePrefixes": [
           "plans",
@@ -3755,6 +3756,21 @@
               "enterprise"
             ],
             "default": "free"
+          },
+          "planCredits": {
+            "type": "string",
+            "pattern": "^(|[a-z0-9][a-z0-9_.-]{0,63}:[0-9]{1,9}(,[a-z0-9][a-z0-9_.-]{0,63}:[0-9]{1,9}){0,19})$",
+            "example": "free:100,pro:1000",
+            "maxLength": 512,
+            "default": ""
+          },
+          "creditPeriod": {
+            "type": "enum",
+            "values": [
+              "month",
+              "year"
+            ],
+            "default": "month"
           }
         },
         "nodes": [],
@@ -3765,6 +3781,34 @@
           "maturity": "beta",
           "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
           "behaviourTest": "test/plans.test.ts"
+        },
+        "triggers": {
+          "schedules": [
+            {
+              "id": "plan-credits",
+              "cron": "* * * * *",
+              "handler": "runPlanCreditSweep",
+              "options": {
+                "planCredits": {
+                  "$setting": "planCredits"
+                },
+                "creditPeriod": {
+                  "$setting": "creditPeriod"
+                },
+                "charger": {
+                  "$capability": "credit-wallet.walletCharger",
+                  "requiredWhen": {
+                    "setting": "planCredits",
+                    "notEquals": ""
+                  }
+                }
+              },
+              "enabledWhen": {
+                "setting": "planCredits",
+                "notEquals": ""
+              }
+            }
+          ]
         },
         "conflicts": [
           {
@@ -3803,6 +3847,27 @@
               "options": {
                 "defaultTier": {
                   "$setting": "defaultTier"
+                },
+                "planCredits": {
+                  "$setting": "planCredits",
+                  "requiredWhen": {
+                    "setting": "planCredits",
+                    "notEquals": ""
+                  }
+                },
+                "creditPeriod": {
+                  "$setting": "creditPeriod",
+                  "requiredWhen": {
+                    "setting": "planCredits",
+                    "notEquals": ""
+                  }
+                },
+                "charger": {
+                  "$capability": "credit-wallet.walletCharger",
+                  "requiredWhen": {
+                    "setting": "planCredits",
+                    "notEquals": ""
+                  }
                 }
               },
               "guardPaths": [
@@ -3815,7 +3880,8 @@
         }
       },
       "files": {
-        "migrations/0001_subscription_plans.sql": "-- subscription-plans 0001: Plans, features, and workspace subscriptions.\n-- Hardened: features_json length bounded, workspace_id keyed cleanly without external FK.\n-- Prefixed with sub_ to prevent collisions.\n\nCREATE TABLE IF NOT EXISTS sub_plans (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 64),\n  price_cents INTEGER NOT NULL DEFAULT 0 CHECK (price_cents >= 0),\n  billing_interval TEXT NOT NULL CHECK (billing_interval IN ('month', 'year', 'one_time')),\n  features_json TEXT NOT NULL DEFAULT '{}' CHECK (length(features_json) <= 8192),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE TABLE IF NOT EXISTS sub_subscriptions (\n  workspace_id TEXT PRIMARY KEY,\n  plan_id TEXT NOT NULL,\n  status TEXT NOT NULL CHECK (status IN ('active', 'past_due', 'canceled', 'trialing')),\n  current_period_end TEXT NOT NULL,\n  cancel_at_period_end INTEGER NOT NULL DEFAULT 0 CHECK (cancel_at_period_end IN (0, 1)),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\n  FOREIGN KEY (plan_id) REFERENCES sub_plans(id)\n);\n\nCREATE INDEX IF NOT EXISTS sub_subscriptions_plan_idx ON sub_subscriptions(plan_id);\n"
+        "migrations/0001_subscription_plans.sql": "-- subscription-plans 0001: Plans, features, and workspace subscriptions.\n-- Hardened: features_json length bounded, workspace_id keyed cleanly without external FK.\n-- Prefixed with sub_ to prevent collisions.\n\nCREATE TABLE IF NOT EXISTS sub_plans (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 64),\n  price_cents INTEGER NOT NULL DEFAULT 0 CHECK (price_cents >= 0),\n  billing_interval TEXT NOT NULL CHECK (billing_interval IN ('month', 'year', 'one_time')),\n  features_json TEXT NOT NULL DEFAULT '{}' CHECK (length(features_json) <= 8192),\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE TABLE IF NOT EXISTS sub_subscriptions (\n  workspace_id TEXT PRIMARY KEY,\n  plan_id TEXT NOT NULL,\n  status TEXT NOT NULL CHECK (status IN ('active', 'past_due', 'canceled', 'trialing')),\n  current_period_end TEXT NOT NULL,\n  cancel_at_period_end INTEGER NOT NULL DEFAULT 0 CHECK (cancel_at_period_end IN (0, 1)),\n  created_at TEXT NOT NULL DEFAULT (datetime('now')),\n  updated_at TEXT NOT NULL DEFAULT (datetime('now')),\n  FOREIGN KEY (plan_id) REFERENCES sub_plans(id)\n);\n\nCREATE INDEX IF NOT EXISTS sub_subscriptions_plan_idx ON sub_subscriptions(plan_id);\n",
+        "migrations/0002_plan_credits.sql": "-- subscription-plans 0002 (story 1.20): plan credits.\n-- credits_granted_period is the last credit period (0, 1, 2, ... whole months or years since the subscription's\n-- created_at) whose plan credits were granted. It only spares the per-minute sweep from rescanning a workspace; the\n-- credit ledger's per-workspace idempotency key (plan-credits:<plan_id>:<period>) is what makes a grant happen once.\nALTER TABLE sub_subscriptions ADD COLUMN credits_granted_period INTEGER CHECK (credits_granted_period IS NULL OR credits_granted_period >= 0);\n-- credits_retry_after: when the sweep may try again after a failed grant (ISO 8601 UTC); NULL when nothing failed.\nALTER TABLE sub_subscriptions ADD COLUMN credits_retry_after TEXT;\n\nCREATE INDEX IF NOT EXISTS sub_subscriptions_credits_idx ON sub_subscriptions(status, credits_granted_period);\n"
       }
     },
     "tabular-engine": {

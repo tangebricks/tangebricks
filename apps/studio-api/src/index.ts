@@ -21,6 +21,7 @@ import {
   computeBuildHash,
   computeCodeHash,
   computeGraphHash,
+  enabledSchedules,
   generateOpenApiSpec,
   hashFiles,
   secretDeclarations,
@@ -10851,7 +10852,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       for (const q of catEntry.manifest.triggers?.queues ?? []) {
         queues.push(`px-${project}-${envName}-${q.id}`);
       }
-      for (const sched of catEntry.manifest.triggers?.schedules ?? []) {
+      // Story 1.20: only the schedules the assembler wires under this brick's config need a cron.
+      for (const sched of enabledSchedules(catEntry.manifest, (brickEntry as { config?: Record<string, unknown> }).config ?? {})) {
         if (!cronTriggers.includes(sched.cron)) {
           cronTriggers.push(sched.cron);
         }

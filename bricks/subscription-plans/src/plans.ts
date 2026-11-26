@@ -1,5 +1,7 @@
 import type { D1Like } from "@poc/sdk";
 import { scoped } from "@poc/sdk";
+import { grantPlanCredits } from "./credits.ts";
+import type { PlanCreditsConfig } from "./credits.ts";
 
 export interface PlanFeatures {
   [key: string]: boolean | number | string;
@@ -26,7 +28,33 @@ export interface SubscriptionRecord {
 }
 
 export class PlanService {
-  constructor(private readonly db: D1Like, private readonly defaultTier = "free") {}
+  /**
+   * `credits` (story 1.20): the plan credit settings and credit-wallet's charger. With them, reading or creating a
+   * subscription grants the current period's plan credits once (see credits.ts); without them nothing is granted.
+   */
+  constructor(
+    private readonly db: D1Like,
+    private readonly defaultTier = "free",
+    private readonly credits: PlanCreditsConfig = {},
+  ) {}
+
+  /** Story 1.20: clears the sweep's marker when plan credits are on (with them off nothing reads or writes it). */
+  private resetCreditsMarker(): { credits_granted_period?: null } {
+    return this.credits.charger && this.credits.planCredits ? { credits_granted_period: null } : {};
+  }
+
+  /**
+   * Story 1.20: grants the current period's plan credits for the workspace's subscription, if any are due. Never fails
+   * the caller: a grant that cannot be made is logged and retried by the next read or the schedule sweep.
+   */
+  private async grantCurrentPeriod(sub: { workspace_id: string; plan_id: string; status: string; created_at: string; plan?: PlanRecord | null; credits_granted_period?: number | null }): Promise<void> {
+    if (!this.credits.charger || !this.credits.planCredits) return;
+    try {
+      await grantPlanCredits(this.db, this.credits, { ...sub, billing_interval: sub.plan?.billing_interval ?? null }, Date.now());
+    } catch (error) {
+      console.error(JSON.stringify({ brick: "subscription-plans", event: "plan_credit_grant_error", message: error instanceof Error ? error.message : String(error) }));
+    }
+  }
 
   /**
    * Defines a subscription plan with pricing and feature flags.
@@ -127,12 +155,14 @@ export class PlanService {
       cancel_at_period_end: number;
       created_at: string;
       updated_at: string;
+      credits_granted_period?: number | null;
     }
 
     const sub = await scoped(this.db, workspaceId).first<SubRow>("sub_subscriptions");
 
     if (sub) {
       const plan = await this.getPlan(sub.plan_id);
+      await this.grantCurrentPeriod({ ...sub, plan });
       return {
         workspace_id: sub.workspace_id,
         plan_id: sub.plan_id,
@@ -188,9 +218,20 @@ export class PlanService {
   ): Promise<
     | { ok: true; subscription: SubscriptionRecord }
     | { ok: false; status: 402; code: "PAYMENT_REQUIRED"; error: string }
+    | { ok: false; status: 404; code: "PLAN_NOT_FOUND"; error: string }
   > {
     const planId = planIdRaw.toLowerCase().trim();
     const target = await this.getPlan(planId);
+    if (!target && planId !== this.defaultTier) {
+      // Story 1.20: only a platform operator creates plans (POST /plans). A self-serve switch to a plan id that does not
+      // exist would otherwise create it at price 0, and with plan credits on, grant that tier's credits.
+      return {
+        ok: false,
+        status: 404,
+        code: "PLAN_NOT_FOUND",
+        error: `There is no plan "${planId}", so the plan was not changed.`,
+      };
+    }
     if (!target || target.price_cents <= 0) {
       return { ok: true, subscription: await this.subscribe(workspaceId, planId) };
     }
@@ -213,6 +254,8 @@ export class PlanService {
     }
     await scoped(this.db, workspaceId).update("sub_subscriptions", {
       plan_id: target.id,
+      // Story 1.20: the new plan's credits for this period are not granted yet (the ledger key still stops a repeat).
+      ...this.resetCreditsMarker(),
       updated_at: new Date().toISOString(),
     });
     return { ok: true, subscription: await this.getSubscription(workspaceId) };
@@ -232,25 +275,40 @@ export class PlanService {
     const periodEnd = new Date(Date.now() + durationDays * 86400 * 1000).toISOString();
     const now = new Date().toISOString();
 
+    const update = () =>
+      scoped(this.db, workspaceId).update("sub_subscriptions", {
+        plan_id: plan.id,
+        status: "active",
+        current_period_end: periodEnd,
+        cancel_at_period_end: 0,
+        // Story 1.20: the (possibly new) plan's credits for this period are not marked granted yet.
+        ...this.resetCreditsMarker(),
+        updated_at: now,
+      });
     const existing = await scoped(this.db, workspaceId).first("sub_subscriptions");
     if (existing) {
-      await scoped(this.db, workspaceId).update("sub_subscriptions", {
-        plan_id: plan.id,
-        status: "active",
-        current_period_end: periodEnd,
-        cancel_at_period_end: 0,
-        updated_at: now,
-      });
+      await update();
     } else {
-      await scoped(this.db, workspaceId).insert("sub_subscriptions", {
-        plan_id: plan.id,
-        status: "active",
-        current_period_end: periodEnd,
-        cancel_at_period_end: 0,
-        created_at: now,
-        updated_at: now,
-      });
+      try {
+        await scoped(this.db, workspaceId).insert("sub_subscriptions", {
+          plan_id: plan.id,
+          status: "active",
+          current_period_end: periodEnd,
+          cancel_at_period_end: 0,
+          created_at: now,
+          updated_at: now,
+        });
+      } catch (error) {
+        // Two first reads of a workspace can both find no row; the one that loses the insert updates the row instead.
+        if (!/UNIQUE|constraint/i.test(error instanceof Error ? error.message : String(error))) throw error;
+        await update();
+      }
     }
+
+    // The period is counted from the row's own created_at, which an existing subscription keeps.
+    const stored = await scoped(this.db, workspaceId).first<{ created_at: string }>("sub_subscriptions");
+    const createdAt = stored?.created_at ?? now;
+    await this.grantCurrentPeriod({ workspace_id: workspaceId, plan_id: plan.id, status: "active", created_at: createdAt, plan });
 
     return {
       workspace_id: workspaceId,
@@ -259,7 +317,7 @@ export class PlanService {
       current_period_end: periodEnd,
       cancel_at_period_end: false,
       plan,
-      created_at: now,
+      created_at: createdAt,
       updated_at: now,
     };
   }

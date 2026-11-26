@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./catalog": "./catalog.generated.ts"
+    "./catalog": "./catalog.generated.ts",
+    "./schedules": "./src/schedules.ts"
   },
   "dependencies": {
     "@poc/sdk": "workspace:*",
