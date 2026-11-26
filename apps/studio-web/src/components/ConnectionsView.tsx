@@ -25,6 +25,7 @@ import type {
   StudioSecretStatus,
   StudioSecretUsedByTarget,
 } from "../types.ts";
+import { brickSecretNames } from "../types.ts";
 import { ConnectCloudflareModal } from "./ConnectCloudflareModal.tsx";
 import { DeployPlanModal } from "./DeployPlanModal.tsx";
 import { RollbackModal } from "./RollbackModal.tsx";
@@ -312,7 +313,7 @@ export function ConnectionsView() {
 
     for (const brick of projectState.bricks) {
       const manifest = catalog[brick.id];
-      for (const secretName of manifest?.secrets ?? []) {
+      for (const secretName of brickSecretNames(manifest)) {
         options.push({
           value: `brick:${brick.id}:${secretName}`,
           label: `Brick: ${brick.id} → ${secretName}`,

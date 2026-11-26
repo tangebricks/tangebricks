@@ -129,12 +129,10 @@ test.describe("Story 5.3: Pre-deploy Plan & Diff Modal, Destructive-Migration Gu
     await page.getByTestId("switch-to-core-auth-button").click();
     await expect(stubBlocker).toHaveCount(0);
 
-    // 6. Add required core-auth secrets inline via the preflight checklist
-    for (const secName of [
-      "BETTER_AUTH_SECRET",
-      "GITHUB_CLIENT_ID",
-      "GITHUB_CLIENT_SECRET",
-    ]) {
+    // 6. Add the required core-auth secret inline via the preflight checklist. Production never generates
+    // BETTER_AUTH_SECRET (story 1.19), so the owner supplies it here; the GitHub OAuth secrets are optional and get
+    // no input.
+    for (const secName of ["BETTER_AUTH_SECRET"]) {
       const input = page.getByTestId(`inline-secret-input-${secName}`);
       await expect(input).toBeVisible();
       await input.fill(`val_${secName.toLowerCase()}_e2e_123456`);
@@ -142,6 +140,12 @@ test.describe("Story 5.3: Pre-deploy Plan & Diff Modal, Destructive-Migration Gu
       await expect(
         page.getByTestId(`preflight-secret-row-${secName}`),
       ).toContainText("present ✓");
+    }
+    for (const secName of ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) {
+      await expect(page.getByTestId(`inline-secret-input-${secName}`)).toHaveCount(0);
+      await expect(
+        page.getByTestId(`preflight-secret-row-${secName}`),
+      ).toContainText("optional, not configured");
     }
 
     // 7. Register a pending destructive migration on preview and verify Destructive Migration Guard

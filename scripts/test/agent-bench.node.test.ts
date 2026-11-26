@@ -12,9 +12,11 @@ import { KEY_HEADER } from "../../packages/deploy/src/worker/gate.ts";
 import { memoryStore } from "../../packages/deploy/src/provisioner/index.ts";
 import { createFakeCloudflare } from "../../packages/deploy/test/support/fake-cloudflare.ts";
 import { LiveProofRefusal, runTeardownOnly } from "../lib/live-studio.ts";
+import type { StudioCall } from "../lib/live-studio.ts";
 import type { FakeCloudflare } from "../../packages/deploy/test/support/fake-cloudflare.ts";
 import {
   BenchmarkFileSchema,
+  bindUnboundSecrets,
   CHANGE_DEBIT_CREDITS,
   FREE_PLAN_UNSUPPORTED_REASON,
   KILL_RULE_VERSION,
@@ -593,28 +595,50 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
     expectNothingLeft(fake, record);
   });
 
-  test("the owner binds an unbound brick secret between calls, as a person in Studio would; the value is never recorded", { timeout: 120_000 }, async () => {
+  test("story 1.19: core-auth needs no made-up value from the owner: BETTER_AUTH_SECRET is generated on the approved preview deploy and GitHub is optional", { timeout: 120_000 }, async () => {
     const { fake, deps } = world();
     let firstNeeds = "";
+    let deployed: ToolAnswer | undefined;
     const cli = fakeCli(async (agent) => {
       const enabled = await agent.tool("apply_ops", { mode: "apply", ops: ["multi-workspace", "core-auth", "dynamic-entities"].map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId, config: {} })) });
       expect(enabled.isError, JSON.stringify(enabled.body)).toBe(false);
       firstNeeds = JSON.stringify((await agent.tool("validate_blueprint", {})).body);
-    }, {
-      resumed: async (agent) => {
-        const valid = await agent.tool("validate_blueprint", {});
-        expect(JSON.stringify(valid.body)).not.toContain("UNBOUND_BRICK_SECRET");
-      },
+      const plan = await agent.tool("deploy_plan", { env: "preview" });
+      expect(plan.body.willGenerateSecrets).toEqual(["BETTER_AUTH_SECRET"]);
+      expect(plan.body.optionalSecretsNotConfigured).toEqual(["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]);
+      deployed = await deployPreview(agent);
     });
     const hexes: string[] = [];
     const record = await runAgentBench(deps(cli, { maxAgentCalls: 2, randomHex: (n: number) => { const h = randomBytes(n).toString("hex"); hexes.push(h); return h; } }));
-    expect(firstNeeds).toContain("UNBOUND_BRICK_SECRET");
-    expect(record.ownerReview.secretsBound).toContain("core-auth.BETTER_AUTH_SECRET");
-    expect(record.agentCalls[0]!.secretsBoundAfter).toEqual(record.ownerReview.secretsBound);
-    expect(record.ownerReview.count).toBeGreaterThanOrEqual(record.ownerReview.secretsBound.length);
+    expect(firstNeeds).toContain("BETTER_AUTH_SECRET");
+    expect(firstNeeds).not.toContain("GITHUB_CLIENT"); // optional: never a readiness need
+    expect(deployed?.isError, JSON.stringify(deployed?.body)).toBe(false);
+    expect(record.deployed).toBe(true);
+    expect(record.ownerReview.secretsBound).toEqual([]); // nothing made up by the owner: generated or optional
+    expect(record.ownerReview.approvalsApproved).toBeGreaterThanOrEqual(1);
     const text = JSON.stringify(record);
     for (const h of hexes.filter((x) => x.length === 64)) expect(text).not.toContain(h);
     expectNothingLeft(fake, record);
+  });
+
+  test("story 1.19: bindUnboundSecrets binds only required secrets a person supplies, never generated or optional ones", async () => {
+    const posted: Array<Record<string, unknown>> = [];
+    const call: StudioCall = async (method, path, body) => {
+      if (method === "GET") {
+        return { status: 200, body: { readiness: { needs: [
+          { code: "UNBOUND_BRICK_SECRET", path: "bricks.core-auth.secrets.BETTER_AUTH_SECRET" },
+          { code: "UNBOUND_BRICK_SECRET", path: "bricks.core-auth.secrets.GITHUB_CLIENT_ID" },
+          { code: "UNBOUND_BRICK_SECRET", path: "bricks.some-brick.secrets.THIRD_PARTY_KEY" },
+        ] } } };
+      }
+      posted.push({ path, ...(body as Record<string, unknown>) });
+      return { status: 200, body: {} };
+    };
+    const hide: Record<string, string> = {};
+    const benchCatalog = { ...catalog, bricks: { ...catalog.bricks, "some-brick": { ...catalog.bricks["core-auth"]!, manifest: { ...catalog.bricks["core-auth"]!.manifest, id: "some-brick", secrets: ["THIRD_PARTY_KEY"] } } } };
+    const res = await bindUnboundSecrets({ call, session: "s", orgId: "o", project: "p", randomHex: (n) => "ab".repeat(n), hideValues: hide, catalog: benchCatalog });
+    expect(res).toEqual({ bound: ["some-brick.THIRD_PARTY_KEY"], failed: [] });
+    expect(posted.map((p) => (p.bindTarget as { secretName: string }).secretName)).toEqual(["THIRD_PARTY_KEY"]);
   });
 
   test("change a live app: the recorded app is stood up again, the agent adds the 5-credit debit and makes it live; the free-plan part is recorded unsupported", { timeout: 180_000 }, async () => {

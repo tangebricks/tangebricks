@@ -129,9 +129,18 @@
     "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
   },
   "secrets": [
-    "BETTER_AUTH_SECRET",
-    "GITHUB_CLIENT_ID",
-    "GITHUB_CLIENT_SECRET"
+    {
+      "name": "BETTER_AUTH_SECRET",
+      "generate": "random-32-bytes"
+    },
+    {
+      "name": "GITHUB_CLIENT_ID",
+      "optional": true
+    },
+    {
+      "name": "GITHUB_CLIENT_SECRET",
+      "optional": true
+    }
   ],
   "globalTables": [
     {

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 import { build } from "esbuild";
-import { sizeLimitReport } from "./bundle.ts";
+import { compatibilityFlagsFor, sizeLimitReport } from "./bundle.ts";
 import type { WorkerBundle } from "./bundle.ts";
 
 // Turns the MCP endpoint (packages/mcp-server, with the brick catalog) into the one script that is uploaded as its own Worker
@@ -103,6 +103,7 @@ export async function bundleMcpWorker(
     inputs: Object.keys(result.metafile!.inputs).length,
     warnings: result.warnings.map((w) => w.text),
     limit: sizeLimitReport(bytes),
+    compatibilityFlags: compatibilityFlagsFor(code),
   };
 }
 

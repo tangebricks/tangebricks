@@ -1204,6 +1204,43 @@ export function projectIntegrationToNodes(
   });
 }
 
+/**
+ * One brick secret: its name, or { name, optional, generate } (story 1.19). `optional: true` means the brick runs without it
+ * (a missing value never blocks readiness or a deploy). `generate: "random-32-bytes"` means it is internal to the brick, so
+ * the platform can make the value itself: Studio generates it on an approved preview deploy, never on production. A secret
+ * is one or the other, never both; a third-party credential is never `generate`.
+ */
+export const secretDeclaration = z.union([
+  identifier,
+  z
+    .strictObject({
+      name: identifier,
+      optional: z.literal(true).optional(),
+      generate: z.literal("random-32-bytes").optional(),
+    })
+    .refine((d) => !(d.optional && d.generate), { message: "a secret is either optional or generated, not both" }),
+]);
+export type SecretDeclaration = z.infer<typeof secretDeclaration>;
+
+/** A secret declaration with its flags spelled out. */
+export interface NormalizedSecretDeclaration {
+  name: string;
+  optional: boolean;
+  generate?: "random-32-bytes";
+}
+
+/** Each of a manifest's secrets as { name, optional, generate }, in declaration order. */
+export function secretDeclarations(manifest: { secrets?: readonly SecretDeclaration[] | undefined }): NormalizedSecretDeclaration[] {
+  return (manifest.secrets ?? []).map((d) =>
+    typeof d === "string" ? { name: d, optional: false } : { name: d.name, optional: d.optional === true, ...(d.generate ? { generate: d.generate } : {}) },
+  );
+}
+
+/** The names of a manifest's secrets, in declaration order. */
+export function secretNames(manifest: { secrets?: readonly SecretDeclaration[] | undefined }): string[] {
+  return secretDeclarations(manifest).map((d) => d.name);
+}
+
 export const ManifestSchema = z
   .strictObject({
     manifestVersion: z.literal(2),
@@ -1228,7 +1265,7 @@ export const ManifestSchema = z
     triggers: triggersDefinition.optional(),
     conflicts: z.array(conflictDefinition).optional(),
     bindings: bindingsDefinition.optional(),
-    secrets: z.array(identifier).optional(),
+    secrets: z.array(secretDeclaration).optional(),
     globalTables: z.array(globalTableDefinition).optional(),
     /** Routes the assembler mounts the SDK rate limiter on, with their default limits (story 0.21). */
     rateLimits: z.array(rateLimitDefinition).optional(),

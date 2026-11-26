@@ -33,6 +33,19 @@ export interface WorkerBundle {
   /** Places in the bundle where dynamic evaluation appears, with whose file it came from where esbuild could say. Informational: see the note in the tests. */
   dynamicEvaluation: Array<{ rule: string; line: number; where: "in the Worker bundle" | "inside the demo page's own script"; text: string }>;
   limit: { bytes: number; percentUsed: number; within: boolean };
+  /**
+   * The compatibility flags the upload must carry for this code to run: ["nodejs_compat"] when the bundle imports a `node:*`
+   * module (better-auth in core-auth imports node:crypto), otherwise none, so a project without one uploads the same metadata.
+   */
+  compatibilityFlags: string[];
+}
+
+/** A `node:*` import (static, re-export or dynamic) left in bundled code: the Worker then needs nodejs_compat. */
+const NODE_IMPORT = /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["']node:[a-z_/]+["']/;
+
+/** The compatibility flags code needs at upload: ["nodejs_compat"] when it imports `node:*`, otherwise []. */
+export function compatibilityFlagsFor(code: string): string[] {
+  return NODE_IMPORT.test(code) ? ["nodejs_compat"] : [];
 }
 
 /** Wraps the page's script in one HTML document. A `</script` inside the script would end the tag early and let the rest run as page markup, so it is written as `<\/script`, which JavaScript reads as the same text. */
@@ -68,8 +81,9 @@ export async function buildDemoPage(): Promise<string> {
 
 /**
  * Bundles the project in `projectDir` (a folder the assembler wrote, with src/index.ts) behind the gate. Resolves every
- * import itself, so the result has none left except `cloudflare:*`, which the Workers runtime provides. A Node-only
- * import in the project makes the build fail here rather than at the upload.
+ * import itself, so the result has none left except `cloudflare:*` and `node:*`, which the Workers runtime provides (the
+ * latter under nodejs_compat, reported in `compatibilityFlags`). A bare Node builtin import (`crypto` without `node:`)
+ * still makes the build fail here rather than at the upload.
  */
 export interface BundleWorkerOptions {
   projectDir: string;
@@ -136,7 +150,8 @@ export async function bundleWorker(options: BundleWorkerOptions): Promise<Worker
     target: "es2022",
     conditions: ["workerd", "worker", "browser"],
     mainFields: ["module", "main"],
-    external: ["cloudflare:*"],
+    // node:* is left as an import the Workers runtime provides under nodejs_compat (compatibilityFlags says when it is needed).
+    external: ["cloudflare:*", "node:*"],
     ...(options.resolveRepoBricks ? { alias: repoBrickAliases() } : {}),
     legalComments: "none",
     metafile: true,
@@ -160,6 +175,7 @@ export async function bundleWorker(options: BundleWorkerOptions): Promise<Worker
       text: hit.text.slice(0, 100),
     })),
     limit: sizeLimitReport(bytes),
+    compatibilityFlags: compatibilityFlagsFor(code),
   };
 }
 

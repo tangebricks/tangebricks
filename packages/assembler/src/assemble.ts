@@ -1,4 +1,4 @@
-import { BlueprintSchema, capabilityReference, entryBindingClash, formatIssues } from "./schemas.ts";
+import { BlueprintSchema, capabilityReference, entryBindingClash, formatIssues, secretNames } from "./schemas.ts";
 import type { ObservabilityConfig } from "./schemas.ts";
 import { lintMigration } from "../../deploy/src/migration-lint.ts";
 import { PX_RATE_LIMITS_DDL, entityDdl, parseEntities, tableName } from "@poc/sdk";
@@ -1429,7 +1429,7 @@ function renderWrangler(
 }
 
 function renderIsolatedBrickWrangler(project: string, brick: Chosen): string {
-  const declaredSecrets = brick.manifest.secrets ?? [];
+  const declaredSecrets = secretNames(brick.manifest);
   const rawBindings = brick.manifest.bindings;
   const declaredBindings = Array.isArray(rawBindings)
     ? rawBindings
@@ -1465,7 +1465,7 @@ function renderIsolatedBrickWrangler(project: string, brick: Chosen): string {
 }
 
 function renderIsolatedBrickEntry(brick: Chosen): string {
-  const declaredSecrets = brick.manifest.secrets ?? [];
+  const declaredSecrets = secretNames(brick.manifest);
   const rawBindings = brick.manifest.bindings;
   const declaredBindings = Array.isArray(rawBindings)
     ? rawBindings

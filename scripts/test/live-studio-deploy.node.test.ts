@@ -10,7 +10,7 @@ import { KEY_HEADER } from "../../packages/deploy/src/worker/gate.ts";
 import { WORKFLOW_RUNS_PATH } from "../../packages/deploy/src/worker/proof-routes.ts";
 import { isTenantWorkspaceId } from "../../packages/deploy/src/worker/graph-run.ts";
 import { RequestGuardError, STUDIO_TEST_NAME_POLICY, createClient, memoryStore, openLedger } from "../../packages/deploy/src/provisioner/index.ts";
-import { CALLS_FILE, LIVE_PROOF_USER_ID, LiveProofRefusal, RESULT_FILE, createGuardedFetch, liveProofRunPayload, runLiveStudioDeploy, runTeardownOnly } from "../live-studio-deploy.ts";
+import { CALLS_FILE, CORE_AUTH_CALLS_FILE, CORE_AUTH_RESULT_FILE, LIVE_PROOF_USER_ID, LiveProofRefusal, RESULT_FILE, createGuardedFetch, liveProofRunPayload, readGeneratedSecretFromVault, runLiveStudioDeploy, runTeardownOnly } from "../live-studio-deploy.ts";
 import type { CallLine } from "../live-studio-deploy.ts";
 
 // Story R53: the live Studio deploy proof's whole flow, offline. Cloudflare's API is the fake (real SQLite D1, documented
@@ -444,5 +444,101 @@ describe("the write guard", () => {
     expect(res.status).toBe(200);
     expect(ledger.entries()[0]).toMatchObject({ status: "created" });
     expect(ledger.entries()[0]!.id).toMatch(/[0-9a-f-]{36}/);
+  });
+});
+
+describe("scripts/live-studio-deploy.ts --blueprint core-auth (story 1.19), offline against the fake Cloudflare", () => {
+  /** Stands in for the deployed core-auth Worker: /healthz and Better Auth's email sign-up and sign-in, which answer only
+   * when the upload carried nodejs_compat and the Worker holds BETTER_AUTH_SECRET (as better-auth needs both). */
+  function coreAuthWorker(fake: FakeCloudflare, options: { leakySignIn?: boolean } = {}) {
+    const users = new Map<string, string>();
+    const base = workerSimulator(fake);
+    return async (request: Request): Promise<Response> => {
+      const url = new URL(request.url);
+      if (!url.pathname.startsWith("/api/auth/")) return base(request);
+      const script = url.hostname.split(".")[0]!;
+      const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+      if (request.headers.get(KEY_HEADER) !== fake.secretOf(script, "POC_ACCESS_KEY")) return json(401, { error: "unauthorized" });
+      if (!JSON.stringify(fake.metadataOf(script)?.compatibility_flags ?? []).includes("nodejs_compat")) return json(500, { error: "No such module node:crypto" });
+      if (!fake.secretOf(script, "BETTER_AUTH_SECRET")) return json(500, { error: "Missing required secret BETTER_AUTH_SECRET" });
+      if (request.headers.get("origin") !== url.origin) return json(403, { code: "MISSING_OR_NULL_ORIGIN" });
+      const body = (await request.json()) as { email: string; password: string };
+      if (url.pathname === "/api/auth/sign-up/email") {
+        users.set(body.email, body.password);
+        return json(200, { token: `session-${randomBytes(8).toString("hex")}`, user: { email: body.email } });
+      }
+      if (url.pathname === "/api/auth/sign-in/email") {
+        // a Worker that fails sign-in and echoes its signing secret in the error: the proof must still hide it everywhere
+        if (options.leakySignIn) return json(500, { message: `sign-in broke; secret was ${fake.secretOf(script, "BETTER_AUTH_SECRET")}` });
+        return users.get(body.email) === body.password ? json(200, { token: `session-${randomBytes(8).toString("hex")}`, user: { email: body.email } }) : json(401, {});
+      }
+      return json(404, {});
+    };
+  }
+  const nodeCryptoBundle = async (input: { project: string; envName: string; files: Record<string, string> }) => ({
+    code: `import { randomBytes } from "node:crypto";\n// bundled ${input.project} ${input.envName}\nexport class GraphRunner {}\nexport default { fetch() { return new Response(String(randomBytes(1).length)); } };`,
+  });
+
+  test("one approval deploys preview as the agent, email sign-in works, no secret is in any answer or the evidence, and teardown leaves nothing", { timeout: 120_000 }, async () => {
+    const { fake, root, lines, deps } = world();
+    let generated: string | null = null;
+    const result = await runLiveStudioDeploy({
+      ...deps,
+      blueprint: "core-auth",
+      bundle: nodeCryptoBundle,
+      workerFetch: coreAuthWorker(fake),
+      readGeneratedSecret: async (studio, project, name) => (generated = await readGeneratedSecretFromVault(studio, project, name)),
+    });
+    expect(result.stoppedBecause, lines.join("\n")).toBeNull();
+    expect(result.completed).toBe(true);
+    const steps = result.steps as Record<string, Record<string, unknown>>;
+    expect(steps.deploy_preview).toMatchObject({ approval: { code: "APPROVAL_REQUIRED", generate: ["generate BETTER_AUTH_SECRET"], approvedStatus: 200 }, healthzStatus: 200 });
+    expect(steps.emailSignIn).toEqual({ signUpStatus: 200, signInStatus: 200, sameUser: true });
+    expect(steps.secretScan).toMatchObject({ answersHoldingASecret: 0 });
+    expect(steps.deploy_production).toBeUndefined(); // the core-auth proof is preview only
+    expect(generated).toMatch(/^[A-Za-z0-9_-]{43}$/);
+
+    expect(result.teardown!.leftBehind).toEqual([]);
+    expect(fake.state().scripts).toEqual([]);
+    expect(fake.state().databases).toEqual([]);
+
+    const resultText = readFileSync(join(root, "evidence", "deployed", CORE_AUTH_RESULT_FILE), "utf8");
+    const callsText = readFileSync(join(root, "evidence", "deployed", CORE_AUTH_CALLS_FILE), "utf8");
+    expect(existsSync(join(root, "evidence", "deployed", RESULT_FILE))).toBe(false); // the invoice-flow evidence is untouched
+    for (const secret of [TOKEN, ACCOUNT, ROOT_SECRET, generated!]) {
+      expect(resultText).not.toContain(secret);
+      expect(callsText).not.toContain(secret);
+      expect(lines.join("\n")).not.toContain(secret);
+    }
+  });
+
+  test("sign-in fails after the deploy: the generated value is hidden in the stop reason, the log and the attempt evidence", { timeout: 120_000 }, async () => {
+    const { fake, root, lines, deps } = world();
+    let generated: string | null = null;
+    const result = await runLiveStudioDeploy({
+      ...deps,
+      blueprint: "core-auth",
+      bundle: nodeCryptoBundle,
+      workerFetch: coreAuthWorker(fake, { leakySignIn: true }),
+      readGeneratedSecret: async (studio, project, name) => (generated = await readGeneratedSecretFromVault(studio, project, name)),
+    });
+    expect(result.completed).toBe(false);
+    expect(result.stoppedBecause).toMatch(/email sign-in on the deployed preview failed/);
+    expect(generated).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(result.stoppedBecause).not.toContain(generated!);
+    expect(lines.join(" ")).not.toContain(generated!);
+    const attempts = join(root, "evidence", "deployed", "attempts");
+    const files = readdirSync(attempts).filter((f) => f.includes("studio-core-auth"));
+    expect(files).toHaveLength(2);
+    for (const f of files) expect(readFileSync(join(attempts, f), "utf8")).not.toContain(generated!);
+    expect(result.teardown!.leftBehind).toEqual([]);
+  });
+
+  test("a preview Worker that would not run (no nodejs_compat) stops the proof at sign-up, and still tears down", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const result = await runLiveStudioDeploy({ ...deps, blueprint: "core-auth", workerFetch: coreAuthWorker(fake) }); // testBundle imports nothing from node:
+    expect(result.completed).toBe(false);
+    expect(result.stoppedBecause).toMatch(/email sign-up on the deployed preview failed/);
+    expect(result.teardown!.leftBehind).toEqual([]);
   });
 });

@@ -1639,7 +1639,10 @@ export interface DeployPlanSecretCheckPayload {
   name: string;
   ref?: string;
   requiredByBrick: string;
-  status: "present" | "missing";
+  /** Story 1.19: "will_generate" is made by Studio on the approved preview deploy; "optional_missing" never blocks. */
+  status: "present" | "missing" | "will_generate" | "optional_missing";
+  optional?: boolean;
+  generate?: "random-32-bytes";
 }
 
 export interface DeployPlanBlockerPayload {

@@ -60,6 +60,30 @@ To protect host Workers and isolate untrusted code from ambient credentials and 
   - In `ManifestSchema.superRefine`, `"trust": "untrusted"` requires `isolation: "dispatch"`.
   - In `assemble()`, untrusted bricks without `isolation: "dispatch"` are refused with `brick "<id>" is untrusted and must run isolated (set isolation: "dispatch")`. Until UC6.7 lands, `isolation: "dispatch"` bricks are refused with `brick "<id>": per-brick isolation is not yet available`.
 
+## Secret Declarations (story 1.19)
+
+A brick's `secrets` lists what its Worker reads from its environment. Each entry is either a name (`"PX_CONN_KEY"`) or an
+object:
+
+```json
+"secrets": [
+  { "name": "BETTER_AUTH_SECRET", "generate": "random-32-bytes" },
+  { "name": "GITHUB_CLIENT_ID", "optional": true },
+  { "name": "GITHUB_CLIENT_SECRET", "optional": true }
+]
+```
+
+- **A name, or `{ "name" }` alone**: required. Readiness reports `UNBOUND_BRICK_SECRET` until it is bound, and a deploy without
+  a value is refused with `MISSING_REQUIRED_SECRETS`. The owner provides the value in Studio (Connections/secrets); an MCP
+  token can never set or read one.
+- **`"optional": true`**: the brick runs without it (core-auth configures GitHub sign-in only when both GitHub credentials are
+  present). It never blocks readiness, the deploy plan's secret requirements, or a deploy.
+- **`"generate": "random-32-bytes"`**: internal to the brick, so the platform can make the value. Studio generates it on an
+  approved preview deploy (32 random bytes, sealed in the vault, bound, reused by every later deploy). Production never
+  generates one. Only a secret the brick itself owns may be `generate`; a third-party credential never is.
+- A secret is `optional` or `generate`, never both (`ManifestSchema` refuses it). `secretDeclarations()` and `secretNames()` in
+  `@poc/assembler` read either form.
+
 ## Semantic Versioning and Capability Ranges (UC8.2)
 
 To prevent breaking changes from slipping unnoticed into redeploys and enforce compatibility between interacting bricks (F-DEP-1), manifests and the assembler enforce semantic versioning across bricks and capabilities.

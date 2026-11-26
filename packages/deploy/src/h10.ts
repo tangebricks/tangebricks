@@ -105,7 +105,7 @@ export interface H10Deps {
   ledger: Ledger;
   accessKey: string;
   /** Assembles and bundles the project; "changed" is the same project with one brick setting changed. */
-  build(variant: "base" | "changed"): Promise<{ bundle: { code: string; sha256: string; bytes: number }; migrations: Migration[] }>;
+  build(variant: "base" | "changed"): Promise<{ bundle: { code: string; sha256: string; bytes: number }; migrations: Migration[]; compatibilityFlags?: string[] }>;
   fetchUrl(request: Request): Promise<Response>;
   compatibilityDate: string;
   hide(text: string): string;
@@ -160,7 +160,7 @@ export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: 
     clients.push(log);
     return client;
   };
-  const input = (client: Client, build: { bundle: { code: string; sha256: string }; migrations: Migration[] }) => ({
+  const input = (client: Client, build: { bundle: { code: string; sha256: string }; migrations: Migration[]; compatibilityFlags?: string[] }) => ({
     client,
     ledger: deps.ledger,
     names: deps.names,
@@ -168,6 +168,8 @@ export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: 
     bundle: build.bundle,
     migrations: [...build.migrations, ...GRAPH_MIGRATIONS],
     compatibilityDate: deps.compatibilityDate,
+    // story 1.19: nodejs_compat when the bundle imports node:* (bundleWorker reports it); otherwise the metadata is unchanged
+    ...(build.compatibilityFlags && build.compatibilityFlags.length > 0 ? { compatibilityFlags: build.compatibilityFlags } : {}),
     workflow: { binding: WORKFLOW_BINDING, className: WORKFLOW_CLASS },
     nowIso: deps.nowIso,
     ...(deps.environment ? { environment: deps.environment } : {}),

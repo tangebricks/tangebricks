@@ -356,10 +356,12 @@ export async function requireApproval(
         .run();
     }
     await audit("project.approval.request", "pending", { approvalId: id, reused });
+    // Story 1.19: a deploy that would generate secrets says which (names only) in its summary and here.
+    const generated = Array.isArray(binding.summary?.generateSecrets) ? (binding.summary.generateSecrets as unknown[]).map(String) : [];
     return refusal(
       403,
       "APPROVAL_REQUIRED",
-      `An MCP agent cannot ${binding.action.replace(/_/g, " ")} without a human approval (AD-V8). Approval request ${id} is pending.`,
+      `An MCP agent cannot ${binding.action.replace(/_/g, " ")} without a human approval (AD-V8). Approval request ${id} is pending.${generated.length > 0 ? ` The approved deploy will also generate secrets: ${generated.map((n) => `generate ${n}`).join(", ")} (stored in the vault; no value is ever shown).` : ""}`,
       RETRY_REMEDIATION(id),
       id,
     );

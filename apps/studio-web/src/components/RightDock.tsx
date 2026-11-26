@@ -13,6 +13,7 @@ import {
   hasSchedulingOrQueueTriggers,
   validateBrickSettingValue,
   validateStepExpression,
+  brickSecretNames,
 } from "../types.ts";
 import type { CatalogSettingDefinition } from "../types.ts";
 import { ChangeLedgerFeed, SameObjectConflictCard } from "./HistoryAndLedgerView.tsx";
@@ -64,7 +65,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
   useEffect(() => {
     if (!manifest) return;
     const nextSecrets: Record<string, string> = {};
-    for (const secretName of manifest.secrets ?? []) {
+    for (const secretName of brickSecretNames(manifest)) {
       const bound = projectState?.secretRefs.find(
         (r) =>
           r.targetKind === "brick" &&
@@ -87,7 +88,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
   const maturity = formatMaturityBadge(manifest.ui?.maturity ?? "production");
   const needsScheduling = hasSchedulingOrQueueTriggers(manifest);
   const settingsEntries = Object.entries(manifest.settings ?? {});
-  const secretsList = manifest.secrets ?? [];
+  const secretsList = brickSecretNames(manifest);
 
   const validationResults = useMemo(() => {
     const map: Record<string, { ok: boolean; value?: unknown; error?: string }> = {};

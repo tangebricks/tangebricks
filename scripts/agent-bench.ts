@@ -35,6 +35,9 @@ import {
 } from "../packages/deploy/src/provisioner/index.ts";
 import type { LedgerStore, RequestBudget } from "../packages/deploy/src/provisioner/index.ts";
 import { KEY_HEADER } from "../packages/deploy/src/worker/gate.ts";
+import { catalog as defaultCatalog } from "../packages/assembler/catalog.generated.ts";
+import { secretDeclarations } from "../packages/assembler/src/schemas.ts";
+import type { Catalog } from "../packages/assembler/src/schemas.ts";
 import { GLOBAL_API_KEY, connectStudioOwner, nodeBundler, openGuardedStudio, runTeardownOnly, teardownAndVerify } from "./lib/live-studio.ts";
 import type { CallLine, StudioCall } from "./lib/live-studio.ts";
 import { redactWorkersDevSubdomains } from "./lib/redact-subdomain.ts";
@@ -440,9 +443,17 @@ export function ownerReply(answers: string | undefined, agentText: string | null
  * The owner binds each brick secret the blueprint still needs (readiness UNBOUND_BRICK_SECRET), as a person would in
  * Studio: the session secrets route with a bindTarget, and a fresh random 32-byte value. Returns the names bound; the
  * values are only ever added to `hideValues` (so every record is checked against them) and never recorded.
+ *
+ * Story 1.19: only required secrets a person must supply. A secret the brick's manifest marks `generate` is made by Studio
+ * when the owner approves the preview deploy, and an `optional` one is left unset, so neither gets a made-up value here.
  */
-export async function bindUnboundSecrets(params: { call: StudioCall; session: string; orgId: string; project: string; randomHex: (bytes: number) => string; hideValues: Record<string, string> }): Promise<{ bound: string[]; failed: string[] }> {
+export async function bindUnboundSecrets(params: { call: StudioCall; session: string; orgId: string; project: string; randomHex: (bytes: number) => string; hideValues: Record<string, string>; catalog?: Catalog }): Promise<{ bound: string[]; failed: string[] }> {
   const { call, session, orgId, project } = params;
+  const bricks = (params.catalog ?? defaultCatalog).bricks;
+  const ownerSupplies = (brickId: string, secretName: string) => {
+    const declared = bricks[brickId] ? secretDeclarations(bricks[brickId]!.manifest).find((d) => d.name === secretName) : undefined;
+    return !declared || (!declared.optional && !declared.generate);
+  };
   const state = await call("GET", `/api/projects/${project}`, undefined, session, orgId);
   const needs = ((state.body.readiness as { needs?: Array<{ code?: string; path?: string }> } | undefined)?.needs ?? []).filter((n) => n.code === "UNBOUND_BRICK_SECRET");
   const bound: string[] = [];
@@ -451,6 +462,7 @@ export async function bindUnboundSecrets(params: { call: StudioCall; session: st
     const m = /^bricks\.([^.]+)\.secrets\.(.+)$/.exec(String(need.path ?? ""));
     if (!m) continue;
     const [, brickId, secretName] = m as unknown as [string, string, string];
+    if (!ownerSupplies(brickId, secretName)) continue;
     const value = params.randomHex(32);
     params.hideValues[`secret_${brickId}_${secretName}`] = value;
     const ref = `sec_${brickId}_${secretName}`.toLowerCase().replace(/[^a-z0-9_]/g, "_");

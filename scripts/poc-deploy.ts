@@ -76,7 +76,7 @@ async function build(variant: "base" | "changed") {
   const projectDir = join(OUT_DIR, "deploy", `invoice-flow-${variant}`);
   await writeProject(projectDir, assembled.files);
   const bundle = await bundleWorker({ projectDir, environment });
-  return { bundle: { code: bundle.code, sha256: bundle.sha256, bytes: bundle.bytes }, migrations: migrationsFrom(assembled.files), lock: JSON.parse(assembled.files["project.json"]!) as ProjectLock };
+  return { bundle: { code: bundle.code, sha256: bundle.sha256, bytes: bundle.bytes }, compatibilityFlags: bundle.compatibilityFlags, migrations: migrationsFrom(assembled.files), lock: JSON.parse(assembled.files["project.json"]!) as ProjectLock };
 }
 
 // ---- --plan: what a deploy would change, read-only. Reads the account and the ledger, writes nothing to either.
@@ -89,7 +89,7 @@ if (process.argv.includes("--plan")) {
   const planAccessKey = loadOrCreateAccessKey(memoryKeyStore(existsSync(join(stateDir, "access-key.txt")) ? readFileSync(join(stateDir, "access-key.txt"), "utf8").trim() : null), (n) => randomBytes(n));
   const built = await build(variant);
   const planClient = createClient({ credentials, fetch: (request) => fetch(request), now: clock, alsoHide: [planAccessKey] });
-  const deployPlan = await planDeploy({ client: planClient, ledger: planLedger, names: resourceNames(planLedger.suffix), accessKey: planAccessKey, bundle: built.bundle, migrations: built.migrations, compatibilityDate: COMPATIBILITY_DATE, lock: built.lock, catalog: catalog as never });
+  const deployPlan = await planDeploy({ client: planClient, ledger: planLedger, names: resourceNames(planLedger.suffix), accessKey: planAccessKey, bundle: built.bundle, migrations: built.migrations, compatibilityDate: COMPATIBILITY_DATE, ...(built.compatibilityFlags.length > 0 ? { compatibilityFlags: built.compatibilityFlags } : {}), lock: built.lock, catalog: catalog as never });
   console.log(JSON.stringify(deployPlan, null, 2));
   process.exit(0);
 }
@@ -127,7 +127,7 @@ const hide = createRedactor([credentials.token, credentials.accountId, accessKey
   const started = performance.now();
   const built = await build("base");
   const preflightClient = createClient({ credentials, fetch: (request) => fetch(request), now: clock, alsoHide: [accessKey, ...derivedSecrets] });
-  const plan = await planDeploy({ client: preflightClient, ledger, names, accessKey, bundle: built.bundle, migrations: built.migrations, compatibilityDate: COMPATIBILITY_DATE, lock: built.lock, catalog: catalog as never });
+  const plan = await planDeploy({ client: preflightClient, ledger, names, accessKey, bundle: built.bundle, migrations: built.migrations, compatibilityDate: COMPATIBILITY_DATE, ...(built.compatibilityFlags.length > 0 ? { compatibilityFlags: built.compatibilityFlags } : {}), lock: built.lock, catalog: catalog as never });
   out("plan (read-only, not timed):");
   for (const line of formatPlan(plan).split(/\r?\n/)) out(`  ${line}`);
   preflightMs = performance.now() - started;

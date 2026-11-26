@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "dc84f9ffc13b942aa3625951d1700bf37d4cea71fb48c15a94e72a2a96cfe0bd",
+  "catalogVersion": "4513ea140d10da0bc2ec76be5fefeb3e86d168a4bd13624646566f78f629c781",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -520,9 +520,18 @@ export const catalog: Catalog = {
           "behaviourTest": "test/better-auth.test.ts"
         },
         "secrets": [
-          "BETTER_AUTH_SECRET",
-          "GITHUB_CLIENT_ID",
-          "GITHUB_CLIENT_SECRET"
+          {
+            "name": "BETTER_AUTH_SECRET",
+            "generate": "random-32-bytes"
+          },
+          {
+            "name": "GITHUB_CLIENT_ID",
+            "optional": true
+          },
+          {
+            "name": "GITHUB_CLIENT_SECRET",
+            "optional": true
+          }
         ],
         "globalTables": [
           {

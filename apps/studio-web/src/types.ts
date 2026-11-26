@@ -310,7 +310,8 @@ export interface CatalogBrickManifest {
   triggers?: CatalogBrickTriggers;
   conflicts?: Array<{ brick: string; reason: string }>;
   bindings?: string[] | Record<string, string>;
-  secrets?: string[];
+  /** A name, or { name, optional, generate } (story 1.19): see brickSecretNames. */
+  secrets?: Array<string | { name: string; optional?: true; generate?: "random-32-bytes" }>;
   globalTables?: Array<{ table: string; reason: string }>;
   worker: {
     package: string;
@@ -550,6 +551,11 @@ export interface SemanticDiffPayload {
   fromSemanticHash?: string;
   toSemanticHash?: string;
   diff: SemanticDiff;
+}
+
+/** The names of a brick's declared secrets, whether written as a name or as { name, optional, generate } (story 1.19). */
+export function brickSecretNames(manifest: Pick<CatalogBrickManifest, "secrets"> | undefined | null): string[] {
+  return (manifest?.secrets ?? []).map((s) => (typeof s === "string" ? s : s.name));
 }
 
 export const DEFAULT_CATALOG: Record<string, CatalogBrickManifest> = (

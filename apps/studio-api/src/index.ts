@@ -23,6 +23,7 @@ import {
   computeGraphHash,
   generateOpenApiSpec,
   hashFiles,
+  secretDeclarations,
   sha256Hex,
 } from "@poc/assembler";
 import type { ArtifactHashes, CompositeBuildHashInput } from "@poc/assembler";
@@ -138,6 +139,7 @@ import {
   encryptSecretValue,
 } from "./secrets-vault.ts";
 import type { SealedSecretRecord } from "./secrets-vault.ts";
+import { realUploadCompatibilityFlags, storeGeneratedSecrets } from "./generated-secrets.ts";
 import {
   CLOUDFLARE_API_TOKENS_DASHBOARD_URL,
   DeployTokenVaultError,
@@ -10451,6 +10453,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     orgId: string;
     envName: DeployEnvName;
     preferredBuildHash?: string;
+    /** Story 1.19: a promotion from preview may use secrets Studio generated for preview; a direct production plan may not. */
+    allowPreviewScopedSecrets?: boolean;
     customMigrationsInput?: Array<{
       name?: string;
       migrationName?: string;
@@ -10852,7 +10856,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           cronTriggers.push(sched.cron);
         }
       }
-      for (const secName of catEntry.manifest.secrets ?? []) {
+      for (const declared of secretDeclarations(catEntry.manifest)) {
+        const secName = declared.name;
         if (!seenSecrets.has(secName)) {
           seenSecrets.add(secName);
           const boundRef = (current.state.secretRefs ?? []).find(
@@ -10865,6 +10870,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             name: secName,
             ...(boundRef ? { ref: boundRef.ref } : {}),
             requiredByBrick: brickEntry.id,
+            // story 1.19: optional never blocks; generate is made by Studio on an approved preview deploy
+            ...(declared.optional ? { optional: true } : {}),
+            ...(declared.generate ? { generate: declared.generate } : {}),
           });
         }
       }
@@ -10903,7 +10911,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     // Inspect studio_secret_vault to determine which required secrets are present
     const vaultRows = await db
       .prepare(
-        `SELECT ref, label, app_or_brick, status, ciphertext_b64, iv_b64
+        `SELECT ref, label, app_or_brick, status, env_scope, ciphertext_b64, iv_b64
          FROM studio_secret_vault
          WHERE project_id = ? AND status = 'valid'`,
       )
@@ -10913,11 +10921,16 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         label: string;
         app_or_brick: string;
         status: string;
+        env_scope: string;
         ciphertext_b64: string;
         iv_b64: string;
       }>();
 
-    const validVaultRows = vaultRows.results ?? [];
+    // Story 1.19: a secret Studio generated for preview (env_scope 'preview') never satisfies a direct production plan; only
+    // a promotion from preview carries it over. The owner binds production's own value otherwise.
+    const validVaultRows = (vaultRows.results ?? []).filter(
+      (r) => envName !== "production" || r.env_scope !== "preview" || params.allowPreviewScopedSecrets === true,
+    );
     const configuredSecretNames = new Set<string>();
     const configuredSecretValues: Record<string, string> = {};
 
@@ -11056,6 +11069,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     accessKey: string;
     workflows: Array<{ name: string; className: string }>;
     workerBindings: Array<Record<string, unknown>>;
+    /** ["nodejs_compat"] when the bundle imports `node:*` (the assembled wrangler.jsonc is not consulted); otherwise empty (story 1.19). */
+    compatibilityFlags: string[];
     secrets: Record<string, string>;
   }> {
     const { env, project, envName } = params;
@@ -11120,6 +11135,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       bundleSha: built.sha256 ?? (await sha256Hex(built.code)),
       accessKey: secrets.POC_ACCESS_KEY!,
       workflows: [{ name: workflowName, className: WORKFLOW_CLASS }],
+      compatibilityFlags: realUploadCompatibilityFlags(built),
       workerBindings: [
         { type: "plain_text", name: "PX_ENVIRONMENT", text: envName },
         { type: "plain_text", name: "PX_PROJECT_ID", text: project },
@@ -11420,6 +11436,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       // Real client: secrets are synced after the upload by completeRealDeploy (changed values put, removed ones deleted).
       secrets: realUpload ? {} : ctx.configuredSecretValues,
       ...(realUpload ? { workerBindings: realUpload.workerBindings, trustedVersionIds: (ctx.deployedState as PersistedDeployedState).studioVersionIds ?? [] } : {}),
+      ...(realUpload && realUpload.compatibilityFlags.length > 0 ? { compatibilityFlags: realUpload.compatibilityFlags } : {}),
       envState,
       _actionOverride: params.actionOverride ?? "apply",
       // The bookmark is kept before any migration runs, so a deploy that fails after migrating still leaves a restore point.
@@ -12064,6 +12081,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       ...(customMigs ? { customMigrations: customMigs } : {}),
       destructiveNames: ctx.plan.d1.destructiveWarnings.map((w) => w.migrationName),
     });
+    // Story 1.19: platform-made secrets this preview deploy would generate (names only) are part of what is approved.
+    const generateSecrets = ctx.plan.secrets.filter((s) => s.status === "will_generate").map((s) => s.name).sort();
     const deployGate = await gateDestructiveAction(
       c,
       resolved.caller,
@@ -12084,6 +12103,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           migrations: deployMigrations,
           ...(bodyData?.confirmDestructive !== undefined ? { confirmDestructive: bodyData.confirmDestructive } : {}),
           ...(bodyData?.confirmedMigrationNames ? { confirmedMigrationNames: bodyData.confirmedMigrationNames } : {}),
+          ...(generateSecrets.length > 0 ? { extra: { generateSecrets } } : {}),
         }),
         summary: {
           planAction: ctx.plan.action,
@@ -12094,11 +12114,30 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           migrations: deployMigrations,
           destructiveWarnings: ctx.plan.d1.destructiveWarnings.length,
           confirmDestructive: bodyData?.confirmDestructive === true,
+          ...(generateSecrets.length > 0 ? { generateSecrets, generate: generateSecrets.map((n) => `generate ${n}`) } : {}),
         },
       },
       bodyData?.approvalId,
     );
     if (deployGate) return deployGate;
+    // Story 1.19: approved (or a Studio session): generate, seal and bind the platform-made secrets, then plan again so the
+    // deploy runs on the bound refs. Nothing below returns or logs a value.
+    let deployCtx = ctx;
+    if (generateSecrets.length > 0) {
+      const generated = await generateApprovedDeploySecrets({
+        env: c.env,
+        project,
+        orgId: authz.orgId,
+        envName,
+        role: authz.role,
+        caller: resolved.caller,
+        secrets: ctx.plan.secrets.filter((s) => s.status === "will_generate"),
+        customMigs,
+        approved: { revision: ctx.current.revision, state: ctx.current.state },
+      });
+      if (!generated.ok) return c.json({ ok: false, error: generated.error }, generated.status);
+      deployCtx = generated.ctx;
+    }
     // Recorded only once the deploy really starts (after the approval gate), so a refused agent deploy is not a start.
     if (envName === "preview") {
       await recordStudioOnboardingEvent(db, {
@@ -12119,12 +12158,99 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       orgId: authz.orgId,
       envName,
       caller: resolved.caller,
-      ctx,
+      ctx: deployCtx,
       actionOverride: "apply",
     });
 
     return c.json(result, 200);
   });
+
+  /**
+   * Story 1.19: after the deploy's approval gate, the platform-made secrets of a preview deploy are generated (32 random
+   * bytes, sealed in the vault; an existing row is reused), bound to their brick in the blueprint, and the plan is built
+   * again on the bound refs. Returns names and refs only; the audit row holds the same.
+   */
+  async function generateApprovedDeploySecrets(p: {
+    env: StudioApiEnv;
+    project: string;
+    orgId: string;
+    envName: DeployEnvName;
+    role: string;
+    caller: StudioCaller;
+    secrets: ReadonlyArray<{ name: string; requiredByBrick: string }>;
+    customMigs: Parameters<typeof buildEnvironmentPlanContext>[0]["customMigrationsInput"];
+    /** What the approval (or the session's request) covered: the bind may move the revision by one, and nothing else. */
+    approved: { revision: number; state: ProjectStatePayload["state"] };
+  }): Promise<
+    | { ok: true; ctx: Extract<Awaited<ReturnType<typeof buildEnvironmentPlanContext>>, { ok: true }> }
+    | { ok: false; status: 409 | 422 | 500; error: { code: string; message: string; remediation?: string } }
+  > {
+    const db = p.env.STUDIO_DB;
+    if (p.envName !== "preview") {
+      return { ok: false, status: 422, error: { code: "MISSING_REQUIRED_SECRETS", message: `Production never generates secrets: ${p.secrets.map((s) => s.name).join(", ")}`, remediation: "Bind a value in Studio (Connections/secrets) or promote from preview." } };
+    }
+    await appOptions.deploy?.beforeGeneratedSecretBind?.({ project: p.project, envName: p.envName });
+    const stored = await storeGeneratedSecrets({
+      db,
+      vaultKey: p.env.PX_VAULT_KEY ?? p.env.BETTER_AUTH_SECRET,
+      orgId: p.orgId,
+      project: p.project,
+      actorId: p.caller.author.id,
+      secrets: p.secrets,
+    });
+    const doRes = await getBlueprintStub(p.env, p.project).fetch("http://blueprint-do/ops", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-studio-caller-role": p.role },
+      body: JSON.stringify({
+        project: p.project,
+        orgId: p.orgId,
+        callerRole: p.role,
+        author: p.caller.author,
+        summary: `Studio: bind generated secret${stored.length > 1 ? "s" : ""} ${stored.map((s) => s.name).join(", ")} (approved preview deploy)`,
+        ops: stored.map((s, i) => ({ opId: `bind-generated-${s.ref}-${Date.now()}-${i}`, type: "bind_secret_ref", targetKind: "brick", targetId: s.brick, secretName: s.name, ref: s.ref })),
+      }),
+    });
+    await recordStudioAuditLog(db, {
+      orgId: p.orgId,
+      projectId: p.project,
+      actorType: p.caller.author.type,
+      actorId: p.caller.author.id,
+      action: "secret.generate",
+      status: doRes.status === 200 ? "succeeded" : "failed",
+      targetRef: `${p.project}:${p.envName}`,
+      details: { envName: p.envName, secrets: stored.map((s) => ({ name: s.name, ref: s.ref, brick: s.brick, created: s.created })) },
+    });
+    if (doRes.status !== 200) {
+      return { ok: false, status: 500, error: { code: "GENERATED_SECRET_BIND_FAILED", message: `The generated secret${stored.length > 1 ? "s" : ""} ${stored.map((s) => s.name).join(", ")} could not be bound (HTTP ${doRes.status}); nothing was deployed. Retry the deploy.` } };
+    }
+    const ctx = await buildEnvironmentPlanContext({ env: p.env, project: p.project, orgId: p.orgId, envName: p.envName, customMigrationsInput: p.customMigs, persistCustomMigrations: false });
+    if (!ctx.ok) return { ok: false, status: 422, error: ctx.error };
+    // Only the bind may have changed the blueprint: any other op that landed after the approval is not deployed under it. The
+    // blueprint, less the refs just bound, must hash as the approved one did (the assembled code carries the refs, so the
+    // build and code hashes themselves move with the bind).
+    const bound = new Set(stored.map((b) => `${b.brick}|${b.name}|${b.ref}`));
+    const withoutBound = { ...ctx.current.state, secretRefs: (ctx.current.state.secretRefs ?? []).filter((r) => !(r.targetKind === "brick" && bound.has(`${r.targetId}|${r.secretName}|${r.ref}`))) };
+    if (
+      ctx.current.revision !== p.approved.revision + 1 ||
+      computeBlueprintCodeHash(withoutBound) !== computeBlueprintCodeHash(p.approved.state) ||
+      computeBlueprintGraphHash(withoutBound) !== computeBlueprintGraphHash(p.approved.state)
+    ) {
+      return {
+        ok: false,
+        status: 409,
+        error: {
+          code: "APPROVAL_STALE",
+          message: `The blueprint changed after this deploy was approved (approved revision ${p.approved.revision}, now ${ctx.current.revision}); nothing was deployed. The generated secrets are stored and bound and will be reused.`,
+          remediation: "Plan again and request a new approval for the current revision, then retry the deploy.",
+        },
+      };
+    }
+    if (ctx.plan.blockers.length > 0) {
+      const b = ctx.plan.blockers[0]!;
+      return { ok: false, status: 422, error: { code: b.code, message: b.message, remediation: b.remediation } };
+    }
+    return { ok: true, ctx };
+  }
 
   app.post("/api/projects/:project/environments/:envName/promote", async (c) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
@@ -12194,6 +12320,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       orgId: authz.orgId,
       envName,
       preferredBuildHash,
+      allowPreviewScopedSecrets: true,
       customMigrationsInput: customMigs,
       persistCustomMigrations: false,
     });
@@ -14136,6 +14263,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         // Real path: secrets are synced after the upload by completeRealDeploy, as for a deploy.
         secrets: {},
         ...(rollbackUpload ? { workerBindings: rollbackUpload.workerBindings, trustedVersionIds: currentDeployedState.studioVersionIds ?? [] } : {}),
+        ...(rollbackUpload && rollbackUpload.compatibilityFlags.length > 0 ? { compatibilityFlags: rollbackUpload.compatibilityFlags } : {}),
         // Real path: what is deployed is read from the account, as for a deploy.
         envState: rollbackUpload ? { deployedRev: envRecord.deployedRev } : {
           deployedRev: envRecord.deployedRev,

@@ -3,7 +3,7 @@
   "story": "story-ci-token-budget-enforcement",
   "tokenizer": "gpt-tokenizer 4.1.0, o200k_base",
   "ok": true,
-  "toolsListTokens": 1285,
+  "toolsListTokens": 1325,
   "perToolDefTokens": {
     "search_bricks": 70,
     "get_brick": 57,
@@ -19,10 +19,10 @@
     "list_runs": 78,
     "get_run_trace": 77,
     "query_logs": 93,
-    "deploy_plan": 69,
-    "deploy_apply": 86
+    "deploy_plan": 84,
+    "deploy_apply": 111
   },
-  "perPageMaxTokens": 370,
+  "perPageMaxTokens": 368,
   "perPageCeiling": 400,
   "perPageByTool": {
     "search_bricks": {
@@ -44,7 +44,7 @@
     "list_runs": {
       "tool": "list_runs",
       "pagesChecked": 1,
-      "maxPageTokens": 370,
+      "maxPageTokens": 368,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -52,7 +52,7 @@
     "query_logs": {
       "tool": "query_logs",
       "pagesChecked": 1,
-      "maxPageTokens": 300,
+      "maxPageTokens": 298,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -60,7 +60,7 @@
     "get_blueprint_summary": {
       "tool": "get_blueprint_summary",
       "pagesChecked": 1,
-      "maxPageTokens": 340,
+      "maxPageTokens": 240,
       "maxItemsOnPage": 1,
       "ceiling": 400,
       "passed": true
@@ -69,17 +69,17 @@
   "sessionA": {
     "calls": 4,
     "maxCalls": 5,
-    "tokens": 2666,
+    "tokens": 2706,
     "emittedTokens": 50991,
-    "ratioPct": 5.2,
+    "ratioPct": 5.3,
     "maxRatioPct": 15,
     "passed": true
   },
   "sessionB": {
     "calls": 7,
-    "toolDefTokens": 1285,
-    "ioTokens": 6221,
-    "totalTokens": 7506,
+    "toolDefTokens": 1325,
+    "ioTokens": 5940,
+    "totalTokens": 7265,
     "maxTotalTokens": 8000,
     "passed": true,
     "byCall": [
@@ -104,8 +104,8 @@
       {
         "tool": "get_blueprint_summary",
         "requestTokens": 20,
-        "responseTokens": 340,
-        "totalTokens": 360
+        "responseTokens": 240,
+        "totalTokens": 260
       },
       {
         "tool": "get_blueprint_slice",
@@ -116,21 +116,21 @@
       {
         "tool": "validate_blueprint",
         "requestTokens": 19,
-        "responseTokens": 418,
-        "totalTokens": 437
+        "responseTokens": 216,
+        "totalTokens": 235
       },
       {
         "tool": "test_workflow",
         "requestTokens": 37,
-        "responseTokens": 1936,
-        "totalTokens": 1973
+        "responseTokens": 1957,
+        "totalTokens": 1994
       }
     ]
   },
   "violations": [],
   "provenance": {
-    "generatedAt": "2026-11-26T19:07:21.912Z",
-    "gitSha": "c9db8c155067e9dfd9bb06b26143f2ed925b3b75",
+    "generatedAt": "2026-11-26T20:22:28.807Z",
+    "gitSha": "657061435984d6cd5cf6e0fefc6a059c03547468",
     "gitDirty": false,
     "generator": "scripts/mcp-budget.ts",
     "inputKind": "measured"
