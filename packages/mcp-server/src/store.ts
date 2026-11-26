@@ -352,10 +352,24 @@ interface InMemoryProjectRecord {
 /** The most proposals the in-memory adapter keeps per project; the oldest reviewed ones are dropped first. */
 const MAX_PROPOSALS_PER_PROJECT = 200;
 
+/**
+ * Where the in-memory client gets proposal ids and timestamps. The defaults are a random id and the wall clock; a
+ * measurement harness (H9, the token budget) injects fixed ones so the same session answers with the same text.
+ */
+export interface InMemoryClientSources {
+  newProposalId?: () => string;
+  nowIso?: () => string;
+}
+
 export function createInMemoryBlueprintClient(
   catalog: Catalog,
   maxProjects = MAX_PROJECTS,
+  sources: InMemoryClientSources = {},
 ): BlueprintClient {
+  const newProposalId =
+    sources.newProposalId ??
+    (() => `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
+  const nowIso = sources.nowIso ?? (() => new Date().toISOString());
   const projects = new Map<string, InMemoryProjectRecord>();
   // AD-V8: proposals are stored like the DO's `proposals` table, keyed by project, in creation order.
   const proposals = new Map<string, Map<string, ProposalRecord>>();
@@ -704,7 +718,7 @@ export function createInMemoryBlueprintClient(
       if (input.mode === "propose") {
         const proposalId =
           input.proposalId?.trim() ||
-          `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+          newProposalId();
         const diff = computeSemanticDiff(currentState, nextState);
         const proposedReadiness = computeReadiness(nextState, catalog);
         const proposal: ProposalRecord = {
@@ -715,7 +729,7 @@ export function createInMemoryBlueprintClient(
           ops: parsedIncomingOps,
           summary,
           status: "pending",
-          createdAt: new Date().toISOString(),
+          createdAt: nowIso(),
           diff,
           proposedState: nextState,
           proposedReadiness,
@@ -917,7 +931,7 @@ export function createInMemoryBlueprintClient(
       const updated: ProposalRecord = {
         ...proposal,
         status: nextStatus,
-        reviewedAt: new Date().toISOString(),
+        reviewedAt: nowIso(),
         reviewedBy: input.reviewer,
         acceptedRev: committed.data.revision,
         acceptedOpIds: evaluated.selectedOpIds,
@@ -947,7 +961,7 @@ export function createInMemoryBlueprintClient(
       const updated: ProposalRecord = {
         ...proposal,
         status: "rejected",
-        reviewedAt: new Date().toISOString(),
+        reviewedAt: nowIso(),
         reviewedBy: input.reviewer,
         rejectionReason: reason,
       };

@@ -6,6 +6,7 @@ import { countTokens } from "../../../../test/support/tokens.ts";
 import { createSqliteD1 } from "../../../../bricks/credit-wallet/client/test/support/sqlite-d1.ts";
 import migration from "../../migrations/0001_mcp_server.sql?raw";
 import { createInMemoryBlueprintClient, createMcpApp } from "../../src/index.ts";
+import { deterministicMeasurementSources } from "../../src/token-budget.ts";
 import { projectOf, testToken, testTokenVerifier } from "./test-verifier.ts";
 
 // Runs a scripted session with the official MCP client against this server, and records every HTTP exchange so the
@@ -57,7 +58,8 @@ export async function runSession(steps: Step[]): Promise<SessionResult> {
   try {
     await applyMigration(db, migration);
     // The harness keeps the blueprint client so it can review proposals the way a Studio editor would.
-    const blueprintClient = createInMemoryBlueprintClient(catalog);
+    // Fixed proposal ids and clock, so the proposal answer (and the token count) is the same on every run.
+    const blueprintClient = createInMemoryBlueprintClient(catalog, undefined, deterministicMeasurementSources());
     const app = createMcpApp({ catalog, verifyToken: testTokenVerifier, blueprintClient });
     // Story 0.15: a session's token is bound to the one project its steps build.
     const sessionProject =

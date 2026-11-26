@@ -4,6 +4,20 @@ import type { D1Like } from "@poc/sdk";
 import { createStaticTokenVerifier } from "./auth.ts";
 import { createMcpApp } from "./mcp.ts";
 import { createInMemoryBlueprintClient } from "./store.ts";
+import type { InMemoryClientSources } from "./store.ts";
+
+/**
+ * Fixed proposal ids and clock for a measured session (H9, the token budget): the proposal answer then has the same
+ * text, and so the same token count, on every run. Harness only; Studio and the standalone server keep random ids and
+ * the wall clock.
+ */
+export function deterministicMeasurementSources(prefix = "prop_measured"): InMemoryClientSources {
+  let n = 0;
+  return {
+    newProposalId: () => `${prefix}_${String((n += 1)).padStart(4, "0")}`,
+    nowIso: () => "2026-01-01T00:00:00.000Z",
+  };
+}
 import { TOOLS, toolDescriptions } from "./tools.ts";
 import type { Tool } from "./tools.ts";
 
@@ -214,7 +228,7 @@ export async function runMcpTokenBudgetSuite(
 
   // AD-V8: an agent's apply_ops is a proposal; the harness keeps the blueprint client so it can accept each one as the
   // Studio reviewer would. The review is not an MCP call and adds no tokens to the sessions.
-  const blueprintClient = createInMemoryBlueprintClient(catalog);
+  const blueprintClient = createInMemoryBlueprintClient(catalog, undefined, deterministicMeasurementSources());
   const app = createMcpApp({
     catalog,
     tools,

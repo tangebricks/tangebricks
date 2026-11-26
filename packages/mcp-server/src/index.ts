@@ -32,6 +32,7 @@ export type {
   BlueprintDoStubLike,
   BlueprintProjectSnapshot,
   BuildSummary,
+  InMemoryClientSources,
   ProposalReviewResult,
   SettingValue,
 } from "./store.ts";
