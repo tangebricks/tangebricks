@@ -3,7 +3,7 @@
   "story": "story-ci-token-budget-enforcement",
   "tokenizer": "gpt-tokenizer 4.1.0, o200k_base",
   "ok": true,
-  "toolsListTokens": 1195,
+  "toolsListTokens": 1285,
   "perToolDefTokens": {
     "search_bricks": 70,
     "get_brick": 57,
@@ -12,7 +12,7 @@
     "get_blueprint_summary": 64,
     "get_blueprint_slice": 101,
     "validate_blueprint": 62,
-    "apply_ops": 90,
+    "apply_ops": 180,
     "request_connection": 86,
     "list_connections": 56,
     "test_workflow": 83,
@@ -22,7 +22,7 @@
     "deploy_plan": 69,
     "deploy_apply": 86
   },
-  "perPageMaxTokens": 362,
+  "perPageMaxTokens": 370,
   "perPageCeiling": 400,
   "perPageByTool": {
     "search_bricks": {
@@ -44,7 +44,7 @@
     "list_runs": {
       "tool": "list_runs",
       "pagesChecked": 1,
-      "maxPageTokens": 362,
+      "maxPageTokens": 370,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -52,7 +52,7 @@
     "query_logs": {
       "tool": "query_logs",
       "pagesChecked": 1,
-      "maxPageTokens": 292,
+      "maxPageTokens": 300,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -69,17 +69,17 @@
   "sessionA": {
     "calls": 4,
     "maxCalls": 5,
-    "tokens": 2576,
-    "emittedTokens": 50141,
-    "ratioPct": 5.1,
+    "tokens": 2666,
+    "emittedTokens": 50991,
+    "ratioPct": 5.2,
     "maxRatioPct": 15,
     "passed": true
   },
   "sessionB": {
     "calls": 7,
-    "toolDefTokens": 1195,
-    "ioTokens": 6263,
-    "totalTokens": 7458,
+    "toolDefTokens": 1285,
+    "ioTokens": 6221,
+    "totalTokens": 7506,
     "maxTotalTokens": 8000,
     "passed": true,
     "byCall": [
@@ -122,15 +122,15 @@
       {
         "tool": "test_workflow",
         "requestTokens": 37,
-        "responseTokens": 1978,
-        "totalTokens": 2015
+        "responseTokens": 1936,
+        "totalTokens": 1973
       }
     ]
   },
   "violations": [],
   "provenance": {
-    "generatedAt": "2026-11-26T17:48:44.929Z",
-    "gitSha": "6426bc6464fd30d84391f8934e2c4c6df45a7e88",
+    "generatedAt": "2026-11-26T19:07:21.912Z",
+    "gitSha": "c9db8c155067e9dfd9bb06b26143f2ed925b3b75",
     "gitDirty": false,
     "generator": "scripts/mcp-budget.ts",
     "inputKind": "measured"
