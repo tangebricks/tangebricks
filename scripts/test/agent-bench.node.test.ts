@@ -16,7 +16,20 @@ import type { StudioCall } from "../lib/live-studio.ts";
 import type { FakeCloudflare } from "../../packages/deploy/test/support/fake-cloudflare.ts";
 import {
   BenchmarkFileSchema,
+  BenchRefusal,
+  DEFAULT_BRIEF_IDS,
+  CHANGE_LIVE_APP_BRIEF,
+  MAX_IDENTICAL_BLOCKED_REPLIES,
+  UPGRADED_PRE_OWNER_ACTIONS,
   bindUnboundSecrets,
+  agentProgress,
+  latestDeployedRun,
+  loadReview,
+  namedSecrets,
+  secretStatusFor,
+  reviewProposal,
+  startOwnerLoop,
+  upgradeRunRecord,
   CHANGE_DEBIT_CREDITS,
   FREE_PLAN_UNSUPPORTED_REASON,
   KILL_RULE_VERSION,
@@ -39,7 +52,7 @@ import {
   updatedValue,
   writeBenchmarkResult,
 } from "../agent-bench.ts";
-import type { AgentBenchDeps, ClaudeRunInput, ClaudeRunner, RunRecord } from "../agent-bench.ts";
+import type { AgentBenchDeps, ClaudeRunInput, ClaudeRunner, ReviewFile, RunRecord } from "../agent-bench.ts";
 
 // Story R55: the benchmark harness, offline. Cloudflare's API is the fake (real SQLite D1, documented shapes); the deployed
 // preview Worker is a small simulator (access key, stub identity, workspaces, generic entity CRUD, the project's
@@ -320,7 +333,10 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
     // the CLI's numbers, as it reported them
     expect(record.cli).toMatchObject({ version: "9.9.9 (Fake Claude Code)", modelIds: ["claude-fake-model-20261126"], modelIdSource: "modelUsage", costUsd: 0.42, costLabel: "client-estimated", numTurns: 12, missingFields: [] });
     // bricks, entity and workflow each came back as a proposal once a money brick was in the project; one deploy approval
-    expect(record.ownerReview).toMatchObject({ proposalsAccepted: 3, approvalsApproved: 1, count: 4, refused: 0, rejectedNotPreview: [] });
+    expect(record.ownerReview).toMatchObject({ proposalsAccepted: 3, proposalsRejected: 0, approvalsApproved: 1, count: 4, refused: 0, rejectedNotPreview: [] });
+    // no review file: every proposal is accepted and recorded as unreviewed; the approval is recorded too
+    expect(record.ownerActions.map((a) => a.kind).sort()).toEqual(["accept-unreviewed", "accept-unreviewed", "accept-unreviewed", "approve"]);
+    expect(record.ownerActions.every((a) => !Number.isNaN(Date.parse(a.at)))).toBe(true);
 
     // the harness's scoring
     expect(record.deployed).toBe(true);
@@ -348,6 +364,8 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
     delete old.cli.agentCalls;
     delete old.limits.maxAgentCalls;
     delete old.ownerReview.secretsBound;
+    delete old.ownerActions;
+    delete old.ownerReview.proposalsRejected;
     mkdirSync(oldDir, { recursive: true });
     writeFileSync(oldOut, JSON.stringify({ benchmark: "real-model-benchmark-v0", internal: true, note: "old", runs: [old], killRule: { status: "from an older schema" } }));
     const saved = saveRun({ out: oldOut, record, refusal: () => null, log: () => {} });
@@ -355,7 +373,7 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
     expect(existsSync(join(oldDir, "runs", `${record.runId}.json`))).toBe(true);
     const merged = BenchmarkFileSchema.parse(JSON.parse(readFileSync(oldOut, "utf8")));
     expect(merged.runs.map((r) => r.runId)).toEqual(["brief-fixture-old-run", record.runId]);
-    expect(merged.runs[0]).toMatchObject({ agentCalls: [], cli: { agentCalls: 1 }, limits: { maxAgentCalls: 1 }, ownerReview: { secretsBound: [] }, schemaNote: UPGRADED_PRE_AGENT_CALLS });
+    expect(merged.runs[0]).toMatchObject({ agentCalls: [], cli: { agentCalls: 1 }, limits: { maxAgentCalls: 1 }, ownerReview: { secretsBound: [], proposalsRejected: 0 }, ownerActions: [], schemaNote: UPGRADED_PRE_AGENT_CALLS });
     expect(merged.runs[1]!.schemaNote).toBeUndefined();
     expect(merged.killRule.ruleVersion).toBe(KILL_RULE_VERSION);
 
@@ -637,7 +655,15 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
     const hide: Record<string, string> = {};
     const benchCatalog = { ...catalog, bricks: { ...catalog.bricks, "some-brick": { ...catalog.bricks["core-auth"]!, manifest: { ...catalog.bricks["core-auth"]!.manifest, id: "some-brick", secrets: ["THIRD_PARTY_KEY"] } } } };
     const res = await bindUnboundSecrets({ call, session: "s", orgId: "o", project: "p", randomHex: (n) => "ab".repeat(n), hideValues: hide, catalog: benchCatalog });
-    expect(res).toEqual({ bound: ["some-brick.THIRD_PARTY_KEY"], failed: [] });
+    expect(res).toEqual({
+      bound: ["some-brick.THIRD_PARTY_KEY"],
+      failed: [],
+      needs: [
+        { brickId: "core-auth", secretName: "BETTER_AUTH_SECRET", kind: "generated" },
+        { brickId: "core-auth", secretName: "GITHUB_CLIENT_ID", kind: "optional" },
+        { brickId: "some-brick", secretName: "THIRD_PARTY_KEY", kind: "owner" },
+      ],
+    });
     expect(posted.map((p) => (p.bindTarget as { secretName: string }).secretName)).toEqual(["THIRD_PARTY_KEY"]);
   });
 
@@ -744,7 +770,9 @@ describe("the CLI's JSON result, read defensively", () => {
   test("cumulative session costs: the budget left for each call and the run total use the true total", { timeout: 120_000 }, async () => {
     const { fake, deps } = world();
     const cumulative = [0.2249302, 0.2554368, 0.2720183, 0.348736];
-    const cli = fakeCli(async () => {}, { result: (call) => ({ type: "result", subtype: "success", is_error: false, num_turns: [32, 4, 2, 2][call - 1], total_cost_usd: cumulative[call - 1], duration_ms: 1000, session_id: "sess-cum", result: "Still working." }) });
+    // each call makes a new revision, so the owner's identical replies never trip the stop rule
+    const progress = (agent: Agent, call: number) => agent.tool("apply_ops", { mode: "apply", ops: [{ opId: `meta-${call}`, type: "set_metadata", metadata: { description: `call ${call}` } }] }).then(() => {});
+    const cli = fakeCli((agent) => progress(agent, 1), { resumed: (agent, _input, call) => progress(agent, call), result: (call) => ({ type: "result", subtype: "success", is_error: false, num_turns: [32, 4, 2, 2][call - 1], total_cost_usd: cumulative[call - 1], duration_ms: 1000, session_id: "sess-cum", result: "Still working." }) });
     const record = await runAgentBench(deps(cli, { maxAgentCalls: 4 }));
     expect(record.cli.costUsd).toBeCloseTo(0.348736, 9);
     expect(record.cli.numTurns).toBe(40);
@@ -767,7 +795,8 @@ describe("the CLI's JSON result, read defensively", () => {
       cli: { version: null, exitCode: 0, timedOut: false, subtype: "success", isError: false, modelIds: ["m"], modelIdSource: "modelUsage", requestedModel: null, costUsd: reported.reduce((x, y) => x + y, 0), costLabel: "client-estimated", numTurns: 8, durationMs: 40, missingFields: [], agentCalls: 4 },
       agentCalls: reported.map((raw, i) => call(i + 1, raw)),
       limits: { maxBudgetUsd: 10, wallTimeCapMs: 1, maxAgentCalls: 8 }, wallTimeMs: 1, agentWallTimeMs: 1,
-      ownerReview: { count: 0, proposalsAccepted: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 },
+      ownerReview: { count: 0, proposalsAccepted: 0, proposalsRejected: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 },
+      ownerActions: [],
       project: "p", previewUrl: null, deployed: false, deployRefusal: null, checks: null, score: null, change: null, blueprint: null, teardown: null,
     };
     const single = { ...base, runId: "brief-y-1", briefId: "y", cli: { ...base.cli, costUsd: 0.2, agentCalls: 1 }, agentCalls: [call(1, 0.2)] };
@@ -824,6 +853,290 @@ describe("the CLI's JSON result, read defensively", () => {
   });
 });
 
+describe("story 1.22: the scripted owner behaves like a person", () => {
+  /** A review file for the offline fixture (no brief text): the fixture's bricks and its one entity. */
+  const REVIEW: ReviewFile = { bricks: BRICKS, entities: ["book*"], allowOps: ["set_metadata"], decisions: [] };
+
+  test("an on-brief proposal is accepted; a stray probe on a brick outside the brief is rejected with a reason naming the op, and the record shows it", { timeout: 120_000 }, async () => {
+    const { fake, deps, lines } = world();
+    let probe: ToolAnswer | null = null;
+    const cli = fakeCli(async (agent) => {
+      probe = await agent.tool("apply_ops", { ops: [{ opId: "probe-chat", type: "enable_brick", brickId: "live-chat", config: {} }] });
+      await build(agent);
+      const deployed = await deployPreview(agent);
+      expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+    });
+    const record = await runAgentBench(deps(cli, { brief: { id: "fixture", brief: FIXTURE_BRIEF, answers: FIXTURE_ANSWERS, briefSha256: "a".repeat(64), answersSha256: "b".repeat(64), review: REVIEW } }));
+    expect(record.incompleteReason, lines.join("\n")).toBeNull();
+    expect(probe!.body.status).toBe("pending");
+    expect(record.ownerReview).toMatchObject({ proposalsAccepted: 3, proposalsRejected: 1, approvalsApproved: 1, count: 5, refused: 0 });
+    const rejects = record.ownerActions.filter((a) => a.kind === "reject");
+    expect(rejects).toHaveLength(1);
+    expect(rejects[0]!.detail).toMatch(/op "probe-chat" \(enable_brick\) touches brick "live-chat", which the brief does not need/);
+    expect(record.ownerActions.filter((a) => a.kind === "accept")).toHaveLength(3);
+    expect(record.ownerActions.some((a) => a.kind === "accept-unreviewed")).toBe(false);
+    // the probe never reached the blueprint, and the build log still adds up with the reject in it
+    expect(JSON.stringify(record.blueprint)).not.toContain("live-chat");
+    expect(outcome(record, 7)).toBe("pass");
+    expect(record.checks!.find((c) => c.line === 7)!.evidence).toMatch(/1 reject row\(s\) for 1 rejected proposal\(s\)/);
+    expectNothingLeft(fake, record);
+  });
+
+  test("the review: listed bricks and entities (prefix match), node types by their brick, allowOps anywhere, the first op outside the brief named", () => {
+    expect(reviewProposal(REVIEW, [{ opId: "a", type: "enable_brick", brickId: "credit-wallet" }, { opId: "b", type: "add_entity", entity: { name: "books_archive", fields: [] } }])).toEqual({ accept: true });
+    expect(reviewProposal(REVIEW, [{ opId: "m", type: "set_metadata", metadata: {} }])).toEqual({ accept: true });
+    expect(reviewProposal(REVIEW, [{ opId: "w", type: "add_workflow", workflow: { id: "w", name: "w", nodes: [{ id: "t", type: "trigger.manual" }, { id: "d", type: "credit-wallet.debit" }] } }])).toEqual({ accept: true });
+    expect(reviewProposal(REVIEW, [{ opId: "ok", type: "enable_brick", brickId: "multi-workspace" }, { opId: "stray", type: "add_entity", entity: { name: "tickets", fields: [] } }])).toEqual({ accept: false, reason: 'op "stray" (add_entity) touches entity "tickets", which the brief does not need' });
+    expect(reviewProposal(REVIEW, [{ opId: "n", type: "add_node", workflowId: "w", node: { id: "x", type: "live-chat.post" } }])).toMatchObject({ accept: false, reason: expect.stringContaining('brick "live-chat"') });
+    expect(reviewProposal(REVIEW, [{ opId: "i", type: "set_identity", identity: "stub" }])).toEqual({ accept: true });
+    expect(reviewProposal({ ...REVIEW, allowOps: ["enable_brick"] }, [{ opId: "any", type: "enable_brick", brickId: "live-chat" }])).toEqual({ accept: true });
+  });
+
+  test("a reject the route refuses is counted and tried again on the next poll", async () => {
+    let rejectCalls = 0;
+    let rejected = false;
+    const bodies: unknown[] = [];
+    const call: StudioCall = async (method, path, body) => {
+      if (method === "GET" && path.includes("/proposals")) return { status: 200, body: { proposals: rejected ? [] : [{ proposalId: "prop_1", status: "pending", createdAt: new Date().toISOString(), ops: [{ opId: "probe", type: "enable_brick", brickId: "live-chat" }] }] } };
+      if (method === "GET") return { status: 200, body: { approvals: [] } };
+      if (path.endsWith("/reject")) {
+        rejectCalls += 1;
+        bodies.push(body);
+        if (rejectCalls === 1) return { status: 500, body: {} };
+        rejected = true;
+        return { status: 200, body: {} };
+      }
+      return { status: 404, body: {} };
+    };
+    const actions: Array<[string, string]> = [];
+    const owner = startOwnerLoop({ call, session: "s", orgId: "o", project: "p", intervalMs: 1, now: () => Date.now(), review: REVIEW, act: (kind, detail) => actions.push([kind, detail]) });
+    await waitFor(async () => (rejected ? true : null), "the second reject");
+    const stats = await owner.stop();
+    expect(stats).toMatchObject({ refused: 1, proposalsRejected: 1, proposalsAccepted: 0 });
+    // the refused click is in the record, then the reject that went through
+    expect(actions).toEqual([
+      ["reject-failed", "HTTP 500: proposal prop_1"],
+      ["reject", expect.stringMatching(/^proposal prop_1: op "probe" \(enable_brick\) touches brick "live-chat"/)],
+    ]);
+    expect(bodies[1]).toEqual({ reason: expect.stringContaining("live-chat") });
+  });
+
+  test("a named owner-supplied secret: the owner binds it once and replies naming it; the same blocked text again stops the run after two identical replies (owner-stalled), scored and torn down", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const blocked = "I cannot deploy yet.\nblocked: MISSING_REQUIRED_SECRETS: PX_CONN_KEY";
+    const cli = fakeCli(async (agent) => {
+      const enabled = await agent.tool("apply_ops", { mode: "apply", ops: ["multi-workspace", "integration-connections"].map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId, config: {} })) });
+      expect(enabled.isError, JSON.stringify(enabled.body)).toBe(false);
+    }, { result: { type: "result", subtype: "success", is_error: false, num_turns: 2, total_cost_usd: 0.01, session_id: "sess-blocked", result: blocked } });
+    const hexes: string[] = [];
+    const record = await runAgentBench(deps(cli, { randomHex: (n: number) => { const h = randomBytes(n).toString("hex"); hexes.push(h); return h; } }));
+    // the first call, then two identical owner replies; a third was not sent
+    expect(cli.inputs).toHaveLength(1 + MAX_IDENTICAL_BLOCKED_REPLIES);
+    for (const input of cli.inputs.slice(1)) {
+      expect(input.prompt).toContain("I added PX_CONN_KEY in Studio.");
+      expect(input.prompt).toContain(GENERIC_OWNER_REPLY);
+    }
+    expect(record.ownerReview.secretsBound).toEqual(["integration-connections.PX_CONN_KEY"]);
+    expect(record.ownerActions.map((a) => a.kind)).toEqual(["bind-secret", "reply", "reply", "stop"]);
+    expect(record.ownerActions[0]!.detail).toBe("integration-connections.PX_CONN_KEY");
+    expect(record.ownerActions[1]!.detail).toBe("secret: PX_CONN_KEY");
+    expect(record.agentCalls.slice(1).map((c) => c.reply)).toEqual([{ source: "secret", section: "PX_CONN_KEY" }, { source: "secret", section: "PX_CONN_KEY" }]);
+    expect(record.status).toBe("incomplete");
+    expect(record.incompleteKind).toBe("owner-stalled");
+    expect(record.incompleteReason).toMatch(/owner stalled: the agent stayed blocked .* through 2 identical owner replies/);
+    expect(record.checks).toHaveLength(12);
+    expect(record.score).not.toBeNull();
+    const text = JSON.stringify(record);
+    for (const h of hexes.filter((x) => x.length === 64)) expect(text).not.toContain(h);
+    expectNothingLeft(fake, record);
+  });
+
+  test("a refused approval: the owner records approve-failed, and its reply says Studio refused instead of claiming it approved", async () => {
+    let approveCalls = 0;
+    const call: StudioCall = async (method, path) => {
+      if (method === "GET" && path.includes("/proposals")) return { status: 200, body: { proposals: [] } };
+      if (method === "GET") return { status: 200, body: { approvals: approveCalls > 0 ? [] : [{ approvalId: "apr_9", status: "pending", action: "deploy", env: "preview", createdAt: new Date().toISOString() }] } };
+      if (path.endsWith("/approve")) {
+        approveCalls += 1;
+        return { status: 503, body: {} };
+      }
+      return { status: 404, body: {} };
+    };
+    const actions: Array<[string, string]> = [];
+    const owner = startOwnerLoop({ call, session: "s", orgId: "o", project: "p", intervalMs: 1, now: () => Date.now(), act: (kind, detail) => actions.push([kind, detail]) });
+    await owner.passNow();
+    const stats = await owner.stop();
+    expect(stats).toMatchObject({ refused: 1, approvalsApproved: 0 });
+    expect(actions).toEqual([["approve-failed", "HTTP 503: approval apr_9"]]);
+    expect(owner.approvalLog).toEqual([{ approvalId: "apr_9", action: "deploy", env: "preview", outcome: "refused", status: 503 }]);
+    const r = ownerReply(undefined, "deploy_apply answered APPROVAL_REQUIRED (apr_9).", { approvals: owner.approvalLog });
+    expect(r).toMatchObject({ source: "approval", section: "refused" });
+    expect(r.text).toMatch(/^I tried to approve apr_9, but Studio refused \(HTTP 503\)/);
+    expect(r.text).not.toMatch(/I approved/);
+  });
+
+  test("an op kind the owner does not know is outside the brief; a review naming an unknown brick is refused", () => {
+    expect(reviewProposal(REVIEW, [{ opId: "x", type: "rewrite_everything" }])).toEqual({ accept: false, reason: 'op "x" (rewrite_everything) is not an op kind the owner knows, so it is outside the brief' });
+    const dir = mkdtempSync(join(tmpdir(), "review-"));
+    roots.push(dir);
+    writeFileSync(join(dir, "review.json"), JSON.stringify({ bricks: ["multi-workspace", "credit-walet"], entities: [] }));
+    expect(() => loadReview(dir)).toThrow(BenchRefusal);
+    expect(() => loadReview(dir)).toThrow(/brick\(s\) not in the catalog: "credit-walet"/);
+  });
+
+  test("a secret's standing is judged per need: added only when every brick needing the name got it; generated or optional from that brick's own declaration", () => {
+    const both = [{ brickId: "integration-connections", secretName: "PX_CONN_KEY", kind: "owner" as const }, { brickId: "webhook-gateway", secretName: "PX_CONN_KEY", kind: "owner" as const }];
+    expect(secretStatusFor("PX_CONN_KEY", { needs: both, boundNow: ["integration-connections.PX_CONN_KEY", "webhook-gateway.PX_CONN_KEY"], failedNow: [], boundBefore: [] })).toBe("bound");
+    expect(secretStatusFor("PX_CONN_KEY", { needs: both, boundNow: ["integration-connections.PX_CONN_KEY"], failedNow: ["webhook-gateway.PX_CONN_KEY"], boundBefore: [] })).toBe("failed");
+    // bound for one brick earlier does not make it bound for another brick that needs it now
+    expect(secretStatusFor("PX_CONN_KEY", { needs: [both[1]!], boundNow: [], failedNow: [], boundBefore: ["integration-connections.PX_CONN_KEY"] })).toBe("unknown");
+    expect(secretStatusFor("PX_CONN_KEY", { needs: [], boundNow: [], failedNow: [], boundBefore: ["integration-connections.PX_CONN_KEY"] })).toBe("bound");
+    expect(secretStatusFor("BETTER_AUTH_SECRET", { needs: [{ brickId: "core-auth", secretName: "BETTER_AUTH_SECRET", kind: "generated" }], boundNow: [], failedNow: [], boundBefore: [] })).toBe("generated");
+    // with no need, the passed catalog's declarations decide
+    const generatedOnly = { ...catalog, bricks: { x: { ...catalog.bricks["core-auth"]!, manifest: { ...catalog.bricks["core-auth"]!.manifest, secrets: [{ name: "X_KEY", generate: "random-32-bytes" }] } } } } as never;
+    expect(secretStatusFor("X_KEY", { needs: [], boundNow: [], failedNow: [], boundBefore: [], catalog: generatedOnly })).toBe("generated");
+    expect(secretStatusFor("GITHUB_CLIENT_ID", { needs: [], boundNow: [], failedNow: [], boundBefore: [] })).toBe("optional");
+  });
+
+  test("the stop rule counts only the agent's progress: revisions made by the owner's session do not count", () => {
+    const before = agentProgress([{ revision: 2, author: { type: "agent" } }, { revision: 1, author: { type: "agent" } }], null);
+    const afterOwnerBind = agentProgress([{ revision: 3, author: { type: "human" } }, { revision: 2, author: { type: "agent" } }, { revision: 1, author: { type: "agent" } }], null);
+    expect(afterOwnerBind).toBe(before);
+    expect(agentProgress([{ revision: 4, author: { type: "agent" } }, { revision: 3, author: { type: "human" } }], null)).not.toBe(before);
+    expect(agentProgress([{ revision: 2, author: { type: "agent" } }], 2)).not.toBe(before);
+  });
+
+  test("an owner-only change between two identical replies does not reset the count: the run still stops after two", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      await buildPlain(agent, { entity: true });
+    }, { result: { type: "result", subtype: "success", is_error: false, num_turns: 1, total_cost_usd: 0.01, session_id: "sess-owner-change", result: "Waiting." } });
+    const ownerChanges: number[] = [];
+    const record = await runAgentBench(deps(cli, {
+      // after the first identical reply, the owner (its own session) makes a revision of its own
+      ownerStep: async ({ call, session, orgId, project, call_ }) => {
+        if (call_ !== 2) return;
+        const res = await call("POST", `/api/projects/${project}/ops`, { ops: [{ opId: "owner-note", type: "set_metadata", metadata: { description: "owner note" } }] }, session, orgId);
+        ownerChanges.push(res.status);
+      },
+    }));
+    expect(ownerChanges).toEqual([200]);
+    expect(cli.inputs).toHaveLength(1 + MAX_IDENTICAL_BLOCKED_REPLIES);
+    expect(record.incompleteKind).toBe("owner-stalled");
+    expect(record.ownerActions.map((a) => a.kind)).toEqual(["reply", "reply", "stop"]);
+    expectNothingLeft(fake, record);
+  });
+
+  test("a question matching a review decision: the next prompt carries the decision's reply", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const review: ReviewFile = { ...REVIEW, decisions: [{ match: "drop login", reply: "No: keep sign-in; use email and password" }] };
+    const cli = fakeCli(async (agent) => {
+      await buildPlain(agent, { entity: true });
+    }, {
+      result: (call) => ({ type: "result", subtype: "success", is_error: false, num_turns: 1, total_cost_usd: 0.01 * call, session_id: "sess-decision", result: call === 1 ? "The entity is in. Should I drop login to keep the preview simple?" : "PREVIEW: done" }),
+      resumed: async (agent, input) => {
+        expect(input.prompt).toBe(`No: keep sign-in; use email and password\n\n${GENERIC_OWNER_REPLY}`);
+        const deployed = await deployPreview(agent);
+        expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+      },
+    });
+    const record = await runAgentBench(deps(cli, { brief: { id: "fixture", brief: FIXTURE_BRIEF, answers: FIXTURE_ANSWERS, briefSha256: "a".repeat(64), answersSha256: "b".repeat(64), review } }));
+    expect(cli.inputs).toHaveLength(2);
+    expect(record.deployed).toBe(true);
+    expect(record.agentCalls[1]!.reply).toEqual({ source: "decision", section: "decision 1" });
+    expect(record.ownerActions.filter((a) => a.kind === "reply").map((a) => a.detail)).toEqual(["decision: decision 1"]);
+    expect(JSON.stringify(record)).not.toContain("keep sign-in"); // the decision's text stays private
+    expectNothingLeft(fake, record);
+  });
+
+  test("a named generated secret: nothing is made up; the reply explains Studio generates it on the approved preview deploy", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      const enabled = await agent.tool("apply_ops", { mode: "apply", ops: ["multi-workspace", "core-auth", "dynamic-entities"].map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId, config: {} })) });
+      expect(enabled.isError, JSON.stringify(enabled.body)).toBe(false);
+    }, {
+      result: (call) => ({ type: "result", subtype: "success", is_error: false, num_turns: 1, total_cost_usd: 0.01 * call, session_id: "sess-generated", result: call === 1 ? "blocked: UNBOUND_BRICK_SECRET: BETTER_AUTH_SECRET" : "PREVIEW: done" }),
+      resumed: async (agent, input) => {
+        expect(input.prompt).toMatch(/^BETTER_AUTH_SECRET is generated by Studio when I approve the preview deploy/);
+        const deployed = await deployPreview(agent);
+        expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+      },
+    });
+    const record = await runAgentBench(deps(cli));
+    expect(cli.inputs).toHaveLength(2);
+    expect(record.deployed).toBe(true);
+    expect(record.ownerReview.secretsBound).toEqual([]);
+    expect(record.ownerActions.some((a) => a.kind === "bind-secret")).toBe(false);
+    expect(record.agentCalls[1]!.reply).toEqual({ source: "secret", section: "BETTER_AUTH_SECRET" });
+    expectNothingLeft(fake, record);
+  });
+
+  test("an owner-stalled run is evidence about the model: the kill rule keeps it", () => {
+    const run = { runId: "r1", task: "brief", briefId: "a", iteration: 1, deployed: false, incompleteKind: "owner-stalled", incompleteReason: "owner stalled", score: { passes: 2, partials: 0, notApplicable: 4, fails: 6, applicable: 8 } } as unknown as RunRecord;
+    const judged = evaluateKillRule([run]);
+    expect(judged.excludedRuns).toEqual([]);
+    expect(judged.iterations[0]!.perBrief[0]).toMatchObject({ runId: "r1" });
+  });
+
+  test("the reply order: a named secret, then an approval, then a review decision, then the answers, then the generic line", () => {
+    const answers = "# Owner answers\n\n## 1. Login\n\nEmail.\n";
+    const decisions = [{ match: "drop login", reply: "No: keep sign-in; use email and password" }, { match: "/delete (all|every) (rows|records)/", reply: "No." }];
+    const status = (name: string) => (name === "FOO_KEY" ? "bound" : name === "BETTER_AUTH_SECRET" ? "generated" : name === "GITHUB_CLIENT_ID" ? "optional" : "unknown") as never;
+    const ctx = { decisions, secretStatus: status };
+    expect(ownerReply(answers, "blocked: MISSING_REQUIRED_SECRETS: FOO_KEY", ctx)).toEqual({ text: `I added FOO_KEY in Studio.\n\n${GENERIC_OWNER_REPLY}`, source: "secret", section: "FOO_KEY" });
+    const generated = ownerReply(answers, "UNBOUND_BRICK_SECRET bricks.core-auth.secrets.BETTER_AUTH_SECRET, also APPROVAL_REQUIRED. Should I drop login?", ctx);
+    expect(generated.source).toBe("secret");
+    expect(generated.text).toMatch(/^BETTER_AUTH_SECRET is generated by Studio when I approve the preview deploy/);
+    expect(ownerReply(answers, "UNBOUND_BRICK_SECRET: GITHUB_CLIENT_ID", ctx).text).toMatch(/^GITHUB_CLIENT_ID is optional: leave it unset\./);
+    const approved = [{ approvalId: "apr_1", action: "deploy", env: "preview", outcome: "approved" as const, status: 200 }];
+    expect(ownerReply(answers, "deploy_apply answered APPROVAL_PENDING. Should I drop login?", { ...ctx, approvals: approved })).toMatchObject({ source: "approval", section: "approved", text: expect.stringMatching(/^I approved the preview deploy in Studio \(apr_1\)/) });
+    // the reply says what the owner did: a production approval was declined, a refused one is said so, none pending is said so
+    const declined = [{ approvalId: "apr_2", action: "deploy", env: "production", outcome: "rejected-not-preview" as const, status: 200 }];
+    expect(ownerReply(answers, "APPROVAL_REQUIRED", { approvals: declined })).toMatchObject({ section: "not-preview", text: expect.stringMatching(/^I did not approve apr_2: it is a deploy on production, and this app deploys to preview only/) });
+    expect(ownerReply(answers, "APPROVAL_REQUIRED", { approvals: [] })).toMatchObject({ section: "none", text: expect.stringMatching(/^I found no deploy approval waiting for me/) });
+    expect(ownerReply(answers, "Should I drop login to keep it simple?", ctx)).toEqual({ text: `No: keep sign-in; use email and password\n\n${GENERIC_OWNER_REPLY}`, source: "decision", section: "decision 1" });
+    expect(ownerReply(answers, "Shall I Delete all records first?", ctx)).toMatchObject({ source: "decision", section: "decision 2" });
+    expect(ownerReply(answers, "Which login do you want?", ctx)).toMatchObject({ source: "answers", section: "1. Login" });
+    expect(ownerReply(answers, "Done for now.", ctx)).toEqual({ text: GENERIC_OWNER_REPLY, source: "generic", section: null });
+    // a code without a name falls through
+    expect(ownerReply(answers, "MISSING_REQUIRED_SECRETS", ctx).source).toBe("generic");
+    expect(namedSecrets("MISSING_REQUIRED_SECRETS: FOO_KEY, BAR_TOKEN and APPROVAL_REQUIRED\nOTHER_THING")).toEqual(["FOO_KEY", "BAR_TOKEN"]);
+  });
+
+  test("the review file: loaded and validated beside the brief; none means unreviewed; a bad one is refused", () => {
+    const dir = mkdtempSync(join(tmpdir(), "briefs-"));
+    roots.push(dir);
+    for (const id of ["with-review", "no-review", "bad-op", "bad-regex"]) {
+      mkdirSync(join(dir, id));
+      writeFileSync(join(dir, id, "brief.md"), FIXTURE_BRIEF);
+      writeFileSync(join(dir, id, "answers.md"), FIXTURE_ANSWERS);
+    }
+    writeFileSync(join(dir, "with-review", "review.json"), JSON.stringify({ bricks: BRICKS, entities: ["book*"], decisions: [{ match: "/drop (the )?login/", reply: "No." }] }));
+    writeFileSync(join(dir, "bad-op", "review.json"), JSON.stringify({ bricks: [], entities: [], allowOps: ["drop_everything"] }));
+    writeFileSync(join(dir, "bad-regex", "review.json"), JSON.stringify({ bricks: [], entities: [], decisions: [{ match: "/([/", reply: "x" }] }));
+    expect(loadBrief(dir, "with-review").review).toEqual({ bricks: BRICKS, entities: ["book*"], decisions: [{ match: "/drop (the )?login/", reply: "No." }] });
+    expect(loadBrief(dir, "no-review").review).toBeNull();
+    expect(() => loadBrief(dir, "bad-op")).toThrow(BenchRefusal);
+    expect(() => loadBrief(dir, "bad-op")).toThrow(/allowOps/);
+    expect(() => loadBrief(dir, "bad-regex")).toThrow(/not a valid regular expression/);
+  });
+
+  test("an older record without ownerActions is upgraded on load, and says so", () => {
+    const raw = { runId: "r", agentCalls: [], cli: { agentCalls: 1 }, limits: { maxAgentCalls: 8 }, ownerReview: { proposalsAccepted: 2, secretsBound: [] } };
+    expect(upgradeRunRecord(raw)).toMatchObject({ ownerActions: [], ownerReview: { proposalsAccepted: 2, proposalsRejected: 0 }, schemaNote: UPGRADED_PRE_OWNER_ACTIONS });
+  });
+
+  test("the default brief set is our own three; change-live-app targets one of them, its latest deployed run by default", () => {
+    expect(DEFAULT_BRIEF_IDS).toHaveLength(3);
+    expect(new Set(DEFAULT_BRIEF_IDS).size).toBe(3);
+    expect(DEFAULT_BRIEF_IDS).toContain(CHANGE_LIVE_APP_BRIEF);
+    const run = (runId: string, briefId: string, startedAt: string, deployed: boolean, blueprint: unknown = {}) => ({ runId, task: "brief", briefId, startedAt, deployed, blueprint }) as unknown as RunRecord;
+    const runs = [run("a", CHANGE_LIVE_APP_BRIEF, "2026-11-27T01:00:00Z", true), run("b", CHANGE_LIVE_APP_BRIEF, "2026-11-27T03:00:00Z", false), run("c", CHANGE_LIVE_APP_BRIEF, "2026-11-27T02:00:00Z", true), run("d", "other", "2026-11-27T04:00:00Z", true), run("e", CHANGE_LIVE_APP_BRIEF, "2026-11-27T05:00:00Z", true, null)];
+    expect(latestDeployedRun(runs, CHANGE_LIVE_APP_BRIEF)?.runId).toBe("c");
+    expect(latestDeployedRun([], CHANGE_LIVE_APP_BRIEF)).toBeUndefined();
+  });
+});
+
 describe("briefs and results stay private", () => {
   const repo = resolve(import.meta.dirname, "..", "..");
   const privateDir = join(repo, "_bmad-output", "initiative-projectx-roadmap");
@@ -845,10 +1158,11 @@ describe("briefs and results stay private", () => {
     const briefs = join(privateDir, "benchmark", "briefs");
     if (existsSync(briefs)) {
       for (const id of readdirSync(briefs)) {
-        for (const name of ["brief.md", "answers.md"]) {
+        for (const name of ["brief.md", "answers.md", "review.json"]) {
           const path = join(briefs, id, name);
           if (!existsSync(path)) continue;
-          needles.push(id);
+          // our own briefs' ids are public slugs (the default set in the harness); every other id stays private
+          if (!(DEFAULT_BRIEF_IDS as readonly string[]).includes(id)) needles.push(id);
           for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
             const t = line.trim();
             if (t.length >= 40 && !t.startsWith("#") && !t.startsWith("---")) needles.push(t.slice(0, 80));
