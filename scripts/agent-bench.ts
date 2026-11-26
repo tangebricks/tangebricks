@@ -17,7 +17,7 @@
 // committed file holds brief text. See docs/benchmark.md.
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -525,7 +525,10 @@ export const RunRecordSchema = z.strictObject({
       timedOut: z.boolean(),
       subtype: z.string().nullable(),
       isError: z.boolean().nullable(),
+      /** This call's own cost: the reported value minus the session's previous one on a resumed call (see costUsdReported). */
       costUsd: z.number().nullable(),
+      /** total_cost_usd as the CLI reported it. On a resumed call it is the session's running total, not this call's cost. */
+      costUsdReported: z.number().nullable(),
       numTurns: z.number().nullable(),
       durationMs: z.number().nullable(),
       wallTimeMs: z.number().int().min(0),
@@ -559,6 +562,8 @@ export const RunRecordSchema = z.strictObject({
   teardown: TeardownSchema.nullable(),
   /** Set when an older record was upgraded on load: the fields it lacked were filled with honest defaults. */
   schemaNote: z.string().optional(),
+  /** Set when the run's cost totals were corrected after it was recorded (see repairRunCosts). */
+  costNote: z.string().optional(),
 });
 export type RunRecord = z.infer<typeof RunRecordSchema>;
 
@@ -668,7 +673,67 @@ export function upgradeRunRecord(raw: unknown): unknown {
     upgraded = true;
   }
   if (upgraded && r.schemaNote === undefined) r.schemaNote = UPGRADED_PRE_AGENT_CALLS;
+  // A call recorded before costUsdReported existed recorded the CLI's raw value as costUsd; it is kept as that raw value.
+  // repairRunCosts (--repair-costs) then recomputes the per-call costs and the total from it.
+  if (Array.isArray(r.agentCalls)) {
+    r.agentCalls = (r.agentCalls as Array<Record<string, unknown>>).map((c) => (c && typeof c === "object" && !("costUsdReported" in c) ? { ...c, costUsdReported: c.costUsd ?? null } : c));
+  }
   return r;
+}
+
+export const COST_NOTE = "total corrected 2026-11-26: resumed calls report cumulative cost";
+
+/**
+ * Recomputes a recorded run's costs from its per-call raw values: a first call costs what it reported, a resumed call the
+ * difference from the session's previous report, and the run's total is the sum (the session's last cumulative value).
+ * A record whose numbers are already right comes back unchanged; a corrected one gets `costNote`. Nothing else changes.
+ */
+export function repairRunCosts(record: RunRecord): { record: RunRecord; before: number | null; after: number | null; changed: boolean } {
+  const before = record.cli.costUsd;
+  if (record.agentCalls.length === 0) return { record, before, after: before, changed: false };
+  let last: number | null = null;
+  const calls = record.agentCalls.map((c) => {
+    const raw = c.costUsdReported;
+    const own = raw === null ? null : c.resumed && last !== null ? Math.max(0, raw - last) : raw;
+    if (raw !== null) last = raw;
+    return { ...c, costUsd: own };
+  });
+  const owns = calls.map((c) => c.costUsd).filter((v): v is number => v !== null);
+  const after = owns.length === 0 ? null : owns.reduce((x, y) => x + y, 0);
+  const same = (x: number | null, y: number | null) => (x === null || y === null ? x === y : Math.abs(x - y) < 1e-9);
+  const changed = !same(before, after) || calls.some((c, i) => !same(c.costUsd, record.agentCalls[i]!.costUsd));
+  if (!changed) return { record, before, after, changed: false };
+  return { record: RunRecordSchema.parse({ ...record, agentCalls: calls, cli: { ...record.cli, costUsd: after }, costNote: COST_NOTE }), before, after, changed: true };
+}
+
+/** --repair-costs: corrects the totals in every per-run file under <out dir>/runs/ and in the results file. */
+export function repairCostsInFolder(out: string): Array<{ where: string; runId: string; before: number | null; after: number | null }> {
+  const repaired: Array<{ where: string; runId: string; before: number | null; after: number | null }> = [];
+  const runsDir = join(dirname(resolve(out)), "runs");
+  if (existsSync(runsDir)) {
+    for (const name of readdirSync(runsDir).filter((f) => f.endsWith(".json")).sort()) {
+      const path = join(runsDir, name);
+      const record = RunRecordSchema.parse(upgradeRunRecord(JSON.parse(readFileSync(path, "utf8"))));
+      const fixed = repairRunCosts(record);
+      if (!fixed.changed) continue;
+      writeFileSync(path, `${JSON.stringify(fixed.record, null, 2)}\n`);
+      repaired.push({ where: `runs/${name}`, runId: record.runId, before: fixed.before, after: fixed.after });
+    }
+  }
+  if (existsSync(out)) {
+    const raw = JSON.parse(readFileSync(out, "utf8")) as Record<string, unknown>;
+    const runs = loadRuns(out);
+    const fixedRuns = runs.map((r) => {
+      const fixed = repairRunCosts(r);
+      if (fixed.changed) repaired.push({ where: "benchmark-v0.json", runId: r.runId, before: fixed.before, after: fixed.after });
+      return fixed.record;
+    });
+    if (fixedRuns.some((r, i) => r !== runs[i])) {
+      const file = BenchmarkFileSchema.parse({ ...raw, runs: fixedRuns, killRule: evaluateKillRule(fixedRuns) });
+      writeFileSync(out, `${JSON.stringify(file, null, 2)}\n`);
+    }
+  }
+  return repaired;
 }
 
 /** The runs already in the results file, older records upgraded; the kill rule is always evaluated again from them. */
@@ -1203,6 +1268,7 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     const deadline = agentStarted + wallTimeCapMs;
     let spent = 0;
     let sessionId: string | null = null;
+    let lastReportedCost: number | null = null;
     let nextPrompt = prompt;
     let reply: { source: "answers" | "generic"; section: string | null } | null = null;
     const texts: string[] = [];
@@ -1234,7 +1300,13 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
         break;
       }
       const numbers = parseCliResult(out.stdout);
-      spent += numbers.costUsd ?? 0;
+      // total_cost_usd is cumulative over a resumed session (the CLI's running total), while num_turns and duration_ms are
+      // per call (live runs: turns 32, 4, 2, ... and each duration below its call's wall time). So a call's own cost is the
+      // reported value minus the session's previous one, and the run's true total is the session's last reported value.
+      const reportedCost = numbers.costUsd;
+      const callCost = reportedCost === null ? null : sessionId && lastReportedCost !== null ? Math.max(0, reportedCost - lastReportedCost) : reportedCost;
+      if (reportedCost !== null) lastReportedCost = reportedCost;
+      spent += callCost ?? 0;
       if (numbers.resultText) texts.push(numbers.resultText);
       const entry: RunRecord["agentCalls"][number] = {
         call: n,
@@ -1245,7 +1317,8 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
         timedOut: out.timedOut,
         subtype: numbers.subtype,
         isError: numbers.isError,
-        costUsd: numbers.costUsd,
+        costUsd: callCost,
+        costUsdReported: reportedCost,
         numTurns: numbers.numTurns,
         durationMs: numbers.durationMs,
         wallTimeMs: Math.max(0, Math.round(now() - callStarted)),
@@ -1442,6 +1515,18 @@ async function main(argv: string[]): Promise<number> {
     return i >= 0 ? argv[i + 1] : undefined;
   };
   const inside = (child: string, parent: string) => (resolve(child) + sep).toLowerCase().startsWith((resolve(parent) + sep).toLowerCase());
+  if (argv.includes("--repair-costs")) {
+    const out = resolve(arg("--out") ?? DEFAULT_OUT);
+    const refused = privatePathRefusal(out, repoRoot, gitIgnores);
+    if (refused) {
+      console.error(`--out: ${refused}`);
+      return 2;
+    }
+    const repaired = repairCostsInFolder(out);
+    for (const r of repaired) console.log(`${r.where} ${r.runId}: ${r.before ?? "?"} -> ${r.after ?? "?"}`);
+    console.log(`${repaired.length} record(s) corrected`);
+    return 0;
+  }
   const envFile = arg("--env-file");
   if (envFile) {
     if (inside(envFile, repoRoot)) {

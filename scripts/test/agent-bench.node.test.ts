@@ -27,6 +27,8 @@ import {
   loadBrief,
   ownerReply,
   UPGRADED_PRE_AGENT_CALLS,
+  COST_NOTE,
+  repairCostsInFolder,
   parseCliResult,
   privatePathRefusal,
   saveRun,
@@ -542,7 +544,7 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
   test("the agent stops short of a deploy: the owner replies from the answers and the same session resumes; calls, turns and cost add up", { timeout: 120_000 }, async () => {
     const { fake, deps } = world();
     const answers = "# Owner answers\n\n## 1. Name\n\nOffline Fixture Name\n\n## 2. Pricing\n\nFree.\n";
-    const result = (call: number) => ({ type: "result", subtype: "success", is_error: false, num_turns: call === 1 ? 5 : 9, total_cost_usd: call === 1 ? 0.5 : 0.25, duration_ms: 100, session_id: "sess-resume-1", result: call === 1 ? "I built the bricks and the entity.\nWhat name should the product use?" : "PREVIEW: done", modelUsage: { "claude-fake-model-20261126": {} } });
+    const result = (call: number) => ({ type: "result", subtype: "success", is_error: false, num_turns: call === 1 ? 5 : 9, total_cost_usd: call === 1 ? 0.5 : 0.75, duration_ms: 100, session_id: "sess-resume-1", result: call === 1 ? "I built the bricks and the entity.\nWhat name should the product use?" : "PREVIEW: done", modelUsage: { "claude-fake-model-20261126": {} } });
     const cli = fakeCli(async (agent) => {
       await build(agent);
     }, {
@@ -561,7 +563,10 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
     const record = await runAgentBench(deps(cli, { brief: { id: "fixture", brief: FIXTURE_BRIEF, answers, briefSha256: "a".repeat(64), answersSha256: "b".repeat(64) } }));
     expect(record.incompleteReason).toBeNull();
     expect(record.deployed).toBe(true);
+    // total_cost_usd is the session's running total on a resumed call (0.5, then 0.75): the second call cost 0.25, the run
+    // 0.75. Turns and durations are per call and add up.
     expect(record.cli).toMatchObject({ agentCalls: 2, numTurns: 14, costUsd: 0.75, durationMs: 200 });
+    expect(record.agentCalls.map((c) => [c.costUsdReported, c.costUsd])).toEqual([[0.5, 0.5], [0.75, 0.25]]);
     expect(record.agentCalls.map((c) => [c.prompt, c.resumed, c.reply])).toEqual([
       ["brief", false, null],
       ["owner-reply", true, { source: "answers", section: "1. Name" }],
@@ -708,6 +713,58 @@ describe("the CLI's JSON result, read defensively", () => {
     expect(privatePathRefusal(join(root, "private", "benchmark-v0.json"), root, () => false)).toMatch(/not git-ignored/);
     expect(privatePathRefusal(join(root, "private", "benchmark-v0.json"), root, () => true)).toBeNull();
     expect(privatePathRefusal(resolve("/elsewhere/benchmark-v0.json"), root, () => false)).toBeNull();
+  });
+
+  test("cumulative session costs: the budget left for each call and the run total use the true total", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cumulative = [0.2249302, 0.2554368, 0.2720183, 0.348736];
+    const cli = fakeCli(async () => {}, { result: (call) => ({ type: "result", subtype: "success", is_error: false, num_turns: [32, 4, 2, 2][call - 1], total_cost_usd: cumulative[call - 1], duration_ms: 1000, session_id: "sess-cum", result: "Still working." }) });
+    const record = await runAgentBench(deps(cli, { maxAgentCalls: 4 }));
+    expect(record.cli.costUsd).toBeCloseTo(0.348736, 9);
+    expect(record.cli.numTurns).toBe(40);
+    expect(record.agentCalls.map((c) => c.costUsdReported)).toEqual(cumulative);
+    const owns = record.agentCalls.map((c) => c.costUsd!);
+    for (const [i, own] of owns.entries()) expect(own).toBeCloseTo(i === 0 ? cumulative[0]! : cumulative[i]! - cumulative[i - 1]!, 9);
+    // each call's budget is the cap minus the true total so far
+    expect(cli.inputs.map((i) => i.maxBudgetUsd)).toEqual([10, 9.7751, 9.7446, 9.728]);
+    expect(record.costNote).toBeUndefined();
+    expectNothingLeft(fake, record);
+  });
+
+  test("--repair-costs: summed cumulative totals in recorded runs are corrected from the per-call reports, marked, nothing else changed", () => {
+    const dir = mkdtempSync(join(tmpdir(), "repair-"));
+    roots.push(dir);
+    const reported = [0.2249302, 0.2554368, 0.2720183, 0.348736];
+    const call = (n: number, raw: number) => ({ call: n, prompt: n === 1 ? "brief" : "owner-reply", reply: n === 1 ? null : { source: "generic", section: null }, resumed: n > 1, exitCode: 0, timedOut: false, subtype: "success", isError: false, costUsd: raw, numTurns: 2, durationMs: 10, wallTimeMs: 20, modelIds: ["m"], maxBudgetUsd: 10, resultText: "x", secretsBoundAfter: [] });
+    const base = {
+      runId: "brief-x-1", task: "brief", briefId: "x", briefSha256: "a".repeat(64), answersSha256: null, fromRunId: null, startedAt: "s", finishedAt: "f", status: "complete", incompleteReason: null, incompleteKind: null, iteration: 1,
+      cli: { version: null, exitCode: 0, timedOut: false, subtype: "success", isError: false, modelIds: ["m"], modelIdSource: "modelUsage", requestedModel: null, costUsd: reported.reduce((x, y) => x + y, 0), costLabel: "client-estimated", numTurns: 8, durationMs: 40, missingFields: [], agentCalls: 4 },
+      agentCalls: reported.map((raw, i) => call(i + 1, raw)),
+      limits: { maxBudgetUsd: 10, wallTimeCapMs: 1, maxAgentCalls: 8 }, wallTimeMs: 1, agentWallTimeMs: 1,
+      ownerReview: { count: 0, proposalsAccepted: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 },
+      project: "p", previewUrl: null, deployed: false, deployRefusal: null, checks: null, score: null, change: null, blueprint: null, teardown: null,
+    };
+    const single = { ...base, runId: "brief-y-1", briefId: "y", cli: { ...base.cli, costUsd: 0.2, agentCalls: 1 }, agentCalls: [call(1, 0.2)] };
+    mkdirSync(join(dir, "runs"));
+    writeFileSync(join(dir, "runs", "brief-x-1.json"), JSON.stringify(base));
+    writeFileSync(join(dir, "runs", "brief-y-1.json"), JSON.stringify(single));
+    const out = join(dir, "benchmark-v0.json");
+    writeFileSync(out, JSON.stringify({ benchmark: "real-model-benchmark-v0", internal: true, note: "n", runs: [base, single], killRule: {} }));
+    const repaired = repairCostsInFolder(out);
+    expect(repaired.map((r) => [r.where, r.runId, Number(r.before!.toFixed(7)), Number(r.after!.toFixed(7))])).toEqual([
+      ["runs/brief-x-1.json", "brief-x-1", 1.1011213, 0.348736],
+      ["benchmark-v0.json", "brief-x-1", 1.1011213, 0.348736],
+    ]);
+    const fixed = RunRecordSchema.parse(JSON.parse(readFileSync(join(dir, "runs", "brief-x-1.json"), "utf8")));
+    expect(fixed.costNote).toBe(COST_NOTE);
+    expect(fixed.agentCalls.map((c) => c.costUsdReported)).toEqual(reported);
+    expect(fixed.cli.costUsd).toBeCloseTo(0.348736, 9);
+    expect({ ...fixed, cli: { ...fixed.cli, costUsd: 0 }, agentCalls: [], costNote: undefined, schemaNote: undefined }).toEqual({ ...base, cli: { ...base.cli, costUsd: 0 }, agentCalls: [], costNote: undefined, schemaNote: undefined });
+    expect(JSON.parse(readFileSync(join(dir, "runs", "brief-y-1.json"), "utf8")).costNote).toBeUndefined();
+    const file = BenchmarkFileSchema.parse(JSON.parse(readFileSync(out, "utf8")));
+    expect(file.runs.map((r) => [r.runId, r.costNote ?? null])).toEqual([["brief-x-1", COST_NOTE], ["brief-y-1", null]]);
+    // running it again changes nothing
+    expect(repairCostsInFolder(out)).toEqual([]);
   });
 
   test("teardown-only with no ledger is refused as a LiveProofRefusal, as before the refactor", async () => {
