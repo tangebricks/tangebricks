@@ -1,0 +1,121 @@
+{
+  "commandStartedAt": "2026-11-26T07:17:54.428Z",
+  "finishedAt": "2026-11-26T07:21:54.106Z",
+  "completed": false,
+  "stoppedBecause": "the signed run debited the workspace exactly once failed: {\"workspaceId\":\"ws_live_7dbdc1e2\",\"fundedMilli\":100000,\"before\":{\"balanceMilli\":100000,\"deductions\":0},\"afterRun\":{\"balanceMilli\":100000,\"deductions\":0},\"runStatus\":202,\"noWorkspace\":{\"status\":400,\"code\":\"NO_WORKSPACE\"},\"badWorkspace\":{\"status\":400,\"code\":\"BAD_WORKSPACE\"},\"final\":{\"balanceMilli\":100000,\"deductions\":0}}",
+  "project": "tangebricks-test-7dbdc1e2",
+  "prefix": "px-tangebricks-test-7dbdc1e2-",
+  "steps": {
+    "connect": {
+      "httpStatus": 201,
+      "status": "active",
+      "permissions": [
+        {
+          "label": "Account Settings: Read",
+          "granted": true
+        },
+        {
+          "label": "Workers Scripts: Edit",
+          "granted": true
+        },
+        {
+          "label": "D1: Edit",
+          "granted": true
+        },
+        {
+          "label": "Queues: Edit",
+          "granted": true
+        }
+      ]
+    },
+    "deploy_preview": {
+      "planAction": "create",
+      "action": "create",
+      "workerUrl": "https://px-tangebricks-test-7dbdc1e2-preview.killerkingmega.workers.dev",
+      "healthzStatus": 200,
+      "mutatingCallCount": 17
+    },
+    "deploy_production": {
+      "planAction": "create",
+      "action": "create",
+      "workerUrl": "https://px-tangebricks-test-7dbdc1e2-production.killerkingmega.workers.dev",
+      "healthzStatus": 200,
+      "mutatingCallCount": 17
+    },
+    "redeploy": {
+      "preview": {
+        "httpStatus": 200,
+        "action": "noop",
+        "noChanges": true,
+        "changes": [],
+        "mutatingCallCount": 0
+      },
+      "production": {
+        "httpStatus": 200,
+        "action": "noop",
+        "noChanges": true,
+        "changes": [],
+        "mutatingCallCount": 0
+      },
+      "writeCalls": 0
+    },
+    "wallet": {
+      "workspaceId": "ws_live_7dbdc1e2",
+      "fundedMilli": 100000,
+      "before": {
+        "balanceMilli": 100000,
+        "deductions": 0
+      },
+      "afterRun": {
+        "balanceMilli": 100000,
+        "deductions": 0
+      },
+      "runStatus": 202,
+      "noWorkspace": {
+        "status": 400,
+        "code": "NO_WORKSPACE"
+      },
+      "badWorkspace": {
+        "status": 400,
+        "code": "BAD_WORKSPACE"
+      },
+      "final": {
+        "balanceMilli": 100000,
+        "deductions": 0
+      }
+    }
+  },
+  "teardown": {
+    "removed": [
+      {
+        "kind": "workflow",
+        "name": "px-tangebricks-test-7dbdc1e2-preview-graphs"
+      },
+      {
+        "kind": "workflow",
+        "name": "px-tangebricks-test-7dbdc1e2-production-graphs"
+      },
+      {
+        "kind": "worker_script",
+        "name": "px-tangebricks-test-7dbdc1e2-preview"
+      },
+      {
+        "kind": "worker_script",
+        "name": "px-tangebricks-test-7dbdc1e2-production"
+      },
+      {
+        "kind": "d1_database",
+        "name": "px-tangebricks-test-7dbdc1e2-preview-db"
+      },
+      {
+        "kind": "d1_database",
+        "name": "px-tangebricks-test-7dbdc1e2-production-db"
+      }
+    ],
+    "alreadyGone": [],
+    "leftBehind": []
+  },
+  "writesDuringRedeploy": 0,
+  "callsFile": "studio-deploy-calls.json",
+  "callsSha256": "d4a44c3543b281104aeb2c65204fea1e04aa7719328ba923a5e90f1afc0fcc5a"
+}
