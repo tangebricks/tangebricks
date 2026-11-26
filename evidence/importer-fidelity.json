@@ -6616,8 +6616,8 @@
     "notes": []
   },
   "provenance": {
-    "generatedAt": "2026-11-26T20:11:52.662Z",
-    "gitSha": "8cc527cd4688dd81b19b7f0e153435981336cbc0",
+    "generatedAt": "2026-11-26T20:22:28.807Z",
+    "gitSha": "657061435984d6cd5cf6e0fefc6a059c03547468",
     "gitDirty": false,
     "generator": "scripts/measure-importer-fidelity.ts",
     "inputKind": "measured"
