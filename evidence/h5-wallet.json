@@ -212,8 +212,8 @@
     "ok": true
   },
   "provenance": {
-    "generatedAt": "2026-11-26T07:39:39.050Z",
-    "gitSha": "ff2885acc8f00308c5bb3eb30c69fa376efe90f5",
+    "generatedAt": "2026-11-26T12:12:19.423Z",
+    "gitSha": "1b3166fb43efe26aae5f2576b88ec7aeccd87067",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

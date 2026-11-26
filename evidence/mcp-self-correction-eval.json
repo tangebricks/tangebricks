@@ -590,6 +590,7 @@
           "args": {
             "project": "eval-s8-stale-rev",
             "baseRev": 1,
+            "mode": "apply",
             "ops": [
               {
                 "opId": "agent-s8-stale",
@@ -642,6 +643,7 @@
           "args": {
             "project": "eval-s8-stale-rev",
             "baseRev": 2,
+            "mode": "apply",
             "ops": [
               {
                 "opId": "agent-s8-retry",
@@ -695,7 +697,7 @@
           "tool": "get_run_trace",
           "args": {
             "project": "eval-s9-missing-input",
-            "runId": "run_4526307a"
+            "runId": "run_02f28e76"
           },
           "isError": false,
           "detectedIssue": {
@@ -722,7 +724,7 @@
           "tool": "query_logs",
           "args": {
             "project": "eval-s9-missing-input",
-            "runId": "run_4526307a",
+            "runId": "run_02f28e76",
             "level": "error"
           },
           "isError": false
@@ -828,8 +830,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-26T07:39:39.050Z",
-    "gitSha": "ff2885acc8f00308c5bb3eb30c69fa376efe90f5",
+    "generatedAt": "2026-11-26T12:12:19.423Z",
+    "gitSha": "1b3166fb43efe26aae5f2576b88ec7aeccd87067",
     "gitDirty": false,
     "generator": "scripts/mcp-self-correct-eval.ts",
     "inputKind": "measured"
