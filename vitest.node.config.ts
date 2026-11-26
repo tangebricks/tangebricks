@@ -10,7 +10,7 @@ export default defineConfig({
       "./apps/studio-api/test/miniflare-dispose-guard.ts",
       "./test/support/assertion-counter.ts",
     ],
-    include: ["packages/*/test/**/*.node.test.ts", "bricks/*/test/**/*.node.test.ts", "test/**/*.node.test.ts", "scripts/test/**/*.node.test.ts"],
+    include: ["packages/*/test/**/*.node.test.ts", "bricks/*/test/**/*.node.test.ts", "apps/*/test/**/*.node.test.ts", "test/**/*.node.test.ts", "scripts/test/**/*.node.test.ts"],
     testTimeout: 60_000,
     hookTimeout: 60_000,
   },

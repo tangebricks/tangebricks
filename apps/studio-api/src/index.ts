@@ -1586,6 +1586,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const id = (message.id as string | number | null) ?? null;
     const method = message.method;
+    // Story R55: a notification (no id, nothing to answer) is accepted with 202 and no body, as the Streamable HTTP
+    // transport requires; the MCP clients (Claude Code, the protocol SDK) send notifications/initialized after initialize.
+    if (typeof method === "string" && method.startsWith("notifications/") && !("id" in message)) {
+      return new Response(null, { status: 202 });
+    }
     const params =
       typeof message.params === "object" && message.params !== null
         ? (message.params as Record<string, unknown>)
@@ -1937,6 +1942,23 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
   app.post("/mcp", handleStudioMcp);
   app.post("/api/mcp", handleStudioMcp);
+  // Story R55: one POST endpoint with no server-to-client stream or sessions, so GET (the SSE stream) and DELETE (session
+  // end) are 405, as packages/mcp-server answers them; a client then carries on over POST alone. The caller is checked
+  // first, so an unauthenticated request gets the same 401 as every other control-plane route.
+  const mcpMethodNotAllowed = async (c: { req: { raw: Request }; env: StudioApiEnv }) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32600, message: resolved.error.message, data: resolved.error } }),
+        { status: 401, headers: { "content-type": "application/json", "www-authenticate": 'Bearer realm="mcp"' } },
+      );
+    }
+    return new Response(null, { status: 405, headers: { allow: "POST" } });
+  };
+  app.get("/mcp", mcpMethodNotAllowed);
+  app.delete("/mcp", mcpMethodNotAllowed);
+  app.get("/api/mcp", mcpMethodNotAllowed);
+  app.delete("/api/mcp", mcpMethodNotAllowed);
 
   app.get("/api/catalog", (c) => {
     const bricks: Record<string, (typeof catalog.bricks)[string]["manifest"]> = {};

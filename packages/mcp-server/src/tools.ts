@@ -3166,7 +3166,14 @@ const deployApply: Tool = {
           buildHash: body.buildHash ?? envObj.buildHash ?? null,
           codeHash: body.codeHash ?? envObj.codeHash ?? null,
           graphHash: body.graphHash ?? envObj.graphHash ?? null,
-          workerUrl: body.workerUrl ?? envObj.workerUrl ?? null,
+          // Story R55: Studio answers the address under deployment.url (executeEnvironmentDeployment); the environment
+          // record carries it only in its deployed state.
+          workerUrl:
+            body.workerUrl ??
+            (typeof body.deployment === "object" && body.deployment !== null ? (body.deployment as { url?: unknown }).url : undefined) ??
+            envObj.workerUrl ??
+            (typeof envObj.deployedState === "object" && envObj.deployedState !== null ? (envObj.deployedState as { workerUrl?: unknown }).workerUrl : undefined) ??
+            null,
         });
       }
       if (errCode !== "DEPLOY_TARGET_NOT_CONNECTED") {

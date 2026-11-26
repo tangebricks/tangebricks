@@ -1,0 +1,646 @@
+import { spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { catalog } from "../../packages/assembler/catalog.generated.ts";
+import { generateOpenApiSpec } from "../../packages/assembler/src/openapi.ts";
+import { KEY_HEADER } from "../../packages/deploy/src/worker/gate.ts";
+import { memoryStore } from "../../packages/deploy/src/provisioner/index.ts";
+import { createFakeCloudflare } from "../../packages/deploy/test/support/fake-cloudflare.ts";
+import { LiveProofRefusal, runTeardownOnly } from "../lib/live-studio.ts";
+import type { FakeCloudflare } from "../../packages/deploy/test/support/fake-cloudflare.ts";
+import {
+  BenchmarkFileSchema,
+  CHANGE_DEBIT_CREDITS,
+  FREE_PLAN_UNSUPPORTED_REASON,
+  KILL_RULE_VERSION,
+  RunRecordSchema,
+  claudeArgs,
+  defaultClaudeBin,
+  evaluateKillRule,
+  loadBrief,
+  parseCliResult,
+  privatePathRefusal,
+  runAgentBench,
+  sampleValue,
+  updatedValue,
+  writeBenchmarkResult,
+} from "../agent-bench.ts";
+import type { AgentBenchDeps, ClaudeRunInput, ClaudeRunner, RunRecord } from "../agent-bench.ts";
+
+// Story R55: the benchmark harness, offline. Cloudflare's API is the fake (real SQLite D1, documented shapes); the deployed
+// preview Worker is a small simulator (access key, stub identity, workspaces, generic entity CRUD, the project's
+// openapi.json); the Claude Code CLI is a fake that replays MCP calls through the official MCP client against Studio's real
+// /mcp over the loopback listener. Nothing reaches the network: global fetch refuses every non-loopback address.
+
+const TOKEN = "cfut_AgentBenchOfflineTokenR55aaaaaaaaaaaaaaaaaaaaaaaaa";
+const ACCOUNT = "0123456789abcdef0123456789abcdef";
+const ROOT_SECRET = "offline-root-secret-r55-0123456789abcdef";
+const FIXTURE_BRIEF = "# Product brief\n\nA tiny catalogue of things, for the offline test only. It has one entity, kept per workspace.\n";
+const FIXTURE_ANSWERS = "# Owner answers\n\n1. Name: Offline Fixture\n2. Entities: books (title, pages)\n";
+const ENTITY = { name: "books", workspaceScoped: true, fields: [{ name: "title", type: "text", required: true }, { name: "pages", type: "number" }] };
+const BRICKS = ["multi-workspace", "credit-wallet", "dynamic-entities"];
+
+const roots: string[] = [];
+const realFetch = globalThis.fetch;
+beforeEach(() => {
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    if (url.hostname !== "127.0.0.1") throw new Error(`offline test: refused a request to ${url.host}`);
+    return realFetch(input, init);
+  }) as typeof fetch;
+});
+afterEach(() => {
+  globalThis.fetch = realFetch;
+  for (const r of roots.splice(0)) rmSync(r, { recursive: true, force: true });
+});
+
+/** The deployed preview Worker, simulated: the gate's key check, the stub identity, workspaces and entity CRUD. */
+function workerSimulator(fake: FakeCloudflare) {
+  const workspaces = new Map<string, string>();
+  const rows = new Map<string, Map<string, Record<string, unknown>>>();
+  return async (request: Request): Promise<Response> => {
+    const url = new URL(request.url);
+    const script = url.hostname.split(".")[0]!;
+    const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+    const key = fake.secretOf(script, "POC_ACCESS_KEY");
+    if (!key || request.headers.get(KEY_HEADER) !== key) return json(401, { error: "unauthorized" });
+    if (url.pathname === "/healthz") return json(200, { ok: true });
+    if (url.pathname === "/openapi.json") return json(200, generateOpenApiSpec({ project: script, bricks: BRICKS, entities: [ENTITY] } as never, catalog as never));
+    const user = request.headers.get("x-test-user");
+    if (!user) return json(401, { error: "unauthenticated" });
+    if (url.pathname === "/api/workspaces" && request.method === "POST") {
+      const id = `ws_${randomBytes(6).toString("hex")}`;
+      workspaces.set(id, user);
+      return json(201, { workspace: { id } });
+    }
+    const m = url.pathname.match(/^\/api\/([a-z_]+)(?:\/([^/]+))?$/);
+    if (!m || m[1] !== ENTITY.name) return json(404, {});
+    const ws = request.headers.get("x-workspace-id") ?? "";
+    if (workspaces.get(ws) !== user) return json(403, { error: "workspace" });
+    const table = rows.get(ws) ?? new Map<string, Record<string, unknown>>();
+    rows.set(ws, table);
+    const id = m[2] ? decodeURIComponent(m[2]) : null;
+    if (!id && request.method === "POST") {
+      const body = (await request.json()) as Record<string, unknown>;
+      if (typeof body.title !== "string") return json(400, { error: "title" });
+      const item = { id: `row_${randomBytes(6).toString("hex")}`, workspace_id: ws, ...body };
+      table.set(item.id, item);
+      return json(201, { item });
+    }
+    if (!id && request.method === "GET") return json(200, { items: [...table.values()] });
+    const item = id ? table.get(id) : undefined;
+    if (!item) return json(404, { error: "not found" });
+    if (request.method === "GET") return json(200, { item });
+    if (request.method === "PATCH") {
+      Object.assign(item, (await request.json()) as Record<string, unknown>);
+      return json(200, { item });
+    }
+    if (request.method === "DELETE") {
+      table.delete(id!);
+      return json(200, { ok: true });
+    }
+    return json(405, {});
+  };
+}
+
+const testBundle = async (input: { project: string; envName: string; files: Record<string, string> }) => ({
+  code: `// bundled ${input.project} ${input.envName} (${Object.keys(input.files).length} files)\nexport class GraphRunner {}\nexport default { fetch() { return new Response("ok"); } };`,
+});
+
+type ToolAnswer = { isError: boolean; body: Record<string, any> };
+interface Agent {
+  tool(name: string, args: Record<string, unknown>): Promise<ToolAnswer>;
+  log: Array<{ name: string; args: Record<string, unknown>; answer: ToolAnswer }>;
+}
+const pause = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** A fake `claude -p`: checks what it was given, then plays `script` through the official MCP client, and prints a result. */
+function fakeCli(
+  script: (agent: Agent, input: ClaudeRunInput) => Promise<void>,
+  options: { result?: Record<string, unknown>; timedOut?: boolean; exitCode?: number; throwAfter?: boolean } = {},
+): ClaudeRunner & { inputs: ClaudeRunInput[]; log: Agent["log"] } {
+  const inputs: ClaudeRunInput[] = [];
+  const log: Agent["log"] = [];
+  return {
+    inputs,
+    log,
+    async version() {
+      return "9.9.9 (Fake Claude Code)";
+    },
+    async run(input) {
+      inputs.push(input);
+      expect(readdirSync(input.cwd)).toEqual([]);
+      const config = JSON.parse(readFileSync(input.mcpConfigPath, "utf8")) as { mcpServers: Record<string, { type: string; url: string }> };
+      expect(Object.keys(config.mcpServers)).toEqual(["projectx"]);
+      const client = new Client({ name: "fake-claude", version: "0.0.0" });
+      await client.connect(new StreamableHTTPClientTransport(new URL(input.mcp.url), { requestInit: { headers: input.mcp.headers } }));
+      const agent: Agent = {
+        log,
+        async tool(name, args) {
+          const r = await client.callTool({ name, arguments: args });
+          const text = (r.content as Array<{ text: string }>)[0]!.text;
+          let body: Record<string, any>;
+          try {
+            body = JSON.parse(text) as Record<string, any>;
+          } catch {
+            body = { text };
+          }
+          const answer = { isError: r.isError === true, body };
+          log.push({ name, args, answer });
+          return answer;
+        },
+      };
+      try {
+        await script(agent, input);
+      } finally {
+        await client.close();
+      }
+      if (options.throwAfter) throw new Error("the fake CLI crashed");
+      const result = options.result ?? { type: "result", subtype: "success", is_error: false, num_turns: 12, total_cost_usd: 0.42, duration_ms: 1234, result: "PREVIEW: done", modelUsage: { "claude-fake-model-20261126": { inputTokens: 1, outputTokens: 1 } } };
+      return { exitCode: options.exitCode ?? 0, stdout: options.timedOut ? "" : JSON.stringify(result), stderr: "", timedOut: options.timedOut ?? false };
+    },
+  };
+}
+
+async function waitFor<T>(fn: () => Promise<T | null>, what: string): Promise<T> {
+  for (let i = 0; i < 400; i += 1) {
+    const v = await fn();
+    if (v !== null) return v;
+    await pause(10);
+  }
+  throw new Error(`timed out waiting for ${what}`);
+}
+
+/** The build an agent does: bricks (a proposal the owner accepts), the entity, a report workflow, each its own revision. */
+async function build(agent: Agent) {
+  const bricks = await agent.tool("apply_ops", { ops: BRICKS.map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId, config: {} })) });
+  expect(bricks.isError, JSON.stringify(bricks.body)).toBe(false);
+  expect(bricks.body.status).toBe("pending");
+  await waitFor(async () => {
+    const summary = await agent.tool("get_blueprint_summary", {});
+    return JSON.stringify(summary.body).includes("dynamic-entities") ? true : null;
+  }, "the owner to accept the bricks proposal");
+  const entity = await agent.tool("apply_ops", { ops: [{ opId: "entity-books", type: "add_entity", entity: ENTITY }] });
+  expect(entity.isError, JSON.stringify(entity.body)).toBe(false);
+  const workflow = await agent.tool("apply_ops", {
+    ops: [
+      {
+        opId: "wf-report",
+        type: "add_workflow",
+        workflow: {
+          id: "wf-report",
+          name: "Monthly report",
+          nodes: [
+            { id: "trigger", type: "trigger.manual", label: "Manual", data: {} },
+            { id: "debit", type: "credit-wallet.debit", label: "Debit", data: { amount: 1 } },
+          ],
+          edges: [{ id: "e1", source: "trigger", target: "debit", sourceHandle: "out", targetHandle: "in" }],
+        },
+      },
+    ],
+  });
+  if (workflow.body.status === "pending") {
+    await waitFor(async () => (JSON.stringify((await agent.tool("get_blueprint_summary", {})).body).includes("wf-report") ? true : null), "the workflow proposal");
+  } else expect(workflow.isError, JSON.stringify(workflow.body)).toBe(false);
+}
+
+/** A build without a money brick, applied directly (mode "apply"): bricks, then (optionally) the entity. */
+async function buildPlain(agent: Agent, options: { entity: boolean }) {
+  const bricks = await agent.tool("apply_ops", { mode: "apply", ops: ["multi-workspace", "dynamic-entities"].map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId, config: {} })) });
+  expect(bricks.isError, JSON.stringify(bricks.body)).toBe(false);
+  if (options.entity) {
+    const entity = await agent.tool("apply_ops", { mode: "apply", ops: [{ opId: "entity-books", type: "add_entity", entity: ENTITY }] });
+    expect(entity.isError, JSON.stringify(entity.body)).toBe(false);
+  }
+}
+
+/** deploy_plan, then deploy_apply: APPROVAL_REQUIRED, the owner approves in Studio, the retry carries the approvalId. */
+async function deployPreview(agent: Agent): Promise<ToolAnswer> {
+  const valid = await agent.tool("validate_blueprint", {});
+  expect(valid.isError).toBe(false);
+  const plan = await agent.tool("deploy_plan", { env: "preview" });
+  expect(plan.isError, JSON.stringify(plan.body)).toBe(false);
+  let answer = await agent.tool("deploy_apply", { env: "preview" });
+  const approvalId = answer.body.error?.approvalId as string | undefined;
+  for (let i = 0; i < 400 && answer.isError && ["APPROVAL_REQUIRED", "APPROVAL_PENDING"].includes(answer.body.error?.code); i += 1) {
+    await pause(10);
+    answer = await agent.tool("deploy_apply", { env: "preview", ...(approvalId ? { approvalId } : {}) });
+  }
+  return answer;
+}
+
+function world() {
+  const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT, tokenKind: "user" });
+  const root = mkdtempSync(join(tmpdir(), "agent-bench-"));
+  roots.push(root);
+  const lines: string[] = [];
+  const deps = (runner: ClaudeRunner, extra: Partial<AgentBenchDeps> = {}): AgentBenchDeps => ({
+    task: "brief",
+    brief: { id: "fixture", brief: FIXTURE_BRIEF, answers: FIXTURE_ANSWERS, briefSha256: "a".repeat(64), answersSha256: "b".repeat(64) },
+    credentials: { token: TOKEN, accountId: ACCOUNT },
+    rootSecret: ROOT_SECRET,
+    cloudflareFetch: fake.fetch,
+    workerFetch: workerSimulator(fake),
+    bundle: testBundle,
+    ledgerStore: memoryStore(),
+    randomHex: (n: number) => randomBytes(n).toString("hex"),
+    runner,
+    maxBudgetUsd: 10,
+    workRoot: root,
+    ownerIntervalMs: 5,
+    log: (line: string) => lines.push(line),
+    sleep: async () => {},
+    ...extra,
+  });
+  return { fake, root, lines, deps };
+}
+
+const expectNothingLeft = (fake: FakeCloudflare, record: RunRecord) => {
+  expect(record.teardown!.leftBehind).toEqual([]);
+  expect(fake.state().scripts).toEqual([]);
+  expect(fake.state().databases).toEqual([]);
+  expect(fake.state().workflows).toEqual([]);
+  expect(record.teardown!.removed.every((r) => r.name.startsWith(`px-${record.project}-`))).toBe(true);
+};
+const outcome = (record: RunRecord, line: number) => record.checks!.find((c) => c.line === line)!.outcome;
+
+describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare", () => {
+  test("a full brief run: a schema-valid record with all 12 checks, the CLI's own numbers, owner reviews, and everything torn down", { timeout: 120_000 }, async () => {
+    const { fake, root, lines, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      await build(agent);
+      const deployed = await deployPreview(agent);
+      expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+    });
+    const record = await runAgentBench(deps(cli));
+    expect(record.incompleteReason, lines.join("\n")).toBeNull();
+    expect(record.status).toBe("complete");
+    expect(RunRecordSchema.parse(record)).toBeTruthy();
+    expect(record.checks).toHaveLength(12);
+
+    // the CLI ran with ProjectX as its only tool source, in an empty folder, with the budget cap
+    const args = claudeArgs(cli.inputs[0]!);
+    expect(args).toEqual(expect.arrayContaining(["-p", "--strict-mcp-config", "--no-session-persistence"]));
+    expect(args[args.indexOf("--tools") + 1]).toBe("");
+    expect(args[args.indexOf("--max-budget-usd") + 1]).toBe("10");
+    expect(cli.inputs[0]!.prompt).toContain(FIXTURE_BRIEF.trim());
+    expect(cli.inputs[0]!.prompt).toContain(FIXTURE_ANSWERS.trim());
+    expect(cli.inputs[0]!.timeoutMs).toBe(45 * 60 * 1000);
+
+    // the CLI's numbers, as it reported them
+    expect(record.cli).toMatchObject({ version: "9.9.9 (Fake Claude Code)", modelIds: ["claude-fake-model-20261126"], modelIdSource: "modelUsage", costUsd: 0.42, costLabel: "client-estimated", numTurns: 12, missingFields: [] });
+    // bricks, entity and workflow each came back as a proposal once a money brick was in the project; one deploy approval
+    expect(record.ownerReview).toMatchObject({ proposalsAccepted: 3, approvalsApproved: 1, count: 4, refused: 0, rejectedNotPreview: [] });
+
+    // the harness's scoring
+    expect(record.deployed).toBe(true);
+    expect(record.previewUrl).toBe(`https://px-${record.project}-preview.<account-subdomain>.workers.dev`);
+    for (const line of [4, 5, 6, 7, 9, 10]) expect(outcome(record, line), JSON.stringify(record.checks)).toBe("pass");
+    expect(outcome(record, 2)).toBe("partial");
+    expect(outcome(record, 12)).toBe("partial");
+    for (const line of [1, 3, 8, 11]) expect(outcome(record, line)).toBe("n/a");
+    expect(record.score).toEqual({ passes: 6, partials: 2, notApplicable: 4, fails: 0, applicable: 8 });
+    expect(record.blueprint).toBeTruthy();
+
+    expectNothingLeft(fake, record);
+    const text = JSON.stringify(record);
+    for (const secret of [TOKEN, ACCOUNT, ROOT_SECRET]) {
+      expect(text).not.toContain(secret);
+      expect(lines.join("\n")).not.toContain(secret);
+    }
+    expect(text).not.toContain(FIXTURE_BRIEF.trim());
+
+    // the private results file: schema-valid, judged on applicable lines with the literal 12-line score beside it
+    expect(record.iteration).toBe(1);
+    const out = join(root, "private", "benchmark-v0.json");
+    const file = writeBenchmarkResult(out, record);
+    expect(BenchmarkFileSchema.parse(JSON.parse(readFileSync(out, "utf8")))).toBeTruthy();
+    expect(file.killRule).toMatchObject({ ruleVersion: KILL_RULE_VERSION, latestIteration: 1, status: { applicableLines: "met", literalAsWritten: "not-met" }, decision: "left to the owner", excludedRuns: [] });
+    expect(file.killRule.notApplicable.map((n) => n.line)).toEqual([1, 3, 8, 11]);
+    expect(file.killRule.iterations[0]!.perBrief[0]).toMatchObject({
+      briefId: "fixture",
+      deployed: true,
+      applicableLines: { passes: 6, of: 8, met: true },
+      literalAsWritten: { passes: 6, of: 12, met: false },
+    });
+  });
+
+  test("a deploy asks for approval: the owner approves in Studio, the agent's retry with the approvalId deploys, and deploy_apply reports the address", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      await build(agent);
+      await deployPreview(agent);
+    });
+    const record = await runAgentBench(deps(cli));
+    const applies = cli.log.filter((l) => l.name === "deploy_apply");
+    expect(applies[0]!.answer.isError).toBe(true);
+    expect(applies[0]!.answer.body.error.code).toBe("APPROVAL_REQUIRED");
+    const approvalId = applies[0]!.answer.body.error.approvalId as string;
+    const last = applies.at(-1)!;
+    expect(last.args.approvalId).toBe(approvalId);
+    expect(last.answer.isError).toBe(false);
+    expect(last.answer.body.workerUrl).toBe(`https://px-${record.project}-preview.fake-subdomain.workers.dev`);
+    expect(String(last.answer.body.deploymentId)).toMatch(/^dep_/);
+    expect(record.ownerReview.approvalsApproved).toBe(1);
+    expect(record.ownerReview.waitMs).toBeGreaterThanOrEqual(0);
+    expectNothingLeft(fake, record);
+  });
+
+  test("a cap hit: the wall-time cap stops the CLI; the run is recorded incomplete, scored on what exists, and torn down", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      await build(agent);
+    }, { timedOut: true, exitCode: null as unknown as number });
+    const record = await runAgentBench(deps(cli));
+    expect(record.status).toBe("incomplete");
+    expect(record.incompleteReason).toMatch(/wall-time cap hit/);
+    expect(record.cli.timedOut).toBe(true);
+    expect(record.cli.missingFields).toEqual(["json"]);
+    expect(record.cli.modelIds).toEqual([]);
+    expect(record.checks).toHaveLength(12);
+    expect(record.deployed).toBe(false);
+    expect(outcome(record, 10)).toBe("fail");
+    expect(outcome(record, 6)).toBe("pass"); // the revisions it did make are there
+    expectNothingLeft(fake, record);
+  });
+
+  test("a budget cap hit is recorded from the CLI's own result subtype", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async () => {}, { exitCode: 1, result: { type: "result", subtype: "error_max_budget_usd", is_error: true, num_turns: 40, total_cost_usd: 10.02 } });
+    const record = await runAgentBench(deps(cli));
+    expect(record.status).toBe("incomplete");
+    expect(record.incompleteReason).toMatch(/budget cap hit/);
+    expect(record.cli).toMatchObject({ subtype: "error_max_budget_usd", costUsd: 10.02, numTurns: 40, modelIdSource: "missing", missingFields: expect.arrayContaining(["modelUsage", "duration_ms"]) });
+    expectNothingLeft(fake, record);
+  });
+
+  test("a refused deploy: check 10 fails with the refusal, the run still scores and tears down", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    fake.set({ refuseAllUploads: true });
+    let refused: ToolAnswer | null = null;
+    const cli = fakeCli(async (agent) => {
+      await build(agent);
+      refused = await deployPreview(agent);
+    });
+    const record = await runAgentBench(deps(cli));
+    expect(refused!.isError).toBe(true);
+    expect(record.deployed).toBe(false);
+    expect(record.deployRefusal).toBeTruthy();
+    expect(outcome(record, 10)).toBe("fail");
+    expect(record.checks!.find((c) => c.line === 10)!.evidence).toMatch(/no preview deploy \(last preview deploy /);
+    expect(outcome(record, 4)).toBe("fail");
+    expect(record.checks).toHaveLength(12);
+    expectNothingLeft(fake, record);
+  });
+
+  test("teardown on failure: the CLI crashes after deploying; what it made is still removed", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      await build(agent);
+      await deployPreview(agent);
+      expect(fake.state().scripts.length).toBeGreaterThan(0);
+    }, { throwAfter: true });
+    const record = await runAgentBench(deps(cli));
+    expect(record.status).toBe("incomplete");
+    expect(record.incompleteReason).toMatch(/the CLI failed: the fake CLI crashed/);
+    expect(record.teardown!.removed.length).toBeGreaterThan(0);
+    expect(record.checks).toHaveLength(12);
+    expectNothingLeft(fake, record);
+  });
+
+  test("line 2 sends the stub-identity probe even when the app has no entity", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      await buildPlain(agent, { entity: false });
+      const deployed = await deployPreview(agent);
+      expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+    });
+    const record = await runAgentBench(deps(cli));
+    expect(record.deployed).toBe(true);
+    expect(outcome(record, 4)).toBe("fail");
+    expect(record.checks!.find((c) => c.line === 4)!.evidence).toBe("the blueprint defines no entity");
+    expect(outcome(record, 2)).toBe("partial");
+    expect(record.checks!.find((c) => c.line === 2)!.evidence).toMatch(/accepted the x-test-user header/);
+    expectNothingLeft(fake, record);
+  });
+
+  test("line 5 never redeploys a revision the agent left undeployed", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      await buildPlain(agent, { entity: true });
+      const deployed = await deployPreview(agent);
+      expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+      const later = await agent.tool("apply_ops", { mode: "apply", ops: [{ opId: "later", type: "set_metadata", metadata: { description: "changed after the deploy" } }] });
+      expect(later.isError, JSON.stringify(later.body)).toBe(false);
+    });
+    const record = await runAgentBench(deps(cli));
+    expect(record.deployed).toBe(true);
+    expect(outcome(record, 5)).toBe("fail");
+    expect(record.checks!.find((c) => c.line === 5)!.evidence).toMatch(/latest revision never deployed: the blueprint is at r3, preview runs r2, so no redeploy was sent/);
+    expectNothingLeft(fake, record);
+  });
+
+  test("line 6 reads every page of revisions, not only the newest 100", { timeout: 180_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      await buildPlain(agent, { entity: true });
+      for (let i = 0; i < 101; i += 1) {
+        const r = await agent.tool("apply_ops", { mode: "apply", ops: [{ opId: `meta-${i}`, type: "set_metadata", metadata: { description: `revision ${i}` } }] });
+        expect(r.isError, JSON.stringify(r.body)).toBe(false);
+      }
+    });
+    const record = await runAgentBench(deps(cli));
+    const line6 = record.checks!.find((c) => c.line === 6)!;
+    expect(line6.evidence).toMatch(/^103 revision\(s\) \(current r103\); per stage: bricks 1, entities 1;/);
+    expect(line6.outcome).toBe("pass");
+    expectNothingLeft(fake, record);
+  });
+
+  test("the owner rejects any approval that is not a preview deploy, records it, and keeps accepting proposals", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    let production: ToolAnswer | null = null;
+    const cli = fakeCli(async (agent) => {
+      await build(agent);
+      const deployed = await deployPreview(agent);
+      expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+      // production refuses the stub identity before any approval, so the agent switches to a real one first
+      const identity = await agent.tool("apply_ops", { ops: [{ opId: "auth", type: "enable_brick", brickId: "oidc-verify", config: {} }, { opId: "identity", type: "set_identity", identity: "oidc-verify" }] });
+      expect(identity.isError, JSON.stringify(identity.body)).toBe(false);
+      await waitFor(async () => (JSON.stringify((await agent.tool("get_blueprint_summary", {})).body).includes("oidc-verify") ? true : null), "the identity proposal");
+      production = await agent.tool("deploy_apply", { env: "production" });
+      const approvalId = production.body.error?.approvalId as string | undefined;
+      if (approvalId) {
+        for (let i = 0; i < 400 && ["APPROVAL_REQUIRED", "APPROVAL_PENDING"].includes(production.body.error?.code); i += 1) {
+          await pause(10);
+          production = await agent.tool("deploy_apply", { env: "production", approvalId });
+        }
+      }
+    });
+    const record = await runAgentBench(deps(cli));
+    expect(production!.isError).toBe(true);
+    expect(production!.body.error.code).toBe("APPROVAL_REJECTED");
+    expect(record.ownerReview.rejectedNotPreview).toEqual([{ approvalId: expect.any(String), action: "deploy", env: "production" }]);
+    expect(record.ownerReview).toMatchObject({ approvalsApproved: 1, proposalsAccepted: 4 }); // bricks, entity, workflow, identity
+    expect(outcome(record, 6)).toBe("pass"); // production never deployed
+    expectNothingLeft(fake, record);
+  });
+
+  test("change a live app: the recorded app is stood up again, the agent adds the 5-credit debit and makes it live; the free-plan part is recorded unsupported", { timeout: 180_000 }, async () => {
+    const first = world();
+    const built = await runAgentBench(first.deps(fakeCli(async (agent) => {
+      await build(agent);
+      await deployPreview(agent);
+    })));
+    expect(built.status).toBe("complete");
+
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent, input) => {
+      expect(input.prompt).toMatch(/charge 5 credits per run/);
+      expect(input.prompt).toMatch(/free plan to 100 credits/);
+      const changed = await agent.tool("apply_ops", { ops: [{ opId: "debit-5", type: "update_node", workflowId: "wf-report", nodeId: "debit", data: { amount: CHANGE_DEBIT_CREDITS } }] });
+      expect(changed.isError, JSON.stringify(changed.body)).toBe(false);
+      await waitFor(async () => (JSON.stringify((await agent.tool("get_blueprint_slice", { sections: ["workflows"], workflowId: "wf-report" })).body).includes(`"amount":${CHANGE_DEBIT_CREDITS}`) ? true : null), "the debit to be in the blueprint");
+      const deployed = await deployPreview(agent);
+      expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+    }, { result: { type: "result", subtype: "success", is_error: false, num_turns: 7, total_cost_usd: 0.2, duration_ms: 99, result: "Done.\nUNSUPPORTED: free plan 100 credits: no plan-to-credits setting", modelUsage: { "claude-fake-model-20261126": {} } } });
+    const record = await runAgentBench(deps(cli, { task: "change-live-app", fromRun: built, brief: { id: built.briefId, briefSha256: built.briefSha256 } }));
+    expect(record.incompleteReason).toBeNull();
+    expect(RunRecordSchema.parse(record)).toBeTruthy();
+    expect(record.fromRunId).toBe(built.runId);
+    expect(record.checks).toBeNull();
+    expect(record.change!.parts[0]).toMatchObject({ part: `debit ${CHANGE_DEBIT_CREDITS} credits in the report workflow`, outcome: "done" });
+    expect(record.change!.parts[1]).toEqual({ part: "free plan 100 credits", outcome: "unsupported", reason: FREE_PLAN_UNSUPPORTED_REASON });
+    expect(record.change!.agentFlaggedUnsupported).toBe(true);
+    // a graph-only change goes live without a redeploy
+    expect(record.change!).toMatchObject({ hotApplies: 1, redeploys: 0 });
+    expect(record.change!.timeToLiveMs).not.toBeNull();
+    expectNothingLeft(fake, record);
+  });
+});
+
+describe("the CLI's JSON result, read defensively", () => {
+  test("every field it reports is taken as reported; a missing one is listed, never invented", () => {
+    const full = parseCliResult(JSON.stringify({ type: "result", subtype: "success", is_error: false, num_turns: 3, total_cost_usd: 1.5, duration_ms: 10, modelUsage: { "model-a": {}, "model-b": {} } }));
+    expect(full).toMatchObject({ modelIds: ["model-a", "model-b"], modelIdSource: "modelUsage", costUsd: 1.5, numTurns: 3, missingFields: [] });
+    const byModel = parseCliResult(`noise\n${JSON.stringify({ subtype: "success", model: "model-c" })}`);
+    expect(byModel).toMatchObject({ modelIds: ["model-c"], modelIdSource: "model", costUsd: null, numTurns: null, missingFields: ["total_cost_usd", "num_turns", "duration_ms"] });
+    expect(parseCliResult("not json").missingFields).toEqual(["json"]);
+  });
+
+  test("the kill rule: applicable lines first (>= 75%), the literal >= 9/12 beside it, explicit iterations, infra-incomplete runs left out", () => {
+    const run = (runId: string, passes: number, applicable: number, extra: Partial<RunRecord> = {}) =>
+      ({ runId, task: "brief", briefId: "a", iteration: 1, deployed: true, incompleteKind: null, incompleteReason: null, score: { passes, partials: 0, notApplicable: 12 - applicable, fails: applicable - passes, applicable }, ...extra }) as unknown as RunRecord;
+    // 6 of 8 applicable is 75%: met on applicable lines, not met as written (6/12)
+    expect(evaluateKillRule([run("r1", 6, 8)]).status).toEqual({ applicableLines: "met", literalAsWritten: "not-met" });
+    expect(evaluateKillRule([run("r1", 9, 12)]).status).toEqual({ applicableLines: "met", literalAsWritten: "met" });
+    expect(evaluateKillRule([run("r1", 5, 8)]).status).toEqual({ applicableLines: "not-met", literalAsWritten: "not-met" });
+    // not deployed is never met
+    expect(evaluateKillRule([run("r1", 8, 8, { deployed: false })]).status.applicableLines).toBe("not-met");
+    // a re-run in the same iteration is not a second iteration, and nothing is derived from repeat counts
+    const reruns = evaluateKillRule([run("r1", 5, 8), run("r2", 4, 8)]);
+    expect(reruns).toMatchObject({ latestIteration: 1, status: { applicableLines: "not-met" } });
+    expect(reruns.iterations).toHaveLength(1);
+    expect(reruns.iterations[0]!.perBrief[0]).toMatchObject({ runId: "r1", runs: 2 });
+    expect(JSON.stringify(reruns)).not.toContain("kill-condition");
+    // iterations are the explicit numbers; an infra-incomplete run is no evidence and is listed
+    const judged = evaluateKillRule([run("r1", 5, 8), run("r2", 8, 8, { iteration: 2, incompleteKind: "infra", incompleteReason: "the CLI failed: spawn ENOENT" }), run("r3", 7, 8, { iteration: 2, incompleteKind: "agent" })]);
+    expect(judged.excludedRuns).toEqual([{ runId: "r2", briefId: "a", iteration: 2, reason: "the CLI failed: spawn ENOENT" }]);
+    expect(judged.iterations.map((i) => i.iteration)).toEqual([1, 2]);
+    expect(judged.iterations[1]!.perBrief[0]).toMatchObject({ runId: "r3", applicableLines: { passes: 7, of: 8, met: true } });
+    expect(judged.latestIteration).toBe(2);
+    expect(evaluateKillRule([]).status).toEqual({ applicableLines: "no-runs", literalAsWritten: "no-runs" });
+  });
+
+  test("samples fit the field's constraints: text cut to maxLength, numbers kept in [min, max], updates stay in range", () => {
+    expect(sampleValue({ type: "text", maxLength: 3 }, "bench title")).toBe("ben");
+    expect(updatedValue({ type: "text", maxLength: 3 }, "ben")).toBe("upd");
+    expect(updatedValue({ type: "text", maxLength: 1 }, "u")).toBe("z");
+    expect(sampleValue({ type: "text", maxLength: 0 }, "bench")).toBe("b");
+    expect(sampleValue({ type: "number", max: 0 }, "")).toBe(0);
+    expect(sampleValue({ type: "number", min: 5, max: 10 }, "")).toBe(5);
+    expect(updatedValue({ type: "number", min: 1, max: 1 }, 1)).toBe(1);
+    expect(updatedValue({ type: "number", max: 3 }, 3)).toBe(2);
+    expect(updatedValue({ type: "number", min: 1, max: 10 }, 1)).toBe(2);
+    // the OpenAPI spellings (line 12)
+    expect(sampleValue({ type: "string", maxLength: 3 }, "second agent title")).toBe("sec");
+    expect(sampleValue({ type: "integer", minimum: 2, maximum: 4 }, "")).toBe(2);
+    expect(sampleValue({ type: "integer", maximum: 0 }, "")).toBe(0);
+  });
+
+  test("the Claude binary on Windows: claude.exe on the PATH, else the native binary beside the npm shim, else the shim", () => {
+    const env = { PATH: "C:\\a;C:\\npm" };
+    expect(defaultClaudeBin(env, "linux", () => false)).toBe("claude");
+    expect(defaultClaudeBin(env, "win32", (p) => p === join("C:\\a", "claude.exe"))).toBe(join("C:\\a", "claude.exe"));
+    const native = join("C:\\npm", "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe");
+    expect(defaultClaudeBin(env, "win32", (p) => p === join("C:\\npm", "claude.cmd") || p === native)).toBe(native);
+    expect(defaultClaudeBin(env, "win32", (p) => p === join("C:\\npm", "claude.cmd"))).toBe(join("C:\\npm", "claude.cmd"));
+    expect(() => defaultClaudeBin(env, "win32", () => false)).toThrow(/--claude-bin/);
+  });
+
+  test("a private path inside the repository must be git-ignored, and never at the top level of evidence/", () => {
+    const root = resolve("/repo");
+    expect(privatePathRefusal(join(root, "evidence", "benchmark-v0.json"), root, () => true)).toMatch(/top level of evidence/);
+    expect(privatePathRefusal(join(root, "private", "benchmark-v0.json"), root, () => false)).toMatch(/not git-ignored/);
+    expect(privatePathRefusal(join(root, "private", "benchmark-v0.json"), root, () => true)).toBeNull();
+    expect(privatePathRefusal(resolve("/elsewhere/benchmark-v0.json"), root, () => false)).toBeNull();
+  });
+
+  test("teardown-only with no ledger is refused as a LiveProofRefusal, as before the refactor", async () => {
+    await expect(runTeardownOnly({ credentials: { token: TOKEN, accountId: ACCOUNT }, cloudflareFetch: async () => new Response("{}"), ledgerStore: memoryStore() })).rejects.toThrow(LiveProofRefusal);
+  });
+
+  test("a brief is read from its folder at run time and recorded by hash", () => {
+    const dir = mkdtempSync(join(tmpdir(), "briefs-"));
+    roots.push(dir);
+    mkdirSync(join(dir, "fixture"));
+    writeFileSync(join(dir, "fixture", "brief.md"), FIXTURE_BRIEF);
+    writeFileSync(join(dir, "fixture", "answers.md"), FIXTURE_ANSWERS);
+    const brief = loadBrief(dir, "fixture");
+    expect(brief.briefSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(brief.brief).toBe(FIXTURE_BRIEF);
+    expect(() => loadBrief(dir, "../escape")).toThrow(/slug/);
+    expect(() => loadBrief(dir, "missing")).toThrow(/no brief/);
+  });
+});
+
+describe("briefs and results stay private", () => {
+  const repo = resolve(import.meta.dirname, "..", "..");
+  const privateDir = join(repo, "_bmad-output", "initiative-projectx-roadmap");
+  const gitGrep = (needle: string) =>
+    spawnSync("git", ["grep", "-I", "-l", "-i", "-F", "--untracked", "--exclude-standard", "-e", needle], { cwd: repo, encoding: "utf8" });
+
+  test("nothing under the private roadmap folder is tracked", () => {
+    const tracked = spawnSync("git", ["ls-files", "--", "_bmad-output/initiative-projectx-roadmap"], { cwd: repo, encoding: "utf8" });
+    expect(tracked.status).toBe(0);
+    expect(tracked.stdout.trim()).toBe("");
+  });
+
+  test("no tracked or to-be-committed file holds the source project's name or a brief's distinctive text", () => {
+    // Read from the private folder at test time, so this test itself names nothing. Without the private folder (a public
+    // clone) there is nothing to compare against.
+    const needles: string[] = [];
+    const digests = join(privateDir, "research-competitors", "digests");
+    if (existsSync(digests)) for (const f of readdirSync(digests)) if (/^web-[a-z0-9-]+\.md$/.test(f)) needles.push(f.slice(4, -3));
+    const briefs = join(privateDir, "benchmark", "briefs");
+    if (existsSync(briefs)) {
+      for (const id of readdirSync(briefs)) {
+        for (const name of ["brief.md", "answers.md"]) {
+          const path = join(briefs, id, name);
+          if (!existsSync(path)) continue;
+          needles.push(id);
+          for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+            const t = line.trim();
+            if (t.length >= 40 && !t.startsWith("#") && !t.startsWith("---")) needles.push(t.slice(0, 80));
+          }
+        }
+      }
+    }
+    const found = needles.filter((n) => gitGrep(n).stdout.trim() !== "").map((n) => n.slice(0, 20));
+    expect(found).toEqual([]);
+  });
+});

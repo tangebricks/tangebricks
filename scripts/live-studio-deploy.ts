@@ -17,31 +17,33 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createStudioApiApp, deriveWorkerAccessKey } from "../apps/studio-api/src/index.ts";
+import { deriveWorkerAccessKey } from "../apps/studio-api/src/index.ts";
 import type { StudioDeployOptions } from "../apps/studio-api/src/index.ts";
 import {
   STUDIO_TEST_NAME_POLICY,
   createClient,
   createRedactor,
-  createRequestBudget,
   fileStore,
   findSecrets,
   findUnledgered,
   CloudflareApiError,
-  RequestGuardError,
   isCloudflareError,
   openLedger,
   studioTestProject,
-  teardown,
 } from "../packages/deploy/src/provisioner/index.ts";
-import type { Client, LedgerStore, RequestBudget, TeardownResult } from "../packages/deploy/src/provisioner/index.ts";
+import type { Client, LedgerStore, RequestBudget } from "../packages/deploy/src/provisioner/index.ts";
 import { KEY_HEADER } from "../packages/deploy/src/worker/gate.ts";
 import { WORKFLOW_RUNS_PATH } from "../packages/deploy/src/worker/proof-routes.ts";
 import { deriveProjectSecret, signControlPlaneRequest } from "../packages/telemetry/src/index.ts";
 import { INVOICE_FLOW_BLUEPRINT } from "../test/support/blueprints.ts";
+import { GLOBAL_API_KEY, LiveProofRefusal, connectStudioOwner, nodeBundler, openGuardedStudio, runTeardownOnly, teardownAndVerify } from "./lib/live-studio.ts";
+import type { CallLine, TeardownRecord } from "./lib/live-studio.ts";
 import { recordLiveIntegrity } from "./lib/live-evidence.ts";
 import { redactWorkersDevSubdomains } from "./lib/redact-subdomain.ts";
-import { createNodeStudioEnv } from "./lib/studio-node-env.ts";
+
+// Shared with scripts/agent-bench.ts (story R55); re-exported for the callers and tests that import them from here.
+export { LiveProofRefusal, createGuardedFetch, nodeBundler, runTeardownOnly } from "./lib/live-studio.ts";
+export type { CallLine } from "./lib/live-studio.ts";
 
 export const RESULT_FILE = "studio-deploy-result.json";
 export const CALLS_FILE = "studio-deploy-calls.json";
@@ -92,12 +94,6 @@ export function liveProofRunPayload(workspaceId: string): Record<string, unknown
 /** Brick secrets the live blueprint needs in Studio's vault before the deploy: none for oidc-verify. */
 export const LIVE_PROOF_BRICK_SECRETS: readonly string[] = [];
 
-export class LiveProofRefusal extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "LiveProofRefusal";
-  }
-}
 
 export interface LiveStudioDeployDeps {
   credentials: { token: string; accountId: string };
@@ -123,14 +119,6 @@ export interface LiveStudioDeployDeps {
   pollIntervalMs?: number;
 }
 
-export interface CallLine {
-  phase: string;
-  method: string;
-  path: string;
-  status: number | null;
-  write: boolean;
-}
-
 export interface LiveStudioDeployResult {
   commandStartedAt: string;
   finishedAt: string;
@@ -139,206 +127,8 @@ export interface LiveStudioDeployResult {
   project: string;
   prefix: string;
   steps: Record<string, unknown>;
-  teardown: (Omit<TeardownResult, "unledgered"> & { leftBehind: Array<{ kind: string; name: string }> }) | null;
+  teardown: TeardownRecord | null;
   writesDuringRedeploy: number;
-}
-
-const isWrite = (method: string, path: string, body: string): boolean => {
-  if (method === "GET") return false;
-  if (method === "POST" && /\/d1\/database\/[^/]+\/query$/.test(path)) {
-    try {
-      const parsed = JSON.parse(body) as { sql?: string; batch?: Array<{ sql: string }> };
-      const statements = parsed.batch ?? (parsed.sql ? [{ sql: parsed.sql }] : []);
-      return !(statements.length > 0 && statements.every((s) => /^\s*select\b/i.test(s.sql)));
-    } catch {
-      return true;
-    }
-  }
-  return true;
-};
-
-/**
- * Wraps the way to Cloudflare so that no write can touch anything but this run's own resources: a Worker, Workflow, database
- * or queue must carry `px-<project>-`, a database or queue addressed by id must be one this run created or saw listed under
- * that prefix. A create is written to the ledger before it is sent. Reads pass, and teach the guard ids of its own resources.
- */
-export function createGuardedFetch(params: {
-  fetch: (request: Request) => Promise<Response>;
-  /** The only account any request may address. */
-  accountId: string;
-  ownPrefix: string;
-  ledger: ReturnType<typeof openLedger>;
-  log: CallLine[];
-  phase: () => string;
-}) {
-  const { ownPrefix, ledger } = params;
-  const ownName = (name: unknown): name is string => typeof name === "string" && name.startsWith(ownPrefix) && STUDIO_TEST_NAME_POLICY.isName(name);
-  const knownDbIds = new Set<string>();
-  const knownQueueIds = new Set<string>();
-  const ledgeredDbIds = () => new Set(ledger.entries().filter((e) => e.kind === "d1_database" && e.status !== "removed" && e.id).map((e) => e.id!));
-  /** Binding types that address no other resource. */
-  const PLAIN_BINDINGS = new Set(["plain_text", "secret_text", "secret_key", "json", "version_metadata"]);
-  /** What an upload binds to must be this run's own: a ledgered database, its own Workflow, Worker or queue. */
-  const inspectUploadMetadata = (metadata: Record<string, unknown>) => {
-    const bindings = Array.isArray(metadata.bindings) ? (metadata.bindings as Array<Record<string, unknown>>) : [];
-    const dbIds = ledgeredDbIds();
-    for (const b of bindings) {
-      const type = String(b.type);
-      if (PLAIN_BINDINGS.has(type)) continue;
-      if (type === "d1") {
-        if (!dbIds.has(String(b.database_id))) refuse(`binding ${String(b.name)} names D1 ${String(b.database_id)}, which is not a database this run ledgered`);
-      } else if (type === "workflow") {
-        if (!ownName(b.workflow_name)) refuse(`binding ${String(b.name)} names Workflow "${String(b.workflow_name)}", which is not this run's`);
-        if (b.script_name !== undefined && !ownName(b.script_name)) refuse(`binding ${String(b.name)} points at Worker "${String(b.script_name)}", which is not this run's`);
-        if (typeof b.class_name !== "string" || !/^[A-Za-z_$][\w$]*$/.test(b.class_name)) refuse(`binding ${String(b.name)} has no valid class_name`);
-      } else if (type === "service") {
-        if (!ownName(b.service)) refuse(`binding ${String(b.name)} names Worker "${String(b.service)}", which is not this run's`);
-      } else if (type === "queue") {
-        if (!ownName(b.queue_name)) refuse(`binding ${String(b.name)} names queue "${String(b.queue_name)}", which is not this run's`);
-      } else {
-        refuse(`binding ${String(b.name)} of type ${type} is not one this proof uploads`);
-      }
-    }
-    const tails = Array.isArray(metadata.tail_consumers) ? (metadata.tail_consumers as Array<{ service?: unknown }>) : [];
-    for (const t of tails) if (!ownName(t.service)) refuse(`tail consumer "${String(t.service)}" is not this run's`);
-  };
-  // A refusal is its own error type (RequestGuardError): the REST client rethrows it unchanged, and Studio answers it as
-  // 403 GUARD_REFUSED, never as Cloudflare being unreachable.
-  const refuse = (why: string): never => {
-    throw new RequestGuardError(`guard: refused a request to Cloudflare: ${why}`);
-  };
-  /** The write subpaths of a Worker this run uses, by method; any other (for example PUT .../content) is refused. */
-  const SCRIPT_WRITES: Array<{ method: string; sub: RegExp }> = [
-    { method: "PUT", sub: /^$/ },
-    { method: "DELETE", sub: /^$/ },
-    { method: "POST", sub: /^\/versions$/ },
-    { method: "POST", sub: /^\/deployments$/ },
-    { method: "PUT", sub: /^\/secrets$/ },
-    { method: "DELETE", sub: /^\/secrets\/[^/]+$/ },
-    { method: "PUT", sub: /^\/schedules$/ },
-    { method: "POST", sub: /^\/subdomain$/ },
-    { method: "PATCH", sub: /^\/settings$/ },
-  ];
-  /** A write's JSON body; one that does not parse (or is not an object) is a guard refusal, never a SyntaxError. */
-  const jsonBody = <T extends object>(body: string, shown: string): T => {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(body || "{}");
-    } catch {
-      return refuse(`the body of ${shown} is not JSON`);
-    }
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return refuse(`the body of ${shown} is not a JSON object`);
-    return parsed as T;
-  };
-  /** Upload or settings metadata: a multipart part ("metadata" or "settings") or a JSON body. */
-  const readMetadata = async (request: Request, name: string): Promise<Record<string, unknown>> => {
-    const type = request.headers.get("content-type") ?? "";
-    try {
-      if (type.includes("multipart/form-data")) {
-        const form = await request.clone().formData();
-        const part = form.get("metadata") ?? form.get("settings");
-        return JSON.parse(typeof part === "string" ? part : part ? await (part as Blob).text() : "{}") as Record<string, unknown>;
-      }
-      return JSON.parse((await request.clone().text()) || "{}") as Record<string, unknown>;
-    } catch {
-      return refuse(`the write to "${name}" has no readable metadata`);
-    }
-  };
-  const learn = async (path: string, response: Response) => {
-    if (!response.ok) return;
-    if (path !== "/d1/database" && path !== "/queues") return;
-    try {
-      const body = (await response.clone().json()) as { result?: Array<Record<string, unknown>> };
-      for (const item of body.result ?? []) {
-        if (path === "/d1/database" && ownName(item.name) && typeof item.uuid === "string") knownDbIds.add(item.uuid);
-        if (path === "/queues" && ownName(item.queue_name) && typeof item.queue_id === "string") knownQueueIds.add(item.queue_id);
-      }
-    } catch {
-      // not a list; nothing to learn
-    }
-  };
-  return async function guardedFetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    // Cloudflare's API only, over https, with no redirect followed (the deployed Worker's address is reached separately).
-    if (url.protocol !== "https:" || url.hostname !== "api.cloudflare.com") refuse(`${url.protocol}//${url.hostname} is not Cloudflare's API`);
-    // No empty segment (`//`), which a server may collapse into another path than the one checked here.
-    if (url.pathname.includes("//")) refuse(`the path ${url.pathname} has an empty segment`);
-    const accountPath = url.pathname.match(/^\/client\/v4\/accounts\/([^/]+)(\/.*)?$/);
-    // Pinned to one account: a request that names any other is refused, read or write. A path that mentions /accounts/
-    // anywhere must be this exact shape, so no other spelling of an account address slips through as a non-account read.
-    if (!accountPath && /\/accounts(\/|$)/i.test(url.pathname)) refuse(`${url.pathname} names an account outside the pinned shape`);
-    if (accountPath && decodeURIComponent(accountPath[1]!).toLowerCase() !== params.accountId.toLowerCase()) refuse("the request addresses another account");
-    const path = accountPath ? (accountPath[2] ?? "") : url.pathname;
-    const shown = url.pathname.replace(/\/accounts\/[^/]+/, "/accounts/{account}");
-    const method = request.method;
-    const body = method === "GET" || method === "HEAD" ? "" : await request.clone().text();
-    const write = isWrite(method, path, body);
-    let created: { kind: "worker_script" | "workflow" | "d1_database" | "queue"; name: string } | null = null;
-
-    if (method !== "GET") {
-      if (!accountPath) refuse(`${method} ${url.pathname} is outside the account`);
-      let m: RegExpMatchArray | null;
-      if ((m = path.match(/^\/workers\/scripts\/([^/]+)(\/.*)?$/))) {
-        const name = decodeURIComponent(m[1]!);
-        if (!ownName(name)) refuse(`Worker "${name}" does not carry ${ownPrefix}`);
-        const sub = m[2] ?? "";
-        if (!SCRIPT_WRITES.some((w) => w.method === method && w.sub.test(sub))) refuse(`${method} ${shown} is not a write this proof makes`);
-        if (method === "PUT" && !sub) created = { kind: "worker_script", name };
-        // an upload (a script or a version) and a settings change are inspected for what they bind to
-        if ((method === "PUT" && !sub) || (method === "POST" && sub === "/versions") || (method === "PATCH" && sub === "/settings")) {
-          inspectUploadMetadata(await readMetadata(request, name));
-        }
-      } else if ((m = path.match(/^\/workflows\/([^/]+)$/))) {
-        const name = decodeURIComponent(m[1]!);
-        if (!ownName(name)) refuse(`Workflow "${name}" does not carry ${ownPrefix}`);
-        if (method === "PUT") {
-          const scriptName = jsonBody<{ script_name?: unknown }>(body, shown).script_name;
-          if (!ownName(scriptName)) refuse(`Workflow "${name}" would point at Worker "${String(scriptName)}", which is not this run's`);
-          created = { kind: "workflow", name };
-        }
-      } else if (path === "/d1/database" && method === "POST") {
-        const name = jsonBody<{ name?: unknown }>(body, shown).name;
-        if (!ownName(name)) refuse(`database "${String(name)}" does not carry ${ownPrefix}`);
-        created = { kind: "d1_database", name: name as string };
-      } else if ((m = path.match(/^\/d1\/database\/([^/]+)(\/.*)?$/))) {
-        if (!knownDbIds.has(m[1]!)) refuse(`database id ${m[1]} is not one of this run's databases`);
-        const sub = m[2] ?? "";
-        if (!((method === "POST" && sub === "/query") || (method === "DELETE" && sub === ""))) refuse(`${method} ${shown} is not a write this proof makes`);
-      } else if (path === "/queues" && method === "POST") {
-        const name = jsonBody<{ queue_name?: unknown }>(body, shown).queue_name;
-        if (!ownName(name)) refuse(`queue "${String(name)}" does not carry ${ownPrefix}`);
-        created = { kind: "queue", name: name as string };
-      } else if ((m = path.match(/^\/queues\/([^/]+)$/))) {
-        if (!knownQueueIds.has(m[1]!)) refuse(`queue id ${m[1]} is not one of this run's queues`);
-      } else {
-        refuse(`${method} ${shown} is not a write this proof makes`);
-      }
-    }
-
-    if (created && !ledger.has(created.kind, created.name)) ledger.planned(created.kind, created.name);
-    let response: Response;
-    try {
-      response = await params.fetch(request);
-    } catch (error) {
-      params.log.push({ phase: params.phase(), method, path: shown, status: null, write });
-      throw error;
-    }
-    params.log.push({ phase: params.phase(), method, path: shown, status: response.status, write });
-    if (method === "GET") await learn(path, response);
-    if (created && response.ok) {
-      let id: string | undefined;
-      try {
-        const result = ((await response.clone().json()) as { result?: Record<string, unknown> }).result ?? {};
-        id = typeof result.uuid === "string" ? result.uuid : typeof result.queue_id === "string" ? result.queue_id : undefined;
-      } catch {
-        id = undefined;
-      }
-      if (created.kind === "d1_database" && id) knownDbIds.add(id);
-      if (created.kind === "queue" && id) knownQueueIds.add(id);
-      ledger.created(created.kind, created.name, id);
-    }
-    return response;
-  };
 }
 
 export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<LiveStudioDeployResult> {
@@ -349,7 +139,6 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
   const pollIntervalMs = deps.pollIntervalMs ?? 3_000;
   const { token, accountId } = deps.credentials;
   // Before anything is sent anywhere: a Global API Key is never used, and the "revoked" token must be a different token.
-  const GLOBAL_API_KEY = /^[0-9a-f]{37}$/i;
   if (GLOBAL_API_KEY.test(token.trim())) throw new LiveProofRefusal("CLOUDFLARE_API_TOKEN looks like a Global API Key (37 hex characters): use a scoped API token; nothing was sent");
   if (deps.revokedToken !== undefined) {
     if (GLOBAL_API_KEY.test(deps.revokedToken.trim())) throw new LiveProofRefusal("the revoked token looks like a Global API Key: nothing was sent");
@@ -382,9 +171,8 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
 
   let phase = "preflight";
   const calls: CallLine[] = [];
-  const budget = deps.budget ?? createRequestBudget({ sleep });
-  const guardedFetch = createGuardedFetch({ fetch: deps.cloudflareFetch, accountId, ownPrefix, ledger, log: calls, phase: () => phase });
-  const rest: Client = createClient({ credentials: deps.credentials, fetch: guardedFetch, sleep, budget, alsoHide: Object.values(secrets) });
+  const guarded = openGuardedStudio({ credentials: deps.credentials, cloudflareFetch: deps.cloudflareFetch, workerFetch: deps.workerFetch, bundle: deps.bundle, rootSecret: deps.rootSecret, ownPrefix, ledger, calls, phase: () => phase, sleep, ...(deps.budget ? { budget: deps.budget } : {}), alsoHide: Object.values(secrets) });
+  const { budget, guardedFetch, rest } = guarded;
 
   const steps: Record<string, unknown> = {};
   const result: LiveStudioDeployResult = { commandStartedAt, finishedAt: "", completed: false, stoppedBecause: null, project, prefix: ownPrefix, steps, teardown: null, writesDuringRedeploy: -1 };
@@ -395,22 +183,7 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
     throw new LiveProofRefusal(`the account already holds ${unledgered.length} px-tangebricks-test-* resource(s) this ledger does not list (${unledgered.map((u) => `${u.kind} ${u.name}`).join(", ")}); nothing was created. Remove them yourself or point --state-dir at the ledger that made them.`);
   }
 
-  const studio = createNodeStudioEnv({ rootSecret: deps.rootSecret });
-  const app = createStudioApiApp({ deploy: { fetch: guardedFetch, workerFetch: deps.workerFetch, bundle: deps.bundle, sleep, budgetFor: () => budget } });
-  const call = async (method: string, path: string, body?: unknown, session?: string, orgId?: string) => {
-    const headers: Record<string, string> = { "content-type": "application/json" };
-    if (session) headers.authorization = `Bearer ${session}`;
-    if (orgId) headers["x-org-id"] = orgId;
-    const res = await app.fetch(new Request(`https://studio.local${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }), studio.env);
-    const text = await res.text();
-    let json: Record<string, unknown> = {};
-    try {
-      json = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      json = { text: text.slice(0, 300) };
-    }
-    return { status: res.status, body: json };
-  };
+  const { studio, call } = guarded.boot();
   const must = (what: string, ok: boolean, detail: unknown) => {
     if (!ok) throw new LiveProofRefusal(`${what} failed: ${hide(JSON.stringify(detail)).slice(0, 1200)}`);
   };
@@ -429,19 +202,9 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
   try {
     // ---- 1. connect the token through Studio's verify-and-save
     phase = "connect";
-    const signup = await call("POST", "/api/auth/signup", { email: `owner-${ledger.suffix}@tangebricks.test`, password: `Pw-${deps.randomHex(12)}!`, name: "Tangebricks Live Proof" });
-    must("signing up the proof's Studio owner", signup.status === 201, signup);
-    const session = String(signup.body.token);
-    const org = await call("POST", "/api/orgs", { name: "Tangebricks Live Proof", slug: `tangebricks-test-${ledger.suffix}` }, session);
-    must("creating the org", org.status === 200 || org.status === 201, org);
-    const orgId = String(org.body.id);
-    const proj = await call("POST", `/api/orgs/${orgId}/projects`, { project }, session);
-    must("creating the project", proj.status === 200 || proj.status === 201, proj);
-    const connect = await call("POST", `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, { token, accountId, projectId: project }, session);
-    const verification = connect.body.verification as { ok?: boolean; status?: string; permissions?: Array<{ label: string; granted: boolean }> } | undefined;
-    steps.connect = { httpStatus: connect.status, status: verification?.status, permissions: verification?.permissions?.map((p) => ({ label: p.label, granted: p.granted })) };
-    must("verify-and-save (the token must be active with every required permission)", connect.status === 201 && verification?.ok === true && (verification.permissions ?? []).every((p) => p.granted), { status: connect.status, error: connect.body.error });
-    say(`1. token verified by Cloudflare through Studio: ${verification?.status}, ${(verification?.permissions ?? []).length} permissions granted`);
+    const owner = await connectStudioOwner({ call, suffix: ledger.suffix, project, token, accountId, randomHex: deps.randomHex, name: "Tangebricks Live Proof", must, onConnect: (connect) => (steps.connect = connect) });
+    const { session, orgId } = owner;
+    say(`1. token verified by Cloudflare through Studio: ${owner.connect.status}, ${(owner.connect.permissions ?? []).length} permissions granted`);
 
     // ---- 2. the project: INVOICE_FLOW_BLUEPRINT with credit-wallet, a real identity, and a stored graph trigger.manual -> credit-wallet.debit
     phase = "blueprint";
@@ -590,15 +353,12 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
     // ---- 7. teardown: exactly what the ledger lists, then a read that nothing of ours is left
     phase = "teardown";
     try {
-      const removed = await teardown(rest, ledger, STUDIO_TEST_NAME_POLICY);
-      const leftBehind = await findUnledgered(rest, ledger, STUDIO_TEST_NAME_POLICY);
-      const stillListed = ledger.entries().filter((e) => e.status !== "removed").map((e) => ({ kind: e.kind, name: e.name }));
-      result.teardown = { removed: removed.removed, alreadyGone: removed.alreadyGone, leftBehind: [...leftBehind, ...stillListed] };
+      result.teardown = await teardownAndVerify(rest, ledger);
       if (result.teardown.leftBehind.length > 0) {
         result.completed = false;
         result.stoppedBecause = result.stoppedBecause ?? `teardown left ${result.teardown.leftBehind.length} resource(s) behind`;
       }
-      say(`7. teardown: ${removed.removed.length} removed, ${removed.alreadyGone.length} already gone, ${result.teardown.leftBehind.length} left behind`);
+      say(`7. teardown: ${result.teardown.removed.length} removed, ${result.teardown.alreadyGone.length} already gone, ${result.teardown.leftBehind.length} left behind`);
     } catch (error) {
       result.completed = false;
       result.stoppedBecause = `${result.stoppedBecause ? `${result.stoppedBecause}; ` : ""}teardown failed: ${hide(error instanceof Error ? error.message : String(error))} (run again with --teardown)`;
@@ -675,31 +435,10 @@ export async function describeWorkflowRun(client: Client, workflowName: string, 
   }
 }
 
-/** Only teardown: removes what the ledger lists (an interrupted run), through the same guard. */
-export async function runTeardownOnly(deps: Pick<LiveStudioDeployDeps, "credentials" | "cloudflareFetch" | "ledgerStore" | "log" | "sleep">): Promise<TeardownResult> {
-  const data = deps.ledgerStore.read();
-  if (!data) throw new LiveProofRefusal("there is no ledger in this state folder: nothing to tear down");
-  const ledger = openLedger(deps.ledgerStore, () => data.suffix, () => new Date(), STUDIO_TEST_NAME_POLICY);
-  const calls: CallLine[] = [];
-  const guarded = createGuardedFetch({ fetch: deps.cloudflareFetch, accountId: deps.credentials.accountId, ownPrefix: `px-${studioTestProject(ledger.suffix)}-`, ledger, log: calls, phase: () => "teardown" });
-  const client = createClient({ credentials: deps.credentials, fetch: guarded, ...(deps.sleep ? { sleep: deps.sleep } : {}) });
-  return teardown(client, ledger, STUDIO_TEST_NAME_POLICY);
-}
-
 // ---------------------------------------------------------------------------------------------------------------------
 // The command. Only this part reads the environment and the network.
 
 const repoRoot = resolve(import.meta.dirname, "..");
-
-/** The bundler the live command gives Studio: the assembled files written under out/, then bundleWorker (esbuild). */
-export async function nodeBundler(input: { project: string; envName: string; files: Record<string, string> }) {
-  const { bundleWorker } = await import("../packages/deploy/src/bundle.ts");
-  const { OUT_DIR, writeProject } = await import("../test/support/emitted.ts");
-  const projectDir = join(OUT_DIR, "live-studio", `${input.project}-${input.envName}`);
-  await writeProject(projectDir, input.files);
-  const bundle = await bundleWorker({ projectDir, environment: input.envName, resolveRepoBricks: true });
-  return { code: bundle.code, sha256: bundle.sha256, bytes: bundle.bytes, gzipBytes: bundle.gzipBytes };
-}
 
 async function main(argv: string[]): Promise<number> {
   const arg = (name: string) => {

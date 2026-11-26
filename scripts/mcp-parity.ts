@@ -526,6 +526,14 @@ export const STUDIO_ROUTE_PARITY_RULES: ReadonlyArray<UIRouteParityRule> = [
     category: "human_only_custody_or_transport",
     rationale: "MCP JSON-RPC transport endpoint alias",
   },
+  ...(["GET", "DELETE"] as const).flatMap((method) =>
+    ["/mcp", "/api/mcp"].map((path) => ({
+      method,
+      path,
+      category: "human_only_custody_or_transport" as const,
+      rationale: "MCP transport: 405 (no server-to-client stream, no sessions), as the Streamable HTTP transport allows",
+    })),
+  ),
   {
     method: "POST",
     path: "/api/projects/:project/environments/:envName/logs",
