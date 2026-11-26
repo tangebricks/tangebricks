@@ -697,7 +697,7 @@
           "tool": "get_run_trace",
           "args": {
             "project": "eval-s9-missing-input",
-            "runId": "run_821cc305"
+            "runId": "run_0dab0447"
           },
           "isError": false,
           "detectedIssue": {
@@ -724,7 +724,7 @@
           "tool": "query_logs",
           "args": {
             "project": "eval-s9-missing-input",
-            "runId": "run_821cc305",
+            "runId": "run_0dab0447",
             "level": "error"
           },
           "isError": false
@@ -764,7 +764,7 @@
         "code": "DEPLOY_STUB_IDENTITY_REFUSED",
         "path": "/identity",
         "message": "Production deployments cannot use stub identity; enable core-auth and set identity to core-auth.",
-        "suggestedFix": "Production deploys cannot use stub identity. Call apply_ops with enable_brick ({ brickId: \"core-auth\" }), bind_secret_ref for BETTER_AUTH_SECRET, and set_identity ({ identity: \"core-auth\" }) before running deploy_plan({ env: \"production\" }).",
+        "suggestedFix": "Production deploys cannot use stub identity. Call apply_ops with enable_brick ({ brickId: \"core-auth\" }) and set_identity ({ identity: \"core-auth\" }). BETTER_AUTH_SECRET needs no binding from you: the owner's approval of a preview deploy generates it, and production gets it by promoting from preview. Then run deploy_plan({ env: \"production\" }).",
         "remediationOp": {
           "kind": "set_identity",
           "payloadExample": {
@@ -788,7 +788,7 @@
             "code": "DEPLOY_STUB_IDENTITY_REFUSED",
             "path": "/identity",
             "message": "Production deployments cannot use stub identity; enable core-auth and set identity to core-auth.",
-            "suggestedFix": "Production deploys cannot use stub identity. Call apply_ops with enable_brick ({ brickId: \"core-auth\" }), bind_secret_ref for BETTER_AUTH_SECRET, and set_identity ({ identity: \"core-auth\" }) before running deploy_plan({ env: \"production\" }).",
+            "suggestedFix": "Production deploys cannot use stub identity. Call apply_ops with enable_brick ({ brickId: \"core-auth\" }) and set_identity ({ identity: \"core-auth\" }). BETTER_AUTH_SECRET needs no binding from you: the owner's approval of a preview deploy generates it, and production gets it by promoting from preview. Then run deploy_plan({ env: \"production\" }).",
             "remediationOp": {
               "kind": "set_identity",
               "payloadExample": {
@@ -830,8 +830,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-26T19:07:21.912Z",
-    "gitSha": "c9db8c155067e9dfd9bb06b26143f2ed925b3b75",
+    "generatedAt": "2026-11-26T20:11:52.662Z",
+    "gitSha": "8cc527cd4688dd81b19b7f0e153435981336cbc0",
     "gitDirty": false,
     "generator": "scripts/mcp-self-correct-eval.ts",
     "inputKind": "measured"
