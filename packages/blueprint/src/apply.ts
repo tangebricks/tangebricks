@@ -1,6 +1,15 @@
 import { checkBrickConfig, projectIntegrationToNodes } from "@poc/assembler";
 import type { Catalog } from "@poc/assembler";
-import { catalogNodeToBrickManifest, checkGraphBudget, checkWire, parseEntities, toyRegistry, validateGraph } from "@poc/sdk";
+import {
+  catalogNodeToBrickManifest,
+  checkGraphBudget,
+  checkWire,
+  parseEntities,
+  relationKeyHint,
+  relationTargetErrors,
+  toyRegistry,
+  validateGraph,
+} from "@poc/sdk";
 import type { BrickManifest, Registry } from "@poc/sdk";
 import { OpSchema } from "./ops.ts";
 import type { Op } from "./ops.ts";
@@ -345,11 +354,76 @@ function checkBrickConflicts(
   return errors;
 }
 
+/** The message for one schema issue of an entity declaration, with a pointer to `relation` for a wrong relation key. */
+function entityIssueMessage(
+  entityName: string,
+  issue: { path: PropertyKey[]; message: string; code: string; keys?: readonly unknown[] },
+): string {
+  const hint = issue.code === "unrecognized_keys" ? relationKeyHint(issue.keys) : null;
+  return `entities.${entityName}${issue.path.length > 0 ? "." + issue.path.map(String).join(".") : ""}: ${issue.message}${hint ? ` (${hint})` : ""}`;
+}
+
+/** The fix to suggest for an entity schema error: the relation pointer when a wrong relation key caused it. */
+function entitySchemaFix(message: string, fallback: string): string {
+  return relationSuggestedFix(message) ?? fallback;
+}
+
+/** Dangling-relation messages for a set of blueprint entities; an entity that cannot be read as SDK is checked elsewhere. */
+function danglingRelations(entities: BlueprintState["entities"]): string[] {
+  const sdk: ReturnType<typeof toSdkEntity>[] = [];
+  for (const entity of entities) {
+    try {
+      sdk.push(toSdkEntity(entity));
+    } catch {
+      // not representable; its own validation reports it
+    }
+  }
+  return relationTargetErrors(sdk, new Set(entities.map((e) => e.name)));
+}
+
+/** The dangling relations `after` has that `before` did not: only those are refused, so a relation already dangling in a stored blueprint does not block unrelated changes. */
+function introducedDanglingRelations(before: BlueprintState["entities"], after: BlueprintState["entities"]): string[] {
+  const existing = new Set(danglingRelations(before));
+  return danglingRelations(after).filter((message) => !existing.has(message));
+}
+
+const RELATION_FIX = 'Declare the entity a relation field names, or change its "relation" to an entity declared in this project';
+
+/** The relation fix for an entity error message: a wrong relation key, or a relation to an undeclared entity. */
+export function relationSuggestedFix(message: string): string | undefined {
+  if (message.includes('use type "relation" with the "relation" key')) {
+    return 'Replace the key with "relation": {"name":"customer_id","type":"relation","relation":"customer"}';
+  }
+  if (/relates to entity "[^"]+", which is not declared/.test(message)) return RELATION_FIX;
+  return undefined;
+}
+
+/** A `relation` key on a field that is not of type relation would be silently ignored; refuse it in an op instead. */
+function misplacedRelationKeys(entityName: string, entity: { fields: ReadonlyArray<{ name: string; type: string; relation?: string }> }): BlueprintValidationError[] {
+  return entity.fields
+    .filter((field) => field.type !== "relation" && field.relation !== undefined)
+    .map((field) => ({
+      code: "INVALID_ENTITY_SCHEMA",
+      path: `entities.${entityName}`,
+      message: `entities.${entityName}: field "${field.name}" has type "${field.type}" but a "relation" key; a relation is only enforced on a field of type "relation"`,
+      suggestedFix: `use type: "relation" with relation: "${field.relation}"`,
+    }));
+}
+
+export interface ApplyOpOptions {
+  /**
+   * Leave relation targets unchecked in this op: applyOps checks them once on the final state, so a batch may add an
+   * entity and the entity it relates to in either order, or two entities that relate to each other.
+   */
+  deferRelationTargets?: boolean;
+}
+
 export function applyOp(
   state: BlueprintState,
   rawOp: unknown,
   catalog: Catalog,
   nodeRegistry?: Registry,
+  options: ApplyOpOptions = {},
 ): ApplyOpResult {
   const effectiveNodeRegistry =
     nodeRegistry !== undefined ? nodeRegistry : buildCatalogNodeRegistry(catalog, toyRegistry);
@@ -629,19 +703,29 @@ export function applyOp(
       if (!validatedEntity.success) {
         return {
           ok: false,
-          errors: validatedEntity.error.issues.map((issue) => ({
-            code: "INVALID_ENTITY_SCHEMA",
-            path: `entities.${entityName || "0"}`,
-            message: `entities.${entityName || "0"}${issue.path.length > 0 ? "." + issue.path.join(".") : ""}: ${issue.message}`,
-            suggestedFix:
-              "Ensure entity name and fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)",
-          })),
+          errors: validatedEntity.error.issues.map((issue) => {
+            const message = entityIssueMessage(entityName || "0", issue);
+            return {
+              code: "INVALID_ENTITY_SCHEMA",
+              path: `entities.${entityName || "0"}`,
+              message,
+              suggestedFix: entitySchemaFix(
+                message,
+                "Ensure entity name and fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)",
+              ),
+            };
+          }),
         };
       }
+
+      const misplacedAdd = misplacedRelationKeys(entityName || "0", validatedEntity.data);
+      if (misplacedAdd.length > 0) return { ok: false, errors: misplacedAdd };
 
       const parsed = parseEntities(
         [...state.entities.map(toSdkEntity), toSdkEntity(validatedEntity.data)],
         reserved,
+        "free",
+        { skipRelationTargets: true },
       );
       if (!parsed.ok) {
         return {
@@ -658,9 +742,20 @@ export function applyOp(
         };
       }
 
+      const addedEntities = [...state.entities, validatedEntity.data];
+      if (!options.deferRelationTargets) {
+        const introduced = introducedDanglingRelations(state.entities, addedEntities);
+        if (introduced.length > 0) {
+          return {
+            ok: false,
+            errors: introduced.map((message) => ({ code: "INVALID_ENTITY_SCHEMA", path: `entities.${entityName || "0"}`, message, suggestedFix: RELATION_FIX })),
+          };
+        }
+      }
+
       const nextState = normalizeBlueprintState({
         ...state,
-        entities: [...state.entities, validatedEntity.data],
+        entities: addedEntities,
       });
 
       return {
@@ -697,15 +792,23 @@ export function applyOp(
       if (!validatedEntity.success) {
         return {
           ok: false,
-          errors: validatedEntity.error.issues.map((issue) => ({
-            code: "INVALID_ENTITY_SCHEMA",
-            path: `entities.${entityName}`,
-            message: `entities.${entityName}${issue.path.length > 0 ? "." + issue.path.join(".") : ""}: ${issue.message}`,
-            suggestedFix:
-              "Ensure entity fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)",
-          })),
+          errors: validatedEntity.error.issues.map((issue) => {
+            const message = entityIssueMessage(entityName, issue);
+            return {
+              code: "INVALID_ENTITY_SCHEMA",
+              path: `entities.${entityName}`,
+              message,
+              suggestedFix: entitySchemaFix(
+                message,
+                "Ensure entity fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)",
+              ),
+            };
+          }),
         };
       }
+
+      const misplacedUpdate = misplacedRelationKeys(entityName, validatedEntity.data);
+      if (misplacedUpdate.length > 0) return { ok: false, errors: misplacedUpdate };
 
       const reserved = reservedRoutesForCatalog(catalog, state);
       const parsed = parseEntities(
@@ -714,6 +817,8 @@ export function applyOp(
           toSdkEntity(validatedEntity.data),
         ],
         reserved,
+        "free",
+        { skipRelationTargets: true },
       );
       if (!parsed.ok) {
         return {
@@ -730,12 +835,20 @@ export function applyOp(
         };
       }
 
+      const updatedEntities = [...state.entities.filter((e) => e.name !== entityName), validatedEntity.data];
+      if (!options.deferRelationTargets) {
+        const introduced = introducedDanglingRelations(state.entities, updatedEntities);
+        if (introduced.length > 0) {
+          return {
+            ok: false,
+            errors: introduced.map((message) => ({ code: "INVALID_ENTITY_SCHEMA", path: `entities.${entityName}`, message, suggestedFix: RELATION_FIX })),
+          };
+        }
+      }
+
       const nextState = normalizeBlueprintState({
         ...state,
-        entities: [
-          ...state.entities.filter((e) => e.name !== entityName),
-          validatedEntity.data,
-        ],
+        entities: updatedEntities,
       });
 
       return {
@@ -767,9 +880,25 @@ export function applyOp(
         };
       }
 
+      const remaining = state.entities.filter((e) => e.name !== op.name);
+      if (!options.deferRelationTargets) {
+        const dangling = introducedDanglingRelations(state.entities, remaining);
+        if (dangling.length > 0) {
+          return {
+            ok: false,
+            errors: dangling.map((message) => ({
+              code: "INVALID_ENTITY_SCHEMA",
+              path: `entities.${op.name}`,
+              message,
+              suggestedFix: `Remove or change the relation fields that point at "${op.name}" before removing it`,
+            })),
+          };
+        }
+      }
+
       const nextState = normalizeBlueprintState({
         ...state,
-        entities: state.entities.filter((e) => e.name !== op.name),
+        entities: remaining,
       });
 
       return {
@@ -1531,15 +1660,31 @@ export function applyOps(
   nodeRegistry?: Registry,
 ): ApplyOpResult {
   let current = normalizeBlueprintState(state);
+  const initialEntities = current.entities;
   const inverseOps: Op[] = [];
 
+  let touchedEntities = false;
   for (const op of ops) {
-    const res = applyOp(current, op, catalog, nodeRegistry);
+    const res = applyOp(current, op, catalog, nodeRegistry, { deferRelationTargets: true });
     if (!res.ok) {
       return res;
     }
+    const type = (op as { type?: unknown } | null)?.type;
+    if (type === "add_entity" || type === "update_entity" || type === "remove_entity") touchedEntities = true;
     current = res.state;
     inverseOps.unshift(...res.inverseOps);
+  }
+
+  // Relation targets are checked once, on the result of the whole batch (see ApplyOpOptions.deferRelationTargets).
+  if (touchedEntities) {
+    // Only what the batch introduced: a relation already dangling before it does not block it.
+    const dangling = introducedDanglingRelations(initialEntities, current.entities);
+    if (dangling.length > 0) {
+      return {
+        ok: false,
+        errors: dangling.map((message) => ({ code: "INVALID_ENTITY_SCHEMA", path: "entities", message, suggestedFix: RELATION_FIX })),
+      };
+    }
   }
 
   return { ok: true, state: current, inverseOps };

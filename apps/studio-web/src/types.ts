@@ -115,7 +115,10 @@ export type EntityFieldType =
   | "enum"
   | "json"
   | "datetime"
-  | "relation";
+  | "relation"
+  | "date"
+  | "money"
+  | "longtext";
 
 export interface EntityFieldBase {
   name: string;
@@ -142,6 +145,17 @@ export type EntityField =
   | (EntityFieldBase & {
       type: "enum";
       values: string[];
+    })
+  | (EntityFieldBase & {
+      type: "date";
+    })
+  | (EntityFieldBase & {
+      type: "money";
+      currencies: string[];
+    })
+  | (EntityFieldBase & {
+      type: "longtext";
+      maxLength?: number;
     });
 
 export interface EntityDefinition
@@ -1086,13 +1100,14 @@ function formatFieldColumnSql(field: EntityField): string {
     case "text":
     case "string":
     case "json":
-    case "datetime":
-    case "relation": {
+    case "datetime": {
       const maxLen =
-        field.maxLength ??
-        (field.type === "json" ? 5000 : field.type === "datetime" || field.type === "relation" ? 64 : 500);
+        field.maxLength ?? (field.type === "json" ? 5000 : field.type === "datetime" ? 64 : 500);
       return `${name} TEXT${notNull}${uniqueSql}${defaultSql} CHECK (length(${name}) <= ${maxLen})`;
     }
+    // A relation holds the id (a UUID) of a row of its target entity, as the SDK stores it.
+    case "relation":
+      return `${name} TEXT${notNull}${uniqueSql}${defaultSql} CHECK (length(${name}) = 36)`;
     case "number":
     case "integer": {
       const bounds = [
@@ -1105,6 +1120,19 @@ function formatFieldColumnSql(field: EntityField): string {
       return `${name} INTEGER${notNull}${uniqueSql}${defaultSql} CHECK (${name} IN (0, 1))`;
     case "enum":
       return `${name} TEXT${notNull}${uniqueSql}${defaultSql} CHECK (${name} IN (${field.values.map((v) => `'${v}'`).join(", ")}))`;
+    case "date":
+      return `${name} TEXT${notNull}${uniqueSql}${defaultSql} CHECK (${name} IS date(${name}))`;
+    case "longtext":
+      return `${name} TEXT${notNull}${uniqueSql}${defaultSql} CHECK (length(${name}) <= ${field.maxLength ?? 20000})`;
+    case "money": {
+      // Two columns, as the SDK stores it: the amount in minor units and <name>__currency.
+      const currency = quoteSqlIdentifier(`${field.name}__currency`);
+      const codes = (field.currencies ?? []).map((c) => `'${c}'`).join(", ");
+      return (
+        `${name} INTEGER${notNull}${uniqueSql} CHECK (typeof(${name}) IN ('integer', 'null')),\n  ` +
+        `${currency} TEXT${notNull} CHECK (${currency} IN (${codes}) AND ((${name} IS NULL) = (${currency} IS NULL)))`
+      );
+    }
   }
 }
 
@@ -1288,6 +1316,28 @@ export function validateEntityDraft(
       }
     }
 
+    if (field.type === "money") {
+      const currencies = field.currencies ?? [];
+      if (currencies.length === 0 || currencies.length > 20) {
+        fieldErrors[idx] = "Money field must list 1 to 20 currencies.";
+        return;
+      }
+      const badCode = currencies.find((c) => !/^[A-Z]{3}$/.test(c));
+      if (badCode !== undefined) {
+        fieldErrors[idx] = `Currency "${badCode}" must be a 3-letter upper-case ISO-4217 code such as INR.`;
+        return;
+      }
+      if (new Set(currencies).size !== currencies.length) {
+        fieldErrors[idx] = "Currencies must be unique.";
+        return;
+      }
+    }
+
+    if (field.type === "longtext" && field.maxLength !== undefined && (field.maxLength < 1 || field.maxLength > 100000)) {
+      fieldErrors[idx] = "Long text max length must be between 1 and 100000.";
+      return;
+    }
+
     if (field.type === "relation" || field.relation) {
       const rel = (field.relation ?? "").trim();
       if (field.type === "relation" && !rel) {
@@ -1328,6 +1378,12 @@ export function formatEntityCrudPreview(entity: EntityDefinition): {
     let typeDesc: string = f.type;
     if (f.type === "enum") {
       typeDesc = `enum(${f.values.join(" | ")})`;
+    } else if (f.type === "date") {
+      typeDesc = "string (YYYY-MM-DD)";
+    } else if (f.type === "money") {
+      typeDesc = `{amount: integer (minor units), currency: ${(f.currencies ?? []).join(" | ")}}`;
+    } else if (f.type === "longtext") {
+      typeDesc = `string (max ${f.maxLength ?? 20000})`;
     } else if (f.type === "relation" || f.relation) {
       typeDesc = `string (FK -> ${f.relation ?? "entity.id"})`;
     }
@@ -2103,11 +2159,14 @@ export function entityFieldTypeToPortDataType(
     case "boolean":
       return "boolean";
     case "json":
+    case "money":
       return "object";
     case "text":
     case "string":
+    case "longtext":
     case "enum":
     case "datetime":
+    case "date":
     case "relation":
       return "string";
     default:

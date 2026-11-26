@@ -4,16 +4,19 @@ import { catalog } from "../../assembler/catalog.generated.ts";
 import { toyRegistry } from "@poc/sdk";
 import {
   BlueprintStateSchema,
+  EntityDefinitionSchema,
   OP_TYPES,
   OpSchema,
   applyOp,
   applyOps,
+  collectBlueprintActionableIssues,
   computeReadiness,
   createEmptyBlueprint,
   semanticHash,
   sha256HexSync,
   targetKey,
   toAssemblerBlueprint,
+  toSdkEntity,
 } from "../src/index.ts";
 import type { BlueprintState, Op } from "../src/index.ts";
 
@@ -1214,5 +1217,149 @@ describe("Purity and targetKey extraction", () => {
         edges: [{ id: "e1", source: "n1", target: "n2", sourceHandle: "out", targetHandle: "in" }],
       },
     ]);
+  });
+});
+
+describe("relations and the date, money and longtext types (story 1.18)", () => {
+  const customer = { name: "customer", workspaceScoped: true, fields: [{ name: "label", type: "text" }] };
+  const invoice = {
+    name: "invoice",
+    workspaceScoped: true,
+    fields: [
+      { name: "customer_id", type: "relation", relation: "customer.id", required: true },
+      { name: "due_on", type: "date" },
+      { name: "total", type: "money", currencies: ["INR"] },
+      { name: "notes", type: "longtext" },
+    ],
+  };
+  const add = (entity: unknown, opId: string): Op => ({ opId, type: "add_entity", entity }) as Op;
+
+  test("toSdkEntity carries the relation target (the entity part of entity.field) and the new types 1:1", () => {
+    const res = applyOps(createEmptyBlueprint("rel"), [add(customer, "c"), add(invoice, "i")], catalog, toyRegistry);
+    if (!res.ok) throw new Error(JSON.stringify(res.errors));
+    const sdk = toSdkEntity(res.state.entities.find((e) => e.name === "invoice")!);
+    expect(sdk.fields).toEqual([
+      { name: "customer_id", type: "relation", required: true, relation: "customer" },
+      { name: "due_on", type: "date", required: false },
+      { name: "total", type: "money", required: false, currencies: ["INR"] },
+      { name: "notes", type: "longtext", required: false, maxLength: 20_000 },
+    ]);
+  });
+
+  test("blueprint-only types keep their old SDK mapping", () => {
+    const legacy = EntityDefinitionSchema.parse({
+      name: "legacy",
+      fields: [
+        { name: "a", type: "string" },
+        { name: "b", type: "integer", min: 1 },
+        { name: "c", type: "json" },
+        { name: "d", type: "datetime" },
+      ],
+    });
+    expect(toSdkEntity(legacy).fields).toEqual([
+      { name: "a", type: "text", required: false, maxLength: 500 },
+      { name: "b", type: "number", required: false, min: 1 },
+      { name: "c", type: "text", required: false, maxLength: 5000 },
+      { name: "d", type: "text", required: false, maxLength: 64 },
+    ]);
+  });
+
+  test("a batch may add an entity before the entity it relates to, or two that relate to each other", () => {
+    const a = { name: "a_things", fields: [{ name: "b_id", type: "relation", relation: "b_things" }] };
+    const b = { name: "b_things", fields: [{ name: "a_id", type: "relation", relation: "a_things" }] };
+    expect(applyOps(createEmptyBlueprint("rel"), [add(invoice, "i"), add(customer, "c")], catalog, toyRegistry).ok).toBe(true);
+    expect(applyOps(createEmptyBlueprint("rel"), [add(a, "a"), add(b, "b")], catalog, toyRegistry).ok).toBe(true);
+  });
+
+  test("a relation to an entity the project does not declare is refused, naming the field and the entity", () => {
+    const single = applyOp(createEmptyBlueprint("rel"), add(invoice, "i"), catalog, toyRegistry);
+    expect(single.ok).toBe(false);
+    if (!single.ok) expect(single.errors[0]?.message).toMatch(/field "customer_id" relates to entity "customer", which is not declared/);
+    const batch = applyOps(createEmptyBlueprint("rel"), [add(invoice, "i")], catalog, toyRegistry);
+    expect(batch.ok).toBe(false);
+    if (!batch.ok) expect(batch.errors[0]?.message).toMatch(/field "customer_id" relates to entity "customer"/);
+  });
+
+  test("a relation field without the relation key is refused", () => {
+    const res = applyOp(createEmptyBlueprint("rel"), add({ name: "invoice", fields: [{ name: "customer_id", type: "relation" }] }, "i"), catalog, toyRegistry);
+    expect(res.ok).toBe(false);
+  });
+
+  test.each(["target", "entity", "to", "references", "targetEntity"])("the wrong key %s gets an actionable pointer to relation", (key) => {
+    const res = applyOps(
+      createEmptyBlueprint("rel"),
+      [add(customer, "c"), add({ name: "invoice", fields: [{ name: "customer_id", type: "text", [key]: "customer" }] }, "i")],
+      catalog,
+      toyRegistry,
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors[0]?.code).toBe("INVALID_ENTITY_SCHEMA");
+      expect(res.errors[0]?.message).toMatch(new RegExp(`"${key}" is not a field key: .*"relation" key`));
+      expect(res.errors[0]?.suggestedFix).toMatch(/"relation"/);
+    }
+  });
+
+  test("removing an entity another one relates to is refused; removing both in one batch is fine", () => {
+    const res = applyOps(createEmptyBlueprint("rel"), [add(customer, "c"), add(invoice, "i")], catalog, toyRegistry);
+    if (!res.ok) throw new Error(JSON.stringify(res.errors));
+    const removeCustomer = { opId: "rm-c", type: "remove_entity", name: "customer" } as Op;
+    expect(applyOp(res.state, removeCustomer, catalog, toyRegistry).ok).toBe(false);
+    expect(applyOps(res.state, [removeCustomer], catalog, toyRegistry).ok).toBe(false);
+    expect(applyOps(res.state, [removeCustomer, { opId: "rm-i", type: "remove_entity", name: "invoice" } as Op], catalog, toyRegistry).ok).toBe(true);
+  });
+
+  test("a money field and a field named after its currency column are refused", () => {
+    const res = applyOp(
+      createEmptyBlueprint("rel"),
+      add({ name: "things", fields: [{ name: "total", type: "money", currencies: ["INR"] }, { name: "total__currency", type: "text" }] }, "t"),
+      catalog,
+      toyRegistry,
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.errors.map((e) => e.message).join(" ")).toMatch(/currency column of money field "total"/);
+  });
+});
+
+describe("relation follow-ups (story 1.18 review)", () => {
+  const add = (entity: unknown, opId: string): Op => ({ opId, type: "add_entity", entity }) as Op;
+  const customer = { name: "customer", fields: [{ name: "label", type: "text" }] };
+  // A stored blueprint whose relation already dangles (an older one relating to core-auth's users, say).
+  const withDangling = (): BlueprintState => ({
+    ...createEmptyBlueprint("rel"),
+    entities: [EntityDefinitionSchema.parse({ name: "tickets", fields: [{ name: "owner_id", type: "relation", relation: "users.id" }] })],
+  });
+
+  test.each(["add_entity", "update_entity"])("%s refuses a relation key on a field that is not of type relation", (type) => {
+    const base = applyOps(createEmptyBlueprint("rel"), [add(customer, "c"), add({ name: "invoice", fields: [{ name: "note", type: "text" }] }, "i")], catalog, toyRegistry);
+    if (!base.ok) throw new Error(JSON.stringify(base.errors));
+    const op = { opId: "x", type, entity: { name: type === "add_entity" ? "bill" : "invoice", fields: [{ name: "customer_id", type: "text", relation: "customer" }] } } as Op;
+    const res = applyOps(base.state, [op], catalog, toyRegistry);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors[0]?.code).toBe("INVALID_ENTITY_SCHEMA");
+      expect(res.errors[0]?.message).toMatch(/field "customer_id" has type "text" but a "relation" key/);
+      expect(res.errors[0]?.suggestedFix).toBe('use type: "relation" with relation: "customer"');
+    }
+  });
+
+  test("a relation that already dangles in the stored state does not block unrelated entity ops", () => {
+    const state = withDangling();
+    expect(applyOp(state, add(customer, "c"), catalog, toyRegistry).ok).toBe(true);
+    const batch = applyOps(state, [add(customer, "c")], catalog, toyRegistry);
+    expect(batch.ok).toBe(true);
+    if (!batch.ok) return;
+    expect(applyOps(batch.state, [{ opId: "rm", type: "remove_entity", name: "customer" } as Op], catalog, toyRegistry).ok).toBe(true);
+    // a new dangling relation is still refused
+    const fresh = applyOps(state, [add({ name: "invoice", fields: [{ name: "x_id", type: "relation", relation: "ghost" }] }, "i")], catalog, toyRegistry);
+    expect(fresh.ok).toBe(false);
+    if (!fresh.ok) expect(fresh.errors.map((e) => e.message).join(" ")).toMatch(/"ghost"/);
+  });
+
+  test("validate's entity issues carry the relation fix for a relation to an undeclared entity", () => {
+    const issues = collectBlueprintActionableIssues(withDangling(), { catalog });
+    const issue = issues.find((i) => /relates to entity "users"/.test(i.message));
+    expect(issue).toBeDefined();
+    expect(issue!.suggestedFix).toMatch(/change its "relation" to an entity declared in this project/);
   });
 });

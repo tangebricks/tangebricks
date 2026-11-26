@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { STUDIO_PREVIEW_WORKSPACE } from "./preview-workspace.ts";
+import { entityAddColumnStatements } from "./entity-evolution.ts";
 import { readProjectLogs, signedDataBrowserRequest } from "./telemetry-reads.ts";
 import { z } from "zod";
 import {
@@ -12,7 +13,7 @@ import {
   parseEntities,
   tableName as entityTableName,
 } from "@poc/sdk";
-import type { D1Like, Executors } from "@poc/sdk";
+import type { D1Like, Entity as SdkEntity, Executors } from "@poc/sdk";
 import {
   DEFAULT_CATALOG_VERSION,
   assemble,
@@ -27,6 +28,7 @@ import {
 import type { ArtifactHashes, CompositeBuildHashInput } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
 import {
+  EntityDefinitionSchema,
   PROJECT_SLUG_PATTERN,
   canonicalCodePayload,
   canonicalGraphPayload,
@@ -40,6 +42,7 @@ import {
   parseBlueprintBundle,
   summarizeProposalOps,
   toAssemblerBlueprint,
+  toSdkEntity,
 } from "@poc/blueprint";
 import type {
   ProposalActor,
@@ -10768,19 +10771,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         }
 
         for (const currField of currEnt.fields) {
-          if (!prevFieldMap.has(currField.name)) {
-            const addType =
-              currField.type === "number"
-                ? "REAL"
-                : currField.type === "boolean"
-                  ? "INTEGER"
-                  : "TEXT";
-            const addColSql = `ALTER TABLE ${currEnt.name} ADD COLUMN ${currField.name} ${addType};`;
-            const migName = `9004_add_column__${currEnt.name}_${currField.name}.sql`;
+          for (const { column, sql } of entityAddColumnStatements(currEnt.name, prevFieldMap.get(currField.name), currField)) {
             evolutionMigrations.push({
-              name: migName,
-              sql: addColSql,
-              sha256: await sha256Hex(addColSql),
+              name: `9004_add_column__${currEnt.name}_${column}.sql`,
+              sql,
+              sha256: await sha256Hex(sql),
             });
           }
         }
@@ -14591,7 +14586,21 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         const reserved = new Set(
           Object.values(catalog.bricks).flatMap((b) => b.manifest.routePrefixes),
         );
-        const parsedEnts = parseEntities(bpEntities, reserved);
+        // The blueprint's declarations go through toSdkEntity first, so blueprint-only types (string, integer, json,
+        // datetime) and relations are read the way the assembler reads them. One that does not parse is left out on
+        // its own instead of taking every other entity's table with it.
+        const sdkEntities: SdkEntity[] = [];
+        for (const ent of bpEntities) {
+          const declared = EntityDefinitionSchema.safeParse(ent);
+          if (!declared.success) continue;
+          try {
+            sdkEntities.push(toSdkEntity(declared.data));
+          } catch {
+            // Not representable as an SDK entity; its table is not shown.
+          }
+        }
+        // Only the DDL is needed here, so a relation whose target is missing or was skipped above hides nothing.
+        const parsedEnts = parseEntities(sdkEntities, reserved, "free", { skipRelationTargets: true });
         if (parsedEnts.ok) {
           for (const ent of parsedEnts.entities) {
             entityTables.add(entityTableName(ent));

@@ -29,6 +29,9 @@ const FIELD_TYPES: Array<{ value: EntityFieldType; label: string }> = [
   { value: "json", label: "json" },
   { value: "datetime", label: "datetime" },
   { value: "relation", label: "relation" },
+  { value: "date", label: "date" },
+  { value: "money", label: "money" },
+  { value: "longtext", label: "longtext" },
 ];
 
 function formatFieldConstraints(field: EntityField): string {
@@ -45,6 +48,12 @@ function formatFieldConstraints(field: EntityField): string {
     if (field.max !== undefined) parts.push(`max: ${field.max}`);
   } else if (field.type === "enum") {
     parts.push(`values: [${field.values.join(", ")}]`);
+  } else if (field.type === "longtext") {
+    parts.push(`maxLength: ${field.maxLength ?? 20000}`);
+  } else if (field.type === "date") {
+    parts.push("YYYY-MM-DD");
+  } else if (field.type === "money") {
+    parts.push(`{amount, currency} · currencies: [${field.currencies.join(", ")}]`);
   }
   if (field.relation) {
     parts.push(`relation: ${field.relation}`);
@@ -71,7 +80,8 @@ function normalizeFieldForSave(field: EntityField): EntityField {
     required: Boolean(field.required),
     ...(field.unique ? { unique: true } : {}),
     ...(field.indexed ? { indexed: true } : {}),
-    ...(field.relation && field.relation.trim()
+    // Only a relation field carries a relation target; the blueprint refuses one on any other type.
+    ...(field.type === "relation" && field.relation && field.relation.trim()
       ? { relation: field.relation.trim() }
       : {}),
     ...(field.default !== undefined && String(field.default) !== ""
@@ -115,6 +125,12 @@ function normalizeFieldForSave(field: EntityField): EntityField {
         type: "enum",
         values: field.values.map((v) => v.trim()).filter(Boolean),
       };
+    case "date":
+      return { ...common, type: "date" };
+    case "money":
+      return { ...common, type: "money", currencies: [...field.currencies] };
+    case "longtext":
+      return { ...common, type: "longtext", maxLength: field.maxLength ?? 20000 };
   }
 }
 
@@ -411,7 +427,6 @@ export function EntitiesView() {
         required: prev.required ?? false,
         ...(prev.unique ? { unique: true } : {}),
         ...(prev.indexed ? { indexed: true } : {}),
-        ...(prev.relation ? { relation: prev.relation } : {}),
         ...(prev.default !== undefined ? { default: prev.default } : {}),
       };
       if (newType === "enum") {
@@ -428,13 +443,23 @@ export function EntitiesView() {
       if (newType === "boolean") {
         return { ...base, type: "boolean" };
       }
+      if (newType === "date") {
+        return { ...base, type: "date" };
+      }
+      if (newType === "money") {
+        return { ...base, type: "money", currencies: prev.type === "money" ? prev.currencies : ["INR"] };
+      }
+      if (newType === "longtext") {
+        return { ...base, type: "longtext", maxLength: 20000 };
+      }
       if (newType === "relation") {
-        const otherEntity =
-          entities.find((e) => e.name !== draftEntity.name)?.name ?? "users";
+        // The first other declared entity; with none, the target is left empty for the user to choose (a relation
+        // to an undeclared entity is refused on save).
+        const otherEntity = entities.find((e) => e.name !== draftEntity.name)?.name;
         return {
           ...base,
           type: "relation",
-          relation: prev.relation ?? `${otherEntity}.id`,
+          relation: prev.relation ?? (otherEntity ? `${otherEntity}.id` : ""),
           maxLength: 64,
         };
       }

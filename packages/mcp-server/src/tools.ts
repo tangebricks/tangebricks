@@ -35,7 +35,7 @@ import type {
   OpType,
   SemanticDiff,
 } from "@poc/blueprint";
-import { entitySchema, parseEntities, validateGraph } from "@poc/sdk";
+import { entitySchema, parseEntities, relationKeyHint, validateGraph } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { storeBuild } from "./store.ts";
 import type {
@@ -1218,7 +1218,8 @@ const enableBrick: Tool = {
 
 const defineEntity: Tool = {
   name: "define_entity",
-  description: "Declare or replace entity tables and fields on a project.",
+  description:
+    "Declare or replace entity tables and fields on a project. Field types: text, longtext (up to 100000 chars), number (integer), boolean, enum (values), date (YYYY-MM-DD), money (stored and returned as {amount, currency}: amount an integer in minor units, currency one of the field's declared ISO-4217 currencies, e.g. currencies [\"INR\"]), and relation. A relation field points at another declared entity with the relation key: {\"name\":\"customer_id\",\"type\":\"relation\",\"relation\":\"customer\"}; its value is the id of a row of that entity in the same workspace.",
   input: z.object({
     project: projectName,
     entities: z.array(entitySchema).min(1).max(MAX_PER_CALL),
@@ -1234,7 +1235,11 @@ const defineEntity: Tool = {
     args: { project: string; entities: unknown[] },
   ) {
     const reserved = reservedRoutes(catalog);
-    const alone = parseEntities(args.entities, reserved);
+    let current = await blueprint.getProject(args.project);
+    // A relation may target an entity declared in this call or one the project already has.
+    const alone = parseEntities(args.entities, reserved, "free", {
+      knownEntities: new Set(current?.state.entities.map((e) => e.name) ?? []),
+    });
     if (!alone.ok) return refuse(...alone.errors, "nothing was changed");
     const declared = alone.entities;
 
@@ -1250,7 +1255,6 @@ const defineEntity: Tool = {
     if (gated) return gated;
 
     const callId = ++macroCallCounter;
-    let current = await blueprint.getProject(args.project);
     for (let attempt = 0; attempt < 40; attempt += 1) {
       const existingNames = new Set(
         current?.state.entities.map((e) => e.name) ?? [],
@@ -1486,7 +1490,8 @@ async function proposalRequiredRefusal(
 
 const applyOpsTool: Tool = {
   name: "apply_ops",
-  description: "Propose (default) or apply blueprint operations.",
+  description:
+    'Propose (default) or apply blueprint operations. add_entity/update_entity field types: text, longtext (<=100000 chars), number, boolean, enum, date (YYYY-MM-DD), money ({amount, currency}: integer minor units, currency one of the declared ISO-4217 currencies, e.g. ["INR"]) and relation, which points at a declared entity with the relation key: {"name":"customer_id","type":"relation","relation":"customer"}.',
   input: z.object({
     project: projectName,
     expectedRev: z.number().int().min(0).optional(),
@@ -3422,6 +3427,7 @@ interface Issue {
   path: PropertyKey[];
   message: string;
   errors?: Issue[][];
+  keys?: readonly unknown[];
 }
 
 function readableIssue(issue: Issue, base: PropertyKey[]): string[] {
@@ -3437,7 +3443,8 @@ function readableIssue(issue: Issue, base: PropertyKey[]): string[] {
       `${path.join(".")}: is not one of the allowed forms (see the tool's schema)`,
     ];
   }
-  return [`${path.length > 0 ? path.join(".") + ": " : ""}${issue.message}`];
+  const hint = issue.code === "unrecognized_keys" ? relationKeyHint(issue.keys) : null;
+  return [`${path.length > 0 ? path.join(".") + ": " : ""}${issue.message}${hint ? ` (${hint})` : ""}`];
 }
 
 export { OP_TYPES };

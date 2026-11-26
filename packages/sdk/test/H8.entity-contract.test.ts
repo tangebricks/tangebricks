@@ -201,3 +201,140 @@ CREATE INDEX IF NOT EXISTS "ent_invoices_workspace_idx" ON "ent_invoices"("works
     expect(entityDdl(entity)).toBe(entityDdl(structuredClone(entity)));
   });
 });
+
+describe("relation, date, money and longtext (story 1.18)", () => {
+  const customer = { name: "customer", fields: [{ name: "label", type: "text" }] };
+  const invoice = {
+    name: "invoice",
+    fields: [
+      { name: "customer_id", type: "relation", relation: "customer", required: true },
+      { name: "due_on", type: "date" },
+      { name: "total", type: "money", currencies: ["INR", "USD"] },
+      { name: "notes", type: "longtext" },
+    ],
+  };
+
+  test("a relation to a declared entity is accepted, and longtext gets its default length", () => {
+    const [, inv] = good([customer, invoice]);
+    expect(inv!.fields).toEqual([
+      { name: "customer_id", type: "relation", relation: "customer", required: true },
+      { name: "due_on", type: "date", required: false },
+      { name: "total", type: "money", required: false, currencies: ["INR", "USD"] },
+      { name: "notes", type: "longtext", required: false, maxLength: 20_000 },
+    ]);
+  });
+
+  test("a relation may target the entity itself, or an entity the caller says the project already has", () => {
+    good([{ name: "node", fields: [{ name: "parent_id", type: "relation", relation: "node" }] }]);
+    expect(parseEntities([invoice], new Set(), "free", { knownEntities: new Set(["customer"]) }).ok).toBe(true);
+  });
+
+  test("a relation to an undeclared entity is refused, naming the field and the missing entity", () => {
+    const message = refused([{ name: "invoice", fields: [{ name: "owner_id", type: "relation", relation: "ghost" }] }]);
+    expect(message).toMatch(/field "owner_id" relates to entity "ghost", which is not declared/);
+  });
+
+  test.each(["target", "entity", "to", "references", "targetEntity"])("the wrong key %s gets a pointer to relation", (key) => {
+    const message = refused([customer, { name: "invoice", fields: [{ name: "customer_id", type: "relation", [key]: "customer" }] }]);
+    expect(message).toMatch(new RegExp(`"${key}" is not a field key: .*use type "relation" with the "relation" key`));
+  });
+
+  test("an entity.field target is not an SDK relation (the entity id only)", () => {
+    expect(refused([customer, { name: "invoice", fields: [{ name: "customer_id", type: "relation", relation: "customer.id" }] }])).toMatch(/relation/);
+  });
+
+  test.each([
+    ["a currency in lower case", { name: "total", type: "money", currencies: ["inr"] }],
+    ["no currency", { name: "total", type: "money", currencies: [] }],
+    ["a currency twice", { name: "total", type: "money", currencies: ["INR", "INR"] }],
+    ["a longtext above 100000", { name: "body", type: "longtext", maxLength: 100_001 }],
+  ])("%s is refused", (_label, field) => {
+    refused([{ name: "things", fields: [field] }]);
+  });
+
+  test("a field named like a money field's currency column is refused", () => {
+    const message = refused([{ name: "things", fields: [{ name: "total", type: "money", currencies: ["INR"] }, { name: "total__currency", type: "text" }] }]);
+    expect(message).toMatch(/currency column of money field "total"/);
+  });
+
+  test("a money field counts as two columns towards the D1 bind limit", () => {
+    const fields = Array.from({ length: 49 }, (_, i) => ({ name: `m${i}`, type: "money", currencies: ["INR"] }));
+    expect(refused([{ name: "wide", fields }])).toMatch(/defines 98 fields \(\+ 4 system columns = 102\)/);
+  });
+
+  test("the migration for the new types is the expected text, with no foreign key", () => {
+    const [, inv] = good([customer, invoice]);
+    expect(entityDdl(inv!)).toBe(`-- Generated from the blueprint's declaration of invoice. Do not edit.
+CREATE TABLE IF NOT EXISTS "ent_invoice" (
+  "id" TEXT PRIMARY KEY,
+  "workspace_id" TEXT NOT NULL,
+  "customer_id" TEXT NOT NULL CHECK (length("customer_id") = 36),
+  "due_on" TEXT CHECK ("due_on" IS date("due_on")),
+  "total" INTEGER CHECK (typeof("total") IN ('integer', 'null')),
+  "total__currency" TEXT CHECK ("total__currency" IN ('INR', 'USD') AND (("total" IS NULL) = ("total__currency" IS NULL))),
+  "notes" TEXT CHECK (length("notes") <= 20000),
+  "created_at" TEXT NOT NULL DEFAULT (datetime('now')),
+  "updated_at" TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS "ent_invoice_workspace_idx" ON "ent_invoice"("workspace_id", "created_at");
+`);
+    expect(entityDdl(inv!)).not.toMatch(/FOREIGN KEY|REFERENCES/);
+  });
+
+  test("runs in D1, and the CHECKs on the new types bite", async () => {
+    const [, inv] = good([customer, { ...invoice, fields: invoice.fields.map((f) => (f.name === "notes" ? { ...f, maxLength: 5 } : f)) }]);
+    await db.prepare('DROP TABLE IF EXISTS "ent_invoice"').run();
+    await applyMigration(db, entityDdl(inv!));
+    const id = "11111111-1111-4111-8111-111111111111";
+    const insert = (rel: unknown, due: unknown, amount: unknown, currency: unknown, notes: unknown) =>
+      db
+        .prepare('INSERT INTO "ent_invoice" ("id","workspace_id","customer_id","due_on","total","total__currency","notes") VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .bind(crypto.randomUUID(), "w", rel, due, amount, currency, notes)
+        .run();
+    await insert(id, "2026-11-26", 1999, "INR", "short"); // a valid row
+    await insert(id, null, null, null, null); // optional fields may be empty
+    await expect(insert("not-a-uuid", "2026-11-26", 1999, "INR", "x")).rejects.toThrow(/CHECK constraint failed/);
+    for (const badDate of ["2026-13-01", "26/11/2026", "2026-02-30", "2026-11-26 10:00"]) {
+      await expect(insert(id, badDate, 1999, "INR", "x")).rejects.toThrow(/CHECK constraint failed/);
+    }
+    await expect(insert(id, "2026-11-26", 19.99, "INR", "x")).rejects.toThrow(/CHECK constraint failed/);
+    await expect(insert(id, "2026-11-26", 1999, "EUR", "x")).rejects.toThrow(/CHECK constraint failed/);
+    await expect(insert(id, "2026-11-26", 1999, null, "x")).rejects.toThrow(/CHECK constraint failed/);
+    await expect(insert(id, "2026-11-26", null, "INR", "x")).rejects.toThrow(/CHECK constraint failed/);
+    await expect(insert(id, "2026-11-26", 1999, "INR", "toolong")).rejects.toThrow(/CHECK constraint failed/);
+  });
+
+  test("declarations of the pre-existing types generate the same migration as before this change", () => {
+    // This text is what the generator wrote before story 1.18 (baseline 6ee95f9); it must not move by a byte.
+    const legacy = good([
+      {
+        name: "legacy",
+        fields: [
+          { name: "label", type: "text", required: true, maxLength: 80 },
+          { name: "count", type: "number", min: 1, max: 9 },
+          { name: "plain", type: "number" },
+          { name: "done", type: "boolean" },
+          { name: "kind", type: "enum", values: ["a", "b"], required: true },
+        ],
+      },
+    ])[0]!;
+    expect(entityDdl(legacy)).toBe(LEGACY_DDL);
+  });
+});
+
+const LEGACY_DDL = `-- Generated from the blueprint's declaration of legacy. Do not edit.
+CREATE TABLE IF NOT EXISTS "ent_legacy" (
+  "id" TEXT PRIMARY KEY,
+  "workspace_id" TEXT NOT NULL,
+  "label" TEXT NOT NULL CHECK (length("label") <= 80),
+  "count" INTEGER CHECK ("count" >= 1 AND "count" <= 9),
+  "plain" INTEGER,
+  "done" INTEGER CHECK ("done" IN (0, 1)),
+  "kind" TEXT NOT NULL CHECK ("kind" IN ('a', 'b')),
+  "created_at" TEXT NOT NULL DEFAULT (datetime('now')),
+  "updated_at" TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS "ent_legacy_workspace_idx" ON "ent_legacy"("workspace_id", "created_at");
+`;

@@ -3,7 +3,7 @@ import type { Catalog } from "@poc/assembler";
 import { checkGraphBudget, checkWire, parseEntities, toyRegistry, validateGraph } from "@poc/sdk";
 import type { Registry } from "@poc/sdk";
 import { z } from "zod";
-import { buildCatalogNodeRegistry } from "./apply.ts";
+import { buildCatalogNodeRegistry, relationSuggestedFix } from "./apply.ts";
 import type { BlueprintValidationError } from "./apply.ts";
 import { computeReadiness } from "./readiness.ts";
 import type { ReadinessNeed } from "./readiness.ts";
@@ -765,6 +765,7 @@ export function collectBlueprintActionableIssues(
                 code: "ENTITY_VALIDATION_FAILED",
                 path: "entities",
                 message,
+                ...(relationSuggestedFix(message) ? { suggestedFix: relationSuggestedFix(message)! } : {}),
               },
               fullCtx,
             ),

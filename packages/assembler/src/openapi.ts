@@ -67,6 +67,8 @@ interface RawFieldShape {
   max?: number;
   values?: string[];
   target?: string;
+  relation?: string;
+  currencies?: string[];
 }
 
 interface RawEntityShape {
@@ -109,10 +111,34 @@ function mapFieldToJsonSchema(field: RawFieldShape | EntityField): Record<string
         type: "string",
         enum: Array.isArray(f.values) ? [...f.values] : [],
       };
-    case "relation":
+    case "relation": {
+      const target = typeof f.relation === "string" ? f.relation : f.target;
       return {
         type: "string",
-        description: typeof f.target === "string" ? `Relation to ${f.target}` : "Relation identifier",
+        format: "uuid",
+        description: typeof target === "string" ? `Relation to ${target}: the id of a ${target} in the same workspace` : "Relation identifier",
+      };
+    }
+    case "date":
+      return {
+        type: "string",
+        format: "date",
+      };
+    case "longtext":
+      return {
+        type: "string",
+        ...(typeof f.maxLength === "number" ? { maxLength: f.maxLength } : {}),
+      };
+    case "money":
+      return {
+        type: "object",
+        description: "An amount in minor units (1999 for 19.99) and its currency",
+        properties: {
+          amount: { type: "integer" },
+          currency: { type: "string", enum: Array.isArray(f.currencies) ? [...f.currencies] : [] },
+        },
+        required: ["amount", "currency"],
+        additionalProperties: false,
       };
     default:
       return {
@@ -180,6 +206,12 @@ function normalizeEntities(
               : {}),
             ...(typeof (rf as { target?: unknown }).target === "string"
               ? { target: (rf as { target: string }).target }
+              : {}),
+            ...(typeof (rf as { relation?: unknown }).relation === "string"
+              ? { relation: (rf as { relation: string }).relation }
+              : {}),
+            ...(Array.isArray((rf as { currencies?: unknown }).currencies)
+              ? { currencies: (rf as { currencies: string[] }).currencies }
               : {}),
           });
         }

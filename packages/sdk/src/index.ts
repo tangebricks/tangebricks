@@ -17,8 +17,22 @@ export type { D1Like, D1Result, D1Statement } from "./d1.ts";
 export { global, scoped, systemScope } from "./scoped.ts";
 export type { GlobalDbTable, ScopedDb, SelectOptions, SystemScopeDb } from "./scoped.ts";
 export { applyMigration, splitStatements } from "./migrate.ts";
-export { RESERVED_FIELD_NAMES, entityDdl, entitySchema, parseEntities, tableName } from "./entities.ts";
-export type { Entity, EntityField, ParsedEntities } from "./entities.ts";
+export {
+  LONGTEXT_DEFAULT_LENGTH,
+  LONGTEXT_MAX_LENGTH,
+  MONEY_CURRENCY_SUFFIX,
+  RESERVED_FIELD_NAMES,
+  WRONG_RELATION_KEYS,
+  columnDefinitions,
+  entityDdl,
+  entitySchema,
+  fieldColumns,
+  parseEntities,
+  relationKeyHint,
+  relationTargetErrors,
+  tableName,
+} from "./entities.ts";
+export type { Entity, EntityField, ParseEntitiesOptions, ParsedEntities } from "./entities.ts";
 export { DEFAULT_FANOUT_LIMIT, PLATFORM_LIMITS, STARTUP_LIMIT_MS, WORKER_SIZE_LIMIT_BYTES, getPlatformLimits } from "./platform-limits.ts";
 export type { LimitEntry, PlanPlatformLimits, WorkflowLimitsEvidence } from "./platform-limits.ts";
 export { checkGraphBudget } from "./budget.ts";

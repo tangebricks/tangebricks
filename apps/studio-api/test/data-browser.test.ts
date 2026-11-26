@@ -523,4 +523,88 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     expect(deleteEntry.beforeSnapshot?.amount).toBe(4500);
     expect(deleteEntry.afterSnapshot).toBeNull();
   });
+
+  it("story 1.18: an entity with a blueprint-only type no longer hides every entity's table, and the new types get their columns", async () => {
+    const opsRes = await callStudio(`/api/projects/${project}/ops`, {
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+      body: {
+        summary: "Story 1.18: blueprint-only and new field types",
+        ops: [
+          {
+            opId: "op_ent_notes",
+            type: "add_entity",
+            entity: {
+              name: "notes_log",
+              fields: [
+                { name: "title", type: "string" },
+                { name: "payload", type: "json" },
+                { name: "seen_at", type: "datetime" },
+                { name: "invoice_ref", type: "relation", relation: "invoices.id" },
+                { name: "due_on", type: "date" },
+                { name: "fee", type: "money", currencies: ["INR"] },
+                { name: "body", type: "longtext" },
+              ],
+            },
+          },
+        ],
+      },
+    });
+    expect(opsRes.status).toBe(200);
+
+    const seedRes = await callStudio(
+      `/api/projects/${project}/environments/preview/data/seed`,
+      {
+        token: ownerToken,
+        body: {
+          orgId,
+          tables: {
+            ent_notes_log: [
+              {
+                id: "11111111-1111-4111-8111-111111111111",
+                workspace_id: "workspace_A",
+                title: "hello",
+                invoice_ref: "22222222-2222-4222-8222-222222222222",
+                due_on: "2026-11-26",
+                fee: 1999,
+                fee__currency: "INR",
+              },
+            ],
+            ent_invoices: [{ id: "inv_A_99", workspace_id: "workspace_A", invoice_number: "INV-A-99", amount: 1, status: "open" }],
+          },
+        },
+      },
+    );
+    expect(seedRes.status).toBe(200);
+    const columns = (await sandboxDb.prepare(`SELECT name FROM pragma_table_info('ent_notes_log')`).all<{ name: string }>()).results.map((r) => r.name);
+    expect(columns).toEqual(expect.arrayContaining(["title", "payload", "seen_at", "invoice_ref", "due_on", "fee", "fee__currency", "body"]));
+  });
+
+  it("story 1.18: a stored relation to an undeclared entity does not hide the other entities' tables", async () => {
+    // Write the dangling relation straight into the stored blueprint (ops would refuse it), as an older blueprint
+    // relating to core-auth's users would hold it.
+    const stub = rawEnv.BLUEPRINT_DO.get(rawEnv.BLUEPRINT_DO.idFromName(project));
+    const current = (await (await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`)).json()) as {
+      revision: number;
+      state: { entities: unknown[] };
+    };
+    const state = {
+      ...current.state,
+      entities: [...current.state.entities, { name: "tickets", workspaceScoped: true, fields: [{ name: "owner_id", type: "relation", relation: "users.id", required: false }] }],
+    };
+    const seeded = await stub.fetch("http://blueprint-do/seed", { method: "POST", body: JSON.stringify({ project, state, revision: current.revision + 1 }) });
+    expect(seeded.status).toBe(200);
+
+    const seedRes = await callStudio(`/api/projects/${project}/environments/preview/data/seed`, {
+      token: ownerToken,
+      body: {
+        orgId,
+        tables: {
+          ent_invoices: [{ id: "inv_A_98", workspace_id: "workspace_A", invoice_number: "INV-A-98", amount: 1, status: "open" }],
+          ent_tickets: [{ id: "33333333-3333-4333-8333-333333333333", workspace_id: "workspace_A", owner_id: "44444444-4444-4444-8444-444444444444" }],
+        },
+      },
+    });
+    expect(seedRes.status).toBe(200);
+  });
 });
