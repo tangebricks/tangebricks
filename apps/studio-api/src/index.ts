@@ -33,8 +33,11 @@ import {
   computeBlueprintBuildHash,
   computeBlueprintCodeHash,
   computeBlueprintGraphHash,
+  computeSemanticDiff,
+  createEmptyBlueprint,
   evaluateProposalSelection,
   isValidSecretRefHandle,
+  parseBlueprintBundle,
   summarizeProposalOps,
   toAssemblerBlueprint,
 } from "@poc/blueprint";
@@ -51,11 +54,24 @@ import {
   TOOLS,
   ProjectOutOfScopeError,
   checkArguments,
+  classifyApplyRisk,
   createDurableObjectBlueprintClient,
   pinBlueprintClient,
+  proposalRequiredError,
   revertToRevisionTool,
+  summarizeSemanticDiff,
   toolDescriptions,
 } from "@poc/mcp-server";
+import {
+  computePlanFingerprint,
+  decideApprovalRequest,
+  listApprovalRequests,
+  releaseApproval,
+  requireApproval,
+  summarizePlanMigrations,
+  sessionReviewerRefusal,
+} from "./approvals.ts";
+import type { ApprovalBinding, ApprovalStatus } from "./approvals.ts";
 import type { BlueprintAuthor, BlueprintClient, StudioRequestFn } from "@poc/mcp-server";
 import {
   authorizeProjectAccess,
@@ -821,10 +837,12 @@ const RevertBodySchema = z.strictObject({
   baseRevision: z.number().int().min(0).optional(),
   author: AuthorSchema.optional(),
   orgId: z.string().min(1).max(128).optional(),
+  approvalId: z.string().min(1).max(128).optional(),
 });
 
 const ImportBodySchema = z.strictObject({
   bundle: z.unknown(),
+  approvalId: z.string().min(1).max(128).optional(),
   author: AuthorSchema.optional(),
   mode: z.enum(["create", "replace"]).optional(),
   orgId: z.string().min(1).max(128).optional(),
@@ -1217,6 +1235,118 @@ function resolveEffectiveAuthor(caller: StudioCaller): AuthorAttribution {
   return caller.author;
 }
 
+/** AD-V8 / AD-S10: true when the project has a live production deployment, so a direct edit would reach production. */
+async function projectHasLiveProduction(
+  env: StudioApiEnv,
+  orgId: string,
+  project: string,
+): Promise<boolean> {
+  const environments = await listProjectDeployEnvironments(env.STUDIO_DB, {
+    orgId,
+    projectId: project,
+  });
+  return environments.some(
+    (e) => e.envName === "production" && e.deployedRev !== null && e.deployedRev !== undefined,
+  );
+}
+
+/**
+ * AD-V8: what a revert would change, for the reviewer: the semantic diff from the current revision to the target, by
+ * name (bricks, entities, workflows, secret refs added, removed or changed).
+ */
+async function revertApprovalSummary(
+  env: StudioApiEnv,
+  project: string,
+  targetRevision: number,
+): Promise<Record<string, unknown>> {
+  const client = createDurableObjectBlueprintClient(env.BLUEPRINT_DO);
+  const current = await client.getProject(project);
+  const target = await client.getProject(project, targetRevision);
+  if (!current || !target) return { targetRevision, fromRevision: current?.revision ?? 0 };
+  return {
+    targetRevision,
+    fromRevision: current.revision,
+    diff: summarizeSemanticDiff(computeSemanticDiff(current.state, target.state)),
+  };
+}
+
+/** The project's committed blueprint revision (0 when it has none), for binding an approval. */
+async function currentBlueprintRevision(env: StudioApiEnv, project: string): Promise<number> {
+  const snapshot = await createDurableObjectBlueprintClient(env.BLUEPRINT_DO).getProject(project);
+  return snapshot?.revision ?? 0;
+}
+
+/**
+ * AD-V8: the approval gate as a route sees it. A session caller passes; an MCP token needs an approved, unused,
+ * matching `approvalId`. Returns the refusal response, or null when the action may run.
+ */
+async function gateDestructiveAction(
+  c: { env: StudioApiEnv; req: { raw: Request } },
+  caller: StudioCaller,
+  binding: ApprovalBinding,
+  approvalId: string | undefined,
+): Promise<Response | null> {
+  const gate = await requireApproval(c.env.STUDIO_DB, caller, binding, approvalId);
+  if (gate.ok) {
+    if (gate.approvalId && gate.consumedAt) {
+      approvalLeases.set(c.req.raw, {
+        orgId: binding.orgId,
+        projectId: binding.projectId,
+        approvalId: gate.approvalId,
+        consumedAt: gate.consumedAt,
+        caller,
+      });
+    }
+    return null;
+  }
+  return Response.json({ ok: false, ...gate.body }, { status: gate.status });
+}
+
+/**
+ * AD-V8: approvals consumed by the request now running. The approval is consumed before the action (so it can never be
+ * used twice); if the action then fails, `settleApprovalLease` gives it back so the same bound retry can run.
+ */
+const approvalLeases = new WeakMap<
+  Request,
+  { orgId: string; projectId: string; approvalId: string; consumedAt: string; caller: StudioCaller }
+>();
+
+/** True when a gated action's answer is a failure: an error status, `ok: false`, or a failed deployment. */
+async function actionFailed(res: Response): Promise<boolean> {
+  if (res.status >= 400) return true;
+  try {
+    const body = (await res.clone().json()) as { ok?: unknown; status?: unknown; environment?: { status?: unknown } };
+    return body.ok === false || body.status === "failed" || body.environment?.status === "failed";
+  } catch {
+    return false;
+  }
+}
+
+async function settleApprovalLease(env: StudioApiEnv, request: Request, failed: boolean, reason: string): Promise<void> {
+  const lease = approvalLeases.get(request);
+  if (!lease) return;
+  approvalLeases.delete(request);
+  if (!failed) return;
+  await releaseApproval(env.STUDIO_DB, lease.caller, {
+    orgId: lease.orgId,
+    projectId: lease.projectId,
+    approvalId: lease.approvalId,
+    consumedAt: lease.consumedAt,
+    reason,
+  });
+}
+
+/** The Studio routes AD-V8 gates for an MCP token; their consumed approval is released if the action fails. */
+const APPROVAL_GATED_ROUTES = [
+  "/api/projects/:project/revert",
+  "/api/projects/:project/import",
+  "/api/projects/:project/environments/:envName/deploy",
+  "/api/projects/:project/environments/:envName/promote",
+  "/api/projects/:project/environments/:envName/rollback",
+  "/api/projects/:project/sandbox/deploy",
+  "/api/projects/:project/sandbox/promote-to-byoc",
+] as const;
+
 function createOrgScopedBlueprintClient(
   env: StudioApiEnv,
   orgId: string,
@@ -1410,6 +1540,16 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
   // Story 0.14: CSRF (Origin check on cookie-authenticated writes) and the CORS allow-list (PX_ALLOWED_ORIGINS) for
   // every route. Signed webhook ingress keeps its own signature check and is not Origin-checked.
   app.use("*", createHttpGuard({ exemptPaths: STUDIO_SIGNED_INGRESS_PATHS }));
+
+  // AD-V8: after a gated action, a consumed approval whose action failed is released for the same bound retry.
+  for (const path of APPROVAL_GATED_ROUTES) {
+    app.use(path, async (c, next) => {
+      await next();
+      if (!approvalLeases.has(c.req.raw)) return;
+      const failed = await actionFailed(c.res);
+      await settleApprovalLease(c.env, c.req.raw, failed, `the action answered HTTP ${c.res.status}`);
+    });
+  }
 
   // Mount Better Auth (/api/auth/*) and Organizations / Members / MCP Tokens (/api/orgs/*)
   app.route("/", createStudioAuthAndOrgRoutes());
@@ -1648,6 +1788,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             project: rawArgs.project,
             targetRevision: rawArgs.revertTo ?? rawArgs.targetRevision,
             ...(rawArgs.baseRevision !== undefined ? { baseRevision: rawArgs.baseRevision } : {}),
+            ...(rawArgs.approvalId !== undefined ? { approvalId: rawArgs.approvalId } : {}),
           }
         : rawArgs;
 
@@ -1661,6 +1802,44 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             isError: true,
           },
         });
+      }
+
+      let mcpRevertLease: { orgId: string; projectId: string; approvalId: string; consumedAt: string } | null = null;
+      // AD-V8: an MCP token's revert (revert_to_revision or the apply_ops `revertTo` alias) needs a Studio approval.
+      // The tool applies the revert through the blueprint client, so the gate runs here, keyed on the verified caller.
+      if (
+        tool === revertToRevisionTool &&
+        caller.kind === "mcp_token" &&
+        targetProject !== undefined &&
+        authzOrgId !== null
+      ) {
+        const revertArgs = checked.value as unknown as { targetRevision: number; approvalId?: string };
+        const gate = await requireApproval(
+          c.env.STUDIO_DB,
+          caller,
+          {
+            orgId: authzOrgId,
+            projectId: targetProject,
+            action: "revert",
+            target: String(revertArgs.targetRevision),
+            blueprintRev: await currentBlueprintRevision(c.env, targetProject),
+            summary: await revertApprovalSummary(c.env, targetProject, revertArgs.targetRevision),
+          },
+          revertArgs.approvalId,
+        );
+        if (gate.ok && gate.approvalId && gate.consumedAt) {
+          mcpRevertLease = { orgId: authzOrgId, projectId: targetProject, approvalId: gate.approvalId, consumedAt: gate.consumedAt };
+        }
+        if (!gate.ok) {
+          return Response.json({
+            jsonrpc: "2.0",
+            id,
+            result: {
+              content: [{ type: "text", text: JSON.stringify({ ...gate.body, project: targetProject }) }],
+              isError: true,
+            },
+          });
+        }
       }
 
       const blueprintClient = pinBlueprintClient(
@@ -1690,10 +1869,22 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             author,
             studioRequest,
             baseUrl: origin,
+            // AD-V8: keyed on the verified caller kind; a Studio session user is the reviewer and is not gated.
+            reviewRequired: caller.kind !== "session",
+            ...(authzOrgId !== null
+              ? {
+                  hasLiveProduction: (project: string) =>
+                    projectHasLiveProduction(c.env, authzOrgId as string, project),
+                }
+              : {}),
           },
           checked.value,
         );
       } catch (error) {
+        // AD-V8: a revert that threw after its approval was consumed gives the approval back for the same retry.
+        if (mcpRevertLease) {
+          await releaseApproval(c.env.STUDIO_DB, caller, { ...mcpRevertLease, reason: "the revert threw" });
+        }
         if (error instanceof ProjectOutOfScopeError) {
           return Response.json(
             {
@@ -1705,6 +1896,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           );
         }
         throw error;
+      }
+
+      // AD-V8: a revert that failed after its approval was consumed gives the approval back for the same retry.
+      if (mcpRevertLease && toolResult.isError) {
+        await releaseApproval(c.env.STUDIO_DB, caller, { ...mcpRevertLease, reason: "the revert failed" });
       }
 
       if (mode === "mutate" && authzOrgId !== null) {
@@ -2242,6 +2438,22 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
+    // AD-V8: an MCP token's revert needs a Studio approval bound to this target and the current revision.
+    const revertGate = await gateDestructiveAction(
+      c,
+      resolved.caller,
+      {
+        orgId: authz.orgId,
+        projectId: project,
+        action: "revert",
+        target: String(parsedBody.data.targetRevision),
+        blueprintRev: await currentBlueprintRevision(c.env, project),
+        summary: await revertApprovalSummary(c.env, project, parsedBody.data.targetRevision),
+      },
+      parsedBody.data.approvalId,
+    );
+    if (revertGate) return revertGate;
+
     const effectiveAuthor = resolveEffectiveAuthor(resolved.caller);
     const stub = getBlueprintStub(c.env, project);
     const payload: RevertInput = {
@@ -2447,6 +2659,38 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         },
         422,
       );
+    }
+
+    // AD-V8: an import replaces the whole blueprint (money settings included), so an MCP token's import needs a Studio
+    // approval bound to the revision and a sha256 of the imported bundle. A bundle that does not parse is left to the
+    // import's own 422 and creates no request. Session users are not gated.
+    if (resolved.caller.kind === "mcp_token") {
+      const parsedBundle = parseBlueprintBundle(parsedBody.data.bundle, { targetProject: project, catalog });
+      if (parsedBundle.ok) {
+        const currentSnapshot = await createDurableObjectBlueprintClient(c.env.BLUEPRINT_DO).getProject(project);
+        const importGate = await gateDestructiveAction(
+          c,
+          resolved.caller,
+          {
+            orgId: authz.orgId,
+            projectId: project,
+            action: "import",
+            target: parsedBody.data.mode ?? "create",
+            blueprintRev: currentSnapshot?.revision ?? 0,
+            planFingerprint: await sha256Hex(JSON.stringify(parsedBody.data.bundle)),
+            summary: {
+              mode: parsedBody.data.mode ?? "create",
+              fromRevision: currentSnapshot?.revision ?? 0,
+              importedSemanticHash: parsedBundle.semanticHash,
+              diff: summarizeSemanticDiff(
+                computeSemanticDiff(currentSnapshot?.state ?? createEmptyBlueprint(project), parsedBundle.state),
+              ),
+            },
+          },
+          parsedBody.data.approvalId,
+        );
+        if (importGate) return importGate;
+      }
     }
 
     const effectiveAuthor = resolveEffectiveAuthor(resolved.caller);
@@ -2744,6 +2988,43 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const effectiveAuthor = resolveEffectiveAuthor(resolved.caller);
+    // AD-V8: an MCP token's edit is a proposal unless it asks to apply, and it may apply only preview-safe ops. The
+    // decision keys on the verified caller kind; a Studio session user applies as before.
+    const isAgentCaller = resolved.caller.kind === "mcp_token";
+    const effectiveMode: "apply" | "propose" =
+      parsedBody.data.mode ?? (isAgentCaller ? "propose" : "apply");
+    if (isAgentCaller && effectiveMode === "apply") {
+      // The current blueprint: a `set_metadata` with replace drops its pinned catalogVersion (a brick upgrade), and an
+      // edit inside a workflow that holds a money node is a money change.
+      const currentState =
+        (await createDurableObjectBlueprintClient(c.env.BLUEPRINT_DO).getProject(project))?.state ?? null;
+      const risk = classifyApplyRisk(
+        parsedBody.data.ops.filter(
+          (op): op is Record<string, unknown> => typeof op === "object" && op !== null,
+        ),
+        {
+          liveProduction: await projectHasLiveProduction(c.env, authz.orgId, project),
+          currentCatalogVersion: currentState?.metadata?.catalogVersion ?? null,
+          currentState,
+        },
+      );
+      if (risk.risky) {
+        await recordStudioAuditLog(c.env.STUDIO_DB, {
+          orgId: authz.orgId,
+          projectId: project,
+          actorType: effectiveAuthor.type,
+          actorId: effectiveAuthor.id,
+          action: "project.ops",
+          status: "refused",
+          details: {
+            code: "PROPOSAL_REQUIRED",
+            reasons: risk.reasons,
+            ...(effectiveAuthor.client ? { client: effectiveAuthor.client } : {}),
+          },
+        });
+        return c.json(proposalRequiredError(project, risk.reasons), 403);
+      }
+    }
     const stub = getBlueprintStub(c.env, project);
     const payload: ApplyOpsInput = {
       project,
@@ -2754,7 +3035,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         : {}),
       author: effectiveAuthor,
       ...(parsedBody.data.summary !== undefined ? { summary: parsedBody.data.summary } : {}),
-      ...(parsedBody.data.mode !== undefined ? { mode: parsedBody.data.mode } : {}),
+      ...(parsedBody.data.mode !== undefined || isAgentCaller ? { mode: effectiveMode } : {}),
       ...(parsedBody.data.proposalId !== undefined
         ? { proposalId: parsedBody.data.proposalId }
         : {}),
@@ -2771,7 +3052,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     });
 
     const resultBody = (await response.json()) as Record<string, unknown>;
-    if (response.status === 200 && parsedBody.data.mode !== "propose") {
+    if (response.status === 200 && effectiveMode !== "propose") {
       await recordStudioOnboardingEvent(c.env.STUDIO_DB, {
         orgId: authz.orgId,
         projectId: project,
@@ -2790,7 +3071,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       actorType: effectiveAuthor.type,
       actorId: effectiveAuthor.id,
       action:
-        parsedBody.data.mode === "propose"
+        effectiveMode === "propose"
           ? "project.proposal.create"
           : "project.ops",
       status:
@@ -3013,6 +3294,21 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
+    // AD-V8: accepting is a human reviewer's action; an MCP token is refused whatever its scopes.
+    const notReviewer = sessionReviewerRefusal(resolved.caller);
+    if (notReviewer && resolved.caller.kind === "mcp_token") {
+      await recordStudioAuditLog(c.env.STUDIO_DB, {
+        orgId: resolved.caller.orgId,
+        projectId: project,
+        actorType: resolved.caller.author.type,
+        actorId: resolved.caller.author.id,
+        action: "project.proposal.accept",
+        status: "forbidden",
+        details: { code: notReviewer.error.code, proposalId },
+      });
+      return c.json(notReviewer, 403);
+    }
+
     const authz = await authorizeProjectAccess(
       c.env.STUDIO_DB,
       resolved.caller,
@@ -3142,6 +3438,21 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
+    // AD-V8: rejecting is a human reviewer's action; an MCP token is refused whatever its scopes.
+    const notReviewer = sessionReviewerRefusal(resolved.caller);
+    if (notReviewer && resolved.caller.kind === "mcp_token") {
+      await recordStudioAuditLog(c.env.STUDIO_DB, {
+        orgId: resolved.caller.orgId,
+        projectId: project,
+        actorType: resolved.caller.author.type,
+        actorId: resolved.caller.author.id,
+        action: "project.proposal.reject",
+        status: "forbidden",
+        details: { code: notReviewer.error.code, proposalId },
+      });
+      return c.json(notReviewer, 403);
+    }
+
     const authz = await authorizeProjectAccess(
       c.env.STUDIO_DB,
       resolved.caller,
@@ -3239,6 +3550,129 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     });
     return c.json(resultBody, response.status as 200 | 403 | 404 | 409 | 422);
   });
+
+  // AD-V8: approval requests for destructive actions an MCP agent asked for. Listing is a read; approving and
+  // rejecting are a Studio session user's action with editor+ (builder, admin, owner). An MCP token is refused.
+  app.get("/api/projects/:project/approvals", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
+    const project = c.req.param("project");
+    if (!PROJECT_SLUG_PATTERN.test(project)) {
+      return c.json(
+        { error: { code: "INVALID_PROJECT_SLUG", message: `Invalid project slug "${project}"` } },
+        400,
+      );
+    }
+    const authz = await authorizeProjectAccess(
+      c.env.STUDIO_DB,
+      resolved.caller,
+      project,
+      "read",
+      c.req.query("orgId") ?? c.req.header("x-org-id"),
+    );
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
+    const statusParam = c.req.query("status");
+    const allowedStatuses: readonly ApprovalStatus[] = [
+      "pending",
+      "approved",
+      "rejected",
+      "consumed",
+      "expired",
+    ];
+    const status = allowedStatuses.find((s) => s === statusParam);
+    const approvals = await listApprovalRequests(c.env.STUDIO_DB, authz.orgId, project, status);
+    return c.json({ project, approvals }, 200);
+  });
+
+  const handleApprovalDecision = (decision: "approved" | "rejected") =>
+    async (c: { req: { raw: Request; param(name: string): string; header(name: string): string | undefined }; env: StudioApiEnv }) => {
+      const auditAction = decision === "approved" ? "project.approval.approve" : "project.approval.reject";
+      const resolved = await resolveStudioCaller(c.env, c.req.raw);
+      if (!resolved.ok) {
+        return Response.json({ error: resolved.error }, { status: 401 });
+      }
+      const project = c.req.param("project");
+      const approvalId = c.req.param("approvalId");
+      if (!PROJECT_SLUG_PATTERN.test(project)) {
+        return Response.json(
+          { error: { code: "INVALID_PROJECT_SLUG", message: `Invalid project slug "${project}"` } },
+          { status: 400 },
+        );
+      }
+      const caller = resolved.caller;
+      const notReviewer = sessionReviewerRefusal(caller);
+      if (notReviewer || caller.kind !== "session") {
+        if (caller.kind === "mcp_token") {
+          await recordStudioAuditLog(c.env.STUDIO_DB, {
+            orgId: caller.orgId,
+            projectId: project,
+            actorType: caller.author.type,
+            actorId: caller.author.id,
+            action: auditAction,
+            status: "forbidden",
+            details: { code: "APPROVAL_SESSION_REQUIRED", approvalId },
+          });
+        }
+        return Response.json(notReviewer, { status: 403 });
+      }
+      const authz = await authorizeProjectAccess(
+        c.env.STUDIO_DB,
+        caller,
+        project,
+        "mutate",
+        c.req.header("x-org-id"),
+      );
+      if (!authz.ok) {
+        await recordStudioAuditLog(c.env.STUDIO_DB, {
+          orgId: authz.orgId,
+          projectId: project,
+          actorType: caller.author.type,
+          actorId: caller.author.id,
+          action: auditAction,
+          status: "forbidden",
+          details: { code: authz.error.code, role: authz.role, approvalId },
+        });
+        return Response.json({ error: authz.error }, { status: authz.status });
+      }
+      if (!canMutateProject(authz.role)) {
+        return Response.json(
+          { error: { code: "FORBIDDEN_ROLE", message: "Caller lacks mutate permission for project" } },
+          { status: 403 },
+        );
+      }
+      const decided = await decideApprovalRequest(c.env.STUDIO_DB, {
+        orgId: authz.orgId,
+        projectId: project,
+        approvalId,
+        decision,
+        userId: caller.userId,
+      });
+      await recordStudioAuditLog(c.env.STUDIO_DB, {
+        orgId: authz.orgId,
+        projectId: project,
+        actorType: caller.author.type,
+        actorId: caller.author.id,
+        action: auditAction,
+        status: decided.ok ? "succeeded" : "refused",
+        details: {
+          approvalId,
+          ...(decided.ok
+            ? { gatedAction: decided.approval.action, env: decided.approval.env }
+            : { code: decided.body.error.code }),
+        },
+      });
+      if (!decided.ok) {
+        return Response.json(decided.body, { status: decided.status });
+      }
+      return Response.json({ project, approval: decided.approval }, { status: 200 });
+    };
+
+  app.post("/api/projects/:project/approvals/:approvalId/approve", handleApprovalDecision("approved"));
+  app.post("/api/projects/:project/approvals/:approvalId/reject", handleApprovalDecision("rejected"));
 
   app.get("/api/projects/:project/activity", async (c) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
@@ -9922,6 +10356,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       rev: z.number().int().min(0).optional(),
       revision: z.number().int().min(0).optional(),
       orgId: z.string().min(1).max(128).optional(),
+      approvalId: z.string().min(1).max(128).optional(),
       confirmDestructive: z.boolean().optional(),
       confirmedMigrationNames: z.array(z.string()).optional(),
       migrations: z
@@ -11500,18 +11935,6 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       });
       return c.json({ error: authz.error }, authz.status);
     }
-    if (envName === "preview") {
-      await recordStudioOnboardingEvent(db, {
-        orgId: authz.orgId,
-        projectId: project,
-        actorId: resolved.caller.author.id,
-        step: "first_preview_deploy_started",
-        metadata: {
-          envName: "preview",
-        },
-        onlyOncePerProject: true,
-      });
-    }
     const ctx = await buildEnvironmentPlanContext({
       env: c.env,
       project,
@@ -11608,6 +12031,63 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           422,
         );
       }
+    }
+
+    // AD-V8: an MCP token's deploy needs a Studio approval bound to this environment, revision and plan (including each
+    // migration's SQL, since custom migration SQL comes from the request body, and the destructive confirmations).
+    const deployMigrations = await summarizePlanMigrations({
+      pendingMigrations: ctx.plan.d1.pendingMigrations,
+      pendingMigrationSql: ctx.plan.d1.pendingMigrationSql,
+      ...(customMigs ? { customMigrations: customMigs } : {}),
+      destructiveNames: ctx.plan.d1.destructiveWarnings.map((w) => w.migrationName),
+    });
+    const deployGate = await gateDestructiveAction(
+      c,
+      resolved.caller,
+      {
+        orgId: authz.orgId,
+        projectId: project,
+        action: "deploy",
+        env: envName,
+        blueprintRev: ctx.current.revision,
+        planFingerprint: await computePlanFingerprint({
+          envName,
+          action: ctx.plan.action,
+          buildHash: ctx.buildHash,
+          codeHash: ctx.codeHash,
+          graphHash: ctx.graphHash,
+          revision: ctx.current.revision,
+          pendingMigrations: ctx.plan.d1.pendingMigrations,
+          migrations: deployMigrations,
+          ...(bodyData?.confirmDestructive !== undefined ? { confirmDestructive: bodyData.confirmDestructive } : {}),
+          ...(bodyData?.confirmedMigrationNames ? { confirmedMigrationNames: bodyData.confirmedMigrationNames } : {}),
+        }),
+        summary: {
+          planAction: ctx.plan.action,
+          revision: ctx.current.revision,
+          deployedRev: ctx.envRecord.deployedRev,
+          buildHash: ctx.buildHash,
+          pendingMigrations: ctx.plan.d1.pendingMigrations,
+          migrations: deployMigrations,
+          destructiveWarnings: ctx.plan.d1.destructiveWarnings.length,
+          confirmDestructive: bodyData?.confirmDestructive === true,
+        },
+      },
+      bodyData?.approvalId,
+    );
+    if (deployGate) return deployGate;
+    // Recorded only once the deploy really starts (after the approval gate), so a refused agent deploy is not a start.
+    if (envName === "preview") {
+      await recordStudioOnboardingEvent(db, {
+        orgId: authz.orgId,
+        projectId: project,
+        actorId: resolved.caller.author.id,
+        step: "first_preview_deploy_started",
+        metadata: {
+          envName: "preview",
+        },
+        onlyOncePerProject: true,
+      });
     }
 
     const result = await executeEnvironmentDeployment({
@@ -11775,6 +12255,51 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       }
     }
 
+    // AD-V8: an MCP token's promotion needs a Studio approval bound to this environment, revision and plan (including
+    // each migration's SQL and the destructive confirmations).
+    const promoteMigrations = await summarizePlanMigrations({
+      pendingMigrations: ctx.plan.d1.pendingMigrations,
+      pendingMigrationSql: ctx.plan.d1.pendingMigrationSql,
+      ...(customMigs ? { customMigrations: customMigs } : {}),
+      destructiveNames: ctx.plan.d1.destructiveWarnings.map((w) => w.migrationName),
+    });
+    const promoteGate = await gateDestructiveAction(
+      c,
+      resolved.caller,
+      {
+        orgId: authz.orgId,
+        projectId: project,
+        action: "promote",
+        env: envName,
+        blueprintRev: ctx.current.revision,
+        planFingerprint: await computePlanFingerprint({
+          envName,
+          action: ctx.plan.action,
+          buildHash: ctx.buildHash,
+          codeHash: ctx.codeHash,
+          graphHash: ctx.graphHash,
+          revision: ctx.current.revision,
+          pendingMigrations: ctx.plan.d1.pendingMigrations,
+          migrations: promoteMigrations,
+          ...(bodyData?.confirmDestructive !== undefined ? { confirmDestructive: bodyData.confirmDestructive } : {}),
+          ...(bodyData?.confirmedMigrationNames ? { confirmedMigrationNames: bodyData.confirmedMigrationNames } : {}),
+        }),
+        summary: {
+          planAction: ctx.plan.action,
+          promotedFromEnv: "preview",
+          revision: ctx.current.revision,
+          deployedRev: ctx.envRecord.deployedRev,
+          buildHash: ctx.buildHash,
+          pendingMigrations: ctx.plan.d1.pendingMigrations,
+          migrations: promoteMigrations,
+          destructiveWarnings: ctx.plan.d1.destructiveWarnings.length,
+          confirmDestructive: bodyData?.confirmDestructive === true,
+        },
+      },
+      bodyData?.approvalId,
+    );
+    if (promoteGate) return promoteGate;
+
     const result = await executeEnvironmentDeployment({
       env: c.env,
       project,
@@ -11939,6 +12464,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       expiresAt: z.string().datetime({ offset: true }).optional(),
       now: z.union([z.string(), z.number()]).optional(),
       secrets: z.record(z.string(), z.string()).optional(),
+      approvalId: z.string().min(1).max(128).optional(),
     })
     .optional();
 
@@ -12000,19 +12526,6 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           ? Date.parse(bodyData.now)
           : Date.now();
     const nowIso = new Date(nowMs).toISOString();
-
-    await recordStudioOnboardingEvent(db, {
-      orgId: authz.orgId,
-      projectId: project,
-      actorId: resolved.caller.author.id,
-      step: "first_preview_deploy_started",
-      metadata: {
-        envName: "preview",
-        targetType: "platform-sandbox",
-      },
-      createdAt: nowIso,
-      onlyOncePerProject: true,
-    });
 
     // Check existing secrets in studio_secret_vault for live payment credentials
     const vaultRows = await db
@@ -12309,6 +12822,69 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       now: () => nowMs,
     });
 
+    // AD-V8: an MCP token's sandbox deploy needs a Studio approval bound to the revision and the build it would
+    // deploy. It runs after every validation, right before the deploy, so a request that fails validation spends nothing.
+    const sandboxSecretsDigest = await sha256Hex(
+      JSON.stringify(
+        await Promise.all(
+          Object.entries(bodyData?.secrets ?? {})
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(async ([name, value]) => [name, await sha256Hex(value)]),
+        ),
+      ),
+    );
+    const sandboxGate = await gateDestructiveAction(
+      c,
+      resolved.caller,
+      {
+        orgId: authz.orgId,
+        projectId: project,
+        action: "sandbox_deploy",
+        env: "preview",
+        target: sandboxId,
+        blueprintRev: current.revision,
+        // The body's secrets (by name and value hash, never the value), expiry and clock are part of what is approved.
+        planFingerprint: await sha256Hex(
+          JSON.stringify({
+            buildHash,
+            codeHash,
+            graphHash,
+            sandboxId,
+            dispatchNamespace,
+            secrets: sandboxSecretsDigest,
+            // The caller's own expiry and clock (a default expiry is derived from the time of each request, so only an
+            // explicit one is bound).
+            expiresAt: bodyData?.expiresAt ?? null,
+            now: bodyData?.now ?? null,
+          }),
+        ),
+        summary: {
+          revision: current.revision,
+          buildHash,
+          sandboxId,
+          secretNames: Object.keys(bodyData?.secrets ?? {}).sort(),
+          expiresAt: bodyData?.expiresAt ?? `default (${Math.round(SANDBOX_TTL_MS / 3_600_000)} h after the deploy)`,
+          ...(bodyData?.now !== undefined ? { clock: String(bodyData.now) } : {}),
+        },
+      },
+      bodyData?.approvalId,
+    );
+    if (sandboxGate) return sandboxGate;
+    // Recorded after the approval gate, so a refused agent deploy is not a start.
+    await recordStudioOnboardingEvent(db, {
+      orgId: authz.orgId,
+      projectId: project,
+      actorId: resolved.caller.author.id,
+      step: "first_preview_deploy_started",
+      metadata: {
+        envName: "preview",
+        targetType: "platform-sandbox",
+      },
+      createdAt: nowIso,
+      onlyOncePerProject: true,
+    });
+
+
     const deployId = `sbxdep_${generateUuidV7(nowMs)}`;
     const applyResult = await sandboxDriver.apply(
       {
@@ -12467,6 +13043,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       deployProduction: z.boolean().optional(),
       confirmDestructive: z.boolean().optional(),
       confirmedMigrationNames: z.array(z.string()).optional(),
+      approvalId: z.string().min(1).max(128).optional(),
     })
     .optional();
 
@@ -12553,8 +13130,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    // Step 1: If a plaintext Cloudflare API token was supplied inline, verify & seal it and provision BYOC environments
+    // Step 1: If a plaintext Cloudflare API token was supplied inline, verify it (sealed after the approval gate below)
     const inlineToken = (bodyData?.token ?? bodyData?.apiToken ?? "").trim();
+    let inlineVerification: Extract<Awaited<ReturnType<typeof verifyDeployTokenForRoute>>, { ok: true }>["report"] | null =
+      null;
     if (inlineToken) {
       const inlineVerified = await verifyDeployTokenForRoute(
         c.env,
@@ -12563,6 +13142,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
       if (!inlineVerified.ok) return inlineVerified.response;
       const verification = inlineVerified.report;
+      inlineVerification = verification;
       if (!verification.ok || !verification.accountId) {
         const errorCode = verification.isGlobalApiKey
           ? "GLOBAL_API_KEY_REJECTED"
@@ -12584,7 +13164,58 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           422,
         );
       }
+    }
+    const existingByocToken =
+      !inlineToken && bodyData?.tokenRef
+        ? await getDeployTokenMetadata(db, bodyData.tokenRef, authz.orgId)
+        : null;
 
+    // AD-V8: an MCP token's promotion to a Cloudflare account needs a Studio approval bound to the revision, the
+    // destination account, the token that would be used (its ref, or a sha256 of an inline token, never the token), the
+    // sandbox build and whether production is deployed too. It runs after the validations above and right before the
+    // token is sealed and the deploy starts; a later failure gives the approval back.
+    const currentPreviewTarget = (
+      await listProjectDeployEnvironments(db, { orgId: authz.orgId, projectId: project })
+    ).find((e) => e.envName === "preview")?.target;
+    const byocDestination = inlineVerification
+      ? { accountId: inlineVerification.accountId ?? "", token: `inline-sha256:${await sha256Hex(inlineToken)}` }
+      : existingByocToken && existingByocToken.status === "active"
+        ? { accountId: existingByocToken.accountId, token: `ref:${existingByocToken.tokenRef}` }
+        : { accountId: currentPreviewTarget?.accountId ?? "", token: `ref:${currentPreviewTarget?.tokenRef ?? ""}` };
+    const byocGate = await gateDestructiveAction(
+      c,
+      resolved.caller,
+      {
+        orgId: authz.orgId,
+        projectId: project,
+        action: "promote_to_byoc",
+        env: bodyData?.deployProduction ? "production" : "preview",
+        target: byocDestination.accountId,
+        blueprintRev: await currentBlueprintRevision(c.env, project),
+        planFingerprint: await sha256Hex(
+          JSON.stringify({
+            accountId: byocDestination.accountId,
+            token: byocDestination.token,
+            buildHash: sandboxSummary.buildHash,
+            deployProduction: bodyData?.deployProduction === true,
+            confirmDestructive: bodyData?.confirmDestructive === true,
+            confirmedMigrationNames: [...(bodyData?.confirmedMigrationNames ?? [])].sort(),
+          }),
+        ),
+        summary: {
+          accountId: byocDestination.accountId,
+          accountName: inlineVerification?.accountName ?? existingByocToken?.accountName ?? null,
+          token: byocDestination.token.startsWith("ref:") ? byocDestination.token : "inline token (sha256 bound)",
+          buildHash: sandboxSummary.buildHash,
+          deployProduction: bodyData?.deployProduction === true,
+        },
+      },
+      bodyData?.approvalId,
+    );
+    if (byocGate) return byocGate;
+
+    if (inlineToken && inlineVerification && inlineVerification.accountId) {
+      const verification = inlineVerification;
       const resolvedAccountName =
         bodyData?.accountName?.trim() ||
         verification.accountName ||
@@ -12594,7 +13225,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         db,
         {
           orgId: authz.orgId,
-          accountId: verification.accountId,
+          accountId: inlineVerification.accountId,
           accountName: resolvedAccountName,
           plaintextToken: inlineToken,
           scopes: verification.permissions
@@ -12613,11 +13244,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         tokenRef: sealedMeta.tokenRef,
       });
     } else if (bodyData?.tokenRef) {
-      const existingToken = await getDeployTokenMetadata(
-        db,
-        bodyData.tokenRef,
-        authz.orgId,
-      );
+      const existingToken = existingByocToken;
       if (existingToken && existingToken.status === "active") {
         await upsertProjectDeployEnvironments(db, {
           orgId: authz.orgId,
@@ -12945,6 +13572,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     confirmedMigrationNames: z.array(z.string()).optional(),
     dryRun: z.boolean().optional(),
     orgId: z.string().min(1).max(128).optional(),
+    approvalId: z.string().min(1).max(128).optional(),
   });
 
   app.post(
@@ -13261,6 +13889,46 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           );
         }
       }
+
+      // AD-V8: an MCP token's rollback needs a Studio approval bound to this environment, the target deployment and
+      // the deployment live now (a newer deploy since approval makes it stale).
+      const rollbackGate = await gateDestructiveAction(
+        c,
+        resolved.caller,
+        {
+          orgId: authz.orgId,
+          projectId: project,
+          action: "rollback",
+          env: envName,
+          target: targetRow.deploy_id,
+          blueprintRev: Number(currentSnapshot.revision ?? 0),
+          // The deployment live now, the destructive downgrade warnings and the agent's confirmations are what is
+          // approved: a newer deploy, other warnings or other confirmations make the approval stale.
+          planFingerprint: await sha256Hex(
+            JSON.stringify({
+              from: rollbackFromDeploymentId ?? "none",
+              destructiveWarnings: rollbackPlan.d1.destructiveWarnings,
+              confirmDestructive: bodyData.confirmDestructive === true,
+              confirmedMigrationNames: [...(bodyData.confirmedMigrationNames ?? [])].sort(),
+            }),
+          ),
+          summary: {
+            destructiveWarnings: rollbackPlan.d1.destructiveWarnings,
+            confirmDestructive: bodyData.confirmDestructive === true,
+            confirmedMigrationNames: bodyData.confirmedMigrationNames ?? [],
+            targetDeploymentId: targetRow.deploy_id,
+            rollbackFromDeploymentId,
+            currentRevision: currentSnapshot.revision,
+            targetRevision: targetSnapshot.revision,
+            from: currentDeployRow
+              ? { deploymentId: currentDeployRow.deploy_id, codeHash: currentDeployRow.code_hash, buildHash: currentDeployRow.build_hash }
+              : null,
+            to: { deploymentId: targetRow.deploy_id, codeHash: targetRow.code_hash, buildHash: targetRow.build_hash },
+          },
+        },
+        bodyData.approvalId,
+      );
+      if (rollbackGate) return rollbackGate;
 
       const deployId = `dep_${generateUuidV7()}`;
       const controlPlane = getStudioControlPlane(envRecord.target.accountId, c.env, appOptions.deploy);

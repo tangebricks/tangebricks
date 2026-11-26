@@ -155,15 +155,39 @@ export const STUDIO_ROUTE_PARITY_RULES: ReadonlyArray<UIRouteParityRule> = [
   {
     method: "POST",
     path: "/api/projects/:project/proposals/:proposalId/accept",
-    category: "mapped",
-    mappedTools: ["apply_ops"],
-    rationale: "Accept all or selected proposal ops through BlueprintDO.applyBatch",
+    category: "human_only_custody_or_transport",
+    rationale:
+      "AD-V8: a Studio session user with editor+ accepts a proposal (all or selected ops); an MCP token is refused with APPROVAL_SESSION_REQUIRED, so no tool maps here",
   },
   {
     method: "POST",
     path: "/api/projects/:project/proposals/:proposalId/reject",
     category: "human_only_custody_or_transport",
-    rationale: "Human-in-the-loop rejection of draft proposals in Studio Review Bar",
+    rationale:
+      "Human-in-the-loop rejection of draft proposals in Studio Review Bar; AD-V8: an MCP token is refused with APPROVAL_SESSION_REQUIRED",
+  },
+  // AD-V8: approval requests for destructive actions an MCP agent asked for
+  {
+    method: "GET",
+    path: "/api/projects/:project/approvals",
+    category: "mapped",
+    mappedTools: ["deploy_apply"],
+    rationale:
+      "Approval requests created by deploy_apply (and revert) refusals; the agent sees each one's state in the APPROVAL_* error it gets on retry",
+  },
+  {
+    method: "POST",
+    path: "/api/projects/:project/approvals/:approvalId/approve",
+    category: "human_only_custody_or_transport",
+    rationale:
+      "AD-V8: only a Studio session user with editor+ approves a destructive action; an MCP token is refused with APPROVAL_SESSION_REQUIRED",
+  },
+  {
+    method: "POST",
+    path: "/api/projects/:project/approvals/:approvalId/reject",
+    category: "human_only_custody_or_transport",
+    rationale:
+      "AD-V8: only a Studio session user with editor+ rejects a destructive action; an MCP token is refused with APPROVAL_SESSION_REQUIRED",
   },
   {
     method: "GET",

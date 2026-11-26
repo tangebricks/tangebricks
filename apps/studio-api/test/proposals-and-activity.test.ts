@@ -4,7 +4,13 @@ import { catalog } from "@poc/assembler/catalog";
 import type { ProposalRecord } from "@poc/blueprint";
 import { createMcpApp } from "@poc/mcp-server";
 import { testToken, testTokenId, testTokenVerifier } from "../../../packages/mcp-server/test/support/test-verifier.ts";
-import { signInTestHuman } from "./human-session.ts";
+import {
+  defaultOwnerSessionHeaders,
+  isApprovalGatedPath,
+  sendWithOwnerApproval,
+  signInTestHuman,
+  withApprovalId,
+} from "./human-session.ts";
 import type { BlueprintDoNamespaceLike } from "@poc/mcp-server";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
@@ -30,12 +36,29 @@ async function studioReq(
   init: RequestInit = {},
   targetEnv: StudioApiEnv = studioEnv,
 ): Promise<Response> {
-  const { headers: authHeaders } = await ensureTestAuthForPath(targetEnv, path);
+  // AD-V8: accepting or rejecting a proposal is a Studio reviewer's action, so the default owner's session does it.
+  const reviewing = /\/proposals\/[^/]+\/(accept|reject)$/.test(path);
+  const { headers: authHeaders } = reviewing
+    ? { headers: await defaultOwnerSessionHeaders(targetEnv) }
+    : await ensureTestAuthForPath(targetEnv, path);
   const headers = new Headers(init.headers);
   for (const [k, v] of Object.entries(authHeaders)) {
     if (!headers.has(k)) headers.set(k, v);
   }
-  return studioApp.request(path, { ...init, headers }, targetEnv);
+  // AD-V8: a token's direct edit is sent with mode "apply" (these seeds are preview-safe; the default is a proposal).
+  let body = init.body;
+  if (/\/ops$/.test(path) && typeof body === "string") {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    if (parsed.mode === undefined) body = JSON.stringify({ ...parsed, mode: "apply" });
+  }
+  // AD-V8: a token's deploy needs a Studio approval; the owner approves and the call is retried with the approval id.
+  if (isApprovalGatedPath(path)) {
+    const project = /\/api\/projects\/([^/]+)/.exec(path)![1]!;
+    return sendWithOwnerApproval(targetEnv, project, async (approvalId) =>
+      studioApp.request(path, { ...init, headers, body: withApprovalId(body, approvalId) as RequestInit["body"] }, targetEnv),
+    );
+  }
+  return studioApp.request(path, { ...init, headers, body }, targetEnv);
 }
 
 let rpcId = 1;

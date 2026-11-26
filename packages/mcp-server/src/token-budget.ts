@@ -3,6 +3,21 @@ import type { Catalog } from "@poc/assembler";
 import type { D1Like } from "@poc/sdk";
 import { createStaticTokenVerifier } from "./auth.ts";
 import { createMcpApp } from "./mcp.ts";
+import { createInMemoryBlueprintClient } from "./store.ts";
+import type { InMemoryClientSources } from "./store.ts";
+
+/**
+ * Fixed proposal ids and clock for a measured session (H9, the token budget): the proposal answer then has the same
+ * text, and so the same token count, on every run. Harness only; Studio and the standalone server keep random ids and
+ * the wall clock.
+ */
+export function deterministicMeasurementSources(prefix = "prop_measured"): InMemoryClientSources {
+  let n = 0;
+  return {
+    newProposalId: () => `${prefix}_${String((n += 1)).padStart(4, "0")}`,
+    nowIso: () => "2026-01-01T00:00:00.000Z",
+  };
+}
 import { TOOLS, toolDescriptions } from "./tools.ts";
 import type { Tool } from "./tools.ts";
 
@@ -19,8 +34,6 @@ export const SESSION_A_MAX_RATIO_PCT = 15.0;
 export const SESSION_B_MAX_TOTAL_TOKENS = 8000;
 export const SINGLE_TOOL_DEF_TOKEN_CEILING = 500;
 
-/** Default H9 3-brick first-party source token denominator when running inside workerd without host fs scan. */
-export const DEFAULT_H9_EMITTED_SOURCE_TOKENS = 14487;
 
 export const TEN_SCALE_BRICKS = [
   "multi-workspace",
@@ -108,7 +121,11 @@ export interface McpTokenBudgetOptions {
   catalog: Catalog;
   tools?: ReadonlyArray<Tool>;
   /** Exact firstPartySource denominator computed from disk in Node CLI (`test/support/tokens.ts`). */
-  sessionAEmittedTokens?: number;
+  /**
+   * The first-party source tokens of the H9 3-brick project (the Session A denominator). Required: it is measured, never
+   * a stored number (test/support/h9-emitted-source.ts; workerd tests read it from out/h9-emitted-source.json).
+   */
+  sessionAEmittedTokens: number;
   perPageCeiling?: number;
   sessionAMaxCalls?: number;
   sessionAMaxRatioPct?: number;
@@ -201,7 +218,7 @@ export async function runMcpTokenBudgetSuite(
     db,
     catalog,
     tools = TOOLS,
-    sessionAEmittedTokens = DEFAULT_H9_EMITTED_SOURCE_TOKENS,
+    sessionAEmittedTokens,
     perPageCeiling = PER_PAGE_TOKEN_CEILING,
     sessionAMaxCalls = SESSION_A_MAX_CALLS,
     sessionAMaxRatioPct = SESSION_A_MAX_RATIO_PCT,
@@ -209,9 +226,13 @@ export async function runMcpTokenBudgetSuite(
     maxSingleToolDefTokens = SINGLE_TOOL_DEF_TOKEN_CEILING,
   } = options;
 
+  // AD-V8: an agent's apply_ops is a proposal; the harness keeps the blueprint client so it can accept each one as the
+  // Studio reviewer would. The review is not an MCP call and adds no tokens to the sessions.
+  const blueprintClient = createInMemoryBlueprintClient(catalog, undefined, deterministicMeasurementSources());
   const app = createMcpApp({
     catalog,
     tools,
+    blueprintClient,
     callsPerMinute: 10_000,
     verifyToken: budgetTokenVerifier,
     // Standalone runs record an explicit, verified workspace (story 1.4); the budget harness names its own.
@@ -252,6 +273,17 @@ export async function runMcpTokenBudgetSuite(
         })
       : {};
     const toolText = parsed.result?.content?.[0]?.text ?? "";
+    if (method === "tools/call" && params?.name === "apply_ops" && !parsed.error && !parsed.result?.isError) {
+      const answer = JSON.parse(toolText) as { project?: string; proposalId?: string; status?: string };
+      if (answer.status === "pending" && answer.proposalId && answer.project) {
+        const accepted = await blueprintClient.acceptProposal!({
+          project: answer.project,
+          proposalId: answer.proposalId,
+          reviewer: { type: "human", id: "budget:studio-reviewer" },
+        });
+        if (!accepted.ok) throw new Error(`the reviewer could not accept ${answer.proposalId}: ${accepted.error.message}`);
+      }
+    }
     return {
       requestBody,
       responseBody,
@@ -330,11 +362,16 @@ export async function runMcpTokenBudgetSuite(
 
   const sessionASteps: Array<{ tool: string; args: Record<string, unknown> }> = [
     { tool: "list_bricks", args: {} },
+    // AD-V8: the bricks (one of them a money brick) are proposed; the harness accepts the proposal as the reviewer.
     {
-      tool: "enable_brick",
+      tool: "apply_ops",
       args: {
         project: "invoice-flow",
-        bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"],
+        ops: ["multi-workspace", "credit-wallet", "dynamic-entities"].map((brickId) => ({
+          opId: `enable-${brickId}`,
+          type: "enable_brick",
+          brickId,
+        })),
       },
     },
     {

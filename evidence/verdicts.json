@@ -1,30 +1,30 @@
 {
-  "inputsHash": "8f2e66606e8ee2882bbd0abfb1ecdeac497508ccc17fdbdde303451164246c14",
+  "inputsHash": "38e447e8646c61d3629de8dc44e589c3edbf7f5421733e7a35e714f4f9da9dc2",
   "generatedBy": "node scripts/verify.ts",
   "verdicts": {
     "H0": {
       "verdict": "pass",
       "measured": "1/1 checks",
       "reasons": [],
-      "recordedAt": "2026-11-26T07:10:10.265Z"
+      "recordedAt": "2026-11-26T12:28:37.834Z"
     },
     "H1": {
       "verdict": "pass",
       "measured": "114 lines",
       "reasons": [],
-      "recordedAt": "2026-11-26T07:10:10.265Z"
+      "recordedAt": "2026-11-26T12:28:37.834Z"
     },
     "H2": {
       "verdict": "pass",
-      "measured": "0.49 ratio",
+      "measured": "0.484 ratio",
       "reasons": [],
-      "recordedAt": "2026-11-26T07:44:22.015Z"
+      "recordedAt": "2026-11-26T12:28:37.834Z"
     },
     "H3": {
       "verdict": "pass",
       "measured": "4/4 checks",
       "reasons": [],
-      "recordedAt": "2026-11-26T07:10:10.265Z"
+      "recordedAt": "2026-11-26T12:28:37.834Z"
     },
     "H5": {
       "verdict": "pass",
@@ -33,35 +33,35 @@
         "from the run that started 2026-10-21T06:56:57.397Z",
         "20 runs, 1000 operations, 0 with an unknown outcome (0.0%), 0 violating runs"
       ],
-      "recordedAt": "2026-11-26T07:10:10.265Z"
+      "recordedAt": "2026-11-26T12:28:37.834Z"
     },
     "H6": {
       "verdict": "pass",
       "measured": "5/5 checks",
       "reasons": [],
-      "recordedAt": "2026-11-26T07:10:10.265Z"
+      "recordedAt": "2026-11-26T12:28:37.834Z"
     },
     "H7": {
       "verdict": "pass",
-      "measured": "0.875 seconds",
+      "measured": "0.423 seconds",
       "reasons": [],
-      "recordedAt": "2026-11-26T07:44:22.015Z"
+      "recordedAt": "2026-11-26T12:28:37.834Z"
     },
     "H8": {
       "verdict": "pass",
       "measured": "7/7 checks",
       "reasons": [],
-      "recordedAt": "2026-11-26T07:10:10.265Z"
+      "recordedAt": "2026-11-26T12:28:37.834Z"
     },
     "H9": {
       "verdict": "pass",
-      "measured": "4.2 percent",
+      "measured": "5.1 percent",
       "reasons": [
         "from the run that started 2026-10-21T09:40:14.207Z",
         "the upload: bundle 843.5 KiB (140.9 KiB gzipped), 1.29% of the 64 MiB limit; Cloudflare gave no start-up time; the address answered 0.8 seconds after the upload",
         "the project Worker (the one H10 to H12 describe) was not changed: 3 versions, newest 482a71cf, before and after",
         "without a token the endpoint answered 401, with a wrong one 401",
-        "the scored session (4 tool calls, official client): initialize ok in 233.7 ms; tools/list ok in 756.3 ms; list_bricks ok in 842 ms; enable_brick ok in 1013.6 ms; define_entity ok in 816.9 ms; build_project ok in 766.2 ms",
+        "the scored session (4 tool calls, official client): initialize ok in 233.7 ms; tools/list ok in 756.3 ms; list_bricks ok in 842 ms; define_entity ok in 816.9 ms; build_project ok in 766.2 ms",
         "the files the endpoint stored, read back from its database: 9 files, equal to the direct assembly in Node (project hash 608a7f25b493)",
         "build_project on the full project, 10 more times: 10 built, 0 stopped by Cloudflare's resource limit (error 1102), 0 some other way; built in a median of 819 ms (fastest 753.9, slowest 1156.5), as seen from outside",
         "after those builds the stored files were still equal to the direct assembly",
@@ -69,7 +69,7 @@
         "calls to Cloudflare's API: 15, of which 0 could write (none); none of them touched another Worker or any Workflow",
         "not shown: the CPU time itself (no analytics permission), whether an error 1102 was the CPU or the memory limit, any plan but the free one"
       ],
-      "recordedAt": "2026-11-26T07:10:10.265Z"
+      "recordedAt": "2026-11-26T12:28:37.834Z"
     },
     "H10": {
       "verdict": "pass",
@@ -107,8 +107,8 @@
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-26T07:39:39.050Z",
-    "gitSha": "ff2885acc8f00308c5bb3eb30c69fa376efe90f5",
+    "generatedAt": "2026-11-26T12:26:00.422Z",
+    "gitSha": "64cb144467083c264688d1632cb2d88ac9c08d1d",
     "gitDirty": false,
     "generator": "scripts/verify.ts",
     "inputKind": "measured"

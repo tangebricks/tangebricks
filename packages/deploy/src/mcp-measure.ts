@@ -37,9 +37,11 @@ export interface Step {
   tool: string;
   args: Record<string, unknown>;
 }
+// AD-V8: the bricks are proposed (an agent cannot apply a money brick); a reviewer must accept the proposal before the
+// build, which the Node harness does through acceptProposal. A deployed run has no reviewer, so its build is refused.
 export const FULL_STEPS: Step[] = [
   { tool: "list_bricks", args: {} },
-  { tool: "enable_brick", args: { project: SESSION_PROJECT, bricks: THREE } },
+  { tool: "apply_ops", args: { project: SESSION_PROJECT, ops: THREE.map((id) => ({ opId: `enable-${id}`, type: "enable_brick", brickId: id })) } },
   { tool: "define_entity", args: { project: SESSION_PROJECT, entities: [INVOICES] } },
   { tool: "build_project", args: { project: SESSION_PROJECT } },
 ];
@@ -168,9 +170,22 @@ export interface McpDeps {
   accountCalls?: () => readonly CallRecord[];
   repeats?: number;
   ladderBuilds?: number;
+  /**
+   * AD-V8: the human reviewer. An agent cannot enable a money brick directly, so each pending proposal the run makes is
+   * accepted here, outside the MCP surface. Only the in-process test has one (a test-only entrypoint of the bundle); the
+   * standalone MCP Worker has no reviewer surface, so without this the run refuses to start (REVIEWER_SURFACE_MISSING).
+   */
+  review?(project: string, proposalId: string): Promise<{ ok: boolean; message?: string }>;
 }
 
+/** Why a deployed measurement cannot run since AD-V8: nothing can accept the agent's proposal for the money brick. */
+export const REVIEWER_SURFACE_MISSING =
+  "REVIEWER_SURFACE_MISSING: since AD-V8 an MCP agent cannot enable a money brick (credit-wallet) directly; the bricks are proposed and a human must accept the proposal, and the standalone MCP Worker has no reviewer surface to do that. The measurement would stop at the build, so it is not run. A reviewer surface for the standalone MCP Worker is a deferred item.";
+
 export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFacts; result: McpResult }> {
+  // AD-V8: without a reviewer the session cannot put the money brick in place; refuse rather than record a broken run.
+  const review = deps.review;
+  if (!review) throw new Error(REVIEWER_SURFACE_MISSING);
   const started = deps.nowIso();
   const repeats = deps.repeats ?? FULL_REPEATS;
   const ladderBuilds = deps.ladderBuilds ?? LADDER_BUILDS;
@@ -220,17 +235,45 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
     ...(token === null ? {} : { authorization: `Bearer ${token}` }),
   });
   let nextId = 1000;
-  const rpc = async (what: string, method: string, params: unknown, token: string | null = deps.token) => {
-    const { response: _unused, ...exchange } = await timed(what, () =>
+  /** The exchange as recorded (body cut to an excerpt), and the whole answer text, which is never recorded. */
+  const rpcWithText = async (what: string, method: string, params: unknown, token: string | null = deps.token) => {
+    const { response, ...exchange } = await timed(what, () =>
       deps.fetchUrl(endpoint, { method: "POST", headers: headers(token), body: JSON.stringify({ jsonrpc: "2.0", id: (nextId += 1), method, params }), signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
     );
-    return exchange;
+    const full = response ? await response.text().catch(() => "") : "";
+    return { exchange: exchange as Exchange, full };
   };
+  const rpc = async (what: string, method: string, params: unknown, token: string | null = deps.token) =>
+    (await rpcWithText(what, method, params, token)).exchange;
   const tokenForArgs = (args: unknown): string => {
     const project = typeof args === "object" && args !== null ? (args as { project?: unknown }).project : undefined;
     return typeof project === "string" && project !== SESSION_PROJECT && deps.tokenFor ? deps.tokenFor(project) : deps.token;
   };
   const toolCall = (name: string, args: unknown) => rpc(`tools/call ${name}`, "tools/call", { name, arguments: args }, tokenForArgs(args));
+  /** Accepts the proposal an apply_ops answer holds, as the human reviewer (AD-V8). False when it could not be put in place. */
+  const acceptProposalIn = async (answerText: string): Promise<boolean> => {
+    let proposed: { project?: unknown; proposalId?: unknown; status?: unknown };
+    try {
+      proposed = JSON.parse(answerText) as typeof proposed;
+    } catch {
+      return false;
+    }
+    // The same ops again (a repeated run on the endpoint) are answered idempotently as already committed: nothing to review.
+    if (proposed.status === undefined && proposed.proposalId === undefined) return true;
+    if (proposed.status !== "pending" || typeof proposed.proposalId !== "string" || typeof proposed.project !== "string") return false;
+    const accepted = await review(proposed.project, proposed.proposalId);
+    deps.log(`reviewer: ${proposed.proposalId} ${accepted.ok ? "accepted" : `not accepted (${accepted.message ?? "no reason"})`}`);
+    return accepted.ok;
+  };
+  /** The tool's answer inside a whole JSON-RPC response body (its first content's text). */
+  const answerTextOf = (full: string): string => {
+    try {
+      const body = JSON.parse(full) as { result?: { content?: Array<{ text?: string }> } };
+      return body.result?.content?.[0]?.text ?? "";
+    } catch {
+      return "";
+    }
+  };
   const attempt = (n: number, exchange: Exchange): Attempt => {
     const verdict = classifyBuild(exchange.status, exchange.body);
     return { n, ...exchange, outcome: verdict.outcome, ...(verdict.hash ? { hash: verdict.hash } : {}) };
@@ -281,6 +324,10 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
           facts.session.stoppedAt = step.tool;
           break;
         }
+        if (step.tool === "apply_ops" && !(await acceptProposalIn(text))) {
+          facts.session.stoppedAt = step.tool;
+          break;
+        }
       } catch (error) {
         facts.session.answers.push({ tool: step.tool, isError: true, text: "", threw: deps.hide(error instanceof Error ? error.message.slice(0, EXCERPT) : String(error)) });
         facts.session.toolCalls += 1;
@@ -303,7 +350,9 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
   }
 
   // 4. the full project's build, again and again (needs the blueprint to be in place, which the session did unless it stopped early)
-  const blueprintInPlace = facts.session.answers.filter((a) => (a.tool === "enable_brick" || a.tool === "define_entity") && !a.isError).length === 2;
+  // (A proposal the reviewer did not accept stops the session at apply_ops, so define_entity never runs and this is false.)
+  const blueprintInPlace =
+    facts.session.answers.filter((a) => (a.tool === "enable_brick" || a.tool === "apply_ops" || a.tool === "define_entity") && !a.isError).length === 2;
   if (blueprintInPlace) {
     for (let n = 1; n <= repeats; n += 1) {
       const a = attempt(n, await toolCall("build_project", { project: SESSION_PROJECT }));
@@ -319,9 +368,13 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
   if (blueprintInPlace && !fullBuiltEveryTime && !anyOther) {
     facts.ladderRun = true;
     for (const rung of LADDER) {
-      const setup: Exchange[] = [await toolCall("enable_brick", { project: rung.project, bricks: rung.bricks })];
-      if (rung.entities.length > 0) setup.push(await toolCall("define_entity", { project: rung.project, entities: rung.entities }));
-      const setupOk = setup.every((s) => s.status === 200 && !/"isError":true/.test(s.body));
+      // AD-V8: the rung's bricks are proposed and the reviewer accepts them; the table is then declared directly.
+      const proposeArgs = { project: rung.project, ops: rung.bricks.map((id) => ({ opId: `enable-${id}`, type: "enable_brick", brickId: id })) };
+      const { exchange: proposed, full } = await rpcWithText("tools/call apply_ops", "tools/call", { name: "apply_ops", arguments: proposeArgs }, tokenForArgs(proposeArgs));
+      const setup: Exchange[] = [proposed];
+      const reviewed = proposed.status === 200 && !/"isError":true/.test(full) && (await acceptProposalIn(answerTextOf(full)));
+      if (reviewed && rung.entities.length > 0) setup.push(await toolCall("define_entity", { project: rung.project, entities: rung.entities }));
+      const setupOk = reviewed && setup.every((s) => s.status === 200 && !/"isError":true/.test(s.body));
       const result: RungResult = { label: rung.label, project: rung.project, setup, setupOk, builds: [] };
       if (setupOk) {
         for (let n = 1; n <= ladderBuilds; n += 1) result.builds.push(attempt(n, await toolCall("build_project", { project: rung.project })));

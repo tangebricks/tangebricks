@@ -5,6 +5,7 @@ import { upsertRunRecord, insertStepEvent } from "@poc/telemetry";
 import { app, ensureStudioD1Schema } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { signInTestHuman } from "./human-session.ts";
+import { postOpsWithReview } from "./human-session.ts";
 import { ensureTestProjectToken } from "./project-token.ts";
 
 const rawEnv = env as unknown as StudioApiEnv;
@@ -31,14 +32,7 @@ describe("GET /api/projects/:projectId/runs and GET /api/projects/:projectId/run
     const { headers: ownerHeaders } = await ensureTestProjectToken(TEST_ENV, project);
 
     // 1. Create r1 workflow with 3 nodes: step_trigger -> step_removed_in_r2 -> step_debit
-    const r1Res = await app.fetch(
-      new Request(`http://localhost/api/projects/${project}/ops`, {
-        method: "POST",
-        headers: {
-          ...ownerHeaders,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
+    const r1Res = await postOpsWithReview(TEST_ENV, project, ownerHeaders, {
           author: { type: "human", id: "alice" },
           ops: [
             {
@@ -98,10 +92,7 @@ describe("GET /api/projects/:projectId/runs and GET /api/projects/:projectId/run
               },
             },
           ],
-        }),
-      }),
-      TEST_ENV,
-    );
+        });
     expect(r1Res.status).toBe(200);
     const r1Body = (await r1Res.json()) as { revision: number };
     expect(r1Body.revision).toBe(1);
@@ -128,14 +119,7 @@ describe("GET /api/projects/:projectId/runs and GET /api/projects/:projectId/run
     expect(execR1Res.status).toBe(200);
 
     // 3. Advance blueprint to r2 by removing `step_removed_in_r2` and rewiring `step_trigger -> step_debit`
-    const r2Res = await app.fetch(
-      new Request(`http://localhost/api/projects/${project}/ops`, {
-        method: "POST",
-        headers: {
-          ...ownerHeaders,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
+    const r2Res = await postOpsWithReview(TEST_ENV, project, ownerHeaders, {
           baseRevision: 1,
           author: { type: "human", id: "alice" },
           ops: [
@@ -160,10 +144,7 @@ describe("GET /api/projects/:projectId/runs and GET /api/projects/:projectId/run
               ],
             },
           ],
-        }),
-      }),
-      TEST_ENV,
-    );
+        });
     expect(r2Res.status).toBe(200);
     const r2Body = (await r2Res.json()) as { revision: number };
     expect(r2Body.revision).toBe(2);

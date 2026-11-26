@@ -1,3 +1,4 @@
+import { e2eAcceptProposalAsOwner } from "./project-token.ts";
 import { expect, test } from "@playwright/test";
 import { E2E_MCP_TOKEN } from "./global-setup.ts";
 
@@ -53,15 +54,22 @@ test.describe("Story 2.7: Viewer Role Read-Only Enforcement & Live Sync", () => 
         id: 99,
         method: "tools/call",
         params: {
-          name: "enable_brick",
+          // AD-V8: the agent's edit is a proposal (acme-saas may already be live in production); Alice accepts it in
+          // Studio and the commit reaches the viewer's live view.
+          name: "apply_ops",
           arguments: {
             project: "acme-saas",
-            bricks: ["audit-trail"],
+            ops: [{ opId: `rbac-viewer-audit-${Date.now()}`, type: "enable_brick", brickId: "audit-trail" }],
           },
         },
       },
     });
     expect(mcpRes.status()).toBe(200);
+    const mcpRpc = (await mcpRes.json()) as { result: { isError?: boolean; content: Array<{ text: string }> } };
+    expect(mcpRpc.result.isError, mcpRpc.result.content[0]?.text).not.toBe(true);
+    const proposed = JSON.parse(mcpRpc.result.content[0]!.text) as { status: string; proposalId: string };
+    expect(proposed.status).toBe("pending");
+    expect((await e2eAcceptProposalAsOwner("acme-saas", proposed.proposalId)).status).toBe(200);
 
     await expect(page.getByTestId("topbar-revision-badge")).toHaveText(
       `r${revBefore + 1}`,

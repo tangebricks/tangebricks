@@ -225,8 +225,18 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
         ],
       },
     });
+    // AD-V8: an MCP token's edit is a proposal by default (and a money brick could not be applied directly anyway);
+    // Alice reviews it in Studio and accepts it, which commits revision 2 authored by the agent on her behalf.
     expect(agentOpsRes.status).toBe(200);
-    const rev2 = (await agentOpsRes.json()) as ProjectStatePayload;
+    const proposed = (await agentOpsRes.json()) as { status?: string; proposalId?: string; revision: number };
+    expect(proposed.status).toBe("pending");
+    expect(proposed.revision).toBe(1);
+    const acceptRes = await callStudio(
+      `/api/projects/${projectSlug}/proposals/${proposed.proposalId}/accept`,
+      { cookie: aliceCookie, body: {} },
+    );
+    expect(acceptRes.status).toBe(200);
+    const rev2 = (await acceptRes.json()) as ProjectStatePayload;
     expect(rev2.revision).toBe(2);
     expect(rev2.author).toEqual({
       type: "agent",
@@ -261,7 +271,9 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
       "project.create:succeeded",
       "project.ops:succeeded",
       "org.mcp_token.create:succeeded",
-      "project.ops:succeeded",
+      // AD-V8: the token's edit is a proposal, which Alice then accepts in Studio.
+      "project.proposal.create:succeeded",
+      "project.proposal.accept:succeeded",
     ]);
   });
 

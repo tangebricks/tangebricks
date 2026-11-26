@@ -4,8 +4,8 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { INVOICE_FLOW_BLUEPRINT } from "../../../test/support/blueprints.ts";
 import { FULL_SESSION, INVOICES as H9_INVOICES } from "../../mcp-server/test/support/session.ts";
-import { MCP_MIGRATION_NAME, MCP_TOKEN_BINDING, bundleMcpWorker, mcpMigration, mcpTokenRecords } from "../src/mcp-bundle.ts";
-import { FULL_BLUEPRINT, FULL_STEPS, INVOICES, LADDER, MEASURED_PROJECTS, SESSION_PROJECT, canonicalMcp, classifyBuild, evaluateMcp, runMcpMeasurement } from "../src/mcp-measure.ts";
+import { MCP_MIGRATION_NAME, MCP_TEST_REVIEWER_ENTRYPOINT, MCP_TOKEN_BINDING, bundleMcpWorker, mcpMigration, mcpTokenRecords } from "../src/mcp-bundle.ts";
+import { FULL_BLUEPRINT, FULL_STEPS, INVOICES, LADDER, MEASURED_PROJECTS, REVIEWER_SURFACE_MISSING, SESSION_PROJECT, canonicalMcp, classifyBuild, evaluateMcp, runMcpMeasurement } from "../src/mcp-measure.ts";
 import type { McpDeps, McpFacts, McpResult } from "../src/mcp-measure.ts";
 import { findSecrets } from "../src/provisioner/index.ts";
 import { mcpResourceNames } from "../src/provisioner/names.ts";
@@ -48,6 +48,13 @@ function deps(over: Partial<McpDeps> = {}, wrap?: Wrap): McpDeps {
     hide: (text) => text.split(TOKEN).join("[hidden]"),
     log: () => undefined,
     deploy: null,
+    // AD-V8: the harness is the human reviewer, through the test bundle's non-default entrypoint (never an MCP tool or route).
+    review: async (project, proposalId) => {
+      const bindings = (await mf.getBindings()) as { REVIEWER: { fetch(url: string, init: RequestInit): Promise<Response> } };
+      const res = await bindings.REVIEWER.fetch("http://reviewer/accept", { method: "POST", body: JSON.stringify({ project, proposalId }) });
+      const body = (await res.json()) as { ok: boolean; error?: { message?: string } };
+      return { ok: body.ok === true, ...(body.error?.message ? { message: body.error.message } : {}) };
+    },
     ...over,
   };
 }
@@ -61,7 +68,10 @@ const evaluate = (facts: McpFacts, result: McpResult) => evaluateMcp({ callsText
 beforeAll(async () => {
   const bundle = await bundleMcpWorker();
   bundleBytes = bundle.bytes;
-  mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: bundle.code, compatibilityDate: "2026-10-01", d1Databases: ["DB"], bindings: { [MCP_TOKEN_BINDING]: TOKEN_RECORDS } }));
+  // AD-V8: the sessions run against the uploaded app plus a test-only reviewer entrypoint (bundleMcpWorker({ testReviewer })),
+  // reachable only through this service binding; the size and import checks below use the bundle that is uploaded.
+  const reviewed = await bundleMcpWorker({ testReviewer: true });
+  mf = new Miniflare(convertV4MiniflareOptions({ name: "mcp", modules: true, script: reviewed.code, compatibilityDate: "2026-10-01", d1Databases: ["DB"], bindings: { [MCP_TOKEN_BINDING]: TOKEN_RECORDS }, serviceBindings: { REVIEWER: { name: "mcp", entrypoint: MCP_TEST_REVIEWER_ENTRYPOINT } } } as never));
   await mf.ready;
   db = (await mf.getD1Database("DB")) as unknown as D1Like;
   await applyMigration(db, mcpMigration().sql);
@@ -95,6 +105,18 @@ describe("what is uploaded", () => {
     expect(mcpMigration().name).toBe(MCP_MIGRATION_NAME);
     expect(mcpMigration().sql).toMatch(/CREATE TABLE IF NOT EXISTS mcp_projects/);
     expect(() => mcpResourceNames("not-hex")).toThrow();
+  });
+});
+
+describe("without a reviewer (AD-V8)", () => {
+  test("a run with no reviewer surface refuses to start and names what is missing, instead of recording a broken run", async () => {
+    await expect(run({ review: undefined })).rejects.toThrow(REVIEWER_SURFACE_MISSING);
+    expect(REVIEWER_SURFACE_MISSING).toMatch(/^REVIEWER_SURFACE_MISSING: .*no reviewer surface/);
+  });
+
+  test("the uploaded bundle has no reviewer entrypoint; only the test bundle does", async () => {
+    expect((await bundleMcpWorker()).code).not.toContain(MCP_TEST_REVIEWER_ENTRYPOINT);
+    expect((await bundleMcpWorker({ testReviewer: true })).code).toContain(MCP_TEST_REVIEWER_ENTRYPOINT);
   });
 });
 
@@ -146,7 +168,7 @@ describe("against the real bundle in workerd", () => {
     const { facts, result } = await run();
     expect(facts.closed).toEqual({ noToken: 401, wrongToken: 401 });
     expect(facts.session.connected).toBe(true);
-    expect(facts.session.answers.map((a) => [a.tool, a.isError])).toEqual([["list_bricks", false], ["enable_brick", false], ["define_entity", false], ["build_project", false]]);
+    expect(facts.session.answers.map((a) => [a.tool, a.isError])).toEqual([["list_bricks", false], ["apply_ops", false], ["define_entity", false], ["build_project", false]]);
     expect(facts.session.toolCalls).toBe(4);
     expect(facts.storedAfterSession).toMatchObject({ read: true, fileCount: 15, sameFiles: true, differing: [] });
     expect(facts.storedAfterSession!.projectHash).toBe(facts.directHash);

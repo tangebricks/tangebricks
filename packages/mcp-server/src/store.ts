@@ -7,6 +7,7 @@ import {
   computeReadiness,
   computeSemanticDiff,
   createEmptyBlueprint,
+  evaluateProposalSelection,
   semanticHash,
   summarizeProposalOps,
 } from "@poc/blueprint";
@@ -15,6 +16,7 @@ import type {
   BlueprintValidationError,
   Op,
   ProposalRecord,
+  ProposalStatus,
   ReadinessResult,
   SemanticDiff,
 } from "@poc/blueprint";
@@ -93,6 +95,29 @@ export type BlueprintApplyResult =
       };
     };
 
+/** The answer to accepting or rejecting a proposal; the same on the DO and in-memory clients. */
+export type ProposalReviewResult =
+  | {
+      ok: true;
+      status: 200;
+      data: {
+        project: string;
+        revision: number;
+        status: ProposalStatus;
+        proposalId: string;
+        proposal: ProposalRecord;
+        state?: BlueprintState;
+        semanticHash?: string;
+        /** The commit's author: the proposing agent, on behalf of the reviewer. */
+        author?: BlueprintAuthor;
+      };
+    }
+  | {
+      ok: false;
+      status: 403 | 404 | 409 | 422;
+      error: { code: string; message: string; issues?: BlueprintValidationError[] };
+    };
+
 export interface BlueprintClient {
   getProject(project: string, revision?: number): Promise<BlueprintProjectSnapshot | null>;
   applyOps(input: {
@@ -115,6 +140,38 @@ export interface BlueprintClient {
     state: BlueprintState,
     revision?: number,
   ): Promise<{ revision: number; semanticHash: string }>;
+  /** AD-V8: a project's proposals, newest first, optionally only those with `status`. */
+  listProposals?(project: string, status?: ProposalStatus): Promise<ProposalRecord[]>;
+  getProposal?(project: string, proposalId: string): Promise<ProposalRecord | null>;
+  /** Commits a pending proposal (all ops, or only `opIds`) as one revision. A human reviewer's action, never a tool's. */
+  acceptProposal?(input: {
+    project: string;
+    proposalId: string;
+    opIds?: string[];
+    reviewer: BlueprintAuthor;
+  }): Promise<ProposalReviewResult>;
+  rejectProposal?(input: {
+    project: string;
+    proposalId: string;
+    reason?: string;
+    reviewer: BlueprintAuthor;
+  }): Promise<ProposalReviewResult>;
+}
+
+async function proposalReviewFromResponse(res: Response): Promise<ProposalReviewResult> {
+  const body = (await res.json()) as Record<string, unknown>;
+  if (res.status === 200) {
+    return { ok: true, status: 200, data: body as unknown as Extract<ProposalReviewResult, { ok: true }>["data"] };
+  }
+  const status = ([403, 404, 409, 422] as const).find((s) => s === res.status) ?? 422;
+  return {
+    ok: false,
+    status,
+    error: (body.error as { code: string; message: string } | undefined) ?? {
+      code: "PROPOSAL_REVIEW_FAILED",
+      message: `The proposal review failed with HTTP ${res.status}`,
+    },
+  };
 }
 
 export interface BlueprintDoStubLike {
@@ -227,6 +284,48 @@ export function createDurableObjectBlueprintClient(
       const body = (await res.json()) as { revision: number; semanticHash: string };
       return body;
     },
+
+    async listProposals(project, status) {
+      const stub = namespace.get(namespace.idFromName(project));
+      const url = new URL("http://blueprint-do/proposals");
+      url.searchParams.set("project", project);
+      if (status) url.searchParams.set("status", status);
+      const res = await stub.fetch(url.toString(), { method: "GET" });
+      if (!res.ok) return [];
+      const body = (await res.json()) as { proposals?: ProposalRecord[] };
+      return body.proposals ?? [];
+    },
+
+    async getProposal(project, proposalId) {
+      const stub = namespace.get(namespace.idFromName(project));
+      const url = new URL("http://blueprint-do/proposals");
+      url.searchParams.set("project", project);
+      url.searchParams.set("proposalId", proposalId);
+      const res = await stub.fetch(url.toString(), { method: "GET" });
+      if (!res.ok) return null;
+      const body = (await res.json()) as { proposal?: ProposalRecord };
+      return body.proposal ?? null;
+    },
+
+    async acceptProposal(input) {
+      const stub = namespace.get(namespace.idFromName(input.project));
+      const res = await stub.fetch("http://blueprint-do/proposals/accept", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      return proposalReviewFromResponse(res);
+    },
+
+    async rejectProposal(input) {
+      const stub = namespace.get(namespace.idFromName(input.project));
+      const res = await stub.fetch("http://blueprint-do/proposals/reject", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      return proposalReviewFromResponse(res);
+    },
   };
 }
 
@@ -250,11 +349,67 @@ interface InMemoryProjectRecord {
   committedOps: Map<string, number>;
 }
 
+/** The most proposals the in-memory adapter keeps per project; the oldest reviewed ones are dropped first. */
+const MAX_PROPOSALS_PER_PROJECT = 200;
+
+/**
+ * Where the in-memory client gets proposal ids and timestamps. The defaults are a random id and the wall clock; a
+ * measurement harness (H9, the token budget) injects fixed ones so the same session answers with the same text.
+ */
+export interface InMemoryClientSources {
+  newProposalId?: () => string;
+  nowIso?: () => string;
+}
+
 export function createInMemoryBlueprintClient(
   catalog: Catalog,
   maxProjects = MAX_PROJECTS,
+  sources: InMemoryClientSources = {},
 ): BlueprintClient {
+  const newProposalId =
+    sources.newProposalId ??
+    (() => `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
+  const nowIso = sources.nowIso ?? (() => new Date().toISOString());
   const projects = new Map<string, InMemoryProjectRecord>();
+  // AD-V8: proposals are stored like the DO's `proposals` table, keyed by project, in creation order.
+  const proposals = new Map<string, Map<string, ProposalRecord>>();
+
+  function storeProposal(proposal: ProposalRecord): void {
+    let byId = proposals.get(proposal.project);
+    if (!byId) {
+      if (proposals.size >= maxProjects) return;
+      byId = new Map();
+      proposals.set(proposal.project, byId);
+    }
+    byId.set(proposal.proposalId, proposal);
+    if (byId.size > MAX_PROPOSALS_PER_PROJECT) {
+      const oldestReviewed = [...byId.values()].find((p) => p.status !== "pending");
+      const drop = oldestReviewed ?? byId.values().next().value;
+      if (drop) byId.delete(drop.proposalId);
+    }
+  }
+
+  function proposalNotFound(project: string, proposalId: string): ProposalReviewResult {
+    return {
+      ok: false,
+      status: 404,
+      error: {
+        code: "PROPOSAL_NOT_FOUND",
+        message: `Proposal "${proposalId}" not found for project "${project}"`,
+      },
+    };
+  }
+
+  function proposalAlreadyReviewed(proposal: ProposalRecord): ProposalReviewResult {
+    return {
+      ok: false,
+      status: 409,
+      error: {
+        code: "PROPOSAL_ALREADY_REVIEWED",
+        message: `Proposal "${proposal.proposalId}" has already been reviewed (status: ${proposal.status})`,
+      },
+    };
+  }
 
   function getOrCreateRecord(project: string): InMemoryProjectRecord | null {
     const existing = projects.get(project);
@@ -563,7 +718,7 @@ export function createInMemoryBlueprintClient(
       if (input.mode === "propose") {
         const proposalId =
           input.proposalId?.trim() ||
-          `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+          newProposalId();
         const diff = computeSemanticDiff(currentState, nextState);
         const proposedReadiness = computeReadiness(nextState, catalog);
         const proposal: ProposalRecord = {
@@ -574,11 +729,12 @@ export function createInMemoryBlueprintClient(
           ops: parsedIncomingOps,
           summary,
           status: "pending",
-          createdAt: new Date().toISOString(),
+          createdAt: nowIso(),
           diff,
           proposedState: nextState,
           proposedReadiness,
         };
+        storeProposal(proposal);
         return {
           ok: true,
           status: 200,
@@ -715,6 +871,114 @@ export function createInMemoryBlueprintClient(
       });
     },
 
+    async listProposals(project, status) {
+      const byId = proposals.get(project);
+      if (!byId) return [];
+      return [...byId.values()]
+        .filter((p) => status === undefined || p.status === status)
+        .reverse();
+    },
+
+    async getProposal(project, proposalId) {
+      return proposals.get(project)?.get(proposalId) ?? null;
+    },
+
+    async acceptProposal(input) {
+      const proposal = proposals.get(input.project)?.get(input.proposalId);
+      if (!proposal) return proposalNotFound(input.project, input.proposalId);
+      if (proposal.status !== "pending") return proposalAlreadyReviewed(proposal);
+
+      // The same selection rules as the DO's acceptProposal (blueprint-do.ts).
+      const rec = projects.get(input.project);
+      const currentRevision = rec ? rec.currentRevision : 0;
+      const currentState = rec ? rec.currentState : createEmptyBlueprint(input.project);
+      const evaluated = evaluateProposalSelection(currentState, proposal.ops, input.opIds, catalog);
+      if (!evaluated.ok) {
+        return { ok: false, status: 422, error: evaluated.error };
+      }
+
+      const commitAuthor: BlueprintAuthor = {
+        ...proposal.actor,
+        ...(input.reviewer.id ? { onBehalfOf: input.reviewer.id } : {}),
+      };
+      const commitSummary = evaluated.isPartial
+        ? `${proposal.summary} (${evaluated.selectedOps.length}/${proposal.ops.length} ops accepted)`
+        : proposal.summary;
+      const committed = await this.applyOps({
+        project: input.project,
+        baseRevision: currentRevision,
+        author: commitAuthor,
+        summary: commitSummary,
+        ops: evaluated.selectedOps,
+        mode: "apply",
+      });
+      if (!committed.ok) {
+        return {
+          ok: false,
+          status: committed.status,
+          error: {
+            code: committed.error.code,
+            message:
+              committed.status === 409
+                ? committed.error.message
+                : (committed.error.issues[0]?.message ?? "The proposal failed validation"),
+            ...(committed.error.issues ? { issues: committed.error.issues } : {}),
+          },
+        };
+      }
+
+      const nextStatus: ProposalStatus = evaluated.isPartial ? "partially_accepted" : "accepted";
+      const updated: ProposalRecord = {
+        ...proposal,
+        status: nextStatus,
+        reviewedAt: nowIso(),
+        reviewedBy: input.reviewer,
+        acceptedRev: committed.data.revision,
+        acceptedOpIds: evaluated.selectedOpIds,
+      };
+      storeProposal(updated);
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          project: input.project,
+          revision: committed.data.revision,
+          status: nextStatus,
+          proposalId: updated.proposalId,
+          proposal: updated,
+          state: committed.data.state,
+          semanticHash: committed.data.semanticHash,
+          author: committed.data.author,
+        },
+      };
+    },
+
+    async rejectProposal(input) {
+      const proposal = proposals.get(input.project)?.get(input.proposalId);
+      if (!proposal) return proposalNotFound(input.project, input.proposalId);
+      if (proposal.status !== "pending") return proposalAlreadyReviewed(proposal);
+      const reason = input.reason && input.reason.trim().length > 0 ? input.reason.trim() : null;
+      const updated: ProposalRecord = {
+        ...proposal,
+        status: "rejected",
+        reviewedAt: nowIso(),
+        reviewedBy: input.reviewer,
+        rejectionReason: reason,
+      };
+      storeProposal(updated);
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          project: input.project,
+          revision: projects.get(input.project)?.currentRevision ?? 0,
+          status: "rejected",
+          proposalId: updated.proposalId,
+          proposal: updated,
+        },
+      };
+    },
+
     async seedProject(project: string, state: BlueprintState, revision = 1) {
       const rec = getOrCreateRecord(project)!;
       const hash = semanticHash(state);
@@ -778,6 +1042,29 @@ export function pinBlueprintClient(base: BlueprintClient, project: string | null
       return base.revertToRevision(input);
     },
   };
+  if (base.listProposals) {
+    const list = base.listProposals.bind(base);
+    pinned.listProposals = async (candidate, status) => (allowed(candidate) ? list(candidate, status) : []);
+  }
+  if (base.getProposal) {
+    const get = base.getProposal.bind(base);
+    pinned.getProposal = async (candidate, proposalId) =>
+      allowed(candidate) ? get(candidate, proposalId) : null;
+  }
+  if (base.acceptProposal) {
+    const accept = base.acceptProposal.bind(base);
+    pinned.acceptProposal = async (input) => {
+      guard(input.project);
+      return accept(input);
+    };
+  }
+  if (base.rejectProposal) {
+    const reject = base.rejectProposal.bind(base);
+    pinned.rejectProposal = async (input) => {
+      guard(input.project);
+      return reject(input);
+    };
+  }
   if (base.seedProject) {
     const seed = base.seedProject.bind(base);
     pinned.seedProject = async (candidate, state, revision) => {

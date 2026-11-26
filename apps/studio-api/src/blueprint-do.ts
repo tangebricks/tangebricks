@@ -731,6 +731,12 @@ CREATE INDEX IF NOT EXISTS studio_sandboxes_expires_idx ON studio_sandboxes(stat
 ${PX_TELEMETRY_MIGRATION_SQL}
 `;
 
+/** AD-V8: approval requests for destructive actions an MCP agent asks for (see approvals.ts and migration 0006). */
+export const STUDIO_APPROVAL_REQUESTS_DDL: readonly string[] = [
+  "CREATE TABLE IF NOT EXISTS studio_approval_requests (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, project_id TEXT NOT NULL, action TEXT NOT NULL, env TEXT NOT NULL DEFAULT '', target TEXT NOT NULL DEFAULT '', blueprint_rev INTEGER NOT NULL, plan_fingerprint TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'consumed')), requested_by_token TEXT NOT NULL, decided_by_user TEXT, summary_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, decided_at TEXT, consumed_at TEXT, expires_at TEXT NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS studio_approval_requests_project_idx ON studio_approval_requests(org_id, project_id, status, created_at)",
+];
+
 export async function ensureStudioD1Schema(db: D1Like): Promise<void> {
   await db.batch([
     db.prepare(
@@ -910,6 +916,7 @@ export async function ensureStudioD1Schema(db: D1Like): Promise<void> {
     db.prepare(
       "CREATE INDEX IF NOT EXISTS studio_sandboxes_expires_idx ON studio_sandboxes(status, expires_at)",
     ),
+    ...STUDIO_APPROVAL_REQUESTS_DDL.map((sql) => db.prepare(sql)),
   ]);
   await db
     .prepare("ALTER TABLE projects ADD COLUMN org_id TEXT NOT NULL DEFAULT 'org_default'")

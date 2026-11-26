@@ -210,7 +210,8 @@ function argsFor(tool: string, project?: string): Record<string, unknown> {
     case "get_node":
       return { ...p, type: "trigger.manual" };
     case "apply_ops":
-      return { ...p, ops: [{ opId: `attack-${crypto.randomUUID()}`, type: "set_metadata", metadata: { displayName: "attacked" } }] };
+      // AD-V8: a preview-safe edit an agent may apply directly (without mode it would only be a proposal).
+      return { ...p, mode: "apply", ops: [{ opId: `attack-${crypto.randomUUID()}`, type: "set_metadata", metadata: { displayName: "attacked" } }] };
     case "enable_brick":
       return { ...p, bricks: ["credit-wallet"] };
     case "define_entity":

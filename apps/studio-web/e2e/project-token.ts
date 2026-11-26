@@ -70,3 +70,50 @@ export async function e2eProjectToken(
   tokens.set(key, token);
   return token;
 }
+
+/**
+ * AD-V8: the human review step. Alice (the Acme owner, editor+) accepts a pending proposal in Studio, as she would by
+ * clicking Accept in the review bar. Returns the HTTP status and body.
+ */
+export async function e2eAcceptProposalAsOwner(project: string, proposalId: string): Promise<{ status: number; body: unknown }> {
+  const cookie = await aliceCookie();
+  const res = await api(`/api/projects/${encodeURIComponent(project)}/proposals/${encodeURIComponent(proposalId)}/accept`, {
+    cookie,
+    body: {},
+  });
+  return { status: res.status, body: await res.json().catch(() => null) };
+}
+
+/**
+ * AD-V8 test churn: an agent's POST /ops with its token. Preview-safe ops go with mode "apply"; when Studio answers 403
+ * PROPOSAL_REQUIRED (money brick, destructive op, brick upgrade, live production) the ops are proposed and Alice accepts
+ * the proposal in Studio. Returns the final answer's status and body.
+ */
+export async function e2eAgentOpsWithReview(
+  project: string,
+  body: Record<string, unknown>,
+  token?: string,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const bearer = token ?? (await e2eProjectToken(project));
+  const send = async (payload: Record<string, unknown>) => {
+    const res = await fetch(`${API}/api/projects/${encodeURIComponent(project)}/ops`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${bearer}`, "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return { status: res.status, body: ((await res.json().catch(() => ({}))) ?? {}) as Record<string, unknown> };
+  };
+  const direct = await send({ ...body, mode: "apply" });
+  if (direct.status !== 403 || (direct.body.error as { code?: string } | undefined)?.code !== "PROPOSAL_REQUIRED") return direct;
+  const proposed = await send({ ...body, mode: "propose" });
+  if (proposed.status !== 200 || proposed.body.status !== "pending") return proposed;
+  const accepted = await e2eAcceptProposalAsOwner(project, String(proposed.body.proposalId));
+  return { status: accepted.status, body: (accepted.body ?? {}) as Record<string, unknown> };
+}
+
+/** A call to the Studio API as Alice (the Acme owner, signed in with her session cookie). */
+export async function e2eOwnerApi(path: string, body?: unknown, method?: string): Promise<{ status: number; body: Record<string, unknown> }> {
+  const cookie = await aliceCookie();
+  const res = await api(path, { cookie, ...(body !== undefined ? { body } : {}), ...(method ? { method } : {}) });
+  return { status: res.status, body: ((await res.json().catch(() => ({}))) ?? {}) as Record<string, unknown> };
+}

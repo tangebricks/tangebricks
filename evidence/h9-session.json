@@ -8,13 +8,13 @@
   "scored": {
     "session": "the whole invoices project (workspaces, wallet, entities)",
     "toolCalls": 4,
-    "conversationTokens": 2110,
-    "modelVisibleTokens": 1733,
+    "conversationTokens": 2573,
+    "modelVisibleTokens": 2171,
     "firstPartySourceTokens": 50141,
     "generatedFilesOnlyTokens": 11179,
-    "ratioPercent": 4.2,
-    "ratioAgainstGeneratedFilesOnlyPercent": 18.9,
-    "modelVisibleRatioPercent": 3.5,
+    "ratioPercent": 5.1,
+    "ratioAgainstGeneratedFilesOnlyPercent": 23,
+    "modelVisibleRatioPercent": 4.3,
     "projectHash": "58a4bec95eb659091deb80376372592d61b7888077a3093294e8f397cb240d44",
     "files": 15,
     "byMessage": [
@@ -31,7 +31,7 @@
       {
         "what": "tools/list",
         "requestTokens": 17,
-        "responseTokens": 1199
+        "responseTokens": 1211
       },
       {
         "what": "tools/call list_bricks",
@@ -39,9 +39,9 @@
         "responseTokens": 310
       },
       {
-        "what": "tools/call enable_brick",
-        "requestTokens": 49,
-        "responseTokens": 60
+        "what": "tools/call apply_ops",
+        "requestTokens": 101,
+        "responseTokens": 459
       },
       {
         "what": "tools/call define_entity",
@@ -222,45 +222,45 @@
     "filteredDiscovery": {
       "session": "the whole invoices project with filtered list_bricks ({ query: 'workspace' })",
       "toolCalls": 4,
-      "conversationTokens": 2024,
+      "conversationTokens": 2487,
       "firstPartySourceTokens": 50141,
-      "ratioPercent": 4
+      "ratioPercent": 5
     },
     "tenBricks": {
       "session": "ten bricks and the invoices table in four calls",
       "toolCalls": 4,
-      "conversationTokens": 2234,
+      "conversationTokens": 2891,
       "firstPartySourceTokens": 100650,
       "filesBuilt": 25,
-      "ratioPercent": 2.2
+      "ratioPercent": 2.9
     },
     "smallerProject": {
       "session": "workspaces and invoices without the wallet",
       "toolCalls": 4,
-      "conversationTokens": 2104,
+      "conversationTokens": 2116,
       "firstPartySourceTokens": 17091,
-      "ratioPercent": 12.3
+      "ratioPercent": 12.4
     },
     "eightTables": {
       "session": "three bricks and eight tables: in four calls with lists, and one item per call",
       "listsToolCalls": 4,
-      "listsConversationTokens": 2428,
+      "listsConversationTokens": 2898,
       "oneItemPerCallToolCalls": 13,
-      "oneItemPerCallConversationTokens": 3361,
-      "tokensSavedByLists": 933,
+      "oneItemPerCallConversationTokens": 3757,
+      "tokensSavedByLists": 859,
       "filesBuilt": 22
     },
     "oneBrickPerCall": {
       "session": "the same project built one brick per call, the way the first version of the tools required",
       "toolCalls": 6,
-      "conversationTokens": 2295,
-      "toolListTokens": 1216,
-      "ratioPercent": 4.6
+      "conversationTokens": 2701,
+      "toolListTokens": 1228,
+      "ratioPercent": 5.4
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-26T07:39:39.050Z",
-    "gitSha": "ff2885acc8f00308c5bb3eb30c69fa376efe90f5",
+    "generatedAt": "2026-11-26T12:26:00.422Z",
+    "gitSha": "64cb144467083c264688d1632cb2d88ac9c08d1d",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import { catalog } from "@poc/assembler/catalog";
-import { createMcpApp } from "@poc/mcp-server";
+import { createDurableObjectBlueprintClient, createMcpApp } from "@poc/mcp-server";
 import { testToken, testTokenId, testTokenVerifier } from "../../../packages/mcp-server/test/support/test-verifier.ts";
 import type { BlueprintDoNamespaceLike } from "@poc/mcp-server";
 import { applyMigration } from "@poc/sdk";
@@ -10,6 +10,7 @@ import mcpMigrationSql from "../../../packages/mcp-server/migrations/0001_mcp_se
 import { app as studioApp } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { ensureTestAuthForPath } from "./project-token.ts";
+import { postOpsWithReview } from "./human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 const mcpDb = (env as unknown as { DB: D1Like }).DB;
@@ -25,6 +26,11 @@ async function studioReq(
   targetEnv: StudioApiEnv = studioEnv,
 ): Promise<Response> {
   const { headers: authHeaders } = await ensureTestAuthForPath(targetEnv, path);
+  // AD-V8: a token's edit applies when preview-safe; a money brick is proposed and the owner accepts it in Studio.
+  const ops = /^\/api\/projects\/([^/]+)\/ops$/.exec(path);
+  if (ops?.[1] && init.method === "POST" && typeof init.body === "string") {
+    return postOpsWithReview(targetEnv, ops[1], authHeaders, JSON.parse(init.body) as Record<string, unknown>);
+  }
   const headers = new Headers(init.headers);
   for (const [k, v] of Object.entries(authHeaders)) {
     if (!headers.has(k)) headers.set(k, v);
@@ -232,8 +238,24 @@ describe("Story 1.7 — Project WebSocket hub in BlueprintDO for live revision b
         },
       ],
     });
-    const startApplyOps = Date.now();
     expect(mcpRes2.isError).toBe(false);
+
+    // AD-V8: the money brick makes this a proposal; both clients see it, then the token's user accepts it in Studio
+    // and both see the revision.
+    const [prop2Client1, prop2Client2] = await Promise.all([
+      client1.nextMessage(200),
+      client2.nextMessage(200),
+    ]);
+    expect(prop2Client1).toEqual(prop2Client2);
+    expect(prop2Client1).toMatchObject({ type: "proposal", project });
+    const proposalId = mcpRes2.json<{ proposalId: string }>().proposalId;
+    const startApplyOps = Date.now();
+    const accepted = await createDurableObjectBlueprintClient(rawDo).acceptProposal!({
+      project,
+      proposalId,
+      reviewer: { type: "human", id: "test:studio-reviewer" },
+    });
+    expect(accepted.ok).toBe(true);
 
     const [rev2Client1, rev2Client2] = await Promise.all([
       client1.nextMessage(200),

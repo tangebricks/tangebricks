@@ -328,20 +328,26 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
       return JSON.parse(body.result.content[0]?.text ?? "{}") as T;
     };
 
-    // MCP Step 1: `enable_brick` for `core-auth`, `multi-workspace`, `dynamic-entities`, `credit-wallet` (with settings), and `omnichannel-outbound`
-    await callMcp("enable_brick", {
+    // MCP Step 1: the bricks `core-auth`, `multi-workspace`, `dynamic-entities`, `credit-wallet` (with settings) and
+    // `omnichannel-outbound`. AD-V8: credit-wallet is a money brick, so the agent proposes them with `apply_ops` and Alice,
+    // signed in to Studio, accepts the proposal (enable_brick would refuse the money brick for an agent).
+    const bricksProposal = await callMcp<{ status: string; proposalId: string }>("apply_ops", {
       project: "invoice-mcp",
-      bricks: [
-        "core-auth",
-        "multi-workspace",
-        "dynamic-entities",
-        {
-          id: "credit-wallet",
-          config: { creditsPerUnit: 25, minOrderAmount: 100 },
-        },
-        "omnichannel-outbound",
+      summary: "Enable the invoice bricks",
+      ops: [
+        { opId: "mcp-brick-auth", type: "enable_brick", brickId: "core-auth" },
+        { opId: "mcp-brick-ws", type: "enable_brick", brickId: "multi-workspace" },
+        { opId: "mcp-brick-ent", type: "enable_brick", brickId: "dynamic-entities" },
+        { opId: "mcp-brick-wallet", type: "enable_brick", brickId: "credit-wallet", config: { creditsPerUnit: 25, minOrderAmount: 100 } },
+        { opId: "mcp-brick-out", type: "enable_brick", brickId: "omnichannel-outbound" },
       ],
     });
+    expect(bricksProposal.status).toBe("pending");
+    const acceptBricks = await page.request.post(
+      `/api/projects/invoice-mcp/proposals/${encodeURIComponent(bricksProposal.proposalId)}/accept`,
+      { data: {} },
+    );
+    expect(acceptBricks.status()).toBe(200);
 
     // MCP Step 2: `define_entity` for `invoices`
     await callMcp("define_entity", {
@@ -372,6 +378,7 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     // MCP Step 3: `apply_ops` for identity, workflow `"invoice-paid-email"` (nodes + edges), and `bind_secret_ref`
     await callMcp("apply_ops", {
       project: "invoice-mcp",
+      mode: "apply", // AD-V8: preview-safe edits an agent may apply directly
       summary: "Configure identity, invoice-paid-email workflow, and secretRefs",
       ops: [
         {
@@ -597,7 +604,8 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     // =========================================================================
     const walletNodeId = "node-wallet-debit-5";
     const tCoAuthorStart = Date.now();
-    await callMcp("apply_ops", {
+    // AD-V8: a credit-wallet debit node is a money change, so the agent proposes it and Alice accepts in Studio.
+    const walletProposal = await callMcp<{ status: string; proposalId: string }>("apply_ops", {
       project: "invoice-ui",
       summary: "Append credit-wallet debit step after email dispatch",
       ops: [
@@ -628,6 +636,12 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
         },
       ],
     });
+    expect(walletProposal.status).toBe("pending");
+    const acceptWallet = await page.request.post(
+      `/api/projects/invoice-ui/proposals/${encodeURIComponent(walletProposal.proposalId)}/accept`,
+      { data: {} },
+    );
+    expect(acceptWallet.status()).toBe(200);
 
     await expect(page.getByTestId(`canvas-node-${walletNodeId}`)).toBeVisible({
       timeout: 2_000,

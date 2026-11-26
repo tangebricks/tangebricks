@@ -15,6 +15,7 @@ import type {
   StudioApiEnv,
 } from "../src/index.ts";
 import { ensureTestAuthForPath } from "./project-token.ts";
+import { approveAsOwner, postOpsWithReview } from "./human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 const mcpDb = (env as unknown as { DB: D1Like }).DB;
@@ -80,18 +81,9 @@ async function postOps(
     ops: unknown[];
   },
 ) {
-  return studioReq(
-    `/api/projects/${project}/ops`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        author: { type: "human", id: "alice" },
-        ...body,
-      }),
-    },
-    studioEnv,
-  );
+  // AD-V8: the token's edit applies when preview-safe; otherwise it is proposed and the owner accepts it in Studio.
+  const { headers: authHeaders } = await ensureTestAuthForPath(studioEnv, `/api/projects/${project}/ops`);
+  return postOpsWithReview(studioEnv, project, authHeaders, { author: { type: "human", id: "alice" }, ...body });
 }
 
 beforeEach(async () => {
@@ -451,17 +443,29 @@ describe("Story 1.5 — Revision history, semantic diff, and revert via inverse 
     expect(rev7State.revision).toBe(7);
     expect(rev7State.semanticHash).not.toBe(rev3State.semanticHash);
 
-    // Revert to targetRevision: 3 via POST /api/projects/:project/revert -> produces revision 8
+    // Revert to targetRevision: 3 via POST /api/projects/:project/revert -> produces revision 8.
+    // AD-V8: the caller is an MCP token, so the first try is refused with APPROVAL_REQUIRED; the owner approves the
+    // request in Studio and the retry with the approval id runs the revert.
+    const revertBody = {
+      targetRevision: 3,
+      baseRevision: 7,
+      author: { type: "human", id: "bob", client: "studio-ui" },
+    };
+    const refusedRevert = await studioReq(
+      `/api/projects/${project}/revert`,
+      { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(revertBody) },
+      studioEnv,
+    );
+    expect(refusedRevert.status).toBe(403);
+    const refusal = (await refusedRevert.json()) as { error: { code: string; approvalId: string } };
+    expect(refusal.error.code).toBe("APPROVAL_REQUIRED");
+    expect((await approveAsOwner(studioEnv, project, refusal.error.approvalId)).status).toBe(200);
     const revertRes = await studioReq(
       `/api/projects/${project}/revert`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          targetRevision: 3,
-          baseRevision: 7,
-          author: { type: "human", id: "bob", client: "studio-ui" },
-        }),
+        body: JSON.stringify({ ...revertBody, approvalId: refusal.error.approvalId }),
       },
       studioEnv,
     );

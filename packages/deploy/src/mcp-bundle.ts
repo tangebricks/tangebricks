@@ -43,15 +43,42 @@ export function mcpTokenRecords(
 }
 export const MCP_MIGRATION_NAME = "0001_mcp_server.sql";
 
-export async function bundleMcpWorker(): Promise<Omit<WorkerBundle, "dynamicEvaluation">> {
+/** The entrypoint class of the in-process test bundle that plays the human reviewer (AD-V8). Never in an uploaded bundle. */
+export const MCP_TEST_REVIEWER_ENTRYPOINT = "TestReviewer";
+
+/**
+ * The Worker script. The default is exactly what is uploaded. With `testReviewer` (in-process tests only, never uploaded),
+ * the same app gets an explicit in-memory blueprint client and a second, non-default entrypoint that accepts a proposal the
+ * way a Studio editor would (AD-V8). It is not a route of the endpoint and not an MCP tool: it is reachable only through a
+ * service binding the test harness configures, so an agent calling the endpoint cannot reach it.
+ */
+export async function bundleMcpWorker(
+  options: { testReviewer?: boolean } = {},
+): Promise<Omit<WorkerBundle, "dynamicEvaluation">> {
   const server = JSON.stringify(slash(join(repoRoot, "packages", "mcp-server", "src", "index.ts")));
   const catalog = JSON.stringify(slash(join(repoRoot, "packages", "assembler", "catalog.generated.ts")));
-  const entry = [
-    `import { createHashedTokenVerifier, createMcpApp } from ${server};`,
-    `import { catalog } from ${catalog};`,
-    `const app = createMcpApp({ catalog, verifyToken: createHashedTokenVerifier(${JSON.stringify(MCP_TOKEN_BINDING)}) });`,
-    `export default { fetch: (request, env, ctx) => app.fetch(request, env, ctx) };`,
-  ].join("\n");
+  const entry = options.testReviewer
+    ? [
+        `import { WorkerEntrypoint } from "cloudflare:workers";`,
+        `import { createHashedTokenVerifier, createInMemoryBlueprintClient, createMcpApp } from ${server};`,
+        `import { catalog } from ${catalog};`,
+        `const blueprintClient = createInMemoryBlueprintClient(catalog);`,
+        `const app = createMcpApp({ catalog, verifyToken: createHashedTokenVerifier(${JSON.stringify(MCP_TOKEN_BINDING)}), blueprintClient });`,
+        `export default { fetch: (request, env, ctx) => app.fetch(request, env, ctx) };`,
+        `export class ${MCP_TEST_REVIEWER_ENTRYPOINT} extends WorkerEntrypoint {`,
+        `  async fetch(request) {`,
+        `    const { project, proposalId } = await request.json();`,
+        `    const accepted = await blueprintClient.acceptProposal({ project, proposalId, reviewer: { type: "human", id: "mcp-measurement:reviewer" } });`,
+        `    return Response.json(accepted, { status: accepted.ok ? 200 : 409 });`,
+        `  }`,
+        `}`,
+      ].join("\n")
+    : [
+        `import { createHashedTokenVerifier, createMcpApp } from ${server};`,
+        `import { catalog } from ${catalog};`,
+        `const app = createMcpApp({ catalog, verifyToken: createHashedTokenVerifier(${JSON.stringify(MCP_TOKEN_BINDING)}) });`,
+        `export default { fetch: (request, env, ctx) => app.fetch(request, env, ctx) };`,
+      ].join("\n");
   const result = await build({
     stdin: { contents: entry, resolveDir: repoRoot, sourcefile: "mcp-entry.ts", loader: "ts" },
     bundle: true,

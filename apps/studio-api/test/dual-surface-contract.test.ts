@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import { catalog } from "@poc/assembler/catalog";
-import { createMcpApp } from "@poc/mcp-server";
+import { createDurableObjectBlueprintClient, createMcpApp } from "@poc/mcp-server";
 import { TEST_TOKEN_USER_ID, testToken, testTokenId, testTokenVerifier } from "../../../packages/mcp-server/test/support/test-verifier.ts";
 import type { BlueprintDoNamespaceLike } from "@poc/mcp-server";
 import { applyMigration } from "@poc/sdk";
@@ -10,6 +10,7 @@ import mcpMigrationSql from "../../../packages/mcp-server/migrations/0001_mcp_se
 import { app as studioApp } from "../src/index.ts";
 import type { ProjectStatePayload, StudioApiEnv } from "../src/index.ts";
 import { ensureTestProjectToken } from "./project-token.ts";
+import { postOpsWithReview } from "./human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 const mcpDb = (env as unknown as { DB: D1Like }).DB;
@@ -76,18 +77,67 @@ async function postHttpOps(
   },
 ) {
   const { headers: authHeaders } = await ensureTestProjectToken(studioEnv, project);
-  return studioApp.request(
-    `/api/projects/${project}/ops`,
-    {
-      method: "POST",
-      headers: { ...authHeaders, "content-type": "application/json" },
-      body: JSON.stringify({
-        author: { type: "human", id: "alice" },
-        ...body,
-      }),
-    },
-    studioEnv,
+  // AD-V8: the token's edit applies when preview-safe; otherwise it is proposed and the owner accepts it in Studio.
+  return postOpsWithReview(studioEnv, project, authHeaders, { author: { type: "human", id: "alice" }, ...body });
+}
+
+/**
+ * AD-V8: the MCP side of the same review. The agent proposes with apply_ops (the default) and the token's user, as the
+ * Studio reviewer, accepts the proposal through the blueprint client (no MCP tool can). Returns the committed revision.
+ */
+async function mcpApplyReviewed(args: Record<string, unknown>) {
+  const proposed = await callMcpTool("apply_ops", args);
+  expect(proposed.isError, proposed.text).toBe(false);
+  const pending = proposed.json<{ status: string; proposalId: string }>();
+  expect(pending.status).toBe("pending");
+  const accepted = await createDurableObjectBlueprintClient(mcpDo).acceptProposal!({
+    project: String(args.project),
+    proposalId: pending.proposalId,
+    reviewer: { type: "human", id: TEST_TOKEN_USER_ID },
+  });
+  expect(accepted.ok, JSON.stringify(accepted)).toBe(true);
+  if (!accepted.ok) throw new Error("not accepted");
+  return accepted.data;
+}
+
+/**
+ * AD-V8: enable_brick with the original input, through the human review. The agent's enable_brick is refused for a
+ * money brick (PROPOSAL_REQUIRED); the same operation the macro would apply (enable_brick for a new brick,
+ * configure_brick with replace for an enabled one, in the listed order) is proposed and the token's user accepts it.
+ * Returns what enable_brick answers: project, revision, enabled, entities and needs.
+ */
+async function mcpEnableBrickReviewed(args: {
+  project: string;
+  bricks: Array<string | { id: string; config?: Record<string, unknown> }>;
+}) {
+  const direct = await callMcpTool("enable_brick", args);
+  expect(direct.isError).toBe(true);
+  expect(direct.json<{ error: { code: string } }>().error.code).toBe("PROPOSAL_REQUIRED");
+  const summary = await callMcpTool("get_blueprint_summary", { project: args.project });
+  const enabledBefore = new Set(
+    summary.isError ? [] : (summary.json<{ bricks?: string[] }>().bricks ?? []),
   );
+  const ops = args.bricks.map((item, idx) => {
+    const { id, config } = typeof item === "string" ? { id: item, config: {} } : { id: item.id, config: item.config ?? {} };
+    return enabledBefore.has(id)
+      ? { opId: `mcp-review:configure:${id}:${idx}`, type: "configure_brick", brickId: id, config, replace: true }
+      : {
+          opId: `mcp-review:enable:${id}:${idx}`,
+          type: "enable_brick",
+          brickId: id,
+          ...(Object.keys(config).length > 0 ? { config } : {}),
+        };
+  });
+  const accepted = await mcpApplyReviewed({ project: args.project, ops });
+  const listed = await callMcpTool("list_bricks", { project: args.project });
+  const projectInfo = listed.json<{ project: { needs: string[] } }>().project;
+  return {
+    project: args.project,
+    revision: accepted.revision,
+    enabled: (accepted.state?.bricks ?? []).map((b) => b.id).sort(),
+    entities: (accepted.state?.entities ?? []).map((e) => e.name),
+    needs: projectInfo.needs,
+  };
 }
 
 beforeEach(async () => {
@@ -119,12 +169,12 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
     };
 
     // --- Step 1 (Revision 1): Enable 3 bricks ---
-    const mcpStep1 = await callMcpTool("enable_brick", {
+    // AD-V8: enable_brick refuses a money brick for an agent; the same operation goes through the human review.
+    const mcpStep1 = await mcpEnableBrickReviewed({
       project: mcpProject,
       bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"],
     });
-    expect(mcpStep1.isError).toBe(false);
-    expect(mcpStep1.json()).toMatchObject({
+    expect(mcpStep1).toMatchObject({
       project: mcpProject,
       revision: 1,
       enabled: ["credit-wallet", "dynamic-entities", "multi-workspace"],
@@ -142,12 +192,11 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
     expect(httpStep1.status).toBe(200);
 
     // --- Step 2 (Revision 2): Configure brick settings on credit-wallet ---
-    const mcpStep2 = await callMcpTool("enable_brick", {
+    const mcpStep2 = await mcpEnableBrickReviewed({
       project: mcpProject,
       bricks: [{ id: "credit-wallet", config: { creditsPerUnit: 25, minOrderAmount: 100 } }],
     });
-    expect(mcpStep2.isError).toBe(false);
-    expect(mcpStep2.json().revision).toBe(2);
+    expect(mcpStep2.revision).toBe(2);
 
     const httpStep2 = await postHttpOps(httpProject, {
       ops: [
@@ -197,6 +246,7 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
     ];
     const mcpStep4 = await callMcpTool("apply_ops", {
       project: mcpProject,
+      mode: "apply", // AD-V8: a preview-safe edit an agent may apply directly
       summary: "Create invoice workflow with 3 nodes",
       ops: [
         {
@@ -239,6 +289,7 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
     ];
     const mcpStep5 = await callMcpTool("apply_ops", {
       project: mcpProject,
+      mode: "apply", // AD-V8: a preview-safe edit an agent may apply directly
       summary: "Connect workflow edges",
       ops: [
         {
@@ -272,13 +323,13 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
       targetId: "credit-wallet",
       secretName: "WEBHOOK_SECRET",
     };
-    const mcpStep6 = await callMcpTool("apply_ops", {
+    // AD-V8: the secret is bound on a money brick, so it goes through review too.
+    const mcpStep6 = await mcpApplyReviewed({
       project: mcpProject,
       summary: "Bind workflow secret ref",
       ops: [{ opId: "m-6", ...secretBinding }],
     });
-    expect(mcpStep6.isError).toBe(false);
-    expect(mcpStep6.json().revision).toBe(6);
+    expect(mcpStep6.revision).toBe(6);
 
     const httpStep6 = await postHttpOps(httpProject, {
       ops: [{ opId: "h-6", ...secretBinding }],
@@ -377,8 +428,8 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
       },
     ];
 
-    const seedMcp = await callMcpTool("apply_ops", { project: mcpProj, ops: seedOps });
-    expect(seedMcp.isError).toBe(false);
+    const seedMcp = await mcpApplyReviewed({ project: mcpProj, ops: seedOps });
+    expect(seedMcp.revision).toBe(1);
     const seedHttp = await postHttpOps(httpProj, { ops: seedOps });
     expect(seedHttp.status).toBe(200);
 

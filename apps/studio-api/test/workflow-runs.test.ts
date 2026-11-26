@@ -20,6 +20,7 @@ import { ensureStudioD1Schema } from "../src/index.ts";
 import { appWithPlaceholderExecutors as app } from "./placeholder-executors.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { ensureTestProjectToken } from "./project-token.ts";
+import { postOpsWithReview } from "./human-session.ts";
 import { seedPreviewWorkspace } from "./preview-workspace-seed.ts";
 
 const rawEnv = env as unknown as StudioApiEnv;
@@ -177,14 +178,7 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
     const { headers: ownerHeaders } = await ensureTestProjectToken(TEST_ENV, project);
 
     // Seed branching 4-node workflow on project
-    const setupRes = await app.fetch(
-      new Request(`http://localhost/api/projects/${project}/ops`, {
-        method: "POST",
-        headers: {
-          ...ownerHeaders,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
+    const setupRes = await postOpsWithReview(TEST_ENV, project, ownerHeaders, {
           author: { type: "human", id: "alice" },
           ops: [
             { opId: "op-1", type: "enable_brick", brickId: "multi-workspace" },
@@ -253,10 +247,7 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
               },
             },
           ],
-        }),
-      }),
-      TEST_ENV,
-    );
+        });
     expect(setupRes.status).toBe(200);
 
     // 1. Viewer role is rejected with HTTP 403

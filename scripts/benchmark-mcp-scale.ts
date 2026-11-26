@@ -5,7 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { assemble } from "../packages/assembler/src/index.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
-import { createMcpApp, createStaticTokenVerifier, projectHash } from "../packages/mcp-server/src/index.ts";
+import { createInMemoryBlueprintClient, createMcpApp, createStaticTokenVerifier, projectHash } from "../packages/mcp-server/src/index.ts";
 import { createSqliteD1 } from "../bricks/credit-wallet/client/test/support/sqlite-d1.ts";
 import { applyMigration } from "../packages/sdk/src/index.ts";
 import { TOKENIZER, countTokens, firstPartySource } from "../test/support/tokens.ts";
@@ -179,8 +179,11 @@ async function runMcpBenchmark(tier: ScaleTier) {
   await applyMigration(db, mcpSql);
 
   // Story 0.15: the token is bound to the one project this tier builds.
+  // AD-V8: the benchmark keeps the blueprint client so it can accept the agent's proposals as the Studio reviewer would.
+  const blueprintClient = createInMemoryBlueprintClient(catalog);
   const app = createMcpApp({
     catalog,
+    blueprintClient,
     verifyToken: createStaticTokenVerifier([
       { token: TOKEN, userId: "user:benchmark", projectId: `proj-${tier.bricks.length}`, scopes: ["read", "edit"] },
     ]),
@@ -223,11 +226,16 @@ async function runMcpBenchmark(tier: ScaleTier) {
   const chunkSize = 20;
   for (let i = 0; i < tier.bricks.length; i += chunkSize) {
     const chunk = tier.bricks.slice(i, i + chunkSize);
-    const enableResult = await client.callTool({
-      name: "enable_brick",
-      arguments: { project: projectName, bricks: chunk },
+    // AD-V8: the tiers include money bricks, so the agent proposes them and the reviewer (outside MCP) accepts.
+    const proposeResult = await client.callTool({
+      name: "apply_ops",
+      arguments: { project: projectName, ops: chunk.map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId })) },
     });
-    if (enableResult.isError) throw new Error(`enable_brick failed: ${JSON.stringify(enableResult)}`);
+    if (proposeResult.isError) throw new Error(`apply_ops failed: ${JSON.stringify(proposeResult)}`);
+    const proposed = JSON.parse((proposeResult.content as Array<{ text: string }>)[0]!.text) as { proposalId: string; status: string };
+    if (proposed.status !== "pending") throw new Error(`expected a pending proposal, got ${proposed.status}`);
+    const accepted = await blueprintClient.acceptProposal!({ project: projectName, proposalId: proposed.proposalId, reviewer: { type: "human", id: "benchmark:reviewer" } });
+    if (!accepted.ok) throw new Error(`the reviewer could not accept ${proposed.proposalId}: ${accepted.error.message}`);
   }
 
   // 4. Declare entities

@@ -304,6 +304,9 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
                   ...(rawArgs.baseRevision !== undefined
                     ? { baseRevision: rawArgs.baseRevision }
                     : {}),
+                  ...(rawArgs.approvalId !== undefined
+                    ? { approvalId: rawArgs.approvalId }
+                    : {}),
                 }
               : (rawArgs ?? params.arguments);
           const checked = checkArguments(tool, effectiveArgs);

@@ -17,6 +17,7 @@ import {
   type StudioApiEnv,
 } from "../../../apps/studio-api/src/index.ts";
 import { ensureTestProjectToken } from "../../../apps/studio-api/test/project-token.ts";
+import { acceptProposalAsOwner } from "../../../apps/studio-api/test/human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 const db = (env as unknown as { DB: D1Like }).DB;
@@ -80,6 +81,11 @@ describe("Story 7.3 — Automated Agent Self-Correction Evaluation over MCP in w
       callMcp: callStudioMcp,
       seedProject: async (project: string, state: BlueprintState, revision = 1) => {
         await doClient.seedProject!(project, state, revision);
+      },
+      // AD-V8: the test is the Studio editor who accepts each proposal the agent makes.
+      review: async (project: string, proposalId: string) => {
+        const accepted = await acceptProposalAsOwner(studioEnv, project, proposalId);
+        expect(accepted.status, await accepted.clone().text()).toBe(200);
       },
     });
 

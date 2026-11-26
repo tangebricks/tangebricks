@@ -93,6 +93,15 @@ async function main() {
     seedProject: async (project, state, revision = 1) => {
       await blueprint.seedProject!(project, state, revision);
     },
+    // AD-V8: the eval plays the Studio reviewer through the blueprint client; no MCP tool can accept a proposal.
+    review: async (project, proposalId) => {
+      const accepted = await blueprint.acceptProposal!({
+        project,
+        proposalId,
+        reviewer: { type: "human", id: "eval:studio-reviewer" },
+      });
+      if (!accepted.ok) throw new Error(`the reviewer could not accept ${proposalId}: ${accepted.error.message}`);
+    },
   });
 
   const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");

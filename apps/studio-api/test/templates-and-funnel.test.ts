@@ -20,6 +20,7 @@ import type {
 } from "../src/index.ts";
 import { signInTestHuman } from "./human-session.ts";
 import { ensureTestAuthForPath } from "./project-token.ts";
+import { postOpsWithReview } from "./human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 
@@ -188,10 +189,9 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
     const beforeGraphHash = computeBlueprintGraphHash(beforeState.state);
     const beforeBuildHash = computeBlueprintBuildHash(beforeState.state);
 
-    const moveRes = await studioReq(`/api/projects/${targetSlug}/ops`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+    // AD-V8: the template's workflow holds a money node, so the token's edit there is proposed and the owner accepts it.
+    const { headers: moveHeaders } = await ensureTestAuthForPath(studioEnv, `/api/projects/${targetSlug}/ops`);
+    const moveRes = await postOpsWithReview(studioEnv, targetSlug, moveHeaders, {
         baseRevision: beforeState.revision,
         ops: [
           {
@@ -204,8 +204,7 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
             },
           },
         ],
-      }),
-    });
+      });
     expect(moveRes.status).toBe(200);
 
     const afterRes = await studioReq(`/api/projects/${targetSlug}`);

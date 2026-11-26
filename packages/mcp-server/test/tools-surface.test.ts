@@ -10,6 +10,7 @@ import {
   type StudioApiEnv,
 } from "../../../apps/studio-api/src/index.ts";
 import { ensureTestProjectToken } from "../../../apps/studio-api/test/project-token.ts";
+import { acceptProposalAsOwner } from "../../../apps/studio-api/test/human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 const db = (env as unknown as { DB: D1Like }).DB;
@@ -210,6 +211,8 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     const applied = applyReply.json<{
       project: string;
       revision: number;
+      status?: string;
+      proposalId?: string;
       safety: {
         destructiveHint: boolean;
         moneyAffectingHint: boolean;
@@ -218,11 +221,16 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     }>();
 
     expect(applied.project).toBe(project);
-    expect(applied.revision).toBe(1);
     expect(applied.safety.moneyAffectingHint).toBe(true);
     expect(applied.safety.moneyAffectingOps).toContain(
       "enable_brick:credit-wallet",
     );
+    // AD-V8: the agent's edit is a pending proposal (the live blueprint stays at 0) until a person accepts it in Studio.
+    expect(applied.status).toBe("pending");
+    expect(applied.revision).toBe(0);
+    const acceptedRes = await acceptProposalAsOwner(studioEnv, project, applied.proposalId!);
+    expect(acceptedRes.status).toBe(200);
+    expect(((await acceptedRes.json()) as { revision: number }).revision).toBe(1);
 
     // 4. Blueprint read & validate: get_blueprint_summary, get_blueprint_slice, validate_blueprint
     const summary = (
@@ -378,6 +386,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     const setupReply = await callStudioMcp("apply_ops", {
       project,
       expectedRev: 0,
+      mode: "apply", // AD-V8: a preview-safe edit an agent may apply directly
       ops: [
         { opId: "s1", type: "enable_brick", brickId: "multi-workspace" },
         {
@@ -512,10 +521,15 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
       ops: opsBatch,
     });
     expect(mcpApplyReply.isError, mcpApplyReply.text).toBe(false);
-    const mcpApply = mcpApplyReply.json<{
+    // AD-V8: the money brick makes this a proposal; a person accepts it in Studio, which commits revision 1.
+    const mcpProposal = mcpApplyReply.json<{ status: string; proposalId: string }>();
+    expect(mcpProposal.status).toBe("pending");
+    const mcpAcceptRes = await acceptProposalAsOwner(studioEnv, sharedProject, mcpProposal.proposalId);
+    expect(mcpAcceptRes.status).toBe(200);
+    const mcpApply = (await mcpAcceptRes.json()) as {
       revision: number;
       semanticHash: string;
-    }>();
+    };
 
     const httpStateRes = await studioApp.request(
       `/api/projects/${sharedProject}`,

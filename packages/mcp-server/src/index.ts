@@ -32,6 +32,8 @@ export type {
   BlueprintDoStubLike,
   BlueprintProjectSnapshot,
   BuildSummary,
+  InMemoryClientSources,
+  ProposalReviewResult,
   SettingValue,
 } from "./store.ts";
 export {
@@ -43,11 +45,15 @@ export {
   OP_SAFETY_METADATA,
   TOOLS,
   checkArguments,
+  classifyApplyRisk,
+  proposalRequiredError,
+  summarizeSemanticDiff,
   revertToRevisionTool,
   scrubMcpSecrets,
   toolDescriptions,
 } from "./tools.ts";
 export type {
+  ApplyRisk,
   OpSafetyMetadata,
   StudioRequestFn,
   Tool,

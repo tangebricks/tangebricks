@@ -26,6 +26,7 @@ Every `CP3` row below must reference an existing Playwright E2E spec file in `ap
 | CP3-16 | Visual revision diff | `verified: CP3` | `apps/studio-web/e2e/validation-undo-diff.spec.ts` | `validates broken pills via Issues Drawer click-to-jump, executes multi-step Undo/Redo + Ledger Undo, renders Canvas Visual Diff overlay, and resolves Human + AI same-object conflicts` |
 | CP3-17 | UI-vs-MCP invoice -> email semantic & build hash parity | `verified: CP3` | `apps/studio-web/e2e/invoice-to-email-parity.spec.ts` | `builds 'invoice -> email' SaaS backend in Chromium UI vs MCP tools, proves identical normalized semanticHash and assemble() buildHash, and co-authors live credit-wallet step on canvas within 2s` |
 | CP3-18 | R45 performance & visual layout gate | `verified: CP3` | `apps/studio-web/e2e/r45-performance.spec.ts` | `completes cold first load in < 3,000 ms with compiled Tailwind CSS, sustains >= 50 fps pan/zoom and < 100 ms node drag frame latency on 200 non-overlapping nodes, and runs assemble() on max-compatible blueprint in < 5,000 ms` |
+| CP3-19 | AD-V8 agent proposals by default and Studio approval for destructive agent actions | `verified: CP3` | `apps/studio-web/e2e/proposals-and-approvals.spec.ts` | `an MCP edit is reviewed and accepted in Studio; an MCP deploy needs an approval, which is single-use` |
 
 ## 2. CP4 Run Rows
 

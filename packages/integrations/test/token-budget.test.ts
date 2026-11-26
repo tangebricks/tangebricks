@@ -11,6 +11,10 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { measureIntegrationTokenMetrics } from "../src/index.ts";
 
+// Story 7.4: Session A's denominator, measured by the global setup (test/support/h9-emitted-source.ts).
+const H9_EMITTED_SOURCE_TOKENS = (Object.values(import.meta.glob("../../../out/h9-emitted-source.json", { eager: true, import: "default" }))[0] as { tokens: number }).tokens;
+
+
 const MCP_TOKEN = "pack-v1-budget-token-0123456789";
 
 describe("Story 10.4 — Curated Integration Pack v1 Token Budget Compliance (AC 5)", () => {
@@ -137,6 +141,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Token Budget Compliance (AC
     const report = await runMcpTokenBudgetSuite({
       db,
       catalog,
+      sessionAEmittedTokens: H9_EMITTED_SOURCE_TOKENS,
     });
     expect(report.ok, JSON.stringify(report.violations, null, 2)).toBe(true);
     expect(report.perPageMaxTokens).toBeLessThanOrEqual(400);

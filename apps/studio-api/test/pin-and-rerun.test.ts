@@ -12,6 +12,7 @@ import {
 import { appWithPlaceholderExecutors as app } from "./placeholder-executors.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { ensureTestProjectToken } from "./project-token.ts";
+import { postOpsWithReview } from "./human-session.ts";
 
 const rawEnv = env as unknown as StudioApiEnv;
 const studioDb = rawEnv.STUDIO_DB as D1Like;
@@ -37,14 +38,8 @@ describe("Pin Step Output & Re-Run From Node API", () => {
     const { headers: ownerHeaders } = await ensureTestProjectToken(TEST_ENV, project);
 
     // 1. Create workflow with 3 nodes: step_trigger -> step_transform -> step_debit
-    const opsRes = await app.fetch(
-      new Request(`http://localhost/api/projects/${project}/ops`, {
-        method: "POST",
-        headers: {
-          ...ownerHeaders,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
+    // AD-V8: the token's edit holds a money brick, so it is proposed and the owner accepts it in Studio.
+    const opsRes = await postOpsWithReview(TEST_ENV, project, ownerHeaders, {
           author: { type: "human", id: "alice" },
           ops: [
             {
@@ -104,11 +99,8 @@ describe("Pin Step Output & Re-Run From Node API", () => {
               },
             },
           ],
-        }),
-      }),
-      TEST_ENV,
-    );
-    expect(opsRes.status).toBe(200);
+        });
+    expect(opsRes.status, await opsRes.clone().text()).toBe(200);
     const opsBody = (await opsRes.json()) as {
       revision: number;
       semanticHash: string;

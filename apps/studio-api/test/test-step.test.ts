@@ -6,6 +6,7 @@ import { ensureStudioD1Schema } from "../src/index.ts";
 import { appWithPlaceholderExecutors as app } from "./placeholder-executors.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { ensureTestProjectToken } from "./project-token.ts";
+import { postOpsWithReview } from "./human-session.ts";
 import { seedPreviewWorkspace } from "./preview-workspace-seed.ts";
 
 const rawEnv = env as unknown as StudioApiEnv;
@@ -34,14 +35,7 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
     const { headers: ownerHeaders } = await ensureTestProjectToken(TEST_ENV, project);
 
     // Seed project with credit-wallet brick and a workflow containing credit-wallet.debit & core.http_request
-    const setupRes = await app.fetch(
-      new Request(`http://localhost/api/projects/${project}/ops`, {
-        method: "POST",
-        headers: {
-          ...ownerHeaders,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
+    const setupRes = await postOpsWithReview(TEST_ENV, project, ownerHeaders, {
           author: { type: "human", id: "alice" },
           ops: [
             {
@@ -101,10 +95,7 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
               },
             },
           ],
-        }),
-      }),
-      TEST_ENV,
-    );
+        });
     expect(setupRes.status).toBe(200);
 
     // Create a human Better Auth session so we can seal a canary secret in the project vault
