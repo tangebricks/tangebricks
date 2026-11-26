@@ -24,11 +24,11 @@ Everything in this section is generated from the committed evidence by `pnpm rea
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | H0 | Infrastructure: tests run inside workerd | pass | 1/1 checks | — | — | 1 | local re-measure 2026-11-26 |
 | H1 | A graph validator is small and catches eight error classes | pass | 114 lines | ≤ 120 lines | ≥ 201 lines | 2 | local re-measure 2026-11-26 |
-| H2 | The runtime interprets graphs with no code generation and runs branches concurrently | pass | 0.484 ratio | < 1 ratio | — | 3 | local re-measure 2026-11-26 |
+| H2 | The runtime interprets graphs with no code generation and runs branches concurrently | pass | 0.501 ratio | < 1 ratio | — | 3 | local re-measure 2026-11-26 |
 | H3 | Executors cannot read secrets their manifest does not declare | pass | 4/4 checks | — | — | 4 | local re-measure 2026-11-26 |
 | H5 | The extracted wallet stays correct under concurrency | pass | 0 runs of 20 | ≤ 0 runs of 20 | ≥ 1 runs of 20 | 5 | local re-measure 2026-11-26; hosted D1 half: live run, **stale (run 2026-10-21)** |
 | H6 | Bricks compose from a blueprint without hand edits | pass | 5/5 checks | — | — | 5 | local re-measure 2026-11-26 |
-| H7 | Assembly is deterministic, offline and fast | pass | 0.423 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-26 |
+| H7 | Assembly is deterministic, offline and fast | pass | 0.398 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-26 |
 | H8 | An entity declaration yields tenant-safe CRUD | pass | 7/7 checks | — | — | 7 | local re-measure 2026-11-26 |
 | H9 | An MCP session builds the project at a fraction of the source tokens | pass | 5.1 percent | ≤ 15 percent | > 40 percent | 3 | local re-measure 2026-11-26; deployed MCP Worker half: live run, **stale (run 2026-10-21)** |
 | H10 | The project deploys to the owner's Cloudflare account over REST, idempotently | pass | 16.695 seconds | ≤ 120 seconds | > 600 seconds | 7 | live run, **stale (run 2026-10-21)** |
@@ -41,10 +41,10 @@ A live run is labelled **stale** when it started before the newest released vers
 
 | Evidence | Backs | Run started | Status | Integrity |
 | :-- | :-- | :-- | :-- | :-- |
-| H5 (hosted) | H5, hosted D1 half | 2026-10-21T06:56:57.397Z | **stale (run 2026-10-21)** | recorded, sha256 `2460053daa64` |
-| H9 (deployed) | H9, deployed MCP Worker half | 2026-10-21T09:40:14.207Z | **stale (run 2026-10-21)** | recorded, sha256 `2af7a75cedd7` |
-| H10 | H10, whole hypothesis | 2026-10-21T03:23:00.872Z | **stale (run 2026-10-21)** | recorded, sha256 `eb13f500e4a6` |
-| H11 | H11, whole hypothesis | 2026-10-21T04:16:18.083Z | **stale (run 2026-10-21)** | recorded, sha256 `36db65b617e5` |
+| H5 (hosted) | H5, hosted D1 half | 2026-10-21T06:56:57.397Z | **stale (run 2026-10-21)** | recorded, sha256 `b8d6aee42138` |
+| H9 (deployed) | H9, deployed MCP Worker half | 2026-10-21T09:40:14.207Z | **stale (run 2026-10-21)** | recorded, sha256 `fceaeee02da1` |
+| H10 | H10, whole hypothesis | 2026-10-21T03:23:00.872Z | **stale (run 2026-10-21)** | recorded, sha256 `f68a215c1a4a` |
+| H11 | H11, whole hypothesis | 2026-10-21T04:16:18.083Z | **stale (run 2026-10-21)** | recorded, sha256 `28e93f4dd870` |
 | H12 | H12, whole hypothesis | 2026-10-21T05:36:08.661Z | **stale (run 2026-10-21)** | **hand-edited, unverified**: result file edited by hand on 2026-10-28 (commit 8f83415) without a re-run |
 
 ### Bricks
