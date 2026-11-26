@@ -444,6 +444,19 @@ export interface CloudflareApiClient {
     databaseId: string,
     migration: { name: string; sql: string; sha256: string },
   ): Promise<void>;
+  /** A D1 Time Travel bookmark for the database's current state (taken before a deploy applies pending migrations). */
+  getD1Bookmark(
+    accountId: string,
+    token: string,
+    databaseId: string,
+  ): Promise<string>;
+  /** Restores the database to a bookmark; the answer's previous_bookmark undoes the restore. */
+  restoreD1(
+    accountId: string,
+    token: string,
+    databaseId: string,
+    bookmark: string,
+  ): Promise<{ previous_bookmark: string }>;
   /** Stores a graph row for one workspace; the Studio deploy path writes app-wide graphs, under APP_WORKSPACE. */
   putStoredGraph(
     accountId: string,
@@ -731,6 +744,11 @@ export interface ProvisionerApplyInput extends ProvisionerPlanInput {
   schedules?: Array<Record<string, unknown> | string>;
   secrets?: Record<string, string>;
   onStep?: (step: ProvisionerDeploymentStep) => void | Promise<void>;
+  /**
+   * Called with the pre-migration bookmark as soon as it is taken, before any migration runs, so the caller can keep it
+   * durably even if the deploy fails later. If it throws, the deploy stops before any migration.
+   */
+  onPreMigrationBookmark?: (info: { databaseId: string; bookmark: string }) => void | Promise<void>;
 }
 
 export interface ProvisionerApplyResult {
@@ -754,6 +772,8 @@ export interface ProvisionerApplyResult {
   appliedActions: ProvisionerResourceAction[];
   steps: ProvisionerDeploymentStep[];
   bindings?: Record<string, string>;
+  /** The D1 Time Travel bookmark taken just before the first pending migration on an existing database (absent when none ran). */
+  preMigrationBookmark?: string;
   deployedAt: string;
 }
 
@@ -970,6 +990,8 @@ export class MockCloudflareControlPlane implements CloudflareApiClient {
   private versionCounter = 1;
   private dbCounter = 1;
   private queueCounter = 1;
+  private bookmarkCounter = 1;
+  private readonly bookmarks = new Map<string, { key: string; state: CloudflareD1DatabaseState }>();
 
   get calls(): ReadonlyArray<CloudflareApiCallRecord> {
     return this.callLog;
@@ -1431,6 +1453,57 @@ export class MockCloudflareControlPlane implements CloudflareApiClient {
         }
       }
     }
+  }
+
+  async getD1Bookmark(
+    accountId: string,
+    token: string,
+    databaseId: string,
+  ): Promise<string> {
+    this.assertAuthorized(
+      accountId,
+      token,
+      "D1: Edit",
+      "GET",
+      `/accounts/${accountId}/d1/database/${databaseId}/time_travel/bookmark`,
+      "get_d1_bookmark",
+    );
+    const key = this.databaseKey(accountId, databaseId);
+    if (!key) throw new Error(`D1 database ${databaseId} not found`);
+    const bookmark = `bm_mock_${this.bookmarkCounter++}`;
+    this.bookmarks.set(bookmark, { key, state: structuredClone(this.databases.get(key)!) });
+    return bookmark;
+  }
+
+  async restoreD1(
+    accountId: string,
+    token: string,
+    databaseId: string,
+    bookmark: string,
+  ): Promise<{ previous_bookmark: string }> {
+    this.assertAuthorized(
+      accountId,
+      token,
+      "D1: Edit",
+      "POST",
+      `/accounts/${accountId}/d1/database/${databaseId}/time_travel/restore`,
+      "restore_d1",
+    );
+    const key = this.databaseKey(accountId, databaseId);
+    if (!key) throw new Error(`D1 database ${databaseId} not found`);
+    const snap = this.bookmarks.get(bookmark);
+    if (!snap || snap.key !== key) throw new Error(`bookmark ${bookmark} not found for D1 database ${databaseId}`);
+    const previous = `bm_mock_${this.bookmarkCounter++}`;
+    this.bookmarks.set(previous, { key, state: structuredClone(this.databases.get(key)!) });
+    this.databases.set(key, structuredClone(snap.state));
+    return { previous_bookmark: previous };
+  }
+
+  private databaseKey(accountId: string, databaseId: string): string | null {
+    for (const [k, v] of this.databases.entries()) {
+      if (k.startsWith(`${accountId}:`) && (v.uuid === databaseId || v.name === databaseId)) return k;
+    }
+    return null;
   }
 
   async putStoredGraph(
@@ -2588,6 +2661,13 @@ export function createByocProvisioner(options: {
         );
       }
 
+      // An existing database gets a Time Travel bookmark before its first pending migration, kept with the deployment so a
+      // rollback can restore the data. If the bookmark cannot be taken, the deploy stops here, before any migration runs.
+      let preMigrationBookmark: string | undefined;
+      if (existingDbState && (input.migrations ?? []).some((mig) => !appliedMigrationNames.has(mig.name))) {
+        preMigrationBookmark = await apiClient.getD1Bookmark(target.accountId, token, dbState.uuid);
+        await input.onPreMigrationBookmark?.({ databaseId: dbState.uuid, bookmark: preMigrationBookmark });
+      }
       for (const mig of input.migrations ?? []) {
         if (!appliedMigrationNames.has(mig.name)) {
           await apiClient.applyDatabaseMigration(
@@ -2831,6 +2911,7 @@ export function createByocProvisioner(options: {
         mutatingCallCount,
         appliedActions,
         steps,
+        ...(preMigrationBookmark ? { preMigrationBookmark } : {}),
         deployedAt: new Date().toISOString(),
       };
     },

@@ -225,6 +225,8 @@ export interface Client {
   getAccountSubdomain(): Promise<string | null>;
 
   listDatabases(name?: string): Promise<Array<{ uuid: string; name: string }>>;
+  /** One database by its uuid (the live name, read before acting on a database named only by id). */
+  getDatabase(id: string): Promise<{ uuid: string; name: string }>;
   createDatabase(name: string): Promise<{ uuid: string; name: string }>;
   deleteDatabase(id: string): Promise<void>;
   /** One statement list sent as one atomic batch. */
@@ -473,6 +475,11 @@ export function createClient(options: ClientOptions): Client {
       // ?name= is a search (not an exact match, not a prefix), so callers compare names themselves.
       const r = await listAll<{ uuid: string; name: string }>("/d1/database", (d) => d.uuid, name ? { name } : {});
       return r.map((d) => ({ uuid: d.uuid, name: d.name }));
+    },
+    async getDatabase(id) {
+      const r = must(await send<{ uuid?: string; name?: string }>({ method: "GET", path: `/d1/database/${encodeURIComponent(id)}`, display: "/accounts/{account}/d1/database/{id}" }), "/d1/database/{id}");
+      if (typeof r.uuid !== "string" || typeof r.name !== "string") throw new CloudflareMalformedError("GET", "/d1/database/{id}", 200, "the database has no uuid or name");
+      return { uuid: r.uuid, name: r.name };
     },
     async createDatabase(name) {
       const r = must(await send<{ uuid?: string; name?: string }>({ method: "POST", path: "/d1/database", json: { name } }), "/d1/database");

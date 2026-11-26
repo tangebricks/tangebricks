@@ -474,6 +474,16 @@ export function createHttpCloudflareApiClient(options: HttpControlPlaneOptions):
       ]);
     },
 
+    async getD1Bookmark(accountId, token, databaseId) {
+      const c = restClient(accountId, token);
+      return c.getD1Bookmark(await databaseIdOf(c, databaseId));
+    },
+
+    async restoreD1(accountId, token, databaseId, bookmark) {
+      const c = restClient(accountId, token);
+      return c.restoreD1(await databaseIdOf(c, databaseId), bookmark);
+    },
+
     async putStoredGraph(accountId, token, databaseId, workspaceId, graphId, graphJson) {
       const c = restClient(accountId, token);
       const id = await databaseIdOf(c, databaseId);

@@ -221,6 +221,11 @@ export function createFakeCloudflare(options: FakeOptions) {
       const list = [...databases.values()].filter((d) => wanted === null || d.name.includes(wanted)).map((d) => ({ uuid: d.uuid, name: d.name, created_at: d.created, version: "production" }));
       return paged(list, url);
     }
+    if ((m = path.match(/^\/d1\/database\/([^/]+)$/)) && method === "GET") {
+      const db = databases.get(m[1]!);
+      if (!db) return failure(404, 7404, "database not found");
+      return json(envelope({ uuid: db.uuid, name: db.name, created_at: db.created, version: "production" }));
+    }
     if ((m = path.match(/^\/d1\/database\/([^/]+)$/)) && method === "DELETE") {
       if (!databases.has(m[1]!)) return failure(404, 7404, "database not found");
       databases.get(m[1]!)!.sqlite.close();

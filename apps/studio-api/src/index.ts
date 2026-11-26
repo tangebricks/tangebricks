@@ -10438,6 +10438,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     liveWithoutRedeploy?: boolean;
     noChanges?: boolean;
     reusedCachedBuild?: boolean;
+    /** The D1 Time Travel bookmark taken just before this deployment applied its first pending migration on an existing database. */
+    preMigrationBookmark?: string;
   }
 
   async function buildEnvironmentPlanContext(params: {
@@ -11425,6 +11427,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       ...(realUpload ? { workerBindings: realUpload.workerBindings, trustedVersionIds: (ctx.deployedState as PersistedDeployedState).studioVersionIds ?? [] } : {}),
       envState,
       _actionOverride: params.actionOverride ?? "apply",
+      // The bookmark is kept before any migration runs, so a deploy that fails after migrating still leaves a restore point.
+      onPreMigrationBookmark: async ({ databaseId, bookmark }) =>
+        recordRestorePoint(db, { project, envName, deployId, databaseId, bookmark }),
       onStep: async (step) => {
         doneSteps.push({ stepName: step.stepName, action: step.action, resourceName: step.resourceName });
         const stepId = `dstep_${generateUuidV7()}`;
@@ -11545,6 +11550,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       databaseId: applyResult.databaseId,
       deployedAt: applyResult.deployedAt,
       deployedBy: caller.author.id,
+      ...(applyResult.preMigrationBookmark ? { preMigrationBookmark: applyResult.preMigrationBookmark } : {}),
       rollbackFromDeploymentId: null,
       lastAction: applyResult.action,
       liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
@@ -13593,9 +13599,65 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     confirmDestructive: z.boolean().optional(),
     confirmedMigrationNames: z.array(z.string()).optional(),
     dryRun: z.boolean().optional(),
+    /** Opt-in: also restore the environment's D1 to the bookmark taken before the first migration after the target deployment. */
+    restoreData: z.boolean().optional(),
     orgId: z.string().min(1).max(128).optional(),
     approvalId: z.string().min(1).max(128).optional(),
   });
+
+  /** D1 restore points: one row per pre-migration bookmark, written as soon as it is taken (before any migration runs). */
+  async function ensureRestorePointTable(db: D1Like): Promise<void> {
+    await db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS deploy_restore_points (
+           project_id TEXT NOT NULL,
+           env_name TEXT NOT NULL,
+           deploy_id TEXT NOT NULL,
+           database_id TEXT NOT NULL,
+           bookmark TEXT NOT NULL,
+           created_at TEXT NOT NULL
+         )`,
+      )
+      .run();
+  }
+
+  async function recordRestorePoint(
+    db: D1Like,
+    p: { project: string; envName: string; deployId: string; databaseId: string; bookmark: string },
+  ): Promise<void> {
+    await ensureRestorePointTable(db);
+    await db
+      .prepare(
+        `INSERT INTO deploy_restore_points (project_id, env_name, deploy_id, database_id, bookmark, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(p.project, p.envName, p.deployId, p.databaseId, p.bookmark, new Date().toISOString())
+      .run();
+  }
+
+  /**
+   * The restore point for a data rollback to `target`: the first bookmark this environment took, after the target
+   * deployment, before applying a migration (from any deploy, including one that failed after migrating). Null when none.
+   */
+  async function findRestorePoint(
+    db: D1Like,
+    project: string,
+    envName: string,
+    target: { deploy_id: string; created_at: string },
+  ): Promise<{ deploymentId: string; createdAt: string; bookmark: string; databaseId: string } | null> {
+    await ensureRestorePointTable(db);
+    const row = await db
+      .prepare(
+        `SELECT deploy_id, database_id, bookmark, created_at
+         FROM deploy_restore_points
+         WHERE project_id = ? AND env_name = ? AND deploy_id != ? AND created_at >= ?
+         ORDER BY created_at ASC, rowid ASC
+         LIMIT 1`,
+      )
+      .bind(project, envName, target.deploy_id, target.created_at)
+      .first<{ deploy_id: string; database_id: string; bookmark: string; created_at: string }>();
+    return row ? { deploymentId: row.deploy_id, createdAt: row.created_at, bookmark: row.bookmark, databaseId: row.database_id } : null;
+  }
 
   app.post(
     "/api/projects/:project/environments/:envName/rollback",
@@ -13845,6 +13907,35 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
       const rollbackFromDeploymentId = currentDeployRow?.deploy_id ?? null;
 
+      // Data restore is opt-in. Without a bookmark taken after the target deployment there is nothing to restore to, and
+      // nothing is changed.
+      const restoreData = bodyData.restoreData === true;
+      const restorePoint = restoreData
+        ? await findRestorePoint(db, project, envName, targetRow)
+        : null;
+      if (restoreData && !restorePoint) {
+        await recordStudioAuditLog(db, {
+          orgId: authz.orgId,
+          projectId: project,
+          actorType: resolved.caller.author.type,
+          actorId: resolved.caller.author.id,
+          action: "environment.rollback",
+          status: "validation_failed",
+          targetRef: `${project}:${envName}`,
+          details: { envName, targetDeploymentId: targetRow.deploy_id, restoreData: true, code: "NO_RESTORE_POINT" },
+        });
+        return c.json(
+          {
+            ok: false,
+            error: {
+              code: "NO_RESTORE_POINT",
+              message: `No D1 restore point exists after deployment ${targetRow.deploy_id}: no later deployment of ${envName} applied a migration to an existing database. Nothing was changed; roll back without restoreData to revert the code only.`,
+            },
+          },
+          409,
+        );
+      }
+
       if (bodyData.dryRun === true) {
         return c.json(
           {
@@ -13860,6 +13951,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             reusedCachedBuild: true,
             assembleCount: getProjectAssembleCount(project),
             plan: rollbackPlan,
+            ...(restorePoint
+              ? { restoreData: { fromDeploymentId: restorePoint.deploymentId, takenAt: restorePoint.createdAt } }
+              : {}),
           },
           200,
         );
@@ -13932,9 +14026,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
               destructiveWarnings: rollbackPlan.d1.destructiveWarnings,
               confirmDestructive: bodyData.confirmDestructive === true,
               confirmedMigrationNames: [...(bodyData.confirmedMigrationNames ?? [])].sort(),
+              // A data restore is another plan: an approval for the code rollback alone does not cover it.
+              ...(restorePoint ? { restoreData: true, restorePointDeploymentId: restorePoint.deploymentId } : {}),
             }),
           ),
           summary: {
+            ...(restorePoint ? { restoreData: true, restorePointDeploymentId: restorePoint.deploymentId } : {}),
             destructiveWarnings: rollbackPlan.d1.destructiveWarnings,
             confirmDestructive: bodyData.confirmDestructive === true,
             confirmedMigrationNames: bodyData.confirmedMigrationNames ?? [],
@@ -13982,6 +14079,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       let applyResult!: Awaited<ReturnType<typeof provisioner.apply>>;
       let rollbackSecretHashes: Record<string, string> | undefined;
       let rollbackStudioVersionIds: string[] | undefined;
+      // restoreData: the code is rolled back first; D1 is restored only after that succeeded.
+      let dataRestore: { bookmark: string; previousBookmark: string; databaseId: string; fromDeploymentId: string } | null = null;
+      const rollbackToken = async (action: string) => {
+        const plainToken = await tokenResolver(envRecord.target.tokenRef, { actor: resolved.caller.author.id, deployId, action });
+        fakeControlPlane?.registerToken({ token: plainToken, accountId: envRecord.target.accountId, accountName: envRecord.accountName });
+        return plainToken;
+      };
       try {
       const liveWorker = fakeControlPlane
         ? await fakeControlPlane.getWorkerScript(
@@ -14121,6 +14225,22 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           hideValues: [c.env.PX_TELEMETRY_SECRET ?? "", ...Object.values(rollbackUpload?.secrets ?? {})],
           action: "environment.rollback",
         });
+      }
+
+      // The code is rolled back; now the data. A failed restore leaves D1 as it was and is reported as such below.
+      let restoreFailure: string | null = null;
+      if (restorePoint) {
+        try {
+          const restored = await controlPlane.restoreD1(
+            envRecord.target.accountId,
+            await rollbackToken("restore_d1"),
+            restorePoint.databaseId,
+            restorePoint.bookmark,
+          );
+          dataRestore = { bookmark: restorePoint.bookmark, previousBookmark: restored.previous_bookmark, databaseId: restorePoint.databaseId, fromDeploymentId: restorePoint.deploymentId };
+        } catch (error) {
+          restoreFailure = createRedactor([c.env.PX_TELEMETRY_SECRET ?? ""].filter((v) => v.length > 0))(error instanceof Error ? error.message : String(error));
+        }
       }
 
       // Ensure the fake's metadata matches the restored target revision state (the real account was written by apply)
@@ -14293,8 +14413,54 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           revision: targetRevision,
           buildHash: targetRow.build_hash,
           reusedCachedBuild: true,
+          ...(dataRestore
+            ? {
+                restoreData: true,
+                restorePointDeploymentId: dataRestore.fromDeploymentId,
+                bookmark: dataRestore.bookmark,
+                previous_bookmark: dataRestore.previousBookmark,
+              }
+            : {}),
+          ...(restoreFailure && restorePoint
+            ? { restoreData: true, dataRestored: false, restorePointDeploymentId: restorePoint.deploymentId }
+            : {}),
         },
       });
+
+      if (restoreFailure && restorePoint) {
+        await recordStudioAuditLog(db, {
+          orgId: authz.orgId,
+          projectId: project,
+          actorType: resolved.caller.author.type,
+          actorId: resolved.caller.author.id,
+          action: "environment.rollback.restore_data",
+          status: "failed",
+          targetRef: `${project}:${envName}`,
+          details: {
+            deployId,
+            targetDeploymentId: targetRow.deploy_id,
+            restorePointDeploymentId: restorePoint.deploymentId,
+            bookmark: restorePoint.bookmark,
+            codeRolledBack: true,
+            dataRestored: false,
+            message: restoreFailure,
+          },
+        });
+        return c.json(
+          {
+            ok: false,
+            error: {
+              code: "DATA_RESTORE_FAILED",
+              message: `The code was rolled back to r${targetRevision} (deployment ${deployId}), but the data was not restored: ${restoreFailure}. D1 is as it was before the rollback; retry with restoreData to restore it.`,
+              codeRolledBack: true,
+              dataRestored: false,
+              deployId,
+              restorePointDeploymentId: restorePoint.deploymentId,
+            },
+          },
+          502,
+        );
+      }
 
       const updatedEnvs = await listProjectDeployEnvironments(db, {
         orgId: authz.orgId,
@@ -14341,6 +14507,17 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
           steps: applyResult.steps,
           plan: rollbackPlan,
+          // restoreData: D1 is back at the bookmark; previous_bookmark restores the data as it was just before (the undo token).
+          ...(dataRestore
+            ? {
+                restoreData: {
+                  restored: true,
+                  fromDeploymentId: dataRestore.fromDeploymentId,
+                  bookmark: dataRestore.bookmark,
+                },
+                previous_bookmark: dataRestore.previousBookmark,
+              }
+            : {}),
           deployment:
             enrichedEnv.deployments.find((d) => d.deployId === deployId) ?? {
               deployId,
