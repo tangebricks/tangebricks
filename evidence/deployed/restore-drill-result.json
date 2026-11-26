@@ -1,0 +1,66 @@
+{
+  "startedAt": "2026-11-26T17:22:23.678Z",
+  "measuredAt": "2026-11-26T17:22:27.855Z",
+  "gitSha": "7ec524288b52f139f280bda8c69e66a97a3c78f4",
+  "mode": "target",
+  "target": "cephlow-staging",
+  "durationsMs": {
+    "preflight": 752.23,
+    "fingerprint": 503.17,
+    "createCanary": 122.23,
+    "bookmark": 472.86,
+    "destroy": 144.31,
+    "restore": 1306.66,
+    "verify": 378.23,
+    "dropCanary": 132.37,
+    "total": 4176.5
+  },
+  "steps": [
+    {
+      "name": "preflight",
+      "durationMs": 752.23
+    },
+    {
+      "name": "fingerprint",
+      "durationMs": 503.17
+    },
+    {
+      "name": "createCanary",
+      "durationMs": 122.23
+    },
+    {
+      "name": "bookmark",
+      "durationMs": 472.86
+    },
+    {
+      "name": "destroy",
+      "durationMs": 144.31
+    },
+    {
+      "name": "restore",
+      "durationMs": 1306.66
+    },
+    {
+      "name": "verify",
+      "durationMs": 378.23
+    },
+    {
+      "name": "dropCanary",
+      "durationMs": 132.37
+    }
+  ],
+  "tablesFingerprinted": 25,
+  "verification": {
+    "canaryRestored": true,
+    "fingerprintMatches": true,
+    "canaryDropped": true
+  },
+  "success": true,
+  "provenance": {
+    "generatedAt": "2026-11-26T17:22:27.904Z",
+    "gitSha": "7ec524288b52f139f280bda8c69e66a97a3c78f4",
+    "gitDirty": false,
+    "generator": "scripts/restore-drill.ts",
+    "inputKind": "measured"
+  }
+}

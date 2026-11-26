@@ -444,6 +444,19 @@ export interface CloudflareApiClient {
     databaseId: string,
     migration: { name: string; sql: string; sha256: string },
   ): Promise<void>;
+  /** A D1 Time Travel bookmark for the database's current state (taken before a deploy applies pending migrations). */
+  getD1Bookmark(
+    accountId: string,
+    token: string,
+    databaseId: string,
+  ): Promise<string>;
+  /** Restores the database to a bookmark; the answer's previous_bookmark undoes the restore. */
+  restoreD1(
+    accountId: string,
+    token: string,
+    databaseId: string,
+    bookmark: string,
+  ): Promise<{ previous_bookmark: string }>;
   /** Stores a graph row for one workspace; the Studio deploy path writes app-wide graphs, under APP_WORKSPACE. */
   putStoredGraph(
     accountId: string,
@@ -731,6 +744,11 @@ export interface ProvisionerApplyInput extends ProvisionerPlanInput {
   schedules?: Array<Record<string, unknown> | string>;
   secrets?: Record<string, string>;
   onStep?: (step: ProvisionerDeploymentStep) => void | Promise<void>;
+  /**
+   * Called with the pre-migration bookmark as soon as it is taken, before any migration runs, so the caller can keep it
+   * durably even if the deploy fails later. If it throws, the deploy stops before any migration.
+   */
+  onPreMigrationBookmark?: (info: { databaseId: string; bookmark: string }) => void | Promise<void>;
 }
 
 export interface ProvisionerApplyResult {
@@ -754,6 +772,8 @@ export interface ProvisionerApplyResult {
   appliedActions: ProvisionerResourceAction[];
   steps: ProvisionerDeploymentStep[];
   bindings?: Record<string, string>;
+  /** The D1 Time Travel bookmark taken just before the first pending migration on an existing database (absent when none ran). */
+  preMigrationBookmark?: string;
   deployedAt: string;
 }
 
@@ -970,6 +990,8 @@ export class MockCloudflareControlPlane implements CloudflareApiClient {
   private versionCounter = 1;
   private dbCounter = 1;
   private queueCounter = 1;
+  private bookmarkCounter = 1;
+  private readonly bookmarks = new Map<string, { key: string; state: CloudflareD1DatabaseState }>();
 
   get calls(): ReadonlyArray<CloudflareApiCallRecord> {
     return this.callLog;
@@ -1431,6 +1453,57 @@ export class MockCloudflareControlPlane implements CloudflareApiClient {
         }
       }
     }
+  }
+
+  async getD1Bookmark(
+    accountId: string,
+    token: string,
+    databaseId: string,
+  ): Promise<string> {
+    this.assertAuthorized(
+      accountId,
+      token,
+      "D1: Edit",
+      "GET",
+      `/accounts/${accountId}/d1/database/${databaseId}/time_travel/bookmark`,
+      "get_d1_bookmark",
+    );
+    const key = this.databaseKey(accountId, databaseId);
+    if (!key) throw new Error(`D1 database ${databaseId} not found`);
+    const bookmark = `bm_mock_${this.bookmarkCounter++}`;
+    this.bookmarks.set(bookmark, { key, state: structuredClone(this.databases.get(key)!) });
+    return bookmark;
+  }
+
+  async restoreD1(
+    accountId: string,
+    token: string,
+    databaseId: string,
+    bookmark: string,
+  ): Promise<{ previous_bookmark: string }> {
+    this.assertAuthorized(
+      accountId,
+      token,
+      "D1: Edit",
+      "POST",
+      `/accounts/${accountId}/d1/database/${databaseId}/time_travel/restore`,
+      "restore_d1",
+    );
+    const key = this.databaseKey(accountId, databaseId);
+    if (!key) throw new Error(`D1 database ${databaseId} not found`);
+    const snap = this.bookmarks.get(bookmark);
+    if (!snap || snap.key !== key) throw new Error(`bookmark ${bookmark} not found for D1 database ${databaseId}`);
+    const previous = `bm_mock_${this.bookmarkCounter++}`;
+    this.bookmarks.set(previous, { key, state: structuredClone(this.databases.get(key)!) });
+    this.databases.set(key, structuredClone(snap.state));
+    return { previous_bookmark: previous };
+  }
+
+  private databaseKey(accountId: string, databaseId: string): string | null {
+    for (const [k, v] of this.databases.entries()) {
+      if (k.startsWith(`${accountId}:`) && (v.uuid === databaseId || v.name === databaseId)) return k;
+    }
+    return null;
   }
 
   async putStoredGraph(
@@ -2588,6 +2661,13 @@ export function createByocProvisioner(options: {
         );
       }
 
+      // An existing database gets a Time Travel bookmark before its first pending migration, kept with the deployment so a
+      // rollback can restore the data. If the bookmark cannot be taken, the deploy stops here, before any migration runs.
+      let preMigrationBookmark: string | undefined;
+      if (existingDbState && (input.migrations ?? []).some((mig) => !appliedMigrationNames.has(mig.name))) {
+        preMigrationBookmark = await apiClient.getD1Bookmark(target.accountId, token, dbState.uuid);
+        await input.onPreMigrationBookmark?.({ databaseId: dbState.uuid, bookmark: preMigrationBookmark });
+      }
       for (const mig of input.migrations ?? []) {
         if (!appliedMigrationNames.has(mig.name)) {
           await apiClient.applyDatabaseMigration(
@@ -2831,6 +2911,7 @@ export function createByocProvisioner(options: {
         mutatingCallCount,
         appliedActions,
         steps,
+        ...(preMigrationBookmark ? { preMigrationBookmark } : {}),
         deployedAt: new Date().toISOString(),
       };
     },
@@ -5050,243 +5131,8 @@ export function validateDeployPlan(plan: DeployPlan): {
   return { valid: true, blockers: [] };
 }
 
-export interface OutOfBandDriftItem {
-  resource: "worker" | "d1" | "queue" | "cron";
-  expected: string;
-  actual: string | null;
-  message: string;
-}
-
-export interface BlueprintDriftReport {
-  hasCodeDrift: boolean;
-  hasGraphDrift: boolean;
-  deployedRev: number;
-  currentRev: number;
-  deployedBuildHash?: string | null;
-  currentBuildHash?: string;
-  deployedCodeHash?: string | null;
-  currentCodeHash?: string;
-  deployedGraphHash?: string | null;
-  currentGraphHash?: string;
-}
-
-export interface DriftReport {
-  inSync: boolean;
-  blueprintDrift: BlueprintDriftReport;
-  outOfBandDrift: OutOfBandDriftItem[];
-  checkedAt: string;
-}
-
-export interface ExpectedDeploymentState {
-  project: string;
-  deployedRev?: number | null;
-  buildHash?: string | null;
-  codeHash?: string | null;
-  graphHash?: string | null;
-  appliedMigrations?: string[];
-  queues?: string[];
-  cronTriggers?: string[];
-  scriptName?: string;
-  databaseName?: string;
-  /** The hash of the Worker bundle actually uploaded (real client). When given, the account's Worker is compared against it instead of codeHash. */
-  liveCodeHash?: string | null;
-  /** Version ids Studio made itself (see GetScriptOptions). */
-  trustedVersionIds?: readonly string[];
-}
-
-export interface CurrentBlueprintHashes {
-  currentRev: number;
-  buildHash?: string;
-  codeHash: string;
-  graphHash: string;
-}
-
-export async function checkEnvironmentDrift(
-  rawTarget: DeployTarget,
-  expectedDeployment: ExpectedDeploymentState,
-  currentBlueprintHashes: CurrentBlueprintHashes,
-  apiClient?: CloudflareApiClient,
-  options?: {
-    token?: string;
-    resolveToken?: TokenResolver;
-    actor?: string;
-    deployId?: string;
-  },
-): Promise<DriftReport> {
-  const target = DeployTargetSchema.parse(rawTarget);
-  const { scriptName: defaultScriptName, databaseName: defaultDbName } =
-    deriveEnvironmentResourceNames(expectedDeployment.project, target);
-  const scriptName = expectedDeployment.scriptName ?? defaultScriptName;
-  const databaseName = expectedDeployment.databaseName ?? defaultDbName;
-
-  const hasBeenDeployed = Boolean(
-    expectedDeployment.deployedRev !== null &&
-      expectedDeployment.deployedRev !== undefined &&
-      (expectedDeployment.buildHash || expectedDeployment.codeHash),
-  );
-
-  const deployedRev = expectedDeployment.deployedRev ?? 0;
-  const currentRev = currentBlueprintHashes.currentRev;
-  const expectedCodeHash =
-    expectedDeployment.codeHash ?? expectedDeployment.buildHash ?? null;
-  const expectedGraphHash = expectedDeployment.graphHash ?? null;
-
-  const hasCodeDrift = hasBeenDeployed
-    ? Boolean(
-        expectedCodeHash &&
-          expectedCodeHash !== currentBlueprintHashes.codeHash,
-      )
-    : false;
-  const hasGraphDrift = hasBeenDeployed
-    ? Boolean(
-        expectedGraphHash &&
-          expectedGraphHash !== currentBlueprintHashes.graphHash,
-      )
-    : false;
-
-  const outOfBandDrift: OutOfBandDriftItem[] = [];
-
-  if (apiClient && hasBeenDeployed && target.type === "byoc") {
-    let token = options?.token ?? null;
-    if (!token && options?.resolveToken) {
-      token = await options.resolveToken(target.tokenRef, {
-        actor: options.actor ?? "studio_drift_checker",
-        deployId: options.deployId ?? "drift_check",
-        action: "checkDrift",
-      });
-    }
-    if (!token && apiClient instanceof MockCloudflareControlPlane) {
-      token = apiClient.findActiveTokenForAccount(target.accountId);
-    }
-
-    if (token) {
-      const liveScript = await apiClient.getScript(
-        target.accountId,
-        token,
-        scriptName,
-        expectedDeployment.trustedVersionIds ? { trustedVersionIds: expectedDeployment.trustedVersionIds } : undefined,
-      );
-      if (expectedCodeHash) {
-        if (!liveScript) {
-          outOfBandDrift.push({
-            resource: "worker",
-            expected: expectedCodeHash,
-            actual: null,
-            message: `Worker script "${scriptName}" was deleted or is missing in Cloudflare account (expected ${expectedCodeHash.slice(0, 12)}).`,
-          });
-        } else {
-          const liveScriptHash = liveScript.codeHash ?? liveScript.sha256;
-          const expectedLive = expectedDeployment.liveCodeHash ?? expectedCodeHash;
-          if (
-            liveScript.sha256 !== expectedLive &&
-            liveScriptHash !== expectedLive
-          ) {
-            outOfBandDrift.push({
-              resource: "worker",
-              expected: expectedLive,
-              actual: liveScript.sha256,
-              message: `Worker script "${scriptName}" hash modified out-of-band in Cloudflare (expected ${expectedCodeHash.slice(0, 12)}, found ${liveScript.sha256.slice(0, 12)}).`,
-            });
-          }
-        }
-      }
-
-      if (expectedDeployment.appliedMigrations !== undefined) {
-        const liveDb = apiClient.getDatabase
-          ? await apiClient.getDatabase(target.accountId, token, databaseName)
-          : null;
-        const expectedMigs = expectedDeployment.appliedMigrations;
-        if (!liveDb && expectedMigs.length > 0) {
-          outOfBandDrift.push({
-            resource: "d1",
-            expected: expectedMigs.join(", "),
-            actual: null,
-            message: `D1 database "${databaseName}" is missing in Cloudflare account.`,
-          });
-        } else if (liveDb) {
-          const liveMigs = liveDb.appliedMigrations.map((m) => m.name);
-          if (expectedMigs.join(",") !== liveMigs.join(",")) {
-            outOfBandDrift.push({
-              resource: "d1",
-              expected: expectedMigs.join(", ") || "(none)",
-              actual: liveMigs.join(", ") || null,
-              message: `D1 _px_migrations state on "${databaseName}" drifted out-of-band (expected [${expectedMigs.join(", ")}], found [${liveMigs.join(", ")}]).`,
-            });
-          }
-        }
-      }
-
-      if (
-        expectedDeployment.queues &&
-        expectedDeployment.queues.length > 0 &&
-        apiClient.listQueues
-      ) {
-        const liveQueues = (
-          await apiClient.listQueues(target.accountId, token)
-        ).map((q) => q.queueName);
-        const missingQueues = expectedDeployment.queues.filter(
-          (q) => !liveQueues.includes(q),
-        );
-        if (missingQueues.length > 0) {
-          outOfBandDrift.push({
-            resource: "queue",
-            expected: expectedDeployment.queues.join(", "),
-            actual: liveQueues.length > 0 ? liveQueues.join(", ") : null,
-            message: `Cloudflare Queue(s) missing out-of-band: ${missingQueues.join(", ")}.`,
-          });
-        }
-      }
-
-      if (
-        expectedDeployment.cronTriggers &&
-        expectedDeployment.cronTriggers.length > 0
-      ) {
-        const liveCrons =
-          apiClient instanceof MockCloudflareControlPlane
-            ? await apiClient.getCronTriggers(
-                target.accountId,
-                token,
-                scriptName,
-              )
-            : (liveScript?.cronTriggers ?? []);
-        const expectedSorted = [...expectedDeployment.cronTriggers]
-          .sort()
-          .join(", ");
-        const actualSorted = [...liveCrons].sort().join(", ");
-        if (expectedSorted !== actualSorted) {
-          outOfBandDrift.push({
-            resource: "cron",
-            expected: expectedSorted,
-            actual: actualSorted || null,
-            message: `Cron triggers on "${scriptName}" drifted out-of-band (expected [${expectedSorted}], found [${actualSorted || "none"}]).`,
-          });
-        }
-      }
-    }
-  }
-
-  const inSync =
-    !hasCodeDrift && !hasGraphDrift && outOfBandDrift.length === 0;
-
-  return {
-    inSync,
-    blueprintDrift: {
-      hasCodeDrift,
-      hasGraphDrift,
-      deployedRev,
-      currentRev,
-      deployedBuildHash: expectedDeployment.buildHash ?? null,
-      currentBuildHash:
-        currentBlueprintHashes.buildHash ?? currentBlueprintHashes.codeHash,
-      deployedCodeHash: expectedDeployment.codeHash ?? null,
-      currentCodeHash: currentBlueprintHashes.codeHash,
-      deployedGraphHash: expectedDeployment.graphHash ?? null,
-      currentGraphHash: currentBlueprintHashes.graphHash,
-    },
-    outOfBandDrift,
-    checkedAt: new Date().toISOString(),
-  };
-}
+export { checkEnvironmentDrift } from "./drift.ts";
+export type { OutOfBandDriftItem, BlueprintDriftReport, DriftReport, ExpectedDeploymentState, CurrentBlueprintHashes } from "./drift.ts";
 
 export interface RollbackPlanSnapshot {
   deployId?: string;

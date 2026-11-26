@@ -10,6 +10,9 @@ import {
 } from "../src/provisioner/index.ts";
 import type { DeployInput, Migration } from "../src/provisioner/index.ts";
 import { createFakeCloudflare } from "./support/fake-cloudflare.ts";
+import { createByocProvisioner, createHttpCloudflareApiClient } from "../src/index.ts";
+import type { DeployTarget, HttpCloudflareApiClient } from "../src/index.ts";
+import { createRequestBudget } from "../src/provisioner/index.ts";
 import { runRestore } from "../../../scripts/poc-restore.ts";
 
 const TOKEN = "cfut_Zq8rLm3VxN2pTb7YkWd4HsJc9GaE5uRo6QiXf1BvPn0AyMt";
@@ -244,5 +247,75 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
 
     // When applied_at == started_at, lostMigrations must include 0002_mutate.sql (reverted by restoring before v2)
     expect(dryRun.lostMigrations).toEqual(["0002_mutate.sql"]);
+  });
+});
+
+describe("Studio deploy path (createByocProvisioner + HTTP client): restore point before migrations (story 1.3)", () => {
+  const target: DeployTarget = { type: "byoc", accountId: ACCOUNT, tokenRef: "tok_story13_reference", envName: "preview" };
+  const DB = "px-s13-proj-preview-db";
+  const m1 = { name: "0001_init.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY);", sha256: "m1" };
+  const m2 = { name: "0002_notes.sql", sql: "CREATE TABLE notes (id TEXT PRIMARY KEY);", sha256: "m2" };
+  function studioSetup() {
+    const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT, tokenGroups: ["Account Settings Read", "Workers Scripts Write", "D1 Write", "Queues Write"] });
+    const cp = createHttpCloudflareApiClient({ fetch: fake.fetch, sleep: async () => {}, budgetFor: () => createRequestBudget({ sleep: async () => {} }) });
+    return { fake, cp };
+  }
+  const apply = (cp: HttpCloudflareApiClient, version: string, migrations: Array<typeof m1>) =>
+    createByocProvisioner({ apiClient: cp, resolveToken: async () => TOKEN }).apply({
+      target,
+      project: "s13-proj",
+      buildHash: `build_${version}`,
+      codeHash: `code_${version}`,
+      graphHash: "graph_1",
+      bundle: { code: `export default { fetch() { return new Response(${JSON.stringify(version)}); } };`, sha256: `code_${version}` },
+      migrations,
+      graphs: {},
+      secrets: {},
+      workerBindings: [{ type: "plain_text", name: "PX_ENVIRONMENT", text: "preview" }],
+    } as never);
+
+  test("a migration on an existing database is preceded by a bookmark; restoring to it brings the database back", async () => {
+    const { fake, cp } = studioSetup();
+    const first = await apply(cp, "v1", [m1]);
+    // the first deploy creates the database: nothing to restore to
+    expect(first.preMigrationBookmark).toBeUndefined();
+    fake.exec(DB, "INSERT INTO items (id) VALUES ('before-v2')");
+
+    const second = await apply(cp, "v2", [m1, m2]);
+    expect(typeof second.preMigrationBookmark).toBe("string");
+    const bookmarkAt = fake.requests.findIndex((r) => r.path.endsWith("/time_travel/bookmark"));
+    expect(bookmarkAt).toBeGreaterThan(-1);
+    // the bookmark is read before the batch that applies 0002
+    const migrationBatch = fake.bodies.findIndex((b) => b.includes("CREATE TABLE notes"));
+    expect(bookmarkAt).toBeLessThan(migrationBatch);
+    fake.exec(DB, "INSERT INTO items (id) VALUES ('after-v2')");
+
+    const restored = await cp.restoreD1(ACCOUNT, TOKEN, DB, second.preMigrationBookmark!);
+    expect(typeof restored.previous_bookmark).toBe("string");
+    const tables = fake.state().databases.find((d) => d.name === DB)!.tables;
+    expect(tables).not.toContain("notes");
+    expect(fake.rows(DB, "SELECT id FROM items ORDER BY id")).toEqual([{ id: "before-v2" }]);
+    expect(fake.rows(DB, "SELECT name FROM _projectx_migrations ORDER BY name")).toEqual([{ name: "0001_init.sql" }]);
+
+    // previous_bookmark undoes the restore
+    await cp.restoreD1(ACCOUNT, TOKEN, DB, restored.previous_bookmark);
+    expect(fake.rows(DB, "SELECT id FROM items ORDER BY id")).toEqual([{ id: "after-v2" }, { id: "before-v2" }]);
+  });
+
+  test("a redeploy with no pending migration records no bookmark", async () => {
+    const { fake, cp } = studioSetup();
+    await apply(cp, "v1", [m1]);
+    const again = await apply(cp, "v2", [m1]);
+    expect(again.preMigrationBookmark).toBeUndefined();
+    expect(fake.requests.some((r) => r.path.endsWith("/time_travel/bookmark"))).toBe(false);
+  });
+
+  test("when the bookmark cannot be taken the deploy stops before any migration", async () => {
+    const { fake, cp } = studioSetup();
+    await apply(cp, "v1", [m1]);
+    fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/time_travel/bookmark"), times: 10, respond: { status: 500, body: { success: false, errors: [{ code: 7500, message: "bookmark unavailable" }] } } });
+    await expect(apply(cp, "v2", [m1, m2])).rejects.toThrow();
+    expect(fake.state().databases.find((d) => d.name === DB)!.tables).not.toContain("notes");
+    expect(fake.rows(DB, "SELECT name FROM _projectx_migrations")).toEqual([{ name: "0001_init.sql" }]);
   });
 });

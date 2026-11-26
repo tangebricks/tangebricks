@@ -311,7 +311,9 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
     expect(args[args.indexOf("--max-budget-usd") + 1]).toBe("10");
     expect(cli.inputs[0]!.prompt).toContain(FIXTURE_BRIEF.trim());
     expect(cli.inputs[0]!.prompt).toContain(FIXTURE_ANSWERS.trim());
-    expect(cli.inputs[0]!.timeoutMs).toBe(45 * 60 * 1000);
+    // the first call gets what is left of the 45-minute cap; a millisecond may already have passed
+    expect(cli.inputs[0]!.timeoutMs).toBeLessThanOrEqual(45 * 60 * 1000);
+    expect(cli.inputs[0]!.timeoutMs).toBeGreaterThan(45 * 60 * 1000 - 5_000);
 
     // the CLI's numbers, as it reported them
     expect(record.cli).toMatchObject({ version: "9.9.9 (Fake Claude Code)", modelIds: ["claude-fake-model-20261126"], modelIdSource: "modelUsage", costUsd: 0.42, costLabel: "client-estimated", numTurns: 12, missingFields: [] });

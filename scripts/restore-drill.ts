@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseEnv } from "node:util";
 import {
   createClient,
   loadCredentials,
@@ -95,6 +96,7 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
   }
 
   // Resolve client
+  let liveCredentials: { token: string; accountId: string } | null = null;
   let client = options.client;
   if (!client) {
     if (mode === "fake") {
@@ -114,12 +116,14 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
         }
       }
       const credentials = loadCredentials(env);
+      liveCredentials = credentials;
       client = createClient({ credentials, fetch: (req) => fetch(req) });
     }
   }
 
   const steps: RestoreDrillStep[] = [];
   const durationsMs: Record<string, number> = {};
+  const startedAt = new Date().toISOString();
   const drillStartTime = performance.now();
 
   async function recordStep<T>(name: string, fn: () => Promise<T>): Promise<T> {
@@ -135,6 +139,7 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
   }
 
   let databaseId: string | undefined;
+  let createdDatabaseId = "";
   let bookmarkA = "";
   let previousBookmark = "";
 
@@ -146,6 +151,7 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
       return await client!.createDatabase(dbName);
     });
     databaseId = createdDb.uuid;
+    createdDatabaseId = createdDb.uuid;
     log(`[drill] Created scratch database ${dbName} (${databaseId})`);
 
     // Step 2: Apply migrations
@@ -297,17 +303,28 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
       : mode === "live";
 
   if (shouldWriteEvidence) {
-    const outPath = options.evidencePath ?? resolve(getEvidenceDir(), "restore-drill.json");
+    // Scratch runs have their own file: evidence/deployed/restore-drill-result.json is the target-mode (staging) evidence only.
+    const outPath = options.evidencePath ?? resolve(getEvidenceDir(), "restore-drill-scratch.json");
     const provenance = stampEvidence("scripts/restore-drill.ts", "measured");
     const evidenceData = {
+      startedAt,
       measuredAt: result.measuredAt,
       gitSha: result.gitSha,
+      target: "scratch",
       databaseName: result.databaseName,
       durationsMs: result.durationsMs,
       steps: result.steps,
       verification: result.verification,
       success: result.success,
     };
+    assertRedacted(JSON.stringify(evidenceData), [
+      createdDatabaseId,
+      createdDatabaseId.replace(/-/g, ""),
+      bookmarkA,
+      previousBookmark,
+      liveCredentials?.accountId ?? "",
+      liveCredentials?.token ?? "",
+    ]);
     writeEvidence(outPath, evidenceData, provenance);
     log(`[drill] Wrote evidence to ${outPath}`);
   }
@@ -315,15 +332,357 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
   return result;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Target mode: the drill on one named, existing database (cephlow's staging database). Guarded: the database is named by
+// uuid AND by the name it must have, that name must end in -staging, and credentials come only from an explicit env file
+// outside the repository. The database is left as it was found: a fingerprint (every table with its row count) taken
+// before the drill must match after the restore, and the canary table is dropped at the end.
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const CANARY_TABLE = "px_restore_drill_canary";
+const CANARY_ROWS = [
+  { id: "canary_1", value: "restore-drill canary one" },
+  { id: "canary_2", value: "restore-drill canary two" },
+  { id: "canary_3", value: "restore-drill canary three" },
+];
+const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
+
+export class RestoreDrillRefusal extends Error {
+  constructor(message: string) {
+    super(`REFUSED: ${message}`);
+    this.name = "RestoreDrillRefusal";
+  }
+}
+
+export interface TargetRestoreDrillOptions {
+  /** The uuid of the one database the drill may touch. */
+  targetDb: string;
+  /** The name that database must have; must end in -staging. */
+  expectName: string;
+  /** Credentials file (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID); must be outside the repository. Required without `client`. */
+  envFile?: string;
+  /** The label the evidence names the target by (never an id). */
+  label?: string;
+  /** Tests only: an already-built client (no env file is read). */
+  client?: Client;
+  writeEvidenceFile?: boolean;
+  evidencePath?: string;
+  log?: (msg: string) => void;
+  /** Tests only: fail just before the named step. */
+  _failAtStep?: string;
+}
+
+export interface TargetRestoreDrillResult {
+  success: true;
+  target: string;
+  startedAt: string;
+  measuredAt: string;
+  gitSha: string;
+  steps: RestoreDrillStep[];
+  durationsMs: Record<string, number>;
+  tablesFingerprinted: number;
+  verification: {
+    canaryRestored: true;
+    fingerprintMatches: true;
+    canaryDropped: true;
+  };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+const LABEL_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
+
+/** Checks the guard inputs that need no network call. Throws RestoreDrillRefusal. */
+export function assertTargetGuards(options: Pick<TargetRestoreDrillOptions, "targetDb" | "expectName" | "envFile" | "label" | "client">): void {
+  if (!options.targetDb || !UUID_RE.test(options.targetDb)) throw new RestoreDrillRefusal("--target-db must be a D1 database uuid");
+  if (!options.expectName) throw new RestoreDrillRefusal("--expect-name is required in target mode");
+  if (!options.expectName.endsWith("-staging")) {
+    throw new RestoreDrillRefusal(`--expect-name '${options.expectName}' does not end in -staging; the drill runs only on a staging database`);
+  }
+  if (options.label !== undefined && !LABEL_RE.test(options.label)) throw new RestoreDrillRefusal("--label must be lowercase letters, digits and dashes");
+  if (!options.client) {
+    if (!options.envFile) throw new RestoreDrillRefusal("--env-file is required in target mode");
+    const abs = resolve(options.envFile);
+    const rel = relative(repoRoot, abs);
+    if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) {
+      throw new RestoreDrillRefusal(`--env-file must be outside the repository (got ${options.envFile}); credentials are never loaded from the repo`);
+    }
+    if (!existsSync(abs)) throw new RestoreDrillRefusal(`--env-file ${options.envFile} does not exist`);
+  }
+}
+
+function quoteIdent(name: string): string {
+  return `"${name.replace(/"/g, '""')}"`;
+}
+
+/** Every table except Cloudflare's (_cf_*), SQLite's (sqlite_*) and the drill's canary, with its row count. */
+async function fingerprintDatabase(client: Client, databaseId: string): Promise<Record<string, number>> {
+  const [res] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name" }]);
+  const names = (res?.results ?? [])
+    .map((r) => String(r.name))
+    .filter((n) => !n.startsWith("_cf_") && !n.startsWith("sqlite_") && n !== CANARY_TABLE);
+  if (names.length === 0) return {};
+  const counts = await client.queryDatabase(databaseId, names.map((n) => ({ sql: `SELECT COUNT(*) AS n FROM ${quoteIdent(n)}` })));
+  const out: Record<string, number> = {};
+  names.forEach((n, i) => {
+    out[n] = Number(counts[i]?.results?.[0]?.n ?? NaN);
+  });
+  return out;
+}
+
+async function tableExists(client: Client, databaseId: string, name: string): Promise<boolean> {
+  const [res] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", params: [name] }]);
+  return (res?.results ?? []).length > 0;
+}
+
+function sameFingerprint(a: Record<string, number>, b: Record<string, number>): boolean {
+  const ka = Object.keys(a).sort();
+  const kb = Object.keys(b).sort();
+  return ka.length === kb.length && ka.every((k, i) => k === kb[i] && a[k] === b[k]);
+}
+
+/** Throws when the evidence text carries any of the given secrets or ids, or a workers.dev address. */
+export function assertRedacted(text: string, forbidden: string[]): void {
+  for (const value of forbidden) {
+    if (value && value.length >= 6 && text.toLowerCase().includes(value.toLowerCase())) {
+      throw new Error("EVIDENCE_NOT_REDACTED: the evidence would carry an id, a bookmark or a credential; nothing was written");
+    }
+  }
+  if (/workers\.dev/i.test(text) || /\b[0-9a-f]{32}\b/i.test(text) || /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test(text)) {
+    throw new Error("EVIDENCE_NOT_REDACTED: the evidence would carry a uuid, an account id or a workers.dev address; nothing was written");
+  }
+}
+
+function credentialsFromEnvFile(path: string) {
+  // Only the named file: neither process.env nor the repository's .env is read.
+  const parsed = parseEnv(readFileSync(resolve(path), "utf8"));
+  return loadCredentials({ CLOUDFLARE_API_TOKEN: parsed.CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID: parsed.CLOUDFLARE_ACCOUNT_ID });
+}
+
+/**
+ * The drill on one existing database:
+ * 1. guards (uuid, -staging name, env file outside the repo), then the live name must equal --expect-name;
+ * 2. fingerprint: every table with its row count; a leftover canary table is refused;
+ * 3. create and seed the canary table;
+ * 4. take the bookmark;
+ * 5. destroy: delete the canary rows and drop the canary table;
+ * 6. restore to the bookmark;
+ * 7. verify the canary rows are back and the fingerprint matches;
+ * 8. drop the canary table.
+ * A failure after the bookmark restores to it (unless the restore already ran) and drops the canary; no evidence is written.
+ */
+export async function runTargetRestoreDrill(options: TargetRestoreDrillOptions): Promise<TargetRestoreDrillResult> {
+  const log = options.log ?? ((msg: string) => console.log(msg));
+  assertTargetGuards(options);
+  const label = options.label ?? "cephlow-staging";
+  const databaseId = options.targetDb;
+  let credentials: { token: string; accountId: string } | null = null;
+  let client = options.client;
+  if (!client) {
+    credentials = credentialsFromEnvFile(options.envFile!);
+    client = createClient({ credentials, fetch: (req) => fetch(req) });
+  }
+  const c = client;
+
+  const steps: RestoreDrillStep[] = [];
+  const durationsMs: Record<string, number> = {};
+  const startedAt = new Date().toISOString();
+  const t0All = performance.now();
+  async function step<T>(name: string, fn: () => Promise<T>): Promise<T> {
+    if (options._failAtStep === name) throw new Error(`simulated failure at ${name}`);
+    const t0 = performance.now();
+    const out = await fn();
+    const ms = Math.round((performance.now() - t0) * 100) / 100;
+    durationsMs[name] = ms;
+    steps.push({ name, durationMs: ms });
+    return out;
+  }
+
+  // Read-only preflight: the live name must be exactly the expected one. Nothing is written before this passes.
+  const live = await step("preflight", async () => c.getDatabase(databaseId));
+  if (live.uuid !== databaseId && live.uuid.replace(/-/g, "") !== databaseId.replace(/-/g, "")) {
+    throw new RestoreDrillRefusal("Cloudflare answered with another database than the one asked for");
+  }
+  if (live.name !== options.expectName) {
+    throw new RestoreDrillRefusal(`the database is named '${live.name}', not '${options.expectName}'; nothing was written`);
+  }
+  log(`[drill] Target database confirmed by name (${label})`);
+
+  const before = await step("fingerprint", async () => fingerprintDatabase(c, databaseId));
+  if (await tableExists(c, databaseId, CANARY_TABLE)) {
+    throw new RestoreDrillRefusal(`${CANARY_TABLE} already exists (a stopped earlier drill?); drop it by hand after checking it, then run again`);
+  }
+  log(`[drill] Fingerprinted ${Object.keys(before).length} table(s)`);
+
+  let canaryCreated = false;
+  let bookmark: string | null = null;
+  let restored = false;
+  try {
+    await step("createCanary", async () => {
+      canaryCreated = true;
+      await c.queryDatabase(databaseId, [
+        { sql: `CREATE TABLE ${CANARY_TABLE} (id TEXT PRIMARY KEY, value TEXT NOT NULL, created_at TEXT NOT NULL)` },
+        ...CANARY_ROWS.map((r) => ({ sql: `INSERT INTO ${CANARY_TABLE} (id, value, created_at) VALUES (?, ?, ?)`, params: [r.id, r.value, new Date().toISOString()] })),
+      ]);
+    });
+    log("[drill] Created and seeded the canary table");
+
+    bookmark = await step("bookmark", async () => c.getD1Bookmark(databaseId));
+    log("[drill] Took the bookmark");
+
+    await step("destroy", async () => {
+      await c.queryDatabase(databaseId, [{ sql: `DELETE FROM ${CANARY_TABLE}` }, { sql: `DROP TABLE ${CANARY_TABLE}` }]);
+    });
+    if (await tableExists(c, databaseId, CANARY_TABLE)) throw new Error("the destructive change did not drop the canary table");
+    log("[drill] Destructive change made: canary rows deleted, canary table dropped");
+
+    await step("restore", async () => {
+      await c.restoreD1(databaseId, bookmark!);
+      restored = true;
+    });
+    log("[drill] Restored to the bookmark");
+
+    await step("verify", async () => {
+      const [res] = await c.queryDatabase(databaseId, [{ sql: `SELECT id, value FROM ${CANARY_TABLE} ORDER BY id` }]);
+      const rows = (res?.results ?? []) as Array<{ id: string; value: string }>;
+      const expected = [...CANARY_ROWS].sort((a, b) => a.id.localeCompare(b.id));
+      if (rows.length !== expected.length || rows.some((r, i) => r.id !== expected[i]!.id || r.value !== expected[i]!.value)) {
+        throw new Error(`the canary rows did not come back after the restore (got ${rows.length} of ${expected.length})`);
+      }
+      const after = await fingerprintDatabase(c, databaseId);
+      if (!sameFingerprint(before, after)) throw new Error("the database fingerprint after the restore differs from the one taken before the drill");
+    });
+    log("[drill] Verified: canary rows restored, fingerprint matches");
+
+    await step("dropCanary", async () => {
+      await c.queryDatabase(databaseId, [{ sql: `DROP TABLE IF EXISTS ${CANARY_TABLE}` }]);
+      canaryCreated = false;
+    });
+    if (await tableExists(c, databaseId, CANARY_TABLE)) throw new Error("the canary table is still there after dropping it");
+    log("[drill] Dropped the canary table");
+  } catch (error) {
+    // Best effort: back to the bookmark (unless the restore already ran), then the canary goes.
+    if (bookmark && !restored) {
+      try {
+        await c.restoreD1(databaseId, bookmark);
+        log("[drill] Cleanup: restored to the bookmark");
+      } catch (e) {
+        log(`[drill] Cleanup warning: the restore to the bookmark failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    if (canaryCreated || bookmark) {
+      try {
+        await c.queryDatabase(databaseId, [{ sql: `DROP TABLE IF EXISTS ${CANARY_TABLE}` }]);
+        log("[drill] Cleanup: dropped the canary table");
+      } catch (e) {
+        log(`[drill] Cleanup warning: dropping ${CANARY_TABLE} failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    throw error;
+  }
+
+  durationsMs.total = Math.round((performance.now() - t0All) * 100) / 100;
+  const result: TargetRestoreDrillResult = {
+    success: true,
+    target: label,
+    startedAt,
+    measuredAt: new Date().toISOString(),
+    gitSha: getGitSha(),
+    steps,
+    durationsMs,
+    tablesFingerprinted: Object.keys(before).length,
+    verification: { canaryRestored: true, fingerprintMatches: true, canaryDropped: true },
+  };
+
+  const shouldWrite = options.writeEvidenceFile ?? true;
+  if (shouldWrite) {
+    const outPath = options.evidencePath ?? resolve(getEvidenceDir(), "deployed", "restore-drill-result.json");
+    const evidenceData = {
+      startedAt: result.startedAt,
+      measuredAt: result.measuredAt,
+      gitSha: result.gitSha,
+      mode: "target",
+      target: result.target,
+      durationsMs: result.durationsMs,
+      steps: result.steps,
+      tablesFingerprinted: result.tablesFingerprinted,
+      verification: result.verification,
+      success: result.success,
+    };
+    assertRedacted(JSON.stringify(evidenceData), [databaseId, databaseId.replace(/-/g, ""), bookmark ?? "", credentials?.accountId ?? "", credentials?.token ?? ""]);
+    writeEvidence(outPath, evidenceData, stampEvidence("scripts/restore-drill.ts", "measured"));
+    log(`[drill] Wrote evidence to ${outPath}; record it with pnpm evidence:record-live`);
+  }
+  return result;
+}
+
+export interface RestoreDrillCliArgs {
+  mode: "fake" | "live";
+  target?: { targetDb: string; expectName: string; envFile: string; label?: string };
+}
+
+const TARGET_VALUE_FLAGS = ["--target-db", "--expect-name", "--env-file", "--label"] as const;
+const BOOLEAN_FLAGS = ["--fake", "--live"] as const;
+
+/**
+ * Parses the CLI flags. Any target flag means target mode, which needs all three; --fake cannot be combined with it.
+ * Anything else (an unknown argument, a `--flag=value` form, a repeated flag) is refused, so a mistyped target flag can
+ * never fall back to a scratch run that reports a pass.
+ */
+export function parseRestoreDrillArgs(argv: string[]): RestoreDrillCliArgs {
+  const values = new Map<string, string>();
+  const seen = new Set<string>();
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i]!;
+    if (arg.includes("=") && arg.startsWith("--")) {
+      throw new RestoreDrillRefusal(`'${arg}': write the flag and its value as two arguments (${arg.slice(0, arg.indexOf("="))} <value>)`);
+    }
+    if (seen.has(arg)) throw new RestoreDrillRefusal(`${arg} is given twice`);
+    if ((BOOLEAN_FLAGS as readonly string[]).includes(arg)) {
+      seen.add(arg);
+      continue;
+    }
+    if ((TARGET_VALUE_FLAGS as readonly string[]).includes(arg)) {
+      const v = argv[i + 1];
+      if (v === undefined || v.startsWith("--")) throw new RestoreDrillRefusal(`${arg} needs a value`);
+      seen.add(arg);
+      values.set(arg, v);
+      i += 1;
+      continue;
+    }
+    throw new RestoreDrillRefusal(`unknown argument '${arg}'`);
+  }
+  if (seen.has("--fake") && seen.has("--live")) throw new RestoreDrillRefusal("--fake and --live cannot be combined");
+  const targetDb = values.get("--target-db");
+  const expectName = values.get("--expect-name");
+  const envFile = values.get("--env-file");
+  const label = values.get("--label");
+  const mode: "fake" | "live" = seen.has("--live") ? "live" : "fake";
+  if (targetDb === undefined && expectName === undefined && envFile === undefined) {
+    if (label !== undefined) throw new RestoreDrillRefusal("--label is only for target mode");
+    return { mode };
+  }
+  if (seen.has("--fake")) throw new RestoreDrillRefusal("target mode always runs live; --fake cannot be combined with --target-db");
+  if (!targetDb || !expectName || !envFile) {
+    throw new RestoreDrillRefusal("target mode needs --target-db <uuid>, --expect-name <name> and --env-file <path>");
+  }
+  return { mode: "live", target: { targetDb, expectName, envFile, ...(label !== undefined ? { label } : {}) } };
+}
+
 // Standalone CLI execution
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  const isLive = process.argv.includes("--live");
-  const isFake = process.argv.includes("--fake");
-  const mode: "fake" | "live" = isLive ? "live" : "fake";
-
-  runRestoreDrill({ mode })
-    .then((result) => {
-      console.log(`\nRestore drill passed (${mode} mode) in ${result.durationsMs.total}ms.`);
+  let args: RestoreDrillCliArgs;
+  try {
+    args = parseRestoreDrillArgs(process.argv.slice(2));
+  } catch (err) {
+    console.error(`\nRestore drill refused: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  }
+  const run = args.target
+    ? runTargetRestoreDrill(args.target).then((r) => `target mode, ${r.target}, ${r.durationsMs.total}ms`)
+    : runRestoreDrill({ mode: args.mode }).then((r) => `${args.mode} mode, ${r.durationsMs.total}ms`);
+  run
+    .then((summary) => {
+      console.log(`\nRestore drill passed (${summary}).`);
       process.exit(0);
     })
     .catch((err) => {

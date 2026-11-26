@@ -565,6 +565,34 @@ describe("AD-V8: approval binding, release on failure, and the other gated route
     expect(reused.body.error.code).toBe("APPROVAL_USED");
   });
 
+  it("an approval for a code-only MCP rollback is stale for the same rollback with restoreData (story 1.3)", async () => {
+    const w = await world();
+    const d1 = await call(`/api/projects/${w.project}/environments/preview/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} });
+    expect(d1.status).toBe(200);
+    const firstDeployId = d1.body.deployId as string;
+    await call(`/api/projects/${w.project}/ops`, { token: w.owner.token, body: { ops: [{ opId: "rd-1", type: "enable_brick", brickId: "feature-flags" }] } });
+    const d2 = await call(`/api/projects/${w.project}/environments/preview/deploy`, {
+      token: w.owner.token,
+      headers: { "x-org-id": w.orgId },
+      body: { migrations: [{ name: "0009_restore_gate.sql", sql: "CREATE TABLE restore_gate (id TEXT PRIMARY KEY);" }] },
+    });
+    expect(d2.status, JSON.stringify(d2.body)).toBe(200);
+    const body = { targetDeploymentId: firstDeployId, confirmDestructive: true };
+    const first = await call(`/api/projects/${w.project}/environments/preview/rollback`, { token: w.agent.token, body });
+    expect(first.body.error?.code, JSON.stringify(first.body)).toBe("APPROVAL_REQUIRED");
+    const id = first.body.error.approvalId as string;
+    await approve(w, id);
+    const withRestore = await call(`/api/projects/${w.project}/environments/preview/rollback`, {
+      token: w.agent.token,
+      body: { ...body, restoreData: true, approvalId: id },
+    });
+    expect(withRestore.body.error?.code, JSON.stringify(withRestore.body)).toBe("APPROVAL_STALE");
+    // nothing ran: no rollback deployment, and the approval is still unused
+    expect((await approvalRow(w, id))?.status).toBe("approved");
+    const rows = await studioDb.prepare("SELECT COUNT(*) AS n FROM deployments WHERE project_id = ? AND action = 'rollback'").bind(w.project).first<{ n: number }>();
+    expect(Number(rows?.n)).toBe(0);
+  });
+
   it("an MCP sandbox deploy and promotion to BYOC need approvals; promotion is bound to the destination account and token", async () => {
     const w = await world();
     // Validation first: with no sandbox, the promotion is refused and no approval request is created.
