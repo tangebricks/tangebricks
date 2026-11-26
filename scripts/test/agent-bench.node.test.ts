@@ -26,8 +26,10 @@ import {
   evaluateKillRule,
   loadBrief,
   ownerReply,
+  UPGRADED_PRE_AGENT_CALLS,
   parseCliResult,
   privatePathRefusal,
+  saveRun,
   runAgentBench,
   sampleValue,
   updatedValue,
@@ -331,6 +333,36 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
       expect(lines.join("\n")).not.toContain(secret);
     }
     expect(text).not.toContain(FIXTURE_BRIEF.trim());
+
+    // an older results file (a run recorded before agent calls) is upgraded on load, and the new run merges beside it
+    const oldDir = join(root, "old");
+    const oldOut = join(oldDir, "benchmark-v0.json");
+    const old = JSON.parse(JSON.stringify({ ...record, runId: "brief-fixture-old-run" })) as Record<string, any>;
+    delete old.agentCalls;
+    delete old.cli.agentCalls;
+    delete old.limits.maxAgentCalls;
+    delete old.ownerReview.secretsBound;
+    mkdirSync(oldDir, { recursive: true });
+    writeFileSync(oldOut, JSON.stringify({ benchmark: "real-model-benchmark-v0", internal: true, note: "old", runs: [old], killRule: { status: "from an older schema" } }));
+    const saved = saveRun({ out: oldOut, record, refusal: () => null, log: () => {} });
+    expect(saved.ok).toBe(true);
+    expect(existsSync(join(oldDir, "runs", `${record.runId}.json`))).toBe(true);
+    const merged = BenchmarkFileSchema.parse(JSON.parse(readFileSync(oldOut, "utf8")));
+    expect(merged.runs.map((r) => r.runId)).toEqual(["brief-fixture-old-run", record.runId]);
+    expect(merged.runs[0]).toMatchObject({ agentCalls: [], cli: { agentCalls: 1 }, limits: { maxAgentCalls: 1 }, ownerReview: { secretsBound: [] }, schemaNote: UPGRADED_PRE_AGENT_CALLS });
+    expect(merged.runs[1]!.schemaNote).toBeUndefined();
+    expect(merged.killRule.ruleVersion).toBe(KILL_RULE_VERSION);
+
+    // a merge that fails keeps the run's own record and says so; the caller exits non-zero
+    const errors: string[] = [];
+    const failed = saveRun({ out: join(root, "broken", "benchmark-v0.json"), record, refusal: () => null, log: () => {}, error: (l) => errors.push(l), merge: () => { throw new Error("forced merge failure"); } });
+    expect(failed.ok).toBe(false);
+    expect(failed.runPath).toBe(join(root, "broken", "runs", `${record.runId}.json`));
+    expect(RunRecordSchema.parse(JSON.parse(readFileSync(failed.runPath!, "utf8"))).runId).toBe(record.runId);
+    expect(errors.join("\n")).toMatch(/the run is kept at .*forced merge failure/);
+    // a refused per-run path writes nothing
+    const refused = saveRun({ out: join(root, "evidence", "benchmark-v0.json"), record, refusal: () => "top level of evidence", log: () => {}, error: () => {} });
+    expect(refused).toMatchObject({ ok: false, runPath: null });
 
     // the private results file: schema-valid, judged on applicable lines with the literal 12-line score beside it
     expect(record.iteration).toBe(1);
