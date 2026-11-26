@@ -53,8 +53,8 @@ describe("Agent Sandbox & MCP Tool Registry Core Logic", () => {
 
     const tools = await service.listTools(WS_ALPHA);
     expect(tools).toHaveLength(1);
-    expect(tools[0].name).toBe("calculator");
-    expect(tools[0].parameters_schema).toEqual({
+    expect(tools[0]?.name).toBe("calculator");
+    expect(tools[0]?.parameters_schema).toEqual({
       type: "object",
       properties: {
         operation: { type: "string", enum: ["add", "subtract", "multiply", "divide"] },
@@ -90,8 +90,8 @@ describe("Agent Sandbox & MCP Tool Registry Core Logic", () => {
     // Verify invocation log recorded in D1
     const logs = await service.listInvocations(WS_ALPHA, "math");
     expect(logs).toHaveLength(1);
-    expect(logs[0].status).toBe("success");
-    expect(logs[0].output).toBe(42);
+    expect(logs[0]?.status).toBe("success");
+    expect(logs[0]?.output).toBe(42);
   });
 
   it("maintains stateful agent multi-turn sessions", async () => {
@@ -156,7 +156,7 @@ describe("Agent Sandbox HTTP API", () => {
     expect(listRes.status).toBe(200);
     const listJson = (await listRes.json()) as { tools: Array<{ name: string; inputSchema: unknown }> };
     expect(listJson.tools).toHaveLength(1);
-    expect(listJson.tools[0].name).toBe("text_modifier");
+    expect(listJson.tools[0]?.name).toBe("text_modifier");
 
     // 3. POST /mcp/tools/:name/call
     const callRes = await app.request("/api/mcp/tools/text_modifier/call", {

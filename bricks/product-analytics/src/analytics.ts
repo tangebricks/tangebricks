@@ -66,7 +66,11 @@ interface RawFunnelRow {
 }
 
 export class ProductAnalyticsService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   private parseEvent(row: RawEventRow): AnalyticsEvent {
     let props = {};
@@ -241,8 +245,7 @@ export class ProductAnalyticsService {
     const stepReports: FunnelStepReport[] = [];
     let previousActors = new Set<string>();
 
-    for (let i = 0; i < funnel.steps.length; i++) {
-      const stepName = funnel.steps[i];
+    for (const [i, stepName] of funnel.steps.entries()) {
 
       // Query distinct actors (user_id if present, else anonymous_id) for this step
       interface ActorRow {

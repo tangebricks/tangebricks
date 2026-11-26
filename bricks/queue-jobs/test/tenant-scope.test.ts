@@ -61,7 +61,7 @@ describe("JobQueueService Tenant Scoping (F-ISO-1)", () => {
     // Lease the job so it is running
     const leased = await service.dequeueBatch("default", 1);
     expect(leased).toHaveLength(1);
-    expect(leased[0].id).toBe(jobB.id);
+    expect(leased[0]?.id).toBe(jobB.id);
 
     // ws_a attempts to complete ws_b's job
     const completedByA = await service.complete(WS_A, jobB.id, {

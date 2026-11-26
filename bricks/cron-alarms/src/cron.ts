@@ -69,7 +69,7 @@ export function validateCron(expression: string): boolean {
     /^(\*|[0-6]|\*\/[1-6]|[0-6]-[0-6])$/, // day of week 0-6
   ];
 
-  return parts.every((p, idx) => patterns[idx].test(p));
+  return parts.every((p, idx) => patterns[idx]?.test(p) === true);
 }
 
 /**
@@ -80,6 +80,8 @@ export function computeNextRun(expression: string, fromDate = new Date()): Date 
 
   const parts = expression.trim().split(/\s+/);
   const minPart = parts[0];
+  // validateCron above guarantees five fields; this only narrows the type.
+  if (minPart === undefined) throw new Error(`Invalid cron expression: ${expression}`);
 
   // Advance by 1 minute in UTC
   const next = new Date(fromDate.getTime() + 60000);
@@ -135,14 +137,20 @@ export class CronService {
   private readonly customFetch: PublicUrlFetcher;
   /** Workflow binding names this service may start; empty means none (fail closed). */
   private readonly allowedWorkflowTargets: ReadonlySet<string>;
+  private readonly db: D1Like;
+  private readonly maxSchedules: number;
+  private readonly envBindings: Record<string, unknown> | undefined;
 
   constructor(
-    private readonly db: D1Like,
-    private readonly maxSchedules = 50,
-    private readonly envBindings?: Record<string, unknown>,
+    db: D1Like,
+    maxSchedules = 50,
+    envBindings?: Record<string, unknown>,
     fetcher?: Fetcher,
     options: CronServiceOptions = {},
   ) {
+    this.db = db;
+    this.maxSchedules = maxSchedules;
+    this.envBindings = envBindings;
     const base: Fetcher =
       fetcher ?? (envBindings?.["fetch"] as Fetcher | undefined) ?? ((url, init) => globalThis.fetch(url, init));
     this.customFetch = createPublicUrlFetch((url, init) => base(url, init), {

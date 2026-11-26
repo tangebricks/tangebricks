@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "hono";
+import type { AuthUser } from "@poc/sdk";
 import { resolveAuthSession } from "./auth.ts";
 import type { AuthEnv } from "./auth.ts";
 
@@ -14,12 +15,15 @@ declare module "hono" {
   }
 }
 
+/** What the core-auth middleware and routes read and write on the request context. */
+export type AuthAppEnv = { Bindings: AuthEnv; Variables: { user?: AuthUser } };
+
 /**
  * Identity middleware mounted on `/api/*` when a blueprint selects `"identity": "core-auth"`.
  * Resolves Better Auth sessions from Bearer tokens or session cookies and populates `c.set("user", ...)`.
  * Forged, modified, or expired credentials presented on any request are rejected with 401.
  */
-export const sessionMiddleware: MiddlewareHandler<{ Bindings: AuthEnv }> = async (c, next) => {
+export const sessionMiddleware: MiddlewareHandler<AuthAppEnv> = async (c, next) => {
   const { user, session, presentedCredentials } = await resolveAuthSession(c.env, c.req.raw);
   if (user && session) {
     c.set("user", {
@@ -48,7 +52,7 @@ export const sessionMiddleware: MiddlewareHandler<{ Bindings: AuthEnv }> = async
 /**
  * Route-level auth guard for endpoints that always require an authenticated user.
  */
-export const requireAuth: MiddlewareHandler<{ Bindings: AuthEnv }> = async (c, next) => {
+export const requireAuth: MiddlewareHandler<AuthAppEnv> = async (c, next) => {
   const { user, session, presentedCredentials } = await resolveAuthSession(c.env, c.req.raw);
   if (user && session) {
     c.set("user", {

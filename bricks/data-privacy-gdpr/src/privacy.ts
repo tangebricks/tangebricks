@@ -44,10 +44,13 @@ export interface PrivacyServiceHooks {
 }
 
 export class DataPrivacyService {
-  constructor(
-    private readonly db: D1Like,
-    private readonly hooks?: PrivacyServiceHooks
-  ) {}
+  private readonly db: D1Like;
+  private readonly hooks: PrivacyServiceHooks | undefined;
+
+  constructor(db: D1Like, hooks?: PrivacyServiceHooks) {
+    this.db = db;
+    this.hooks = hooks;
+  }
 
   /**
    * Sets or updates user consent preferences (e.g. from cookie banner).

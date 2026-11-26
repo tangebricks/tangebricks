@@ -285,8 +285,8 @@ describe("Metering HTTP API & Route Middleware", () => {
     expect(usageRes.status).toBe(200);
     const usageJson = (await usageRes.json()) as { usage: Array<{ meter_key: string; total_value: number }> };
     expect(usageJson.usage).toHaveLength(1);
-    expect(usageJson.usage[0].meter_key).toBe("webhook_dispatches");
-    expect(usageJson.usage[0].total_value).toBe(12);
+    expect(usageJson.usage[0]?.meter_key).toBe("webhook_dispatches");
+    expect(usageJson.usage[0]?.total_value).toBe(12);
   });
 
   it("automatically meters decorated routes on 2xx responses", async () => {

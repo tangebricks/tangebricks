@@ -157,7 +157,7 @@ describe("Webhook verifier none fails closed (UC1.7)", () => {
 
     const deliveries = await service.listDeliveries(WS_A, created.endpoint.id);
     expect(deliveries).toHaveLength(1);
-    expect(deliveries[0].status_code).toBe(200);
-    expect(deliveries[0].signature_verified).toBe(false);
+    expect(deliveries[0]?.status_code).toBe(200);
+    expect(deliveries[0]?.signature_verified).toBe(false);
   });
 });

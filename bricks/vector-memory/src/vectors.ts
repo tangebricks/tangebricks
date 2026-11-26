@@ -36,10 +36,12 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   let normA = 0;
   let normB = 0;
 
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
+  for (const [i, x] of a.entries()) {
+    // a and b have the same length (checked above); a hole in b gives NaN, exactly as before the strict index check.
+    const y = b[i] ?? Number.NaN;
+    dotProduct += x * y;
+    normA += x * x;
+    normB += y * y;
   }
 
   const denominator = Math.sqrt(normA) * Math.sqrt(normB);
@@ -83,7 +85,11 @@ export function chunkText(text: string, chunkSize = 500, overlap = 50): string[]
 }
 
 export class VectorMemoryService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Creates a vector index.
@@ -148,8 +154,7 @@ export class VectorMemoryService {
 
     const now = new Date().toISOString();
 
-    for (let i = 0; i < chunks.length; i++) {
-      const c = chunks[i];
+    for (const [i, c] of chunks.entries()) {
       if (c.embedding.length !== index.dimensions) {
         return {
           ok: false,

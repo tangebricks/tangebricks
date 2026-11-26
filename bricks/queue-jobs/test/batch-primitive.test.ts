@@ -134,11 +134,9 @@ describe("UC7.5 — Queue-backed batch/chunk primitive for bulk sends", () => {
     expect(countRow?.count).toBe(2500);
 
     // Verify aggregate result returned to graph
-    const batchOutput = runResult.outputs["bulk_send"] as {
-      out?: { total: number; succeeded: number; failed: number; deadLettered: number; chunkSize: number };
-      total?: number;
-      succeeded?: number;
-    };
+    type BatchAggregate = { total: number; succeeded: number; failed: number; deadLettered: number; chunkSize: number };
+    // The aggregate is either nested under `out` or is the output itself.
+    const batchOutput = runResult.outputs["bulk_send"] as { out?: BatchAggregate } & Partial<BatchAggregate>;
     const agg = batchOutput.out ?? batchOutput;
     expect(agg.total).toBe(2500);
     expect(agg.succeeded).toBe(2500);

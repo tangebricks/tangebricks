@@ -30,7 +30,13 @@ export function hashToBucket(flagKey: string, identifier: string): number {
 }
 
 export class FeatureFlagService {
-  constructor(private readonly db: D1Like, private readonly allowOverrides = true) {}
+  private readonly db: D1Like;
+  private readonly allowOverrides: boolean;
+
+  constructor(db: D1Like, allowOverrides = true) {
+    this.db = db;
+    this.allowOverrides = allowOverrides;
+  }
 
   /**
    * Defines or updates a global feature flag.

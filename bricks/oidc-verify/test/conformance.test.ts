@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import type { webcrypto } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { applyMigration } from "@poc/sdk";
@@ -43,10 +44,15 @@ function base64UrlEncode(bytes: Uint8Array | string): string {
   return binary.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+// Node's JsonWebKey type has no kid, though exported JWKs carry one in a JWKS; the tests set it.
+type Jwk = webcrypto.JsonWebKey & { kid?: string };
+/** The key type crypto.subtle.sign takes (CryptoKey is only a value in the Node globals). */
+type SigningKey = webcrypto.CryptoKey;
+
 async function signJwt(
   header: Record<string, unknown>,
   payload: Record<string, unknown>,
-  key: CryptoKey,
+  key: SigningKey,
 ): Promise<string> {
   const encHeader = base64UrlEncode(JSON.stringify(header));
   const encPayload = base64UrlEncode(JSON.stringify(payload));
@@ -96,7 +102,7 @@ async function membershipEnv(
 describe("UC9.6 — OIDC Verify conformance test suite", () => {
   it("Task 1 & AC1: Supabase ES256 token conformance", async () => {
     const keyPair = await generateEcdsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "supa-key-1";
     publicJwk.use = "sig";
     publicJwk.alg = "ES256";
@@ -146,7 +152,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
 
   it("Task 1 & AC1: Clerk RS256 token conformance", async () => {
     const keyPair = await generateRsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "clerk-key-1";
     publicJwk.use = "sig";
     publicJwk.alg = "RS256";
@@ -193,7 +199,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
 
   it("Task 1 & AC1: Auth0 RS256 token conformance with aud array and namespaced roles", async () => {
     const keyPair = await generateRsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "auth0-key-1";
     publicJwk.use = "sig";
     publicJwk.alg = "RS256";
@@ -236,7 +242,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
 
   it("Task 1 & AC1: Cognito access token conformance with client_id audience and cognito:groups", async () => {
     const keyPair = await generateRsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "cognito-key-1";
     publicJwk.use = "sig";
     publicJwk.alg = "RS256";
@@ -281,7 +287,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
 
   it("Task 1 & AC1: Keycloak token conformance with realm_access.roles and azp", async () => {
     const keyPair = await generateRsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "keycloak-key-1";
     publicJwk.use = "sig";
     publicJwk.alg = "RS256";
@@ -325,7 +331,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
 
   it("Task 1 & AC1: Negative cases return 401 with reason codes without leaking token", async () => {
     const keyPair = await generateRsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "neg-key-1";
     publicJwk.use = "sig";
     publicJwk.alg = "RS256";
@@ -445,13 +451,13 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
 
   it("Task 1 & AC2: Key rotation triggers exactly one JWKS refetch on unknown kid", async () => {
     const keyPair1 = await generateRsaKeyPair();
-    const publicJwk1 = await crypto.subtle.exportKey("jwk", keyPair1.publicKey);
+    const publicJwk1: Jwk = await crypto.subtle.exportKey("jwk", keyPair1.publicKey);
     publicJwk1.kid = "rot-key-1";
     publicJwk1.use = "sig";
     publicJwk1.alg = "RS256";
 
     const keyPair2 = await generateRsaKeyPair();
-    const publicJwk2 = await crypto.subtle.exportKey("jwk", keyPair2.publicKey);
+    const publicJwk2: Jwk = await crypto.subtle.exportKey("jwk", keyPair2.publicKey);
     publicJwk2.kid = "rot-key-2";
     publicJwk2.use = "sig";
     publicJwk2.alg = "RS256";
@@ -513,7 +519,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
 
   it("Task 4 & AC1: oidcMiddleware sets c.set('user', ...) and returns 401 without leaking token", async () => {
     const keyPair = await generateRsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "mid-key-1";
     publicJwk.use = "sig";
     publicJwk.alg = "RS256";
@@ -597,7 +603,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
 describe("oidc-verify claim and membership hardening (story 0.14)", () => {
   async function setup() {
     const keyPair = await generateRsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "hard-key-1";
     publicJwk.use = "sig";
     publicJwk.alg = "RS256";

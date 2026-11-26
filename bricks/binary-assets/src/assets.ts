@@ -232,14 +232,20 @@ export class AssetService {
   private readonly r2: R2Like;
   private readonly quotaBytes: number;
   private readonly allowedContentTypes: ReadonlySet<string>;
+  private readonly db: D1Like;
+  private readonly maxSizeBytes: number;
+  private readonly publicBaseUrl: string | undefined;
 
   constructor(
-    private readonly db: D1Like,
+    db: D1Like,
     r2Bucket?: R2Like,
-    private readonly maxSizeBytes = 10485760, // 10MB
-    private readonly publicBaseUrl?: string,
+    maxSizeBytes = 10485760, // 10MB
+    publicBaseUrl?: string,
     options: AssetServiceOptions = {}
   ) {
+    this.db = db;
+    this.maxSizeBytes = maxSizeBytes;
+    this.publicBaseUrl = publicBaseUrl;
     this.r2 = r2Bucket || new MemoryR2();
     this.quotaBytes = options.quotaBytes ?? DEFAULT_WORKSPACE_QUOTA_BYTES;
     this.allowedContentTypes = new Set(parseAllowedContentTypes(options.allowedContentTypes));

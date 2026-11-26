@@ -90,12 +90,14 @@ export interface OutboundWebhookServiceOptions {
 export class OutboundWebhookService {
   /** Every delivery goes through the public-URL guard: tenant-supplied target URLs may not reach internal addresses. */
   private readonly guardedFetch: PublicUrlFetcher;
+  private readonly db: D1Like;
 
   constructor(
-    private readonly db: D1Like,
+    db: D1Like,
     customFetch: Fetcher = (url, init) => fetch(url, init),
     options: OutboundWebhookServiceOptions = {}
   ) {
+    this.db = db;
     this.guardedFetch = createPublicUrlFetch(customFetch, {
       ...(options.resolveHost !== undefined ? { resolveHost: options.resolveHost } : {}),
     });

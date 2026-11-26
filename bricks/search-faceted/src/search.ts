@@ -61,7 +61,11 @@ interface RawDocRow {
 }
 
 export class FacetedSearchService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Indexes a document into both standard storage and SQLite FTS5 inverted index.
@@ -268,7 +272,8 @@ export class FacetedSearchService {
       // Build snippet around matching query words
       let snippet = r.body.slice(0, 150);
       const lowerBody = r.body.toLowerCase();
-      const firstWord = query.toLowerCase().split(/\s+/)[0];
+      // split always returns at least one element.
+      const firstWord = query.toLowerCase().split(/\s+/)[0] ?? "";
       const matchIdx = lowerBody.indexOf(firstWord);
       if (matchIdx > 30) {
         const start = Math.max(0, matchIdx - 30);

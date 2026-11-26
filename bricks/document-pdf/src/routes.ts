@@ -6,13 +6,13 @@ import { documentMiddleware, type DocEnv } from "./middleware.ts";
 const CreateTemplateSchema = z.object({
   name: z.string().min(1).max(100),
   templateHtml: z.string().min(1).max(32768),
-  defaultMetadata: z.record(z.unknown()).optional(),
+  defaultMetadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const RenderDocSchema = z.object({
   templateId: z.string().optional(),
   title: z.string().min(1).max(255),
-  variables: z.record(z.unknown()).optional(),
+  variables: z.record(z.string(), z.unknown()).optional(),
   lines: z.array(z.string()).optional(),
   watermark: z.string().max(64).optional(),
 });
@@ -99,7 +99,7 @@ export function createDocumentRoutes(): Hono<DocEnv> {
 
     const format = c.req.query("format");
     if (format === "binary") {
-      return new Response(result.pdfBytes as unknown as BodyInit, {
+      return new Response(result.pdfBytes, {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",

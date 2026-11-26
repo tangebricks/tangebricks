@@ -55,8 +55,8 @@ describe("Document Parsing Utilities", () => {
     const csv = `ID,Name,Role\n101,"Alice",Engineer\n102,"Bob",Designer\n`;
     const rows = parseCsv(csv);
     expect(rows).toHaveLength(2);
-    expect(rows[0].Name).toBe("Alice");
-    expect(rows[1].Role).toBe("Designer");
+    expect(rows[0]?.Name).toBe("Alice");
+    expect(rows[1]?.Role).toBe("Designer");
   });
 });
 
@@ -81,10 +81,10 @@ describe("Document Parsing Service Core", () => {
     });
 
     expect(chunks).toHaveLength(3);
-    expect(chunks[0].heading).toBe("Overview");
-    expect(chunks[1].heading).toBe("Database Layer");
-    expect(chunks[2].heading).toBe("Storage Layer");
-    expect(chunks[0].token_count).toBeGreaterThan(0);
+    expect(chunks[0]?.heading).toBe("Overview");
+    expect(chunks[1]?.heading).toBe("Database Layer");
+    expect(chunks[2]?.heading).toBe("Storage Layer");
+    expect(chunks[0]?.token_count).toBeGreaterThan(0);
 
     const updatedDoc = await service.getDocument(WS_ALPHA, doc.id);
     expect(updatedDoc!.status).toBe("completed");
@@ -133,7 +133,7 @@ Tax: $125.00
     // Verify stored extractions
     const listExt = await service.getExtractions(WS_ALPHA, doc.id);
     expect(listExt).toHaveLength(1);
-    expect((listExt[0].extracted_data as any).invoiceNumber).toBe("INV-2026-904");
+    expect(listExt[0]?.extracted_data["invoiceNumber"]).toBe("INV-2026-904");
   });
 
   it("extracts contact card and custom regex schemas", async () => {

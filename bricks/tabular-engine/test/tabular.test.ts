@@ -47,8 +47,8 @@ describe("Tabular Service Core Logic", () => {
 
     expect(res.headers).toEqual(["Email", "First Name", "Salary"]);
     expect(res.previewRows).toHaveLength(2);
-    expect(res.previewRows[0]["Email"]).toBe("alice@example.com");
-    expect(res.previewRows[0]["Salary"]).toBe("95000");
+    expect(res.previewRows[0]?.["Email"]).toBe("alice@example.com");
+    expect(res.previewRows[0]?.["Salary"]).toBe("95000");
   });
 
   it("executes import with type coercion and collects row-level errors", async () => {
@@ -121,8 +121,8 @@ describe("Tabular Service Core Logic", () => {
 
     expect(alphaViews).toHaveLength(1);
     expect(betaViews).toHaveLength(1);
-    expect(alphaViews[0].name).toBe("High Value Pipeline");
-    expect(alphaViews[0].columns[0].key).toBe("deal_name");
+    expect(alphaViews[0]?.name).toBe("High Value Pipeline");
+    expect(alphaViews[0]?.columns[0]?.key).toBe("deal_name");
   });
 });
 
@@ -171,7 +171,7 @@ describe("Tabular HTTP API", () => {
     const execJson = (await execRes.json()) as { ok: boolean; records: Array<{ name: string; price: number }> };
     expect(execJson.ok).toBe(true);
     expect(execJson.records).toHaveLength(2);
-    expect(execJson.records[0].price).toBe(29.99);
+    expect(execJson.records[0]?.price).toBe(29.99);
 
     // 4. POST /tabular/views
     const viewRes = await app.request("/api/tabular/views", {

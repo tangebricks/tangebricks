@@ -25,7 +25,7 @@ export interface RenderedDocRecord {
 export interface RenderResult {
   id: string;
   title: string;
-  pdfBytes: Uint8Array;
+  pdfBytes: Uint8Array<ArrayBuffer>;
   pdfSha256: string;
   byteSize: number;
   createdAt: string;
@@ -103,7 +103,7 @@ export function generatePdfBinary(options: {
   title: string;
   lines: string[];
   watermark?: string;
-}): Uint8Array {
+}): Uint8Array<ArrayBuffer> {
   const sanitize = (text: string) => text.replace(/[()\\]/g, "");
 
   // Build PDF content stream
@@ -153,7 +153,11 @@ export class TemplateNotFoundError extends Error {
 }
 
 export class DocumentPdfService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Registers a reusable document template.

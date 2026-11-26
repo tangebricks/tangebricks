@@ -56,7 +56,11 @@ interface RawAuditRow {
 }
 
 export class AuditTrailService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   private parseRow(row: RawAuditRow): AuditEvent {
     let meta = {};

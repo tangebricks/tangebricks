@@ -6,14 +6,14 @@ import { jobQueueMiddleware, type JobEnv } from "./middleware.ts";
 const EnqueueSchema = z.object({
   queueName: z.string().min(1).max(64).optional(),
   taskType: z.string().min(1).max(64),
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
   priority: z.number().int().min(-10).max(10).optional(),
   maxRetries: z.number().int().min(0).max(10).optional(),
   delaySeconds: z.number().int().min(0).max(86400).optional(),
 });
 
 const CompleteSchema = z.object({
-  result: z.record(z.unknown()).optional(),
+  result: z.record(z.string(), z.unknown()).optional(),
   attemptCount: z.number().int().min(0).optional(),
 });
 

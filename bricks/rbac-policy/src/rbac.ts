@@ -16,7 +16,11 @@ export interface RoleRecord {
 }
 
 export class RbacService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Creates a role and its associated permissions within a workspace.

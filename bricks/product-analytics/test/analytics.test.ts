@@ -124,17 +124,17 @@ describe("Product Analytics Core Telemetry & Funnel Logic", () => {
     expect(report?.steps).toHaveLength(3);
 
     // Step 1: visit
-    expect(report?.steps[0].count).toBe(10);
-    expect(report?.steps[0].conversionRate).toBe(1.0);
+    expect(report?.steps[0]?.count).toBe(10);
+    expect(report?.steps[0]?.conversionRate).toBe(1.0);
 
     // Step 2: signup
-    expect(report?.steps[1].count).toBe(6);
-    expect(report?.steps[1].conversionRate).toBe(0.6); // 6/10
-    expect(report?.steps[1].dropoffRate).toBe(0.4);
+    expect(report?.steps[1]?.count).toBe(6);
+    expect(report?.steps[1]?.conversionRate).toBe(0.6); // 6/10
+    expect(report?.steps[1]?.dropoffRate).toBe(0.4);
 
     // Step 3: checkout
-    expect(report?.steps[2].count).toBe(3);
-    expect(report?.steps[2].conversionRate).toBe(0.5); // 3/6
+    expect(report?.steps[2]?.count).toBe(3);
+    expect(report?.steps[2]?.conversionRate).toBe(0.5); // 3/6
 
     // Overall conversion
     expect(report?.overallConversion).toBe(0.3); // 3/10

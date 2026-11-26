@@ -49,8 +49,8 @@ describe("RBAC & ABAC Policy Engine Core Logic", () => {
 
     const roles = await rbac.getRoles(WS_A);
     expect(roles).toHaveLength(1);
-    expect(roles[0].name).toBe("Editor");
-    expect(roles[0].permissions).toHaveLength(2);
+    expect(roles[0]?.name).toBe("Editor");
+    expect(roles[0]?.permissions).toHaveLength(2);
   });
 
   it("checks exact, resource wildcard, and action wildcard permissions", async () => {

@@ -142,8 +142,8 @@ describe("Scripting Sandbox Non-Interference Suite (UC6.6 Task 2)", () => {
     expect(healthPolls).toBeGreaterThan(0);
 
     for (let i = 0; i < 50; i++) {
-      expect(bResults[i].status).toBe("success");
-      expect(bResults[i].output_payload).toEqual({ doubled: i * 2 });
+      expect(bResults[i]?.status).toBe("success");
+      expect(bResults[i]?.output_payload).toEqual({ doubled: i * 2 });
     }
 
     // Tenant A must finish with status "timeout"
@@ -152,6 +152,6 @@ describe("Scripting Sandbox Non-Interference Suite (UC6.6 Task 2)", () => {
 
     // Execution record in scr_executions must record timeout
     const logsA = await service.getExecutionLogs("ws_tenant_a", scriptA.id);
-    expect(logsA[0].status).toBe("timeout");
+    expect(logsA[0]?.status).toBe("timeout");
   });
 });

@@ -52,7 +52,8 @@ describe("Threaded Discussions Core Logic", () => {
     expect(thread.id).toMatch(/^thrd_[a-f0-9]{32}$/);
     expect(thread.target_id).toBe("inv_9001");
     expect(thread.comments).toHaveLength(1);
-    const rootCommentId = thread.comments[0].id;
+    // comments has length 1 (asserted on the line above), so [0] exists.
+    const rootCommentId = thread.comments[0]!.id;
 
     // 2. Direct Reply to Root Comment
     const reply1 = await service.addComment(
@@ -78,12 +79,12 @@ describe("Threaded Discussions Core Logic", () => {
     expect(tree?.comments).toHaveLength(1); // 1 root comment
 
     // Level 1: Bob's reply
-    expect(tree?.comments[0].replies).toHaveLength(1);
-    expect(tree?.comments[0].replies[0].author_name).toBe("Bob");
+    expect(tree?.comments[0]?.replies).toHaveLength(1);
+    expect(tree?.comments[0]?.replies[0]?.author_name).toBe("Bob");
 
     // Level 2: Alice's sub-reply
-    expect(tree?.comments[0].replies[0].replies).toHaveLength(1);
-    expect(tree?.comments[0].replies[0].replies[0].mentions).toEqual(["bob"]);
+    expect(tree?.comments[0]?.replies[0]?.replies).toHaveLength(1);
+    expect(tree?.comments[0]?.replies[0]?.replies[0]?.mentions).toEqual(["bob"]);
   });
 
   it("handles thread resolution and reopening workflows", async () => {
@@ -122,7 +123,9 @@ describe("Threaded Discussions Core Logic", () => {
       { authorId: "usr_author", authorName: "Author", body: "Original typo here" }
     );
 
-    const cmtId = thread.comments[0].id;
+    const firstComment = thread.comments[0];
+    if (!firstComment) throw new Error("the new thread has no comment");
+    const cmtId = firstComment.id;
 
     // Non-author edit rejected
     const hackRes = await service.editComment(WS_ALPHA, cmtId, "usr_hacker", "Hacked text");
@@ -146,8 +149,8 @@ describe("Threaded Discussions Core Logic", () => {
 
     expect(threadsA).toHaveLength(1);
     expect(threadsB).toHaveLength(1);
-    expect(threadsA[0].workspace_id).toBe(WS_ALPHA);
-    expect(threadsB[0].workspace_id).toBe(WS_BETA);
+    expect(threadsA[0]?.workspace_id).toBe(WS_ALPHA);
+    expect(threadsB[0]?.workspace_id).toBe(WS_BETA);
   });
 });
 

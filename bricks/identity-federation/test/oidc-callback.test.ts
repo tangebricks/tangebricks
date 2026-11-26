@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import type { webcrypto } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
@@ -34,10 +35,15 @@ function base64UrlEncode(bytes: Uint8Array | string): string {
   return binary.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+// Node's JsonWebKey type has no kid, though exported JWKs carry one in a JWKS; the tests set it.
+type Jwk = webcrypto.JsonWebKey & { kid?: string };
+/** The key type crypto.subtle.sign takes (CryptoKey is only a value in the Node globals). */
+type SigningKey = webcrypto.CryptoKey;
+
 async function signJwt(
   header: Record<string, unknown>,
   payload: Record<string, unknown>,
-  privateKey: CryptoKey,
+  privateKey: SigningKey,
 ): Promise<string> {
   const encHeader = base64UrlEncode(JSON.stringify(header));
   const encPayload = base64UrlEncode(JSON.stringify(payload));
@@ -63,7 +69,7 @@ beforeEach(async () => {
 describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () => {
   it("Task 1 & AC1: full code flow ends with linked identity row and session for mapped user", async () => {
     const keyPair = await generateRsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "test-key-1";
     publicJwk.use = "sig";
     publicJwk.alg = "RS256";
@@ -247,7 +253,7 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
 
   it("Task 1 & AC1: wrong nonce gives 401", async () => {
     const keyPair = await generateRsaKeyPair();
-    const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const publicJwk: Jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
     publicJwk.kid = "test-key-wrong-nonce";
     publicJwk.use = "sig";
     publicJwk.alg = "RS256";

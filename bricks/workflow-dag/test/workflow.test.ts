@@ -5,15 +5,19 @@ import { assemble } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-// workflow-dag is quarantined (story 0.11) and so not in max-compatible; test/support/global-setup.ts assembles this
-// small shell for it instead (WORKFLOW_SHELL_BLUEPRINT).
-import shellWorker from "../../../out/wf-shell/src/index.ts";
+import { emittedEntry, type EmittedApp } from "../../../test/support/emitted-worker.ts";
 import migration from "../migrations/0001_workflow_dag.sql?raw";
 import { createWorkflowRoutes, WorkflowService } from "../src/index.ts";
 import type { WorkflowEnv } from "../src/routes.ts";
 import { WORKFLOW_SHELL_BLUEPRINT } from "../../../test/support/blueprints.ts";
 
 const db = env.DB as D1Like;
+// workflow-dag is quarantined (story 0.11) and so not in max-compatible; test/support/global-setup.ts assembles this
+// small shell for it instead (WORKFLOW_SHELL_BLUEPRINT).
+const shellWorker = emittedEntry<EmittedApp>(
+  import.meta.glob("../../../out/wf-shell/src/index.ts", { eager: true }),
+  "wf-shell",
+);
 const WS_A = "ws_wf_alpha";
 const WS_B = "ws_wf_beta";
 
@@ -84,8 +88,8 @@ describe("Workflow DAG Engine & Interpreted Execution", () => {
     expect(stored).not.toBeNull();
     expect(stored?.run.status).toBe("completed");
     expect(stored?.steps).toHaveLength(2);
-    expect(stored?.steps[1].status).toBe("completed");
-    expect(stored?.steps[1].output).toEqual({ out: "Alice Wonderland" });
+    expect(stored?.steps[1]?.status).toBe("completed");
+    expect(stored?.steps[1]?.output).toEqual({ out: "Alice Wonderland" });
   });
 
   it("handles failing step cleanly: marks run failed and logs error", async () => {

@@ -44,12 +44,14 @@ export interface StepLogRecord {
 export class WorkflowService {
   private readonly registry: Registry;
   private readonly executors: ReadonlyMap<string, Executor>;
+  private readonly db: D1Like;
 
   constructor(
-    private readonly db: D1Like,
+    db: D1Like,
     customRegistry?: Registry,
     customExecutors?: ReadonlyMap<string, Executor>
   ) {
+    this.db = db;
     this.registry = customRegistry || toyRegistry;
     // px-stub: quarantined: runs in-process with the SDK toy executors, not durable Cloudflare Workflows
     this.executors = customExecutors || toyExecutors;

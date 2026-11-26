@@ -130,8 +130,8 @@ describe("Checkout & Tax Engine Core Logic", () => {
 
     expect(invoicesAlpha).toHaveLength(1);
     expect(invoicesBeta).toHaveLength(1);
-    expect(invoicesAlpha[0].workspace_id).toBe(WS_ALPHA);
-    expect(invoicesBeta[0].workspace_id).toBe(WS_BETA);
+    expect(invoicesAlpha[0]?.workspace_id).toBe(WS_ALPHA);
+    expect(invoicesBeta[0]?.workspace_id).toBe(WS_BETA);
     expect((await service.getInvoiceBySessionId(WS_ALPHA, sBeta.id))).toBeNull();
   });
 });

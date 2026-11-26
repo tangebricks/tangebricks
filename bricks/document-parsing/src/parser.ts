@@ -92,26 +92,29 @@ export function estimateTokens(text: string): number {
 export function parseMarkdownTable(markdown: string): Array<Record<string, string>> {
   const lines = markdown.split("\n").map((l) => l.trim()).filter((l) => l.startsWith("|") && l.endsWith("|"));
   if (lines.length < 3) return [];
+  // The length check above means the defaults are never used.
+  const [headerLine = "", separatorLine = "", ...bodyLines] = lines;
 
   // Parse Header row
-  const headers = lines[0]
+  const headers = headerLine
     .slice(1, -1)
     .split("|")
     .map((h) => h.trim());
 
   // Verify separator row contains dashes
-  if (!lines[1].includes("-")) return [];
+  if (!separatorLine.includes("-")) return [];
 
   const results: Array<Record<string, string>> = [];
-  for (let i = 2; i < lines.length; i++) {
-    const cells = lines[i]
+  for (const line of bodyLines) {
+    const cells = line
       .slice(1, -1)
       .split("|")
       .map((c) => c.trim());
     if (cells.length === headers.length) {
       const row: Record<string, string> = {};
+      // cells and headers have the same length, so cells[idx] is always present.
       headers.forEach((h, idx) => {
-        row[h] = cells[idx];
+        row[h] = cells[idx] ?? "";
       });
       results.push(row);
     }
@@ -126,16 +129,19 @@ export function parseMarkdownTable(markdown: string): Array<Record<string, strin
 export function parseCsv(csvText: string): Array<Record<string, string>> {
   const lines = csvText.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
   if (lines.length < 2) return [];
+  // The length check above means the default is never used.
+  const [headerLine = "", ...bodyLines] = lines;
 
-  const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+  const headers = headerLine.split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
   const rows: Array<Record<string, string>> = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const cells = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+  for (const line of bodyLines) {
+    const cells = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
     if (cells.length === headers.length) {
       const row: Record<string, string> = {};
+      // cells and headers have the same length, so cells[idx] is always present.
       headers.forEach((h, idx) => {
-        row[h] = cells[idx];
+        row[h] = cells[idx] ?? "";
       });
       rows.push(row);
     }
@@ -145,7 +151,11 @@ export function parseCsv(csvText: string): Array<Record<string, string>> {
 }
 
 export class DocumentParsingService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Ingests a new document record.
@@ -236,7 +246,8 @@ export class DocumentParsingService {
             });
             currentBuffer = [];
           }
-          currentHeading = headerMatch[2].trim();
+          // Group 2 is required by the pattern, so it is present on every match.
+          currentHeading = (headerMatch[2] ?? "").trim();
         } else {
           currentBuffer.push(line);
         }
@@ -285,8 +296,7 @@ export class DocumentParsingService {
     const now = new Date().toISOString();
     const createdChunks: DocumentChunk[] = [];
 
-    for (let idx = 0; idx < chunkItems.length; idx++) {
-      const ch = chunkItems[idx];
+    for (const [idx, ch] of chunkItems.entries()) {
       const chunkId = `chnk_${crypto.randomUUID().replace(/-/g, "")}`;
       const meta = JSON.stringify({ index: idx, title: doc.title });
 
@@ -364,13 +374,13 @@ export class DocumentParsingService {
       }));
 
       const invData: InvoiceExtractedData = {
-        invoiceNumber: invNum ? invNum[1].trim() : null,
-        date: date ? date[1].trim() : null,
+        invoiceNumber: invNum?.[1]?.trim() ?? null,
+        date: date?.[1]?.trim() ?? null,
         dueDate: null,
-        totalAmount: total ? parseFloat(total[1].replace(/,/g, "")) : null,
+        totalAmount: total?.[1] !== undefined ? parseFloat(total[1].replace(/,/g, "")) : null,
         currency,
-        vendorName: vendor ? vendor[1].trim() : null,
-        taxAmount: tax ? parseFloat(tax[1].replace(/,/g, "")) : null,
+        vendorName: vendor?.[1]?.trim() ?? null,
+        taxAmount: tax?.[1] !== undefined ? parseFloat(tax[1].replace(/,/g, "")) : null,
         lineItems,
       };
       extracted = invData as unknown as Record<string, unknown>;
@@ -381,10 +391,10 @@ export class DocumentParsingService {
       const company = text.match(/(?:Company|Organization):?\s*([A-Za-z0-9\s.,&'-]+?)(?:\n|$)/i);
 
       const contactData: ContactExtractedData = {
-        fullName: name ? name[1].trim() : null,
-        email: email ? email[0].trim() : null,
-        phone: phone ? phone[0].trim() : null,
-        organization: company ? company[1].trim() : null,
+        fullName: name?.[1]?.trim() ?? null,
+        email: email?.[0].trim() ?? null,
+        phone: phone?.[0].trim() ?? null,
+        organization: company?.[1]?.trim() ?? null,
         jobTitle: null,
       };
       extracted = contactData as unknown as Record<string, unknown>;

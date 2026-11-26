@@ -57,7 +57,11 @@ const ROLE_HIERARCHY: Record<SuperAdminRole, number> = {
 };
 
 export class AdminConsoleService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Registers a super admin or support agent.

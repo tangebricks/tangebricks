@@ -11,7 +11,8 @@ import {
   createScriptingRoutes,
 } from "../src/index.ts";
 import type { ScriptEnv } from "../src/middleware.ts";
-import type { ScriptIsolate, ExecutionResult } from "../src/isolate.ts";
+import type { ScriptIsolate } from "../src/isolate.ts";
+import type { ExecutionResult } from "../src/sandbox.ts";
 
 const db = env.DB as D1Like;
 const WS_ALPHA = "ws_scr_alpha";
@@ -221,7 +222,7 @@ describe("Scripting Sandbox Core Service", () => {
     // Verify execution audit logs
     const logs = await service.getExecutionLogs(WS_ALPHA, script.id);
     expect(logs).toHaveLength(2);
-    expect(logs[0].status).toBe("success");
+    expect(logs[0]?.status).toBe("success");
 
     // Disable script and verify execution failure
     await service.updateScript(WS_ALPHA, script.id, { isEnabled: false });
