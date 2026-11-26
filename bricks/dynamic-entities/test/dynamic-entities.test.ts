@@ -386,3 +386,111 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
     expect(newRowBody.item.sku).toBe("SKU-MODERN-999");
   });
 });
+
+describe("relations, dates, money and long text (story 1.18)", () => {
+  const declarations = [
+    { name: "customer", fields: [{ name: "label", type: "text", required: true }] },
+    {
+      name: "invoice",
+      fields: [
+        { name: "customer_id", type: "relation", relation: "customer", required: true },
+        { name: "due_on", type: "date" },
+        { name: "total", type: "money", currencies: ["INR"] },
+        { name: "notes", type: "longtext", maxLength: 60_000 },
+        { name: "body", type: "longtext" },
+      ],
+    },
+  ];
+  const parsed = parseEntities(declarations);
+  if (!parsed.ok) throw new Error(parsed.errors.join("; "));
+
+  beforeEach(async () => {
+    for (const entity of parsed.entities) {
+      await db.prepare(`DROP TABLE IF EXISTS "ent_${entity.name}"`).run();
+      await applyMigration(db, entityDdl(entity));
+    }
+  });
+
+  const send = async (workspace: string, method: string, path: string, body?: unknown) => {
+    const app = createDynamicApp(workspace, "usr_rel", declarations);
+    const res = await app.request(
+      `http://localhost/api${path}`,
+      { method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) },
+      { DB: db },
+    );
+    return { status: res.status, body: (await res.json()) as any };
+  };
+  const newCustomer = async (workspace: string) => (await send(workspace, "POST", "/customer", { label: "Acme" })).body.item.id as string;
+
+  it("creates an invoice that points at a customer of the same workspace, and shows money as {amount, currency}", async () => {
+    const customerId = await newCustomer("ws_rel_a");
+    const created = await send("ws_rel_a", "POST", "/invoice", { customer_id: customerId, due_on: "2026-11-26", total: { amount: 1999, currency: "INR" } });
+    expect(created.status).toBe(201);
+    expect(created.body.item).toMatchObject({ customer_id: customerId, due_on: "2026-11-26", total: { amount: 1999, currency: "INR" }, notes: null });
+    const read = await send("ws_rel_a", "GET", `/invoice/${created.body.item.id}`);
+    expect(read.body.item.total).toEqual({ amount: 1999, currency: "INR" });
+    // stored as two columns
+    const row = await db.prepare('SELECT "total", "total__currency" FROM "ent_invoice" WHERE "id" = ?').bind(created.body.item.id).first<any>();
+    expect(row).toEqual({ total: 1999, total__currency: "INR" });
+  });
+
+  it("refuses a customer id from another workspace, or the id of a row of another entity, naming the field", async () => {
+    const foreignCustomer = await newCustomer("ws_rel_b");
+    const foreign = await send("ws_rel_a", "POST", "/invoice", { customer_id: foreignCustomer });
+    expect(foreign.status).toBe(400);
+    expect(foreign.body.error.code).toBe("VALIDATION_ERROR");
+    expect(foreign.body.error.message).toMatch(/customer_id: no customer with this id in this workspace/);
+
+    const ownCustomer = await newCustomer("ws_rel_a");
+    const invoice = (await send("ws_rel_a", "POST", "/invoice", { customer_id: ownCustomer })).body.item.id as string;
+    const wrongEntity = await send("ws_rel_a", "POST", "/invoice", { customer_id: invoice });
+    expect(wrongEntity.status).toBe(400);
+    expect(wrongEntity.body.error.message).toMatch(/customer_id/);
+
+    const notUuid = await send("ws_rel_a", "POST", "/invoice", { customer_id: "1 OR 1=1" });
+    expect(notUuid.status).toBe(400);
+    expect(notUuid.body.error.code).toBe("VALIDATION_ERROR");
+
+    // the same check guards an update
+    const patched = await send("ws_rel_a", "PATCH", `/invoice/${invoice}`, { customer_id: foreignCustomer });
+    expect(patched.status).toBe(400);
+    expect(patched.body.error.message).toMatch(/customer_id/);
+    expect((await db.prepare('SELECT COUNT(*) AS n FROM "ent_invoice"').first<{ n: number }>())!.n).toBe(1);
+  });
+
+  it("deleting a referenced customer stays allowed (no foreign key)", async () => {
+    const customerId = await newCustomer("ws_rel_a");
+    expect((await send("ws_rel_a", "POST", "/invoice", { customer_id: customerId })).status).toBe(201);
+    expect((await send("ws_rel_a", "DELETE", `/customer/${customerId}`)).status).toBe(200);
+  });
+
+  it.each([
+    ["a date", { due_on: "2026-11-26" }, 201],
+    ["a month 13", { due_on: "2026-13-01" }, 400],
+    ["a day-first date", { due_on: "26/11/2026" }, 400],
+    ["a 30 February", { due_on: "2026-02-30" }, 400],
+    ["a date in the year 50 (the table accepts it too)", { due_on: "0050-01-01" }, 201],
+    ["money in minor units", { total: { amount: 1999, currency: "INR" } }, 201],
+    ["a fractional amount", { total: { amount: 19.99, currency: "INR" } }, 400],
+    ["an undeclared currency", { total: { amount: 1999, currency: "USD" } }, 400],
+    ["a bare number for money", { total: 1999 }, 400],
+    ["money with no currency", { total: { amount: 1999 } }, 400],
+    ["50000 characters of long text", { notes: "x".repeat(50_000) }, 201],
+    ["long text over its declared maxLength", { notes: "x".repeat(60_001) }, 400],
+    ["long text over the default 20000", { body: "x".repeat(20_001) }, 400],
+  ])("%s gives HTTP %i", async (_label, values, status) => {
+    const customerId = await newCustomer("ws_rel_a");
+    const res = await send("ws_rel_a", "POST", "/invoice", { customer_id: customerId, ...values });
+    expect(res.status).toBe(status);
+    if (status === 400) expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("money can be changed and cleared; clearing empties both columns", async () => {
+    const customerId = await newCustomer("ws_rel_a");
+    const id = (await send("ws_rel_a", "POST", "/invoice", { customer_id: customerId, total: { amount: 100, currency: "INR" } })).body.item.id as string;
+    expect((await send("ws_rel_a", "PATCH", `/invoice/${id}`, { total: { amount: 250, currency: "INR" } })).body.item.total).toEqual({ amount: 250, currency: "INR" });
+    expect((await send("ws_rel_a", "PATCH", `/invoice/${id}`, { total: null })).body.item.total).toBeNull();
+    const row = await db.prepare('SELECT "total", "total__currency" FROM "ent_invoice" WHERE "id" = ?').bind(id).first<any>();
+    expect(row).toEqual({ total: null, total__currency: null });
+  });
+});

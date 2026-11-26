@@ -166,3 +166,49 @@ describe("with synthetic bricks", () => {
     expect(r.files["src/index.ts"]).not.toContain("app.use(\"/api/widgets\"");
   });
 });
+
+describe("relations, date, money and longtext (story 1.18)", () => {
+  const customers = { name: "customers", fields: [{ name: "label", type: "text", required: true }] };
+  const orders = {
+    name: "orders",
+    fields: [
+      { name: "customer_id", type: "relation", relation: "customers", required: true },
+      { name: "due_on", type: "date" },
+      { name: "total", type: "money", currencies: ["INR", "USD"] },
+      { name: "notes", type: "longtext", maxLength: 50_000 },
+    ],
+  };
+  const result = ok({ project: "p", bricks: ["multi-workspace", "dynamic-entities"], entities: [orders, customers] });
+
+  test("entities.json and the migration carry the relation and the new types", () => {
+    const written = JSON.parse(result.files["src/entities.json"]!);
+    expect(written.map((e: { name: string }) => e.name)).toEqual(["customers", "orders"]);
+    expect(written[1].fields).toEqual([
+      { name: "customer_id", type: "relation", required: true, relation: "customers" },
+      { name: "due_on", type: "date", required: false },
+      { name: "total", type: "money", required: false, currencies: ["INR", "USD"] },
+      { name: "notes", type: "longtext", required: false, maxLength: 50_000 },
+    ]);
+    const migration = Object.entries(result.files).find(([path]) => path.endsWith("_entity__orders.sql"))![1];
+    const parsed = parseEntities([orders, customers]);
+    if (!parsed.ok) throw new Error(parsed.errors.join("; "));
+    expect(migration).toBe(entityDdl(parsed.entities[1]!));
+    expect(migration).toContain('"total__currency" TEXT');
+  });
+
+  test("a relation to an entity the blueprint does not declare is refused", () => {
+    expect(refused({ project: "p", bricks: ["multi-workspace", "dynamic-entities"], entities: [orders] })).toMatch(/field "customer_id" relates to entity "customers", which is not declared/);
+  });
+
+  test("the OpenAPI document describes each new type", () => {
+    const schema = JSON.parse(result.files["openapi.json"]!).components.schemas.OrdersCreate.properties;
+    expect(schema.customer_id).toMatchObject({ type: "string", format: "uuid" });
+    expect(schema.due_on).toEqual({ type: "string", format: "date" });
+    expect(schema.notes).toEqual({ type: "string", maxLength: 50_000 });
+    expect(schema.total).toMatchObject({
+      type: "object",
+      properties: { amount: { type: "integer" }, currency: { type: "string", enum: ["INR", "USD"] } },
+      required: ["amount", "currency"],
+    });
+  });
+});

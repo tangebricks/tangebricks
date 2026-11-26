@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { RESERVED_FIELD_NAMES, entitySchema } from "@poc/sdk";
+import {
+  LONGTEXT_DEFAULT_LENGTH,
+  LONGTEXT_MAX_LENGTH,
+  MONEY_CURRENCY_SUFFIX,
+  RESERVED_FIELD_NAMES,
+  entitySchema,
+} from "@poc/sdk";
 import type { Entity as SdkEntity, EntityField as SdkEntityField } from "@poc/sdk";
 import type { Blueprint } from "@poc/assembler";
 
@@ -127,7 +133,24 @@ export const EntityFieldSchema = z.discriminatedUnion("type", [
   z.strictObject({
     ...entityFieldCommon,
     type: z.literal("relation"),
-    maxLength: z.number().int().min(1).max(10_000).default(64),
+    /** The entity this field points at (`customer`), or `entity.field`, of which only the entity is used. Required. */
+    relation: z.string().regex(ENTITY_RELATION_PATTERN),
+    /** Kept for declarations written before relations were enforced; a relation's value is a row id, so it is unused. */
+    maxLength: z.number().int().min(1).max(10_000).optional(),
+  }),
+  z.strictObject({
+    ...entityFieldCommon,
+    type: z.literal("date"),
+  }),
+  z.strictObject({
+    ...entityFieldCommon,
+    type: z.literal("money"),
+    currencies: z.array(z.string().regex(/^[A-Z]{3}$/, "must be a 3-letter upper-case ISO-4217 code such as INR")).min(1).max(20),
+  }),
+  z.strictObject({
+    ...entityFieldCommon,
+    type: z.literal("longtext"),
+    maxLength: z.number().int().min(1).max(LONGTEXT_MAX_LENGTH).default(LONGTEXT_DEFAULT_LENGTH),
   }),
 ]);
 export type EntityField = z.infer<typeof EntityFieldSchema>;
@@ -155,6 +178,17 @@ export const EntityDefinitionSchema = z
       if (field.type === "enum" && new Set(field.values).size !== field.values.length) {
         problem(`field "${field.name}" lists a value twice`);
       }
+      if (field.type === "money" && new Set(field.currencies).size !== field.currencies.length) {
+        problem(`field "${field.name}" lists a currency twice`);
+      }
+    }
+    // A money field takes a second column, <name>__currency; no declared field may use that name.
+    for (const field of entity.fields) {
+      if (field.type === "money" && seen.has(field.name + MONEY_CURRENCY_SUFFIX)) {
+        problem(
+          `field "${field.name}${MONEY_CURRENCY_SUFFIX}" uses the name of the currency column of money field "${field.name}"`,
+        );
+      }
     }
   });
 export type EntityDefinition = z.infer<typeof EntityDefinitionSchema>;
@@ -170,7 +204,6 @@ export function toSdkEntity(entity: EntityDefinition): SdkEntity {
         case "string":
         case "json":
         case "datetime":
-        case "relation":
           return {
             name: field.name,
             type: "text",
@@ -198,6 +231,31 @@ export function toSdkEntity(entity: EntityDefinition): SdkEntity {
             type: "enum",
             required: field.required ?? false,
             values: [...field.values],
+          };
+        case "relation":
+          // `entity.field` names a column of the target; the SDK relates to the entity's row id, so only the entity
+          // part is kept.
+          return {
+            name: field.name,
+            type: "relation",
+            required: field.required ?? false,
+            relation: field.relation.split(".")[0]!,
+          };
+        case "date":
+          return { name: field.name, type: "date", required: field.required ?? false };
+        case "money":
+          return {
+            name: field.name,
+            type: "money",
+            required: field.required ?? false,
+            currencies: [...field.currencies],
+          };
+        case "longtext":
+          return {
+            name: field.name,
+            type: "longtext",
+            required: field.required ?? false,
+            maxLength: field.maxLength,
           };
       }
     }),

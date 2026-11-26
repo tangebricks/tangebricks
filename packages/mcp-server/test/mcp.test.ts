@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
 import { assemble, hashFiles } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
@@ -13,6 +14,9 @@ import {
   withinRateLimit,
 } from "../src/index.ts";
 import type { BlueprintDoNamespaceLike } from "../src/index.ts";
+import { ALL_TOOLS, toolDescriptions } from "../src/tools.ts";
+import { createEntityRoutes } from "../../../bricks/dynamic-entities/src/index.ts";
+import type { EntityEnv } from "../../../bricks/dynamic-entities/src/index.ts";
 import { TEST_TOKEN_USER_ID, projectOf, testToken, testTokenId, testTokenVerifier } from "./support/test-verifier.ts";
 
 const db = env.DB as D1Like;
@@ -972,3 +976,88 @@ describe("deploy_apply reports only real deploy state (story 0.9, R-F)", () => {
   });
 });
 
+
+describe("define_entity: relations, date, money and longtext (story 1.18)", () => {
+  const customer = { name: "customer", fields: [{ name: "label", type: "text", required: true }] };
+  const invoice = { name: "invoice", fields: [{ name: "customer_id", type: "relation", relation: "customer", required: true }, { name: "due_on", type: "date" }, { name: "total", type: "money", currencies: ["INR"] }, { name: "notes", type: "longtext" }] };
+
+  it("tools/list gives agents the relation key and the date, money and longtext types (apply_ops, and the define_entity macro)", async () => {
+    const tools = (await post(request("tools/list"))).body.result.tools as Array<{ name: string; description: string }>;
+    const listed = tools.find((t) => t.name === "apply_ops")!.description;
+    // define_entity is a legacy macro that tools/list does not show; its own description says the same.
+    const macro = toolDescriptions(ALL_TOOLS).find((t) => t.name === "define_entity")!.description;
+    for (const description of [listed, macro]) {
+      expect(description).toContain('{"name":"customer_id","type":"relation","relation":"customer"}');
+      expect(description).toMatch(/relation key/);
+      for (const type of ["date", "money", "longtext"]) expect(description).toContain(type);
+    }
+  });
+
+  it("a relation to an undeclared entity is refused, naming the field and the entity", async () => {
+    const reply = await callTool("define_entity", { project: "rel", entities: [{ name: "invoice", fields: [{ name: "owner_id", type: "relation", relation: "ghost" }] }] });
+    expect(reply.body.result.isError).toBe(true);
+    expect(toolText(reply)).toMatch(/field "owner_id" relates to entity "ghost", which is not declared/);
+    expect(await stored("rel")).toBeNull();
+  });
+
+  it.each(["target", "entity", "to", "references", "targetEntity"])("the wrong key %s is refused with a pointer to relation", async (key) => {
+    const reply = await callTool("define_entity", { project: "rel", entities: [customer, { name: "invoice", fields: [{ name: "customer_id", type: "relation", [key]: "customer" }] }] });
+    expect(reply.body.result.isError).toBe(true);
+    expect(toolText(reply)).toMatch(new RegExp(`"${key}" is not a field key: .*use type "relation" with the "relation" key`));
+    expect(await stored("rel")).toBeNull();
+  });
+
+  it("a relation may target an entity declared by an earlier call", async () => {
+    await callTool("define_entity", { project: "rel", entities: [customer] });
+    const reply = await callTool("define_entity", { project: "rel", entities: [invoice] });
+    expect(reply.body.result.isError).toBeUndefined();
+    expect(toolJson(reply).entities).toEqual(["customer", "invoice"]);
+  });
+
+  it("the built app carries the relation, and in workerd it refuses a related id from another workspace or another entity", async () => {
+    await callTool("enable_brick", { project: "rel-app", bricks: ["multi-workspace", "dynamic-entities"] });
+    const defined = await callTool("define_entity", { project: "rel-app", entities: [invoice, customer] });
+    expect(defined.body.result.isError).toBeUndefined();
+    const built = await callTool("build_project", { project: "rel-app" });
+    expect(built.body.result.isError).toBeUndefined();
+    const files = Object.fromEntries(
+      (await db.prepare("SELECT path, content FROM mcp_files WHERE project = 'rel-app'").all<{ path: string; content: string }>()).results.map((r) => [r.path, r.content]),
+    );
+    const entities = JSON.parse(files["src/entities.json"]!);
+    expect(entities.find((e: { name: string }) => e.name === "invoice").fields[0]).toEqual({ name: "customer_id", type: "relation", required: true, relation: "customer" });
+    const migrations = Object.keys(files).filter((p) => /^migrations\/\d+_entity__/.test(p)).sort();
+    expect(migrations.map((p) => p.replace(/^migrations\/\d+_/, ""))).toEqual(["entity__customer.sql", "entity__invoice.sql"]);
+    expect(files[migrations[1]!]).toContain(`"customer_id" TEXT NOT NULL CHECK (length("customer_id") = 36)`);
+    expect(files[migrations[1]!]).toContain(`"total__currency" TEXT CHECK ("total__currency" IN ('INR')`);
+
+    // Run the built declaration and migrations through the real router on workerd's D1.
+    for (const table of ["ent_customer", "ent_invoice"]) await db.prepare(`DROP TABLE IF EXISTS "${table}"`).run();
+    for (const path of migrations) await applyMigration(db, files[path]!);
+    const router = createEntityRoutes({ entities });
+    const send = async (workspace: string, method: string, path: string, body?: unknown) => {
+      const appUnderTest = new Hono<EntityEnv>();
+      appUnderTest.use("*", async (c, next) => {
+        c.set("user", { uid: "usr_rel" });
+        c.set("workspace", { id: workspace, role: "owner", suspended: false });
+        await next();
+      });
+      appUnderTest.route("/", router);
+      const res = await appUnderTest.request(`http://localhost${path}`, { method, headers: { "content-type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }, { DB: db });
+      return { status: res.status, body: (await res.json()) as any };
+    };
+    const ownCustomer = (await send("ws_a", "POST", "/customer", { label: "Acme" })).body.item.id as string;
+    const foreignCustomer = (await send("ws_b", "POST", "/customer", { label: "Other" })).body.item.id as string;
+
+    const good = await send("ws_a", "POST", "/invoice", { customer_id: ownCustomer, due_on: "2026-11-26", total: { amount: 1999, currency: "INR" } });
+    expect(good.status).toBe(201);
+    expect(good.body.item.total).toEqual({ amount: 1999, currency: "INR" });
+
+    const foreign = await send("ws_a", "POST", "/invoice", { customer_id: foreignCustomer });
+    expect(foreign.status).toBe(400);
+    expect(foreign.body.error).toMatchObject({ code: "VALIDATION_ERROR", message: expect.stringMatching(/customer_id/) });
+
+    const ownInvoiceId = await send("ws_a", "POST", "/invoice", { customer_id: good.body.item.id });
+    expect(ownInvoiceId.status).toBe(400);
+    expect(ownInvoiceId.body.error).toMatchObject({ code: "VALIDATION_ERROR", message: expect.stringMatching(/customer_id/) });
+  });
+});

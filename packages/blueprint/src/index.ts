@@ -103,7 +103,7 @@ export type {
 } from "./ops.ts";
 
 export { applyOp, applyOps, buildCatalogNodeRegistry } from "./apply.ts";
-export type { ApplyOpResult, BlueprintValidationError } from "./apply.ts";
+export type { ApplyOpOptions, ApplyOpResult, BlueprintValidationError } from "./apply.ts";
 
 export { computeReadiness } from "./readiness.ts";
 export type { ReadinessNeed, ReadinessResult } from "./readiness.ts";

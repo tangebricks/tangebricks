@@ -132,7 +132,7 @@ Workflows and blueprints are validated statically against Cloudflare platform li
    - Remediation: reduce fan-out or distribute parallel sends across batch stages.
 
 4. **D1 Entity Bind Parameters (`D1_BIND_PARAMS_EXCEEDED`)**:
-   - `parseEntities` validates that declared entity fields + 4 system columns (`id`, `workspace_id`, `created_at`, `updated_at`) <= 100 parameters.
+   - `parseEntities` validates that declared entity field columns + 4 system columns (`id`, `workspace_id`, `created_at`, `updated_at`) <= 100 parameters. A `money` field is two columns. The field types, relations and money are described in [docs/entities.md](../../docs/entities.md).
    - Refuses entity declarations defining > 96 fields.
    - Remediation: split entity into smaller normalized tables or reduce field count.
 

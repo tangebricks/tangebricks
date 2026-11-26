@@ -138,9 +138,9 @@
       "behaviourTest": "bricks/dynamic-entities/test/dynamic-entities.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 6,
+      "testsRun": 23,
       "testsSkipped": 0,
-      "assertionCount": 78,
+      "assertionCount": 119,
       "skipped": [
         {
           "check": "CONF_IDEMPOTENT_WRITE",
@@ -506,8 +506,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-26T17:48:44.929Z",
-    "gitSha": "6426bc6464fd30d84391f8934e2c4c6df45a7e88",
+    "generatedAt": "2026-11-26T19:07:21.912Z",
+    "gitSha": "c9db8c155067e9dfd9bb06b26143f2ed925b3b75",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
