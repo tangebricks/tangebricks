@@ -252,3 +252,81 @@ describe("compact, paged discovery and get_brick (AC 1, AC 2, AC 3)", () => {
     expect(missing.text).toMatch(/unknown brick "does-not-exist"/);
   });
 });
+
+describe("story 1.21: complete brick list, totals and keyword search", () => {
+  const defaultIds = Object.keys(catalog.bricks)
+    .filter((id) => catalog.bricks[id]!.manifest.ui?.maturity !== "experimental")
+    .sort();
+  const experimentalCount = Object.keys(catalog.bricks).length - defaultIds.length;
+  type Page = { items: Array<{ id: string; summary: string; category: string; maturity: string }>; total: number; nextCursor: string | null; note?: string };
+
+  test("DEFAULT_LIST: list_bricks {} says how many bricks exist, how to see the rest, and that experimental bricks are hidden", async () => {
+    const reply = await callMcpTool("list_bricks", {});
+    expect(countTokens(reply.text)).toBeLessThanOrEqual(400);
+    const page = reply.json() as Page;
+    expect(page.total).toBe(defaultIds.length);
+    expect(page.items).toHaveLength(10);
+    expect(page.nextCursor).toBeTruthy();
+    expect(page.note).toBe(
+      `Showing 1-10 of ${defaultIds.length}: pass nextCursor for more, or limit:100 for all. ${experimentalCount} more experimental bricks: pass maturity:'experimental'.`,
+    );
+  });
+
+  test("COMPLETE_LIST: limit:100 returns every non-experimental brick in one answer, no further page, and names the hidden experimental bricks", async () => {
+    const page = (await callMcpTool("list_bricks", { limit: 100 })).json() as Page;
+    expect(page.items.map((i) => i.id)).toEqual(defaultIds);
+    expect(page.total).toBe(defaultIds.length);
+    expect(page.nextCursor).toBeNull();
+    expect(page.note).toBe(`${experimentalCount} more experimental bricks: pass maturity:'experimental'.`);
+    for (const item of page.items) expect(Object.keys(item)).toEqual(["id", "summary", "category", "maturity"]);
+
+    const experimental = (await callMcpTool("list_bricks", { maturity: "experimental", limit: 100 })).json() as Page;
+    expect(experimental.total).toBe(experimentalCount);
+    expect(experimental.nextCursor).toBeNull();
+    expect(experimental.note).toBeUndefined();
+  });
+
+  test("EXPLICIT_PAGING: limit:5 returns 5 items, a cursor and a note on how to continue; the cursor pages exactly as before", async () => {
+    const first = (await callMcpTool("list_bricks", { limit: 5 })).json() as Page;
+    expect(first.items).toHaveLength(5);
+    expect(first.nextCursor).toBeTruthy();
+    expect(first.note).toMatch(new RegExp(`^Showing 1-5 of ${defaultIds.length}: pass nextCursor for more`));
+    const second = (await callMcpTool("list_bricks", { limit: 5, cursor: first.nextCursor })).json() as Page;
+    expect(second.items.map((i) => i.id)).toEqual(defaultIds.slice(5, 10));
+    expect(second.note).toMatch(new RegExp(`^Showing 6-10 of ${defaultIds.length}`));
+    expect((await callMcpTool("list_bricks", { limit: 101 })).isError).toBe(true);
+  });
+
+  test("KEYWORD_SEARCH: plain words find the brick through ui.keywords, as whole words or prefixes", async () => {
+    const ids = async (query: string) => ((await callMcpTool("search_bricks", { query, limit: 100 })).json() as Page).items.map((i) => i.id);
+    expect(await ids("teams")).toEqual(["multi-workspace"]);
+    expect(await ids("multitenant")).toEqual(["multi-workspace"]);
+    expect(await ids("team")).toContain("multi-workspace");
+    expect(await ids("database")).toEqual(["dynamic-entities"]);
+    expect(await ids("payments")).toEqual(expect.arrayContaining(["checkout-gateway", "credit-wallet"]));
+    expect(await ids("login")).toContain("core-auth");
+    expect(await ids("pricing")).toContain("subscription-plans");
+    expect(await ids("billing")).toContain("credit-wallet");
+    // Each word of a multi-word query must match on its own.
+    expect(await ids("stripe payments")).toEqual(["checkout-gateway"]);
+    // A keyword is matched from its start, not in its middle.
+    expect(await ids("tenant")).toContain("multi-workspace");
+    expect(await ids("ricing")).not.toContain("subscription-plans");
+  });
+
+  test("CAPABILITY_FILTER: capability:'workspace-context' returns its providers, with total", async () => {
+    const page = (await callMcpTool("search_bricks", { capability: "workspace-context" })).json() as Page;
+    expect(page.items.map((i) => i.id)).toEqual(["multi-workspace"]);
+    expect(page.total).toBe(1);
+    expect(page.nextCursor).toBeNull();
+  });
+
+  test("tool descriptions say how to get the complete list and name every filter", async () => {
+    const { ALL_TOOLS } = await import("../src/tools.ts");
+    for (const name of ["list_bricks", "search_bricks"]) {
+      const description = ALL_TOOLS.find((t) => t.name === name)!.description;
+      expect(description, name).toMatch(/complete list/);
+      for (const filter of ["query", "capability", "category", "maturity"]) expect(description, name).toContain(filter);
+    }
+  });
+});

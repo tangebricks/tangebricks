@@ -23,6 +23,7 @@
     "displayName": "Multi-Tenant Hierarchy",
     "category": "identity",
     "summary": "Multi-tenant workspace partitioning, membership roles, and tenant isolation middleware.",
+    "keywords": ["teams", "tenants", "multitenant", "organizations", "workspaces", "members", "roles"],
     "maturity": "production",
     "behaviourTest": "test/multi-workspace.test.ts"
   },

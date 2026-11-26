@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "49aa690b9d574b853a615e84b8387f7adb5d971da14d47792b68520e487b575b",
+  "catalogVersion": "8b2f264b27d3311636a1ffe3dcd104a1360ee0524e295a542ece08b1d29cca4a",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -400,8 +400,16 @@
           "category": "billing",
           "summary": "Multi-gateway checkout sessions, tax, and invoicing.",
           "maturity": "beta",
-          "maturityReason": "Persists checkout sessions, tax calculations, and invoices in D1, but external Stripe, Razorpay, and LemonSqueezy API calls are stubbed with synthetic URLs",
-          "behaviourTest": "test/checkout.test.ts"
+          "maturityReason": "Sessions, tax and invoices persist in D1. Provider orders go through a passed PaymentGateway (Stripe, Cashfree adapters exist); none is wired by default, so a session gets a synthetic placeholder URL",
+          "behaviourTest": "test/checkout.test.ts",
+          "keywords": [
+            "payments",
+            "stripe",
+            "cashfree",
+            "checkout",
+            "invoices",
+            "tax"
+          ]
         },
         "rateLimits": [
           {
@@ -514,7 +522,15 @@
           "summary": "Better Auth email/password and GitHub OAuth authentication with D1 sessions and bearer tokens.",
           "maturity": "beta",
           "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
-          "behaviourTest": "test/better-auth.test.ts"
+          "behaviourTest": "test/better-auth.test.ts",
+          "keywords": [
+            "login",
+            "signup",
+            "password",
+            "sessions",
+            "oauth",
+            "github"
+          ]
         },
         "secrets": [
           {
@@ -798,7 +814,15 @@
           "summary": "Atomic double-entry credit ledger, balance invariant engine, and idempotency keys.",
           "maturity": "beta",
           "maturityReason": "NO_DEFAULT_ADAPTER: Provider adapters exist (@poc/gateway-adapters) but none is wired by default; payment routes answer 503 NOT_CONFIGURED until a host passes a gateway and a currency.",
-          "behaviourTest": "test/credit-wallet.test.ts"
+          "behaviourTest": "test/credit-wallet.test.ts",
+          "keywords": [
+            "credits",
+            "billing",
+            "balance",
+            "ledger",
+            "payments",
+            "topup"
+          ]
         },
         "rateLimits": [
           {
@@ -1347,7 +1371,7 @@
           "category": "data",
           "summary": "HTML template hydration, PDF build, and SHA-256 stamps.",
           "maturity": "experimental",
-          "maturityReason": "QUARANTINED: stub; strips HTML/CSS into plain text on a single PDF page with no layout or pagination, and conflicts with document-parsing",
+          "maturityReason": "QUARANTINED: stub; writes template text, HTML tags included, as plain lines on a single PDF page with no layout or pagination, and conflicts with document-parsing",
           "behaviourTest": "test/document.test.ts"
         },
         "conflicts": [
@@ -1471,7 +1495,15 @@
           "category": "data",
           "summary": "Dynamic entity CRUD router compiling JSON schemas into row-level tenant-isolated REST endpoints.",
           "maturity": "production",
-          "behaviourTest": "test/dynamic-entities.test.ts"
+          "behaviourTest": "test/dynamic-entities.test.ts",
+          "keywords": [
+            "database",
+            "tables",
+            "crud",
+            "records",
+            "schema",
+            "rest"
+          ]
         },
         "privacy": {
           "tables": {}
@@ -2430,7 +2462,16 @@
           "category": "identity",
           "summary": "Multi-tenant workspace partitioning, membership roles, and tenant isolation middleware.",
           "maturity": "production",
-          "behaviourTest": "test/multi-workspace.test.ts"
+          "behaviourTest": "test/multi-workspace.test.ts",
+          "keywords": [
+            "teams",
+            "tenants",
+            "multitenant",
+            "organizations",
+            "workspaces",
+            "members",
+            "roles"
+          ]
         },
         "globalTables": [
           {
@@ -2522,7 +2563,7 @@
           "category": "developer",
           "summary": "OAuth 2.0 server with PKCE and scoped access tokens.",
           "maturity": "experimental",
-          "maturityReason": "QUARANTINED: stub; issues access tokens that no brick or route accepts, and its authorize route issued codes for any user named in the body until 0.6 (threat-model risk 13)",
+          "maturityReason": "QUARANTINED: stub; issues access tokens that no other brick accepts (only its own introspect route reads them); its authorize route issued codes for any user named in the body until 0.6 (risk 13)",
           "behaviourTest": "test/oauth.test.ts"
         },
         "globalTables": [
@@ -3780,7 +3821,14 @@
           "summary": "Subscription plan catalog, tier changes, and limits.",
           "maturity": "beta",
           "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
-          "behaviourTest": "test/plans.test.ts"
+          "behaviourTest": "test/plans.test.ts",
+          "keywords": [
+            "plans",
+            "pricing",
+            "tiers",
+            "subscriptions",
+            "limits"
+          ]
         },
         "triggers": {
           "schedules": [

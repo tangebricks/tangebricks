@@ -52,8 +52,9 @@
     "displayName": "Multi-Gateway Checkout & Taxes",
     "category": "billing",
     "summary": "Multi-gateway checkout sessions, tax, and invoicing.",
+    "keywords": ["payments", "stripe", "cashfree", "checkout", "invoices", "tax"],
     "maturity": "beta",
-    "maturityReason": "Persists checkout sessions, tax calculations, and invoices in D1, but external Stripe, Razorpay, and LemonSqueezy API calls are stubbed with synthetic URLs",
+    "maturityReason": "Sessions, tax and invoices persist in D1. Provider orders go through a passed PaymentGateway (Stripe, Cashfree adapters exist); none is wired by default, so a session gets a synthetic placeholder URL",
     "behaviourTest": "test/checkout.test.ts"
   },
   "workspaceData": {

@@ -23,6 +23,8 @@ const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
 const RELATIVE_FILE = /^[a-z0-9][a-z0-9_./-]{0,100}\.sql$/;
 const RELATIVE_TEST_FILE = /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9_./-]{0,120}\.test\.ts$/;
 const SAFE_TEXT = /^[A-Za-z0-9][A-Za-z0-9 &(),.:;/_'+=%>@-]{0,199}$/;
+/** One `ui.keywords` entry: a lowercase word of 1 to 24 letters, digits or dashes. */
+const BRICK_KEYWORD = /^[a-z0-9][a-z0-9-]{0,23}$/;
 const CRON_EXPRESSION = /^[0-9*,/-]+(?: [0-9*,/-]+){4}$/;
 const CAPABILITY_EXPORT = /^[a-z][a-z0-9-]{0,39}\.[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
@@ -215,6 +217,15 @@ const uiDefinition = z.strictObject({
   maturityReason: z.string().min(1).max(200).regex(SAFE_TEXT).optional(),
   behaviourTest: z.string().regex(RELATIVE_TEST_FILE).optional(),
   adapters: z.record(identifier, adapterDefinition).optional(),
+  /**
+   * Plain words agents search with that the summary may not contain ("teams", "database", "payments"). Brick search
+   * (MCP `search_bricks` / `list_bricks`) matches a query word that is a keyword or the start of one.
+   */
+  keywords: z
+    .array(z.string().regex(BRICK_KEYWORD))
+    .max(12)
+    .refine((words) => new Set(words).size === words.length, "ui.keywords must not repeat a word")
+    .optional(),
 });
 export type BrickUiDefinition = z.infer<typeof uiDefinition>;
 

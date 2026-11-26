@@ -249,6 +249,7 @@ export class AgentSandboxService {
       if (tool.handler_type === "built_in") {
         output = this.executeBuiltin(tool.handler_target, args);
       } else {
+        // px-stub: inline_js, http_webhook and workflow_call tools have no runner (NOT_CONFIGURED); there is no isolate sandbox
         // Story 0.9: there is no runner for non-built-in tools. Fail NOT_CONFIGURED; never record a run that did not happen.
         throw new Error(
           `NOT_CONFIGURED: no handler is configured for ${tool.handler_type} tool '${tool.name}'; the tool was not run.`,

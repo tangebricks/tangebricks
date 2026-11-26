@@ -52,6 +52,7 @@
     "displayName": "Subscription & Plan Entitlements",
     "category": "billing",
     "summary": "Subscription plan catalog, tier changes, and limits.",
+    "keywords": ["plans", "pricing", "tiers", "subscriptions", "limits"],
     "maturity": "beta",
     "behaviourTest": "test/plans.test.ts",
     "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."

@@ -140,6 +140,7 @@ export function createOAuthRoutes(): Hono<OAuthEnv> {
     }
   });
 
+  // px-stub: the access tokens issued here are accepted by no other brick, only by this brick's introspect route (quarantined)
   // POST /oauth/token - Token Exchange Endpoint
   app.post("/oauth/token", async (c) => {
     // Story 1.11: an API key never mints credentials that would outlive it.

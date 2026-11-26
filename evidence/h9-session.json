@@ -8,13 +8,13 @@
   "scored": {
     "session": "the whole invoices project (workspaces, wallet, entities)",
     "toolCalls": 4,
-    "conversationTokens": 2703,
-    "modelVisibleTokens": 2301,
-    "firstPartySourceTokens": 50991,
+    "conversationTokens": 2782,
+    "modelVisibleTokens": 2380,
+    "firstPartySourceTokens": 51065,
     "generatedFilesOnlyTokens": 11179,
-    "ratioPercent": 5.3,
-    "ratioAgainstGeneratedFilesOnlyPercent": 24.2,
-    "modelVisibleRatioPercent": 4.5,
+    "ratioPercent": 5.4,
+    "ratioAgainstGeneratedFilesOnlyPercent": 24.9,
+    "modelVisibleRatioPercent": 4.7,
     "projectHash": "58a4bec95eb659091deb80376372592d61b7888077a3093294e8f397cb240d44",
     "files": 15,
     "byMessage": [
@@ -31,12 +31,12 @@
       {
         "what": "tools/list",
         "requestTokens": 17,
-        "responseTokens": 1341
+        "responseTokens": 1380
       },
       {
         "what": "tools/call list_bricks",
         "requestTokens": 31,
-        "responseTokens": 310
+        "responseTokens": 350
       },
       {
         "what": "tools/call apply_ops",
@@ -77,7 +77,7 @@
       },
       {
         "path": "bricks/multi-workspace/brick.manifest.json",
-        "tokens": 523
+        "tokens": 552
       },
       {
         "path": "bricks/credit-wallet/src/brick.ts",
@@ -137,7 +137,7 @@
       },
       {
         "path": "bricks/credit-wallet/brick.manifest.json",
-        "tokens": 2298
+        "tokens": 2321
       },
       {
         "path": "bricks/dynamic-entities/src/index.ts",
@@ -149,7 +149,7 @@
       },
       {
         "path": "bricks/dynamic-entities/brick.manifest.json",
-        "tokens": 572
+        "tokens": 594
       },
       {
         "path": "generated:migrations/0001_multi-workspace__0001_multi_workspace.sql",
@@ -222,45 +222,45 @@
     "filteredDiscovery": {
       "session": "the whole invoices project with filtered list_bricks ({ query: 'workspace' })",
       "toolCalls": 4,
-      "conversationTokens": 2617,
-      "firstPartySourceTokens": 50991,
-      "ratioPercent": 5.1
+      "conversationTokens": 2660,
+      "firstPartySourceTokens": 51065,
+      "ratioPercent": 5.2
     },
     "tenBricks": {
       "session": "ten bricks and the invoices table in four calls",
       "toolCalls": 4,
-      "conversationTokens": 3021,
-      "firstPartySourceTokens": 101544,
+      "conversationTokens": 3100,
+      "firstPartySourceTokens": 101693,
       "filesBuilt": 25,
       "ratioPercent": 3
     },
     "smallerProject": {
       "session": "workspaces and invoices without the wallet",
       "toolCalls": 4,
-      "conversationTokens": 2246,
-      "firstPartySourceTokens": 17941,
-      "ratioPercent": 12.5
+      "conversationTokens": 2325,
+      "firstPartySourceTokens": 17992,
+      "ratioPercent": 12.9
     },
     "eightTables": {
       "session": "three bricks and eight tables: in four calls with lists, and one item per call",
       "listsToolCalls": 4,
-      "listsConversationTokens": 3028,
+      "listsConversationTokens": 3107,
       "oneItemPerCallToolCalls": 13,
-      "oneItemPerCallConversationTokens": 3887,
+      "oneItemPerCallConversationTokens": 3966,
       "tokensSavedByLists": 859,
       "filesBuilt": 22
     },
     "oneBrickPerCall": {
       "session": "the same project built one brick per call, the way the first version of the tools required",
       "toolCalls": 6,
-      "conversationTokens": 2831,
-      "toolListTokens": 1358,
-      "ratioPercent": 5.6
+      "conversationTokens": 2910,
+      "toolListTokens": 1397,
+      "ratioPercent": 5.7
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-26T21:14:56.550Z",
-    "gitSha": "9c3796dd3833a600215d9f1c66c6a78940d05bc5",
+    "generatedAt": "2026-11-26T21:49:32.458Z",
+    "gitSha": "2f1d0529a5352c54415a76d7ae7a0e30b9a3388c",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

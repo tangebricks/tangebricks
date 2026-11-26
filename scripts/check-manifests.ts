@@ -8,6 +8,7 @@ import ts from "typescript";
 import { lintMigration } from "../packages/deploy/src/migration-lint.ts";
 import { extractCreatedTables } from "./lib/tenant-tables.ts";
 import { lintTenantQueries } from "./lint-tenant-queries.ts";
+import { checkAllBrickClaims, formatBrickClaimViolation } from "./check-brick-claims.ts";
 import { IMPORTER_VERSION } from "../packages/integrations/src/importer.ts";
 import {
   IntegrationManifestSchema,
@@ -1199,12 +1200,17 @@ if (import.meta.main) {
 
   const violations = checkAllBricks(bricksDir);
   const tenantLint = lintTenantQueries({ bricksDir });
+  // Story 1.21: every stub claim in a manifest text has a px-stub marker in the brick's src, and the reverse.
+  const claimViolations = checkAllBrickClaims(bricksDir);
 
   if (jsonOutput) {
-    console.log(JSON.stringify({ violations, tenantViolations: tenantLint.violations }, null, 2));
+    console.log(JSON.stringify({ violations, tenantViolations: tenantLint.violations, claimViolations }, null, 2));
   } else {
     for (const v of violations) {
       console.log(formatViolationLine(v));
+    }
+    for (const cv of claimViolations) {
+      console.log(formatBrickClaimViolation(cv));
     }
     if (tenantLint.violations.length > 0) {
       console.error(`\n[tenant-lint] Found ${tenantLint.violations.length} tenant query violation(s):`);
@@ -1213,5 +1219,5 @@ if (import.meta.main) {
       }
     }
   }
-  process.exit(violations.length > 0 || tenantLint.violations.length > 0 ? 1 : 0);
+  process.exit(violations.length > 0 || tenantLint.violations.length > 0 || claimViolations.length > 0 ? 1 : 0);
 }

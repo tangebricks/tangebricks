@@ -74,6 +74,7 @@
     "fidelity:check": "node scripts/measure-importer-fidelity.ts --check",
     "catalog:build": "node scripts/build-catalog.ts",
     "catalog:conformance": "node scripts/check-manifests.ts",
+    "check:brick-claims": "node scripts/check-brick-claims.ts",
     "catalog:tiers": "node scripts/catalog-tiers.ts",
     "studio:scorecard": "node scripts/check-parity-scorecard.ts",
     "mcp:parity": "node scripts/mcp-parity.ts",

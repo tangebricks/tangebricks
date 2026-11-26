@@ -26,7 +26,7 @@
     "category": "data",
     "summary": "HTML template hydration, PDF build, and SHA-256 stamps.",
     "maturity": "experimental",
-    "maturityReason": "QUARANTINED: stub; strips HTML/CSS into plain text on a single PDF page with no layout or pagination, and conflicts with document-parsing",
+    "maturityReason": "QUARANTINED: stub; writes template text, HTML tags included, as plain lines on a single PDF page with no layout or pagination, and conflicts with document-parsing",
     "behaviourTest": "test/document.test.ts"
   },
   "conflicts": [
