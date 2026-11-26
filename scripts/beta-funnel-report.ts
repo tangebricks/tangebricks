@@ -8,10 +8,8 @@
  * 3. Connect Cloudflare drop-off rate (`1 - verifiedCount / wizardOpenedCount`) and
  *    automated CP9 trigger evaluation (`cp9TriggerFired: dropOffRate > 0.25`).
  */
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { fileURLToPath } from "node:url";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 import type { D1Like, D1Result, D1Statement } from "../packages/sdk/src/index.ts";
 import {
@@ -20,8 +18,6 @@ import {
   recordStudioOnboardingEvent,
 } from "../apps/studio-api/src/security/token-vault.ts";
 import type { OnboardingFunnelAnalytics } from "../apps/studio-api/src/security/token-vault.ts";
-
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function createInMemorySqliteD1(): D1Like {
   const sqlite = new DatabaseSync(":memory:");

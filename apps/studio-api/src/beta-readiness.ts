@@ -487,7 +487,7 @@ export async function provisionBetaCohortPartners(
           metadata: {
             cohortId,
             partnerType: p.partnerType,
-            ...(extraMeta ?? {}),
+            ...extraMeta,
           },
           createdAt,
         });

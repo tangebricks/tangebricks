@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeSpec,
-  extractGoogleDiscoveryOperations,
-  extractOpenApi3Operations,
   importIntegrationSpec,
 } from "../src/importer.ts";
 
@@ -70,12 +68,6 @@ describe("UC3.5 Request body fidelity importer tests", () => {
       },
     };
 
-    const curation = {
-      app: "test",
-      specProvenance: "upstream" as const,
-      ui: { displayName: "Test", summary: "Test", maturity: "beta" as const },
-    };
-
     const res = importIntegrationSpec({
       spec,
       format: "openapi3",
@@ -126,12 +118,6 @@ describe("UC3.5 Request body fidelity importer tests", () => {
           },
         },
       },
-    };
-
-    const curation = {
-      app: "test",
-      specProvenance: "upstream" as const,
-      ui: { displayName: "Test", summary: "Test", maturity: "beta" as const },
     };
 
     const res = importIntegrationSpec({
@@ -195,12 +181,6 @@ describe("UC3.5 Request body fidelity importer tests", () => {
       },
     };
 
-    const curation = {
-      app: "test",
-      specProvenance: "upstream" as const,
-      ui: { displayName: "Test", summary: "Test", maturity: "beta" as const },
-    };
-
     const res = importIntegrationSpec({
       spec,
       format: "openapi3",
@@ -261,12 +241,6 @@ describe("UC3.5 Request body fidelity importer tests", () => {
       },
     };
 
-    const curation = {
-      app: "test",
-      specProvenance: "upstream" as const,
-      ui: { displayName: "Test", summary: "Test", maturity: "beta" as const },
-    };
-
     const res = importIntegrationSpec({
       spec,
       format: "openapi3",
@@ -314,12 +288,6 @@ describe("UC3.5 Request body fidelity importer tests", () => {
       },
     };
 
-    const curation = {
-      app: "test",
-      specProvenance: "upstream" as const,
-      ui: { displayName: "Test", summary: "Test", maturity: "beta" as const },
-    };
-
     const res = importIntegrationSpec({
       spec,
       format: "openapi3",
@@ -359,12 +327,6 @@ describe("UC3.5 Request body fidelity importer tests", () => {
           },
         },
       },
-    };
-
-    const curation = {
-      app: "test",
-      specProvenance: "upstream" as const,
-      ui: { displayName: "Test", summary: "Test", maturity: "beta" as const },
     };
 
     const res = importIntegrationSpec({
@@ -426,12 +388,6 @@ describe("UC3.5 Request body fidelity importer tests", () => {
       },
     };
 
-    const curation = {
-      app: "google",
-      specProvenance: "upstream" as const,
-      ui: { displayName: "Google", summary: "Google", maturity: "beta" as const },
-    };
-
     const res = importIntegrationSpec({
       spec: doc,
       format: "google-discovery",
@@ -486,11 +442,6 @@ describe("UC3.5 Request body fidelity importer tests", () => {
     };
 
     const t0 = performance.now();
-    const curation = {
-      app: "test",
-      specProvenance: "upstream" as const,
-      ui: { displayName: "Test", summary: "Test", maturity: "beta" as const },
-    };
 
     const res = importIntegrationSpec({
       spec,

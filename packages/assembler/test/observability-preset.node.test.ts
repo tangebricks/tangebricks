@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import { assemble, BlueprintSchema } from "../src/index.ts";
 import { catalog } from "../catalog.generated.ts";
 import { verifyTelemetrySignature, TELEMETRY_SIGNATURE_HEADER } from "@poc/telemetry";

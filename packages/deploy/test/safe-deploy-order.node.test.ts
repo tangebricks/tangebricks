@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 import {
   DEPLOY_HISTORY_TABLE,
   DEPLOY_TABLE,
-  MIGRATIONS_TABLE,
   createClient,
   deploy,
   memoryStore,

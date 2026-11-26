@@ -3,8 +3,6 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runAllCanaries, runAppCanary } from "./lib/live-canary.ts";
 
-const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
-
 async function main() {
   const args = process.argv.slice(2);
   let targetApp: string | undefined;

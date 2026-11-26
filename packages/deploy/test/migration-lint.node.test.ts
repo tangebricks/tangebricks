@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
-import { describe, expect, test, beforeEach, afterEach, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import {
-  DeployError,
   createClient,
   deploy,
   isWriteCall,

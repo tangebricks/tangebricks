@@ -81,7 +81,7 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
       env: {
         DB: db,
         PX_ENV: opts?.pxEnv ?? "preview",
-        ...(opts?.extraEnv ?? {}),
+        ...opts?.extraEnv,
       },
     });
     expect(res).not.toBeNull();

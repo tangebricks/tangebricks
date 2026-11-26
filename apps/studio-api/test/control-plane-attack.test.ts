@@ -114,7 +114,7 @@ async function call(
   path: string,
   init: { method?: string; bearer?: string | null; headers?: Record<string, string>; body?: unknown } = {},
 ): Promise<{ status: number; text: string; json: () => any }> {
-  const headers: Record<string, string> = { ...(init.headers ?? {}) };
+  const headers: Record<string, string> = { ...init.headers };
   if (init.bearer) headers.authorization = `Bearer ${init.bearer}`;
   if (init.body !== undefined) headers["content-type"] = "application/json";
   const res = await app.request(
@@ -762,7 +762,7 @@ async function hit(
   bearer: string | null,
   extra: { headers?: Record<string, string>; body?: Record<string, unknown>; env?: Partial<StudioApiEnv> } = {},
 ): Promise<{ status: number; text: string }> {
-  const headers: Record<string, string> = { ...(extra.headers ?? {}) };
+  const headers: Record<string, string> = { ...extra.headers };
   if (bearer) headers.authorization = `Bearer ${bearer}`;
   const init: RequestInit = { method, headers };
   if (method !== "GET" && method !== "DELETE") {

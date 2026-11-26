@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { IntegrationManifestFile, IntegrationOperation } from "@poc/assembler";
+import type { IntegrationManifestFile } from "@poc/assembler";
 import type { ExecutionContext } from "@poc/sdk";
 import { redactTelemetryPayload, redactTelemetryString, REDACTED_PLACEHOLDER } from "@poc/telemetry";
 import { createIntegrationOperationExecutor } from "../src/index.ts";

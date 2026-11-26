@@ -14,7 +14,7 @@
  * Missing cohort export without --simulate exits 1 with BETA_READINESS_NO_REAL_COHORT.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
@@ -28,8 +28,6 @@ import type {
   BetaReadinessReport,
   CohortPartnerSeedInput,
 } from "../apps/studio-api/src/beta-readiness.ts";
-
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 export function createInMemorySqliteD1(): D1Like {
   const sqlite = new DatabaseSync(":memory:");

@@ -40,7 +40,6 @@ import {
 import {
   isRetryable,
   parseRetryDelayMs,
-  sleep,
 } from "./integration/retry.ts";
 import type { ParseRetryDelayResult } from "./integration/retry.ts";
 

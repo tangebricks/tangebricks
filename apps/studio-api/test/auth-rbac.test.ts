@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 import { applyMigration, sha256HexString } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import aiCreditsPresetRaw from "../../../presets/ai-credits-saas.blueprint.json?raw";

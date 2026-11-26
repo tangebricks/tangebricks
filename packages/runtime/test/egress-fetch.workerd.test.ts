@@ -3,7 +3,6 @@ import {
   createHardenedFetch,
   isPrivateAddress,
 } from "../src/index.ts";
-import type { EgressPolicy } from "../src/index.ts";
 
 describe("UC1.3 — Hardened Egress Fetch", () => {
   const allowedHosts = ["api.github.com", "api.stripe.com"];

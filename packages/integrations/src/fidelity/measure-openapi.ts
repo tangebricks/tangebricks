@@ -271,7 +271,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
       }
 
       const resp = op.responses ?? {};
-      const okk = Object.keys(resp).find((k) => /^2/.test(k));
+      const okk = Object.keys(resp).find((k) => k.startsWith("2"));
       if (okk) {
         const r = dereference(spec0, resp[okk]);
         const cc = r.content ?? {};

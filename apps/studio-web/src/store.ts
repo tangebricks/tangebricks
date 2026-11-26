@@ -889,7 +889,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set((state) => {
       const next = { ...state.pinnedStepOutputs };
       const wfId = state.activeWorkflowId ?? "wf_default";
-      const nextByWf = { ...(state.pinnedOutputsByWorkflow[wfId] ?? {}) };
+      const nextByWf = { ...state.pinnedOutputsByWorkflow[wfId] };
       if (output === null) {
         delete next[nodeId];
         delete nextByWf[nodeId];
@@ -962,7 +962,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       pinnedOutputsByWorkflow: {
         ...prev.pinnedOutputsByWorkflow,
         [workflowId]: {
-          ...(prev.pinnedOutputsByWorkflow[workflowId] ?? {}),
+          ...prev.pinnedOutputsByWorkflow[workflowId],
           [nodeId]: {
             output: normalizedObj,
             ...(sourceRunId ? { sourceRunId } : {}),
@@ -1003,7 +1003,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set((prev) => {
       const nextFlat = { ...prev.pinnedStepOutputs };
       delete nextFlat[nodeId];
-      const nextWf = { ...(prev.pinnedOutputsByWorkflow[workflowId] ?? {}) };
+      const nextWf = { ...prev.pinnedOutputsByWorkflow[workflowId] };
       delete nextWf[nodeId];
       return {
         pinnedStepOutputs: nextFlat,
@@ -1113,7 +1113,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set({ isRunningTestStep: true, mutationError: null });
     try {
       const upstreamSteps: Record<string, Record<string, unknown>> = {
-        ...(body.upstreamSteps ?? {}),
+        ...body.upstreamSteps,
       };
       for (const [key, res] of Object.entries(state.stepTestResults)) {
         if (!key.includes(":") && res.status === "succeeded") {
@@ -1159,7 +1159,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   applyIncomingTelemetryFrame: (frame) =>
     set((prev) => {
-      const wfMap = { ...(prev.nodeTelemetryByWorkflow[frame.workflowId] ?? {}) };
+      const wfMap = { ...prev.nodeTelemetryByWorkflow[frame.workflowId] };
       const existing = wfMap[frame.nodeId];
       // If a newer run started on this workflow, clear stale nodes from the previous run
       const prevRunId = prev.activeRunIdByWorkflow[frame.workflowId];
@@ -1218,7 +1218,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         if (typeof ev.cursor === "number" && ev.cursor > maxCursor) {
           maxCursor = ev.cursor;
         }
-        const wfMap = { ...(nextByWf[ev.workflowId] ?? {}) };
+        const wfMap = { ...nextByWf[ev.workflowId] };
         wfMap[ev.nodeId] = {
           runId: ev.runId,
           workflowId: ev.workflowId,
@@ -1293,7 +1293,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
     const mergedFilters: StudioRunsFilterState = {
       ...state.runsFilters,
-      ...(overrideFilters ?? {}),
+      ...overrideFilters,
     };
     if (overrideFilters) {
       set({ runsFilters: mergedFilters, isLoadingRuns: true });
@@ -2667,7 +2667,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           for (const wf of aiState.workflows) {
             const found = wf.nodes.find((n) => n.id === targetId);
             if (found) {
-              aiData = { ...((found.data as Record<string, unknown>) ?? {}) };
+              aiData = { ...(found.data as Record<string, unknown> | undefined) };
               aiLabel = found.label;
               workflowId = workflowId ?? wf.id;
               break;
@@ -2675,7 +2675,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           }
         } else if (targetKind === "brick") {
           const found = aiState.bricks.find((b) => b.id === targetId);
-          aiData = { ...((found?.config as Record<string, unknown>) ?? {}) };
+          aiData = { ...(found?.config as Record<string, unknown> | undefined) };
         } else {
           const found = aiState.entities.find((e) => e.name === targetId);
           aiData = { fields: found?.fields ?? [] };
@@ -2786,14 +2786,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
             for (const wf of nextProjectState.workflows) {
               const found = wf.nodes.find((n) => n.id === dt.id);
               if (found) {
-                aiData = { ...((found.data as Record<string, unknown>) ?? {}) };
+                aiData = { ...(found.data as Record<string, unknown> | undefined) };
                 aiLabel = found.label;
                 break;
               }
             }
           } else if (dt.kind === "brick") {
             const found = nextProjectState.bricks.find((b) => b.id === dt.id);
-            aiData = { ...((found?.config as Record<string, unknown>) ?? {}) };
+            aiData = { ...(found?.config as Record<string, unknown> | undefined) };
           } else if (dt.kind === "entity") {
             const found = nextProjectState.entities.find((e) => e.name === dt.id);
             aiData = { fields: found?.fields ?? [] };

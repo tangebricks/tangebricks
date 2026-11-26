@@ -7,7 +7,7 @@ import { assemble } from "@poc/assembler";
 import type { Catalog } from "@poc/assembler";
 import { catalog } from "../../assembler/catalog.generated.ts";
 import { runGraph, toyExecutors } from "../src/index.ts";
-import { createRegistry, toyRegistry, type BrickManifest } from "@poc/sdk";
+import { createRegistry, toyRegistry } from "@poc/sdk";
 import { node, wire } from "./graphs.ts";
 
 const requireDeploy = createRequire(join(process.cwd(), "packages/deploy/package.json"));
@@ -173,7 +173,7 @@ describe("H3 untrusted brick isolation (UC6.7)", () => {
     );
 
     // Test RPC node execution
-    const isolatedService = await mf.getWorker("host");
+    await mf.getWorker("host");
     // AC1: In the isolated brick, Object.keys(env) equals the declared names, and undeclared secret is undefined
     const hostEnv = await mf.getBindings("host");
     const isolatedBinding = hostEnv.BRICK_FIXTURE_ISOLATED as any;

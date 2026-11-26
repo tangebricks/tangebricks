@@ -90,7 +90,7 @@ export function createIntegrationConnectionsClient(
           ...options.headers,
           "x-workspace-id": options.workspaceId,
           accept: "application/json",
-          ...(init.headers ?? {}),
+          ...init.headers,
         },
       });
     } catch {

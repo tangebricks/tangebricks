@@ -4,6 +4,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
@@ -11,18 +12,18 @@ const write = (rel: string, text: string) => writeFileSync(join(root, rel), text
 
 function units(): string {
   const run = spawnSync(process.execPath, [join(root, "node_modules", "vitest", "vitest.mjs"), "run", "packages/sdk", "bricks/dynamic-entities", "packages/assembler/test/H8.entities-assembly", "packages/assembler/test/assembler", "packages/assembler/test/catalog"], { cwd: root, encoding: "utf8" });
-  const out = (run.stdout + run.stderr).replace(/\x1B\[[0-9;]*m/g, "");
+  const out = stripVTControlCharacters(run.stdout + run.stderr);
   return out.split(/\r?\n/).find((l) => /^\s+Tests /.test(l))?.trim().replace(/^Tests\s+/, "") ?? "(no summary)";
 }
 
 function h8(): string {
   const run = spawnSync(process.execPath, [join(root, "scripts", "verify.ts"), "H8"], { cwd: root, encoding: "utf8" });
-  const out = (run.stdout + run.stderr).replace(/\x1B\[[0-9;]*m/g, "");
+  const out = stripVTControlCharacters(run.stdout + run.stderr);
   const lines = out.split(/\r?\n/);
-  const row = lines.find((l) => /^H8 /.test(l))?.replace(/\s{2,}/g, " ").replace(" An entity declaration yields tenant-safe CRUD", "") ?? "(no H8 row)";
+  const row = lines.find((l) => l.startsWith("H8 "))?.replace(/\s{2,}/g, " ").replace(" An entity declaration yields tenant-safe CRUD", "") ?? "(no H8 row)";
   const reasons = lines.filter((l) => /^\s+- /.test(l)).map((l) => l.trim().replace(/^- (check )?/, "")).join("; ");
   const extra = lines.filter((l) => /^(entity named in code|h8-entity-tests\.json: (?!not found))/.test(l)).map((l) => l.slice(0, 80)).slice(0, 1).join("");
-  const tests = lines.find((l) => /^Tests:/.test(l))?.replace(/\. Verdicts.*/, "") ?? "";
+  const tests = lines.find((l) => l.startsWith("Tests:"))?.replace(/\. Verdicts.*/, "") ?? "";
   return `exit ${run.status} | ${row} | ${tests} | ${reasons.slice(0, 110)}${extra ? " | " + extra : ""}`;
 }
 

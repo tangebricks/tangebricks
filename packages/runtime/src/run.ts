@@ -33,7 +33,6 @@ import type {
 import { resolveCaseAConnection } from "./connections.ts";
 import { resolveStepExpressions } from "./expressions.ts";
 import {
-  collectConnectionSecretValues,
   collectConnectionsMapSecrets,
   getRegisteredTokenUrlsByApp,
 } from "./integration-executor.ts";

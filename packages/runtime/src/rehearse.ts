@@ -9,7 +9,6 @@ import type {
 import {
   StepEventSchema,
   collectSecretKeyedValues,
-  collectSecretStringsFromValue,
   ensureTelemetryTables,
   insertStepEvent,
   isTelemetryPreviewTruncated,
@@ -1027,7 +1026,7 @@ export async function executeWorkflowRerun(
   }
 
   const seededOutputs: Record<string, unknown> = {
-    ...(request.seededOutputs ?? {}),
+    ...request.seededOutputs,
   };
 
   for (const ancestorId of strictAncestors) {

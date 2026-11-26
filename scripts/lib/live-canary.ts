@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { catalog } from "../../packages/assembler/catalog.generated.ts";
 import type { IntegrationManifestFile } from "../../packages/assembler/src/schemas.ts";
@@ -8,10 +8,9 @@ import {
   buildRegistryFromCatalog,
   rehearseStep,
 } from "../../packages/runtime/src/index.ts";
-import type { Executor, Executors } from "../../packages/sdk/src/index.ts";
+import type { Executors } from "../../packages/sdk/src/index.ts";
 import { redactTelemetryPayload } from "../../packages/telemetry/src/index.ts";
 import {
-  getEvidenceDir,
   getGitSha,
   stampEvidence,
   writeEvidence,

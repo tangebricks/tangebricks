@@ -391,7 +391,7 @@ export function toActionableIssue(
           nodeId,
           patch: {
             data: {
-              ...(node?.data ?? {}),
+              ...node?.data,
               connectionRef: validConn,
             },
           },
@@ -413,7 +413,7 @@ export function toActionableIssue(
       const validVal = inferValidSettingReplacement(brickId, undefined, fieldKey, ctx.catalog);
       const isUnknownKey = /unknown setting/i.test(raw.message);
       const existingBrick = ctx.state?.bricks.find((b) => b.id === brickId);
-      const nextConfig: Record<string, unknown> = { ...(existingBrick?.config ?? {}) };
+      const nextConfig: Record<string, unknown> = { ...existingBrick?.config };
       if (isUnknownKey) {
         delete nextConfig[fieldKey];
       } else {
@@ -454,7 +454,7 @@ export function toActionableIssue(
           nodeId,
           patch: {
             data: {
-              ...(node?.data ?? {}),
+              ...node?.data,
               [fieldKey]: validVal,
             },
           },
@@ -1012,7 +1012,7 @@ export function buildRuntimeStepActionableIssue(params: {
           nodeId,
           patch: {
             data: {
-              ...(nodeData ?? {}),
+              ...nodeData,
               [failingField]: replacementExpr,
             },
           },
@@ -1034,7 +1034,7 @@ export function buildRuntimeStepActionableIssue(params: {
           nodeId,
           patch: {
             data: {
-              ...(nodeData ?? {}),
+              ...nodeData,
               connectionRef: "conn_active",
             },
           },
@@ -1056,7 +1056,7 @@ export function buildRuntimeStepActionableIssue(params: {
           nodeId,
           patch: {
             data: {
-              ...(nodeData ?? {}),
+              ...nodeData,
               maxRetries: 3,
             },
           },
@@ -1076,7 +1076,7 @@ export function buildRuntimeStepActionableIssue(params: {
         workflowId,
         nodeId,
         patch: {
-          data: { ...(nodeData ?? {}) },
+          data: { ...nodeData },
         },
       },
     },

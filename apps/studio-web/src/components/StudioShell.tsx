@@ -85,7 +85,6 @@ export function StudioShell({
   const setProjectData = useStudioStore((s) => s.setProjectData);
   const setActiveNav = useStudioStore((s) => s.setActiveNav);
   const setCommandPaletteOpen = useStudioStore((s) => s.setCommandPaletteOpen);
-  const selectItem = useStudioStore((s) => s.selectItem);
   const setFollowAi = useStudioStore((s) => s.setFollowAi);
   const toggleIssuesDrawer = useStudioStore((s) => s.toggleIssuesDrawer);
   const setIssuesDrawerOpen = useStudioStore((s) => s.setIssuesDrawerOpen);
@@ -93,8 +92,6 @@ export function StudioShell({
   const undoLastBatch = useStudioStore((s) => s.undoLastBatch);
   const redoLastBatch = useStudioStore((s) => s.redoLastBatch);
   const loadProjectProposals = useStudioStore((s) => s.loadProjectProposals);
-  const startProposalReview = useStudioStore((s) => s.startProposalReview);
-  const activeProposalId = useStudioStore((s) => s.activeProposalId);
   const backendMapOutlineMode = useStudioStore((s) => s.backendMapOutlineMode);
   const setBackendMapOutlineMode = useStudioStore(
     (s) => s.setBackendMapOutlineMode,

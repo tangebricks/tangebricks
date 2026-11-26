@@ -238,7 +238,7 @@ describe("Story 5.4 — Deterministic Hash Split & Graph-Only Hot-Apply Path (pa
       target,
       {
         "wf-invoice-approval": JSON.stringify({
-          ...(rev2Blueprint.workflows?.[0] ?? {}),
+          ...(rev2Blueprint.workflows?.[0] as Record<string, unknown> | undefined),
           name: "Invoice Approval v3 Direct",
         }),
       },

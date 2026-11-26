@@ -4,6 +4,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
@@ -11,11 +12,11 @@ const write = (rel: string, text: string) => writeFileSync(join(root, rel), text
 
 function h5Row(): string {
   const run = spawnSync(process.execPath, [join(root, "scripts", "verify.ts"), "H5"], { cwd: root, encoding: "utf8" });
-  const lines = (run.stdout + run.stderr).replace(/\x1B\[[0-9;]*m/g, "").split(/\r?\n/);
-  const at = lines.findIndex((l) => /^H5 /.test(l));
+  const lines = stripVTControlCharacters(run.stdout + run.stderr).split(/\r?\n/);
+  const at = lines.findIndex((l) => l.startsWith("H5 "));
   const row = at >= 0 ? lines.slice(at, at + 8).filter((l) => /^H5 |^\s+- /.test(l)).map((l) => l.trim().replace(/\s{2,}/g, "  ")) : ["(no H5 row)"];
   // The H5 row alone cannot show a failing test while the row is already `fail` for another reason, so the test count is printed too.
-  const tests = lines.find((l) => /^Tests:/.test(l))?.replace(/\. Verdicts.*$/, "") ?? "Tests: (not printed)";
+  const tests = lines.find((l) => l.startsWith("Tests:"))?.replace(/\. Verdicts.*$/, "") ?? "Tests: (not printed)";
   const short = row.filter((l) => !/graphDeductChangesBalanceOnce/.test(l)).join(" | ").slice(0, 260);
   return `${tests} | ${short}`;
 }

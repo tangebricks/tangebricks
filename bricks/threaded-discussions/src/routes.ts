@@ -19,10 +19,6 @@ const AddCommentSchema = z.object({
   authorName: z.string().max(100).optional(),
 });
 
-const EditCommentSchema = z.object({
-  body: z.string().min(1).max(8192),
-});
-
 export function createThreadRoutes(): Hono<ThreadEnv> {
   const app = new Hono<ThreadEnv>();
 

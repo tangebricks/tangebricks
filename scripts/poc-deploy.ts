@@ -15,7 +15,7 @@ import { assemble } from "../packages/assembler/src/index.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
 import { bundleWorker } from "../packages/deploy/src/bundle.ts";
 import { canonical, evaluateH10, runH10, withLeakScan } from "../packages/deploy/src/h10.ts";
-import type { H10Calls, H10Result } from "../packages/deploy/src/h10.ts";
+import type { H10Result } from "../packages/deploy/src/h10.ts";
 import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
 import { CredentialsError, createClient, createRedactor, fileKeyStore, fileStore, findSecrets, loadCredentials, loadOrCreateAccessKey, memoryKeyStore, memoryStore, migrationsFrom, newSuffix, openLedger, formatPlan, planDeploy, resourceNames, telemetryWebhookConfig } from "../packages/deploy/src/provisioner/index.ts";
 import { INVOICE_FLOW_BLUEPRINT } from "../test/support/blueprints.ts";

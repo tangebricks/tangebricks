@@ -599,7 +599,6 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
   it("retries 429 rate-limit responses with Retry-After, maps 401 to CONNECTION_EXPIRED, paginates cursor responses up to maxPages, and scrubs canary credentials from outputs and logs", async () => {
     const catalog = buildTestCatalog();
     const registry = buildRegistryFromCatalog(catalog);
-    const executors = buildExecutorsFromCatalog(catalog);
 
     const CANARY_TOKEN = "CANARY_SLACK_SECRET_TOKEN_99887766";
     const connections = {

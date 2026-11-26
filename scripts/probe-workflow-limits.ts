@@ -181,7 +181,7 @@ async function main() {
   let credentials;
   try {
     credentials = loadCredentials(process.env);
-  } catch (err) {
+  } catch {
     console.warn("No Cloudflare credentials available in environment for live workflow limits probe.");
     console.warn("To run against live Cloudflare: node --env-file=<path> scripts/probe-workflow-limits.ts");
     process.exit(0);

@@ -43,7 +43,6 @@ import type {
   BrickEntry,
   EntityDefinition as CanonicalEntityDefinition,
   EntityDiffUpdate,
-  EntityField as CanonicalEntityField,
   EntityFieldDiffUpdate,
   ProposalActor,
   ProposalRecord,
@@ -775,7 +774,7 @@ export function normalizePresetToBlueprint(raw: RawPreset): BlueprintState {
   }
   const mergedLayout = {
     ...layoutFromNodes,
-    ...(raw.metadata?.layout ?? {}),
+    ...raw.metadata?.layout,
   };
   return {
     schemaVersion: 2,
@@ -788,7 +787,7 @@ export function normalizePresetToBlueprint(raw: RawPreset): BlueprintState {
     ...(raw.metadata || Object.keys(mergedLayout).length > 0
       ? {
           metadata: {
-            ...(raw.metadata ?? {}),
+            ...raw.metadata,
             ...(Object.keys(mergedLayout).length > 0 ? { layout: mergedLayout } : {}),
           },
         }
@@ -2477,7 +2476,6 @@ export function validateWorkflowConnection(
     return { ok: false, reason: `Target node "${targetNodeId}" not found.` };
   }
 
-  const sourceDef = getCatalogNodeDefinition(sourceNode.type, catalog);
   const targetDef = getCatalogNodeDefinition(targetNode.type, catalog);
   const sourceEffective = getEffectiveNodePorts(sourceNode, catalog, entities);
   const targetEffective = getEffectiveNodePorts(targetNode, catalog, entities);

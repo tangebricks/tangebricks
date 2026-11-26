@@ -50,7 +50,7 @@ async function callStudio(
       headers,
       body: rawBody,
     }),
-    { ...TEST_ENV, ...(options.env ?? {}) },
+    { ...TEST_ENV, ...options.env },
   );
 }
 

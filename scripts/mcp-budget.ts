@@ -10,7 +10,7 @@
  *
  * Writes `evidence/mcp-token-budget.json` and exits 0 if all gates hold, or exits 1 with a table of offending tools.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";

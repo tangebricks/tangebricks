@@ -43,7 +43,7 @@ export function sha256Sync(ascii: string): string {
   for (i = 0; i < utf8.length; i += 4) {
     words.push(((utf8[i] ?? 0) << 24) | ((utf8[i + 1] ?? 0) << 16) | ((utf8[i + 2] ?? 0) << 8) | (utf8[i + 3] ?? 0));
   }
-  const w: number[] = new Array(64);
+  const w: number[] = Array.from({ length: 64 }, () => 0);
   for (i = 0; i < words.length; i += 16) {
     for (let t = 0; t < 16; t++) w[t] = words[i + t] ?? 0;
     for (let t = 16; t < 64; t++) {

@@ -157,7 +157,6 @@ test.describe("Story 7.2 — Draft Branch / Proposal Mode, Visual Diff Review & 
     // Verify added node (+ Added), modified node (~ Changed), and removed node (- Removed) on canvas
     const addedNode = page.getByTestId("canvas-node-node-added");
     const modifiedNode = page.getByTestId("canvas-node-node-pick");
-    const removedNode = page.getByTestId("canvas-node-node-legacy");
 
     await expect(addedNode).toBeVisible();
     await expect(page.getByTestId("diff-badge-added-node-added")).toHaveText("+ Added");

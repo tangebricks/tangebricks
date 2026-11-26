@@ -8,10 +8,9 @@ import {
   createWebhookRoutes,
   WebhookService,
 } from "../src/index.ts";
-import type { WebhookEnv, WebhookRouteOptions } from "../src/routes.ts";
+import type { WebhookEnv } from "../src/routes.ts";
 import {
   verifyWithScheme,
-  type WebhookSignatureScheme,
 } from "../src/signature-scheme.ts";
 import { WEBHOOK_PRESETS, getPreset } from "../src/presets.ts";
 

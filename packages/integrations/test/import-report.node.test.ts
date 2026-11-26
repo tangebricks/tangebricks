@@ -14,7 +14,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 describe("UC2.1 import report and manifest fidelity block", () => {
   const fixturePath = resolve(__dirname, "fixtures/report/petstore-min.openapi.json");
   const petstoreSpecText = readFileSync(fixturePath, "utf8");
-  const petstoreSpec = JSON.parse(petstoreSpecText);
 
   const baseCuration: CurationConfig = {
     app: "petstore",

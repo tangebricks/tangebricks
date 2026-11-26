@@ -110,7 +110,7 @@ describe("the adapter and the protocol, on a clean rehearsal", () => {
 
   test("the Worker's version was read before and after and is unchanged; nothing but reads and database rows went to Cloudflare", () => {
     expect(clean.calls.facts.versions.before).toEqual(clean.calls.facts.versions.after);
-    for (const c of clean.calls.clients.flatMap((x) => x.calls)) expect(c.method === "GET" || /\/query$/.test(c.path)).toBe(true);
+    for (const c of clean.calls.clients.flatMap((x) => x.calls)) expect(c.method === "GET" || c.path.endsWith("/query")).toBe(true);
   });
 
   test("neither the token, the account id nor the access key is in the files or the lines printed", () => {

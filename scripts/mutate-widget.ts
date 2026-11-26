@@ -4,6 +4,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
@@ -11,7 +12,7 @@ const write = (rel: string, text: string) => writeFileSync(join(root, rel), text
 
 function runDom(): string {
   const run = spawnSync(process.execPath, [join(root, "node_modules", "vitest", "vitest.mjs"), "run", "--project", "dom"], { cwd: root, encoding: "utf8" });
-  const out = (run.stdout + run.stderr).replace(/\x1B\[[0-9;]*m/g, "");
+  const out = stripVTControlCharacters(run.stdout + run.stderr);
   const tests = out.split(/\r?\n/).find((l) => /^\s+Tests /.test(l))?.trim() ?? "(no test summary)";
   const failed = [...out.matchAll(/^ FAIL .*? > (.*)$/gm)].map((m) => m[1]!.slice(0, 70));
   return `${tests}${failed.length ? "  first failing: " + failed[0] : ""}`;

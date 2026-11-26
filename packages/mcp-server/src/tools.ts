@@ -17,8 +17,6 @@ import {
   buildRuntimeStepActionableIssue,
   collectBlueprintActionableIssues,
   computeBlueprintBuildHash,
-  computeBlueprintCodeHash,
-  computeBlueprintGraphHash,
   computeReadiness,
   createEmptyBlueprint,
   isValidSecretRefHandle,
@@ -3156,7 +3154,7 @@ const deployApply: Tool = {
     idempotentHint: false,
   },
   async run(
-    { db, catalog, blueprint, studioRequest, baseUrl },
+    { blueprint, studioRequest, baseUrl },
     args: {
       project: string;
       env?: "preview" | "production";

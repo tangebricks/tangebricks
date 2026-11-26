@@ -229,7 +229,7 @@ describe("a complete rehearsal", () => {
     expect(v.before).toHaveLength(1);
     expect(v.after).toEqual(v.before);
     expect(v.final).toEqual(v.before);
-    for (const c of complete.calls.clients.flatMap((x) => x.calls)) expect(c.method === "GET" || /\/query$/.test(c.path)).toBe(true);
+    for (const c of complete.calls.clients.flatMap((x) => x.calls)) expect(c.method === "GET" || c.path.endsWith("/query")).toBe(true);
   });
 
   test("ten timings from inside the Worker and ten from the REST endpoint are kept", () => {

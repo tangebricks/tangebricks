@@ -6,7 +6,6 @@ import { parseEnv } from "node:util";
 import {
   createClient,
   loadCredentials,
-  CredentialsError,
 } from "../packages/deploy/src/provisioner/index.ts";
 import type { Client } from "../packages/deploy/src/provisioner/index.ts";
 import { createFakeCloudflare } from "../packages/deploy/test/support/fake-cloudflare.ts";

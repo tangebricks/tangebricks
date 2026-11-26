@@ -115,7 +115,7 @@ export function stampStaged(opts: { stagingDir: string; evidenceDir: string; bas
   for (const rel of planRefresh(opts).toCopy) {
     const data = JSON.parse(readFileSync(join(opts.stagingDir, rel), "utf8")) as Record<string, unknown> & { provenance?: Record<string, unknown> };
     const prov = {
-      ...(data.provenance ?? {}),
+      ...data.provenance,
       generatedAt: opts.baseProv.generatedAt,
       gitSha: opts.baseProv.gitSha,
       gitDirty: false,

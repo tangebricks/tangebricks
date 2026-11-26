@@ -205,7 +205,7 @@ async function snapshotWorkspace(db: D1Like, tables: string[], workspaceId: stri
 }
 
 export async function checkTenantIsolation(options: ConformanceCheckOptions): Promise<void> {
-  const { db, migrations, manifest, globalRoutes = [] } = options;
+  const { db, manifest, globalRoutes = [] } = options;
   const { tables } = await checkMigrationsUp(options);
 
   const workspaceA = "ws_conf_alpha";
@@ -234,7 +234,7 @@ export async function checkTenantIsolation(options: ConformanceCheckOptions): Pr
       // 1. Positive control: call as owner workspace
       const ownerHeaders: Record<string, string> = {
         "x-workspace-id": targetWs,
-        ...(req.headers ?? {}),
+        ...req.headers,
       };
       if (req.body) ownerHeaders["Content-Type"] = "application/json";
 
@@ -262,7 +262,7 @@ export async function checkTenantIsolation(options: ConformanceCheckOptions): Pr
       const targetBefore = await snapshotWorkspace(db, tables, targetWs);
       const headers: Record<string, string> = {
         "x-workspace-id": callerWs,
-        ...(req.headers ?? {}),
+        ...req.headers,
       };
       if (req.body) headers["Content-Type"] = "application/json";
 
@@ -504,29 +504,26 @@ export async function checkIdempotentWrite(options: ConformanceCheckOptions): Pr
   const idempotencyKey = options.idempotencyKey ?? "idemp_test_key_conf_1";
 
   for (const req of writeReqs) {
-    const countBefore = await countTotalRows();
-
     const headers: Record<string, string> = {
       "Idempotency-Key": idempotencyKey,
       "x-workspace-id": "ws_conf_idemp",
-      ...(req.headers ?? {}),
+      ...req.headers,
     };
     if (req.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
 
     const bodyStr = req.body ? JSON.stringify(req.body) : undefined;
     const path = req.path.replace(/:[a-zA-Z0-9_]+/g, "rec_ws_conf_idemp_1");
 
-    const res1 = await app.request(
+    await app.request(
       path,
       { method: req.method, headers, body: bodyStr },
       { DB: db, workspace: { id: "ws_conf_idemp", role: "owner", suspended: false } },
     );
 
     const countAfter1 = await countTotalRows();
-    const delta1 = countAfter1 - countBefore;
 
     // Second call with same Idempotency-Key
-    const res2 = await app.request(
+    await app.request(
       path,
       { method: req.method, headers, body: bodyStr },
       { DB: db, workspace: { id: "ws_conf_idemp", role: "owner", suspended: false } },
@@ -680,7 +677,7 @@ export async function checkSecretScope(options: ConformanceCheckOptions): Promis
         path,
         {
           method: req.method ?? "GET",
-          headers: { "x-workspace-id": "ws_conf_scope", ...(req.headers ?? {}) },
+          headers: { "x-workspace-id": "ws_conf_scope", ...req.headers },
           body: req.body ? JSON.stringify(req.body) : undefined,
         },
         proxyEnv,

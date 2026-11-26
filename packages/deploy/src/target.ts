@@ -4633,7 +4633,7 @@ export function analyzeSqlMigrations(
         const parsedTbl = parseCreateTableColumns(stmt);
         if (parsedTbl) {
           knownTables[parsedTbl.tableName] = {
-            ...(knownTables[parsedTbl.tableName] ?? {}),
+            ...knownTables[parsedTbl.tableName],
             ...parsedTbl.columns,
           };
         }

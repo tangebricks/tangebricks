@@ -135,7 +135,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
   });
 
   test("AC2 & AC3: poc:restore script dry-run without --yes writes nothing, and --yes restores data reporting previous_bookmark", async () => {
-    const { client, ledger, names, input } = setup();
+    const { client, names, input } = setup();
 
     const v1Migrations: Migration[] = [
       { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" },
@@ -188,7 +188,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
   });
 
   test("AC1 edge case: deploy with 0 pending migrations does not call getD1Bookmark", async () => {
-    const { client, ledger, names, input } = setup();
+    const { client, input } = setup();
 
     const v1Migrations: Migration[] = [
       { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" },
@@ -205,7 +205,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
   });
 
   test("Finding 2: lostMigrations identifies migrations applied in target deploy when started_at equals applied_at", async () => {
-    const { client, ledger, names, input } = setup();
+    const { client, names, input } = setup();
 
     const v1Migrations: Migration[] = [
       { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" },

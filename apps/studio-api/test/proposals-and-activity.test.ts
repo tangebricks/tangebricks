@@ -47,7 +47,7 @@ async function studioReq(
   }
   // AD-V8: a token's direct edit is sent with mode "apply" (these seeds are preview-safe; the default is a proposal).
   let body = init.body;
-  if (/\/ops$/.test(path) && typeof body === "string") {
+  if (path.endsWith("/ops") && typeof body === "string") {
     const parsed = JSON.parse(body) as Record<string, unknown>;
     if (parsed.mode === undefined) body = JSON.stringify({ ...parsed, mode: "apply" });
   }
@@ -266,7 +266,7 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     );
     expect(createdFrame).toBeDefined();
     expect(createdFrame?.project).toBe(project);
-    expect((createdFrame?.proposal as ProposalRecord).proposalId).toBe(
+    expect((createdFrame?.proposal as ProposalRecord | undefined)?.proposalId).toBe(
       proposeData.proposalId,
     );
 

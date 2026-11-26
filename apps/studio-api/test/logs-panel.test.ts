@@ -13,7 +13,6 @@ import {
   createWalletRoutes,
 } from "@poc/credit-wallet";
 import type { WalletEnv } from "@poc/credit-wallet";
-import { catalog } from "@poc/assembler/catalog";
 import studioAuthOrgsSql from "../migrations/0001_studio_auth_orgs.sql?raw";
 import studioSecretVaultSql from "../migrations/0002_studio_secret_vault.sql?raw";
 import cp5DeployTokensSql from "../migrations/0003_cp5_deploy_tokens.sql?raw";

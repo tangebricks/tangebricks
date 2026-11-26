@@ -1620,7 +1620,7 @@ export function applyOp(
         } else {
           const nextLayout: Record<string, { x: number; y: number }> = op.replace
             ? {}
-            : { ...(baseMeta.layout ?? {}) };
+            : { ...baseMeta.layout };
           for (const [nodeId, coords] of Object.entries(op.metadata.layout)) {
             if (coords === null || coords === undefined) {
               delete nextLayout[nodeId];

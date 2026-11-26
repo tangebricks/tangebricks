@@ -180,8 +180,14 @@ export function boundNames(condition: string): Set<string> {
   for (let changed = true; changed; ) {
     changed = false;
     for (const [a, b] of joins) {
-      if (bound.has(a) && !bound.has(b)) (bound.add(b), (changed = true));
-      if (bound.has(b) && !bound.has(a)) (bound.add(a), (changed = true));
+      if (bound.has(a) && !bound.has(b)) {
+        bound.add(b);
+        changed = true;
+      }
+      if (bound.has(b) && !bound.has(a)) {
+        bound.add(a);
+        changed = true;
+      }
     }
   }
   return bound;
@@ -220,7 +226,7 @@ function blankSqlStrings(sql: string): string {
 
 /** For each index, the index of the "(" that opens the paren group around it, or -1 at top level. */
 function enclosingParens(sql: string): { openAt: number[]; closeOf: Map<number, number> } {
-  const openAt: number[] = new Array(sql.length).fill(-1);
+  const openAt: number[] = Array.from({ length: sql.length }, () => -1);
   const closeOf = new Map<number, number>();
   const stack: number[] = [];
   for (let i = 0; i < sql.length; i++) {
@@ -319,17 +325,17 @@ export function findUnscopedTableRefs(sql: string, tenantTables: Iterable<string
 // TypeScript traversal
 
 /** The text of a string-ish expression: literals, templates (`${...}` kept as-is) and `+` concatenations of them. */
-function stringText(node: ts.Expression, sf: ts.SourceFile): string | undefined {
+function stringText(node: ts.Expression): string | undefined {
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
   if (ts.isTemplateExpression(node)) {
     let out = node.head.text;
     for (const span of node.templateSpans) out += "${...}" + span.literal.text;
     return out;
   }
-  if (ts.isParenthesizedExpression(node)) return stringText(node.expression, sf);
+  if (ts.isParenthesizedExpression(node)) return stringText(node.expression);
   if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-    const left = stringText(node.left, sf);
-    const right = stringText(node.right, sf);
+    const left = stringText(node.left);
+    const right = stringText(node.right);
     if (left === undefined && right === undefined) return undefined;
     return (left ?? "${...}") + (right ?? "${...}");
   }
@@ -421,9 +427,9 @@ function objectHasWorkspaceId(node: ts.Expression | undefined): boolean {
 }
 
 /** A helper's `where` argument binds `table`'s workspace_id to a value (see boundNames). */
-function whereHasPredicate(node: ts.Expression | undefined, sf: ts.SourceFile, table: string): boolean {
+function whereHasPredicate(node: ts.Expression | undefined, table: string): boolean {
   if (!node) return false;
-  const text = stringText(node, sf);
+  const text = stringText(node);
   if (text === undefined) return false;
   const bound = boundNames(blankSqlStrings(text));
   return bound.has(table.toLowerCase()) || bound.has(ANY_TABLE);
@@ -514,7 +520,7 @@ export function lintTenantQueries(options?: {
       const visit = (node: ts.Node) => {
         // 1. SQL text in string literals, templates and concatenations.
         if (isStringRoot(node)) {
-          const text = stringText(node, sf);
+          const text = stringText(node);
           if (text !== undefined) {
             // A call argument that contains a sub-select or FROM (a helper's where clause, say) is read as SQL too.
             const isCallArgument = !!node.parent && ts.isCallExpression(node.parent) && node.parent.arguments.includes(node as ts.Expression);
@@ -558,8 +564,8 @@ export function lintTenantQueries(options?: {
                 method === "insert"
                   ? objectHasWorkspaceId(args[0])
                   : method === "update"
-                    ? whereHasPredicate(args[1], sf, table)
-                    : whereHasPredicate(args[0], sf, table);
+                    ? whereHasPredicate(args[1], table)
+                    : whereHasPredicate(args[0], table);
               if (!ok) {
                 const line = sf.getLineAndCharacterOfPosition(node.expression.name.getStart(sf)).line + 1;
                 const via = helper.kind === "global" ? "global()" : "systemScope()";

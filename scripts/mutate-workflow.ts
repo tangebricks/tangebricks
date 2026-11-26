@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 const root = resolve(import.meta.dirname, "..");
 const backup = join(root, "out", "mutate-workflow-backup");
@@ -14,7 +15,6 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 const write = (rel: string, text: string) => writeFileSync(join(root, rel), text);
 const sha = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 12);
 const slug = (rel: string) => rel.replace(/[\\/]/g, "__");
-const BT = "\u0060"; // a backtick, so snippets can quote template literals
 
 const W = "packages/deploy/src/worker/";
 const RUN = `${W}graph-run.ts`;
@@ -107,7 +107,7 @@ const cases: Case[] = [
 const suites = ["packages/deploy/test/graph-run", "packages/deploy/test/graph-workflow", "packages/deploy/test/poc-graphs-workspace", "packages/deploy/test/bundle", "packages/deploy/test/gate", "packages/deploy/test/executing-routes-replay.node.test.ts", "packages/telemetry/test/control-plane-v1.test.ts"];
 function run(): string {
   const result = spawnSync(process.execPath, [join(root, "node_modules", "vitest", "vitest.mjs"), "run", ...suites], { cwd: root, encoding: "utf8", timeout: 300_000 });
-  const out = (result.stdout + result.stderr).replace(/\x1B\[[0-9;]*m/g, "");
+  const out = stripVTControlCharacters(result.stdout + result.stderr);
   const tests = out.split(/\r?\n/).find((l) => /^\s+Tests /.test(l))?.trim().replace(/^Tests\s+/, "");
   if (tests) return tests.replace(/ passed/g, "p").replace(/ failed/g, "f");
   return /FAIL|Error/.test(out) || result.error ? "(did not run)" : "(no summary)";

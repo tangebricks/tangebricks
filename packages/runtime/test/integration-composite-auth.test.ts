@@ -3,7 +3,6 @@ import { IntegrationManifestSchema } from "@poc/assembler";
 import type { IntegrationManifestFile } from "@poc/assembler";
 import {
   callOperation,
-  IntegrationCallError,
 } from "../src/index.ts";
 
 const compositeAuthManifest: IntegrationManifestFile = IntegrationManifestSchema.parse({

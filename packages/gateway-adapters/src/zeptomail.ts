@@ -51,7 +51,7 @@ export function createZeptoMailAdapter(options: ZeptoMailAdapterOptions = {}): D
       return {
         ...base,
         mail_template_key: message.template.name,
-        merge_info: { ...(message.template.variables ?? {}) },
+        merge_info: { ...message.template.variables },
         ...(message.subject ? { subject: message.subject } : {}),
       };
     }

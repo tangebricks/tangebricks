@@ -307,6 +307,7 @@ function createStatementProxy(
     all<Row = Record<string, unknown>>() {
       return currentStmt.all<Row>();
     },
+    // oxlint-disable-next-line unicorn/no-thenable -- the statement proxy is awaitable on purpose: `await stmt` runs it like `stmt.all()`.
     then(onfulfilled, onrejected) {
       return currentStmt.all().then(onfulfilled, onrejected);
     },
