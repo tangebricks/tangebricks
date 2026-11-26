@@ -1,11 +1,15 @@
 // The real-model benchmark (story R55). For one run it boots Studio in-process on the REAL Cloudflare client (behind the
 // live-deploy guard and a ledger), serves it on a loopback HTTP port, issues a project-bound MCP token, and runs Claude
-// Code (`claude -p`) with ProjectX MCP as its only tool source against a brief. A scripted owner accepts proposals and
-// approves deploys through Studio's session routes, as a person would. When the CLI exits, the harness (never the agent)
-// scores the twelve checks against what exists, records the CLI's own numbers, and tears the run's resources down.
+// Code (`claude -p`) with ProjectX MCP as its only tool source against a brief. A scripted owner reviews proposals against
+// the brief's review file (accepting what serves the brief, rejecting the rest with a reason), approves preview deploys,
+// binds the secrets a person must supply, and answers a blocked agent, all through Studio's session routes, as a person
+// would. When the CLI exits, the harness (never the agent) scores the twelve checks against what exists, records the CLI's
+// own numbers and every owner action, and tears the run's resources down.
 //
-//   node scripts/agent-bench.ts --brief <id> --env-file <outside-repo>/.env --state-dir <outside-repo>/bench-state
-//   node scripts/agent-bench.ts --task change-live-app --from-run <run id> --env-file ... --state-dir ...
+//   node scripts/agent-bench.ts [--brief <id>] --env-file <outside-repo>/.env --state-dir <outside-repo>/bench-state
+//       (without --brief: each id in DEFAULT_BRIEF_IDS, one run after another)
+//   node scripts/agent-bench.ts --task change-live-app [--from-run <run id>] --env-file ... --state-dir ...
+//       (without --from-run: the latest deployed run of CHANGE_LIVE_APP_BRIEF)
 //   node scripts/agent-bench.ts --teardown --env-file ... --state-dir ...     removes what an interrupted run left
 //
 // Options: --briefs-dir <dir> (default: the private briefs folder), --out <file> (default: the private benchmark-v0.json),
@@ -37,6 +41,7 @@ import type { LedgerStore, RequestBudget } from "../packages/deploy/src/provisio
 import { KEY_HEADER } from "../packages/deploy/src/worker/gate.ts";
 import { catalog as defaultCatalog } from "../packages/assembler/catalog.generated.ts";
 import { secretDeclarations } from "../packages/assembler/src/schemas.ts";
+import { OP_TYPES } from "../packages/blueprint/src/ops.ts";
 import type { Catalog } from "../packages/assembler/src/schemas.ts";
 import { GLOBAL_API_KEY, connectStudioOwner, nodeBundler, openGuardedStudio, runTeardownOnly, teardownAndVerify } from "./lib/live-studio.ts";
 import type { CallLine, StudioCall } from "./lib/live-studio.ts";
@@ -48,6 +53,13 @@ const repoRoot = resolve(import.meta.dirname, "..");
 export const PRIVATE_BENCHMARK_DIR = join(repoRoot, "_bmad-output", "initiative-projectx-roadmap", "benchmark");
 export const DEFAULT_BRIEFS_DIR = join(PRIVATE_BENCHMARK_DIR, "briefs");
 export const DEFAULT_OUT = join(PRIVATE_BENCHMARK_DIR, "benchmark-v0.json");
+/**
+ * The briefs run by default: our own, written for the segment (credit- or usage-billed AI SaaS). The ids are public slugs;
+ * the brief, answers and review text stay in the private briefs folder. Older briefs stay on disk but are not run by default.
+ */
+export const DEFAULT_BRIEF_IDS = ["grant-drafts", "repair-quotes", "lease-digest"] as const;
+/** The brief whose deployed run change-live-app changes when --from-run is not given. */
+export const CHANGE_LIVE_APP_BRIEF: (typeof DEFAULT_BRIEF_IDS)[number] = "repair-quotes";
 export const DEFAULT_MAX_BUDGET_USD = 10;
 export const WALL_TIME_CAP_MS = 45 * 60 * 1000;
 export const MCP_SERVER_NAME = "projectx";
@@ -67,17 +79,77 @@ export const FREE_PLAN_UNSUPPORTED_REASON =
 // ---------------------------------------------------------------------------------------------------------------------
 // Briefs
 
+/** Every op kind a review file's `allowOps` may name: the blueprint's own list. */
+export const OP_KINDS = OP_TYPES;
+
+/** A decision `match` written as `/source/flags` is a regular expression; anything else is a lowercase phrase. */
+function decisionPattern(match: string): RegExp | null {
+  const m = /^\/(.+)\/([a-z]*)$/.exec(match);
+  return m ? new RegExp(m[1]!, `${m[2]!.replace(/[giy]/g, "")}i`) : null;
+}
+
+/**
+ * The owner's review file (`<briefsDir>/<id>/review.json`, private): what the brief needs, so the scripted owner can accept
+ * proposals that serve it and reject the rest, and its explicit decisions for questions a person would answer.
+ */
+export const ReviewFileSchema = z.strictObject({
+  /** The brick ids the brief needs. */
+  bricks: z.array(z.string().min(1)),
+  /** Entity names the brief needs; a trailing `*` matches a prefix (`invoice*`). */
+  entities: z.array(z.string().min(1)),
+  /** Op kinds that may touch anything (for example set_metadata). */
+  allowOps: z.array(z.enum(OP_KINDS)).optional(),
+  /** Explicit owner decisions: a lowercase phrase (or `/regex/`) in the agent's message, and the owner's reply. */
+  decisions: z
+    .array(
+      z.strictObject({
+        match: z.string().min(1).superRefine((match, ctx) => {
+          try {
+            decisionPattern(match);
+          } catch (error) {
+            ctx.addIssue({ code: "custom", message: `not a valid regular expression: ${error instanceof Error ? error.message : String(error)}` });
+          }
+        }),
+        reply: z.string().min(1),
+      }),
+    )
+    .default([]),
+});
+export type ReviewFile = z.infer<typeof ReviewFileSchema>;
+
 export interface LoadedBrief {
   id: string;
   brief: string;
   answers: string;
   briefSha256: string;
   answersSha256: string;
+  /** The owner's review file, or null when the brief has none (then every proposal is accepted, recorded as unreviewed). */
+  review: ReviewFile | null;
 }
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 
-/** Reads `<briefsDir>/<id>/brief.md` and `answers.md` at run time; their text is never written anywhere but the prompt. */
+/** Reads and validates `<dir>/review.json` (every brick id must be in the catalog); null when there is none. */
+export function loadReview(dir: string, catalog: Catalog = defaultCatalog): ReviewFile | null {
+  const path = join(dir, "review.json");
+  if (!existsSync(path)) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    throw new BenchRefusal(`${path} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  const parsed = ReviewFileSchema.safeParse(raw);
+  if (!parsed.success) throw new BenchRefusal(`${path} is not a valid review file: ${parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`);
+  const unknown = parsed.data.bricks.filter((id) => !catalog.bricks[id]);
+  if (unknown.length > 0) throw new BenchRefusal(`${path} names brick(s) not in the catalog: ${unknown.map((id) => `"${id}"`).join(", ")}`);
+  return parsed.data;
+}
+
+/**
+ * Reads `<briefsDir>/<id>/brief.md`, `answers.md` and (when present) `review.json` at run time; their text is never written
+ * anywhere but the prompt and the owner's replies.
+ */
 export function loadBrief(briefsDir: string, id: string): LoadedBrief {
   if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) throw new BenchRefusal(`brief id "${id}" must be a lowercase slug`);
   const dir = join(briefsDir, id);
@@ -87,7 +159,7 @@ export function loadBrief(briefsDir: string, id: string): LoadedBrief {
   if (!existsSync(answersPath)) throw new BenchRefusal(`no owner answers at ${answersPath}`);
   const brief = readFileSync(briefPath, "utf8");
   const answers = readFileSync(answersPath, "utf8");
-  return { id, brief, answers, briefSha256: sha256(brief), answersSha256: sha256(answers) };
+  return { id, brief, answers, briefSha256: sha256(brief), answersSha256: sha256(answers), review: loadReview(dir) };
 }
 
 export class BenchRefusal extends Error {
@@ -342,8 +414,101 @@ export function parseCliResult(stdout: string): CliNumbers {
 // ---------------------------------------------------------------------------------------------------------------------
 // The scripted owner
 
+/** One thing the scripted owner did. Details hold names and refs, never a secret value or a brief's text. */
+export const OWNER_ACTION_KINDS = ["accept", "reject", "accept-unreviewed", "approve", "bind-secret", "reply", "stop", "accept-failed", "reject-failed", "approve-failed"] as const;
+/** The "-failed" kinds: the route refused the owner's click (detail: HTTP status and id); the request is tried again on the next poll. */
+export type OwnerActionKind = (typeof OWNER_ACTION_KINDS)[number];
+export type OwnerAct = (kind: OwnerActionKind, detail: string) => void;
+
+const entityAllowed = (allowed: string[], name: string) =>
+  allowed.some((pattern) => (pattern.endsWith("*") ? name.toLowerCase().startsWith(pattern.slice(0, -1).toLowerCase()) : name.toLowerCase() === pattern.toLowerCase()));
+
+/** What an op touches: the bricks (by id, and by the brick a workflow node type belongs to) and the entities it names. */
+export function opTouches(op: Record<string, unknown>, catalog: Catalog = defaultCatalog): { bricks: string[]; entities: string[] } {
+  const bricks = new Set<string>();
+  const entities = new Set<string>();
+  const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
+  const nodeBrick = (type: unknown) => {
+    const t = str(type);
+    const prefix = t && t.includes(".") ? t.slice(0, t.indexOf(".")) : null;
+    if (prefix && catalog.bricks[prefix]) bricks.add(prefix);
+  };
+  switch (op.type) {
+    case "enable_brick":
+    case "configure_brick":
+    case "remove_brick":
+      if (str(op.brickId)) bricks.add(op.brickId as string);
+      break;
+    case "set_identity":
+      // "stub" is the preview's own identity, not a brick
+      if (str(op.identity) && op.identity !== "stub") bricks.add(op.identity as string);
+      break;
+    case "add_entity":
+    case "update_entity": {
+      const name = str((op.entity as { name?: unknown } | undefined)?.name);
+      if (name) entities.add(name);
+      break;
+    }
+    case "remove_entity":
+      if (str(op.name)) entities.add(op.name as string);
+      break;
+    case "add_workflow":
+      for (const node of ((op.workflow as { nodes?: Array<{ type?: unknown }> } | undefined)?.nodes ?? [])) nodeBrick(node?.type);
+      break;
+    case "add_node":
+      nodeBrick((op.node as { type?: unknown } | undefined)?.type);
+      break;
+    case "update_node":
+      nodeBrick(op.nodeType);
+      nodeBrick((op.patch as { type?: unknown } | undefined)?.type);
+      nodeBrick((op.node as { type?: unknown } | undefined)?.type);
+      break;
+    case "bind_secret_ref":
+    case "unbind_secret_ref":
+      if (op.targetKind === "brick" && str(op.targetId)) bricks.add(op.targetId as string);
+      break;
+    default:
+      break;
+  }
+  return { bricks: [...bricks], entities: [...entities] };
+}
+
+/**
+ * The owner's review of a proposal against the brief: accepted when every op touches only bricks and entities the brief
+ * needs (or is an op kind the review allows anywhere); otherwise rejected, naming the first op outside the brief.
+ */
+export function reviewProposal(review: ReviewFile, ops: unknown[], catalog: Catalog = defaultCatalog): { accept: true } | { accept: false; reason: string } {
+  for (const raw of ops) {
+    const op = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+    const kind = String(op.type ?? "unknown");
+    // an op kind the owner does not know cannot be judged, so it is outside the brief
+    if (!(OP_KINDS as readonly string[]).includes(kind)) return { accept: false, reason: `op ${JSON.stringify(String(op.opId ?? "?"))} (${kind}) is not an op kind the owner knows, so it is outside the brief` };
+    if (review.allowOps?.includes(kind as (typeof OP_KINDS)[number])) continue;
+    const touched = opTouches(op, catalog);
+    const brick = touched.bricks.find((b) => !review.bricks.includes(b));
+    const entity = touched.entities.find((e) => !entityAllowed(review.entities, e));
+    if (brick || entity) {
+      const what = brick ? `brick "${brick}"` : `entity "${entity}"`;
+      return { accept: false, reason: `op ${JSON.stringify(String(op.opId ?? "?"))} (${kind}) touches ${what}, which the brief does not need` };
+    }
+  }
+  return { accept: true };
+}
+
+/** What the owner did with one deploy approval: approved it, rejected it (not a preview deploy), or the route refused. */
+export interface ApprovalOutcome {
+  approvalId: string;
+  action: string;
+  env: string | null;
+  outcome: "approved" | "rejected-not-preview" | "refused";
+  /** The route's HTTP status. */
+  status: number;
+}
+
 export interface OwnerStats {
   proposalsAccepted: number;
+  /** Proposals the owner rejected because an op was outside the brief. */
+  proposalsRejected: number;
   approvalsApproved: number;
   /** Reviews the owner could not complete (the route refused). */
   refused: number;
@@ -356,12 +521,18 @@ export interface OwnerStats {
 }
 
 /**
- * Polls Studio as the signed-in owner and accepts every pending proposal and approves every pending approval, through
- * the same session routes a person's clicks use. Nothing here touches the approval gates themselves.
+ * Polls Studio as the signed-in owner, through the same session routes a person's clicks use. Each pending proposal is
+ * reviewed against the brief's review file: accepted when it serves the brief, else rejected with a reason (a reject the
+ * route refuses is counted and tried again on the next poll). With no review file every proposal is accepted and
+ * recorded as unreviewed. Preview deploy approvals are approved; any other approval is rejected. Nothing here touches the
+ * approval gates themselves.
  */
-export function startOwnerLoop(params: { call: StudioCall; session: string; orgId: string; project: string; intervalMs: number; now: () => number }) {
+export function startOwnerLoop(params: { call: StudioCall; session: string; orgId: string; project: string; intervalMs: number; now: () => number; review?: ReviewFile | null; act?: OwnerAct; catalog?: Catalog }) {
   const { call, session, orgId, project } = params;
-  const stats: OwnerStats = { proposalsAccepted: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 };
+  const act: OwnerAct = params.act ?? (() => {});
+  const stats: OwnerStats = { proposalsAccepted: 0, proposalsRejected: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 };
+  /** Every approval decision, in order, so a reply can say what the owner actually did. */
+  const approvalLog: ApprovalOutcome[] = [];
   let stopped = false;
   const waited = (createdAt: unknown) => {
     const t = typeof createdAt === "string" ? Date.parse(createdAt) : NaN;
@@ -369,35 +540,74 @@ export function startOwnerLoop(params: { call: StudioCall; session: string; orgI
   };
   const pass = async () => {
     const proposals = await call("GET", `/api/projects/${project}/proposals?status=pending`, undefined, session, orgId);
-    for (const p of (proposals.body.proposals as Array<{ proposalId?: string; status?: string; createdAt?: string }> | undefined) ?? []) {
+    for (const p of (proposals.body.proposals as Array<{ proposalId?: string; status?: string; createdAt?: string; ops?: unknown[] }> | undefined) ?? []) {
       if (p.status !== "pending" || !p.proposalId) continue;
-      const res = await call("POST", `/api/projects/${project}/proposals/${encodeURIComponent(p.proposalId)}/accept`, {}, session, orgId);
+      const path = `/api/projects/${project}/proposals/${encodeURIComponent(p.proposalId)}`;
+      const verdict = params.review ? reviewProposal(params.review, p.ops ?? [], params.catalog) : null;
+      if (verdict && !verdict.accept) {
+        const res = await call("POST", `${path}/reject`, { reason: verdict.reason.slice(0, 500) }, session, orgId);
+        if (res.status === 200) {
+          stats.proposalsRejected += 1;
+          stats.waitMs += waited(p.createdAt);
+          act("reject", `proposal ${p.proposalId}: ${verdict.reason}`);
+        } else {
+          stats.refused += 1;
+          act("reject-failed", `HTTP ${res.status}: proposal ${p.proposalId}`);
+        }
+        continue;
+      }
+      const res = await call("POST", `${path}/accept`, {}, session, orgId);
       if (res.status === 200) {
         stats.proposalsAccepted += 1;
         stats.waitMs += waited(p.createdAt);
-      } else stats.refused += 1;
+        act(verdict ? "accept" : "accept-unreviewed", `proposal ${p.proposalId} (${(p.ops ?? []).length} op(s))`);
+      } else {
+        stats.refused += 1;
+        act("accept-failed", `HTTP ${res.status}: proposal ${p.proposalId}`);
+      }
     }
     const approvals = await call("GET", `/api/projects/${project}/approvals?status=pending`, undefined, session, orgId);
     for (const a of (approvals.body.approvals as Array<{ approvalId?: string; status?: string; createdAt?: string; action?: string; env?: string | null }> | undefined) ?? []) {
       if (a.status !== "pending" || !a.approvalId) continue;
+      const base = { approvalId: a.approvalId, action: String(a.action ?? "deploy"), env: a.env ?? null };
       // Preview only: anything that is not a preview deploy is rejected, the way a person would decline it.
       if (a.env !== "preview" || a.action === "promote") {
         const rejected = await call("POST", `/api/projects/${project}/approvals/${encodeURIComponent(a.approvalId)}/reject`, {}, session, orgId);
-        if (rejected.status === 200) stats.rejectedNotPreview.push({ approvalId: a.approvalId, action: String(a.action ?? "unknown"), env: a.env ?? null });
-        else stats.refused += 1;
+        if (rejected.status === 200) {
+          stats.rejectedNotPreview.push({ approvalId: a.approvalId, action: String(a.action ?? "unknown"), env: a.env ?? null });
+          approvalLog.push({ ...base, outcome: "rejected-not-preview", status: rejected.status });
+          act("reject", `approval ${a.approvalId} (${String(a.action ?? "unknown")} ${a.env ?? "no env"}): the run is preview only`);
+        } else {
+          stats.refused += 1;
+          approvalLog.push({ ...base, outcome: "refused", status: rejected.status });
+          act("reject-failed", `HTTP ${rejected.status}: approval ${a.approvalId}`);
+        }
         continue;
       }
       const res = await call("POST", `/api/projects/${project}/approvals/${encodeURIComponent(a.approvalId)}/approve`, {}, session, orgId);
       if (res.status === 200) {
         stats.approvalsApproved += 1;
         stats.waitMs += waited(a.createdAt);
-      } else stats.refused += 1;
+        approvalLog.push({ ...base, outcome: "approved", status: res.status });
+        act("approve", `approval ${a.approvalId} (${String(a.action ?? "deploy")} preview)`);
+      } else {
+        stats.refused += 1;
+        approvalLog.push({ ...base, outcome: "refused", status: res.status });
+        act("approve-failed", `HTTP ${res.status}: approval ${a.approvalId}`);
+      }
     }
+  };
+  // Passes never overlap: the loop's and an explicit passNow() run one after the other.
+  let chain: Promise<void> = Promise.resolve();
+  const serialized = () => {
+    const next = chain.then(() => pass());
+    chain = next.catch(() => {});
+    return next;
   };
   const loop = (async () => {
     while (!stopped) {
       try {
-        await pass();
+        await serialized();
       } catch {
         // a failed poll is retried on the next tick
       }
@@ -406,6 +616,11 @@ export function startOwnerLoop(params: { call: StudioCall; session: string; orgI
   })();
   return {
     stats,
+    approvalLog,
+    /** One review pass now (after any pass already running), so the owner's reply reflects what is pending. */
+    async passNow(): Promise<void> {
+      await serialized().catch(() => {});
+    },
     async stop(): Promise<OwnerStats> {
       stopped = true;
       await loop;
@@ -417,12 +632,126 @@ export function startOwnerLoop(params: { call: StudioCall; session: string; orgI
 export const GENERIC_OWNER_REPLY = "Please continue until the app is deployed to preview; the harness instructions win where they conflict with my answers.";
 export const DEFAULT_MAX_AGENT_CALLS = 8;
 
+/** How many identical replies the owner sends to an agent that has made no progress before it stops the run. */
+export const MAX_IDENTICAL_BLOCKED_REPLIES = 2;
+
+export type ReplySource = "secret" | "approval" | "decision" | "answers" | "generic";
+/** Where the owner stands on a secret the agent named: bound by the owner, generated on approval, optional, or neither. */
+export type SecretStatus = "bound" | "failed" | "generated" | "optional" | "unknown";
+
+const SECRET_CODES = /\b(?:MISSING_REQUIRED_SECRETS|UNBOUND_BRICK_SECRET)\b/g;
+const NOT_SECRET_NAMES = new Set(["MISSING_REQUIRED_SECRETS", "UNBOUND_BRICK_SECRET", "APPROVAL_REQUIRED", "APPROVAL_PENDING"]);
+
+/** The secret names the agent's message gives after MISSING_REQUIRED_SECRETS or UNBOUND_BRICK_SECRET, on the same line. */
+export function namedSecrets(agentText: string | null): string[] {
+  const text = agentText ?? "";
+  const names = new Set<string>();
+  for (const m of text.matchAll(SECRET_CODES)) {
+    const rest = text.slice(m.index! + m[0].length).split(/\r?\n/)[0]!.slice(0, 300);
+    for (const token of rest.match(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g) ?? []) if (!NOT_SECRET_NAMES.has(token)) names.add(token);
+  }
+  return [...names];
+}
+
+const secretSentence = (name: string, status: SecretStatus) => {
+  switch (status) {
+    case "bound":
+      return `I added ${name} in Studio.`;
+    case "failed":
+      return `I could not add ${name} in Studio.`;
+    case "generated":
+      return `${name} is generated by Studio when I approve the preview deploy: run deploy_plan and deploy_apply on preview and I will approve it.`;
+    case "optional":
+      return `${name} is optional: leave it unset.`;
+    default:
+      return `Studio does not ask me for ${name} in this project: check validate_blueprint for what it still needs.`;
+  }
+};
+
+export interface OwnerReplyContext {
+  /** The review file's explicit decisions. */
+  decisions?: ReviewFile["decisions"];
+  /** The owner's standing on a named secret (after the owner bound what a person must supply). */
+  secretStatus?: (name: string) => SecretStatus;
+  /** What the owner did with deploy approvals since the agent's last call started (including a pass run just now). */
+  approvals?: ApprovalOutcome[];
+}
+
+/** A secret need from Studio's readiness, and who provides it: the owner, Studio on approval, or nobody (optional). */
+export interface SecretNeed {
+  brickId: string;
+  secretName: string;
+  kind: "owner" | "generated" | "optional";
+}
+
 /**
- * The scripted owner's reply when the agent stops before its preview deploy: the answer under `## <n>. <title>` in the
- * brief's answers when a question in the agent's last message names that title, followed by the generic line; otherwise
- * the generic line alone.
+ * The owner's standing on a named secret, per need (brick and name): "bound" only when every brick that needed the name
+ * got it from the owner, "failed" when a bind the owner tried was refused, else what the remaining needs say (generated
+ * on approval, or optional). A name no brick needs now is "bound" when the owner bound it earlier, else what the catalog
+ * declares for it.
  */
-export function ownerReply(answers: string | undefined, agentText: string | null): { text: string; source: "answers" | "generic"; section: string | null } {
+export function secretStatusFor(name: string, ctx: { needs: SecretNeed[]; boundNow: string[]; failedNow: string[]; boundBefore: string[]; catalog?: Catalog }): SecretStatus {
+  const ns = ctx.needs.filter((n) => n.secretName === name);
+  const key = (n: SecretNeed) => `${n.brickId}.${n.secretName}`;
+  if (ns.length === 0) {
+    if (ctx.boundBefore.some((b) => b.endsWith(`.${name}`))) return "bound";
+    const declared = Object.values((ctx.catalog ?? defaultCatalog).bricks).flatMap((b) => secretDeclarations(b.manifest)).filter((d) => d.name === name);
+    if (declared.length > 0 && declared.every((d) => d.generate)) return "generated";
+    if (declared.length > 0 && declared.every((d) => d.optional)) return "optional";
+    return "unknown";
+  }
+  if (ns.some((n) => ctx.failedNow.includes(key(n)))) return "failed";
+  const remaining = ns.filter((n) => !(n.kind === "owner" && ctx.boundNow.includes(key(n))));
+  if (remaining.length === 0) return "bound";
+  if (remaining.every((n) => n.kind === "generated")) return "generated";
+  if (remaining.every((n) => n.kind === "optional")) return "optional";
+  return "unknown";
+}
+
+/** What to tell the agent about its approval, from what the owner actually did with it. */
+function approvalSentence(approvals: ApprovalOutcome[]): { text: string; section: string } {
+  const ids = (list: ApprovalOutcome[]) => list.map((a) => a.approvalId).join(", ");
+  const approved = approvals.filter((a) => a.outcome === "approved");
+  if (approved.length > 0) return { text: `I approved the preview deploy in Studio (${ids(approved)}): call deploy_apply again with the approvalId.`, section: "approved" };
+  const rejected = approvals.filter((a) => a.outcome === "rejected-not-preview");
+  if (rejected.length > 0) {
+    const a = rejected.at(-1)!;
+    return { text: `I did not approve ${a.approvalId}: it is a ${a.action} on ${a.env ?? "no environment"}, and this app deploys to preview only. Deploy to preview instead.`, section: "not-preview" };
+  }
+  const refused = approvals.filter((a) => a.outcome === "refused");
+  if (refused.length > 0) {
+    const a = refused.at(-1)!;
+    return { text: `I tried to approve ${a.approvalId}, but Studio refused (HTTP ${a.status}). I will try again: call deploy_apply again with the approvalId in a moment.`, section: "refused" };
+  }
+  return { text: "I found no deploy approval waiting for me in Studio: call deploy_apply on preview to request one.", section: "none" };
+}
+
+/**
+ * The scripted owner's reply when the agent stops before its preview deploy, in this order:
+ * 1. a secret named after MISSING_REQUIRED_SECRETS / UNBOUND_BRICK_SECRET: that the owner added it in Studio (bound by the
+ *    harness before replying), that the approved preview deploy generates it, or that it is optional;
+ * 2. APPROVAL_REQUIRED / APPROVAL_PENDING: what the owner did with it: approved, rejected (not a preview deploy), refused by
+ *    the route, or nothing pending;
+ * 3. the first review decision whose phrase (or /regex/) the message matches;
+ * 4. the answer under `## <n>. <title>` in the brief's answers when a question in the message names that title;
+ * then the generic line. With none of them, the generic line alone. Never a secret value.
+ */
+export function ownerReply(answers: string | undefined, agentText: string | null, context: OwnerReplyContext = {}): { text: string; source: ReplySource; section: string | null } {
+  const withGeneric = (text: string) => `${text}\n\n${GENERIC_OWNER_REPLY}`;
+  const named = namedSecrets(agentText);
+  if (named.length > 0) {
+    const status = context.secretStatus ?? (() => "unknown" as const);
+    return { text: withGeneric(named.map((n) => secretSentence(n, status(n))).join(" ")), source: "secret", section: named.join(", ") };
+  }
+  if (/\bAPPROVAL_(?:REQUIRED|PENDING)\b/.test(agentText ?? "")) {
+    const said = approvalSentence(context.approvals ?? []);
+    return { text: withGeneric(said.text), source: "approval", section: said.section };
+  }
+  const lower = (agentText ?? "").toLowerCase();
+  for (const [i, d] of (context.decisions ?? []).entries()) {
+    const pattern = decisionPattern(d.match);
+    if (pattern ? pattern.test(agentText ?? "") : lower.includes(d.match.toLowerCase())) return { text: withGeneric(d.reply.trim()), source: "decision", section: `decision ${i + 1}` };
+  }
   const questions = (agentText ?? "").split(/(?<=[?.!])\s+|\n+/).filter((q) => q.includes("?")).map((q) => q.toLowerCase());
   if (answers && questions.length > 0) {
     const sections = [...answers.matchAll(/^## (\d+)\.\s*(.+)$/gm)];
@@ -433,7 +762,7 @@ export function ownerReply(answers: string | undefined, agentText: string | null
       if (words.length === 0 || !questions.some((q) => words.some((w) => q.includes(w)))) continue;
       const end = sections[i + 1]?.index ?? answers.length;
       const body = answers.slice(heading.index! + heading[0].length, end).trim();
-      if (body) return { text: `${body}\n\n${GENERIC_OWNER_REPLY}`, source: "answers", section: `${heading[1]}. ${title}` };
+      if (body) return { text: withGeneric(body), source: "answers", section: `${heading[1]}. ${title}` };
     }
   }
   return { text: GENERIC_OWNER_REPLY, source: "generic", section: null };
@@ -447,29 +776,32 @@ export function ownerReply(answers: string | undefined, agentText: string | null
  * Story 1.19: only required secrets a person must supply. A secret the brick's manifest marks `generate` is made by Studio
  * when the owner approves the preview deploy, and an `optional` one is left unset, so neither gets a made-up value here.
  */
-export async function bindUnboundSecrets(params: { call: StudioCall; session: string; orgId: string; project: string; randomHex: (bytes: number) => string; hideValues: Record<string, string>; catalog?: Catalog }): Promise<{ bound: string[]; failed: string[] }> {
+export async function bindUnboundSecrets(params: { call: StudioCall; session: string; orgId: string; project: string; randomHex: (bytes: number) => string; hideValues: Record<string, string>; catalog?: Catalog }): Promise<{ bound: string[]; failed: string[]; needs: SecretNeed[] }> {
   const { call, session, orgId, project } = params;
   const bricks = (params.catalog ?? defaultCatalog).bricks;
-  const ownerSupplies = (brickId: string, secretName: string) => {
+  const kindOf = (brickId: string, secretName: string): SecretNeed["kind"] => {
     const declared = bricks[brickId] ? secretDeclarations(bricks[brickId]!.manifest).find((d) => d.name === secretName) : undefined;
-    return !declared || (!declared.optional && !declared.generate);
+    return !declared || (!declared.optional && !declared.generate) ? "owner" : declared.generate ? "generated" : "optional";
   };
   const state = await call("GET", `/api/projects/${project}`, undefined, session, orgId);
   const needs = ((state.body.readiness as { needs?: Array<{ code?: string; path?: string }> } | undefined)?.needs ?? []).filter((n) => n.code === "UNBOUND_BRICK_SECRET");
   const bound: string[] = [];
   const failed: string[] = [];
+  const listed: SecretNeed[] = [];
   for (const need of needs) {
     const m = /^bricks\.([^.]+)\.secrets\.(.+)$/.exec(String(need.path ?? ""));
     if (!m) continue;
     const [, brickId, secretName] = m as unknown as [string, string, string];
-    if (!ownerSupplies(brickId, secretName)) continue;
+    const kind = kindOf(brickId, secretName);
+    listed.push({ brickId, secretName, kind });
+    if (kind !== "owner") continue;
     const value = params.randomHex(32);
     params.hideValues[`secret_${brickId}_${secretName}`] = value;
     const ref = `sec_${brickId}_${secretName}`.toLowerCase().replace(/[^a-z0-9_]/g, "_");
     const res = await call("POST", `/api/projects/${project}/secrets`, { ref, kind: "brick_secret", label: secretName, appOrBrick: brickId, value, bindTarget: { targetKind: "brick", targetId: brickId, secretName } }, session, orgId);
     (res.status === 200 || res.status === 201 ? bound : failed).push(`${brickId}.${secretName}`);
   }
-  return { bound, failed };
+  return { bound, failed, needs: listed };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -505,8 +837,9 @@ export const RunRecordSchema = z.strictObject({
   finishedAt: z.string(),
   status: z.enum(["complete", "incomplete"]),
   incompleteReason: z.string().nullable(),
-  /** "infra" runs are left out of the kill-rule evidence (and listed); "agent" and "cleanup" runs count. */
-  incompleteKind: z.enum(["infra", "agent", "cleanup"]).nullable(),
+  /** "infra" runs are left out of the kill-rule evidence (and listed); "agent", "owner-stalled" and "cleanup" runs count. */
+  /** "owner-stalled": the owner would have sent the same reply a third time to an agent making no progress. */
+  incompleteKind: z.enum(["infra", "agent", "owner-stalled", "cleanup"]).nullable(),
   /** The owner's fix iteration this run belongs to (--iteration, default 1). */
   iteration: z.number().int().min(1),
   cli: z.strictObject({
@@ -531,7 +864,7 @@ export const RunRecordSchema = z.strictObject({
     z.strictObject({
       call: z.number().int().min(1),
       prompt: z.enum(["brief", "change-request", "owner-reply"]),
-      reply: z.strictObject({ source: z.enum(["answers", "generic"]), section: z.string().nullable() }).nullable(),
+      reply: z.strictObject({ source: z.enum(["secret", "approval", "decision", "answers", "generic"]), section: z.string().nullable() }).nullable(),
       resumed: z.boolean(),
       exitCode: z.number().int().nullable(),
       timedOut: z.boolean(),
@@ -556,12 +889,15 @@ export const RunRecordSchema = z.strictObject({
   ownerReview: z.strictObject({
     count: z.number().int().min(0),
     proposalsAccepted: z.number().int().min(0),
+    proposalsRejected: z.number().int().min(0),
     approvalsApproved: z.number().int().min(0),
     refused: z.number().int().min(0),
     secretsBound: z.array(z.string()),
     rejectedNotPreview: z.array(z.strictObject({ approvalId: z.string(), action: z.string(), env: z.string().nullable() })),
     waitMs: z.number().min(0),
   }),
+  /** Everything the scripted owner did, in order: reviews, approvals, secrets bound, replies, and a stop. Names only. */
+  ownerActions: z.array(z.strictObject({ at: z.string(), kind: z.enum(OWNER_ACTION_KINDS), detail: z.string() })),
   project: z.string(),
   previewUrl: z.string().nullable(),
   deployed: z.boolean(),
@@ -654,6 +990,7 @@ export function evaluateKillRule(runs: RunRecord[]): z.infer<typeof KillRuleSche
 
 /** Adds (or replaces, by run id) a run in the private results file, re-evaluates the kill rule, validates, and writes. */
 export const UPGRADED_PRE_AGENT_CALLS = "upgraded from a pre-agentCalls record: one agent call, no per-call data, no secrets bound by the owner";
+export const UPGRADED_PRE_OWNER_ACTIONS = "upgraded from a pre-ownerActions record: owner actions were not recorded, and no proposal was rejected (the owner accepted every one)";
 
 /**
  * An older run record brought up to the current schema. A record from before agent calls were recorded made exactly one
@@ -685,6 +1022,18 @@ export function upgradeRunRecord(raw: unknown): unknown {
     upgraded = true;
   }
   if (upgraded && r.schemaNote === undefined) r.schemaNote = UPGRADED_PRE_AGENT_CALLS;
+  // Before story 1.22 the owner accepted every proposal and its actions were not recorded.
+  let ownerUpgraded = false;
+  if (!("ownerActions" in r)) {
+    r.ownerActions = [];
+    ownerUpgraded = true;
+  }
+  const review = obj("ownerReview");
+  if (review && !("proposalsRejected" in review)) {
+    r.ownerReview = { ...review, proposalsRejected: 0 };
+    ownerUpgraded = true;
+  }
+  if (ownerUpgraded && r.schemaNote === undefined) r.schemaNote = UPGRADED_PRE_OWNER_ACTIONS;
   // A call recorded before costUsdReported existed recorded the CLI's raw value as costUsd; it is kept as that raw value.
   // repairRunCosts (--repair-costs) then recomputes the per-call costs and the total from it.
   if (Array.isArray(r.agentCalls)) {
@@ -804,6 +1153,20 @@ export function saveRun(params: {
   }
 }
 
+/** change-live-app's default from-run: the brief's latest deployed brief run that recorded a blueprint. */
+export function latestDeployedRun(runs: RunRecord[], briefId: string): RunRecord | undefined {
+  return runs.filter((r) => r.task === "brief" && r.briefId === briefId && r.deployed && r.blueprint).sort((a, b) => a.startedAt.localeCompare(b.startedAt)).at(-1);
+}
+
+/**
+ * The stop rule's progress key: the newest revision not made by a person (the owner's session), and the preview's deployed
+ * revision. The owner binding a secret or approving does not count as the agent moving.
+ */
+export function agentProgress(revisions: Array<{ revision?: number; author?: { type?: string } }>, previewDeployedRev: number | null): string {
+  const newest = revisions.filter((r) => r.author?.type !== "human").map((r) => Number(r.revision ?? 0)).reduce((x, y) => Math.max(x, y), 0);
+  return `agent r${newest}:preview ${String(previewDeployedRev)}`;
+}
+
 export function readRun(outPath: string, runId: string): RunRecord {
   if (!existsSync(outPath)) throw new BenchRefusal(`no results file at ${outPath}`);
   const run = loadRuns(outPath).find((r) => r.runId === runId);
@@ -874,7 +1237,7 @@ const NOT_APPLICABLE: Record<number, { name: string; reason: string }> = {
   1: { name: "landing copy", reason: "ProjectX deploys an API Worker from the blueprint; it generates no landing page or marketing copy, so there is nothing to check (recon)." },
   3: { name: "password-reset mail", reason: "The preview runs the stub identity: there is no password, no mail provider and no reset flow to check (recon)." },
   8: { name: "interview read-back", reason: "ProjectX has no interview: the owner's answers are given up front in the prompt, so there is nothing read back (recon)." },
-  11: { name: "audit CLI", reason: "The line checks an audit command of the compared starter kit's own CLI; ProjectX has no such CLI (its build log is line 7) (recon)." },
+  11: { name: "audit CLI", reason: "The line asks for a command-line audit of the built app; ProjectX ships no command-line tool for the apps it builds (its build log is line 7) (recon)." },
 };
 const CHECK_NAMES: Record<number, string> = {
   1: NOT_APPLICABLE[1]!.name,
@@ -1102,9 +1465,12 @@ export async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promis
   const revisionEvents = events.filter((e) => e.type === "revision").length;
   const proposalEvents = events.filter((e) => e.type === "proposal").length;
   const approveRows = entries.filter((e) => e.action === "project.approval.approve" && e.status === "succeeded").length;
+  const rejectRows = entries.filter((e) => e.action === "project.proposal.reject" && e.status === "succeeded").length;
   const agentRows = entries.filter((e) => typeof e.action === "string" && e.action.startsWith("mcp.")).length;
-  const logged = revisionEvents >= Math.min(revisions.length, 1) && revisionEvents > 0 && approveRows >= ctx.ownerStats.approvalsApproved && proposalEvents >= ctx.ownerStats.proposalsAccepted && agentRows > 0;
-  set(7, logged ? "pass" : "fail", `activity: ${revisionEvents} revision and ${proposalEvents} proposal event(s); audit: ${agentRows} agent tool row(s), ${approveRows} approval row(s) for ${ctx.ownerStats.approvalsApproved} approval(s) and ${ctx.ownerStats.proposalsAccepted} accepted proposal(s)`);
+  // Every proposal the owner reviewed (accepted or rejected) is in the activity, and each reject has its audit row.
+  const reviewed = ctx.ownerStats.proposalsAccepted + ctx.ownerStats.proposalsRejected;
+  const logged = revisionEvents >= Math.min(revisions.length, 1) && revisionEvents > 0 && approveRows >= ctx.ownerStats.approvalsApproved && proposalEvents >= reviewed && rejectRows >= ctx.ownerStats.proposalsRejected && agentRows > 0;
+  set(7, logged ? "pass" : "fail", `activity: ${revisionEvents} revision and ${proposalEvents} proposal event(s); audit: ${agentRows} agent tool row(s), ${approveRows} approval row(s) for ${ctx.ownerStats.approvalsApproved} approval(s), ${rejectRows} reject row(s) for ${ctx.ownerStats.proposalsRejected} rejected proposal(s); ${ctx.ownerStats.proposalsAccepted} accepted proposal(s)`);
 
   // ---- 12: a second HTTP client finds the entity routes in /openapi.json, creates a row and reads it back
   if (!preview.url || healthz !== 200) set(12, "fail", "the preview does not answer");
@@ -1155,6 +1521,8 @@ export interface AgentBenchDeps {
   wallTimeCapMs?: number;
   /** The most `claude -p` calls in one run (the first plus owner replies); default 8. */
   maxAgentCalls?: number;
+  /** Offline tests: one more owner step, as the owner's session, after the owner's own steps and before its reply. */
+  ownerStep?: (ctx: { call: StudioCall; session: string; orgId: string; project: string; call_: number }) => Promise<void>;
   /** Where the run's empty working folder and MCP config are made (a temp folder by default). */
   workRoot?: string;
   ownerIntervalMs?: number;
@@ -1216,7 +1584,8 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     limits: { maxBudgetUsd, wallTimeCapMs, maxAgentCalls },
     wallTimeMs: 0,
     agentWallTimeMs: null,
-    ownerReview: { count: 0, proposalsAccepted: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 },
+    ownerReview: { count: 0, proposalsAccepted: 0, proposalsRejected: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 },
+    ownerActions: [],
     project,
     previewUrl: null,
     deployed: false,
@@ -1227,8 +1596,10 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     blueprint: null,
     teardown: null,
   };
-  /** Why the run is incomplete. "infra": the harness or the CLI process failed, so the run is no evidence about the model; "agent": a cap or the CLI's own error result; "cleanup": teardown, after scoring. */
-  const reasons: Array<{ text: string; kind: "infra" | "agent" | "cleanup" }> = [];
+  /** Why the run is incomplete. "infra": the harness or the CLI process failed, so the run is no evidence about the model; "agent": a cap or the CLI's own error result; "owner-stalled": the agent stayed blocked through two identical owner replies; "cleanup": teardown, after scoring. */
+  const reasons: Array<{ text: string; kind: NonNullable<RunRecord["incompleteKind"]> }> = [];
+  const act: OwnerAct = (kind, detail) => record.ownerActions.push({ at: new Date(now()).toISOString(), kind, detail: hide(detail) });
+  const ownerReviewOf = (stats: OwnerStats): RunRecord["ownerReview"] => ({ count: stats.proposalsAccepted + stats.proposalsRejected + stats.approvalsApproved + stats.secretsBound.length, ...stats, waitMs: Math.round(stats.waitMs) });
   const { studio, app, call } = guarded.boot();
   const must = (what: string, ok: boolean, detail: unknown) => {
     if (!ok) throw new BenchRefusal(`${what} failed: ${hide(JSON.stringify(detail)).slice(0, 1200)}`);
@@ -1269,7 +1640,7 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     const mcpConfigPath = join(workRoot, "mcp.json");
     writeFileSync(mcpConfigPath, JSON.stringify({ mcpServers: { [MCP_SERVER_NAME]: { type: "http", url: mcp.url, headers: mcp.headers } } }));
     const prompt = deps.task === "brief" ? briefPrompt(project, deps.brief as LoadedBrief) : changeLiveAppPrompt(project);
-    owner = startOwnerLoop({ call, session, orgId, project, intervalMs: deps.ownerIntervalMs ?? 1_000, now });
+    owner = startOwnerLoop({ call, session, orgId, project, intervalMs: deps.ownerIntervalMs ?? 1_000, now, review: deps.brief.review ?? null, act });
 
     phase = "agent";
     record.cli.version = await deps.runner.version().catch(() => null);
@@ -1282,7 +1653,16 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     let sessionId: string | null = null;
     let lastReportedCost: number | null = null;
     let nextPrompt = prompt;
-    let reply: { source: "answers" | "generic"; section: string | null } | null = null;
+    let reply: { source: ReplySource; section: string | null } | null = null;
+    /** The owner's last reply, and the project's progress (revision and preview deploy) when it was sent. */
+    let lastReply: { text: string; progress: string; count: number } | null = null;
+    let approvalsSeen = 0;
+    /** The agent's own progress: its newest revision (the owner's own, such as a secret bind, do not count) and the preview deploy. */
+    const progressNow = async () => {
+      const preview = await readPreviewState({ call, session, orgId, project });
+      const revs = await call("GET", `/api/projects/${project}/revisions?limit=100`, undefined, session, orgId);
+      return agentProgress((revs.body.revisions as Array<{ revision?: number; author?: { type?: string } }> | undefined) ?? [], preview.deployedRev);
+    };
     const texts: string[] = [];
     const baselineRev = baselineRevision;
     const done = async () => {
@@ -1304,6 +1684,8 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
         break;
       }
       const callStarted = now();
+      // approvals the owner decides from here on belong to this call's reply
+      approvalsSeen = owner.approvalLog.length;
       let out: ClaudeRunOutput | null = null;
       try {
         out = await deps.runner.run({ prompt: nextPrompt, cwd, mcpConfigPath, mcp, ...(deps.model ? { model: deps.model } : {}), maxBudgetUsd: remainingUsd, timeoutMs: remainingMs, ...(sessionId ? { resumeSessionId: sessionId } : {}) });
@@ -1373,9 +1755,11 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
       }
       if (await done()) break;
       // The owner's human steps between calls: bind the brick secrets the blueprint still needs, then reply.
+      const boundBefore = [...owner.stats.secretsBound];
       const secrets_ = await bindUnboundSecrets({ call, session, orgId, project, randomHex: deps.randomHex, hideValues: secrets });
       owner.stats.secretsBound.push(...secrets_.bound);
       entry.secretsBoundAfter = secrets_.bound;
+      for (const name of secrets_.bound) act("bind-secret", name);
       if (secrets_.failed.length > 0) say(`   the owner could not bind ${secrets_.failed.join(", ")}`);
       if (n === maxAgentCalls) break;
       if (!numbers.sessionId) {
@@ -1383,7 +1767,24 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
         break;
       }
       sessionId = numbers.sessionId;
-      const r = ownerReply(deps.task === "brief" ? deps.brief.answers : undefined, numbers.resultText);
+      // An approval the agent waits on is reviewed now, so the reply says what is true.
+      if (/\bAPPROVAL_(?:REQUIRED|PENDING)\b/.test(numbers.resultText ?? "")) await owner.passNow();
+      await deps.ownerStep?.({ call, session, orgId, project, call_: n });
+      const secretStatus = (name: string): SecretStatus => secretStatusFor(name, { needs: secrets_.needs, boundNow: secrets_.bound, failedNow: secrets_.failed, boundBefore });
+      const approvals = owner.approvalLog.slice(approvalsSeen);
+      const r = ownerReply(deps.task === "brief" ? deps.brief.answers : undefined, numbers.resultText, { decisions: deps.brief.review?.decisions ?? [], secretStatus, approvals });
+      // The stop rule: the same reply to an agent that has made no progress since the last one is sent at most twice.
+      const progress = await progressNow();
+      const count: number = lastReply && lastReply.text === r.text && lastReply.progress === progress ? lastReply.count + 1 : 1;
+      if (count > MAX_IDENTICAL_BLOCKED_REPLIES) {
+        const why = `owner stalled: the agent stayed blocked (${progress}) through ${MAX_IDENTICAL_BLOCKED_REPLIES} identical owner replies (${r.source}${r.section ? `: ${r.section}` : ""}), so a third was not sent`;
+        act("stop", why);
+        reasons.push({ kind: "owner-stalled", text: why });
+        say(`   ${why}`);
+        break;
+      }
+      lastReply = { text: r.text, progress, count };
+      act("reply", `${r.source}${r.section ? `: ${r.section}` : ""}`);
       reply = { source: r.source, section: r.section };
       nextPrompt = r.text;
     }
@@ -1392,7 +1793,7 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     record.agentWallTimeMs = Math.max(0, Math.round(agentEnded - agentStarted));
     const stats = await owner.stop();
     owner = null;
-    record.ownerReview = { count: stats.proposalsAccepted + stats.approvalsApproved + stats.secretsBound.length, ...stats, waitMs: Math.round(stats.waitMs) };
+    record.ownerReview = ownerReviewOf(stats);
     if (deps.task === "change-live-app") record.change = { timeToLiveMs: null, redeploys: 0, hotApplies: 0, noops: 0, parts: [], agentFlaggedUnsupported: texts.some((t) => /^\s*UNSUPPORTED:/im.test(t)) };
 
     // ---- scoring, on whatever exists now
@@ -1426,7 +1827,7 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
   } finally {
     if (owner) {
       const stats = await owner.stop().catch(() => null);
-      if (stats) record.ownerReview = { count: stats.proposalsAccepted + stats.approvalsApproved + stats.secretsBound.length, ...stats, waitMs: Math.round(stats.waitMs) };
+      if (stats) record.ownerReview = ownerReviewOf(stats);
     }
     if (server) await server.close().catch(() => undefined);
     phase = "teardown";
@@ -1446,7 +1847,7 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
   record.wallTimeMs = Math.max(0, Math.round(finished - started));
   record.status = reasons.length === 0 ? "complete" : "incomplete";
   record.incompleteReason = reasons.length === 0 ? null : reasons.map((r) => r.text).join("; ");
-  record.incompleteKind = (["infra", "agent", "cleanup"] as const).find((kind) => reasons.some((r) => r.kind === kind)) ?? null;
+  record.incompleteKind = (["infra", "agent", "owner-stalled", "cleanup"] as const).find((kind) => reasons.some((r) => r.kind === kind)) ?? null;
   // The account's workers.dev subdomain and every secret stay out of the record.
   const redacted = RunRecordSchema.parse(JSON.parse(hide(JSON.stringify(redactWorkersDevSubdomains(record)))));
   const hits = findSecrets(JSON.stringify(redacted), secrets);
@@ -1578,8 +1979,11 @@ async function main(argv: string[]): Promise<number> {
     console.log(`teardown: removed ${res.removed.length}, already gone ${res.alreadyGone.length}, unledgered ${res.unledgered.length}`);
     return res.unledgered.length === 0 ? 0 : 1;
   }
-  const previous = ledgerStore.read();
-  if (previous && previous.entries.every((e) => e.status === "removed")) renameSync(ledgerPath, `${ledgerPath}.${new Date().toISOString().replace(/[:.]/g, "-")}.done`);
+  /** A ledger whose resources are all removed is set aside, so the next run starts a fresh one (a new suffix). */
+  const rotateLedger = () => {
+    const previous = ledgerStore.read();
+    if (previous && previous.entries.every((e) => e.status === "removed")) renameSync(ledgerPath, `${ledgerPath}.${new Date().toISOString().replace(/[:.]/g, "-")}.done`);
+  };
 
   const out = resolve(arg("--out") ?? DEFAULT_OUT);
   const outRefusal = privatePathRefusal(out, repoRoot, gitIgnores);
@@ -1610,55 +2014,67 @@ async function main(argv: string[]): Promise<number> {
     console.error("--max-budget-usd must be a positive number");
     return 2;
   }
-  let brief: AgentBenchDeps["brief"];
-  let fromRun: RunRecord | undefined;
+  const briefsDir = resolve(arg("--briefs-dir") ?? DEFAULT_BRIEFS_DIR);
+  /** A brief folder that may not be used is a usage error (exit 2), like the other bad arguments. */
+  const briefsRefusal = (id: string) => {
+    const refused = privatePathRefusal(join(briefsDir, id), repoRoot, gitIgnores);
+    if (refused) console.error(`--briefs-dir: ${refused}`);
+    return refused !== null;
+  };
+  // What to run: one brief, the default set one after another, or one change-live-app run.
+  const jobs: Array<{ brief: AgentBenchDeps["brief"]; fromRun?: RunRecord }> = [];
   if (task === "brief") {
-    const id = arg("--brief");
-    if (!id) {
-      console.error("--brief <id> is required (a folder under --briefs-dir with brief.md and answers.md)");
-      return 2;
+    const ids = arg("--brief") ? [arg("--brief")!] : [...DEFAULT_BRIEF_IDS];
+    for (const id of ids) {
+      if (briefsRefusal(id)) return 2;
+      jobs.push({ brief: loadBrief(briefsDir, id) });
     }
-    const briefsDir = resolve(arg("--briefs-dir") ?? DEFAULT_BRIEFS_DIR);
-    const briefsRefusal = privatePathRefusal(join(briefsDir, id), repoRoot, gitIgnores);
-    if (briefsRefusal) {
-      console.error(`--briefs-dir: ${briefsRefusal}`);
-      return 2;
-    }
-    brief = loadBrief(briefsDir, id);
   } else {
     const fromId = arg("--from-run");
-    if (!fromId) {
-      console.error("--from-run <run id> is required for change-live-app");
+    const fromRun = fromId ? readRun(out, fromId) : latestDeployedRun(loadRuns(out), CHANGE_LIVE_APP_BRIEF);
+    if (!fromRun) {
+      console.error(`no deployed run of "${CHANGE_LIVE_APP_BRIEF}" with a blueprint in ${out}: run that brief first, or pass --from-run <run id>`);
       return 2;
     }
-    fromRun = readRun(out, fromId);
-    brief = { id: fromRun.briefId, briefSha256: fromRun.briefSha256 };
+    // The owner reviews the change's proposals against the same brief's review file, when it is on disk.
+    const slug = /^[a-z0-9][a-z0-9-]{0,63}$/.test(fromRun.briefId);
+    if (slug && briefsRefusal(fromRun.briefId)) return 2;
+    const review = slug ? loadReview(join(briefsDir, fromRun.briefId)) : null;
+    jobs.push({ brief: { id: fromRun.briefId, briefSha256: fromRun.briefSha256, review }, fromRun });
   }
   const model = arg("--model");
-  const record = await runAgentBench({
-    task,
-    iteration,
-    maxAgentCalls,
-    brief,
-    ...(fromRun ? { fromRun } : {}),
-    credentials,
-    rootSecret: process.env.PX_TELEMETRY_SECRET?.trim() ?? "",
-    cloudflareFetch: realFetch,
-    workerFetch: realFetch,
-    bundle: nodeBundler,
-    ledgerStore,
-    randomHex: (n) => randomBytes(n).toString("hex"),
-    runner: createClaudeCliRunner(arg("--claude-bin") ?? defaultClaudeBin()),
-    ...(model ? { model } : {}),
-    maxBudgetUsd,
-  });
-  console.log(`run ${record.runId}: ${record.status}${record.incompleteReason ? ` (${record.incompleteReason})` : ""}`);
-  const saved = saveRun({ out, record, refusal: (path) => privatePathRefusal(path, repoRoot, gitIgnores) });
-  if (!saved.ok) return 1;
-  const { file } = saved;
-  if (record.score) console.log(`score (iteration ${record.iteration}): ${record.score.passes}/${record.score.applicable} applicable lines pass; literal (as written) ${record.score.passes}/12; deployed: ${record.deployed}`);
-  console.log(`kill rule (${file.killRule.ruleVersion}): applicable lines ${file.killRule.status.applicableLines}, literal (as written) ${file.killRule.status.literalAsWritten}; decision left to the owner; written to ${out}`);
-  return record.status === "complete" ? 0 : 1;
+  const runner = createClaudeCliRunner(arg("--claude-bin") ?? defaultClaudeBin());
+  let allComplete = true;
+  for (const job of jobs) {
+    rotateLedger();
+    const record = await runAgentBench({
+      task,
+      iteration,
+      maxAgentCalls,
+      brief: job.brief,
+      ...(job.fromRun ? { fromRun: job.fromRun } : {}),
+      credentials,
+      rootSecret: process.env.PX_TELEMETRY_SECRET?.trim() ?? "",
+      cloudflareFetch: realFetch,
+      workerFetch: realFetch,
+      bundle: nodeBundler,
+      ledgerStore,
+      randomHex: (n) => randomBytes(n).toString("hex"),
+      runner,
+      ...(model ? { model } : {}),
+      maxBudgetUsd,
+    });
+    console.log(`run ${record.runId}: ${record.status}${record.incompleteReason ? ` (${record.incompleteReason})` : ""}`);
+    const saved = saveRun({ out, record, refusal: (path) => privatePathRefusal(path, repoRoot, gitIgnores) });
+    if (!saved.ok) return 1;
+    const { file } = saved;
+    if (record.score) console.log(`score (iteration ${record.iteration}): ${record.score.passes}/${record.score.applicable} applicable lines pass; literal (as written) ${record.score.passes}/12; deployed: ${record.deployed}`);
+    console.log(`kill rule (${file.killRule.ruleVersion}): applicable lines ${file.killRule.status.applicableLines}, literal (as written) ${file.killRule.status.literalAsWritten}; decision left to the owner; written to ${out}`);
+    if (record.status !== "complete") allComplete = false;
+    // A run that left something behind stops the set: the next would refuse to start anyway.
+    if (record.teardown === null || record.teardown.leftBehind.length > 0) return 1;
+  }
+  return allComplete ? 0 : 1;
 }
 
 const isMain = process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
