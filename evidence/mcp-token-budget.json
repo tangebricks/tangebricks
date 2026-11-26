@@ -22,7 +22,7 @@
     "deploy_plan": 69,
     "deploy_apply": 86
   },
-  "perPageMaxTokens": 373,
+  "perPageMaxTokens": 372,
   "perPageCeiling": 400,
   "perPageByTool": {
     "search_bricks": {
@@ -44,7 +44,7 @@
     "list_runs": {
       "tool": "list_runs",
       "pagesChecked": 1,
-      "maxPageTokens": 373,
+      "maxPageTokens": 372,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -52,7 +52,7 @@
     "query_logs": {
       "tool": "query_logs",
       "pagesChecked": 1,
-      "maxPageTokens": 303,
+      "maxPageTokens": 302,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -69,17 +69,17 @@
   "sessionA": {
     "calls": 4,
     "maxCalls": 5,
-    "tokens": 2584,
+    "tokens": 2576,
     "emittedTokens": 50141,
-    "ratioPct": 5.2,
+    "ratioPct": 5.1,
     "maxRatioPct": 15,
     "passed": true
   },
   "sessionB": {
     "calls": 7,
     "toolDefTokens": 1195,
-    "ioTokens": 6229,
-    "totalTokens": 7424,
+    "ioTokens": 6242,
+    "totalTokens": 7437,
     "maxTotalTokens": 8000,
     "passed": true,
     "byCall": [
@@ -98,8 +98,8 @@
       {
         "tool": "apply_ops",
         "requestTokens": 1340,
-        "responseTokens": 531,
-        "totalTokens": 1871
+        "responseTokens": 523,
+        "totalTokens": 1863
       },
       {
         "tool": "get_blueprint_summary",
@@ -122,15 +122,15 @@
       {
         "tool": "test_workflow",
         "requestTokens": 37,
-        "responseTokens": 1936,
-        "totalTokens": 1973
+        "responseTokens": 1957,
+        "totalTokens": 1994
       }
     ]
   },
   "violations": [],
   "provenance": {
-    "generatedAt": "2026-11-26T12:12:19.423Z",
-    "gitSha": "1b3166fb43efe26aae5f2576b88ec7aeccd87067",
+    "generatedAt": "2026-11-26T12:26:00.422Z",
+    "gitSha": "64cb144467083c264688d1632cb2d88ac9c08d1d",
     "gitDirty": false,
     "generator": "scripts/mcp-budget.ts",
     "inputKind": "measured"
