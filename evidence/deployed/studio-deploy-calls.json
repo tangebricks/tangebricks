@@ -1,0 +1,1329 @@
+{
+  "commandStartedAt": "2026-11-26T07:37:20.114Z",
+  "project": "tangebricks-test-05402d83",
+  "calls": [
+    {
+      "phase": "preflight",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "preflight",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "preflight",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workflows",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "preflight",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/queues",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "connect",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/tokens/verify",
+      "status": 401,
+      "write": false
+    },
+    {
+      "phase": "connect",
+      "method": "GET",
+      "path": "/client/v4/user/tokens/verify",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "connect",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "connect",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "connect",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/queues",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "connect",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "connect",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "connect",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/subdomain",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/versions",
+      "status": 404,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/queues",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workflows",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/subdomain",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/subdomain",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/subdomain",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workflows/px-tangebricks-test-05402d83-preview-graphs",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/secrets",
+      "status": 201,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/secrets",
+      "status": 201,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/secrets",
+      "status": 201,
+      "write": true
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/subdomain",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-preview",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/versions",
+      "status": 404,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/queues",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workflows",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/subdomain",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/subdomain",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/subdomain",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workflows/px-tangebricks-test-05402d83-production-graphs",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/secrets",
+      "status": 201,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/secrets",
+      "status": 201,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/secrets",
+      "status": 201,
+      "write": true
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/subdomain",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "deploy-production",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/queues",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workflows",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/subdomain",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/queues",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workflows",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/subdomain",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/versions",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/settings",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production/schedules",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "redeploy",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "wallet",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "wallet",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "wallet",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "wallet",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "wallet",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "wallet",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "wallet",
+      "method": "POST",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b/query",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "revoked",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/tokens/verify",
+      "status": 401,
+      "write": false
+    },
+    {
+      "phase": "revoked",
+      "method": "GET",
+      "path": "/client/v4/user/tokens/verify",
+      "status": 401,
+      "write": false
+    },
+    {
+      "phase": "revoked",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/tokens/verify",
+      "status": 401,
+      "write": false
+    },
+    {
+      "phase": "revoked",
+      "method": "GET",
+      "path": "/client/v4/user/tokens/verify",
+      "status": 401,
+      "write": false
+    },
+    {
+      "phase": "revoked",
+      "method": "PUT",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-revoked",
+      "status": 401,
+      "write": true
+    },
+    {
+      "phase": "teardown",
+      "method": "DELETE",
+      "path": "/client/v4/accounts/{account}/workflows/px-tangebricks-test-05402d83-preview-graphs",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "teardown",
+      "method": "DELETE",
+      "path": "/client/v4/accounts/{account}/workflows/px-tangebricks-test-05402d83-production-graphs",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "teardown",
+      "method": "DELETE",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-preview",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "teardown",
+      "method": "DELETE",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-production",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "teardown",
+      "method": "DELETE",
+      "path": "/client/v4/accounts/{account}/workers/scripts/px-tangebricks-test-05402d83-revoked",
+      "status": 404,
+      "write": true
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "teardown",
+      "method": "DELETE",
+      "path": "/client/v4/accounts/{account}/d1/database/87e1f828-c635-41df-9922-820d1f6fdefe",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "teardown",
+      "method": "DELETE",
+      "path": "/client/v4/accounts/{account}/d1/database/0f7f4f08-e524-4e1b-b309-6a94d8492e5b",
+      "status": 200,
+      "write": true
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workflows",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/queues",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workers/scripts",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/d1/database",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/workflows",
+      "status": 200,
+      "write": false
+    },
+    {
+      "phase": "teardown",
+      "method": "GET",
+      "path": "/client/v4/accounts/{account}/queues",
+      "status": 200,
+      "write": false
+    }
+  ]
+}
