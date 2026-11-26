@@ -11,6 +11,7 @@
     "test:e2e": "playwright test -c ../../playwright.config.ts"
   },
   "dependencies": {
+    "@poc/assembler": "workspace:*",
     "@poc/blueprint": "workspace:*",
     "@tanstack/react-query": "5.108.2",
     "@xyflow/react": "13.0.2",

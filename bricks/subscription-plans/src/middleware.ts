@@ -2,6 +2,7 @@ import type { MiddlewareHandler } from "hono";
 import type { D1Like, RequestContext } from "@poc/sdk";
 import { PlanService } from "./plans.ts";
 import type { SubscriptionRecord } from "./plans.ts";
+import type { PlanCreditsConfig } from "./credits.ts";
 
 export interface PlanContext {
   subscription: SubscriptionRecord;
@@ -21,7 +22,27 @@ export interface PlanEnv {
 }
 
 /**
- * Attaches the subscription and plan entitlement context to the Hono request.
+ * Attaches the subscription and plan entitlement context to the Hono request. Story 1.20: built with the brick's
+ * default tier and plan credit settings, so the read that provisions a workspace's subscription also grants its credits.
+ */
+export function createPlanEntitlementMiddleware(defaultTier?: string, credits?: PlanCreditsConfig): MiddlewareHandler<PlanEnv> {
+  return async (c, next) => {
+    const workspace = c.get("workspace");
+    if (workspace) {
+      const service = new PlanService(c.env.DB, defaultTier, credits);
+      const sub = await service.getSubscription(workspace.id);
+      c.set("plan", {
+        subscription: sub,
+        hasFeature: (key: string) => service.hasFeature(workspace.id, key),
+        getQuota: (key: string) => service.getQuota(workspace.id, key),
+      });
+    }
+    await next();
+  };
+}
+
+/**
+ * Attaches the subscription and plan entitlement context to the Hono request (default tier "free", no plan credits).
  */
 export const planEntitlementMiddleware: MiddlewareHandler<PlanEnv> = async (c, next) => {
   const workspace = c.get("workspace");

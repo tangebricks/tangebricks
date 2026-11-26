@@ -11,7 +11,8 @@
     "workspace-context"
   ],
   "migrations": [
-    "migrations/0001_subscription_plans.sql"
+    "migrations/0001_subscription_plans.sql",
+    "migrations/0002_plan_credits.sql"
   ],
   "routePrefixes": [
     "plans",
@@ -30,6 +31,21 @@
         "enterprise"
       ],
       "default": "free"
+    },
+    "planCredits": {
+      "type": "string",
+      "pattern": "^(|[a-z0-9][a-z0-9_.-]{0,63}:[0-9]{1,9}(,[a-z0-9][a-z0-9_.-]{0,63}:[0-9]{1,9}){0,19})$",
+      "example": "free:100,pro:1000",
+      "maxLength": 512,
+      "default": ""
+    },
+    "creditPeriod": {
+      "type": "enum",
+      "values": [
+        "month",
+        "year"
+      ],
+      "default": "month"
     }
   },
   "ui": {
@@ -39,6 +55,34 @@
     "maturity": "beta",
     "behaviourTest": "test/plans.test.ts",
     "maturityReason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit."
+  },
+  "triggers": {
+    "schedules": [
+      {
+        "id": "plan-credits",
+        "cron": "* * * * *",
+        "handler": "runPlanCreditSweep",
+        "enabledWhen": {
+          "setting": "planCredits",
+          "notEquals": ""
+        },
+        "options": {
+          "planCredits": {
+            "$setting": "planCredits"
+          },
+          "creditPeriod": {
+            "$setting": "creditPeriod"
+          },
+          "charger": {
+            "$capability": "credit-wallet.walletCharger",
+            "requiredWhen": {
+              "setting": "planCredits",
+              "notEquals": ""
+            }
+          }
+        }
+      }
+    ]
   },
   "conflicts": [
     {
@@ -73,6 +117,27 @@
         "options": {
           "defaultTier": {
             "$setting": "defaultTier"
+          },
+          "planCredits": {
+            "$setting": "planCredits",
+            "requiredWhen": {
+              "setting": "planCredits",
+              "notEquals": ""
+            }
+          },
+          "creditPeriod": {
+            "$setting": "creditPeriod",
+            "requiredWhen": {
+              "setting": "planCredits",
+              "notEquals": ""
+            }
+          },
+          "charger": {
+            "$capability": "credit-wallet.walletCharger",
+            "requiredWhen": {
+              "setting": "planCredits",
+              "notEquals": ""
+            }
           }
         }
       }

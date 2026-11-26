@@ -84,6 +84,40 @@ object:
 - A secret is `optional` or `generate`, never both (`ManifestSchema` refuses it). `secretDeclarations()` and `secretNames()` in
   `@poc/assembler` read either form.
 
+## Schedule Options and Conditional Wiring (story 1.20)
+
+A schedule in `triggers.schedules` may take `options`, written and resolved like route options (`$setting`,
+`$capability`, `$capabilitySetting`, ...). The assembled `scheduled()` passes them to the handler as `options`; a
+schedule without options is called exactly as before.
+
+```json
+"triggers": {
+  "schedules": [
+    {
+      "id": "plan-credits",
+      "cron": "* * * * *",
+      "handler": "runPlanCreditSweep",
+      "enabledWhen": { "setting": "planCredits", "notEquals": "" },
+      "options": {
+        "planCredits": { "$setting": "planCredits" },
+        "charger": { "$capability": "credit-wallet.walletCharger", "requiredWhen": { "setting": "planCredits", "notEquals": "" } }
+      }
+    }
+  ]
+}
+```
+
+- **`enabledWhen`**: the schedule is wired only while the condition on one of the brick's own settings holds. When it
+  does not, the app is assembled as if the schedule were not declared (no cron trigger, no `px_schedules`, no handler
+  call), so a feature that is off changes nothing.
+- **Conditions** are `{ "setting", "equals" }` or `{ "setting", "notEquals" }`. Both forms work for `enabledWhen` and for
+  `requiredWhen` on a `$capability` option. A `$setting` option may also take `requiredWhen`: it is passed only while the
+  condition holds.
+- A `$capability` schedule option is checked like a route option: a required provider must be enabled, first-party,
+  non-isolated and not quarantined, and must offer the export; an isolated brick cannot take one. The refusal names the
+  option as `option "<name>" of schedule <id>`.
+- `ManifestSchema` refuses an option, `requiredWhen` or `enabledWhen` that names a setting the brick does not declare.
+
 ## Semantic Versioning and Capability Ranges (UC8.2)
 
 To prevent breaking changes from slipping unnoticed into redeploys and enforce compatibility between interacting bricks (F-DEP-1), manifests and the assembler enforce semantic versioning across bricks and capabilities.

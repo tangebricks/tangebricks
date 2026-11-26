@@ -1,6 +1,8 @@
 export { assemble, checkBrickConfig, checkSettingsUpgrade } from "./assemble.ts";
 export type { AssembleResult, SettingUpgradeAdded, SettingsUpgradeResult } from "./assemble.ts";
 export { generateOpenApiSpec } from "./openapi.ts";
+export { enabledSchedules, settingConditionHolds } from "./schedules.ts";
+export type { ScheduleSettingCondition } from "./schedules.ts";
 export type { OpenApiSpec, OrderedBrickInput } from "./openapi.ts";
 export {
   BINDING_TYPES,

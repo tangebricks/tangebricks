@@ -207,6 +207,9 @@ importers:
 
   apps/studio-web:
     dependencies:
+      '@poc/assembler':
+        specifier: workspace:*
+        version: link:../../packages/assembler
       '@poc/blueprint':
         specifier: workspace:*
         version: link:../../packages/blueprint

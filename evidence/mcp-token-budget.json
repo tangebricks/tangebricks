@@ -22,7 +22,7 @@
     "deploy_plan": 84,
     "deploy_apply": 111
   },
-  "perPageMaxTokens": 368,
+  "perPageMaxTokens": 370,
   "perPageCeiling": 400,
   "perPageByTool": {
     "search_bricks": {
@@ -44,7 +44,7 @@
     "list_runs": {
       "tool": "list_runs",
       "pagesChecked": 1,
-      "maxPageTokens": 368,
+      "maxPageTokens": 370,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -52,7 +52,7 @@
     "query_logs": {
       "tool": "query_logs",
       "pagesChecked": 1,
-      "maxPageTokens": 298,
+      "maxPageTokens": 300,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -129,8 +129,8 @@
   },
   "violations": [],
   "provenance": {
-    "generatedAt": "2026-11-26T20:22:28.807Z",
-    "gitSha": "657061435984d6cd5cf6e0fefc6a059c03547468",
+    "generatedAt": "2026-11-26T21:14:56.550Z",
+    "gitSha": "9c3796dd3833a600215d9f1c66c6a78940d05bc5",
     "gitDirty": false,
     "generator": "scripts/mcp-budget.ts",
     "inputKind": "measured"

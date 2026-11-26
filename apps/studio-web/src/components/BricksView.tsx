@@ -325,7 +325,7 @@ export function BricksView() {
             : "unverified");
     const maturity = formatMaturityBadge(effectiveTier);
     const maturityReason = manifest.ui?.maturityReason;
-    const needsScheduling = hasSchedulingOrQueueTriggers(manifest);
+    const needsScheduling = hasSchedulingOrQueueTriggers(manifest, enabledBricks.find((b) => b.id === manifest.id)?.config ?? {});
     const isEnabled = enabledIds.has(manifest.id);
     const isSelected = selection?.kind === "brick" && selection.id === manifest.id;
     const highlight =

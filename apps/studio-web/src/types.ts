@@ -1,3 +1,5 @@
+import { enabledSchedules } from "@poc/assembler/schedules";
+import type { ScheduleSettingCondition } from "@poc/assembler/schedules";
 import {
   EDGE_ID_PATTERN,
   ENTITY_NAME_PATTERN,
@@ -273,7 +275,8 @@ export interface CatalogBrickRoute {
 }
 
 export interface CatalogBrickTriggers {
-  schedules?: Array<{ id: string; cron: string; handler: string }>;
+  /** Story 1.20: `enabledWhen` wires a schedule only while a condition on the brick's settings holds. */
+  schedules?: Array<{ id: string; cron: string; handler: string; enabledWhen?: ScheduleSettingCondition }>;
   queues?: Array<{ id: string; handler: string; maxBatch?: number; dlq?: boolean }>;
 }
 
@@ -1067,8 +1070,9 @@ export function formatMaturityBadge(tier?: DisplayMaturity): {
   }
 }
 
-export function hasSchedulingOrQueueTriggers(manifest: CatalogBrickManifest): boolean {
-  const hasSchedules = (manifest.triggers?.schedules?.length ?? 0) > 0;
+/** `config` is the brick's config in the blueprint; a schedule counts only if the assembler would wire it (story 1.20). */
+export function hasSchedulingOrQueueTriggers(manifest: CatalogBrickManifest, config: Readonly<Record<string, unknown>> = {}): boolean {
+  const hasSchedules = enabledSchedules(manifest, config).length > 0;
   const hasQueues = (manifest.triggers?.queues?.length ?? 0) > 0;
   if (hasSchedules || hasQueues) {
     return true;

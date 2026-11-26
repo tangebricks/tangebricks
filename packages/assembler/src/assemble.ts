@@ -3,12 +3,13 @@ import type { ObservabilityConfig } from "./schemas.ts";
 import { lintMigration } from "../../deploy/src/migration-lint.ts";
 import { PX_RATE_LIMITS_DDL, entityDdl, parseEntities, tableName } from "@poc/sdk";
 import type { Entity } from "@poc/sdk";
-import type { BrickManifestFile, Catalog, ProjectLock, SettingDefinition, ValueExpr } from "./schemas.ts";
+import type { BrickManifestFile, Catalog, ProjectLock, SettingCondition, SettingDefinition, ValueExpr } from "./schemas.ts";
 import { compare, parse, satisfies } from "./semver.ts";
 import { IDENTITY_STUB_SOURCE } from "./identity-stub.ts";
 import { generateOpenApiSpec } from "./openapi.ts";
 import { sha256Sync } from "./hash.ts";
 import { renderTailWorker, renderTailWrangler } from "./tail-worker.ts";
+import { enabledSchedules, settingConditionHolds } from "./schedules.ts";
 
 // A pure function: the same blueprint and catalog always give the same files. It reads no file, no clock, no random
 // source and no network, and it knows no brick by name; what to mount and in which order comes from the manifests.
@@ -102,6 +103,9 @@ interface ScheduledTriggerEntry {
   id: string;
   cron: string;
   handler: string;
+  /** Story 1.20: the schedule's options as declared (resolved against `settings` by renderEntry); empty for none. */
+  options: Record<string, ValueExpr>;
+  settings: Record<string, SettingValue>;
 }
 
 interface QueueTriggerEntry {
@@ -286,8 +290,13 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
   }
   // Story 1.13: a route option naming another capability's export (`$capability`) needs a brick that provides it,
   // unless the option is only required while one of the brick's settings has a given value and it has another.
+  // Story 1.20: a schedule's options (of a schedule enabled under the brick's settings) follow the same rules.
   for (const brick of chosen) {
-    for (const route of brick.manifest.worker.routes) {
+    const optionSets = [
+      ...brick.manifest.worker.routes.map((route) => ({ factory: route.factory, options: route.options })),
+      ...enabledSchedules(brick.manifest, brick.settings).map((sched) => ({ factory: `schedule ${sched.id}`, options: sched.options ?? {} })),
+    ];
+    for (const route of optionSets) {
       for (const [name, value] of Object.entries(route.options)) {
         if (typeof value === "object" && value !== null && "$capabilitySetting" in value) {
           // Story 2.6: a provider's setting value, under the same trust rule as a `$capability` export. Checked first, so
@@ -346,7 +355,7 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
         errors.push(
           `${brick.id}: option "${name}" of ${route.factory} needs "${ref.capability}" (its ${ref.export}), which no enabled brick provides` +
             `${offers.length > 0 ? ` (enable one of: ${offers.join(", ")})` : ""}` +
-            `${when ? `; or set ${brick.id}'s setting "${when.setting}" to something other than ${JSON.stringify(when.equals)}` : ""}`,
+            `${when ? `; or set ${brick.id}'s setting "${when.setting}" to ${"equals" in when ? `something other than ${JSON.stringify(when.equals)}` : JSON.stringify(when.notEquals)}` : ""}`,
         );
       }
     }
@@ -427,13 +436,15 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
       if (dependencies[name] !== undefined && dependencies[name] !== version) errors.push(`${name} is needed at ${dependencies[name]} and at ${version}`);
       else dependencies[name] = version;
     }
-    for (const sched of brick.manifest.triggers?.schedules ?? []) {
+    for (const sched of enabledSchedules(brick.manifest, brick.settings)) {
       schedules.push({
         brickId: brick.id,
         pkg: brick.manifest.worker.package,
         id: sched.id,
         cron: sched.cron,
         handler: sched.handler,
+        options: sched.options ?? {},
+        settings: brick.settings,
       });
     }
     for (const q of brick.manifest.triggers?.queues ?? []) {
@@ -501,7 +512,7 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
   for (const entity of entities) workspaceData.push({ brick: "entity", table: tableName(entity), mode: "delete" });
   // The shell's px_schedules (emitted when a brick declares schedules) is a platform table, but each row mirrors one
   // workspace's schedule: left behind, scheduled() would keep claiming a deleted workspace's rows every minute.
-  if (chosen.some((b) => (b.manifest.triggers?.schedules ?? []).length > 0)) workspaceData.push({ brick: "shell", table: "px_schedules", mode: "delete" });
+  if (chosen.some((b) => enabledSchedules(b.manifest, b.settings).length > 0)) workspaceData.push({ brick: "shell", table: "px_schedules", mode: "delete" });
   workspaceData.reverse();
   const workspaceObjects: WorkspaceObjectPrefix[] = [];
   for (const brick of ordered) {
@@ -970,15 +981,21 @@ class ImportConflictError extends Error {
 }
 
 /**
- * Whether a `$capability` option applies: always, while its `requiredWhen` setting has the given value, or (story 2.6,
- * `requiredWhen: "provided"`) whenever a provider is enabled, which the caller checks.
+ * Whether a `$capability` option applies: always, while its `requiredWhen` condition on the brick's settings holds, or
+ * (story 2.6, `requiredWhen: "provided"`) whenever a provider is enabled, which the caller checks. Story 1.20: a
+ * `$setting` option with `requiredWhen` is passed on the same rule.
  */
 function capabilityRequired(
-  value: { requiredWhen?: { setting: string; equals: SettingValue } | "provided" | undefined },
+  value: { requiredWhen?: SettingCondition | "provided" | undefined },
   settings: Record<string, SettingValue>,
 ): boolean {
   if (!value.requiredWhen || value.requiredWhen === "provided") return true;
-  return settings[value.requiredWhen.setting] === value.requiredWhen.equals;
+  return conditionHolds(value.requiredWhen, settings);
+}
+
+/** Story 1.20: whether a condition on a brick's resolved settings holds (the rule Studio uses too: ./schedules.ts). */
+function conditionHolds(condition: SettingCondition, settings: Record<string, SettingValue>): boolean {
+  return settingConditionHolds(condition, settings);
 }
 
 /** A quarantined brick (story 0.11): experimental, with a maturity reason starting "QUARANTINED:". */
@@ -1055,6 +1072,35 @@ function renderEntry(
     if (guard) guardOf.set(guard.capability, { pkg: brick.manifest.worker.package, export: guard.export, ...(guard.suspension ? { suspension: guard.suspension } : {}) });
   }
 
+  /**
+   * One option list (a route's or, story 1.20, a schedule's), as `name: value` source, importing what it names. A
+   * `$setting` or `$capability` option whose `requiredWhen` does not hold is left out.
+   */
+  const renderOptions = (options: Record<string, ValueExpr>, pkg: string, settings: Record<string, SettingValue>): string[] =>
+    Object.entries(options).flatMap(([name, value]) => {
+      if (typeof value === "object" && value !== null && "$setting" in value && value.requiredWhen && !conditionHolds(value.requiredWhen, settings)) return [];
+      if (typeof value === "object" && value !== null && "$capabilitySetting" in value) {
+        // Story 2.6: the provider's resolved setting, as a literal; left out with no provider enabled.
+        const ref = capabilityReference(value.$capabilitySetting);
+        const providerSettings = capabilitySettings.get(ref.capability);
+        if (!providerSettings || providerSettings[ref.export] === undefined) return [];
+        return `${name}: ${JSON.stringify(providerSettings[ref.export])}`;
+      }
+      if (typeof value === "object" && value !== null && "$capability" in value) {
+        // Story 1.13: the provider's export, imported from the provider's package. With no provider enabled the
+        // option is left out (assemble() has already refused the blueprint if the option was required).
+        const ref = capabilityReference(value.$capability);
+        const provider = capabilityProviders.get(ref.capability);
+        if (!provider || !capabilityRequired(value, settings)) return [];
+        use(provider, ref.export);
+      }
+      if (typeof value === "object" && value !== null && "$call" in value) use(pkg, value.$call);
+      if (typeof value === "object" && value !== null && "$entities" in value) needsEntities = true;
+      if (typeof value === "object" && value !== null && "$privacy" in value) needsPrivacy = true;
+      if (typeof value === "object" && value !== null && "$workspaceData" in value) needsWorkspaceData = true;
+      return `${name}: ${expression(value, settings)}`;
+    });
+
   const body: string[] = [];
   const hasRateLimits = ordered.some((b) => (b.manifest.rateLimits ?? []).length > 0);
   for (const brick of ordered) {
@@ -1093,28 +1139,7 @@ function renderEntry(
         emitRoute(`app.all(${JSON.stringify(route.mountAt + "/*")}, (c) => (c.env as any).${bindingName}.fetch(c.req.raw));`);
       } else {
         use(brick.manifest.worker.package, route.factory);
-        const options = Object.entries(route.options).flatMap(([name, value]) => {
-          if (typeof value === "object" && value !== null && "$capabilitySetting" in value) {
-            // Story 2.6: the provider's resolved setting, as a literal; left out with no provider enabled.
-            const ref = capabilityReference(value.$capabilitySetting);
-            const providerSettings = capabilitySettings.get(ref.capability);
-            if (!providerSettings || providerSettings[ref.export] === undefined) return [];
-            return `${name}: ${JSON.stringify(providerSettings[ref.export])}`;
-          }
-          if (typeof value === "object" && value !== null && "$capability" in value) {
-            // Story 1.13: the provider's export, imported from the provider's package. With no provider enabled the
-            // option is left out (assemble() has already refused the blueprint if the option was required).
-            const ref = capabilityReference(value.$capability);
-            const provider = capabilityProviders.get(ref.capability);
-            if (!provider || !capabilityRequired(value, brick.settings)) return [];
-            use(provider, ref.export);
-          }
-          if (typeof value === "object" && value !== null && "$call" in value) use(brick.manifest.worker.package, value.$call);
-          if (typeof value === "object" && value !== null && "$entities" in value) needsEntities = true;
-          if (typeof value === "object" && value !== null && "$privacy" in value) needsPrivacy = true;
-          if (typeof value === "object" && value !== null && "$workspaceData" in value) needsWorkspaceData = true;
-          return `${name}: ${expression(value, brick.settings)}`;
-        });
+        const options = renderOptions(route.options, brick.manifest.worker.package, brick.settings);
         emitRoute(`app.route(${JSON.stringify(route.mountAt)}, ${route.factory}(${options.length > 0 ? `{ ${options.join(", ")} }` : ""}));`);
       }
     }
@@ -1122,6 +1147,8 @@ function renderEntry(
   }
 
   for (const sched of schedules) use(sched.pkg, sched.handler);
+  // Story 1.20: each schedule's options, rendered like route options (a schedule without options gets none).
+  const scheduleOptions = schedules.map((sched) => renderOptions(sched.options, sched.pkg, sched.settings));
   for (const q of queues) use(q.pkg, q.handler);
   if (conflicts.length > 0) throw new ImportConflictError(conflicts);
 
@@ -1156,8 +1183,8 @@ function renderEntry(
         '    if (claimed && claimed.length > 0) dueRows.push(row);',
         '  }',
         ...schedules.map(
-          (s) =>
-            `  await ${s.handler}({ controller, env, ctx, dueRows: dueRows.filter((r) => r.brick_id === ${JSON.stringify(s.brickId)}) });`,
+          (s, i) =>
+            `  await ${s.handler}({ controller, env, ctx, dueRows: dueRows.filter((r) => r.brick_id === ${JSON.stringify(s.brickId)})${scheduleOptions[i]!.length > 0 ? `, options: { ${scheduleOptions[i]!.join(", ")} }` : ""} });`,
         ),
         "}",
       );
@@ -1481,7 +1508,9 @@ function renderIsolatedBrickEntry(brick: Chosen): string {
 
   const routeMounts: string[] = [];
   for (const route of brick.manifest.worker.routes) {
-    const options = Object.entries(route.options).map(([name, value]) => {
+    const options = Object.entries(route.options).flatMap(([name, value]) => {
+      // Story 1.20: a `$setting` option whose requiredWhen does not hold is left out, as in the main entry.
+      if (typeof value === "object" && "$setting" in value && value.requiredWhen && !conditionHolds(value.requiredWhen, brick.settings)) return [];
       return `${name}: ${expression(value, brick.settings)}`;
     });
     routeMounts.push(

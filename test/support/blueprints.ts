@@ -42,3 +42,13 @@ export const APPROVAL_GATE_BLUEPRINT = {
   project: "approval-gate",
   bricks: ["multi-workspace", "audit-trail", "credit-wallet", "public-api-keys", { id: "platform-admin", config: { requireUserApproval: true } }],
 } as const;
+
+/**
+ * Story 1.20: subscription-plans with plan credits configured (free 100, pro 1000 a month), beside credit-wallet, so the
+ * grant on read, the per-minute sweep and the cross-workspace rows run against a real assembled app. The MCP test
+ * (packages/mcp-server/test/plan-credits-config.test.ts) reaches the same blueprint through apply_ops configure_brick.
+ */
+export const PLAN_CREDITS_BLUEPRINT = {
+  project: "plan-credits",
+  bricks: ["multi-workspace", "credit-wallet", { id: "subscription-plans", config: { planCredits: "free:100,pro:1000" } }],
+} as const;

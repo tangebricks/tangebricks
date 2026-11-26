@@ -63,12 +63,27 @@ export const BINDING_TYPES = [
 export const bindingType = z.enum(BINDING_TYPES);
 export type BindingType = z.infer<typeof bindingType>;
 
+/**
+ * Story 1.20: a condition on one of the brick's own settings: it holds while the setting `equals` a value, or while it
+ * has any value other than `notEquals` (for example `{ "setting": "someSetting", "notEquals": "" }`: "while set").
+ */
+export const settingCondition = z.union([
+  z.strictObject({ setting: z.string().regex(IDENTIFIER), equals: z.union([z.number().finite(), z.string().max(200), z.boolean()]) }),
+  z.strictObject({ setting: z.string().regex(IDENTIFIER), notEquals: z.union([z.number().finite(), z.string().max(200), z.boolean()]) }),
+]);
+export type SettingCondition = z.infer<typeof settingCondition>;
+
 /** A value placed in a route factory's options: a literal, a setting, a call of an imported function with no arguments, or the blueprint's declared entities. */
 export const valueExpr = z.union([
   z.number().finite(),
   z.string().max(200),
   z.boolean(),
-  z.strictObject({ $setting: z.string().regex(IDENTIFIER) }),
+  /**
+   * A setting's resolved value. Story 1.20: with `requiredWhen`, the option is passed only while that condition on the
+   * brick's settings holds, and left out otherwise (so turning a feature on adds the option without changing the
+   * assembled code of an app that leaves it off).
+   */
+  z.strictObject({ $setting: z.string().regex(IDENTIFIER), requiredWhen: settingCondition.optional() }),
   z.strictObject({ $call: identifier }),
   /** The entities the owner declared, passed in as data (the assembler writes them to entities.json). */
   z.strictObject({ $entities: z.literal(true) }),
@@ -82,7 +97,8 @@ export const valueExpr = z.union([
    * Story 1.13: a named export of whichever enabled brick provides a capability, written `<capability>.<export>`
    * (for example `some-capability.someExport`). The assembler imports that export from the provider's package, so the
    * brick that takes it never imports the provider itself. With no provider enabled the blueprint is refused, unless
-   * `requiredWhen` names a setting of this brick whose value differs from `equals`; then the option is left out.
+   * `requiredWhen` names a condition on a setting of this brick that does not hold (it differs from `equals`, or story
+   * 1.20, it is `notEquals`); then the option is left out.
    */
   z.strictObject({
     $capability: z.string().regex(CAPABILITY_EXPORT),
@@ -90,9 +106,7 @@ export const valueExpr = z.union([
      * Story 2.6: `"provided"` makes the option optional on the provider: it is wired whenever an enabled brick provides
      * the capability (and checked like any other `$capability`), and left out, never refused, when none does.
      */
-    requiredWhen: z
-      .union([z.strictObject({ setting: identifier, equals: z.union([z.number().finite(), z.string().max(200), z.boolean()]) }), z.literal("provided")])
-      .optional(),
+    requiredWhen: z.union([settingCondition, z.literal("provided")]).optional(),
   }),
   /**
    * Story 2.6: the value of a setting of whichever enabled brick provides a capability, written `<capability>.<setting>`
@@ -208,6 +222,16 @@ const scheduleTriggerDefinition = z.strictObject({
   id: z.string().regex(ROUTE_PREFIX),
   cron: z.string().max(64).regex(CRON_EXPRESSION),
   handler: identifier,
+  /**
+   * Story 1.20: values handed to the handler as `options`, written and resolved exactly like route options (`$setting`,
+   * `$capability`, ...). A schedule without options is called exactly as before.
+   */
+  options: z.record(identifier, valueExpr).optional(),
+  /**
+   * Story 1.20: the schedule is wired only while this condition on the brick's settings holds. When it does not, the
+   * app is assembled as if the brick declared no such schedule (no cron, no handler call).
+   */
+  enabledWhen: settingCondition.optional(),
 });
 
 const queueTriggerDefinition = z.strictObject({
@@ -1378,17 +1402,27 @@ export const ManifestSchema = z
         problem(`setting "${name}" deprecated.since "${sDef.deprecated.since}" is greater than brick version "${m.version}"`, ["settings", name, "deprecated", "since"]);
       }
     }
+    const checkOptions = (owner: string, options: Record<string, z.infer<typeof valueExpr>>): void => {
+      for (const [name, value] of Object.entries(options)) {
+        if (typeof value === "object" && "$setting" in value && !(value.$setting in m.settings)) problem(`${owner} option ${name} uses unknown setting "${value.$setting}"`);
+        if (typeof value === "object" && ("$capability" in value || "$setting" in value) && typeof value.requiredWhen === "object" && !(value.requiredWhen.setting in m.settings)) {
+          problem(`${owner} option ${name} is required when unknown setting "${value.requiredWhen.setting}" is set`);
+        }
+      }
+    };
     for (const route of m.worker.routes) {
       if (route.guardPaths.length > 0 && !route.guardWith) problem(`route ${route.factory} has guardPaths but no guardWith`);
       if (route.guardWith) {
         const requiresGuard = m.requires.some((r) => (r.includes("@") ? r.slice(0, r.indexOf("@")) : r) === route.guardWith);
         if (!requiresGuard) problem(`route ${route.factory} is guarded with "${route.guardWith}", which is not listed in requires`);
       }
-      for (const [name, value] of Object.entries(route.options)) {
-        if (typeof value === "object" && "$setting" in value && !(value.$setting in m.settings)) problem(`route ${route.factory} option ${name} uses unknown setting "${value.$setting}"`);
-        if (typeof value === "object" && "$capability" in value && typeof value.requiredWhen === "object" && !(value.requiredWhen.setting in m.settings)) {
-          problem(`route ${route.factory} option ${name} is required when unknown setting "${value.requiredWhen.setting}" is set`);
-        }
+      checkOptions(`route ${route.factory}`, route.options);
+    }
+    // Story 1.20: schedule options follow the route option rules; enabledWhen names one of the brick's own settings.
+    for (const sched of m.triggers?.schedules ?? []) {
+      checkOptions(`schedule ${sched.id}`, sched.options ?? {});
+      if (sched.enabledWhen && !(sched.enabledWhen.setting in m.settings)) {
+        problem(`schedule ${sched.id} is enabled when unknown setting "${sched.enabledWhen.setting}" is set`);
       }
     }
   });
