@@ -1,4 +1,4 @@
-import { assemble } from "@poc/assembler";
+import { assemble, secretDeclarations } from "@poc/assembler";
 import type { BrickManifestFile, Catalog } from "@poc/assembler";
 import { validateGraph } from "@poc/sdk";
 import type { Registry } from "@poc/sdk";
@@ -162,7 +162,10 @@ export function computeReadiness(
 
   // 4. Required brick secrets check
   for (const brick of chosen) {
-    for (const secretName of brick.manifest.secrets ?? []) {
+    for (const declared of secretDeclarations(brick.manifest)) {
+      const secretName = declared.name;
+      // Story 1.19: an optional secret never blocks readiness (the brick runs without that feature).
+      if (declared.optional) continue;
       const isBound = state.secretRefs.some(
         (s) =>
           s.targetKind === "brick" &&
@@ -171,12 +174,21 @@ export function computeReadiness(
           s.ref.length > 0,
       );
       if (!isBound) {
-        needs.push({
-          code: "UNBOUND_BRICK_SECRET",
-          path: `bricks.${brick.id}.secrets.${secretName}`,
-          message: `brick "${brick.id}" requires secret "${secretName}" to be bound`,
-          suggestedFix: `Bind secret "${secretName}" for brick "${brick.id}" using bind_secret_ref`,
-        });
+        needs.push(
+          declared.generate
+            ? {
+                code: "UNBOUND_BRICK_SECRET",
+                path: `bricks.${brick.id}.secrets.${secretName}`,
+                message: `brick "${brick.id}" needs secret "${secretName}"; Studio generates it on an approved preview deploy (production needs it bound or promoted from preview)`,
+                suggestedFix: `Deploy to preview and have the owner approve it: Studio generates "${secretName}" then. No value is ever needed from you.`,
+              }
+            : {
+                code: "UNBOUND_BRICK_SECRET",
+                path: `bricks.${brick.id}.secrets.${secretName}`,
+                message: `brick "${brick.id}" requires secret "${secretName}" to be bound`,
+                suggestedFix: `Bind secret "${secretName}" for brick "${brick.id}" using bind_secret_ref`,
+              },
+        );
       }
     }
   }

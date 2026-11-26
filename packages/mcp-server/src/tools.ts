@@ -2936,9 +2936,16 @@ function noDeployTargetResult(project: string, env: string): ToolResult {
   };
 }
 
+/** Story 1.19: where the owner provides a missing secret in Studio (Connections/secrets). */
+function studioConnectionsUrl(baseUrl: string | undefined, project: string): string {
+  // studio-web routes on ?project= and ?nav= (App.tsx), not on a path
+  return `${(baseUrl ?? "https://studio.projectx.local").replace(/\/$/, "")}/?${new URLSearchParams({ project, nav: "connections" }).toString()}`;
+}
+
 const deployPlan: Tool = {
   name: "deploy_plan",
-  description: "Generate deployment diff plan.",
+  description:
+    "Generate deployment diff plan. Generated secrets are created on approval (preview only); optional secrets never block.",
   input: z.strictObject({
     project: projectName,
     env: z.enum(["preview", "production"]).optional(),
@@ -2952,7 +2959,7 @@ const deployPlan: Tool = {
     idempotentHint: true,
   },
   async run(
-    { catalog, blueprint, studioRequest },
+    { catalog, blueprint, studioRequest, baseUrl },
     args: {
       project: string;
       env?: "preview" | "production";
@@ -2961,6 +2968,7 @@ const deployPlan: Tool = {
     },
   ) {
     const targetEnv = args.env ?? args.target ?? "preview";
+    const connectionsUrl = studioConnectionsUrl(baseUrl, args.project);
     if (studioRequest) {
       const res = await studioRequest(
         `/api/projects/${encodeURIComponent(args.project)}/environments/${encodeURIComponent(targetEnv)}/plan`,
@@ -2987,8 +2995,11 @@ const deployPlan: Tool = {
               : typeof b === "object" && b !== null && "message" in b
                 ? String((b as { message?: unknown }).message)
                 : String(b);
-          return buildDeployBlockerActionableIssue(msg);
+          return buildDeployBlockerActionableIssue(msg, { connectionsUrl });
         });
+        // Story 1.19: names only, never a value: which secrets the approved deploy generates and which are optional.
+        const planSecrets = Array.isArray(body.secrets) ? (body.secrets as Array<{ name?: unknown; status?: unknown }>) : [];
+        const secretNamesWith = (status: string) => planSecrets.filter((s) => s.status === status).map((s) => String(s.name));
         return ok({
           project: args.project,
           env: targetEnv,
@@ -3002,6 +3013,8 @@ const deployPlan: Tool = {
           liveWithoutRedeploy: Boolean(body.liveWithoutRedeploy),
           blockers: actionableBlockers,
           issues: actionableBlockers,
+          ...(secretNamesWith("will_generate").length > 0 ? { willGenerateSecrets: secretNamesWith("will_generate") } : {}),
+          ...(secretNamesWith("optional_missing").length > 0 ? { optionalSecretsNotConfigured: secretNamesWith("optional_missing") } : {}),
           destructiveWarnings:
             typeof body.d1 === "object" &&
             body.d1 !== null &&
@@ -3016,7 +3029,7 @@ const deployPlan: Tool = {
           "string"
             ? String((body.error as { message: string }).message)
             : "Deploy plan blocked";
-        const actionable = buildDeployBlockerActionableIssue(errMsg);
+        const actionable = buildDeployBlockerActionableIssue(errMsg, { connectionsUrl });
         return {
           isError: true,
           text: JSON.stringify(
@@ -3076,7 +3089,8 @@ const deployPlan: Tool = {
 
 const deployApply: Tool = {
   name: "deploy_apply",
-  description: "Execute planned deployment to target.",
+  description:
+    "Execute planned deployment to target. Generated secrets are created on approval (preview only, never shown); a missing required secret is provided by the owner in Studio.",
   input: z.strictObject({
     project: projectName,
     env: z.enum(["preview", "production"]).optional(),
@@ -3094,7 +3108,7 @@ const deployApply: Tool = {
     idempotentHint: false,
   },
   async run(
-    { db, catalog, blueprint, studioRequest },
+    { db, catalog, blueprint, studioRequest, baseUrl },
     args: {
       project: string;
       env?: "preview" | "production";
@@ -3180,6 +3194,18 @@ const deployApply: Tool = {
             (typeof envObj.deployedState === "object" && envObj.deployedState !== null ? (envObj.deployedState as { workerUrl?: unknown }).workerUrl : undefined) ??
             null,
         });
+      }
+      if (errCode === "MISSING_REQUIRED_SECRETS") {
+        // Story 1.19: name the secret and the owner's Studio step; an agent cannot bind a value.
+        const errMsg = String((body.error as { message?: unknown }).message ?? "Missing required secrets");
+        const actionable = buildDeployBlockerActionableIssue(errMsg, { connectionsUrl: studioConnectionsUrl(baseUrl, args.project) });
+        const error = body.error as Record<string, unknown>;
+        return {
+          isError: true,
+          text: JSON.stringify(
+            scrubMcpSecrets({ ...body, error: { ...error, remediation: actionable.suggestedFix }, issues: [actionable], blockers: [actionable] }),
+          ),
+        };
       }
       if (errCode !== "DEPLOY_TARGET_NOT_CONNECTED") {
         return {

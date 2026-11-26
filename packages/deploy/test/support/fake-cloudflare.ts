@@ -614,6 +614,11 @@ export function createFakeCloudflare(options: FakeOptions) {
     codeOf(name: string): string | undefined {
       return scripts.get(name)?.code;
     },
+    /** The metadata part of the Worker's latest upload (story 1.19: its compatibility_flags), as the API received it. */
+    metadataOf(name: string): Record<string, unknown> | undefined {
+      const versions = scripts.get(name)?.versions ?? [];
+      return versions[versions.length - 1]?.metadata;
+    },
     /** Reads rows from a database directly. */
     rows(databaseName: string, sql: string): Array<Record<string, unknown>> {
       const db = [...databases.values()].find((d) => d.name === databaseName);

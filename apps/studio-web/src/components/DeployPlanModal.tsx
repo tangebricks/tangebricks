@@ -565,7 +565,7 @@ export function DeployPlanModal({
             {/* Required Secrets List + Inline Add Secret */}
             <div data-testid="preflight-secrets" className="space-y-2 pt-1">
               <div className="text-[11px] font-semibold text-text-secondary">
-                Required Secrets ({plan.secrets.length})
+                Required Secrets ({plan.secrets.filter((s) => !s.optional).length})
               </div>
               {plan.secrets.length === 0 ? (
                 <div className="text-[11px] text-text-muted">
@@ -578,32 +578,50 @@ export function DeployPlanModal({
                       key={sec.name}
                       data-testid={`preflight-secret-row-${sec.name}`}
                       className={`p-2 rounded border flex items-center justify-between gap-3 flex-wrap ${
-                        sec.status === "present"
-                          ? "bg-emerald-500/10 border-emerald-500/30"
-                          : "bg-amber-950/50 border-amber-500/50"
+                        sec.status === "optional_missing"
+                          ? "bg-surface-raised border-border"
+                          : sec.status === "present" || sec.status === "will_generate"
+                            ? "bg-emerald-500/10 border-emerald-500/30"
+                            : "bg-amber-950/50 border-amber-500/50"
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <span
                           className={`font-mono font-bold ${
-                            sec.status === "present"
-                              ? "text-emerald-400"
-                              : "text-amber-300"
+                            sec.status === "optional_missing"
+                              ? "text-text-muted"
+                              : sec.status === "missing"
+                                ? "text-amber-300"
+                                : "text-emerald-400"
                           }`}
                         >
-                          {sec.status === "present" ? "✓" : "✕"}
+                          {sec.status === "missing" ? "✕" : sec.status === "optional_missing" ? "–" : "✓"}
                         </span>
                         <code className="font-mono font-semibold text-text-primary">
                           {sec.name}
                         </code>
                         <span className="text-[11px] text-text-muted">
-                          (required by {sec.requiredByBrick})
+                          ({sec.optional ? `optional, used by ${sec.requiredByBrick}` : `required by ${sec.requiredByBrick}`})
                         </span>
                       </div>
 
                       {sec.status === "present" ? (
                         <span className="text-[11px] font-mono text-emerald-300">
                           present ✓
+                        </span>
+                      ) : sec.status === "will_generate" ? (
+                        <span
+                          data-testid={`preflight-secret-generate-${sec.name}`}
+                          className="text-[11px] font-mono text-emerald-300"
+                        >
+                          will be generated on deploy
+                        </span>
+                      ) : sec.status === "optional_missing" ? (
+                        <span
+                          data-testid={`preflight-secret-optional-${sec.name}`}
+                          className="text-[11px] font-mono text-text-muted"
+                        >
+                          optional, not configured
                         </span>
                       ) : (
                         <div className="flex items-center gap-2">

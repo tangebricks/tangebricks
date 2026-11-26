@@ -334,7 +334,7 @@ export async function nodeBundler(input: { project: string; envName: string; fil
   const projectDir = join(OUT_DIR, "live-studio", `${input.project}-${input.envName}`);
   await writeProject(projectDir, input.files);
   const bundle = await bundleWorker({ projectDir, environment: input.envName, resolveRepoBricks: true });
-  return { code: bundle.code, sha256: bundle.sha256, bytes: bundle.bytes, gzipBytes: bundle.gzipBytes };
+  return { code: bundle.code, sha256: bundle.sha256, bytes: bundle.bytes, gzipBytes: bundle.gzipBytes, compatibilityFlags: bundle.compatibilityFlags };
 }
 
 /**

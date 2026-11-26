@@ -1,4 +1,4 @@
-import { checkBrickConfig } from "@poc/assembler";
+import { checkBrickConfig, secretDeclarations } from "@poc/assembler";
 import type { Catalog } from "@poc/assembler";
 import { checkGraphBudget, checkWire, parseEntities, toyRegistry, validateGraph } from "@poc/sdk";
 import type { Registry } from "@poc/sdk";
@@ -564,11 +564,25 @@ export function toActionableIssue(
     const targetId = segments[1] ?? "core-auth";
     const secretMatch = /secret\s+"([^"]+)"/i.exec(raw.message);
     const secretName = secretMatch?.[1] ?? "API_SECRET";
+    // Story 1.19: a secret the brick's manifest marks `generate` is made by Studio inside the owner's preview deploy approval:
+    // there is nothing for the agent to bind, so no bind_secret_ref remediation is offered.
+    const brickManifest = targetKind === "brick" ? ctx.catalog?.bricks?.[targetId]?.manifest : undefined;
+    const generated =
+      /Studio generates it/.test(raw.message) ||
+      (brickManifest ? secretDeclarations(brickManifest).some((d) => d.name === secretName && d.generate) : false);
+    if (generated) {
+      return {
+        code: "MISSING_SECRET",
+        path: pointer,
+        message: raw.message,
+        suggestedFix: `Nothing to bind: the owner's approval of a preview deploy generates secret "${secretName}" for ${targetKind} "${targetId}". Deploy to preview and have the owner approve it.`,
+      };
+    }
     return {
       code: "MISSING_SECRET",
       path: pointer,
       message: raw.message,
-      suggestedFix: `Call apply_ops with bind_secret_ref to bind secret "${secretName}" for ${targetKind} "${targetId}".`,
+      suggestedFix: `The owner stores the value of "${secretName}" in Studio (Connections/secrets); then call apply_ops with bind_secret_ref to bind its ref for ${targetKind} "${targetId}". An agent never handles the value.`,
       remediationOp: {
         kind: "bind_secret_ref",
         payloadExample: {
@@ -1072,13 +1086,33 @@ export function buildRuntimeStepActionableIssue(params: {
 /**
  * Build an ActionableIssue for a deployment blocker (e.g. DEPLOY_STUB_IDENTITY_REFUSED).
  */
-export function buildDeployBlockerActionableIssue(blockerMessage: string): ActionableIssue {
+/**
+ * Story 1.19: what an agent is told when a deploy is refused for a secret nobody has provided. The agent cannot set or read
+ * a value; the owner stores it in Studio (Connections/secrets). Platform-made secrets (manifest `generate`) never get here
+ * on preview: Studio generates them inside the deploy's approval.
+ */
+export function missingSecretsRemediation(names: readonly string[], connectionsUrl?: string): string {
+  const list = names.length > 0 ? names.join(", ") : "the missing secrets";
+  return `The project owner provides ${list} in Studio (Connections/secrets)${connectionsUrl ? `: ${connectionsUrl}` : ""}. An agent cannot set or read secret values; once the owner has stored ${names.length === 1 ? "it" : "them"}, retry the deploy. On production, a secret Studio generates on preview is bound by the owner or promoted from preview.`;
+}
+
+export function buildDeployBlockerActionableIssue(blockerMessage: string, context?: { connectionsUrl?: string }): ActionableIssue {
+  const missing = /Missing required secrets:\s*(.+)$/i.exec(blockerMessage);
+  if (missing) {
+    const names = missing[1]!.split(",").map((n) => n.trim()).filter((n) => n.length > 0);
+    return {
+      code: "MISSING_REQUIRED_SECRETS",
+      path: "/secrets",
+      message: blockerMessage,
+      suggestedFix: missingSecretsRemediation(names, context?.connectionsUrl),
+    };
+  }
   if (/stub/i.test(blockerMessage) && /identity/i.test(blockerMessage)) {
     return {
       code: "DEPLOY_STUB_IDENTITY_REFUSED",
       path: "/identity",
       message: blockerMessage,
-      suggestedFix: `Production deploys cannot use stub identity. Call apply_ops with enable_brick ({ brickId: "core-auth" }), bind_secret_ref for BETTER_AUTH_SECRET, and set_identity ({ identity: "core-auth" }) before running deploy_plan({ env: "production" }).`,
+      suggestedFix: `Production deploys cannot use stub identity. Call apply_ops with enable_brick ({ brickId: "core-auth" }) and set_identity ({ identity: "core-auth" }). BETTER_AUTH_SECRET needs no binding from you: the owner's approval of a preview deploy generates it, and production gets it by promoting from preview. Then run deploy_plan({ env: "production" }).`,
       remediationOp: {
         kind: "set_identity",
         payloadExample: {

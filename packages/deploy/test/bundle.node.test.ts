@@ -9,7 +9,7 @@ import { codeLines, findDynamicEvaluation } from "@poc/harness";
 import { catalog } from "../../assembler/catalog.generated.ts";
 import { INVOICE_FLOW_BLUEPRINT } from "../../../test/support/blueprints.ts";
 import { OUT_DIR, compareProject, writeProject } from "../../../test/support/emitted.ts";
-import { WORKER_SIZE_LIMIT_BYTES, bundleWorker, describeBundle, sizeLimitReport, wrapDemoPage } from "../src/bundle.ts";
+import { WORKER_SIZE_LIMIT_BYTES, bundleWorker, compatibilityFlagsFor, describeBundle, sizeLimitReport, wrapDemoPage } from "../src/bundle.ts";
 import type { WorkerBundle } from "../src/bundle.ts";
 import { describeDifferences, runScriptedCheck, scriptedCheckPasses } from "../src/scripted-check.ts";
 
@@ -69,6 +69,7 @@ describe("the bundle is one self-contained module", () => {
     expect(bundle.code.match(/^export \{[^}]*\bas default\b[^}]*\};?$/gm)).toHaveLength(1);
     expect(bundle.code.match(/^export /gm)).toHaveLength(1);
     expect(bundle.warnings).toEqual([]);
+    expect(bundle.compatibilityFlags).toEqual([]); // no node:* import: the upload metadata stays as before (story 1.19)
   });
 
   test("story 1.1: the shipped bundle wires the real catalog executors (credit-wallet's D1 debit) and carries no proof stubs", () => {
@@ -216,10 +217,26 @@ describe("what the bundler refuses", () => {
     expect(sizeLimitReport(WORKER_SIZE_LIMIT_BYTES / 2).percentUsed).toBe(50);
   });
 
-  test("a project that imports a Node-only module fails to bundle, with the module named", async () => {
-    const bad = join(OUT_DIR, "deploy-test", "node-import");
-    await writeProject(bad, { "src/index.ts": 'import { readFileSync } from "node:fs";\nexport default { fetch: () => new Response(String(readFileSync)) };\n' });
-    await expect(bundleWorker({ projectDir: bad, demoHtml: "<p>x</p>" })).rejects.toThrow(/node:fs/);
+  test("a node:* import is left external and the bundle reports it needs nodejs_compat (story 1.19)", async () => {
+    const dir = join(OUT_DIR, "deploy-test", "node-import");
+    await writeProject(dir, { "src/index.ts": 'import { createHash } from "node:crypto";\nexport default { fetch: () => new Response(createHash("sha256").update("x").digest("hex")) };\n' });
+    const withNode = await bundleWorker({ projectDir: dir, demoHtml: "<p>x</p>" });
+    expect(withNode.code).toMatch(/from "node:crypto"/);
+    expect(withNode.compatibilityFlags).toEqual(["nodejs_compat"]);
+  });
+
+  test("a bare Node builtin import (no node: prefix) still fails to bundle, with the module named", async () => {
+    const bad = join(OUT_DIR, "deploy-test", "bare-node-import");
+    await writeProject(bad, { "src/index.ts": 'import { readFileSync } from "fs";\nexport default { fetch: () => new Response(String(readFileSync)) };\n' });
+    await expect(bundleWorker({ projectDir: bad, demoHtml: "<p>x</p>" })).rejects.toThrow(/"fs"/);
+  });
+
+  test("compatibilityFlagsFor: only code importing node:* needs nodejs_compat", () => {
+    expect(compatibilityFlagsFor('import { x } from "cloudflare:workers";\nexport default {};')).toEqual([]);
+    expect(compatibilityFlagsFor('const s = "node:crypto";')).toEqual([]);
+    expect(compatibilityFlagsFor('import { randomBytes } from "node:crypto";')).toEqual(["nodejs_compat"]);
+    expect(compatibilityFlagsFor('export * from "node:buffer";')).toEqual(["nodejs_compat"]);
+    expect(compatibilityFlagsFor('await import("node:async_hooks");')).toEqual(["nodejs_compat"]);
   });
 
   test("a folder that is not an assembled project is refused before any bundling", async () => {

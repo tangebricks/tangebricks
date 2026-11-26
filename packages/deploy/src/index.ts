@@ -1,4 +1,4 @@
-export { bundleWorker, buildDemoPage, describeBundle, WORKER_SIZE_LIMIT_BYTES, STARTUP_LIMIT_MS } from "./bundle.ts";
+export { bundleWorker, buildDemoPage, compatibilityFlagsFor, describeBundle, WORKER_SIZE_LIMIT_BYTES, STARTUP_LIMIT_MS } from "./bundle.ts";
 export type { WorkerBundle } from "./bundle.ts";
 export { createR2BlobStore } from "./worker/blob-store.ts";
 export type { R2BucketLike, R2BlobStoreOptions } from "./worker/blob-store.ts";

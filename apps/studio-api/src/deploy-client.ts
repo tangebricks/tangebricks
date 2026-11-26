@@ -42,7 +42,9 @@ export interface StudioDeployOptions {
    * /__px routes around the project; see @poc/deploy bundleWorker). Bundling needs esbuild, so it runs where Studio runs in
    * Node (the live proof script). Without it the HTTP path refuses to deploy rather than upload unbundled TypeScript.
    */
-  bundle?: (input: { project: string; envName: string; files: Record<string, string> }) => Promise<{ code: string; sha256?: string }>;
+  bundle?: (input: { project: string; envName: string; files: Record<string, string> }) => Promise<{ code: string; sha256?: string; compatibilityFlags?: string[] }>;
+  /** Test seam (story 1.19): runs after a deploy's approval gate, before Studio binds the secrets it generated. */
+  beforeGeneratedSecretBind?: (input: { project: string; envName: string }) => Promise<void>;
 }
 
 export class StudioDeployClientConfigError extends Error {

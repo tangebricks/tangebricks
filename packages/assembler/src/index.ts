@@ -43,6 +43,9 @@ export {
   projectIntegrationToNodes,
   providesItem,
   requiresItem,
+  secretDeclaration,
+  secretDeclarations,
+  secretNames,
   settingDefinition,
   settingDeprecated,
 } from "./schemas.ts";
@@ -83,6 +86,8 @@ export type {
   ObservabilityConfig,
   Predicate,
   ProjectLock,
+  NormalizedSecretDeclaration,
+  SecretDeclaration,
   SettingDefinition,
   SettingDeprecated,
   WebhookSignatureScheme,

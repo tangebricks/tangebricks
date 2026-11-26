@@ -15,6 +15,7 @@ import {
   NodePackManifestSchema,
   nodeDefinition,
   projectIntegrationToNodes,
+  secretNames,
 } from "../packages/assembler/src/schemas.ts";
 import type {
   BrickManifestFile,
@@ -757,7 +758,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   } else if (manifest.bindings && typeof manifest.bindings === "object") {
     for (const b of Object.keys(manifest.bindings)) declaredEnv.add(b);
   }
-  for (const s of manifest.secrets ?? []) {
+  for (const s of secretNames(manifest)) {
     declaredEnv.add(s);
   }
   for (const envName of [...envRefs].sort()) {

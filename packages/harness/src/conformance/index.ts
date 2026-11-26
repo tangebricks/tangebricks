@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { applyMigration, type D1Like } from "@poc/sdk";
 import type { BrickManifestFile } from "@poc/assembler";
+import { secretNames } from "../../../assembler/src/schemas.ts";
 import { catalog } from "../../../assembler/catalog.generated.ts";
 import { attach } from "../results.ts";
 
@@ -636,7 +637,7 @@ export async function checkSecretScope(options: ConformanceCheckOptions): Promis
 
   const allowed = new Set<string>(["DB"]);
   for (const b of options.allowedBindings ?? []) allowed.add(b);
-  for (const s of manifest.secrets ?? []) allowed.add(s);
+  for (const s of secretNames(manifest)) allowed.add(s);
   if (Array.isArray(manifest.bindings)) {
     for (const b of manifest.bindings) allowed.add(b);
   } else if (manifest.bindings && typeof manifest.bindings === "object") {

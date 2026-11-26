@@ -521,7 +521,13 @@ export interface DeployPlanSecretCheck {
   name: string;
   ref?: string;
   requiredByBrick: string;
-  status: "present" | "missing";
+  /**
+   * "will_generate": a platform-made secret (manifest `generate`) Studio creates on an approved preview deploy (story 1.19).
+   * "optional_missing": an `optional` secret with no value; it never blocks (the brick runs without that feature).
+   */
+  status: "present" | "missing" | "will_generate" | "optional_missing";
+  optional?: boolean;
+  generate?: "random-32-bytes";
 }
 
 export interface DeployPlanBlocker {
@@ -583,6 +589,10 @@ export interface DeployPlanSecretRequirement {
   name: string;
   ref?: string;
   requiredByBrick: string;
+  /** The manifest marks it optional: a missing value never blocks (story 1.19). */
+  optional?: boolean;
+  /** The platform can make the value itself (story 1.19): generated on an approved preview deploy, never on production. */
+  generate?: "random-32-bytes";
 }
 
 export interface DeployPlanReadinessIssue {
@@ -706,6 +716,8 @@ export interface ProvisionerPlanInput {
   allowMajor?: boolean;
   /** Bindings the uploaded Worker gets besides its D1 database (see CloudflareApiClient.putScript deployBindings). */
   workerBindings?: Array<Record<string, unknown>>;
+  /** Compatibility flags the uploaded Worker needs (["nodejs_compat"] when its bundle imports `node:*`); absent leaves the metadata as before. */
+  compatibilityFlags?: string[];
   /** Version ids Studio made itself (see GetScriptOptions): newer versions with these ids are not out-of-band changes. */
   trustedVersionIds?: readonly string[];
 }
@@ -848,6 +860,7 @@ export interface ProvisionerPromoteInput {
   schedules?: Array<Record<string, unknown> | string>;
   secrets?: Record<string, string>;
   workerBindings?: Array<Record<string, unknown>>;
+  compatibilityFlags?: string[];
 }
 
 export interface ProvisionerPromoteResult extends ProvisionerApplyResult {
@@ -2735,6 +2748,7 @@ export function createByocProvisioner(options: {
             cronTriggers: input.cronTriggers,
             databaseId: dbState.uuid,
             ...(input.workerBindings ? { deployBindings: input.workerBindings } : {}),
+            ...(input.compatibilityFlags && input.compatibilityFlags.length > 0 ? { compatibilityFlags: input.compatibilityFlags } : {}),
           },
         );
         versionId = uploaded.versionId;
@@ -3109,6 +3123,7 @@ export function createByocProvisioner(options: {
         workflows: input.workflows,
         graphs: input.graphs,
         ...(input.workerBindings ? { workerBindings: input.workerBindings } : {}),
+        ...(input.compatibilityFlags ? { compatibilityFlags: input.compatibilityFlags } : {}),
         _actionOverride: "promote",
       } as ProvisionerApplyInput);
       return {
@@ -4883,11 +4898,21 @@ function computeDeployPlanFromResolvedState(params: {
           requiredByBrick: "blueprint",
         }));
 
+  // Story 1.19: an optional secret never blocks; a `generate` secret is made by Studio on an approved preview deploy, while
+  // production never generates one (the owner binds a value or promotes from preview).
   const secrets: DeployPlanSecretCheck[] = secretReqs.map((req) => ({
     name: req.name,
     ...(req.ref ? { ref: req.ref } : {}),
     requiredByBrick: req.requiredByBrick,
-    status: configuredSet.has(req.name) ? "present" : "missing",
+    ...(req.optional ? { optional: true } : {}),
+    ...(req.generate ? { generate: req.generate } : {}),
+    status: configuredSet.has(req.name)
+      ? "present"
+      : req.optional
+        ? "optional_missing"
+        : req.generate && target.envName === "preview"
+          ? "will_generate"
+          : "missing",
   }));
 
   const missingSecrets = secrets
@@ -4940,8 +4965,9 @@ function computeDeployPlanFromResolvedState(params: {
     blockers.push({
       code: "MISSING_REQUIRED_SECRETS",
       message: `Missing required secrets: ${missingSecrets.join(", ")}`,
-      remediation:
-        "Provide values for all missing required secrets in the preflight checklist or Connections view.",
+      remediation: secrets.some((s) => s.status === "missing" && s.generate)
+        ? "Production never generates a secret: bind a value in Studio (Connections/secrets) or promote from preview, where Studio generates it on an approved deploy."
+        : "Provide values for all missing required secrets in the preflight checklist or Connections view.",
     });
   }
 
