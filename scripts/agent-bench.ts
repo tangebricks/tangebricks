@@ -557,6 +557,8 @@ export const RunRecordSchema = z.strictObject({
   /** The final blueprint (Studio's export bundle), so change-live-app can stand the same app up again. Private. */
   blueprint: z.unknown().nullable(),
   teardown: TeardownSchema.nullable(),
+  /** Set when an older record was upgraded on load: the fields it lacked were filled with honest defaults. */
+  schemaNote: z.string().optional(),
 });
 export type RunRecord = z.infer<typeof RunRecordSchema>;
 
@@ -634,9 +636,51 @@ export function evaluateKillRule(runs: RunRecord[]): z.infer<typeof KillRuleSche
 }
 
 /** Adds (or replaces, by run id) a run in the private results file, re-evaluates the kill rule, validates, and writes. */
+export const UPGRADED_PRE_AGENT_CALLS = "upgraded from a pre-agentCalls record: one agent call, no per-call data, no secrets bound by the owner";
+
+/**
+ * An older run record brought up to the current schema. A record from before agent calls were recorded made exactly one
+ * `claude -p` call and the owner bound no secrets, so those are its honest defaults; no call data is invented
+ * (`agentCalls` stays empty) and `schemaNote` says it was upgraded.
+ */
+export function upgradeRunRecord(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const r = { ...(raw as Record<string, unknown>) };
+  let upgraded = false;
+  const obj = (key: string) => (r[key] && typeof r[key] === "object" && !Array.isArray(r[key]) ? { ...(r[key] as Record<string, unknown>) } : null);
+  if (!("agentCalls" in r)) {
+    r.agentCalls = [];
+    upgraded = true;
+  }
+  const cli = obj("cli");
+  if (cli && !("agentCalls" in cli)) {
+    r.cli = { ...cli, agentCalls: 1 };
+    upgraded = true;
+  }
+  const limits = obj("limits");
+  if (limits && !("maxAgentCalls" in limits)) {
+    r.limits = { ...limits, maxAgentCalls: 1 };
+    upgraded = true;
+  }
+  const ownerReview = obj("ownerReview");
+  if (ownerReview && !("secretsBound" in ownerReview)) {
+    r.ownerReview = { ...ownerReview, secretsBound: [] };
+    upgraded = true;
+  }
+  if (upgraded && r.schemaNote === undefined) r.schemaNote = UPGRADED_PRE_AGENT_CALLS;
+  return r;
+}
+
+/** The runs already in the results file, older records upgraded; the kill rule is always evaluated again from them. */
+export function loadRuns(outPath: string): RunRecord[] {
+  if (!existsSync(outPath)) return [];
+  const raw = JSON.parse(readFileSync(outPath, "utf8")) as { runs?: unknown };
+  if (!Array.isArray(raw.runs)) throw new BenchRefusal(`${outPath} has no runs list`);
+  return z.array(RunRecordSchema).parse(raw.runs.map(upgradeRunRecord));
+}
+
 export function writeBenchmarkResult(outPath: string, record: RunRecord): BenchmarkFile {
-  let runs: RunRecord[] = [];
-  if (existsSync(outPath)) runs = BenchmarkFileSchema.parse(JSON.parse(readFileSync(outPath, "utf8"))).runs;
+  let runs: RunRecord[] = loadRuns(outPath);
   runs = [...runs.filter((r) => r.runId !== record.runId), RunRecordSchema.parse(record)];
   const file: BenchmarkFile = BenchmarkFileSchema.parse({
     benchmark: "real-model-benchmark-v0",
@@ -650,10 +694,42 @@ export function writeBenchmarkResult(outPath: string, record: RunRecord): Benchm
   return file;
 }
 
+/**
+ * Never loses a run: the run's own record is written first to `<out dir>/runs/<runId>.json` (after the same private-path
+ * check), and only then merged into the results file. When the merge fails the per-run file stays, its path is printed,
+ * and the answer is non-zero.
+ */
+export function saveRun(params: {
+  out: string;
+  record: RunRecord;
+  refusal: (path: string) => string | null;
+  merge?: (out: string, record: RunRecord) => BenchmarkFile;
+  log?: (line: string) => void;
+  error?: (line: string) => void;
+}): { ok: true; runPath: string; file: BenchmarkFile } | { ok: false; runPath: string | null; reason: string } {
+  const log = params.log ?? ((line: string) => console.log(line));
+  const error = params.error ?? ((line: string) => console.error(line));
+  const runPath = join(dirname(resolve(params.out)), "runs", `${params.record.runId.replace(/[^A-Za-z0-9_-]/g, "_")}.json`);
+  const refused = params.refusal(runPath);
+  if (refused) {
+    error(`the run record could not be saved: ${refused}`);
+    return { ok: false, runPath: null, reason: refused };
+  }
+  mkdirSync(dirname(runPath), { recursive: true });
+  writeFileSync(runPath, `${JSON.stringify(params.record, null, 2)}\n`);
+  log(`run record saved to ${runPath}`);
+  try {
+    return { ok: true, runPath, file: (params.merge ?? writeBenchmarkResult)(params.out, params.record) };
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    error(`merging into ${params.out} failed; the run is kept at ${runPath}: ${reason.slice(0, 2000)}`);
+    return { ok: false, runPath, reason };
+  }
+}
+
 export function readRun(outPath: string, runId: string): RunRecord {
   if (!existsSync(outPath)) throw new BenchRefusal(`no results file at ${outPath}`);
-  const file = BenchmarkFileSchema.parse(JSON.parse(readFileSync(outPath, "utf8")));
-  const run = file.runs.find((r) => r.runId === runId);
+  const run = loadRuns(outPath).find((r) => r.runId === runId);
   if (!run) throw new BenchRefusal(`run "${runId}" is not in ${outPath}`);
   if (!run.blueprint) throw new BenchRefusal(`run "${runId}" recorded no blueprint to stand up again`);
   return run;
@@ -1479,8 +1555,10 @@ async function main(argv: string[]): Promise<number> {
     ...(model ? { model } : {}),
     maxBudgetUsd,
   });
-  const file = writeBenchmarkResult(out, record);
   console.log(`run ${record.runId}: ${record.status}${record.incompleteReason ? ` (${record.incompleteReason})` : ""}`);
+  const saved = saveRun({ out, record, refusal: (path) => privatePathRefusal(path, repoRoot, gitIgnores) });
+  if (!saved.ok) return 1;
+  const { file } = saved;
   if (record.score) console.log(`score (iteration ${record.iteration}): ${record.score.passes}/${record.score.applicable} applicable lines pass; literal (as written) ${record.score.passes}/12; deployed: ${record.deployed}`);
   console.log(`kill rule (${file.killRule.ruleVersion}): applicable lines ${file.killRule.status.applicableLines}, literal (as written) ${file.killRule.status.literalAsWritten}; decision left to the owner; written to ${out}`);
   return record.status === "complete" ? 0 : 1;
