@@ -19,6 +19,7 @@ import { WORKER_SIZE_LIMIT_BYTES } from "../packages/deploy/src/bundle.ts";
 import { MEASURED_PROJECTS, REVIEWER_SURFACE_MISSING, SESSION_PROJECT, canonicalMcp, evaluateMcp, runMcpMeasurement } from "../packages/deploy/src/mcp-measure.ts";
 import type { McpFacts, McpResult } from "../packages/deploy/src/mcp-measure.ts";
 import { overTheNetwork } from "../packages/deploy/src/network.ts";
+import { redactCallsAndResult } from "./lib/redact-subdomain.ts";
 import {
   CredentialsError,
   createClient,
@@ -200,7 +201,7 @@ const deployFact: McpFacts["deploy"] = deployResult
   : null;
 
 // 6. Run measurement
-const { facts, result: first } = await runMcpMeasurement({
+const { facts, result: measured } = await runMcpMeasurement({
   url: deployResult ? deployResult.url : "https://unreachable.invalid",
   token: projectTokens[SESSION_PROJECT]!,
   tokenFor: (project) => projectTokens[project] ?? projectTokens[SESSION_PROJECT]!,
@@ -230,7 +231,8 @@ const secrets: Record<string, string> = {
   mcpToken,
   ...Object.fromEntries(Object.entries(projectTokens).map(([project, value]) => [`mcpToken:${project}`, value])),
 };
-const callsText = canonicalMcp(facts);
+// the account's workers.dev subdomain never reaches the evidence; callsSha256 is taken over the redacted calls text
+const { callsText, result: first } = redactCallsAndResult(canonicalMcp(facts), measured);
 for (const [name, text] of [["mcp-calls.json", callsText], ["mcp-result.json", JSON.stringify(first, null, 2)]] as const) {
   const hits = findSecrets(text, secrets);
   if (hits.length > 0) {

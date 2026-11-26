@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "commandStartedAt": "2026-10-21T09:40:14.207Z",
-  "url": "https://projectx-poc-c56a65d4-mcp.killerkingmega.workers.dev",
+  "url": "https://projectx-poc-c56a65d4-mcp.<account-subdomain>.workers.dev",
   "deploy": {
     "bytes": 863772,
     "gzipBytes": 144332,

@@ -20,6 +20,8 @@ import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
 import { CredentialsError, createClient, createRedactor, fileKeyStore, fileStore, findSecrets, loadCredentials, loadOrCreateAccessKey, memoryKeyStore, memoryStore, migrationsFrom, newSuffix, openLedger, formatPlan, planDeploy, resourceNames, telemetryWebhookConfig } from "../packages/deploy/src/provisioner/index.ts";
 import { INVOICE_FLOW_BLUEPRINT } from "../test/support/blueprints.ts";
 import { OUT_DIR, writeProject } from "../test/support/emitted.ts";
+import { WORKERS_SUBDOMAIN_FILE } from "../packages/deploy/src/context.ts";
+import { accountSubdomainOf, redactCallsAndResult } from "./lib/redact-subdomain.ts";
 
 // Milliseconds since this process started, minus the time spent on the read-only plan printed before the deploy (see below).
 let preflightMs = 0;
@@ -136,7 +138,7 @@ const hide = createRedactor([credentials.token, credentials.accountId, accessKey
 }
 
 out(`deploying as ${names.script} (database ${names.database}, workflow ${names.workflow}); the clock started with this process`);
-const { calls, result: first } = await runH10({
+const { calls, result: measured } = await runH10({
   clock,
   commandStart: 0,
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
@@ -162,7 +164,8 @@ const secrets: Record<string, string> = {
   accessKey,
   ...(telemetryWebhook ? { rootSecret, controlPlaneSecret: telemetryWebhook.controlPlaneSecret, webhookSecret: telemetryWebhook.signingSecret } : {}),
 };
-const callsText = canonical(calls);
+// the account's workers.dev subdomain never reaches the evidence; callsSha256 is taken over the redacted calls text
+const { callsText, result: first } = redactCallsAndResult(canonical(calls), measured);
 const dir = join(root, "evidence", "deployed");
 mkdirSync(dir, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -181,6 +184,11 @@ for (const name of ["h10-calls.json", "h10-result.json"]) {
   }
 }
 writeFileSync(join(dir, "h10-calls.json"), callsText);
+// The evidence shows the address with the account's subdomain redacted; the real one stays in the state folder (outside both
+// repositories) for the later live scripts (loadDeployment, poc-graphs: resolveWorkerUrl).
+const accountSubdomain = calls.facts.url ? accountSubdomainOf(calls.facts.url) : undefined;
+if (accountSubdomain) writeFileSync(join(stateDir, WORKERS_SUBDOMAIN_FILE), `${accountSubdomain}
+`);
 writeFileSync(join(dir, "h10-result.json"), `${JSON.stringify(first, null, 2)}\n`);
 
 const scan = scanTreesForSecrets([root, ...(existsSync(planRepo) ? [planRepo] : [])], secrets);

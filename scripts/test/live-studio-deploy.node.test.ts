@@ -251,6 +251,32 @@ describe("scripts/live-studio-deploy.ts, offline against the fake Cloudflare", (
     expect(resultJson.callsSha256).toBe(createHash("sha256").update(callsText).digest("hex"));
   });
 
+  test("the account's workers.dev subdomain never reaches a written evidence file; the hashes cover the redacted bytes", { timeout: 120_000 }, async () => {
+    const { root, deps } = world({ subdomain: "example-acct" });
+    const result = await runLiveStudioDeploy(deps);
+    expect(result.completed, result.stoppedBecause ?? "").toBe(true);
+    // the run itself used the real address
+    const steps = result.steps as Record<string, Record<string, unknown>>;
+    expect(String(steps.deploy_production!.workerUrl)).toBe(`https://px-${result.project}-production.example-acct.workers.dev`);
+
+    const dir = join(root, "evidence", "deployed");
+    const written: string[] = [];
+    const walk = (d: string) => {
+      for (const e of readdirSync(d, { withFileTypes: true })) (e.isDirectory() ? walk : (p: string) => written.push(p))(join(d, e.name));
+    };
+    walk(dir);
+    expect(written.length).toBeGreaterThan(0);
+    for (const file of written) expect(readFileSync(file, "utf8"), file).not.toContain("example-acct");
+
+    const resultText = readFileSync(join(dir, RESULT_FILE), "utf8");
+    const callsText = readFileSync(join(dir, CALLS_FILE), "utf8");
+    const parsed = JSON.parse(resultText) as { callsSha256: string; steps: Record<string, { workerUrl?: string }> };
+    expect(parsed.steps.deploy_production!.workerUrl).toBe(`https://px-${result.project}-production.<account-subdomain>.workers.dev`);
+    expect(parsed.callsSha256).toBe(createHash("sha256").update(callsText).digest("hex"));
+    const integrity = JSON.parse(readFileSync(join(dir, "integrity.json"), "utf8")) as { files: Record<string, { sha256: string }> };
+    expect(integrity.files[`evidence/deployed/${RESULT_FILE}`]!.sha256).toBe(createHash("sha256").update(resultText).digest("hex"));
+  });
+
   test("a Global API Key, or a 'revoked' token that is the deploy token itself, is refused before anything is sent", async () => {
     const { fake, deps } = world();
     await expect(runLiveStudioDeploy({ ...deps, credentials: { token: "0123456789abcdef0123456789abcdef01234", accountId: ACCOUNT } })).rejects.toThrow(/Global API Key/);

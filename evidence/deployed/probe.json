@@ -28,7 +28,7 @@
       },
       "subdomain": {
         "state": "readable",
-        "value": "killerkingmega"
+        "value": "<account-subdomain>"
       },
       "workflows": {
         "state": "readable",

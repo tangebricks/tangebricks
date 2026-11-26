@@ -697,7 +697,7 @@
           "tool": "get_run_trace",
           "args": {
             "project": "eval-s9-missing-input",
-            "runId": "run_73c839d2"
+            "runId": "run_762af061"
           },
           "isError": false,
           "detectedIssue": {
@@ -724,7 +724,7 @@
           "tool": "query_logs",
           "args": {
             "project": "eval-s9-missing-input",
-            "runId": "run_73c839d2",
+            "runId": "run_762af061",
             "level": "error"
           },
           "isError": false
@@ -830,8 +830,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-26T12:26:00.422Z",
-    "gitSha": "64cb144467083c264688d1632cb2d88ac9c08d1d",
+    "generatedAt": "2026-11-26T12:49:30.184Z",
+    "gitSha": "7c4c76fc197e0a62b9531ce576f94a67c532e2af",
     "gitDirty": false,
     "generator": "scripts/mcp-self-correct-eval.ts",
     "inputKind": "measured"

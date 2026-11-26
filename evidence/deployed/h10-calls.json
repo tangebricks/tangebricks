@@ -1489,7 +1489,7 @@
       "database": "projectx-poc-c56a65d4-db",
       "workflow": "projectx-poc-c56a65d4-graphs"
     },
-    "url": "https://projectx-poc-c56a65d4.killerkingmega.workers.dev",
+    "url": "https://projectx-poc-c56a65d4.<account-subdomain>.workers.dev",
     "builds": {
       "base": {
         "sha256": "6c817fb307cd120e449fcf78ace97d807e83dfed2ffc0d2f37152e864221e1d2",

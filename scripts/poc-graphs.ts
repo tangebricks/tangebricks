@@ -12,6 +12,8 @@ import type { H11Result } from "../packages/deploy/src/h11.ts";
 import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
 import { deriveProjectSecret } from "../packages/telemetry/src/index.ts";
 import { CredentialsError, createClient, createRedactor, fileKeyStore, fileStore, findSecrets, loadCredentials, loadOrCreateAccessKey } from "../packages/deploy/src/provisioner/index.ts";
+import { redactCallsAndResult } from "./lib/redact-subdomain.ts";
+import { resolveWorkerUrl } from "../packages/deploy/src/context.ts";
 
 const clock = () => performance.now();
 const root = resolve(import.meta.dirname, "..");
@@ -75,14 +77,14 @@ const signingSecret = await deriveProjectSecret(rootSecret, process.env.PX_PROJE
 const hide = createRedactor([credentials.token, credentials.accountId, accessKey, signingSecret, rootSecret]);
 
 out(`H11 against ${names.script}; no upload will be made`);
-const { calls, result: first } = await runH11({
+const { calls, result: measured } = await runH11({
   clock,
   commandStart: clock(),
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   createClient: (now) => createClient({ credentials, fetch: (request) => fetch(request), now, alsoHide: [accessKey] }),
   names,
   databaseId,
-  url,
+  url: resolveWorkerUrl(url, stateDir, process.env),
   accessKey,
   signingSecret,
   fetchUrl: (request) => fetch(new Request(request, { signal: AbortSignal.timeout(30_000) })),
@@ -94,7 +96,8 @@ const { calls, result: first } = await runH11({
 
 // ---- the evidence: through the secret scan in memory, then to disk, then the repositories are scanned
 const secrets = { token: credentials.token, accountId: credentials.accountId, accessKey, signingSecret, rootSecret };
-const callsText = canonical11(calls);
+// the account's workers.dev subdomain never reaches the evidence; callsSha256 is taken over the redacted calls text
+const { callsText, result: first } = redactCallsAndResult(canonical11(calls), measured);
 for (const [name, text] of [["h11-calls.json", callsText], ["h11-result.json", JSON.stringify(first, null, 2)]] as const) {
   const hits = findSecrets(text, secrets);
   if (hits.length > 0) {

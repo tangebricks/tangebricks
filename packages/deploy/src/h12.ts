@@ -3,6 +3,7 @@ import { codeLines } from "@poc/harness";
 import type { Attempt, ClientLog, UrlEvent } from "./h10.ts";
 import type { CallRecord, Client } from "./provisioner/cloudflare.ts";
 import type { ResourceNames } from "./provisioner/names.ts";
+import { redactWorkersDevText } from "./redact-subdomain.ts";
 
 // The H12 protocol: the credit widget, mounted the way a product would mount it (through the credit-wallet brick's own client,
 // with no network code of its own), shows the live balance of a deployed API, follows it as the server's state changes, and
@@ -127,7 +128,8 @@ export async function runH12(deps: H12Deps): Promise<{ calls: H12Calls; result: 
   const clients: ClientLog[] = [];
   const urlEvents: UrlEvent[] = [];
   const commandStartedAt = deps.nowIso();
-  const facts: H12Facts = { names: deps.names, url: deps.url, databaseId: deps.databaseId, workspaces: { A: { id: "", user: "alice" }, B: { id: "", user: "bob" } }, seeds: { A: null, B: null }, observations: [], server: { spend: null, createOrder: null, verifyUnpaid: null, topUp: null }, page: null, versions: { before: null, after: null }, deployedVersionFromH10: deps.deployedVersionFromH10 ?? null, attempts: [] };
+  // the address is recorded with the account's workers.dev subdomain redacted (callsSha256 below covers the redacted calls)
+  const facts: H12Facts = { names: deps.names, url: redactWorkersDevText(deps.url), databaseId: deps.databaseId, workspaces: { A: { id: "", user: "alice" }, B: { id: "", user: "bob" } }, seeds: { A: null, B: null }, observations: [], server: { spend: null, createOrder: null, verifyUnpaid: null, topUp: null }, page: null, versions: { before: null, after: null }, deployedVersionFromH10: deps.deployedVersionFromH10 ?? null, attempts: [] };
   let stoppedBecause: string | undefined;
 
   const attempt = (phase: string, outcome: "ok" | "failed", detail: string) => {
