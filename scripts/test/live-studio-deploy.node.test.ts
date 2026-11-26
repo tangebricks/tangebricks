@@ -5,12 +5,12 @@ import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { createFakeCloudflare } from "../../packages/deploy/test/support/fake-cloudflare.ts";
 import type { FakeCloudflare } from "../../packages/deploy/test/support/fake-cloudflare.ts";
-import { checkControlPlaneSignature } from "../../packages/telemetry/src/index.ts";
+import { checkControlPlaneSignature, signControlPlaneRequest } from "../../packages/telemetry/src/index.ts";
 import { KEY_HEADER } from "../../packages/deploy/src/worker/gate.ts";
 import { WORKFLOW_RUNS_PATH } from "../../packages/deploy/src/worker/proof-routes.ts";
 import { isTenantWorkspaceId } from "../../packages/deploy/src/worker/graph-run.ts";
 import { RequestGuardError, STUDIO_TEST_NAME_POLICY, createClient, memoryStore, openLedger } from "../../packages/deploy/src/provisioner/index.ts";
-import { CALLS_FILE, LiveProofRefusal, RESULT_FILE, createGuardedFetch, runLiveStudioDeploy, runTeardownOnly } from "../live-studio-deploy.ts";
+import { CALLS_FILE, LIVE_PROOF_USER_ID, LiveProofRefusal, RESULT_FILE, createGuardedFetch, liveProofRunPayload, runLiveStudioDeploy, runTeardownOnly } from "../live-studio-deploy.ts";
 import type { CallLine } from "../live-studio-deploy.ts";
 
 // Story R53: the live Studio deploy proof's whole flow, offline. Cloudflare's API is the fake (real SQLite D1, documented
@@ -31,7 +31,10 @@ afterEach(() => {
 });
 
 /** Stands in for the deployed Worker: the gate's key check, the signed /__px/workflow-runs route, and the debit it runs. */
-function workerSimulator(fake: FakeCloudflare) {
+/** Cloudflare's record of each simulated Workflow run, by instance id, as GET .../instances/{id} answers it. */
+type RunRecords = Map<string, Record<string, unknown>>;
+
+function workerSimulator(fake: FakeCloudflare, runs: RunRecords = new Map()) {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     const script = url.hostname.split(".")[0]!;
@@ -44,16 +47,22 @@ function workerSimulator(fake: FakeCloudflare) {
     const body = await request.text();
     const refusal = await checkControlPlaneSignature(request, { secret, body, nowMs: Date.now(), path: WORKFLOW_RUNS_PATH });
     if (refusal) return json(refusal.status, { error: { code: refusal.code } });
-    const parsed = JSON.parse(body) as { graphId: string; workspaceId?: string };
+    const parsed = JSON.parse(body) as { requestId: string; graphId: string; workspaceId?: string; payload?: { userId?: unknown } };
     if (!parsed.workspaceId) return json(400, { error: { code: "NO_WORKSPACE" } });
     if (!isTenantWorkspaceId(parsed.workspaceId)) return json(400, { error: { code: "BAD_WORKSPACE" } });
     const dbName = `${script}-db`;
     const graph = JSON.parse(String(fake.rows(dbName, `SELECT graph FROM poc_graphs WHERE workspace_id = '__app__' AND id = '${parsed.graphId}'`)[0]!.graph)) as { nodes: Array<{ type: string; data: { amount?: number } }> };
     const amount = graph.nodes.find((n) => n.type === "credit-wallet.debit")!.data.amount! * 1000;
+    // As the real executor: credit-wallet.debit needs a userId in the run's input. Without one the run is accepted (202) and the
+    // Workflow completes with the debit node failed, so nothing is charged: what live run 1 met.
+    if (typeof parsed.payload?.userId !== "string") {
+      runs.set(parsed.requestId, { status: "complete", success: true, error: null, output: { ok: false, outputs: {}, failed: { debit: "invalid input: userId: Invalid input: expected string, received undefined" }, skipped: [] }, params: {}, start: null, end: null, steps: [{ type: "step", name: "load graph-1", success: true, attempts: [{}] }] });
+      return json(202, { id: parsed.requestId, workspaceId: parsed.workspaceId });
+    }
     const balance = Number(fake.rows(dbName, `SELECT balance_milli FROM credit_wallets WHERE workspace_id = '${parsed.workspaceId}'`)[0]!.balance_milli);
     fake.exec(dbName, "UPDATE credit_wallets SET balance_milli = ? WHERE workspace_id = ?", [balance - amount, parsed.workspaceId]);
-    fake.exec(dbName, "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason) VALUES (?, ?, 'system', 'deduction', ?, ?, 'graph run')", [crypto.randomUUID(), parsed.workspaceId, amount, balance - amount]);
-    return json(202, { id: "run", workspaceId: parsed.workspaceId });
+    fake.exec(dbName, "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason) VALUES (?, ?, ?, 'deduction', ?, ?, 'graph run')", [crypto.randomUUID(), parsed.workspaceId, parsed.payload.userId, amount, balance - amount]);
+    return json(202, { id: parsed.requestId, workspaceId: parsed.workspaceId });
   };
 }
 
@@ -62,7 +71,18 @@ const testBundle = async (input: { project: string; envName: string; files: Reco
 });
 
 function world(fakeOptions: Partial<Parameters<typeof createFakeCloudflare>[0]> = {}) {
-  const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT, tokenKind: "user", ...fakeOptions });
+  const runs: RunRecords = new Map();
+  const instanceReads: string[] = [];
+  const fake = createFakeCloudflare({
+    token: TOKEN,
+    accountId: ACCOUNT,
+    tokenKind: "user",
+    instanceDetails: (workflowName, instanceId) => {
+      instanceReads.push(`${workflowName}/${instanceId}`);
+      return runs.get(instanceId) ?? null;
+    },
+    ...fakeOptions,
+  });
   const root = mkdtempSync(join(tmpdir(), "live-studio-"));
   roots.push(root);
   const store = memoryStore();
@@ -72,7 +92,7 @@ function world(fakeOptions: Partial<Parameters<typeof createFakeCloudflare>[0]> 
     rootSecret: ROOT_SECRET,
     revokedToken: REVOKED,
     cloudflareFetch: fake.fetch,
-    workerFetch: workerSimulator(fake),
+    workerFetch: workerSimulator(fake, runs),
     bundle: testBundle,
     ledgerStore: store,
     randomHex: (n: number) => randomBytes(n).toString("hex"),
@@ -82,7 +102,7 @@ function world(fakeOptions: Partial<Parameters<typeof createFakeCloudflare>[0]> 
     pollTimeoutMs: 5_000,
     pollIntervalMs: 1,
   };
-  return { fake, root, store, lines, deps };
+  return { fake, root, store, lines, deps, runs, instanceReads };
 }
 
 describe("scripts/live-studio-deploy.ts, offline against the fake Cloudflare", () => {
@@ -121,6 +141,57 @@ describe("scripts/live-studio-deploy.ts, offline against the fake Cloudflare", (
       expect(callsText).not.toContain(secret);
       expect(lines.join("\n")).not.toContain(secret);
     }
+  });
+
+  test("the debit is charged to the proof's user (the executor requires one), exactly once", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    let ledgerUsers: unknown[] = [];
+    const original = deps.workerFetch;
+    const result = await runLiveStudioDeploy({
+      ...deps,
+      workerFetch: async (request) => {
+        const res = await original(request);
+        const host = new URL(request.url).hostname;
+        if (request.method === "POST" && host.includes("-production.")) ledgerUsers = fake.rows(`${host.split(".")[0]}-db`, "SELECT user_id FROM credit_ledger WHERE type = 'deduction'").map((r) => r.user_id);
+        return res;
+      },
+    });
+    expect(result.completed, result.stoppedBecause ?? "").toBe(true);
+    expect(ledgerUsers).toEqual([LIVE_PROOF_USER_ID]);
+    expect(liveProofRunPayload("ws_x")).toEqual({ userId: LIVE_PROOF_USER_ID, workspaceId: "ws_x" });
+  });
+
+  test("when the run is accepted but the debit does not land, Cloudflare's record of the run says why (read-only, pinned, redacted)", { timeout: 120_000 }, async () => {
+    const { fake, deps, instanceReads } = world();
+    // a payload without the user, as live run 1 sent: the run is accepted (202), its debit node fails, nothing is charged
+    const original = deps.workerFetch;
+    const result = await runLiveStudioDeploy({
+      ...deps,
+      workerFetch: async (request) => {
+        if (request.method === "POST" && new URL(request.url).pathname === WORKFLOW_RUNS_PATH) {
+          const body = JSON.parse(await request.clone().text()) as { payload?: Record<string, unknown> };
+          if (body.payload) {
+            delete body.payload.userId;
+            const text = JSON.stringify(body);
+            const headers = new Headers(request.headers);
+            // re-sign the altered body, as a client that sent it so would have
+            const secret = fake.secretOf(new URL(request.url).hostname.split(".")[0]!, "PX_TELEMETRY_SECRET")!;
+            for (const [k, v] of Object.entries(await signControlPlaneRequest(secret, "POST", WORKFLOW_RUNS_PATH, text))) headers.set(k, v);
+            return original(new Request(request.url, { method: "POST", headers, body: text }));
+          }
+        }
+        return original(request);
+      },
+    });
+    expect(result.completed).toBe(false);
+    expect(result.stoppedBecause).toMatch(/debited the workspace exactly once/);
+    const wallet = (result.steps as Record<string, Record<string, unknown>>).wallet!;
+    expect(wallet.instance).toMatchObject({ found: true, status: "complete", ok: false, failed: { debit: expect.stringMatching(/userId/) } });
+    expect(instanceReads).toHaveLength(1);
+    expect(instanceReads[0]).toMatch(/^px-tangebricks-test-[0-9a-f]{8}-production-graphs\/[0-9a-f-]{36}$/);
+    const reads = fake.requests.filter((r) => r.path.includes("/instances/"));
+    expect(reads.every((r) => r.method === "GET" && r.path.startsWith("/client/v4/accounts/{account}/workflows/"))).toBe(true);
+    expect(JSON.stringify(wallet)).not.toContain(TOKEN);
   });
 
   test("a second run moves the older evidence to attempts/", { timeout: 120_000 }, async () => {

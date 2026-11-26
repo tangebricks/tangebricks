@@ -77,6 +77,17 @@ export function liveProofOps(): Array<Record<string, unknown>> {
     },
   ];
 }
+/** Who the proof's debit is charged as: credit-wallet.debit records a user on every ledger row and requires one. */
+export const LIVE_PROOF_USER_ID = "tangebricks-live-proof";
+/**
+ * The payload of the signed run that must debit the funded workspace. credit-wallet.debit takes its user from the run's input
+ * and refuses a run without one ("invalid input: userId"); live run 1 sent only { workspaceId }, so the Workflow completed with
+ * the debit node failed and nothing was charged. The workspace itself comes from the signed body, never from this payload.
+ */
+export function liveProofRunPayload(workspaceId: string): Record<string, unknown> {
+  return { userId: LIVE_PROOF_USER_ID, workspaceId };
+}
+
 /** Brick secrets the live blueprint needs in Studio's vault before the deploy: none for oidc-verify. */
 export const LIVE_PROOF_BRICK_SECRETS: readonly string[] = [];
 
@@ -501,12 +512,19 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
       const signature = await signControlPlaneRequest(controlPlaneSecret, "POST", WORKFLOW_RUNS_PATH, body);
       return workerCall(runUrl, { method: "POST", headers: { "content-type": "application/json", [KEY_HEADER]: accessKeys.production, ...signature }, body });
     };
-    const started = await signedRun({ requestId: randomUUID(), graphId: GRAPH_ID, workspaceId, payload: { workspaceId } });
+    const runId = randomUUID();
+    const started = await signedRun({ requestId: runId, graphId: GRAPH_ID, workspaceId, payload: liveProofRunPayload(workspaceId) });
     must("starting the signed run", started.status === 202, started);
     let after = before;
     for (const t0 = Date.now(); Date.now() - t0 < pollTimeoutMs; await sleep(pollIntervalMs)) {
       after = await readWallet();
       if (after.deductions >= 1) break;
+    }
+    // When the debit did not land, say why: Cloudflare's own record of the Workflow run (status, error, the failed nodes and
+    // each step), read with one GET on the pinned account, redacted.
+    let instance: Record<string, unknown> | undefined;
+    if (after.deductions < 1) {
+      instance = await describeWorkflowRun(rest, `${ownPrefix}production-graphs`, String((started.body as { id?: unknown }).id ?? runId), hide);
     }
     const noWorkspace = await signedRun({ requestId: randomUUID(), graphId: GRAPH_ID, payload: {} });
     const badWorkspace = await signedRun({ requestId: randomUUID(), graphId: GRAPH_ID, workspaceId: "ws__not_a_tenant", payload: {} });
@@ -519,6 +537,7 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
       before,
       afterRun: after,
       runStatus: started.status,
+      ...(instance ? { instance } : {}),
       noWorkspace: { status: noWorkspace.status, code: codeOf(noWorkspace) },
       badWorkspace: { status: badWorkspace.status, code: codeOf(badWorkspace) },
       final,
@@ -625,6 +644,33 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
     say(`evidence:record-live refused: ${integrity.errors.join("; ")}`);
   } else say(`8. evidence written to evidence/deployed/${result.completed ? RESULT_FILE : `attempts/${stampOf(commandStartedAt)}-${RESULT_FILE}`} and recorded in integrity.json`);
   return result;
+}
+
+/**
+ * Cloudflare's record of one Workflow run (GET /accounts/{id}/workflows/{name}/instances/{id}), reduced to what explains an
+ * outcome: its status, its error, the nodes the graph reported failed, and each step's name and success. Every text goes
+ * through hide(). A read that fails is reported, never thrown: this only explains a failure already found.
+ */
+export async function describeWorkflowRun(client: Client, workflowName: string, instanceId: string, hide: (text: string) => string): Promise<Record<string, unknown>> {
+  try {
+    const record = await client.getWorkflowInstance(workflowName, instanceId);
+    if (record === null) return { found: false };
+    const output = record.output as { ok?: unknown; failed?: Record<string, unknown> } | null;
+    return JSON.parse(
+      hide(
+        JSON.stringify({
+          found: true,
+          status: record.status,
+          success: record.success,
+          error: record.error,
+          ...(output && typeof output === "object" ? { ok: output.ok ?? null, failed: output.failed ?? {} } : {}),
+          steps: record.steps.map((step) => ({ name: step.name, success: step.success })),
+        }),
+      ),
+    ) as Record<string, unknown>;
+  } catch (error) {
+    return { found: null, readError: hide(error instanceof Error ? error.message : String(error)) };
+  }
 }
 
 /** Only teardown: removes what the ledger lists (an interrupted run), through the same guard. */

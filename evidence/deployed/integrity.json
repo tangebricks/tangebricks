@@ -23,6 +23,11 @@
       "runTimestamp": "2026-10-21T09:39:29.698Z",
       "status": "recorded"
     },
+    "evidence/deployed/attempts/2026-11-26T07-17-54-428Z-studio-deploy-result.json": {
+      "sha256": "cc0fd52440b90870a76065fab9c7be86af79f790f7b1701c2b391b300c08edc4",
+      "runTimestamp": "2026-11-26T07:17:54.428Z",
+      "status": "recorded"
+    },
     "evidence/deployed/h10-result.json": {
       "sha256": "eb13f500e4a6c67e7e13a4f1d02fef01b6dbf1b7353b4c0c51ffff8d981752fd",
       "runTimestamp": "2026-10-21T03:23:00.872Z",
@@ -47,6 +52,11 @@
     "evidence/deployed/mcp-result.json": {
       "sha256": "2af7a75cedd760c841e4ca2bb015fa17fefe1f5be949e919701f048b502b7d00",
       "runTimestamp": "2026-10-21T09:40:14.207Z",
+      "status": "recorded"
+    },
+    "evidence/deployed/studio-deploy-result.json": {
+      "sha256": "610eeec601265ef1fc049359d00ba682d6bcc9a622ae6e07061a3404b7dd4ba0",
+      "runTimestamp": "2026-11-26T07:37:20.114Z",
       "status": "recorded"
     }
   }
