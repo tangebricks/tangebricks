@@ -230,7 +230,7 @@
       "session": "ten bricks and the invoices table in four calls",
       "toolCalls": 4,
       "conversationTokens": 3100,
-      "firstPartySourceTokens": 101693,
+      "firstPartySourceTokens": 101861,
       "filesBuilt": 25,
       "ratioPercent": 3
     },
@@ -259,8 +259,8 @@
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-26T22:26:49.283Z",
-    "gitSha": "8e42fab680bea451af8881c409d1c444f4c7e347",
+    "generatedAt": "2026-11-26T23:14:05.678Z",
+    "gitSha": "849bf16cda46104043a086ff57d5315c6fe35f90",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
