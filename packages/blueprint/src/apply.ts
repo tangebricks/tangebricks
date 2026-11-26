@@ -559,7 +559,8 @@ export function applyOp(
             ],
           };
         }
-        if (!entry.manifest.provides.includes(IDENTITY_CAPABILITY)) {
+        // A capability may carry a version ("user-identity@1.0.0"); compare the name, as the assembler does.
+        if (!entry.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === IDENTITY_CAPABILITY)) {
           return {
             ok: false,
             errors: [

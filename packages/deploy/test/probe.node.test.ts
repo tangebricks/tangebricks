@@ -167,14 +167,15 @@ describe("what is missing", () => {
 });
 
 describe("the token", () => {
-  test("a token Cloudflare does not accept stops the probe after one request, with nothing else attempted", async () => {
+  test("a token Cloudflare does not accept stops the probe after the two verify requests (account, then user endpoint), with nothing else attempted", async () => {
     const w = world();
     const wrong = createClient({ credentials: { token: "cfut_wrong_wrong_wrong_wrong_wrong_wrong_wrong_1234", accountId: ACCOUNT }, fetch: w.fake.fetch, sleep: async () => undefined });
     const report = await runProbe({ client: wrong, now: () => NOW });
     expect(report.token.reachable).toBe(false);
     expect(report.ready).toBe(false);
     expect(report.missing[0]).toMatch(/working token/);
-    expect(w.fake.requests).toHaveLength(1);
+    // story R53: a user token verifies only at /user/tokens/verify, so a refused token is asked at both endpoints, and nothing else
+    expect(w.fake.requests.map((r) => r.path)).toEqual(["/client/v4/accounts/{account}/tokens/verify", "/client/v4/user/tokens/verify"]);
   });
 
   test("a token that is not active stops the probe after the check", async () => {

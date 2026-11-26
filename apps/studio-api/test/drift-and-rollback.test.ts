@@ -9,7 +9,7 @@ import {
   app as studioApp,
   ensureStudioD1Schema,
   getProjectAssembleCount,
-  getStudioControlPlane,
+  getStudioFakeControlPlane,
   resetStudioDeployTestState,
 } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
@@ -539,7 +539,7 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     });
 
     // Verify D1 workflows & worker hash in MockCloudflareControlPlane were restored to v1
-    const cp = getStudioControlPlane(conn.accountId);
+    const cp = getStudioFakeControlPlane(conn.accountId, TEST_ENV);
     const dbMeta = cp.inspectDatabase(
       conn.accountId,
       `px-${project}-preview`,

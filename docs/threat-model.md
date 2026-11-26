@@ -30,7 +30,7 @@
 | 0.20 | cron-alarms: allowlist of target Workflow bindings (filed from PROPOSED-10) |
 | 0.21 | Rate limiting on auth, money and fan-out paths (filed from PROPOSED-1) |
 | 1.1 | Real executors and verified workspace in deployed workflows |
-| 1.2 | One real deploy path for Studio and MCP |
+| 1.2 | One real deploy path for Studio and MCP: Studio, and MCP through Studio's routes, deploys through the real Cloudflare REST client by default; the in-memory fake only with `PX_DEPLOY_CLIENT=fake` and `PX_ENVIRONMENT` test or development (refused anywhere else) and kept out of Studio's routes by `scripts/lint-deploy-target.ts`; tokens verified by Cloudflare (account endpoint, then user endpoint; permissions from the token's policies or harmless reads), never by their spelling; deployed Workers get only derived secrets; the smoke check presents the gate's key; a per-account request budget below Cloudflare's limit; a live proof (`pnpm live:studio-deploy`, [live-deploy.md](live-deploy.md)) that creates only `px-tangebricks-test-<8 hex>-*` resources, through a ledger and a write guard |
 | 1.4 | Workspace-keyed telemetry and logs |
 | 1.5 | Proposals by default; approval for destructive tools |
 | 1.9 | Metering correctness: no negative values, atomic aggregation (filed from PROPOSED-2) |
@@ -133,7 +133,7 @@ Every audit risk appears once.
 | R-D | High | Unrestricted `fetch` in `core.http_request` (SSRF) | 0.8 |
 | R-E | Critical | MCP endpoint guarded by one shared bearer, no per-project authorisation (`mcp.ts:84-141`) | 0.10 |
 | R-F | High | `deploy_apply` reports fabricated deploy success | 0.9 |
-| R-G | High | Studio deploy and token verification are mocks shown as working | 1.2 |
+| R-G | High | Studio deploy and token verification are mocks shown as working | 1.2 (real HTTP client by default; fake test-only, refused in production; tokens verified by Cloudflare) |
 
 ## Sweep scope and method
 

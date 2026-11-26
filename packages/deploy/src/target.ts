@@ -11,6 +11,7 @@ import type { Catalog, ProjectLock } from "@poc/assembler";
 import { planLockChanges, planMigrations } from "./provisioner/plan-core.ts";
 import type { LockPlan, MigrationPlan } from "./provisioner/plan-core.ts";
 import { APP_WORKSPACE, GRAPH_TABLE, LATENCY_TABLE } from "./worker/graph-run.ts";
+import { synthesizeDeterministicTokenEntry } from "./fake-token-classifier.ts";
 import {
   DEFAULT_SANDBOX_DISPATCH_NAMESPACE,
   SANDBOX_D1_BYTES_CAP,
@@ -179,6 +180,10 @@ export interface CloudflarePermissionReportItem {
   granted: boolean;
   remediationUrl: string;
   plainError?: string;
+  /** False when only Read was shown (read-probe path): the Edit permission is confirmed by the first deploy. */
+  confirmed?: boolean;
+  /** What is known about this permission, when it is not simply granted or missing. */
+  note?: string;
 }
 
 export interface CloudflareAccountSummary {
@@ -188,6 +193,7 @@ export interface CloudflareAccountSummary {
 }
 
 export interface CloudflareTokenVerificationReport {
+  verifiedBy?: "policies" | "read-probe";
   ok: boolean;
   status: "active" | "disabled" | "expired" | "invalid";
   isGlobalApiKey: boolean;
@@ -264,7 +270,12 @@ export interface CloudflareApiCallRecord {
   accountId: string;
   action: string;
   timestamp: string;
+  /** Whether the call could change the account (absent: anything but a GET); a read-only D1 query (a POST) is not a write. */
+  write?: boolean;
 }
+
+/** Whether a recorded call could have changed the account. */
+export const isMutatingApiCall = (call: CloudflareApiCallRecord): boolean => call.write ?? call.method !== "GET";
 
 export interface CloudflareWorkerScriptState {
   scriptName: string;
@@ -292,6 +303,9 @@ export interface CloudflareD1DatabaseState {
   graphs: Record<string, { graph: string; updatedAt: string; workspaceId?: string }>;
   schedules?: Array<Record<string, unknown>>;
   graphHash?: string;
+  /** What the account records as last deployed (the real client reads these from the database's own state table). */
+  buildHash?: string;
+  codeHash?: string;
   tables: string[];
 }
 
@@ -309,6 +323,8 @@ export interface CloudflareWorkflowState {
 }
 
 export interface CloudflareTokenCheckResult {
+  /** How the permissions were established: the token's own policies, or one harmless read per capability (Read only; Edit is confirmed by the first deploy). */
+  verifiedBy?: "policies" | "read-probe";
   valid: boolean;
   tokenId: string | null;
   status: "active" | "disabled" | "expired" | "invalid";
@@ -321,13 +337,20 @@ export interface CloudflareTokenCheckResult {
   } | null;
   permissions: Record<
     CloudflarePermissionScope,
-    { granted: boolean; message?: string }
+    { granted: boolean; message?: string; confirmed?: boolean }
   >;
   missingPermissions: CloudflarePermissionScope[];
 }
 
+export interface GetScriptOptions {
+  /** Version ids Studio made itself (uploads, secret puts); a newer unannotated version not listed here makes the code unknown. */
+  trustedVersionIds?: readonly string[];
+}
+
 export interface CloudflareApiClient {
   readonly calls: ReadonlyArray<CloudflareApiCallRecord>;
+  /** How many Worker uploads this client made. */
+  readonly scriptUploadCount?: number;
   verifyTokenAndPermissions(
     accountId: string,
     token: string,
@@ -336,7 +359,12 @@ export interface CloudflareApiClient {
     accountId: string,
     token: string,
     scriptName: string,
+    options?: GetScriptOptions,
   ): Promise<CloudflareWorkerScriptState | null>;
+  /** The account's workers.dev subdomain, or null if it has none (the real client; the address of every Worker). */
+  getWorkersSubdomain?(accountId: string, token: string): Promise<string | null>;
+  /** The Worker's version ids, newest first (the real client), or null if there is no such Worker. */
+  listScriptVersionIds?(accountId: string, token: string, scriptName: string): Promise<string[] | null>;
   putScript(
     accountId: string,
     token: string,
@@ -348,6 +376,10 @@ export interface CloudflareApiClient {
       cronTriggers?: string[];
       compatibilityDate?: string;
       compatibilityFlags?: string[];
+      /** The environment's D1 database, bound as DB by a real upload. */
+      databaseId?: string;
+      /** Further bindings a real upload carries (PX_ENVIRONMENT, the GraphRunner Workflow). Never a secret: secrets go through putScriptSecret. */
+      deployBindings?: Array<Record<string, unknown>>;
     },
   ): Promise<{
     scriptName: string;
@@ -355,6 +387,14 @@ export interface CloudflareApiClient {
     sha256: string;
     url: string;
   }>;
+  /** Records the deployed build, code and graph hashes where the next plan reads them (fake: memory; HTTP: the env's D1). */
+  recordDeployState?(
+    accountId: string,
+    token: string,
+    scriptName: string,
+    databaseName: string,
+    meta: { buildHash?: string; codeHash?: string; graphHash?: string },
+  ): Promise<void>;
   deleteScript(
     accountId: string,
     token: string,
@@ -366,7 +406,13 @@ export interface CloudflareApiClient {
     scriptName: string,
     secretName: string,
     secretValue: string,
-  ): Promise<{ name: string; type: "secret_text" }>;
+  ): Promise<{ name: string; type: "secret_text"; versionId?: string }>;
+  deleteScriptSecret?(
+    accountId: string,
+    token: string,
+    scriptName: string,
+    secretName: string,
+  ): Promise<void>;
   putCronTriggers(
     accountId: string,
     token: string,
@@ -645,6 +691,10 @@ export interface ProvisionerPlanInput {
   catalog?: Catalog;
   /** Acknowledges brick major-version bumps. */
   allowMajor?: boolean;
+  /** Bindings the uploaded Worker gets besides its D1 database (see CloudflareApiClient.putScript deployBindings). */
+  workerBindings?: Array<Record<string, unknown>>;
+  /** Version ids Studio made itself (see GetScriptOptions): newer versions with these ids are not out-of-band changes. */
+  trustedVersionIds?: readonly string[];
 }
 
 export interface ProvisionerPlanResult extends DeployPlan {
@@ -777,6 +827,7 @@ export interface ProvisionerPromoteInput {
   registry?: Registry;
   schedules?: Array<Record<string, unknown> | string>;
   secrets?: Record<string, string>;
+  workerBindings?: Array<Record<string, unknown>>;
 }
 
 export interface ProvisionerPromoteResult extends ProvisionerApplyResult {
@@ -1555,6 +1606,16 @@ export class MockCloudflareControlPlane implements CloudflareApiClient {
     this.workflows.delete(`${accountId}:${workflowName}`);
   }
 
+  async recordDeployState(
+    accountId: string,
+    _token: string,
+    scriptName: string,
+    databaseName: string,
+    meta: { buildHash?: string; codeHash?: string; graphHash?: string },
+  ): Promise<void> {
+    this.recordEnvironmentMetadata(accountId, scriptName, databaseName, meta);
+  }
+
   recordEnvironmentMetadata(
     accountId: string,
     scriptName: string,
@@ -2132,6 +2193,7 @@ export function createByocProvisioner(options: {
         target.accountId,
         token,
         scriptName,
+        normalizedInput.trustedVersionIds ? { trustedVersionIds: normalizedInput.trustedVersionIds } : undefined,
       );
       const existingDbs = await apiClient.listDatabases(
         target.accountId,
@@ -2174,6 +2236,10 @@ export function createByocProvisioner(options: {
           ...normalizedInput,
           envState: {
             ...envState,
+            // what the account itself records as deployed, when the caller does not say (the real client reads it back)
+            ...(envState?.currentBuildHash === undefined && existingDbState?.buildHash
+              ? { currentBuildHash: existingDbState.buildHash }
+              : {}),
             currentGraphHash:
               envState?.currentGraphHash ??
               envState?.graphHash ??
@@ -2238,6 +2304,7 @@ export function createByocProvisioner(options: {
         target.accountId,
         token,
         scriptName,
+        input.trustedVersionIds ? { trustedVersionIds: input.trustedVersionIds } : undefined,
       );
       const existingDbs = await apiClient.listDatabases(
         target.accountId,
@@ -2274,6 +2341,9 @@ export function createByocProvisioner(options: {
           ...input,
           envState: {
             ...input.envState,
+            ...(input.envState?.currentBuildHash === undefined && existingDbState?.buildHash
+              ? { currentBuildHash: existingDbState.buildHash }
+              : {}),
             currentGraphHash:
               input.envState?.currentGraphHash ??
               input.envState?.graphHash ??
@@ -2328,7 +2398,10 @@ export function createByocProvisioner(options: {
       const defaultUrl = `https://${scriptName}.workers.dev`;
 
       // Fast idempotent no-op path: zero mutating calls to the Cloudflare API
-      if (resolvedPlan.action === "noop") {
+      // "No changes" must hold in the account: a missing Worker, or one whose code hash is unknown or not the one to upload, is redeployed.
+      const accountCodeMatches =
+        Boolean(existingScript?.codeHash) && existingScript!.codeHash === (input.codeHash ?? input.bundle.sha256);
+      if (resolvedPlan.action === "noop" && existingScript && accountCodeMatches) {
         await emitStep(
           "d1_database",
           "d1_database",
@@ -2338,9 +2411,7 @@ export function createByocProvisioner(options: {
           `No changes — environment ${target.envName} already at build ${input.buildHash.slice(0, 12)}`,
         );
         const newCalls = apiClient.calls.slice(callsBefore);
-        const mutatingCallCount = newCalls.filter(
-          (c) => c.method !== "GET",
-        ).length;
+        const mutatingCallCount = newCalls.filter(isMutatingApiCall).length;
         return {
           target,
           deployId: input.deployId ?? "dep_apply",
@@ -2366,7 +2437,7 @@ export function createByocProvisioner(options: {
       }
 
       // Graph-only hot-apply path: update D1 stored graphs & schedules directly without uploading Worker script
-      if (resolvedPlan.action === "hot_apply_graphs") {
+      if (resolvedPlan.action === "hot_apply_graphs" && existingScript && accountCodeMatches) {
         const dbState =
           existingDbState ??
           (await apiClient.ensureDatabase(
@@ -2442,9 +2513,10 @@ export function createByocProvisioner(options: {
           `Live without redeploy — updated workflow graphs (${nextGraphHash.slice(0, 8)}) in ${databaseName}`,
         );
 
-        if (apiClient instanceof MockCloudflareControlPlane) {
-          apiClient.recordEnvironmentMetadata(
+        if (apiClient.recordDeployState) {
+          await apiClient.recordDeployState(
             target.accountId,
+            token,
             scriptName,
             databaseName,
             {
@@ -2456,9 +2528,7 @@ export function createByocProvisioner(options: {
         }
 
         const newCalls = apiClient.calls.slice(callsBefore);
-        const mutatingCallCount = newCalls.filter(
-          (c) => c.method !== "GET",
-        ).length;
+        const mutatingCallCount = newCalls.filter(isMutatingApiCall).length;
 
         return {
           target,
@@ -2583,6 +2653,8 @@ export function createByocProvisioner(options: {
             code: input.bundle.code,
             sha256: nextCodeHash,
             cronTriggers: input.cronTriggers,
+            databaseId: dbState.uuid,
+            ...(input.workerBindings ? { deployBindings: input.workerBindings } : {}),
           },
         );
         versionId = uploaded.versionId;
@@ -2718,9 +2790,10 @@ export function createByocProvisioner(options: {
         }
       }
 
-      if (apiClient instanceof MockCloudflareControlPlane) {
-        apiClient.recordEnvironmentMetadata(
+      if (apiClient.recordDeployState) {
+        await apiClient.recordDeployState(
           target.accountId,
+          token,
           scriptName,
           databaseName,
           {
@@ -2732,9 +2805,7 @@ export function createByocProvisioner(options: {
       }
 
       const newCalls = apiClient.calls.slice(callsBefore);
-      const mutatingCallCount = newCalls.filter(
-        (c) => c.method !== "GET",
-      ).length;
+      const mutatingCallCount = newCalls.filter(isMutatingApiCall).length;
 
       return {
         target,
@@ -2748,7 +2819,11 @@ export function createByocProvisioner(options: {
         buildHash: input.buildHash,
         codeHash: nextCodeHash,
         graphHash: nextGraphHash,
-        action: resolvedPlan.action,
+        // a plan that said noop or graph-only while the Worker is missing in the account was carried out in full
+        action:
+          (!existingScript || !accountCodeMatches) && (resolvedPlan.action === "noop" || resolvedPlan.action === "hot_apply_graphs")
+            ? (existingScript || existingDbState ? "update" : "create")
+            : resolvedPlan.action,
         noChanges: appliedActions.length === 0,
         changes: appliedActions.length,
         liveWithoutRedeploy: false,
@@ -2864,9 +2939,10 @@ export function createByocProvisioner(options: {
         scriptName,
       );
 
-      if (apiClient instanceof MockCloudflareControlPlane && normalized.graphHash) {
-        apiClient.recordEnvironmentMetadata(
+      if (apiClient.recordDeployState && normalized.graphHash) {
+        await apiClient.recordDeployState(
           target.accountId,
+          token,
           scriptName,
           databaseName,
           {
@@ -2951,6 +3027,7 @@ export function createByocProvisioner(options: {
         cronTriggers: input.cronTriggers,
         workflows: input.workflows,
         graphs: input.graphs,
+        ...(input.workerBindings ? { workerBindings: input.workerBindings } : {}),
         _actionOverride: "promote",
       } as ProvisionerApplyInput);
       return {
@@ -4114,140 +4191,55 @@ const PERMISSION_META: ReadonlyArray<{
   },
 ];
 
-function synthesizeDeterministicTokenEntry(
-  rawToken: string,
-  requestedAccountId?: string,
-): RegisteredMockToken | null {
-  const trimmed = rawToken.trim();
-  if (!trimmed || trimmed.length < 8) {
-    return null;
-  }
-
-  const lower = trimmed.toLowerCase();
-  const normalizedAccountId =
-    requestedAccountId && /^[0-9a-fA-F]{32}$/.test(requestedAccountId.trim())
-      ? requestedAccountId.trim().toLowerCase()
-      : "abcdef0123456789abcdef0123456789";
-
-  if (
-    lower.startsWith("cf_invalid") ||
-    lower.startsWith("cf_bad") ||
-    lower.includes("invalid_token")
-  ) {
-    return null;
-  }
-
-  if (
-    lower.startsWith("cf_global_key") ||
-    lower.includes("global_api_key") ||
-    /^[0-9a-f]{37}$/i.test(trimmed)
-  ) {
-    return {
-      token: trimmed,
-      tokenId: "cf_tok_global_key",
-      accountId: normalizedAccountId,
-      accountName: "Acme Cloudflare Account",
-      subdomain: "acme-workers",
-      status: "active",
-      isGlobalApiKey: true,
-      permissions: [...REQUIRED_CLOUDFLARE_PERMISSIONS],
-    };
-  }
-
-  if (lower.startsWith("cf_expired") || lower.includes("expired_token")) {
-    return {
-      token: trimmed,
-      tokenId: "cf_tok_expired",
-      accountId: normalizedAccountId,
-      accountName: "Acme Cloudflare Account",
-      subdomain: "acme-workers",
-      status: "expired",
-      permissions: [...REQUIRED_CLOUDFLARE_PERMISSIONS],
-    };
-  }
-
-  if (
-    lower.startsWith("cf_revoked") ||
-    lower.startsWith("cf_disabled") ||
-    lower.includes("revoked_token")
-  ) {
-    return {
-      token: trimmed,
-      tokenId: "cf_tok_disabled",
-      accountId: normalizedAccountId,
-      accountName: "Acme Cloudflare Account",
-      subdomain: "acme-workers",
-      status: "disabled",
-      permissions: [...REQUIRED_CLOUDFLARE_PERMISSIONS],
-    };
-  }
-
-  const grantedScopes = new Set<CloudflarePermissionScope>(
-    REQUIRED_CLOUDFLARE_PERMISSIONS,
-  );
-  if (lower.includes("missing_workers") || lower.includes("no_workers")) {
-    grantedScopes.delete("Workers Scripts: Edit");
-  }
-  if (lower.includes("missing_d1") || lower.includes("no_d1")) {
-    grantedScopes.delete("D1: Edit");
-  }
-  if (lower.includes("missing_queues") || lower.includes("no_queues")) {
-    grantedScopes.delete("Queues: Edit");
-  }
-  if (lower.includes("missing_account") || lower.includes("no_account")) {
-    grantedScopes.delete("Account Settings: Read");
-  }
-
-  if (lower.includes("multi_account")) {
-    const accounts: CloudflareAccountSummary[] = [
-      {
-        id: "abcdef0123456789abcdef0123456789",
-        name: "Acme Production Cloudflare",
-        subdomain: "acme-prod",
-      },
-      {
-        id: "fedcba9876543210fedcba9876543210",
-        name: "Acme Sandbox Cloudflare",
-        subdomain: "acme-sandbox",
-      },
-    ];
-    const chosen =
-      accounts.find((a) => a.id === normalizedAccountId) ?? accounts[0]!;
-    return {
-      token: trimmed,
-      tokenId: "cf_tok_multi",
-      accountId: chosen.id,
-      accountName: chosen.name,
-      accounts,
-      subdomain: chosen.subdomain ?? "acme-workers",
-      status: "active",
-      permissions: [...grantedScopes],
-    };
-  }
-
+/**
+ * The report for a token Studio already knows is not usable (revoked in Studio, or refused by Cloudflare), made without
+ * sending anything anywhere.
+ */
+export function inactiveTokenReport(
+  status: "disabled" | "expired" | "invalid",
+  summaryMessage = "Token is invalid or expired — Reconnect",
+): CloudflareTokenVerificationReport {
+  const remediationUrl = CLOUDFLARE_SCOPED_TOKEN_TEMPLATE_URL;
+  const permissions: CloudflarePermissionReportItem[] = PERMISSION_META.map((meta) => ({
+    id: meta.id,
+    label: meta.label,
+    required: true,
+    granted: false,
+    remediationUrl,
+    plainError: summaryMessage,
+  }));
   return {
-    token: trimmed,
-    tokenId: "cf_tok_verified",
-    accountId: normalizedAccountId,
-    accountName: "Acme Cloudflare Account",
-    accounts: [
-      {
-        id: normalizedAccountId,
-        name: "Acme Cloudflare Account",
-        subdomain: "acme-workers",
-      },
-    ],
-    subdomain: "acme-workers",
-    status: "active",
-    permissions: [...grantedScopes],
+    ok: false,
+    status,
+    isGlobalApiKey: false,
+    permissions,
+    missingPermissionIds: permissions.map((p) => p.id),
+    missingPermissionLabels: permissions.map((p) => p.label),
+    remediationUrl,
+    summaryMessage,
   };
 }
 
+/**
+ * Verifies a deploy token. With the HTTP client (createHttpCloudflareApiClient) this asks Cloudflare: GET
+ * /accounts/{id}/tokens/verify, then the token's permission groups, or a harmless read per capability when the token may not
+ * read its own policies. With the fake (MockCloudflareControlPlane) it answers from the fake's registry, or, for a fake with no
+ * registered token, from the token's spelling (tests only). A client is required: there is no verification without one.
+ */
 export async function verifyCloudflareToken(
   token: string,
   requestedAccountId?: string,
-  apiClient?: CloudflareApiClient,
+  clientOrOptions?: CloudflareApiClient | { client?: CloudflareApiClient },
 ): Promise<CloudflareTokenVerificationReport> {
+  const apiClient: CloudflareApiClient | undefined =
+    clientOrOptions && "verifyTokenAndPermissions" in clientOrOptions
+      ? clientOrOptions
+      : (clientOrOptions as { client?: CloudflareApiClient } | undefined)?.client;
+  if (!apiClient) {
+    throw new Error(
+      "verifyCloudflareToken needs a Cloudflare client: the HTTP client in production, the fake in tests. A token is never judged by its spelling outside the fake.",
+    );
+  }
   const trimmedToken = token.trim();
   const remediationUrl = CLOUDFLARE_SCOPED_TOKEN_TEMPLATE_URL;
 
@@ -4274,9 +4266,14 @@ export async function verifyCloudflareToken(
       resolvedEntry?.accountId ??
       "00000000000000000000000000000000";
     await apiClient.verifyTokenAndPermissions(targetAcct, trimmedToken);
-  } else if (apiClient) {
-    const targetAcct =
-      normalizedRequestedAccount ?? "abcdef0123456789abcdef0123456789";
+  } else {
+    if (!normalizedRequestedAccount) {
+      return inactiveTokenReport(
+        "invalid",
+        "A Cloudflare account id is required: the token is verified against that account.",
+      );
+    }
+    const targetAcct = normalizedRequestedAccount;
     const check = await apiClient.verifyTokenAndPermissions(
       targetAcct,
       trimmedToken,
@@ -4292,13 +4289,17 @@ export async function verifyCloudflareToken(
           granted,
           remediationUrl,
           ...(granted
-            ? {}
+            ? {
+                ...(permState?.confirmed !== undefined ? { confirmed: permState.confirmed } : {}),
+                ...(permState?.confirmed === false && permState.message ? { note: permState.message } : {}),
+              }
             : {
                 plainError: permState?.message ?? meta.missingDiagnostic,
               }),
         };
       },
     );
+    const unconfirmedLabels = permissions.filter((p) => p.granted && p.confirmed === false).map((p) => p.label);
     const missingPermissionIds = permissions
       .filter((p) => !p.granted)
       .map((p) => p.id);
@@ -4306,6 +4307,7 @@ export async function verifyCloudflareToken(
       .filter((p) => !p.granted)
       .map((p) => p.label);
     return {
+      ...(check.verifiedBy ? { verifiedBy: check.verifiedBy } : {}),
       ok: check.valid,
       status: check.status,
       isGlobalApiKey: check.isGlobalApiKey,
@@ -4325,19 +4327,15 @@ export async function verifyCloudflareToken(
       missingPermissionLabels,
       remediationUrl,
       summaryMessage: check.valid
-        ? `Connected to ${check.account?.name ?? "Cloudflare"} (${check.account?.id ?? targetAcct}) — all 4 required permissions verified.`
+        ? unconfirmedLabels.length > 0
+          ? `Connected to ${check.account?.name ?? "Cloudflare"} (${check.account?.id ?? targetAcct}) — read access shown for all 4 permissions; ${unconfirmedLabels.join(", ")} will be confirmed by the first deploy (this token cannot read its own policies).`
+          : `Connected to ${check.account?.name ?? "Cloudflare"} (${check.account?.id ?? targetAcct}) — all 4 required permissions verified.`
         : check.isGlobalApiKey
           ? "Legacy Global API Key rejected — create a least-privilege scoped API token instead."
           : check.status !== "active"
             ? "Token is invalid or expired — Reconnect"
             : `Missing required permissions: ${missingPermissionLabels.join(", ")}`,
     };
-  } else {
-    resolvedEntry =
-      synthesizeDeterministicTokenEntry(
-        trimmedToken,
-        normalizedRequestedAccount,
-      ) ?? undefined;
   }
 
   if (!resolvedEntry) {
@@ -5090,6 +5088,10 @@ export interface ExpectedDeploymentState {
   cronTriggers?: string[];
   scriptName?: string;
   databaseName?: string;
+  /** The hash of the Worker bundle actually uploaded (real client). When given, the account's Worker is compared against it instead of codeHash. */
+  liveCodeHash?: string | null;
+  /** Version ids Studio made itself (see GetScriptOptions). */
+  trustedVersionIds?: readonly string[];
 }
 
 export interface CurrentBlueprintHashes {
@@ -5162,6 +5164,7 @@ export async function checkEnvironmentDrift(
         target.accountId,
         token,
         scriptName,
+        expectedDeployment.trustedVersionIds ? { trustedVersionIds: expectedDeployment.trustedVersionIds } : undefined,
       );
       if (expectedCodeHash) {
         if (!liveScript) {
@@ -5173,13 +5176,14 @@ export async function checkEnvironmentDrift(
           });
         } else {
           const liveScriptHash = liveScript.codeHash ?? liveScript.sha256;
+          const expectedLive = expectedDeployment.liveCodeHash ?? expectedCodeHash;
           if (
-            liveScript.sha256 !== expectedCodeHash &&
-            liveScriptHash !== expectedCodeHash
+            liveScript.sha256 !== expectedLive &&
+            liveScriptHash !== expectedLive
           ) {
             outOfBandDrift.push({
               resource: "worker",
-              expected: expectedCodeHash,
+              expected: expectedLive,
               actual: liveScript.sha256,
               message: `Worker script "${scriptName}" hash modified out-of-band in Cloudflare (expected ${expectedCodeHash.slice(0, 12)}, found ${liveScript.sha256.slice(0, 12)}).`,
             });

@@ -21,6 +21,7 @@ export function loadCredentials(env: Record<string, string | undefined> = proces
   const problems: string[] = [];
   if (token === "") problems.push("CLOUDFLARE_API_TOKEN is not set");
   else if (/[\s"']/.test(token)) problems.push("CLOUDFLARE_API_TOKEN has a space, a line break or a quote in it");
+  else if (/^[0-9a-f]{37}$/i.test(token)) problems.push("CLOUDFLARE_API_TOKEN looks like a Global API Key (37 hex characters): use a scoped API token; the key is never sent");
   if (accountId === "") problems.push("CLOUDFLARE_ACCOUNT_ID is not set");
   else if (!/^[0-9a-f]{32}$/.test(accountId)) problems.push("CLOUDFLARE_ACCOUNT_ID is not 32 hexadecimal characters");
   if (problems.length > 0) throw new CredentialsError(problems);

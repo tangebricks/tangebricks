@@ -11,7 +11,7 @@ import {
   createStudioTokenResolver,
   decryptToken,
   ensureStudioD1Schema,
-  getStudioControlPlane,
+  getStudioFakeControlPlane,
   listDeployTokenAuditLog,
   resetStudioDeployTestState,
 } from "../src/index.ts";
@@ -542,7 +542,7 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     expect(hotApplyBody.liveWithoutRedeploy).toBe(true);
 
     // Also invoke provisioner.putGraph directly to exercise the standalone putGraph entrypoint
-    const controlPlane = getStudioControlPlane(accountId);
+    const controlPlane = getStudioFakeControlPlane(accountId, TEST_ENV);
     const provisioner = createByocProvisioner({
       apiClient: controlPlane,
       resolveToken: createStudioTokenResolver(studioDb, TEST_ENV),

@@ -22,6 +22,25 @@ export interface FakeOptions {
   expiresOn?: string;
   /** Permission group names the token's own policies list. Absent or null: reading the token's policies is refused, as for most scoped tokens. */
   tokenGroups?: string[] | null;
+  /** The account name GET /accounts/{id} answers with. Null: that read is refused, as for a token without Account Settings Read. */
+  accountName?: string | null;
+  /** The token status /tokens/verify reports (default "active"). A revoked account token answers 401 to every call instead; a revoked user token reports status "revoked" at /user/tokens/verify. */
+  tokenStatus?: "active" | "disabled" | "expired" | "revoked";
+  /**
+   * "account" (default): an account-owned token, verified at /accounts/{id}/tokens/verify. "user": a user token (My Profile),
+   * which that endpoint answers with 1000 "Invalid API Token" (as the real service does) and /user/tokens/verify verifies.
+   */
+  tokenKind?: "account" | "user";
+  /** The most items a list endpoint returns per page, whatever per_page asks (to test paging). Default: what per_page asks. */
+  maxPerPage?: number;
+  /**
+   * Where the version list carries a version's annotations: "metadata" (metadata.annotations, the default), "top-level"
+   * (annotations beside metadata), or "detail-only" (not in the list; only GET .../versions/{id} has them). Which one the
+   * real service uses is not yet checked, so the client must read all three.
+   */
+  versionAnnotations?: "metadata" | "top-level" | "detail-only";
+  /** Answers GET /queues with this status (400 or 404: an account without Queues). */
+  queuesUnavailable?: 400 | 404;
   /** Simulates Cloudflare refusing a Workflow binding in an upload. */
   refuseWorkflowBindings?: boolean;
   /** Refuses every upload (any binding), as a broken account or an oversized script would. */
@@ -56,6 +75,7 @@ interface Script {
   name: string;
   code: string;
   bindings: Array<Record<string, unknown>>;
+  schedules?: string[];
   versions: Array<ScriptVersion>;
   deployments: Array<Deployment>;
   addressEnabled: boolean;
@@ -72,6 +92,9 @@ export function createFakeCloudflare(options: FakeOptions) {
   const tmpDir = mkdtempSync(join(tmpdir(), "d1-fake-"));
   const scripts = new Map<string, Script>();
   const workflows = new Map<string, { name: string; className: string; script: string }>();
+  const queues = new Map<string, { id: string; name: string; created: string }>();
+  /** The secret values set by an upload or PUT .../secrets, kept only so a test can check what a Worker received. */
+  const secretValues = new Map<string, Map<string, string>>();
   const requests: Array<{ method: string; path: string; query: string }> = [];
   const faults: Array<Fault & { used: number }> = [];
   let subdomain = options.subdomain === undefined ? "fake-subdomain" : options.subdomain;
@@ -99,6 +122,19 @@ export function createFakeCloudflare(options: FakeOptions) {
       return r.text !== undefined ? new Response(r.text, { status: r.status, headers: r.headers }) : json(r.body ?? { success: false, errors: [{ code: 1000, message: "simulated fault" }] }, r.status, r.headers);
     }
     return route(request);
+  }
+
+  /** One page of a list, as Cloudflare's paged lists answer (page / per_page, result_info). Without paging parameters: all. */
+  function paged(list: unknown[], url: URL): Response {
+    const pageParam = url.searchParams.get("page");
+    const perParam = url.searchParams.get("per_page");
+    if (pageParam === null && perParam === null && opts.maxPerPage === undefined) {
+      return json({ ...envelope(list), result_info: { page: 1, per_page: list.length, count: list.length, total_count: list.length, total_pages: 1 } });
+    }
+    const page = Math.max(1, Number(pageParam ?? 1));
+    const per = Math.max(1, Math.min(Number(perParam ?? 20), opts.maxPerPage ?? Number.MAX_SAFE_INTEGER));
+    const slice = list.slice((page - 1) * per, page * per);
+    return json({ ...envelope(slice), result_info: { page, per_page: per, count: slice.length, total_count: list.length, total_pages: Math.max(1, Math.ceil(list.length / per)) } });
   }
 
   async function route(request: Request): Promise<Response> {
@@ -139,13 +175,30 @@ export function createFakeCloudflare(options: FakeOptions) {
       return new Response("ok", { status: 200 });
     }
 
-    if (request.headers.get("authorization") !== `Bearer ${options.token}`) return failure(401, 10000, "Authentication error");
-    if (!url.pathname.startsWith(`${prefix}/`)) return failure(403, 10000, "Authentication error");
+    if (request.headers.get("authorization") !== `Bearer ${options.token}`) {
+      // the real service answers an unknown token with 1000 "Invalid API Token" on both verify endpoints
+      if (url.pathname.endsWith("/tokens/verify")) return failure(401, 1000, "Invalid API Token");
+      return failure(401, 10000, "Authentication error");
+    }
+    if (method === "GET" && url.pathname === "/client/v4/user/tokens/verify") {
+      if ((opts.tokenKind ?? "account") !== "user") return failure(401, 1000, "Invalid API Token");
+      return json(envelope({ id: "fake-user-token-id", status: opts.tokenStatus ?? "active", expires_on: options.expiresOn ?? "2026-10-28T18:29:59Z" }));
+    }
+    if (url.pathname !== prefix && !url.pathname.startsWith(`${prefix}/`)) return failure(403, 10000, "Authentication error");
     const path = url.pathname.slice(prefix.length);
 
     let m: RegExpMatchArray | null;
 
-    if (method === "GET" && path === "/tokens/verify") return json(envelope({ id: "fake-token-id", status: "active", expires_on: options.expiresOn ?? "2026-10-28T18:29:59Z" }));
+    if (method === "GET" && path === "/tokens/verify") {
+      if ((opts.tokenKind ?? "account") === "user") return failure(401, 1000, "Invalid API Token");
+      if (opts.tokenStatus === "revoked") return failure(401, 1000, "Invalid API Token");
+      return json(envelope({ id: "fake-token-id", status: opts.tokenStatus ?? "active", expires_on: options.expiresOn ?? "2026-10-28T18:29:59Z" }));
+    }
+    if (opts.tokenStatus === "revoked" || opts.tokenStatus === "disabled" || opts.tokenStatus === "expired") return failure(401, 10000, "Authentication error");
+    if (method === "GET" && path === "") {
+      if (opts.accountName === null) return failure(403, 9109, "Unauthorized to access requested resource");
+      return json(envelope({ id: options.accountId, name: opts.accountName ?? "Fake Account", settings: {} }));
+    }
     if (method === "GET" && path === "/tokens/fake-token-id") {
       // Like the real service for a token without permission to read tokens: refused. A list of group names makes it readable.
       if (options.tokenGroups === undefined || options.tokenGroups === null) return failure(403, 9109, "Unauthorized to access requested resource");
@@ -166,7 +219,7 @@ export function createFakeCloudflare(options: FakeOptions) {
       const wanted = url.searchParams.get("name");
       // the real endpoint searches; a database whose name merely contains the text is returned too, so callers must compare names exactly
       const list = [...databases.values()].filter((d) => wanted === null || d.name.includes(wanted)).map((d) => ({ uuid: d.uuid, name: d.name, created_at: d.created, version: "production" }));
-      return json({ ...envelope(list), result_info: { page: 1, per_page: 1000, count: list.length, total_count: list.length } });
+      return paged(list, url);
     }
     if ((m = path.match(/^\/d1\/database\/([^/]+)$/)) && method === "DELETE") {
       if (!databases.has(m[1]!)) return failure(404, 7404, "database not found");
@@ -232,7 +285,7 @@ export function createFakeCloudflare(options: FakeOptions) {
     }
 
     // ---- Workers
-    if (path === "/workers/scripts" && method === "GET") return json(envelope([...scripts.values()].map((s) => ({ id: s.name }))));
+    if (path === "/workers/scripts" && method === "GET") return paged([...scripts.values()].map((s) => ({ id: s.name })), url);
     if ((m = path.match(/^\/workers\/scripts\/([^/]+)$/)) && method === "PUT") {
       const name = decodeURIComponent(m[1]!);
       if (opts.refuseAllUploads) return failure(400, 10021, "simulated: every upload is refused");
@@ -273,10 +326,21 @@ export function createFakeCloudflare(options: FakeOptions) {
       const existing = scripts.get(name);
       versionCounter += 1;
       const versionId = `ver-${String(versionCounter).padStart(6, "0")}-${sha(code + JSON.stringify(bindings.map((b) => ({ ...b, text: undefined })))).slice(0, 8)}`;
-      const version: ScriptVersion = { id: versionId, number: (existing?.versions.length ?? 0) + 1, createdOn: new Date().toISOString(), code, bindings: bindings.map((b) => (b.type === "secret_text" ? { ...b, text: "[stored]" } : b)), metadata };
+      // keep_bindings (documented upload metadata): binding types of the current Worker kept when the upload does not name them.
+      const keepList = (metadata as { keep_bindings?: unknown }).keep_bindings;
+      const keepTypes = new Set(Array.isArray(keepList) ? keepList.map(String) : []);
+      const kept = (existing?.bindings ?? []).filter((b) => keepTypes.has(String(b.type)) && !names.has(String(b.name)));
+      const storedBindings = [...bindings.map((b) => (b.type === "secret_text" ? { ...b, text: "[stored]" } : b)), ...kept];
+      if (existing && keepTypes.size === 0) secretValues.delete(name);
+      for (const b of bindings) {
+        if (b.type !== "secret_text" || typeof b.text !== "string") continue;
+        if (!secretValues.has(name)) secretValues.set(name, new Map());
+        secretValues.get(name)!.set(String(b.name), b.text);
+      }
+      const version: ScriptVersion = { id: versionId, number: (existing?.versions.length ?? 0) + 1, createdOn: new Date().toISOString(), code, bindings: storedBindings, metadata };
       const script: Script = existing ?? { name, code, bindings, versions: [], deployments: [], addressEnabled: false };
       script.code = code;
-      script.bindings = bindings.map((b) => (b.type === "secret_text" ? { ...b, text: "[stored]" } : b)); // a stored secret is never read back
+      script.bindings = storedBindings; // a stored secret is never read back
       script.versions.unshift(version);
       script.deployments.unshift({
         id: `dep-${randomUUID().slice(0, 8)}`,
@@ -380,7 +444,55 @@ export function createFakeCloudflare(options: FakeOptions) {
     if ((m = path.match(/^\/workers\/scripts\/([^/]+)\/versions$/)) && method === "GET") {
       const script = scripts.get(decodeURIComponent(m[1]!));
       if (!script) return failure(404, 10007, "This Worker does not exist on your account");
-      return json(envelope({ items: script.versions.map((v) => ({ id: v.id, number: v.number, metadata: { created_on: v.createdOn, source: "api", annotations: v.metadata?.annotations ?? {}, ...(v.metadata ?? {}) } })) }));
+      const shape = opts.versionAnnotations ?? "metadata";
+      const items = script.versions.map((v) => {
+        const annotations = (v.metadata?.annotations as Record<string, unknown> | undefined) ?? {};
+        if (shape === "top-level") return { id: v.id, number: v.number, annotations, metadata: { created_on: v.createdOn, source: "api" } };
+        if (shape === "detail-only") return { id: v.id, number: v.number, metadata: { created_on: v.createdOn, source: "api" } };
+        return { id: v.id, number: v.number, metadata: { created_on: v.createdOn, source: "api", annotations, ...(v.metadata ?? {}) } };
+      });
+      const per = Math.min(Number(url.searchParams.get("per_page") ?? items.length) || items.length, opts.maxPerPage ?? Number.MAX_SAFE_INTEGER);
+      const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
+      if (!(url.searchParams.has("page") || opts.maxPerPage)) return json(envelope({ items }));
+      return json({ ...envelope({ items: items.slice((page - 1) * per, page * per) }), result_info: { page, per_page: per, count: Math.min(per, Math.max(0, items.length - (page - 1) * per)), total_count: items.length, total_pages: Math.max(1, Math.ceil(items.length / per)) } });
+    }
+    if ((m = path.match(/^\/workers\/scripts\/([^/]+)\/versions\/([^/]+)$/)) && method === "GET") {
+      const script = scripts.get(decodeURIComponent(m[1]!));
+      const v = script?.versions.find((x) => x.id === decodeURIComponent(m![2]!));
+      if (!v) return failure(404, 10007, "version not found");
+      return json(envelope({ id: v.id, number: v.number, metadata: { created_on: v.createdOn, annotations: (v.metadata?.annotations as Record<string, unknown> | undefined) ?? {} } }));
+    }
+    if ((m = path.match(/^\/workers\/scripts\/([^/]+)\/secrets$/)) && method === "PUT") {
+      const name = decodeURIComponent(m[1]!);
+      const script = scripts.get(name);
+      if (!script) return failure(404, 10007, "This Worker does not exist on your account");
+      const body = (await request.json().catch(() => null)) as { name?: unknown; text?: unknown; type?: unknown } | null;
+      if (!body || typeof body.name !== "string" || typeof body.text !== "string" || body.text === "" || body.type !== "secret_text") return failure(400, 10021, "a secret needs name, text and type secret_text");
+      const secretName = body.name;
+      script.bindings = [...script.bindings.filter((b) => b.name !== secretName), { type: "secret_text", name: secretName, text: "[stored]" }];
+      if (!secretValues.has(name)) secretValues.set(name, new Map());
+      secretValues.get(name)!.set(secretName, body.text);
+      return json(envelope({ name: secretName, type: "secret_text" }));
+    }
+    if ((m = path.match(/^\/workers\/scripts\/([^/]+)\/secrets\/([^/]+)$/)) && method === "DELETE") {
+      const name = decodeURIComponent(m[1]!);
+      const secretName = decodeURIComponent(m[2]!);
+      const script = scripts.get(name);
+      if (!script || !script.bindings.some((b) => b.type === "secret_text" && b.name === secretName)) return failure(404, 10056, "secret not found");
+      script.bindings = script.bindings.filter((b) => !(b.type === "secret_text" && b.name === secretName));
+      secretValues.get(name)?.delete(secretName);
+      return json(envelope({}));
+    }
+    if ((m = path.match(/^\/workers\/scripts\/([^/]+)\/schedules$/))) {
+      const script = scripts.get(decodeURIComponent(m[1]!));
+      if (!script) return failure(404, 10007, "This Worker does not exist on your account");
+      if (method === "GET") return json(envelope({ schedules: (script.schedules ?? []).map((cron) => ({ cron })) }));
+      if (method === "PUT") {
+        const body = (await request.json().catch(() => null)) as Array<{ cron?: unknown }> | null;
+        if (!Array.isArray(body) || body.some((s) => typeof s?.cron !== "string")) return failure(400, 10021, "schedules must be a list of {cron}");
+        script.schedules = body.map((s) => String(s.cron));
+        return json(envelope({ schedules: script.schedules.map((cron) => ({ cron })) }));
+      }
     }
     if ((m = path.match(/^\/workers\/scripts\/([^/]+)\/settings$/)) && method === "GET") {
       const script = scripts.get(decodeURIComponent(m[1]!));
@@ -401,6 +513,25 @@ export function createFakeCloudflare(options: FakeOptions) {
       }
     }
 
+    // ---- Queues (shapes from the documentation; not checked against the real service)
+    if (path === "/queues" && method === "GET") {
+      if (opts.queuesUnavailable) return failure(opts.queuesUnavailable, 11000, "Queues is not available on this account");
+      return paged([...queues.values()].map((q) => ({ queue_id: q.id, queue_name: q.name, created_on: q.created })), url);
+    }
+    if (path === "/queues" && method === "POST") {
+      const body = (await request.json().catch(() => null)) as { queue_name?: unknown } | null;
+      if (!body || typeof body.queue_name !== "string" || body.queue_name === "") return failure(400, 11000, "queue_name is required");
+      const queueName = body.queue_name;
+      if ([...queues.values()].some((q) => q.name === queueName)) return failure(409, 11009, "A queue with this name already exists");
+      const q = { id: randomUUID().replace(/-/g, ""), name: queueName, created: new Date().toISOString() };
+      queues.set(q.id, q);
+      return json(envelope({ queue_id: q.id, queue_name: q.name, created_on: q.created }));
+    }
+    if ((m = path.match(/^\/queues\/([^/]+)$/)) && method === "DELETE") {
+      if (!queues.delete(decodeURIComponent(m[1]!))) return failure(404, 11001, "queue not found");
+      return json(envelope({}));
+    }
+
     // ---- Workflows (shapes confirmed on the real service 2026-10-21: list, PUT, GET details; delete is still a guess)
     if ((m = path.match(/^\/workflows\/([^/]+)\/instances\/([^/]+)$/)) && method === "GET") {
       const details = await opts.instanceDetails?.(decodeURIComponent(m[1]!), decodeURIComponent(m[2]!));
@@ -417,7 +548,7 @@ export function createFakeCloudflare(options: FakeOptions) {
       workflows.set(name, { name, className: body.class_name, script: body.script_name });
       return json(envelope({ id: existing ? "existing-workflow-id" : "new-workflow-id", name, class_name: body.class_name, script_name: body.script_name, created_on: new Date().toISOString(), modified_on: new Date().toISOString() }));
     }
-    if (path === "/workflows" && method === "GET") return json(envelope([...workflows.values()].map((w) => ({ name: w.name, class_name: w.className, script_name: w.script }))));
+    if (path === "/workflows" && method === "GET") return paged([...workflows.values()].map((w) => ({ name: w.name, class_name: w.className, script_name: w.script })), url);
     if ((m = path.match(/^\/workflows\/([^/]+)$/)) && method === "DELETE") {
       if (!workflows.delete(decodeURIComponent(m[1]!))) return failure(404, 10007, "workflow not found");
       return json(envelope({}));
@@ -441,7 +572,7 @@ export function createFakeCloudflare(options: FakeOptions) {
     setSubdomain(next: string | null) {
       subdomain = next;
     },
-    set(next: Partial<Pick<FakeOptions, "refuseWorkflowBindings" | "refuseAllUploads" | "maxScriptBytes">>) {
+    set(next: Partial<Pick<FakeOptions, "refuseWorkflowBindings" | "refuseAllUploads" | "maxScriptBytes" | "tokenStatus" | "accountName" | "tokenKind" | "maxPerPage" | "queuesUnavailable" | "versionAnnotations">>) {
       Object.assign(opts, next);
     },
     /** Reads the fake's own state directly, so tests can judge a deploy without going through the provisioner. */
@@ -456,6 +587,24 @@ export function createFakeCloudflare(options: FakeOptions) {
         workflows: [...workflows.values()],
       };
     },
+    /** The queues in the account (kept out of state() so its shape stays what older tests compare). */
+    queues(): Array<{ id: string; name: string }> {
+      return [...queues.values()].map((q) => ({ id: q.id, name: q.name }));
+    },
+    /** A secret value a Worker holds, as set by an upload or PUT .../secrets (tests only; the API never reads one back). */
+    secretOf(script: string, secretName: string): string | undefined {
+      return secretValues.get(script)?.get(secretName);
+    },
+    /** Puts a Workflow in place with no ledger entry. */
+    seedWorkflow(name: string, script = "someone-elses-worker", className = "Other") {
+      workflows.set(name, { name, className, script });
+    },
+    /** Puts a queue in place with no ledger entry. */
+    seedQueue(name: string): string {
+      const id = randomUUID().replace(/-/g, "");
+      queues.set(id, { id, name, created: new Date().toISOString() });
+      return id;
+    },
     /** The code last uploaded for a Worker, so a test can run exactly what was deployed. */
     codeOf(name: string): string | undefined {
       return scripts.get(name)?.code;
@@ -465,6 +614,12 @@ export function createFakeCloudflare(options: FakeOptions) {
       const db = [...databases.values()].find((d) => d.name === databaseName);
       if (!db) throw new Error(`no database ${databaseName}`);
       return db.sqlite.prepare(sql).all().map((r) => ({ ...r }));
+    },
+    /** Runs one statement on a database directly, as the deployed Worker itself would (tests that stand in for the Worker). */
+    exec(databaseName: string, sql: string, params: unknown[] = []): void {
+      const db = [...databases.values()].find((d) => d.name === databaseName);
+      if (!db) throw new Error(`no database ${databaseName}`);
+      db.sqlite.prepare(sql).run(...(params as SQLInputValue[]));
     },
     /** Puts a database in place with no ledger entry, as a stopped run would leave one. */
     seedDatabase(name: string): string {

@@ -6,6 +6,9 @@ export const EXCLUDED_DATA_BROWSER_TABLES = new Set<string>([
   "int_connections",
   "_px_migrations",
   "_px_workflows",
+  // Story R53: the deploy's own bookkeeping in the project's database (applied migrations; what Studio last deployed).
+  "_projectx_migrations",
+  "_projectx_studio_state",
   "px_runs",
   "px_step_events",
   "px_steps",
