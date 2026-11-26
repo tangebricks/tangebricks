@@ -21,6 +21,7 @@
     "displayName": "Dynamic Entity CRUD",
     "category": "data",
     "summary": "Dynamic entity CRUD router compiling JSON schemas into row-level tenant-isolated REST endpoints.",
+    "keywords": ["database", "tables", "crud", "records", "schema", "rest"],
     "maturity": "production",
     "behaviourTest": "test/dynamic-entities.test.ts"
   },

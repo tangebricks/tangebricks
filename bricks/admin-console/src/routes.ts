@@ -174,6 +174,7 @@ export function createAdminRoutes(): Hono<AdminEnv> {
     }
   });
 
+  // px-stub: quarantined: impersonate/verify and impersonate/end have no workspace-role check
   // POST /admin/impersonate/verify - Verify session token
   app.post("/admin/impersonate/verify", async (c) => {
     let body: unknown;

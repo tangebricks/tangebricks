@@ -63,6 +63,7 @@ export function createPresenceRoutes(): Hono<PresenceEnv> {
     return c.json({ participant }, 200);
   });
 
+  // px-stub: quarantined: room and user lookups answer 200 for names or ids from another workspace; HTTP polling, no WebSocket push
   // GET /presence/rooms/:name
   app.get("/presence/rooms/:name", async (c) => {
     const ctx = c.get("ctx");

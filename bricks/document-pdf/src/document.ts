@@ -95,6 +95,7 @@ export function hydrateTemplate(
   return result;
 }
 
+// px-stub: one PDF page of plain text lines, no layout, pagination or HTML rendering
 /**
  * Pure edge-compatible PDF binary builder generating standard PDF-1.4 stream.
  */

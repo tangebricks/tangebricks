@@ -287,6 +287,10 @@ export function scrubMcpSecrets<T>(
 const projectName = z.string().regex(/^[a-z][a-z0-9-]{0,39}$/);
 const brickId = z.string().regex(/^[a-z][a-z0-9-]{0,39}$/);
 const maturityFilter = z.enum([...BRICK_MATURITIES, "unrated"] as const);
+/** A default brick page stays within the H9 per-page budget (400 tokens, 10 items); `total` and `note` say what else exists. */
+const BRICK_LIST_DEFAULT_LIMIT = 10;
+/** An explicit `limit` up to this returns the whole catalogue in one answer. */
+const BRICK_LIST_MAX_LIMIT = 100;
 
 const ok = (value: unknown): ToolResult => ({
   text: JSON.stringify(value),
@@ -519,10 +523,29 @@ const searchBricksInputSchema = z.object({
   category: z.enum(BRICK_CATEGORIES).optional(),
   capability: z.string().optional(),
   maturity: maturityFilter.optional(),
-  limit: z.number().int().min(1).max(10).optional(),
+  limit: z.number().int().min(1).max(BRICK_LIST_MAX_LIMIT).optional(),
   cursor: z.string().optional(),
   project: projectName.optional(),
 });
+
+/**
+ * A free-text query matches a brick when its id, name, summary, category or a capability contains the query, or when
+ * one of its `ui.keywords` is the query or starts with it ("team" finds "teams"). Each word of a multi-word query must
+ * match on its own.
+ */
+export function brickMatchesQuery(
+  brick: { haystack: string; keywords: readonly string[] },
+  query: string,
+): boolean {
+  if (brick.haystack.includes(query)) return true;
+  const words = query.split(/\s+/).filter(Boolean);
+  return (
+    words.length > 0 &&
+    words.every(
+      (w) => brick.haystack.includes(w) || brick.keywords.some((k) => k.startsWith(w)),
+    )
+  );
+}
 
 async function runSearchBricks(
   { catalog, blueprint }: ToolContext,
@@ -545,40 +568,48 @@ async function runSearchBricks(
   }
 
   const q = args.query?.trim().toLowerCase();
-  const filtered = Object.values(catalog.bricks)
-    .map(({ manifest }) => ({
+  const all = Object.values(catalog.bricks).map(({ manifest }) => {
+    const summary = manifest.ui?.summary ?? "";
+    const category = manifest.ui?.category ?? ("data" as const);
+    const displayName = manifest.ui?.displayName ?? manifest.id;
+    return {
       id: manifest.id,
-      summary: manifest.ui?.summary ?? "",
-      category: manifest.ui?.category ?? ("data" as const),
+      summary,
+      category,
       maturity: (manifest.ui?.maturity ?? "unrated") as z.infer<
         typeof maturityFilter
       >,
-      displayName: manifest.ui?.displayName ?? manifest.id,
       provides: manifest.provides,
-    }))
-    .filter((b) => {
-      if (args.maturity !== undefined) {
-        if (b.maturity !== args.maturity) return false;
-      } else if (b.maturity === "experimental") {
-        return false;
-      }
-      if (args.category !== undefined && b.category !== args.category)
-        return false;
-      if (
-        args.capability !== undefined &&
-        !b.provides.includes(args.capability)
-      )
-        return false;
-      if (q) {
-        const haystack =
-          `${b.id} ${b.displayName} ${b.summary} ${b.category} ${b.provides.join(" ")}`.toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    })
+      keywords: manifest.ui?.keywords ?? [],
+      haystack:
+        `${manifest.id} ${displayName} ${summary} ${category} ${manifest.provides.join(" ")}`.toLowerCase(),
+    };
+  });
+  // Every filter but maturity, so the bricks hidden for being experimental can be counted and named in the note.
+  const matching = all.filter((b) => {
+    if (args.category !== undefined && b.category !== args.category)
+      return false;
+    if (
+      args.capability !== undefined &&
+      !b.provides.includes(args.capability)
+    )
+      return false;
+    if (q && !brickMatchesQuery(b, q)) return false;
+    return true;
+  });
+  const filtered = matching
+    .filter((b) =>
+      args.maturity !== undefined
+        ? b.maturity === args.maturity
+        : b.maturity !== "experimental",
+    )
     .sort((a, b) => (a.id < b.id ? -1 : 1));
+  const hiddenExperimental =
+    args.maturity === undefined
+      ? matching.filter((b) => b.maturity === "experimental").length
+      : 0;
 
-  const limit = args.limit ?? 10;
+  const limit = args.limit ?? BRICK_LIST_DEFAULT_LIMIT;
   const items = filtered
     .slice(offset, offset + limit)
     .map(({ id, summary, category, maturity }) => ({
@@ -591,12 +622,29 @@ async function runSearchBricks(
     offset + limit < filtered.length
       ? encodeCursor(offset + limit, hash)
       : null;
+  const total = filtered.length;
+  const noteParts: string[] = [];
+  if (nextCursor !== null) {
+    noteParts.push(
+      `Showing ${offset + 1}-${offset + items.length} of ${total}: pass nextCursor for more, or limit:${BRICK_LIST_MAX_LIMIT} for all.`,
+    );
+  }
+  if (hiddenExperimental > 0) {
+    noteParts.push(
+      `${hiddenExperimental} more experimental bricks: pass maturity:'experimental'.`,
+    );
+  }
+  const page = {
+    items,
+    total,
+    nextCursor,
+    ...(noteParts.length > 0 ? { note: noteParts.join(" ") } : {}),
+  };
 
-  if (args.project === undefined) return ok({ items, nextCursor });
+  if (args.project === undefined) return ok(page);
   const stored = await blueprint.getProject(args.project);
   return ok({
-    items,
-    nextCursor,
+    ...page,
     project: stored
       ? {
           revision: stored.revision,
@@ -610,7 +658,7 @@ async function runSearchBricks(
 
 const searchBricks: Tool = {
   name: "search_bricks",
-  description: "List the bricks you can enable, paged.",
+  description: "List the bricks you can enable, 10 a page with total and a note on what else exists; limit:100 returns the complete list in one answer. Filters: query, capability, category, maturity (experimental is hidden unless asked).",
   input: searchBricksInputSchema,
   readOnly: true,
   annotations: {
@@ -623,7 +671,7 @@ const searchBricks: Tool = {
 
 const listBricks: Tool = {
   name: "list_bricks",
-  description: "List the bricks you can enable, paged.",
+  description: "List the bricks you can enable, 10 a page with total and a note on what else exists; limit:100 returns the complete list in one answer. Filters: query, capability, category, maturity (experimental is hidden unless asked).",
   input: searchBricksInputSchema,
   readOnly: true,
   annotations: {

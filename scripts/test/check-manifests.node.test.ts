@@ -72,7 +72,7 @@ function createFakeBricksWorkspace(spec: FakeBrickSpec): string {
     ui: {
       displayName: "Fake Brick",
       category: "data",
-      summary: "Fake brick summary.",
+      summary: "Example brick summary.",
       maturity: "production",
       behaviourTest: "test/fake.test.ts",
     },

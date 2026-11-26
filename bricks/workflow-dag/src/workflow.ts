@@ -51,6 +51,7 @@ export class WorkflowService {
     customExecutors?: ReadonlyMap<string, Executor>
   ) {
     this.registry = customRegistry || toyRegistry;
+    // px-stub: quarantined: runs in-process with the SDK toy executors, not durable Cloudflare Workflows
     this.executors = customExecutors || toyExecutors;
   }
 

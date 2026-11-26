@@ -248,6 +248,7 @@ export class MarketplaceSplitsService {
     };
   }
 
+  // px-stub: quarantined: the balance check and the paid_out updates are not atomic, so two payouts can spend one balance
   /**
    * Requests a payout from available balance to vendor's configured external destination.
    */

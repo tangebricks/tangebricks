@@ -41,7 +41,7 @@
     "summary": "OAuth 2.0 server with PKCE and scoped access tokens.",
     "maturity": "experimental",
     "behaviourTest": "test/oauth.test.ts",
-    "maturityReason": "QUARANTINED: stub; issues access tokens that no brick or route accepts, and its authorize route issued codes for any user named in the body until 0.6 (threat-model risk 13)"
+    "maturityReason": "QUARANTINED: stub; issues access tokens that no other brick accepts (only its own introspect route reads them); its authorize route issued codes for any user named in the body until 0.6 (risk 13)"
   },
   "worker": {
     "package": "@poc/oauth-server",

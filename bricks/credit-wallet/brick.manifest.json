@@ -106,6 +106,7 @@
     "displayName": "Ledger & Credit Wallet",
     "category": "billing",
     "summary": "Atomic double-entry credit ledger, balance invariant engine, and idempotency keys.",
+    "keywords": ["credits", "billing", "balance", "ledger", "payments", "topup"],
     "maturity": "beta",
     "maturityReason": "NO_DEFAULT_ADAPTER: Provider adapters exist (@poc/gateway-adapters) but none is wired by default; payment routes answer 503 NOT_CONFIGURED until a host passes a gateway and a currency.",
     "behaviourTest": "test/credit-wallet.test.ts"

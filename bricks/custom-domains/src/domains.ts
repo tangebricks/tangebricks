@@ -247,6 +247,7 @@ export class CustomDomainService {
       sslActive = res.matches;
       sslError = res.error || null;
     } else {
+      // px-stub: reports DNS verified and SSL active with no DNS or Cloudflare Custom Hostnames call
       // By default in edge runtime, assume DNS is verified
       dnsVerified = true;
       sslActive = true;

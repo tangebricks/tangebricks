@@ -138,6 +138,7 @@ export class CheckoutService {
       paymentSessionId = created.paymentSessionId;
       providerRef = created.providerRef;
     }
+    // px-stub: without a payment gateway the checkout URL is a synthetic placeholder; no provider is called
     const checkoutUrl = paymentGateway ? "" : `https://checkout.projectx.dev/${gateway}/${sessionId}`;
 
     try {
