@@ -46,8 +46,8 @@ describe("Live Chat Core Service", () => {
     expect(conv.priority).toBe("urgent");
     expect(conv.last_message_preview).toBe("I cannot login to my account");
     expect(conv.messages).toHaveLength(1);
-    expect(conv.messages[0].sender_type).toBe("customer");
-    expect(conv.messages[0].body).toBe("I cannot login to my account");
+    expect(conv.messages[0]?.sender_type).toBe("customer");
+    expect(conv.messages[0]?.body).toBe("I cannot login to my account");
 
     // Agent assigns themselves
     const assigned = await service.assignAgent(WS_ALPHA, conv.id, "agent_terminator");
@@ -115,9 +115,9 @@ describe("Live Chat Core Service", () => {
 
     const list = await service.listCannedReplies(WS_ALPHA);
     expect(list).toHaveLength(2);
-    expect(list[0].shortcut).toBe("bye");
-    expect(list[1].shortcut).toBe("hello");
-    expect(list[1].content).toBe("Hello! Welcome to Support. What can I do for you?");
+    expect(list[0]?.shortcut).toBe("bye");
+    expect(list[1]?.shortcut).toBe("hello");
+    expect(list[1]?.content).toBe("Hello! Welcome to Support. What can I do for you?");
   });
 
   it("enforces strict multi-tenant workspace isolation", async () => {

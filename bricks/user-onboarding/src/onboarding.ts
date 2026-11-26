@@ -77,7 +77,11 @@ interface RawProgressRow {
 }
 
 export class UserOnboardingService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   private mapFlow(row: RawFlowRow): OnboardingFlow {
     return {

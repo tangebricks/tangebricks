@@ -39,10 +39,13 @@ interface RawSessionRow {
 }
 
 export class RealtimePresenceService {
-  constructor(
-    private readonly db: D1Like,
-    private readonly defaultTtlSeconds = 30
-  ) {}
+  private readonly db: D1Like;
+  private readonly defaultTtlSeconds: number;
+
+  constructor(db: D1Like, defaultTtlSeconds = 30) {
+    this.db = db;
+    this.defaultTtlSeconds = defaultTtlSeconds;
+  }
 
   /**
    * Retrieves or creates a presence room.

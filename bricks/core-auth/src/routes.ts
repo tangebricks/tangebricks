@@ -2,8 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { createHttpGuard } from "@poc/sdk";
 import { createBetterAuth, normalizeAuthHeaders } from "./auth.ts";
-import type { AuthEnv } from "./auth.ts";
-import { requireAuth } from "./middleware.ts";
+import { requireAuth, type AuthAppEnv } from "./middleware.ts";
 
 export interface AuthRoutesOptions {
   sessionDuration?: number;
@@ -28,9 +27,9 @@ function copyAuthHeaders(from: Headers, to: (name: string, value: string) => voi
   if (setAuthToken) to("set-auth-token", setAuthToken);
 }
 
-export function createAuthRoutes(options: AuthRoutesOptions = {}): Hono<{ Bindings: AuthEnv }> {
+export function createAuthRoutes(options: AuthRoutesOptions = {}): Hono<AuthAppEnv> {
   const sessionDuration = options.sessionDuration ?? 86400;
-  const router = new Hono<{ Bindings: AuthEnv }>();
+  const router = new Hono<AuthAppEnv>();
 
   // CSRF (Origin check on cookie-authenticated writes) and the CORS allow-list (PX_ALLOWED_ORIGINS) for the auth
   // routes. The assembled entry mounts the same guard on all of /api.

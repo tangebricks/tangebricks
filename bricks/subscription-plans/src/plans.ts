@@ -32,11 +32,15 @@ export class PlanService {
    * `credits` (story 1.20): the plan credit settings and credit-wallet's charger. With them, reading or creating a
    * subscription grants the current period's plan credits once (see credits.ts); without them nothing is granted.
    */
-  constructor(
-    private readonly db: D1Like,
-    private readonly defaultTier = "free",
-    private readonly credits: PlanCreditsConfig = {},
-  ) {}
+  private readonly db: D1Like;
+  private readonly defaultTier: string;
+  private readonly credits: PlanCreditsConfig;
+
+  constructor(db: D1Like, defaultTier = "free", credits: PlanCreditsConfig = {}) {
+    this.db = db;
+    this.defaultTier = defaultTier;
+    this.credits = credits;
+  }
 
   /** Story 1.20: clears the sweep's marker when plan credits are on (with them off nothing reads or writes it). */
   private resetCreditsMarker(): { credits_granted_period?: null } {

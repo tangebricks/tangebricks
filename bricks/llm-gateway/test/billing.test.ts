@@ -21,11 +21,14 @@ const USER = "usr_alice";
 class FakeProvider implements LlmProviderAdapter {
   calls: Array<{ prompt: string; model: string; options: { temperature?: number; maxTokens?: number } | undefined }> = [];
   gate: Promise<void> | undefined;
-  constructor(
-    public readonly name = "fake",
-    public tokens = { promptTokens: 150, completionTokens: 50 },
-    public failWith?: string,
-  ) {}
+  readonly name: string;
+  tokens: { promptTokens: number; completionTokens: number };
+  failWith: string | undefined;
+  constructor(name = "fake", tokens = { promptTokens: 150, completionTokens: 50 }, failWith?: string) {
+    this.name = name;
+    this.tokens = tokens;
+    this.failWith = failWith;
+  }
   async generate(prompt: string, model: string, options?: { temperature?: number; maxTokens?: number }) {
     this.calls.push({ prompt, model, options });
     if (this.gate) await this.gate;

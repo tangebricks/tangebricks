@@ -44,7 +44,7 @@ function makeApp(options: AssetRouteOptions = {}) {
 function upload(
   app: Hono<AssetEnv>,
   bucket: MemoryR2,
-  body: BodyInit,
+  body: NonNullable<RequestInit["body"]>,
   headers: Record<string, string> = { "Content-Type": "application/octet-stream" },
   query = "filename=f.bin",
   database: D1Like = db

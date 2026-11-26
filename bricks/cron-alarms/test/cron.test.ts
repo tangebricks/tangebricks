@@ -6,12 +6,16 @@ import { assemble } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import shellWorker from "../../../out/max-compatible/src/index.ts";
+import { emittedEntry, type EmittedWorker } from "../../../test/support/emitted-worker.ts";
 import migration from "../migrations/0001_cron_alarms.sql?raw";
 import { createScheduleRoutes, CronService, runScheduledCronAlarms, validateCron, computeNextRun } from "../src/index.ts";
 import type { CronEnv } from "../src/routes.ts";
 
 const db = env.DB as D1Like;
+const shellWorker = emittedEntry<EmittedWorker>(
+  import.meta.glob("../../../out/max-compatible/src/index.ts", { eager: true }),
+  "max-compatible",
+);
 const WS_A = "ws_cron_alpha";
 const WS_B = "ws_cron_beta";
 
@@ -74,8 +78,8 @@ describe("Cron Service & Distributed Alarms Engine", () => {
     // Trigger due schedules
     const triggered = await service.triggerDueSchedules(new Date());
     expect(triggered).toHaveLength(1);
-    expect(triggered[0].schedule_id).toBe(created.schedule.id);
-    expect(triggered[0].status).toBe("success");
+    expect(triggered[0]?.schedule_id).toBe(created.schedule.id);
+    expect(triggered[0]?.status).toBe("success");
 
     // Verify next_run_at was advanced and history logged in D1
     const updated = await service.getSchedule(WS_A, created.schedule.id);
@@ -83,7 +87,7 @@ describe("Cron Service & Distributed Alarms Engine", () => {
 
     const history = await service.getHistory(WS_A, created.schedule.id);
     expect(history).toHaveLength(1);
-    expect(history[0].response_summary).toContain("wf_sync_123");
+    expect(history[0]?.response_summary).toContain("wf_sync_123");
     expect(started).toHaveLength(1);
   });
 
@@ -98,11 +102,11 @@ describe("Cron Service & Distributed Alarms Engine", () => {
 
     const triggered = await service.triggerDueSchedules(new Date());
     expect(triggered).toHaveLength(1);
-    expect(triggered[0].status).toBe("failure");
+    expect(triggered[0]?.status).toBe("failure");
     const history = await service.getHistory(WS_A, created.schedule.id);
     expect(history).toHaveLength(1);
-    expect(history[0].status).toBe("failure");
-    expect(history[0].response_summary).toMatch(/^NOT_CONFIGURED: no workflow binding for wf_unbound/);
+    expect(history[0]?.status).toBe("failure");
+    expect(history[0]?.response_summary).toMatch(/^NOT_CONFIGURED: no workflow binding for wf_unbound/);
   });
 
   it("ignores inactive schedules during trigger sweeps", async () => {

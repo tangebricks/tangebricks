@@ -67,10 +67,13 @@ export function isValidHostname(hostname: string): boolean {
 }
 
 export class CustomDomainService {
-  constructor(
-    private readonly db: D1Like,
-    private readonly defaultTargetCname: string = "cname.platform.app"
-  ) {}
+  private readonly db: D1Like;
+  private readonly defaultTargetCname: string;
+
+  constructor(db: D1Like, defaultTargetCname: string = "cname.platform.app") {
+    this.db = db;
+    this.defaultTargetCname = defaultTargetCname;
+  }
 
   private mapRow(row: RawDomainRow): CustomDomainWithInstructions {
     const instructions: DnsInstruction[] = [];

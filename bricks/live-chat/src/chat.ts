@@ -88,7 +88,11 @@ interface RawMsgRow {
 }
 
 export class LiveChatService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   private parseMessage(row: RawMsgRow): ChatMessage {
     let attachments: ChatAttachment[] = [];

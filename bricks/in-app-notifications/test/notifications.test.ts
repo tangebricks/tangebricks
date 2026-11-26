@@ -61,7 +61,7 @@ describe("In-App Notification Service Core Logic", () => {
     // List unread notifications
     const unread = await service.list(USER_ALICE, { unreadOnly: true });
     expect(unread).toHaveLength(2);
-    expect(unread[0].title).toBe("Security Alert"); // Most recent first
+    expect(unread[0]?.title).toBe("Security Alert"); // Most recent first
   });
 
   it("marks individual notification as read and reflects in badge count", async () => {
@@ -105,7 +105,7 @@ describe("In-App Notification Service Core Logic", () => {
     // Bob cannot list Alice's notifications
     const bobsList = await service.list(USER_BOB);
     expect(bobsList).toHaveLength(1);
-    expect(bobsList[0].title).toBe("Bob Secret");
+    expect(bobsList[0]?.title).toBe("Bob Secret");
 
     // Bob cannot mark Alice's notification as read
     const hackRead = await service.markAsRead(nAlice.id, USER_BOB);

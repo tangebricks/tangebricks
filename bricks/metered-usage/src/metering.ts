@@ -37,7 +37,11 @@ export function getCurrentWindow(date: Date = new Date()): string {
 }
 
 export class MeteringService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Registers a meter definition (e.g., api_calls, compute_ms, storage_gb).

@@ -83,7 +83,7 @@ export function parseCsv(text: string): string[][] {
       currentRow.push(currentField);
       currentField = "";
 
-      if (currentRow.length > 1 || (currentRow.length === 1 && currentRow[0].trim() !== "")) {
+      if (currentRow.length > 1 || (currentRow.length === 1 && (currentRow[0] ?? "").trim() !== "")) {
         rows.push(currentRow);
       }
       currentRow = [];
@@ -102,7 +102,7 @@ export function parseCsv(text: string): string[][] {
 
   if (currentField !== "" || currentRow.length > 0) {
     currentRow.push(currentField);
-    if (currentRow.length > 1 || (currentRow.length === 1 && currentRow[0].trim() !== "")) {
+    if (currentRow.length > 1 || (currentRow.length === 1 && (currentRow[0] ?? "").trim() !== "")) {
       rows.push(currentRow);
     }
   }
@@ -119,7 +119,11 @@ export class ImportJobNotFoundError extends Error {
 }
 
 export class TabularService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Automatically infers column headers and sample previews from CSV text.
@@ -128,8 +132,9 @@ export class TabularService {
     const rows = parseCsv(csvText);
     if (rows.length === 0) return { headers: [], previewRows: [] };
 
-    const headers = rows[0].map((h) => h.trim());
-    const dataRows = rows.slice(1);
+    // rows is not empty (checked above), so the default is never used.
+    const [headerRow = [], ...dataRows] = rows;
+    const headers = headerRow.map((h) => h.trim());
     const preview = dataRows.slice(0, 5).map((r) => {
       const obj: Record<string, string> = {};
       headers.forEach((h, idx) => {
@@ -203,7 +208,9 @@ export class TabularService {
       throw new Error("CSV contains no rows");
     }
 
-    const headers = parsed[0].map((h) => h.trim());
+    // parsed is not empty (checked above), so the default is never used.
+    const [headerRow = []] = parsed;
+    const headers = headerRow.map((h) => h.trim());
     const headerIndices = new Map<string, number>();
     headers.forEach((h, idx) => headerIndices.set(h, idx));
 

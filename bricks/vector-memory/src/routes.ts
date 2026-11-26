@@ -14,7 +14,7 @@ const UpsertChunksSchema = z.object({
     z.object({
       text: z.string().min(1).max(8192),
       embedding: z.array(z.number()),
-      metadata: z.record(z.unknown()).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     })
   ).min(1),
 });

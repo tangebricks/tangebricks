@@ -13,7 +13,7 @@ const UpdateProfileSchema = z.object({
 });
 
 const UpdatePreferencesSchema = z.object({
-  preferences: z.record(z.unknown()),
+  preferences: z.record(z.string(), z.unknown()),
 });
 
 export function createProfileRoutes(): Hono<ProfileEnv> {

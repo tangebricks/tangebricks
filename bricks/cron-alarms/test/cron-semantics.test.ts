@@ -59,7 +59,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
 
     const history = await service.getHistory(WS, created.schedule.id);
     expect(history).toHaveLength(1);
-    expect(history[0].status).toBe("success");
+    expect(history[0]?.status).toBe("success");
     expect(createFn).toHaveBeenCalledTimes(1);
     expect(createFn).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -149,7 +149,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
 
     const skipHistory = await serviceSkip.getHistory(WS, schedSkip.schedule.id);
     expect(skipHistory).toHaveLength(1);
-    expect(skipHistory[0].status).toBe("missed");
+    expect(skipHistory[0]?.status).toBe("missed");
     const updatedSkip = await serviceSkip.getSchedule(WS, schedSkip.schedule.id);
     expect(new Date(updatedSkip!.next_run_at).getTime()).toBeGreaterThan(Date.now());
   });
@@ -202,13 +202,13 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
 
     const triggered = await service.triggerDueSchedules(new Date());
     expect(triggered).toHaveLength(1);
-    expect(triggered[0].status).toBe("failure");
-    expect(triggered[0].response_summary).toContain("Workflow queue saturated: 503");
+    expect(triggered[0]?.status).toBe("failure");
+    expect(triggered[0]?.response_summary).toContain("Workflow queue saturated: 503");
 
     const history = await service.getHistory(WS, created.schedule.id);
     expect(history).toHaveLength(1);
-    expect(history[0].status).toBe("failure");
-    expect(history[0].response_summary).toContain("Workflow queue saturated: 503");
+    expect(history[0]?.status).toBe("failure");
+    expect(history[0]?.response_summary).toContain("Workflow queue saturated: 503");
   });
 
   it("story 0.21 CATCHUP_CAP: catchUp 'all' with 50 missed slots and a stored max_catch_up of 100 fires at most 10 runs per tick", async () => {

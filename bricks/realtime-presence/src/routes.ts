@@ -14,7 +14,7 @@ const HeartbeatSchema = z.object({
     page: z.number().optional(),
     target: z.string().optional(),
   }).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export function createPresenceRoutes(): Hono<PresenceEnv> {

@@ -131,7 +131,7 @@ describe("Admin Console Service Core", () => {
     // 6. Auditor can list sessions
     const logs = await service.listImpersonationSessions("usr_auditor", { workspaceId: WS_ALPHA });
     expect(logs).toHaveLength(1);
-    expect(logs[0].impersonated_user_id).toBe("usr_customer_42");
+    expect(logs[0]?.impersonated_user_id).toBe("usr_customer_42");
   });
 });
 

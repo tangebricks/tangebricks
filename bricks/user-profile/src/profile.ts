@@ -54,10 +54,13 @@ export interface UserProfileDefaults {
 }
 
 export class UserProfileService {
-  constructor(
-    private readonly db: D1Like,
-    private readonly defaults: UserProfileDefaults = {}
-  ) {}
+  private readonly db: D1Like;
+  private readonly defaults: UserProfileDefaults;
+
+  constructor(db: D1Like, defaults: UserProfileDefaults = {}) {
+    this.db = db;
+    this.defaults = defaults;
+  }
 
   private parseRow(row: RawProfileRow): UserProfile {
     let prefs: Record<string, unknown> = {};

@@ -35,10 +35,13 @@ export interface BlockedIncident {
 export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
 export class TrafficArmorService {
-  constructor(
-    private readonly db: D1Like,
-    private readonly customFetch: Fetcher = fetch
-  ) {}
+  private readonly db: D1Like;
+  private readonly customFetch: Fetcher;
+
+  constructor(db: D1Like, customFetch: Fetcher = fetch) {
+    this.db = db;
+    this.customFetch = customFetch;
+  }
 
   /**
    * Adds or updates an IP access rule (allow/block/challenge).

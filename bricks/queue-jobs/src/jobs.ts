@@ -48,7 +48,11 @@ interface RawJobRow {
 }
 
 export class JobQueueService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   private parseRow(row: RawJobRow): Job {
     let payload = {};

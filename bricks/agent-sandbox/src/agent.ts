@@ -69,7 +69,11 @@ interface RawInvocationRow {
 }
 
 export class AgentSandboxService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Registers a new tool in the workspace tool registry.

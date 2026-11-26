@@ -6,7 +6,7 @@ import { assemble } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import shellWorker from "../../../out/max-compatible/src/index.ts";
+import { emittedEntry, type EmittedWorker } from "../../../test/support/emitted-worker.ts";
 import migration from "../migrations/0001_queue_jobs.sql?raw";
 import {
   JobQueueService,
@@ -16,6 +16,10 @@ import type { JobEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
 const db = env.DB as D1Like;
+const shellWorker = emittedEntry<EmittedWorker>(
+  import.meta.glob("../../../out/max-compatible/src/index.ts", { eager: true }),
+  "max-compatible",
+);
 const WS_ALPHA = "ws_job_alpha";
 const WS_BETA = "ws_job_beta";
 
@@ -42,15 +46,15 @@ describe("Background Job Queue Core Logic", () => {
 
     expect(batch).toHaveLength(3);
     // Urgent first
-    expect(batch[0].task_type).toBe("fraud_alert");
-    expect(batch[0].priority).toBe(10);
-    expect(batch[0].status).toBe("running");
+    expect(batch[0]?.task_type).toBe("fraud_alert");
+    expect(batch[0]?.priority).toBe(10);
+    expect(batch[0]?.status).toBe("running");
 
     // Normal second
-    expect(batch[1].task_type).toBe("sync_hubspot");
+    expect(batch[1]?.task_type).toBe("sync_hubspot");
 
     // Low third
-    expect(batch[2].task_type).toBe("digest_email");
+    expect(batch[2]?.task_type).toBe("digest_email");
 
     // Subsequent dequeue yields empty because visibility timeout is active
     const emptyBatch = await service.dequeueBatch("default", 3);
@@ -121,8 +125,8 @@ describe("Background Job Queue Core Logic", () => {
 
     expect(alphaJobs).toHaveLength(1);
     expect(betaJobs).toHaveLength(1);
-    expect(alphaJobs[0].task_type).toBe("alpha_task");
-    expect(betaJobs[0].task_type).toBe("beta_task");
+    expect(alphaJobs[0]?.task_type).toBe("alpha_task");
+    expect(betaJobs[0]?.task_type).toBe("beta_task");
   });
 });
 

@@ -79,7 +79,7 @@ describe("Realtime Presence & State Sync Core Logic", () => {
     // Query with 30s TTL
     const presence = await service.getRoomPresence(WS_ALPHA, "canvas_board", 30);
     expect(presence.active_count).toBe(1);
-    expect(presence.participants[0].user_id).toBe("usr_active");
+    expect(presence.participants[0]?.user_id).toBe("usr_active");
   });
 
   it("handles explicit room departure", async () => {
@@ -108,9 +108,9 @@ describe("Realtime Presence & State Sync Core Logic", () => {
     const presB = await service.getRoomPresence(WS_BETA, "general");
 
     expect(presA.active_count).toBe(1);
-    expect(presA.participants[0].user_id).toBe("usr_a");
+    expect(presA.participants[0]?.user_id).toBe("usr_a");
     expect(presB.active_count).toBe(1);
-    expect(presB.participants[0].user_id).toBe("usr_b");
+    expect(presB.participants[0]?.user_id).toBe("usr_b");
   });
 });
 

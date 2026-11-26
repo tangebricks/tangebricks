@@ -8,7 +8,7 @@ const IndexDocSchema = z.object({
   entityId: z.string().min(1).max(128),
   title: z.string().min(1).max(255),
   body: z.string().min(1).max(16384),
-  facets: z.record(z.union([z.string(), z.number()])).optional(),
+  facets: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
 
 export function createSearchRoutes(): Hono<SearchEnv> {

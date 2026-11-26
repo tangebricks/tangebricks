@@ -51,7 +51,7 @@ describe("Outbound Webhook Signatures & Core Logic", () => {
 
     const list = await service.listEndpoints(WS_ALPHA);
     expect(list).toHaveLength(1);
-    expect(list[0].id).toBe(ep.id);
+    expect(list[0]?.id).toBe(ep.id);
   });
 
   it("dispatches event to matching endpoints and logs delivery details", async () => {
@@ -97,18 +97,19 @@ describe("Outbound Webhook Signatures & Core Logic", () => {
     expect(deliveries).toHaveLength(2);
     expect(recordedCalls).toHaveLength(2);
 
-    expect(deliveries[0].success).toBe(true);
-    expect(deliveries[0].status_code).toBe(200);
+    expect(deliveries[0]?.success).toBe(true);
+    expect(deliveries[0]?.status_code).toBe(200);
     // WEBHOOK_BODY: the endpoint's response body is never stored (status code is kept).
-    expect(deliveries[0].response_body).toBeNull();
-    expect(deliveries[0].attempt_number).toBe(1);
+    expect(deliveries[0]?.response_body).toBeNull();
+    expect(deliveries[0]?.attempt_number).toBe(1);
 
     // Verify headers sent
-    expect(recordedCalls[0].headers["X-ProjectX-Event"]).toBe("invoice.paid");
-    expect(recordedCalls[0].headers["X-ProjectX-Signature"]).toMatch(/^t=\d+,v1=[a-f0-9]{64}$/);
+    expect(recordedCalls[0]?.headers["X-ProjectX-Event"]).toBe("invoice.paid");
+    expect(recordedCalls[0]?.headers["X-ProjectX-Signature"]).toMatch(/^t=\d+,v1=[a-f0-9]{64}$/);
 
     // Replay delivery
-    const replay = await service.replayDelivery(deliveries[0].id, WS_ALPHA);
+    // deliveries has length 2 (asserted above), so [0] exists.
+    const replay = await service.replayDelivery(deliveries[0]!.id, WS_ALPHA);
     expect(replay).not.toBeNull();
     expect(replay?.attempt_number).toBe(2);
     expect(replay?.success).toBe(true);
@@ -124,8 +125,8 @@ describe("Outbound Webhook Signatures & Core Logic", () => {
 
     expect(epsAlpha).toHaveLength(1);
     expect(epsBeta).toHaveLength(1);
-    expect(epsAlpha[0].target_url).toBe("https://alpha.com/hook");
-    expect(epsBeta[0].target_url).toBe("https://beta.com/hook");
+    expect(epsAlpha[0]?.target_url).toBe("https://alpha.com/hook");
+    expect(epsBeta[0]?.target_url).toBe("https://beta.com/hook");
   });
 });
 
@@ -238,7 +239,8 @@ describe("Outbound Webhooks HTTP API", () => {
     expect(dispatchRes.status).toBe(200);
     const dispatchJson = (await dispatchRes.json()) as { deliveries: Array<{ id: string }> };
     expect(dispatchJson.deliveries).toHaveLength(1);
-    const delId = dispatchJson.deliveries[0].id;
+    // deliveries has length 1 (asserted on the line above), so [0] exists.
+    const delId = dispatchJson.deliveries[0]!.id;
 
     // 4. GET /subscriptions/webhooks/deliveries
     const deliveriesRes = await app.request("/api/subscriptions/webhooks/deliveries", { headers: { "x-workspace-id": WS_ALPHA } }, { DB: db });

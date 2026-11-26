@@ -48,7 +48,7 @@ describe("Audit Trail Ledger Core Logic", () => {
 
     const list = await service.list(WS_ALPHA);
     expect(list).toHaveLength(1);
-    expect(list[0].id).toBe(event.id);
+    expect(list[0]?.id).toBe(event.id);
   });
 
   it("filters audit queries by action, actor, and target", async () => {
@@ -89,7 +89,7 @@ describe("Audit Trail Ledger Core Logic", () => {
     // Filter by both
     const aliceKeys = await service.list(WS_ALPHA, { actorId: "usr_alice", action: "api_key.created" });
     expect(aliceKeys).toHaveLength(1);
-    expect(aliceKeys[0].target_id).toBe("key_1");
+    expect(aliceKeys[0]?.target_id).toBe("key_1");
   });
 
   it("exports SOC2 compliance CSV with proper quoting and headers", async () => {
@@ -134,8 +134,8 @@ describe("Audit Trail Ledger Core Logic", () => {
 
     expect(alphaEvents).toHaveLength(1);
     expect(betaEvents).toHaveLength(1);
-    expect(alphaEvents[0].target_id).toBe("v_1");
-    expect(betaEvents[0].target_id).toBe("v_2");
+    expect(alphaEvents[0]?.target_id).toBe("v_1");
+    expect(betaEvents[0]?.target_id).toBe("v_2");
   });
 });
 
@@ -169,8 +169,8 @@ describe("Audit Trail HTTP API", () => {
     expect(listRes.status).toBe(200);
     const listJson = (await listRes.json()) as { events: Array<{ ip_address: string; user_agent: string }> };
     expect(listJson.events).toHaveLength(1);
-    expect(listJson.events[0].ip_address).toBe("203.0.113.195");
-    expect(listJson.events[0].user_agent).toBe("AuditAgent/1.0");
+    expect(listJson.events[0]?.ip_address).toBe("203.0.113.195");
+    expect(listJson.events[0]?.user_agent).toBe("AuditAgent/1.0");
 
     // 3. GET /audit/export
     const exportRes = await app.request("/api/audit/export", { headers: { "x-workspace-id": WS_ALPHA } }, { DB: db });

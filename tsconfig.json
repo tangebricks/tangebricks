@@ -12,7 +12,9 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true
   },
   "include": [
     "scripts",
@@ -22,14 +24,8 @@
     "apps/studio-api/test",
     "packages/*/src",
     "packages/*/test",
-    "bricks/credit-wallet/src",
-    "bricks/credit-wallet/test",
-    "bricks/multi-workspace/src",
-    "bricks/multi-workspace/test",
-    "bricks/dynamic-entities/src",
-    "bricks/dynamic-entities/test",
-    "bricks/integration-connections/src",
-    "bricks/integration-connections/test",
+    "bricks/*/src",
+    "bricks/*/test",
     "packages/assembler/catalog.generated.ts",
     "test",
     "vitest.config.ts",

@@ -36,9 +36,9 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
 
       const winners = claims.filter((j): j is Job => j !== null);
       expect(winners).toHaveLength(1);
-      expect(winners[0].id).toBe(job.id);
-      expect(winners[0].status).toBe("running");
-      expect(winners[0].attempt_count).toBe(1);
+      expect(winners[0]?.id).toBe(job.id);
+      expect(winners[0]?.status).toBe("running");
+      expect(winners[0]?.attempt_count).toBe(1);
     }
   });
 

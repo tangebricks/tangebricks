@@ -8,8 +8,8 @@ const TrackSchema = z.object({
   anonymousId: z.string().min(1).max(128),
   eventName: z.string().min(1).max(64),
   sessionId: z.string().max(128).optional(),
-  properties: z.record(z.unknown()).optional(),
-  context: z.record(z.unknown()).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
+  context: z.record(z.string(), z.unknown()).optional(),
   timestamp: z.string().datetime().optional(),
 });
 

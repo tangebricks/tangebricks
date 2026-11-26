@@ -6,19 +6,19 @@ import { agentSandboxMiddleware, type AgentEnv } from "./middleware.ts";
 const RegisterToolSchema = z.object({
   name: z.string().min(1).max(64),
   description: z.string().min(1).max(1024),
-  parametersSchema: z.record(z.unknown()).default({}),
+  parametersSchema: z.record(z.string(), z.unknown()).default({}),
   handlerType: z.enum(["inline_js", "http_webhook", "workflow_call", "built_in"]).default("built_in"),
   handlerTarget: z.string().min(1).max(1024).default("echo"),
 });
 
 const CallToolSchema = z.object({
-  arguments: z.record(z.unknown()).default({}),
+  arguments: z.record(z.string(), z.unknown()).default({}),
   sessionId: z.string().optional(),
 });
 
 const CreateSessionSchema = z.object({
   agentName: z.string().min(1).max(64),
-  initialState: z.record(z.unknown()).optional(),
+  initialState: z.record(z.string(), z.unknown()).optional(),
 });
 
 export function createAgentSandboxRoutes(): Hono<AgentEnv> {

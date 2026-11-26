@@ -95,12 +95,12 @@ describe("Vector Memory Service Core Logic", () => {
     const results = await service.search(WS_ALPHA, index.id, [1.0, 0.0, 0.0], 2);
 
     expect(results).toHaveLength(2);
-    expect(results[0].text_content).toContain("Invoices");
-    expect(results[0].score).toBeGreaterThan(0.9);
-    expect(results[0].metadata).toEqual({ topic: "billing" });
+    expect(results[0]?.text_content).toContain("Invoices");
+    expect(results[0]?.score).toBeGreaterThan(0.9);
+    expect(results[0]?.metadata).toEqual({ topic: "billing" });
 
     // Auth should be second
-    expect(results[1].text_content).toContain("Passkeys");
+    expect(results[1]?.text_content).toContain("Passkeys");
   });
 
   it("strictly isolates vectors between workspaces", async () => {
@@ -113,7 +113,7 @@ describe("Vector Memory Service Core Logic", () => {
 
     const searchAlpha = await service.search(WS_ALPHA, idxA.id, [1, 0]);
     expect(searchAlpha).toHaveLength(1);
-    expect(searchAlpha[0].text_content).toBe("Alpha confidential");
+    expect(searchAlpha[0]?.text_content).toBe("Alpha confidential");
 
     // Beta index queried with WS_ALPHA context returns nothing
     const searchLeak = await service.search(WS_ALPHA, idxB.id, [1, 0]);
@@ -165,8 +165,8 @@ describe("Vector Memory HTTP API", () => {
     expect(searchRes.status).toBe(200);
     const searchJson = (await searchRes.json()) as { results: Array<{ text_content: string; score: number }> };
     expect(searchJson.results).toHaveLength(1);
-    expect(searchJson.results[0].text_content).toContain("SQLite at the edge");
-    expect(searchJson.results[0].score).toBeCloseTo(1.0, 4);
+    expect(searchJson.results[0]?.text_content).toContain("SQLite at the edge");
+    expect(searchJson.results[0]?.score).toBeCloseTo(1.0, 4);
   });
 
   // ID_READ_FOREIGN (story 0.7): another workspace's index id is "not found"; nothing can be written into it or read

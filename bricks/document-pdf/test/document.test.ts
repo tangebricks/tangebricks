@@ -92,8 +92,8 @@ describe("Document & PDF Engine Core Logic", () => {
     // Verify stored render audit record in D1
     const renders = await service.listRenders(WS_ALPHA);
     expect(renders).toHaveLength(1);
-    expect(renders[0].pdf_sha256).toBe(render.pdfSha256);
-    expect(renders[0].title).toBe("Service Agreement - Acme & Wayne");
+    expect(renders[0]?.pdf_sha256).toBe(render.pdfSha256);
+    expect(renders[0]?.title).toBe("Service Agreement - Acme & Wayne");
   });
 
   it("strictly isolates templates and renders between workspaces", async () => {
@@ -106,8 +106,8 @@ describe("Document & PDF Engine Core Logic", () => {
 
     expect(alphaTemplates).toHaveLength(1);
     expect(betaTemplates).toHaveLength(1);
-    expect(alphaTemplates[0].template_html).toBe("Content A");
-    expect(betaTemplates[0].template_html).toBe("Content B");
+    expect(alphaTemplates[0]?.template_html).toBe("Content A");
+    expect(betaTemplates[0]?.template_html).toBe("Content B");
   });
 });
 

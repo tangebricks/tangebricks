@@ -16,7 +16,7 @@ const IngestEventSchema = z.object({
   value: z.number().finite().nonnegative().max(MAX_METER_EVENT_VALUE).default(1.0),
   idempotencyKey: z.string().max(128).optional(),
   timestamp: z.string().datetime().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export function createMeteringRoutes(): Hono<MeterEnv> {

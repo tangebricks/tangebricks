@@ -11,7 +11,7 @@ const CreateEndpointSchema = z.object({
 
 const DispatchEventSchema = z.object({
   eventType: z.string().min(1).max(64),
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
 });
 
 export function createOutboundWebhookRoutes(): Hono<OutboundWebhookEnv> {

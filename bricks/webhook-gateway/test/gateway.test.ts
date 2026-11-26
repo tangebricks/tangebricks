@@ -87,9 +87,9 @@ describe("Webhook Ingress Gateway Core Logic", () => {
     // Check delivery logs
     const deliveries = await service.listDeliveries(WS_A, created.endpoint.id);
     expect(deliveries).toHaveLength(1);
-    expect(deliveries[0].status_code).toBe(200);
-    expect(deliveries[0].signature_verified).toBe(true);
-    expect(deliveries[0].payload_truncated).toBe(false);
+    expect(deliveries[0]?.status_code).toBe(200);
+    expect(deliveries[0]?.signature_verified).toBe(true);
+    expect(deliveries[0]?.payload_truncated).toBe(false);
   });
 
   it("rejects invalid HMAC signatures with 401 before storing anything (story 0.6: no delivery row for a rejected call)", async () => {
@@ -129,8 +129,8 @@ describe("Webhook Ingress Gateway Core Logic", () => {
 
     const deliveries = await service.listDeliveries(WS_A, created.endpoint.id);
     expect(deliveries).toHaveLength(1);
-    expect(deliveries[0].payload_truncated).toBe(true);
-    expect(deliveries[0].payload_text?.length).toBe(16384);
+    expect(deliveries[0]?.payload_truncated).toBe(true);
+    expect(deliveries[0]?.payload_text?.length).toBe(16384);
   });
 
   it("supports zero-downtime secret rotation with grace period", async () => {
@@ -349,7 +349,7 @@ describe("Webhook Routes Integration (/api/webhooks/*)", () => {
       providerEventId: "evt_stripe_001",
     });
     expect(triggeredRuns).toHaveLength(1);
-    expect(triggeredRuns[0].workflowId).toBe("wf-invoice-paid");
+    expect(triggeredRuns[0]?.workflowId).toBe("wf-invoice-paid");
     expect(emittedTelemetry).toHaveLength(1);
     expect(emittedTelemetry[0]).toEqual({
       kind: "trigger.fired",

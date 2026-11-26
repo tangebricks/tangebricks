@@ -115,7 +115,11 @@ function toRecord(row: KeyRow): ApiKeyRecord {
 }
 
 export class ApiKeyService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Generates a new API key. The rawKey is returned ONLY on creation and never stored; only its SHA-256 hash is.

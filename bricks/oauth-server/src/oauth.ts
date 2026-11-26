@@ -95,8 +95,8 @@ async function hashSecret(secret: string): Promise<string> {
  */
 function toBase64Url(bytes: Uint8Array): string {
   let bin = "";
-  for (let i = 0; i < bytes.length; i++) {
-    bin += String.fromCharCode(bytes[i]);
+  for (const byte of bytes) {
+    bin += String.fromCharCode(byte);
   }
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
@@ -111,7 +111,11 @@ export async function computeCodeChallenge(codeVerifier: string): Promise<string
 }
 
 export class OAuthServerService {
-  constructor(private readonly db: D1Like) {}
+  private readonly db: D1Like;
+
+  constructor(db: D1Like) {
+    this.db = db;
+  }
 
   /**
    * Registers a new OAuth client.

@@ -4,12 +4,19 @@ import { assemble } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import shellWorker from "../../../out/max-compatible/src/index.ts";
+import { emittedEntry, type EmittedApp } from "../../../test/support/emitted-worker.ts";
 import { computeMaxCompatible } from "../../../scripts/max-compatible.ts";
-import presenceWorker from "../../../out/privacy-presence/src/index.ts";
 import { PRIVACY_PRESENCE_BLUEPRINT } from "../../../test/support/blueprints.ts";
 
 const db = env.DB as unknown as D1Like;
+const shellWorker = emittedEntry<EmittedApp>(
+  import.meta.glob("../../../out/max-compatible/src/index.ts", { eager: true }),
+  "max-compatible",
+);
+const presenceWorker = emittedEntry<EmittedApp>(
+  import.meta.glob("../../../out/privacy-presence/src/index.ts", { eager: true }),
+  "privacy-presence",
+);
 const WS_TEST = "ws_gdpr_test";
 const OWNER_TEST = "usr_gdpr_owner";
 const USER_TEST = "usr_gdpr_target";

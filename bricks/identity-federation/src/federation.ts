@@ -90,7 +90,7 @@ export interface CreateSsoConnectionInput {
   scimToken?: string;
 }
 
-export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
+export type Fetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
 interface RawConnRow {
   id: string;
@@ -123,10 +123,13 @@ interface RawFidRow {
 }
 
 export class IdentityFederationService {
-  constructor(
-    private readonly db: D1Like,
-    private readonly customFetch: Fetcher = fetch
-  ) {}
+  private readonly db: D1Like;
+  private readonly customFetch: Fetcher;
+
+  constructor(db: D1Like, customFetch: Fetcher = fetch) {
+    this.db = db;
+    this.customFetch = customFetch;
+  }
 
   private parseConn(row: RawConnRow): SsoConnection {
     return {
@@ -217,8 +220,9 @@ export class IdentityFederationService {
    * Discovers an active SSO connection for an email domain (e.g. "acme.corp").
    */
   async getConnectionByDomain(emailOrDomain: string): Promise<SsoConnection | null> {
+    // split("@") on a string that contains "@" always yields a second element.
     const domain = emailOrDomain.includes("@")
-      ? emailOrDomain.split("@")[1].toLowerCase().trim()
+      ? (emailOrDomain.split("@")[1] ?? "").toLowerCase().trim()
       : emailOrDomain.toLowerCase().trim();
 
     const row = await global(this.db, "sso_connections", "discover SSO connection by email domain")
