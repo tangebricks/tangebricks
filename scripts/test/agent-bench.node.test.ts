@@ -19,10 +19,13 @@ import {
   FREE_PLAN_UNSUPPORTED_REASON,
   KILL_RULE_VERSION,
   RunRecordSchema,
+  GENERIC_OWNER_REPLY,
   claudeArgs,
+  claudeSessionDir,
   defaultClaudeBin,
   evaluateKillRule,
   loadBrief,
+  ownerReply,
   parseCliResult,
   privatePathRefusal,
   runAgentBench,
@@ -122,7 +125,14 @@ const pause = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 /** A fake `claude -p`: checks what it was given, then plays `script` through the official MCP client, and prints a result. */
 function fakeCli(
   script: (agent: Agent, input: ClaudeRunInput) => Promise<void>,
-  options: { result?: Record<string, unknown>; timedOut?: boolean; exitCode?: number; throwAfter?: boolean } = {},
+  options: {
+    result?: Record<string, unknown> | ((call: number) => Record<string, unknown>);
+    timedOut?: boolean;
+    exitCode?: number;
+    throwAfter?: boolean;
+    /** What the agent does on a resumed call (an owner reply); nothing by default. */
+    resumed?: (agent: Agent, input: ClaudeRunInput, call: number) => Promise<void>;
+  } = {},
 ): ClaudeRunner & { inputs: ClaudeRunInput[]; log: Agent["log"] } {
   const inputs: ClaudeRunInput[] = [];
   const log: Agent["log"] = [];
@@ -134,6 +144,7 @@ function fakeCli(
     },
     async run(input) {
       inputs.push(input);
+      const callNumber = inputs.length;
       expect(readdirSync(input.cwd)).toEqual([]);
       const config = JSON.parse(readFileSync(input.mcpConfigPath, "utf8")) as { mcpServers: Record<string, { type: string; url: string }> };
       expect(Object.keys(config.mcpServers)).toEqual(["projectx"]);
@@ -156,12 +167,13 @@ function fakeCli(
         },
       };
       try {
-        await script(agent, input);
+        if (callNumber === 1) await script(agent, input);
+        else await options.resumed?.(agent, input, callNumber);
       } finally {
         await client.close();
       }
       if (options.throwAfter) throw new Error("the fake CLI crashed");
-      const result = options.result ?? { type: "result", subtype: "success", is_error: false, num_turns: 12, total_cost_usd: 0.42, duration_ms: 1234, result: "PREVIEW: done", modelUsage: { "claude-fake-model-20261126": { inputTokens: 1, outputTokens: 1 } } };
+      const result = (typeof options.result === "function" ? options.result(callNumber) : options.result) ?? { type: "result", subtype: "success", is_error: false, num_turns: 12, total_cost_usd: 0.42, duration_ms: 1234, result: "PREVIEW: done", session_id: "sess-fake-1", modelUsage: { "claude-fake-model-20261126": { inputTokens: 1, outputTokens: 1 } } };
       return { exitCode: options.exitCode ?? 0, stdout: options.timedOut ? "" : JSON.stringify(result), stderr: "", timedOut: options.timedOut ?? false };
     },
   };
@@ -285,7 +297,12 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
 
     // the CLI ran with ProjectX as its only tool source, in an empty folder, with the budget cap
     const args = claudeArgs(cli.inputs[0]!);
-    expect(args).toEqual(expect.arrayContaining(["-p", "--strict-mcp-config", "--no-session-persistence"]));
+    expect(args).toEqual(expect.arrayContaining(["-p", "--strict-mcp-config"]));
+    expect(args).not.toContain("--no-session-persistence");
+    expect(args).not.toContain("--resume");
+    expect(cli.inputs).toHaveLength(1); // deployed in the first call: no owner reply
+    expect(record.cli.agentCalls).toBe(1);
+    expect(record.agentCalls[0]).toMatchObject({ call: 1, prompt: "brief", reply: null, resumed: false, resultText: "PREVIEW: done", numTurns: 12, maxBudgetUsd: 10 });
     expect(args[args.indexOf("--tools") + 1]).toBe("");
     expect(args[args.indexOf("--max-budget-usd") + 1]).toBe("10");
     expect(cli.inputs[0]!.prompt).toContain(FIXTURE_BRIEF.trim());
@@ -490,6 +507,77 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
     expectNothingLeft(fake, record);
   });
 
+  test("the agent stops short of a deploy: the owner replies from the answers and the same session resumes; calls, turns and cost add up", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const answers = "# Owner answers\n\n## 1. Name\n\nOffline Fixture Name\n\n## 2. Pricing\n\nFree.\n";
+    const result = (call: number) => ({ type: "result", subtype: "success", is_error: false, num_turns: call === 1 ? 5 : 9, total_cost_usd: call === 1 ? 0.5 : 0.25, duration_ms: 100, session_id: "sess-resume-1", result: call === 1 ? "I built the bricks and the entity.\nWhat name should the product use?" : "PREVIEW: done", modelUsage: { "claude-fake-model-20261126": {} } });
+    const cli = fakeCli(async (agent) => {
+      await build(agent);
+    }, {
+      result,
+      resumed: async (agent, input) => {
+        expect(input.resumeSessionId).toBe("sess-resume-1");
+        expect(input.prompt).toContain("Offline Fixture Name");
+        expect(input.prompt).toContain(GENERIC_OWNER_REPLY);
+        expect(input.prompt).not.toContain("Free.");
+        expect(input.maxBudgetUsd).toBe(9.5);
+        expect(claudeArgs(input)).toEqual(expect.arrayContaining(["--resume", "sess-resume-1"]));
+        const deployed = await deployPreview(agent);
+        expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+      },
+    });
+    const record = await runAgentBench(deps(cli, { brief: { id: "fixture", brief: FIXTURE_BRIEF, answers, briefSha256: "a".repeat(64), answersSha256: "b".repeat(64) } }));
+    expect(record.incompleteReason).toBeNull();
+    expect(record.deployed).toBe(true);
+    expect(record.cli).toMatchObject({ agentCalls: 2, numTurns: 14, costUsd: 0.75, durationMs: 200 });
+    expect(record.agentCalls.map((c) => [c.prompt, c.resumed, c.reply])).toEqual([
+      ["brief", false, null],
+      ["owner-reply", true, { source: "answers", section: "1. Name" }],
+    ]);
+    expect(record.agentCalls[0]!.resultText).toBe("I built the bricks and the entity.\nWhat name should the product use?");
+    expect(JSON.stringify(record)).not.toContain("Offline Fixture Name"); // the reply text itself is not recorded
+    expectNothingLeft(fake, record);
+  });
+
+  test("the agent-call cap: an agent that never deploys gets the generic reply until --max-agent-calls is reached", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    const cli = fakeCli(async (agent) => {
+      await buildPlain(agent, { entity: true });
+    }, { result: { type: "result", subtype: "success", is_error: false, num_turns: 1, total_cost_usd: 0.01, session_id: "sess-cap", result: "Done for now." } });
+    const record = await runAgentBench(deps(cli, { maxAgentCalls: 3 }));
+    expect(cli.inputs).toHaveLength(3);
+    expect(cli.inputs.slice(1).every((i) => i.prompt === GENERIC_OWNER_REPLY && i.resumeSessionId === "sess-cap")).toBe(true);
+    expect(record.limits.maxAgentCalls).toBe(3);
+    expect(record.cli.agentCalls).toBe(3);
+    expect(record.agentCalls[2]!.reply).toEqual({ source: "generic", section: null });
+    expect(record.deployed).toBe(false);
+    expectNothingLeft(fake, record);
+  });
+
+  test("the owner binds an unbound brick secret between calls, as a person in Studio would; the value is never recorded", { timeout: 120_000 }, async () => {
+    const { fake, deps } = world();
+    let firstNeeds = "";
+    const cli = fakeCli(async (agent) => {
+      const enabled = await agent.tool("apply_ops", { mode: "apply", ops: ["multi-workspace", "core-auth", "dynamic-entities"].map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId, config: {} })) });
+      expect(enabled.isError, JSON.stringify(enabled.body)).toBe(false);
+      firstNeeds = JSON.stringify((await agent.tool("validate_blueprint", {})).body);
+    }, {
+      resumed: async (agent) => {
+        const valid = await agent.tool("validate_blueprint", {});
+        expect(JSON.stringify(valid.body)).not.toContain("UNBOUND_BRICK_SECRET");
+      },
+    });
+    const hexes: string[] = [];
+    const record = await runAgentBench(deps(cli, { maxAgentCalls: 2, randomHex: (n: number) => { const h = randomBytes(n).toString("hex"); hexes.push(h); return h; } }));
+    expect(firstNeeds).toContain("UNBOUND_BRICK_SECRET");
+    expect(record.ownerReview.secretsBound).toContain("core-auth.BETTER_AUTH_SECRET");
+    expect(record.agentCalls[0]!.secretsBoundAfter).toEqual(record.ownerReview.secretsBound);
+    expect(record.ownerReview.count).toBeGreaterThanOrEqual(record.ownerReview.secretsBound.length);
+    const text = JSON.stringify(record);
+    for (const h of hexes.filter((x) => x.length === 64)) expect(text).not.toContain(h);
+    expectNothingLeft(fake, record);
+  });
+
   test("change a live app: the recorded app is stood up again, the agent adds the 5-credit debit and makes it live; the free-plan part is recorded unsupported", { timeout: 180_000 }, async () => {
     const first = world();
     const built = await runAgentBench(first.deps(fakeCli(async (agent) => {
@@ -592,6 +680,19 @@ describe("the CLI's JSON result, read defensively", () => {
 
   test("teardown-only with no ledger is refused as a LiveProofRefusal, as before the refactor", async () => {
     await expect(runTeardownOnly({ credentials: { token: TOKEN, accountId: ACCOUNT }, cloudflareFetch: async () => new Response("{}"), ledgerStore: memoryStore() })).rejects.toThrow(LiveProofRefusal);
+  });
+
+  test("the owner's reply: the answer whose heading a question names, then the generic line; otherwise the generic line", () => {
+    const answers = "# Owner answers\n\n## 1. Name\n\nShelf\n\n## 11. Entities\n\nbooks, with a title\n";
+    expect(ownerReply(answers, "Which entities do you want?")).toEqual({ text: `books, with a title\n\n${GENERIC_OWNER_REPLY}`, source: "answers", section: "11. Entities" });
+    // only a sentence that asks counts: naming a heading elsewhere is not a question about it
+    expect(ownerReply(answers, "I enabled the entities brick. Shall I continue?")).toMatchObject({ source: "generic" });
+    expect(ownerReply(answers, "Done. The entities are in place.")).toEqual({ text: GENERIC_OWNER_REPLY, source: "generic", section: null });
+    expect(ownerReply(undefined, "What name?")).toEqual({ text: GENERIC_OWNER_REPLY, source: "generic", section: null });
+  });
+
+  test("Claude Code keeps a folder's sessions under its own config dir, keyed by the folder path", () => {
+    expect(claudeSessionDir("/tmp/px-bench-ab12/cwd", { CLAUDE_CONFIG_DIR: "/cfg" })).toBe(join("/cfg", "projects", resolve("/tmp/px-bench-ab12/cwd").replace(/[^a-zA-Z0-9]/g, "-")));
   });
 
   test("a brief is read from its folder at run time and recorded by hash", () => {

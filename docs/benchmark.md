@@ -19,14 +19,26 @@ The harness evaluates the rule from the recorded numbers, judged as the owner de
    issues an MCP token bound to the project with the `read`, `edit` and `deploy` scopes.
 3. Serves Studio on a loopback port and runs `claude -p` in an empty temporary folder with:
    `--output-format json --mcp-config <ProjectX only> --strict-mcp-config --tools "" --allowedTools mcp__projectx
-   --permission-mode dontAsk --max-budget-usd <cap> --no-session-persistence [--model <id>]`. The prompt (on stdin) is the
-   brief and the owner's answers. The CLI uses your existing Claude Code login; `CLAUDE_CONFIG_DIR` is not changed. The
-   deploy token and Studio's root secret are removed from the CLI's environment. A 45-minute wall-time cap kills it.
+   --permission-mode dontAsk --max-budget-usd <remaining budget> [--resume <session id>] [--model <id>]`. The first
+   prompt (on stdin) is the brief and the owner's answers. The CLI uses your existing Claude Code login;
+   `CLAUDE_CONFIG_DIR` is not changed. The deploy token and Studio's root secret are removed from the CLI's environment.
+   Claude Code keeps the session under its config dir, keyed by the working folder; that folder is the run's own
+   temporary folder, and the harness deletes its sessions after the run.
+4. **Agent calls.** When a call ends without a live preview, the scripted owner does its human steps and replies, and
+   the same session continues with `--resume`, up to `--max-agent-calls` calls (default 8). The reply is the answer
+   under the `## <n>. <title>` heading of the brief's answers that a question in the agent's last message names,
+   followed by "Please continue until the app is deployed to preview; the harness instructions win where they conflict
+   with my answers."; with no such question, that line alone. The budget and the 45-minute wall cap are shared by all
+   calls: each call gets the remaining budget and time. Calls are counted apart from turns.
+5. **Secrets are the owner's step.** Between calls, for each brick secret the blueprint still needs
+   (`UNBOUND_BRICK_SECRET`), the owner binds a fresh random 32-byte value through Studio's session secrets route with a
+   bind target, as a person would. Only the names are recorded (`ownerReview.secretsBound`), never a value.
+6. While the CLI runs, a scripted owner polls Studio as the signed-in owner, through the same session routes a person
 4. While the CLI runs, a scripted owner polls Studio as the signed-in owner, through the same session routes a person
    uses. It accepts every pending proposal and approves every pending **preview** deploy approval. It rejects any other
    approval (a production deploy, a promotion), because the run is preview only, and the record lists each one it
    rejected. The approval gates are not changed. The record counts the reviews and the time each request waited.
-5. When the CLI exits (or is stopped), the harness scores the twelve checks against what exists, then tears down exactly
+7. When the agent is done (or stopped), the harness scores the twelve checks against what exists, then tears down exactly
    what the ledger lists and reads the account to confirm nothing is left. Teardown also runs when the run fails.
 
 `--task change-live-app --from-run <run id>` stands a recorded run's final blueprint up again in a fresh project, deploys
@@ -55,6 +67,7 @@ node scripts/agent-bench.ts --teardown --env-file <outside-repo>/.env --state-di
 | `--model <id or alias>` | the CLI's default |
 | `--max-budget-usd <n>` | 10 |
 | `--iteration <n>` | 1: the owner's fix iteration this run belongs to |
+| `--max-agent-calls <n>` | 8: `claude -p` calls in one run (the first, then one per owner reply) |
 | `--claude-bin <path>` | see below |
 
 `--claude-bin` is the Claude Code binary. Without it: `claude` on the PATH on macOS and Linux. On Windows a bare
@@ -78,7 +91,10 @@ Each run is added to the results file by run id, and the kill rule is evaluated 
 - `total_cost_usd`, `num_turns` and the CLI's duration, plus the harness's own wall time.
 - **Cost caveat:** `costUsd` is Claude Code's client-side estimate (`costLabel: "client-estimated"`), not provider billing.
   Compare it with the billing console before quoting it.
-- The owner's review count (proposals accepted and approvals given) and the total time requests waited for review.
+- The owner's review count (proposals accepted, approvals given, secrets bound) and the total time requests waited for review.
+- Each agent call: what prompted it (the brief, or the owner's reply and which answer it came from, never the reply
+  text), whether it resumed, the CLI's numbers, the budget it was given, and its final message, redacted and cut to
+  2000 characters. The run's totals add the calls up; `cli.agentCalls` counts them.
 - The preview address with the account's workers.dev subdomain redacted, whether preview was deployed, and the code of
   the last refused preview deploy.
 - The twelve checks, the final blueprint (so change-live-app can replay it), and the teardown result.
