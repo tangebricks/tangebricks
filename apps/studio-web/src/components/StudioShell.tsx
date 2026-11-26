@@ -22,6 +22,7 @@ import { EntitiesView } from "./EntitiesView.tsx";
 import { HistoryAndLedgerView } from "./HistoryAndLedgerView.tsx";
 import { OverviewBackendMap } from "./OverviewBackendMap.tsx";
 import { ProposalReviewBar } from "./ProposalReviewBar.tsx";
+import { PendingApprovals } from "./PendingApprovals.tsx";
 import { RightDock } from "./RightDock.tsx";
 import { WorkflowCanvasView } from "./WorkflowCanvasView.tsx";
 
@@ -739,6 +740,9 @@ export function StudioShell({
 
       {/* Draft-Branch Proposal Visual Diff Review Bar / Pending Proposals Banner (Story 7.2) */}
       <ProposalReviewBar />
+
+      {/* AD-V8: destructive actions an MCP agent asked for, waiting for an editor's approval */}
+      <PendingApprovals />
 
       {/* Action Error Alert Banner */}
       {actionError && (

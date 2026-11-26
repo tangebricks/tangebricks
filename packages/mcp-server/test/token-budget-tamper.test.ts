@@ -15,6 +15,10 @@ import {
 import { TOOLS, type Tool } from "../src/tools.ts";
 import mcpMigrationSql from "../migrations/0001_mcp_server.sql?raw";
 
+// Story 7.4: Session A's denominator, measured by the global setup (test/support/h9-emitted-source.ts).
+const H9_EMITTED_SOURCE_TOKENS = (Object.values(import.meta.glob("../../../out/h9-emitted-source.json", { eager: true, import: "default" }))[0] as { tokens: number }).tokens;
+
+
 const db = (env as unknown as { DB: D1Like }).DB;
 
 describe("Story 7.4 — CI Token Budget Enforcement & Negative Tamper Detection (AC 1, AC 2, AC 3, AC 4)", () => {
@@ -26,10 +30,11 @@ describe("Story 7.4 — CI Token Budget Enforcement & Negative Tamper Detection 
     const report = await runMcpTokenBudgetSuite({
       db,
       catalog,
+      sessionAEmittedTokens: H9_EMITTED_SOURCE_TOKENS,
     });
 
-    expect(report.ok).toBe(true);
     expect(report.violations).toEqual([]);
+    expect(report.ok).toBe(true);
     expect(report.perPageMaxTokens).toBeLessThanOrEqual(PER_PAGE_TOKEN_CEILING);
     for (const toolName of [
       "search_bricks",
@@ -98,6 +103,7 @@ describe("Story 7.4 — CI Token Budget Enforcement & Negative Tamper Detection 
     const report = await runMcpTokenBudgetSuite({
       db,
       catalog,
+      sessionAEmittedTokens: H9_EMITTED_SOURCE_TOKENS,
       tools: tamperedTools,
     });
 

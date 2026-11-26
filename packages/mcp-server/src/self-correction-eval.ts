@@ -85,8 +85,23 @@ export async function runSelfCorrectionEvalSuite(params: {
     state: BlueprintState,
     revision?: number,
   ) => Promise<void>;
+  /**
+   * AD-V8: the human reviewer. An agent's apply_ops is a proposal by default; the harness accepts each pending proposal
+   * as a Studio editor would, outside the MCP surface (it is not a tool call and does not count against the budget).
+   */
+  review: (project: string, proposalId: string) => Promise<void>;
 }): Promise<SelfCorrectionEvalReport> {
-  const { callMcp, seedProject } = params;
+  const { seedProject, review } = params;
+  const callMcp: McpCallFn = async (tool, args) => {
+    const res = await params.callMcp(tool, args);
+    if (tool === "apply_ops" && !res.isError) {
+      const answer = res.json<{ status?: string; proposalId?: string; project?: string }>();
+      if (answer.status === "pending" && answer.proposalId) {
+        await review(answer.project ?? String(args.project), answer.proposalId);
+      }
+    }
+    return res;
+  };
   const scenarios: SelfCorrectionScenarioResult[] = [];
 
   // Helper to run a tracked MCP tool call within a scenario's budget
@@ -676,6 +691,7 @@ export async function runSelfCorrectionEvalSuite(params: {
     await callMcp("apply_ops", {
       project,
       baseRev: 0,
+      mode: "apply", // AD-V8: preview-safe edits an agent may apply directly
       ops: [
         { opId: "init-s8-1", type: "enable_brick", brickId: "multi-workspace" },
         {
@@ -706,6 +722,7 @@ export async function runSelfCorrectionEvalSuite(params: {
     await callMcp("apply_ops", {
       project,
       baseRev: 1,
+      mode: "apply",
       ops: [
         {
           opId: "concurrent-s8",
@@ -723,6 +740,7 @@ export async function runSelfCorrectionEvalSuite(params: {
     const staleAttempt = await invoke("apply_ops", {
       project,
       baseRev: 1,
+      mode: "apply",
       ops: [
         {
           opId: "agent-s8-stale",
@@ -753,6 +771,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       await invoke("apply_ops", {
         project,
         baseRev: sliceRes.rev,
+        mode: "apply",
         ops: [
           {
             opId: "agent-s8-retry",

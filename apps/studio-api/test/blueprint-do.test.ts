@@ -7,6 +7,7 @@ import type { BlueprintState, Op } from "@poc/blueprint";
 import { app, computeBuildHash } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { ensureTestAuthForPath, ensureTestProjectToken } from "./project-token.ts";
+import { postOpsWithReview } from "./human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 
@@ -22,6 +23,12 @@ async function apiRequest(
     actor && projectMatch?.[1]
       ? await ensureTestProjectToken(studioEnv, projectMatch[1], { clientName: actor })
       : await ensureTestAuthForPath(studioEnv, path);
+  // AD-V8: a token's edit applies directly when preview-safe, else goes through a proposal the owner accepts.
+  const opsMatch = /^\/api\/projects\/([^/?]+)\/ops$/.exec(path);
+  if (opsMatch?.[1] && init?.body !== undefined && (init.method ?? "POST") === "POST") {
+    const reviewed = await postOpsWithReview(studioEnv, opsMatch[1], authHeaders, init.body as Record<string, unknown>);
+    return { status: reviewed.status, body: (await reviewed.json()) as Record<string, any> };
+  }
   const response = await app.fetch(
     new Request(`http://localhost${path}`, {
       method: init?.method ?? (init?.body !== undefined ? "POST" : "GET"),

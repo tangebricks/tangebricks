@@ -12,6 +12,8 @@ import {
   deleteProjectSecret,
   fetchProjectActivity,
   fetchProjectProposals,
+  fetchProjectApprovals,
+  decideProjectApproval,
   fetchProjectRevisionState,
   fetchProjectRunDetail,
   fetchProjectRuns,
@@ -28,6 +30,7 @@ import {
 } from "./api.ts";
 import type {
   ActivityFeedEventPayload,
+  ApprovalRequestRecord,
   CommitOpsError,
   PinnedNodeOutputRecord,
   RunHistoryFilterParams,
@@ -199,6 +202,9 @@ export interface DiffComparisonSelection {
   toRev: number;
 }
 
+/** Counts live proposal frames, so a proposals request that started before one cannot overwrite it. */
+let proposalFrameSeq = 0;
+
 export interface StudioState {
   user: StudioUser | null;
   orgs: StudioOrg[];
@@ -258,6 +264,8 @@ export interface StudioState {
   isLoadingRuns: boolean;
   activeReplayRun: ActiveRunReplayState | null;
   proposals: ProposalRecord[];
+  /** AD-V8: approval requests for destructive actions an MCP agent asked for (deploy, promote, rollback, revert). */
+  approvals: ApprovalRequestRecord[];
   activeProposalId: string | null;
   selectedProposalOpIds: string[];
   proposalValidationError: string | null;
@@ -267,6 +275,8 @@ export interface StudioState {
   activityWindowFilter: string;
 
   loadProjectProposals: (status?: ProposalStatus) => Promise<ProposalRecord[]>;
+  loadProjectApprovals: () => Promise<ApprovalRequestRecord[]>;
+  decideApproval: (approvalId: string, decision: "approve" | "reject") => Promise<void>;
   startProposalReview: (proposalId: string, navigateTo?: StudioNavTab) => void;
   toggleProposalOp: (opId: string) => void;
   setAllProposalOpsSelected: (selected: boolean) => void;
@@ -582,6 +592,7 @@ const BASE_STATE = {
   isLoadingRuns: false,
   activeReplayRun: null as ActiveRunReplayState | null,
   proposals: [] as ProposalRecord[],
+  approvals: [] as ApprovalRequestRecord[],
   activeProposalId: null as string | null,
   selectedProposalOpIds: [] as string[],
   proposalValidationError: null as string | null,
@@ -1738,11 +1749,43 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       liveAnnouncement: "Exited Canvas Visual Diff mode",
     }),
 
+  loadProjectApprovals: async () => {
+    const current = get();
+    const project = current.activeProjectId ?? current.projectState?.project;
+    if (!project) return [];
+    const list = await fetchProjectApprovals(project, "pending");
+    const now = get();
+    if ((now.activeProjectId ?? now.projectState?.project) === project) set({ approvals: list });
+    return list;
+  },
+
+  decideApproval: async (approvalId, decision) => {
+    const current = get();
+    const project = current.activeProjectId ?? current.projectState?.project;
+    if (!project) return;
+    const decided = await decideProjectApproval(project, approvalId, decision);
+    if (!decided.ok) {
+      set({ liveAnnouncement: `${decided.code}: ${decided.message}` });
+    } else {
+      set({
+        liveAnnouncement: `${decision === "approve" ? "Approved" : "Rejected"} the agent's ${decided.approval.action.replace(/_/g, " ")} request`,
+      });
+    }
+    await get().loadProjectApprovals();
+  },
+
   loadProjectProposals: async (status) => {
     const current = get();
     const project = current.activeProjectId ?? current.projectState?.project;
     if (!project) return [];
+    const seqAtStart = proposalFrameSeq;
     const list = await fetchProjectProposals(project, status);
+    // A slow answer for a project the user has since left must not replace the current project's proposals.
+    const now = get();
+    if ((now.activeProjectId ?? now.projectState?.project) !== project) return list;
+    // A live proposal frame arrived while this request was in flight: its answer may predate the frame, so ask again
+    // rather than drop the proposal the frame added.
+    if (proposalFrameSeq !== seqAtStart) return get().loadProjectProposals(status);
     set({ proposals: list });
 
     // Restore active proposal review if persisted in URL or sessionStorage (survives F5 reload)
@@ -2111,6 +2154,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   },
 
   applyIncomingProposalFrame: (frame) => {
+    proposalFrameSeq += 1;
     set((prev) => {
       const exists = prev.proposals.some(
         (p) => p.proposalId === frame.proposal.proposalId,

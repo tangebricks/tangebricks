@@ -4,7 +4,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { catalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import migration from "../migrations/0001_mcp_server.sql?raw";
-import { createMcpApp } from "../src/index.ts";
+import { createInMemoryBlueprintClient, createMcpApp } from "../src/index.ts";
 import { testToken, testTokenVerifier } from "./support/test-verifier.ts";
 import { createSqliteD1 } from "../../../bricks/credit-wallet/client/test/support/sqlite-d1.ts";
 
@@ -14,7 +14,9 @@ import { createSqliteD1 } from "../../../bricks/credit-wallet/client/test/suppor
 // Story 0.15: the token is bound to the one project this file builds.
 const TOKEN = testToken("interop");
 const db = createSqliteD1();
-const app = createMcpApp({ catalog, verifyToken: testTokenVerifier });
+// AD-V8: the test keeps the blueprint client so it can play the Studio reviewer who accepts the agent's proposal.
+const blueprintClient = createInMemoryBlueprintClient(catalog);
+const app = createMcpApp({ catalog, verifyToken: testTokenVerifier, blueprintClient });
 const calls: Array<{ method: string; url: string; headers: Record<string, string>; body: string }> = [];
 
 const fetchIntoApp = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
@@ -80,8 +82,19 @@ describe("the official MCP client against this server", () => {
     const { client } = await connect();
     const text = (result: Awaited<ReturnType<Client["callTool"]>>) => (result.content as Array<{ type: string; text: string }>)[0]!.text;
     expect((await client.callTool({ name: "list_bricks", arguments: {} })).isError).toBeFalsy();
-    const enabled = await client.callTool({ name: "enable_brick", arguments: { project: "interop", bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"] } });
-    expect(enabled.isError, text(enabled)).toBeFalsy();
+    // AD-V8: enable_brick refuses a money brick for an agent; the agent proposes and a person accepts in Studio.
+    const refused = await client.callTool({ name: "enable_brick", arguments: { project: "interop", bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"] } });
+    expect(refused.isError).toBe(true);
+    expect(JSON.parse(text(refused)).error.code).toBe("PROPOSAL_REQUIRED");
+    const proposed = await client.callTool({
+      name: "apply_ops",
+      arguments: { project: "interop", ops: ["multi-workspace", "credit-wallet", "dynamic-entities"].map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId })) },
+    });
+    expect(proposed.isError, text(proposed)).toBeFalsy();
+    const pending = JSON.parse(text(proposed)) as { status: string; proposalId: string };
+    expect(pending.status).toBe("pending");
+    const accepted = await blueprintClient.acceptProposal!({ project: "interop", proposalId: pending.proposalId, reviewer: { type: "human", id: "interop:reviewer" } });
+    expect(accepted.ok).toBe(true);
     const defined = await client.callTool({ name: "define_entity", arguments: { project: "interop", entities: [{ name: "invoices", fields: [{ name: "client_name", type: "text", required: true }, { name: "amount", type: "number" }] }] } });
     expect(defined.isError, text(defined)).toBeFalsy();
     const built = await client.callTool({ name: "build_project", arguments: { project: "interop" } });

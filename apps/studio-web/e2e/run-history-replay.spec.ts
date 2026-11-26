@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { e2eProjectToken } from "./project-token.ts";
+import { e2eAgentOpsWithReview, e2eProjectToken } from "./project-token.ts";
 
 test.describe("Run History drawer, filtering, historical revision replay, and Run Replay inspector (Real Workerd Backend)", () => {
   test("filters runs in the Run History drawer, replays an r1 run after a node is removed in r2, and inspects node I/O, retries, and error stack", async ({
@@ -22,6 +22,7 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
       headers: authHeaders,
       data: {
         author: { type: "human", id: "alice" },
+        mode: "apply", // AD-V8: preview-safe edits the project token may apply directly
         ops: [
           {
             opId: "op-r1-mw",
@@ -110,9 +111,8 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
     expect(runR1FailBody.failed.step_divide).toContain("division by zero");
 
     // 3. Mutate blueprint to r2 by removing `step_audit_r1`
-    const opsR2Res = await request.post(`/api/projects/${project}/ops`, {
-      headers: authHeaders,
-      data: {
+    // AD-V8: removing a node is destructive, so the agent's edit is proposed and Alice accepts it in Studio.
+    const opsR2Res = await e2eAgentOpsWithReview(project, {
         baseRevision: 1,
         author: { type: "human", id: "alice" },
         ops: [
@@ -137,9 +137,8 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
             ],
           },
         ],
-      },
-    });
-    expect(opsR2Res.ok()).toBe(true);
+      });
+    expect(opsR2Res.status).toBe(200);
 
     // 4. Open Studio UI in browser, sign in as Alice, and open Workflows canvas
     await page.goto(`/?project=${encodeURIComponent(project)}`);

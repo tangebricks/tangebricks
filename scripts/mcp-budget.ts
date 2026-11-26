@@ -15,17 +15,14 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
-import { assemble } from "../packages/assembler/src/index.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
 import {
-  H9_INVOICES_ENTITY,
   formatMcpTokenBudgetSummary,
   runMcpTokenBudgetSuite,
 } from "../packages/mcp-server/src/token-budget.ts";
 import { applyMigration } from "../packages/sdk/src/index.ts";
 import type { D1Like, D1Result, D1Statement } from "../packages/sdk/src/index.ts";
-import { INVOICE_FLOW_BLUEPRINT } from "../test/support/blueprints.ts";
-import { firstPartySource } from "../test/support/tokens.ts";
+import { measureH9EmittedSourceTokens } from "../test/support/h9-emitted-source.ts";
 
 function createSqliteD1(): D1Like {
   const sqlite = new DatabaseSync(":memory:");
@@ -91,27 +88,11 @@ async function main() {
   const db = createSqliteD1();
   await applyMigration(db, migrationSql);
 
-  const direct = assemble(
-    { ...INVOICE_FLOW_BLUEPRINT, entities: [H9_INVOICES_ENTITY] },
-    catalog,
-  );
-  if (!direct.ok) {
-    throw new Error(`Direct assembly failed: ${direct.errors.join("; ")}`);
-  }
-  const sourceCount = firstPartySource({
-    packageDirs: [
-      "bricks/multi-workspace",
-      "bricks/credit-wallet",
-      "bricks/dynamic-entities",
-    ],
-    generated: direct.files,
-    root: rootDir,
-  });
-
+  // The same measurement the workerd tests use (test/support/h9-emitted-source.ts).
   const report = await runMcpTokenBudgetSuite({
     db,
     catalog,
-    sessionAEmittedTokens: sourceCount.total,
+    sessionAEmittedTokens: measureH9EmittedSourceTokens(rootDir),
   });
 
   const outPath = resolve(getEvidenceDir(), "mcp-token-budget.json");

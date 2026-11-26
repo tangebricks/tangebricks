@@ -1,0 +1,13 @@
+# @poc/mcp-server
+
+The MCP endpoint (AD-S13): the tool surface an AI agent uses to read and change a blueprint, build it, test it and deploy it. It runs standalone (`createMcpApp`) or hosted by Studio (`/mcp` in `apps/studio-api`), where the caller is a scoped, per-project MCP token.
+
+## Proposals by default; approval for destructive actions (AD-V8, story 1.5)
+
+- **`apply_ops` proposes by default.** Without `mode`, the ops become a pending proposal (`status: "pending"`, `proposalId`, a compact proposal record and a names-only `diffSummary`); the live blueprint does not change until a person accepts the proposal in Studio. The full diff is shown to the reviewer in Studio.
+- **`mode: "apply"` is for preview-safe edits only.** It is refused with `PROPOSAL_REQUIRED` when the ops touch a money brick (`credit-wallet`, `subscription-plans`, `metered-usage`, `checkout-gateway`), are destructive (`remove_brick`, `remove_entity`, `remove_workflow`, `remove_node`), upgrade bricks (`set_metadata.catalogVersion`), or when the project has a live production deployment. The error names the reasons and the next step: propose instead. `classifyApplyRisk` is the one test.
+- **The legacy `enable_brick` and `define_entity`** apply directly, so they follow the same `mode: "apply"` rules.
+- **Destructive actions need a Studio approval.** Through Studio, `deploy_apply` (and promote, rollback, `revert_to_revision`, the `apply_ops` `revertTo` alias, sandbox deploy and promote-to-BYOC) by an MCP token answers `APPROVAL_REQUIRED` with an `approvalId`. An editor approves it in Studio (Pending approvals); the agent then retries the same call with `approvalId`. An approval is single-use and bound to what was approved: `APPROVAL_PENDING`, `APPROVAL_USED`, `APPROVAL_REJECTED`, `APPROVAL_EXPIRED` (24 h), `APPROVAL_STALE` and `APPROVAL_NOT_FOUND` are each refused with remediation.
+- **No tool can accept, approve or reject.** Accepting a proposal and approving a request are a signed-in Studio user's actions (editor+); an MCP token gets 403 `APPROVAL_SESSION_REQUIRED`.
+- **Blueprint clients.** The Durable Object client and the in-memory client both store proposals and offer `listProposals`, `getProposal`, `acceptProposal` and `rejectProposal` with the same rules (`evaluateProposalSelection`). These are for the host acting as the reviewer, never for a tool.
+- **Standalone server.** It has no reviewer surface: an agent can propose a money brick there, but only a host holding the blueprint client can accept it. A reviewer surface for the standalone MCP Worker is deferred.

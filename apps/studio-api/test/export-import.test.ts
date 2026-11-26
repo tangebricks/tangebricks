@@ -10,6 +10,7 @@ import marketplacePresetRaw from "../../../presets/marketplace.blueprint.json?ra
 import { app as studioApp, computeBuildHash } from "../src/index.ts";
 import type { ProjectStatePayload, StudioApiEnv } from "../src/index.ts";
 import { ensureTestAuthForPath } from "./project-token.ts";
+import { isApprovalGatedPath, postOpsWithReview, sendWithOwnerApproval, withApprovalId } from "./human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 const rawDo = studioEnv.BLUEPRINT_DO;
@@ -34,6 +35,13 @@ async function studioReq(
   for (const [k, v] of Object.entries(authHeaders)) {
     if (!headers.has(k)) headers.set(k, v);
   }
+  // AD-V8: an MCP token's import needs a Studio approval; the owner approves and the call is retried with its id.
+  if (isApprovalGatedPath(path) && (init.method ?? "GET") === "POST") {
+    const project = /\/api\/projects\/([^/]+)/.exec(path)![1]!;
+    return sendWithOwnerApproval(targetEnv, project, async (approvalId) =>
+      studioApp.request(path, { ...init, headers, body: withApprovalId(init.body, approvalId) as RequestInit["body"] }, targetEnv),
+    );
+  }
   return studioApp.request(path, { ...init, headers }, targetEnv);
 }
 
@@ -42,18 +50,9 @@ async function postOps(
   ops: unknown[],
   targetEnv: StudioApiEnv = studioEnv,
 ) {
-  return studioReq(
-    `/api/projects/${project}/ops`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        author: { type: "human", id: "alice" },
-        ops,
-      }),
-    },
-    targetEnv,
-  );
+  // AD-V8: the token's edit applies when preview-safe; otherwise it is proposed and the owner accepts it in Studio.
+  const { headers: authHeaders } = await ensureTestAuthForPath(targetEnv, `/api/projects/${project}/ops`);
+  return postOpsWithReview(targetEnv, project, authHeaders, { author: { type: "human", id: "alice" }, ops });
 }
 
 describe("Story 1.6 — Deterministic saas.blueprint.json export and import round-trip", () => {

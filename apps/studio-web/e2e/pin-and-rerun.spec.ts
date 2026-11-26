@@ -21,6 +21,7 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
       headers: authHeaders,
       data: {
         author: { type: "human", id: "alice" },
+        mode: "apply", // AD-V8: preview-safe edits the project token may apply directly
         ops: [
           {
             opId: "op-mw",
@@ -91,6 +92,7 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
       data: {
         baseRevision: 1,
         author: { type: "human", id: "alice" },
+        mode: "apply", // AD-V8: preview-safe edits the project token may apply directly
         ops: [
           {
             opId: "op-fix-divide",

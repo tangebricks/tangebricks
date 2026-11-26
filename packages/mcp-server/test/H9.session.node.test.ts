@@ -5,7 +5,7 @@ import { attach, record } from "@poc/harness";
 import { INVOICE_FLOW_BLUEPRINT } from "../../../test/support/blueprints.ts";
 import { TOKENIZER, countTokens, firstPartySource } from "../../../test/support/tokens.ts";
 import { projectHash } from "../src/index.ts";
-import { FULL_SESSION, INVOICES, ONE_AT_A_TIME_SESSION, SMALL_SESSION, runSession } from "./support/session.ts";
+import { FULL_SESSION, INVOICES, ONE_AT_A_TIME_SESSION, SMALL_SESSION, proposeBricks, runSession } from "./support/session.ts";
 
 // H9: an MCP session builds the project at a fraction of the source it produces.
 //
@@ -55,7 +55,7 @@ const TEN_BRICKS = [
 ];
 const tenSession = await runSession([
   { tool: "list_bricks", args: {} },
-  { tool: "enable_brick", args: { project: "ten-bricks", bricks: TEN_BRICKS } },
+  proposeBricks("ten-bricks", TEN_BRICKS),
   { tool: "define_entity", args: { project: "ten-bricks", entities: [INVOICES] } },
   { tool: "build_project", args: { project: "ten-bricks" } },
 ]);
@@ -70,13 +70,14 @@ const TABLES = ["invoices", "clients", "projects", "tasks", "receipts", "notes",
 const BRICKS = ["multi-workspace", "credit-wallet", "dynamic-entities"];
 const bigBatched = await runSession([
   { tool: "list_bricks", args: {} },
-  { tool: "enable_brick", args: { project: "big", bricks: BRICKS } },
+  proposeBricks("big", BRICKS),
   { tool: "define_entity", args: { project: "big", entities: TABLES } },
   { tool: "build_project", args: { project: "big" } },
 ]);
 const bigOneEach = await runSession([
   { tool: "list_bricks", args: {} },
-  ...BRICKS.map((b) => ({ tool: "enable_brick", args: { project: "big", bricks: [b] } })),
+  // AD-V8: the money brick is proposed and accepted by the reviewer; the others are applied directly.
+  ...BRICKS.map((b) => (b === "credit-wallet" ? proposeBricks("big", [b]) : { tool: "enable_brick", args: { project: "big", bricks: [b] } })),
   ...TABLES.map((t) => ({ tool: "define_entity", args: { project: "big", entities: [t] } })),
   { tool: "build_project", args: { project: "big" } },
 ]);
@@ -96,9 +97,10 @@ describe("the scored session: the whole invoices project", () => {
     expect(await hashFiles(full.session.stored)).toEqual(await hashFiles(full.direct.files));
   });
 
-  test("it used four tool calls: look, enable the three bricks together, declare the table, build", () => {
+  test("it used four tool calls: look, propose the three bricks together (one human review, AD-V8), declare the table, build", () => {
     expect(full.session.toolCalls).toBe(4);
-    expect(full.session.answers.map((a) => a.tool)).toEqual(["list_bricks", "enable_brick", "define_entity", "build_project"]);
+    expect(full.session.answers.map((a) => a.tool)).toEqual(["list_bricks", "apply_ops", "define_entity", "build_project"]);
+    expect(full.session.reviews).toHaveLength(1);
   });
 
   test("the conversation is a small number of tokens and the code a larger one, counted the same way", () => {

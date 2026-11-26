@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { e2eProjectToken } from "./project-token.ts";
+import { e2eAgentOpsWithReview, e2eProjectToken } from "./project-token.ts";
 
 test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Conflict Resolution (Real Backend)", () => {
   test("validates broken pills via Issues Drawer click-to-jump, executes multi-step Undo/Redo + Ledger Undo, renders Canvas Visual Diff overlay, and resolves Human + AI same-object conflicts", async ({
@@ -31,6 +31,7 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
         },
         data: {
           author: { type: "human", id: "alice" },
+          mode: "apply", // AD-V8: a preview-safe edit the project token may apply directly
           summary: "Enable multi-workspace brick",
           ops: [
             {
@@ -199,14 +200,9 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
     const revBeforeAiDiff = Number(revBeforeAiDiffText.replace(/^r/, ""));
 
     // AI commits a revision that removes httpNodeId, adds node-ai-added, and updates tplNodeId
-    const aiDiffRes = await request.post(
-      `http://127.0.0.1:8787/api/projects/${encodeURIComponent(projectSlug)}/ops`,
-      {
-        headers: {
-          authorization: `Bearer ${await e2eProjectToken(projectSlug)}`,
-          "content-type": "application/json",
-        },
-        data: {
+    // AD-V8: the AI's edit removes a node (destructive), so it is a proposal that Alice accepts in Studio; the accepted
+    // commit is the AI's revision the canvas diffs.
+    const aiDiffRes = await e2eAgentOpsWithReview(projectSlug, {
           author: { type: "agent", id: "claude-1", client: "Claude Desktop" },
           summary: "AI refactored workflow nodes",
           ops: [
@@ -252,11 +248,9 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
               ],
             },
           ],
-        },
-      },
-    );
-    expect(aiDiffRes.ok()).toBe(true);
-    const aiDiffPayload = (await aiDiffRes.json()) as { revision: number };
+        });
+    expect(aiDiffRes.status).toBe(200);
+    const aiDiffPayload = aiDiffRes.body as { revision: number };
     const revAfterAiDiff = aiDiffPayload.revision;
     await expect(page.getByTestId("topbar-revision-badge")).toHaveText(
       `r${revAfterAiDiff}`,
@@ -328,6 +322,7 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
         data: {
           author: { type: "agent", id: "claude-1", client: "Claude Desktop" },
           summary: "AI concurrent edit to Format Template",
+          mode: "apply", // AD-V8: a preview-safe edit an agent may apply directly
           ops: [
             {
               opId: "ai-conflict-1",

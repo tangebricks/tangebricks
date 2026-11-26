@@ -5,12 +5,17 @@ import { applyMigration } from "@poc/sdk";
 import { countTokens } from "../../../../test/support/tokens.ts";
 import { createSqliteD1 } from "../../../../bricks/credit-wallet/client/test/support/sqlite-d1.ts";
 import migration from "../../migrations/0001_mcp_server.sql?raw";
-import { createMcpApp } from "../../src/index.ts";
+import { createInMemoryBlueprintClient, createMcpApp } from "../../src/index.ts";
 import { projectOf, testToken, testTokenVerifier } from "./test-verifier.ts";
 
 // Runs a scripted session with the official MCP client against this server, and records every HTTP exchange so the
 // conversation can be counted. The script is what a model would do (find out the bricks, enable them, declare the table,
 // build); nothing here is a real model.
+//
+// AD-V8: an agent cannot apply a money brick directly, so the script proposes the bricks with apply_ops and the harness,
+// acting as the human reviewer in Studio, accepts each pending proposal through the blueprint client's acceptProposal.
+// That review is outside the MCP tool surface (the agent cannot call it) and is not counted as a tool call or as tokens
+// of the conversation; it is listed in `reviews`.
 
 export interface Step {
   tool: string;
@@ -43,13 +48,17 @@ export interface SessionResult {
   /** What a model reads and writes: the tool definitions, the instructions, each call's name and arguments, and each answer. */
   modelVisibleTokens: number;
   toolCalls: number;
+  /** Proposals the harness accepted as the human reviewer (AD-V8), in order; not MCP calls. */
+  reviews: string[];
 }
 
 export async function runSession(steps: Step[]): Promise<SessionResult> {
   const db = createSqliteD1();
   try {
     await applyMigration(db, migration);
-    const app = createMcpApp({ catalog, verifyToken: testTokenVerifier });
+    // The harness keeps the blueprint client so it can review proposals the way a Studio editor would.
+    const blueprintClient = createInMemoryBlueprintClient(catalog);
+    const app = createMcpApp({ catalog, verifyToken: testTokenVerifier, blueprintClient });
     // Story 0.15: a session's token is bound to the one project its steps build.
     const sessionProject =
       steps.map((step) => projectOf({ params: { arguments: step.args } })).find((p) => p !== undefined) ?? "session";
@@ -80,10 +89,23 @@ export async function runSession(steps: Step[]): Promise<SessionResult> {
     const { tools } = await client.listTools();
 
     const answers: SessionResult["answers"] = [];
+    const reviews: string[] = [];
     for (const step of steps) {
       const result = await client.callTool({ name: step.tool, arguments: step.args as Record<string, unknown> });
       const text = (result.content as Array<{ type: string; text: string }>).map((c) => c.text).join("\n");
       answers.push({ tool: step.tool, args: step.args, text, isError: result.isError === true });
+      if (step.tool === "apply_ops" && result.isError !== true) {
+        const proposed = JSON.parse(text) as { project?: string; proposalId?: string; status?: string };
+        if (proposed.status === "pending" && proposed.proposalId && proposed.project) {
+          const accepted = await blueprintClient.acceptProposal!({
+            project: proposed.project,
+            proposalId: proposed.proposalId,
+            reviewer: { type: "human", id: "h9:studio-reviewer" },
+          });
+          if (!accepted.ok) throw new Error(`the reviewer could not accept ${proposed.proposalId}: ${accepted.error.message}`);
+          reviews.push(proposed.proposalId);
+        }
+      }
     }
     await client.close();
 
@@ -105,6 +127,7 @@ export async function runSession(steps: Step[]): Promise<SessionResult> {
       rawTokens,
       modelVisibleTokens,
       toolCalls: exchanges.filter((e) => e.rpc === "tools/call").length,
+      reviews,
     };
   } finally {
     db.close();
@@ -122,10 +145,18 @@ export const INVOICES = {
   ],
 };
 
-/** The scored session: the whole invoices project (workspaces, wallet, entities), four tool calls: look, enable the bricks, declare the table, build. */
+/** An agent's proposal to enable bricks (AD-V8: a money brick goes through a proposal an editor accepts). */
+export function proposeBricks(project: string, bricks: string[]): Step {
+  return { tool: "apply_ops", args: { project, ops: bricks.map((id) => ({ opId: `enable-${id}`, type: "enable_brick", brickId: id })) } };
+}
+
+/**
+ * The scored session: the whole invoices project (workspaces, wallet, entities), four tool calls: look, propose the bricks
+ * (the harness accepts the proposal as the Studio reviewer, AD-V8), declare the table, build.
+ */
 export const FULL_SESSION: Step[] = [
   { tool: "list_bricks", args: {} },
-  { tool: "enable_brick", args: { project: "invoice-flow", bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"] } },
+  proposeBricks("invoice-flow", ["multi-workspace", "credit-wallet", "dynamic-entities"]),
   { tool: "define_entity", args: { project: "invoice-flow", entities: [INVOICES] } },
   { tool: "build_project", args: { project: "invoice-flow" } },
 ];
@@ -145,7 +176,7 @@ export const SMALL_SESSION: Step[] = [
 export const ONE_AT_A_TIME_SESSION: Step[] = [
   { tool: "list_bricks", args: {} },
   { tool: "enable_brick", args: { project: "invoice-flow", bricks: ["multi-workspace"] } },
-  { tool: "enable_brick", args: { project: "invoice-flow", bricks: ["credit-wallet"] } },
+  proposeBricks("invoice-flow", ["credit-wallet"]),
   { tool: "enable_brick", args: { project: "invoice-flow", bricks: ["dynamic-entities"] } },
   { tool: "define_entity", args: { project: "invoice-flow", entities: [INVOICES] } },
   { tool: "build_project", args: { project: "invoice-flow" } },

@@ -47,9 +47,11 @@ test.describe("Story 2.7: Live WebSocket Sync (p95 <= 2,000 ms), Author Badges, 
         args: {
           project: "live-sync-proj",
           bricks: [
+            // AD-V8: enable_brick (mode "apply" rules) refuses a money brick for an agent, so this live-sync step
+            // enables a non-money brick with settings instead.
             {
-              id: "credit-wallet",
-              config: { creditsPerUnit: 15, minOrderAmount: 100 },
+              id: "binary-assets",
+              config: { maxFileSizeBytes: 15 * 1024, workspaceQuotaBytes: 100 * 1048576 },
             },
           ],
         },
@@ -109,6 +111,7 @@ test.describe("Story 2.7: Live WebSocket Sync (p95 <= 2,000 ms), Author Badges, 
         tool: "apply_ops",
         args: {
           project: "live-sync-proj",
+          mode: "apply", // AD-V8: preview-safe workflow edits an agent may apply directly
           summary: "Create onboarding workflow with trigger node",
           ops: [
             {
@@ -136,6 +139,7 @@ test.describe("Story 2.7: Live WebSocket Sync (p95 <= 2,000 ms), Author Badges, 
         tool: "apply_ops",
         args: {
           project: "live-sync-proj",
+          mode: "apply", // AD-V8: preview-safe workflow edits an agent may apply directly
           summary: "Add validate customer node",
           ops: [
             {
@@ -171,6 +175,7 @@ test.describe("Story 2.7: Live WebSocket Sync (p95 <= 2,000 ms), Author Badges, 
         tool: "apply_ops",
         args: {
           project: "live-sync-proj",
+          mode: "apply", // AD-V8: preview-safe workflow edits an agent may apply directly
           summary: "Add enrich wallet node",
           ops: [
             {
@@ -206,6 +211,7 @@ test.describe("Story 2.7: Live WebSocket Sync (p95 <= 2,000 ms), Author Badges, 
         tool: "apply_ops",
         args: {
           project: "live-sync-proj",
+          mode: "apply", // AD-V8: preview-safe workflow edits an agent may apply directly
           summary: "Add audit log node",
           ops: [
             {
@@ -241,6 +247,7 @@ test.describe("Story 2.7: Live WebSocket Sync (p95 <= 2,000 ms), Author Badges, 
         tool: "apply_ops",
         args: {
           project: "live-sync-proj",
+          mode: "apply", // AD-V8: preview-safe workflow edits an agent may apply directly
           summary: "Add output dispatch node and connect final edge",
           ops: [
             {

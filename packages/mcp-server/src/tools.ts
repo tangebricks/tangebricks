@@ -33,6 +33,7 @@ import type {
   IssueEnrichmentContext,
   Op,
   OpType,
+  SemanticDiff,
 } from "@poc/blueprint";
 import { entitySchema, parseEntities, validateGraph } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
@@ -72,6 +73,13 @@ export interface ToolContext {
   projectId?: string;
   /** The verified workspace standalone test_workflow runs record (story 1.4); without one it refuses to run. */
   workspaceId?: string;
+  /**
+   * AD-V8: whether this caller's edits need human review. Studio sets it from the verified caller kind (an MCP token
+   * needs review, a Studio session user does not); a standalone MCP server only ever serves agents. Default true.
+   */
+  reviewRequired?: boolean;
+  /** AD-V8 / AD-S10: whether the project has a live production deployment, so a direct edit would reach production. */
+  hasLiveProduction?: (project: string) => Promise<boolean>;
 }
 
 export interface ToolResult {
@@ -1114,7 +1122,7 @@ const enableBrick: Tool = {
     idempotentHint: true,
   },
   async run(
-    { catalog, blueprint, author },
+    { catalog, blueprint, author, reviewRequired, hasLiveProduction },
     args: {
       project: string;
       bricks: Array<
@@ -1135,6 +1143,17 @@ const enableBrick: Tool = {
       problems.push(...checkBrickConfig(id, config, catalog));
     }
     if (problems.length > 0) return refuse(...problems, "nothing was changed");
+
+    // AD-V8: the legacy macro applies directly, so it follows apply_ops' mode "apply" rules.
+    const gated = await proposalRequiredRefusal(
+      {
+        ...(reviewRequired !== undefined ? { reviewRequired } : {}),
+        ...(hasLiveProduction ? { hasLiveProduction } : {}),
+      },
+      args.project,
+      wanted.map(({ id }) => ({ type: "enable_brick", brickId: id })),
+    );
+    if (gated) return gated;
 
     const callId = ++macroCallCounter;
     let current = await blueprint.getProject(args.project);
@@ -1211,13 +1230,24 @@ const defineEntity: Tool = {
     idempotentHint: true,
   },
   async run(
-    { catalog, blueprint, author },
+    { catalog, blueprint, author, reviewRequired, hasLiveProduction },
     args: { project: string; entities: unknown[] },
   ) {
     const reserved = reservedRoutes(catalog);
     const alone = parseEntities(args.entities, reserved);
     if (!alone.ok) return refuse(...alone.errors, "nothing was changed");
     const declared = alone.entities;
+
+    // AD-V8: the legacy macro applies directly, so it follows apply_ops' mode "apply" rules.
+    const gated = await proposalRequiredRefusal(
+      {
+        ...(reviewRequired !== undefined ? { reviewRequired } : {}),
+        ...(hasLiveProduction ? { hasLiveProduction } : {}),
+      },
+      args.project,
+      declared.map((ent) => ({ type: "update_entity", entity: ent })),
+    );
+    if (gated) return gated;
 
     const callId = ++macroCallCounter;
     let current = await blueprint.getProject(args.project);
@@ -1281,11 +1311,30 @@ const defineEntity: Tool = {
   },
 };
 
-function classifyOpsSafety(ops: ReadonlyArray<Record<string, unknown>>) {
+/** True for a node type that belongs to a money brick (`credit-wallet.debit`, `checkout-gateway.*`, ...). */
+export function isMoneyNodeType(nodeType: unknown): boolean {
+  if (typeof nodeType !== "string") return false;
+  const brick = nodeType.split(".")[0] ?? "";
+  return (MONEY_AFFECTING_BRICKS as readonly string[]).includes(brick);
+}
+
+const WORKFLOW_EDIT_OPS = new Set(["update_node", "remove_node", "connect_edges", "disconnect_edge"]);
+
+function classifyOpsSafety(
+  ops: ReadonlyArray<Record<string, unknown>>,
+  currentState?: BlueprintState | null,
+) {
   const destructiveOps: string[] = [];
   const moneyAffectingOps: string[] = [];
   const destructiveSet = new Set<string>(DESTRUCTIVE_OP_KINDS);
   const moneyBrickSet = new Set<string>(MONEY_AFFECTING_BRICKS);
+  // Workflows that already hold a money node: any edit to their nodes or wiring changes how money moves.
+  const moneyWorkflows = new Set(
+    (currentState?.workflows ?? [])
+      .filter((wf) => (wf.nodes ?? []).some((n) => isMoneyNodeType(n.type)))
+      .map((wf) => wf.id),
+  );
+  const asRecord = (v: unknown) => (typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {});
 
   for (const op of ops) {
     const t = typeof op.type === "string" ? op.type : "";
@@ -1301,6 +1350,20 @@ function classifyOpsSafety(ops: ReadonlyArray<Record<string, unknown>>) {
     }
     if (moneyBrickSet.has(targetBrick)) {
       moneyAffectingOps.push(`${t}:${targetBrick}`);
+      continue;
+    }
+    const workflowId = typeof op.workflowId === "string" ? op.workflowId : "";
+    if (t === "add_node" && isMoneyNodeType(asRecord(op.node).type)) {
+      moneyAffectingOps.push(`add_node:${String(asRecord(op.node).type)}`);
+    } else if (
+      t === "update_node" &&
+      (isMoneyNodeType(op.nodeType) || isMoneyNodeType(asRecord(op.patch).type) || isMoneyNodeType(asRecord(op.node).type))
+    ) {
+      moneyAffectingOps.push(`update_node:${workflowId}`);
+    } else if (t === "add_workflow" && ((asRecord(op.workflow).nodes as unknown[] | undefined) ?? []).some((n) => isMoneyNodeType(asRecord(n).type))) {
+      moneyAffectingOps.push(`add_workflow:${String(asRecord(op.workflow).id)}`);
+    } else if (WORKFLOW_EDIT_OPS.has(t) && moneyWorkflows.has(workflowId)) {
+      moneyAffectingOps.push(`${t}:${workflowId} (holds a money node)`);
     }
   }
 
@@ -1312,9 +1375,118 @@ function classifyOpsSafety(ops: ReadonlyArray<Record<string, unknown>>) {
   };
 }
 
+/** A semantic diff as names only (what was added, removed or changed), for an agent's proposal answer. */
+export function summarizeSemanticDiff(diff: SemanticDiff) {
+  const label = (item: unknown): string => {
+    const o = (item ?? {}) as { id?: unknown; name?: unknown; ref?: unknown };
+    return String(o.id ?? o.name ?? o.ref ?? "?");
+  };
+  const section = (part: { added: unknown[]; removed: unknown[]; updated: unknown[] }) => ({
+    added: part.added.map(label),
+    removed: part.removed.map(label),
+    updated: part.updated.map(label),
+  });
+  return {
+    identity: diff.identity,
+    bricks: section(diff.bricks),
+    entities: section(diff.entities),
+    workflows: section(diff.workflows),
+    secretRefs: section(diff.secretRefs),
+    isEmpty: diff.isEmpty,
+  };
+}
+
+/** The reasons a direct (non-proposal) edit by an agent is refused (AD-V8). Empty means the edit is preview-safe. */
+export interface ApplyRisk {
+  risky: boolean;
+  reasons: string[];
+}
+
+/**
+ * AD-V8: the one test for whether an agent may apply ops directly. An op on a money brick, a destructive op, a brick
+ * upgrade (`set_metadata.catalogVersion`) or any edit to a project with a live production deployment (AD-S10 hot path)
+ * must go through a proposal that an editor accepts in Studio.
+ */
+export function classifyApplyRisk(
+  ops: ReadonlyArray<Record<string, unknown>>,
+  options: {
+    liveProduction?: boolean;
+    /** The project's current `metadata.catalogVersion`: a `set_metadata` with `replace: true` would drop it. */
+    currentCatalogVersion?: string | null;
+    /** The current blueprint: an edit inside a workflow that holds a money node is a money change. */
+    currentState?: BlueprintState | null;
+  } = {},
+): ApplyRisk {
+  const safety = classifyOpsSafety(ops, options.currentState);
+  const reasons: string[] = [];
+  for (const op of safety.moneyAffectingOps) reasons.push(`money setting: ${op}`);
+  for (const op of safety.destructiveOps) reasons.push(`destructive: ${op}`);
+  for (const op of ops) {
+    if (op.type !== "set_metadata") continue;
+    const metadata = op.metadata;
+    if (
+      typeof metadata === "object" &&
+      metadata !== null &&
+      Object.prototype.hasOwnProperty.call(metadata, "catalogVersion")
+    ) {
+      reasons.push("brick upgrade: set_metadata.catalogVersion");
+    } else if (op.replace === true && options.currentCatalogVersion) {
+      // replace drops every metadata key it does not name, so it removes the pinned catalogVersion: a brick upgrade.
+      reasons.push("brick upgrade: set_metadata replace drops catalogVersion");
+    }
+  }
+  if (options.liveProduction) {
+    reasons.push(
+      "production: the project has a live production deployment, so a direct edit would reach it",
+    );
+  }
+  return { risky: reasons.length > 0, reasons };
+}
+
+/** The error an agent gets for a risky direct edit (AD-V8): a code, the reasons and the next step. */
+export function proposalRequiredError(project: string, reasons: readonly string[]) {
+  return {
+    error: {
+      code: "PROPOSAL_REQUIRED",
+      message: `These ops cannot be applied directly by an agent (${reasons.join("; ")}). Nothing was changed.`,
+      reasons: [...reasons],
+      remediation:
+        'Send the ops with mode "propose" (the default for MCP), then ask an editor to review and accept the proposal in Studio.',
+    },
+    project,
+  };
+}
+
+/** AD-V8: refuses a risky direct edit by an agent. Null when the edit may apply. */
+async function proposalRequiredRefusal(
+  context: Pick<ToolContext, "reviewRequired" | "hasLiveProduction"> & { blueprint?: BlueprintClient },
+  project: string,
+  ops: ReadonlyArray<Record<string, unknown>>,
+): Promise<ToolResult | null> {
+  if (context.reviewRequired === false) return null;
+  const liveProduction = context.hasLiveProduction
+    ? await context.hasLiveProduction(project)
+    : false;
+  const needsState = ops.some(
+    (op) => (op.type === "set_metadata" && op.replace === true) || WORKFLOW_EDIT_OPS.has(String(op.type)),
+  );
+  const currentState =
+    needsState && context.blueprint ? ((await context.blueprint.getProject(project))?.state ?? null) : null;
+  const risk = classifyApplyRisk(ops, {
+    liveProduction,
+    currentCatalogVersion: currentState?.metadata?.catalogVersion ?? null,
+    currentState,
+  });
+  if (!risk.risky) return null;
+  return {
+    isError: true,
+    text: JSON.stringify(proposalRequiredError(project, risk.reasons)),
+  };
+}
+
 const applyOpsTool: Tool = {
   name: "apply_ops",
-  description: "Apply or propose blueprint operations.",
+  description: "Propose (default) or apply blueprint operations.",
   input: z.object({
     project: projectName,
     expectedRev: z.number().int().min(0).optional(),
@@ -1331,7 +1503,7 @@ const applyOpsTool: Tool = {
     idempotentHint: false,
   },
   async run(
-    { catalog, blueprint, author },
+    { catalog, blueprint, author, reviewRequired, hasLiveProduction },
     args: {
       project: string;
       expectedRev?: number;
@@ -1360,7 +1532,20 @@ const applyOpsTool: Tool = {
 
     const effectiveBaseRevision =
       args.expectedRev ?? args.baseRev ?? args.baseRevision;
-    const effectiveMode = args.mode ?? "apply";
+    // AD-V8: an agent's edit is a proposal unless it asks to apply, and it may apply only preview-safe ops.
+    const effectiveMode = args.mode ?? "propose";
+    if (effectiveMode === "apply") {
+      const refusal = await proposalRequiredRefusal(
+        {
+          ...(reviewRequired !== undefined ? { reviewRequired } : {}),
+          ...(hasLiveProduction ? { hasLiveProduction } : {}),
+          blueprint,
+        },
+        args.project,
+        args.ops,
+      );
+      if (refusal) return refusal;
+    }
     const applied = await blueprint.applyOps({
       project: args.project,
       ...(effectiveBaseRevision !== undefined
@@ -1401,8 +1586,22 @@ const applyOpsTool: Tool = {
       ...(applied.data.proposalId
         ? { proposalId: applied.data.proposalId }
         : {}),
-      ...(applied.data.proposal ? { proposal: applied.data.proposal } : {}),
-      ...(applied.data.diff ? { diff: applied.data.diff } : {}),
+      // A compact record: the full one (proposed state, readiness) is in Studio, where the proposal is reviewed.
+      ...(applied.data.proposal
+        ? {
+            proposal: {
+              proposalId: applied.data.proposal.proposalId,
+              status: applied.data.proposal.status,
+              baseRev: applied.data.proposal.baseRev,
+              actor: applied.data.proposal.actor,
+              summary: applied.data.proposal.summary,
+              createdAt: applied.data.proposal.createdAt,
+              opIds: applied.data.proposal.ops.map((op) => op.opId),
+            },
+          }
+        : {}),
+      // AD-V8: the reviewer sees the full semantic diff in Studio; the agent gets what changes, by name.
+      ...(applied.data.diff ? { diffSummary: summarizeSemanticDiff(applied.data.diff) } : {}),
       ...(applied.data.rebasedFrom !== undefined
         ? { rebasedFrom: applied.data.rebasedFrom }
         : {}),
@@ -2881,6 +3080,7 @@ const deployApply: Tool = {
     planId: z.string().min(1).max(128).optional(),
     confirmDestructive: z.boolean().optional(),
     confirmedMigrationNames: z.array(z.string()).optional(),
+    approvalId: z.string().min(1).max(128).optional(),
   }),
   readOnly: false,
   annotations: {
@@ -2898,6 +3098,7 @@ const deployApply: Tool = {
       planId?: string;
       confirmDestructive?: boolean;
       confirmedMigrationNames?: string[];
+      approvalId?: string;
     },
   ) {
     const targetEnv = args.env ?? args.target ?? "preview";
@@ -2918,6 +3119,7 @@ const deployApply: Tool = {
             ...(args.confirmedMigrationNames !== undefined
               ? { confirmedMigrationNames: args.confirmedMigrationNames }
               : {}),
+            ...(args.approvalId !== undefined ? { approvalId: args.approvalId } : {}),
           }),
         },
       );
@@ -3013,6 +3215,8 @@ export const revertToRevisionTool: Tool = {
     project: projectName,
     targetRevision: z.number().int().min(0),
     baseRevision: z.number().int().min(0).optional(),
+    // AD-V8: the Studio approval an editor granted for this revert (an MCP token's revert needs one).
+    approvalId: z.string().min(1).max(128).optional(),
   }),
   readOnly: false,
   annotations: {

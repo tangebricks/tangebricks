@@ -10,6 +10,7 @@ import type {
   StudioApiEnv,
 } from "../src/index.ts";
 import { ensureTestProjectToken } from "./project-token.ts";
+import { postOpsWithReview } from "./human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 
@@ -40,15 +41,8 @@ async function postOps(
   },
 ) {
   const { headers: authHeaders } = await actorToken(project, body.author?.id);
-  return app.request(
-    `/api/projects/${project}/ops`,
-    {
-      method: "POST",
-      headers: { ...authHeaders, "content-type": "application/json" },
-      body: JSON.stringify(body),
-    },
-    studioEnv,
-  );
+  // AD-V8: preview-safe edits apply directly; a money brick goes through a proposal the owner accepts in Studio.
+  return postOpsWithReview(studioEnv, project, authHeaders, body);
 }
 
 describe("Story 1.3 — Optimistic concurrency: baseRevision, auto-rebase, and 409 conflict payload", () => {

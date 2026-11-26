@@ -16,7 +16,7 @@ import { loadDeployment } from "../packages/deploy/src/context.ts";
 import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
 import { MCP_TOKEN_BINDING, bundleMcpWorker, mcpMigration, mcpTokenRecords } from "../packages/deploy/src/mcp-bundle.ts";
 import { WORKER_SIZE_LIMIT_BYTES } from "../packages/deploy/src/bundle.ts";
-import { MEASURED_PROJECTS, SESSION_PROJECT, canonicalMcp, evaluateMcp, runMcpMeasurement } from "../packages/deploy/src/mcp-measure.ts";
+import { MEASURED_PROJECTS, REVIEWER_SURFACE_MISSING, SESSION_PROJECT, canonicalMcp, evaluateMcp, runMcpMeasurement } from "../packages/deploy/src/mcp-measure.ts";
 import type { McpFacts, McpResult } from "../packages/deploy/src/mcp-measure.ts";
 import { overTheNetwork } from "../packages/deploy/src/network.ts";
 import {
@@ -34,6 +34,14 @@ import {
 
 const root = resolve(import.meta.dirname, "..");
 const planRepo = resolve(root, "..", "ProjectX");
+// AD-V8: the session proposes the money brick and a human must accept it; the standalone MCP Worker has no reviewer
+// surface, so a deployed run would stop at the build. Refuse before anything is uploaded rather than record a broken run.
+const reviewerSurfaceMissing = (): boolean => true; // until the standalone MCP Worker has a reviewer surface
+if (reviewerSurfaceMissing()) {
+  console.error(REVIEWER_SURFACE_MISSING);
+  process.exit(3);
+}
+
 const flag = process.argv.indexOf("--state-dir");
 const stateArg = flag >= 0 ? process.argv[flag + 1] : undefined;
 if (!stateArg) {

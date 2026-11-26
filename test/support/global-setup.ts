@@ -6,13 +6,14 @@
 // After: re-reads each folder and compares it with the record. If anything in an assembled project changed while the
 // tests ran, that is recorded: "no hand edit" is checked, not assumed. (Vitest only logs an error thrown while it
 // closes down and does not fail the run, so scripts/verify.ts reads the record and fails the run itself.)
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { assemble } from "../../packages/assembler/src/index.ts";
 import { catalog } from "../../packages/assembler/catalog.generated.ts";
 import { computeMaxCompatible } from "../../scripts/max-compatible.ts";
 import { APPROVAL_GATE_BLUEPRINT, INVOICE_FLOW_BLUEPRINT, PRIVACY_PRESENCE_BLUEPRINT, TWO_BRICK_BLUEPRINT, WORKFLOW_SHELL_BLUEPRINT } from "./blueprints.ts";
 import { OUT_DIR, compareProject, hashesPath, verifiedPath, writeProject } from "./emitted.ts";
+import { writeH9EmittedSource } from "./h9-emitted-source.ts";
 
 /** Every project the tests import. scripts/verify.ts reads the same list. */
 export const ASSEMBLED_PROJECTS = [TWO_BRICK_BLUEPRINT, INVOICE_FLOW_BLUEPRINT] as const;
@@ -44,6 +45,9 @@ export function getBootBlueprints() {
 }
 
 export default async function setup(): Promise<() => Promise<void>> {
+  // Story 7.4: the token budget's Session A denominator, measured from the bricks on disk for the workerd tests.
+  mkdirSync(OUT_DIR, { recursive: true });
+  writeH9EmittedSource(OUT_DIR);
   const written: Array<{ project: string; dir: string; expected: number }> = [];
   for (const blueprint of ASSEMBLED_PROJECTS) {
     const project = blueprint.project;

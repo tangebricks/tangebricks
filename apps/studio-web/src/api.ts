@@ -3088,3 +3088,73 @@ export async function updateProjectRetentionSettings(
 
 
 
+
+// ============================================================================
+// AD-V8 — Approval requests for destructive actions an MCP agent asked for
+// ============================================================================
+
+export type ApprovalRequestStatus = "pending" | "approved" | "rejected" | "consumed" | "expired";
+
+export interface ApprovalRequestRecord {
+  approvalId: string;
+  projectId: string;
+  action: "deploy" | "promote" | "rollback" | "revert" | "sandbox_deploy" | "promote_to_byoc" | "import";
+  env: string | null;
+  target: string | null;
+  blueprintRev: number;
+  planFingerprint: string | null;
+  status: ApprovalRequestStatus;
+  requestedBy: { tokenId: string; clientName: string | null; userId: string | null };
+  decidedBy: string | null;
+  summary: Record<string, unknown>;
+  createdAt: string;
+  decidedAt: string | null;
+  consumedAt: string | null;
+  expiresAt: string;
+}
+
+export async function fetchProjectApprovals(
+  project: string,
+  status?: ApprovalRequestStatus,
+): Promise<ApprovalRequestRecord[]> {
+  try {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/approvals${qs}`, {
+      credentials: "include",
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { approvals?: ApprovalRequestRecord[] };
+    return data.approvals ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Approves or rejects a pending request as the signed-in Studio user (editor+). */
+export async function decideProjectApproval(
+  project: string,
+  approvalId: string,
+  decision: "approve" | "reject",
+): Promise<{ ok: true; approval: ApprovalRequestRecord } | { ok: false; status: number; code: string; message: string }> {
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(project)}/approvals/${encodeURIComponent(approvalId)}/${decision}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: "{}",
+    },
+  );
+  const data = (await res.json().catch(() => null)) as
+    | { approval?: ApprovalRequestRecord; error?: { code?: string; message?: string } }
+    | null;
+  if (!res.ok || !data?.approval) {
+    return {
+      ok: false,
+      status: res.status,
+      code: data?.error?.code ?? "APPROVAL_DECISION_FAILED",
+      message: data?.error?.message ?? `Failed to ${decision} the request (${res.status})`,
+    };
+  }
+  return { ok: true, approval: data.approval };
+}

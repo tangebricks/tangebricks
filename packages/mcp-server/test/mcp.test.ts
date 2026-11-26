@@ -64,6 +64,23 @@ const request = (method: string, params?: unknown) => ({ jsonrpc: "2.0", id: nex
 const callTool = (name: string, args: unknown, send?: Send) => post(request("tools/call", { name, arguments: args }), send);
 const toolText = (reply: Reply) => reply.body.result.content[0].text as string;
 const toolJson = (reply: Reply) => JSON.parse(toolText(reply));
+// AD-V8: an agent proposes a money brick (enable_brick refuses it) and a person accepts the proposal in Studio; here the
+// test plays that person through the blueprint client's acceptProposal, which no MCP tool can reach.
+let reviewSeq = 0;
+async function enableReviewed(project: string, bricks: Array<string | { id: string; config?: Record<string, unknown> }>) {
+  const enabled = new Set((await doClient.getProject(project))?.state.bricks.map((b) => b.id) ?? []);
+  const ops = bricks.map((item) => {
+    const { id, config } = typeof item === "string" ? { id: item, config: {} } : { id: item.id, config: item.config ?? {} };
+    reviewSeq += 1;
+    return enabled.has(id)
+      ? { opId: `review-${reviewSeq}`, type: "configure_brick", brickId: id, config, replace: true }
+      : { opId: `review-${reviewSeq}`, type: "enable_brick", brickId: id, ...(Object.keys(config).length > 0 ? { config } : {}) };
+  });
+  const proposed = toolJson(await callTool("apply_ops", { project, ops }));
+  expect(proposed.status).toBe("pending");
+  const accepted = await doClient.acceptProposal!({ project, proposalId: proposed.proposalId, reviewer: { type: "human", id: "test:studio-reviewer" } });
+  expect(accepted.ok).toBe(true);
+}
 const count = async (table: string, project: string) => (await db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE project = ?`).bind(project).first<{ n: number }>())!.n;
 
 beforeEach(async () => {
@@ -435,10 +452,10 @@ describe("list_bricks and get_brick", () => {
 
   it("with a project name shows what it has and what it still needs; a project that does not exist is null", async () => {
     expect(toolJson(await callTool("list_bricks", { project: "nothing-here" })).project).toBeNull();
-    await callTool("enable_brick", { project: "shown", bricks: ["credit-wallet"] });
+    await callTool("enable_brick", { project: "shown", bricks: ["binary-assets"] });
     const { project } = toolJson(await callTool("list_bricks", { project: "shown" }));
-    expect(project.enabled).toEqual([{ id: "credit-wallet", config: {} }]);
-    expect(project.needs.join()).toMatch(/credit-wallet requires "workspace-context".*multi-workspace/);
+    expect(project.enabled).toEqual([{ id: "binary-assets", config: {} }]);
+    expect(project.needs.join()).toMatch(/binary-assets requires "workspace-context".*multi-workspace/);
   });
 
   it("changes nothing", async () => {
@@ -447,22 +464,24 @@ describe("list_bricks and get_brick", () => {
   });
 });
 
+// AD-V8: enable_brick applies directly, so it is refused for a money brick (credit-wallet, see "the AD-V8 gate" below);
+// the macro's own mechanics are shown with binary-assets, a non-money brick with numeric settings.
 describe("enable_brick", () => {
   it("creates the project on first use and says what is still needed", async () => {
-    const first = toolJson(await callTool("enable_brick", { project: "shop", bricks: ["credit-wallet"] }));
-    expect(first.enabled).toEqual(["credit-wallet"]);
+    const first = toolJson(await callTool("enable_brick", { project: "shop", bricks: ["binary-assets"] }));
+    expect(first.enabled).toEqual(["binary-assets"]);
     expect(first.needs.join()).toMatch(/requires "workspace-context"/);
     const second = toolJson(await callTool("enable_brick", { project: "shop", bricks: ["multi-workspace"] }));
-    expect(second.enabled).toEqual(["credit-wallet", "multi-workspace"]);
+    expect(second.enabled).toEqual(["binary-assets", "multi-workspace"]);
     expect(second.needs).toEqual([]);
   });
 
   it("settings are checked and stored; enabling again replaces the settings, and the brick is listed once", async () => {
     await callTool("enable_brick", { project: "shop", bricks: ["multi-workspace"] });
-    await callTool("enable_brick", { project: "shop", bricks: [{ id: "credit-wallet", config: { creditsPerUnit: 10 } }] });
-    await callTool("enable_brick", { project: "shop", bricks: [{ id: "credit-wallet", config: { creditsPerUnit: 20, minOrderAmount: 100 } }] });
+    await callTool("enable_brick", { project: "shop", bricks: [{ id: "binary-assets", config: { maxFileSizeBytes: (10) * 1024 } }] });
+    await callTool("enable_brick", { project: "shop", bricks: [{ id: "binary-assets", config: { maxFileSizeBytes: (20) * 1024, workspaceQuotaBytes: 100 * 1048576 } }] });
     const snap = (await stored("shop"))!;
-    expect(snap.blueprint.bricks).toEqual([{ id: "credit-wallet", config: { creditsPerUnit: 20, minOrderAmount: 100 } }, { id: "multi-workspace", config: {} }]);
+    expect(snap.blueprint.bricks).toEqual([{ id: "binary-assets", config: { maxFileSizeBytes: (20) * 1024, workspaceQuotaBytes: 100 * 1048576 } }, { id: "multi-workspace", config: {} }]);
     expect(await count("mcp_projects", "shop")).toBe(0);
   });
 
@@ -515,42 +534,42 @@ describe("enable_brick", () => {
   });
 
   it("twenty calls at once for twenty different bricks' settings all land: none is lost", async () => {
-    const replies = await Promise.all(Array.from({ length: 20 }, (_, i) => callTool("enable_brick", { project: "busy", bricks: [i % 2 === 0 ? { id: "credit-wallet", config: { creditsPerUnit: i + 1 } } : "multi-workspace"] })));
+    const replies = await Promise.all(Array.from({ length: 20 }, (_, i) => callTool("enable_brick", { project: "busy", bricks: [i % 2 === 0 ? { id: "binary-assets", config: { maxFileSizeBytes: (i + 1) * 1024 } } : "multi-workspace"] })));
     expect(replies.every((r) => r.status === 200 && !r.body.result.isError)).toBe(true);
     const row = (await stored("busy"))!;
     const bricks = row.blueprint.bricks as Array<{ id: string }>;
-    expect(bricks.map((b) => b.id)).toEqual(["credit-wallet", "multi-workspace"]);
+    expect(bricks.map((b) => b.id)).toEqual(["binary-assets", "multi-workspace"]);
     expect(row.version).toBe(20); // every one of the twenty changes was written
   });
 
   it("twenty different bricks enabled at once on one project: none is lost", async () => {
-    await Promise.all(["credit-wallet", "dynamic-entities", "multi-workspace"].flatMap((brick) => Array.from({ length: 7 }, () => callTool("enable_brick", { project: "three", bricks: [brick] }))));
+    await Promise.all(["binary-assets", "dynamic-entities", "multi-workspace"].flatMap((brick) => Array.from({ length: 7 }, () => callTool("enable_brick", { project: "three", bricks: [brick] }))));
     const row = (await stored("three"))!;
-    expect((row.blueprint.bricks as Array<{ id: string }>).map((b) => b.id)).toEqual(["credit-wallet", "dynamic-entities", "multi-workspace"]);
+    expect((row.blueprint.bricks as Array<{ id: string }>).map((b) => b.id)).toEqual(["binary-assets", "dynamic-entities", "multi-workspace"]);
   });
 });
 
 describe("enable_brick with a list", () => {
 
   it("enables several bricks in one call, in one write, and the project is complete when the list is", async () => {
-    const reply = toolJson(await callTool("enable_brick", { project: "shop", bricks: ["credit-wallet", "multi-workspace"] }));
-    expect(reply.enabled).toEqual(["credit-wallet", "multi-workspace"]);
+    const reply = toolJson(await callTool("enable_brick", { project: "shop", bricks: ["binary-assets", "multi-workspace"] }));
+    expect(reply.enabled).toEqual(["binary-assets", "multi-workspace"]);
     expect(reply.needs).toEqual([]); // the wallet's need is met by the workspace brick in the same list: no half-built state is reported
     expect((await stored("shop"))!.version).toBe(1);
   });
 
   it("a brick with settings and a brick without can be mixed in one list", async () => {
-    await callTool("enable_brick", { project: "mix", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 7 } }, "dynamic-entities"] });
+    await callTool("enable_brick", { project: "mix", bricks: ["multi-workspace", { id: "binary-assets", config: { maxFileSizeBytes: (7) * 1024 } }, "dynamic-entities"] });
     expect((await stored("mix"))!.blueprint.bricks).toEqual([
-      { id: "credit-wallet", config: { creditsPerUnit: 7 } },
+      { id: "binary-assets", config: { maxFileSizeBytes: (7) * 1024 } },
       { id: "dynamic-entities", config: {} },
       { id: "multi-workspace", config: {} },
     ]);
   });
 
   it("the order of the list does not matter", async () => {
-    await callTool("enable_brick", { project: "ab", bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"] });
-    await callTool("enable_brick", { project: "ba", bricks: ["dynamic-entities", "credit-wallet", "multi-workspace"] });
+    await callTool("enable_brick", { project: "ab", bricks: ["multi-workspace", "binary-assets", "dynamic-entities"] });
+    await callTool("enable_brick", { project: "ba", bricks: ["dynamic-entities", "binary-assets", "multi-workspace"] });
     expect((await stored("ab"))!.blueprint).toEqual((await stored("ba"))!.blueprint);
   });
 
@@ -578,10 +597,10 @@ describe("enable_brick with a list", () => {
   });
 
   it("a list changes the bricks it names and leaves the others alone", async () => {
-    await callTool("enable_brick", { project: "edit", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 3 } }] });
-    await callTool("enable_brick", { project: "edit", bricks: [{ id: "credit-wallet", config: { creditsPerUnit: 9 } }, "dynamic-entities"] });
+    await callTool("enable_brick", { project: "edit", bricks: ["multi-workspace", { id: "binary-assets", config: { maxFileSizeBytes: (3) * 1024 } }] });
+    await callTool("enable_brick", { project: "edit", bricks: [{ id: "binary-assets", config: { maxFileSizeBytes: (9) * 1024 } }, "dynamic-entities"] });
     expect((await stored("edit"))!.blueprint.bricks).toEqual([
-      { id: "credit-wallet", config: { creditsPerUnit: 9 } },
+      { id: "binary-assets", config: { maxFileSizeBytes: (9) * 1024 } },
       { id: "dynamic-entities", config: {} },
       { id: "multi-workspace", config: {} },
     ]);
@@ -606,11 +625,11 @@ describe("enable_brick with a list", () => {
   });
 
   it("many lists at once that overlap all land: every brick named by any of them ends up enabled", async () => {
-    const lists = [["credit-wallet"], ["multi-workspace", "credit-wallet"], ["dynamic-entities"], ["multi-workspace"], ["dynamic-entities", "credit-wallet"], ["credit-wallet", "multi-workspace", "dynamic-entities"]];
+    const lists = [["binary-assets"], ["multi-workspace", "binary-assets"], ["dynamic-entities"], ["multi-workspace"], ["dynamic-entities", "binary-assets"], ["binary-assets", "multi-workspace", "dynamic-entities"]];
     const replies = await Promise.all(Array.from({ length: 18 }, (_, i) => callTool("enable_brick", { project: "crowd", bricks: lists[i % lists.length] })));
     expect(replies.every((r) => !r.body.result.isError)).toBe(true);
     const after = (await stored("crowd"))!;
-    expect(after.blueprint.bricks.map((b: { id: string }) => b.id)).toEqual(["credit-wallet", "dynamic-entities", "multi-workspace"]);
+    expect(after.blueprint.bricks.map((b: { id: string }) => b.id)).toEqual(["binary-assets", "dynamic-entities", "multi-workspace"]);
     expect(after.version).toBe(18); // each of the eighteen calls was written once
   });
 });
@@ -751,7 +770,7 @@ describe("build_project", () => {
   const invoices = { name: "invoices", fields: [{ name: "client_name", type: "text", required: true }, { name: "amount", type: "number" }] };
   async function readyProject(project: string) {
     await callTool("enable_brick", { project, bricks: ["multi-workspace"] });
-    await callTool("enable_brick", { project, bricks: [{ id: "credit-wallet", config: { creditsPerUnit: 10 } }] });
+    await enableReviewed(project, [{ id: "credit-wallet", config: { creditsPerUnit: 10 } }]);
     await callTool("enable_brick", { project, bricks: ["dynamic-entities"] });
     await callTool("define_entity", { project, entities: [invoices] });
   }
@@ -789,7 +808,7 @@ describe("build_project", () => {
     await readyProject("one");
     await callTool("define_entity", { project: "two", entities: [invoices] });
     await callTool("enable_brick", { project: "two", bricks: ["dynamic-entities"] });
-    await callTool("enable_brick", { project: "two", bricks: [{ id: "credit-wallet", config: { creditsPerUnit: 10 } }] });
+    await enableReviewed("two", [{ id: "credit-wallet", config: { creditsPerUnit: 10 } }]);
     await callTool("enable_brick", { project: "two", bricks: ["multi-workspace"] });
     const [a, b] = [toolJson(await callTool("build_project", { project: "one" })), toolJson(await callTool("build_project", { project: "two" }))];
     // the project name is part of the files, so compare what does not depend on it
@@ -817,9 +836,9 @@ describe("build_project", () => {
   it("a project that cannot be built says why, builds nothing, and leaves an earlier build in place", async () => {
     await readyProject("fragile");
     const good = toolJson(await callTool("build_project", { project: "fragile" }));
-    await callTool("enable_brick", { project: "fragile", bricks: [{ id: "credit-wallet", config: { creditsPerUnit: 5 } }] });
+    await enableReviewed("fragile", [{ id: "credit-wallet", config: { creditsPerUnit: 5 } }]);
     // now make it unbuildable: an entity with the entity brick removed is not possible, so use a fresh project instead
-    await callTool("enable_brick", { project: "lonely", bricks: ["credit-wallet"] });
+    await enableReviewed("lonely", ["credit-wallet"]);
     const refused = await callTool("build_project", { project: "lonely" });
     expect(refused.body.result.isError).toBe(true);
     expect(toolText(refused)).toMatch(/credit-wallet requires "workspace-context".*nothing was built/);
@@ -914,7 +933,7 @@ describe("tools that need a deploy target (story 0.9, R-F)", () => {
 describe("deploy_apply reports only real deploy state (story 0.9, R-F)", () => {
   it("production with a non-stub identity and no target is NO_TARGET with the remediation line", async () => {
     await callTool("enable_brick", { project: "prodnotarget", bricks: ["multi-workspace", "core-auth"] });
-    const setId = await callTool("apply_ops", { project: "prodnotarget", ops: [{ opId: "id-1", type: "set_identity", identity: "core-auth" }] });
+    const setId = await callTool("apply_ops", { project: "prodnotarget", mode: "apply", ops: [{ opId: "id-1", type: "set_identity", identity: "core-auth" }] }); // AD-V8: a preview-safe edit an agent may apply directly
     expect(setId.body.result.isError, toolText(setId)).not.toBe(true);
     const reply = await callTool("deploy_apply", { project: "prodnotarget", env: "production" });
     expect(reply.body.result.isError).toBe(true);

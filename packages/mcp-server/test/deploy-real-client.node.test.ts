@@ -74,8 +74,16 @@ describe("MCP deploy through Studio's real Cloudflare client", () => {
       const plan = await tool("deploy_plan", { project, env: "preview" });
       expect(plan.result?.isError, plan.text).toBeFalsy();
 
+      // AD-V8: the agent's deploy is refused until a person approves it in Studio; nothing is written to Cloudflare.
       const before = fake.requests.length;
-      const applied = await tool("deploy_apply", { project, env: "preview" });
+      const refused = await tool("deploy_apply", { project, env: "preview" });
+      expect(refused.result?.isError).toBe(true);
+      const approvalId = String((JSON.parse(refused.text) as { error: { code: string; approvalId: string } }).error.approvalId);
+      expect(JSON.parse(refused.text).error.code).toBe("APPROVAL_REQUIRED");
+      expect(fake.requests.slice(before).filter((r) => r.method !== "GET")).toEqual([]);
+      const approved = await call(`/api/projects/${project}/approvals/${approvalId}/approve`, {}, session);
+      expect(approved.status, JSON.stringify(approved.body)).toBe(200);
+      const applied = await tool("deploy_apply", { project, env: "preview", approvalId });
       expect(applied.result?.isError, applied.text).toBeFalsy();
       const writes = fake.requests.slice(before).filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`);
       expect(writes).toContain(`PUT /client/v4/accounts/{account}/workers/scripts/px-${project}-preview`);
