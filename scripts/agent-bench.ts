@@ -9,7 +9,8 @@
 //   node scripts/agent-bench.ts --teardown --env-file ... --state-dir ...     removes what an interrupted run left
 //
 // Options: --briefs-dir <dir> (default: the private briefs folder), --out <file> (default: the private benchmark-v0.json),
-// --model <id or alias>, --max-budget-usd <n> (default 10), --iteration <n> (the owner's fix iteration, default 1),
+// --model <id or alias>, --max-budget-usd <n> (default 10, shared by every agent call), --max-agent-calls <n> (default 8),
+// --iteration <n> (the owner's fix iteration, default 1),
 // --claude-bin <path> (see docs/benchmark.md for how it is found on Windows).
 //
 // Briefs, owner answers and results are private: they are read from and written to paths outside the tracked tree, and no
@@ -17,7 +18,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
@@ -151,6 +152,8 @@ export interface ClaudeRunInput {
   model?: string;
   maxBudgetUsd: number;
   timeoutMs: number;
+  /** Continue this CLI session (`--resume`): the owner's reply to the agent's last message. */
+  resumeSessionId?: string;
 }
 
 export interface ClaudeRunOutput {
@@ -165,10 +168,22 @@ export interface ClaudeRunner {
   /** `claude --version` as printed; null when it cannot be read. */
   version(): Promise<string | null>;
   run(input: ClaudeRunInput): Promise<ClaudeRunOutput>;
+  /** Deletes the sessions the CLI kept for this working folder (after the run). */
+  forgetSessions?(cwd: string): void;
+}
+
+/**
+ * Where Claude Code keeps the sessions of a working folder: <config dir>/projects/<the folder's path with every character
+ * that is not a letter or digit turned into "-">. The config dir is the user's own (CLAUDE_CONFIG_DIR, else ~/.claude); it
+ * is never changed, so the login stays intact.
+ */
+export function claudeSessionDir(cwd: string, env: NodeJS.ProcessEnv = process.env): string {
+  const configDir = env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
+  return join(configDir, "projects", resolve(cwd).replace(/[^a-zA-Z0-9]/g, "-"));
 }
 
 /** The flags every real run gets: print mode with JSON, the ProjectX server only, no built-in tools, the budget cap. */
-export function claudeArgs(input: Pick<ClaudeRunInput, "mcpConfigPath" | "model" | "maxBudgetUsd">): string[] {
+export function claudeArgs(input: Pick<ClaudeRunInput, "mcpConfigPath" | "model" | "maxBudgetUsd" | "resumeSessionId">): string[] {
   return [
     "-p",
     "--output-format",
@@ -184,13 +199,15 @@ export function claudeArgs(input: Pick<ClaudeRunInput, "mcpConfigPath" | "model"
     "dontAsk",
     "--max-budget-usd",
     String(input.maxBudgetUsd),
-    "--no-session-persistence",
+    // Sessions persist (so the owner's reply can --resume them); they are kept per working folder, which is the run's own
+    // temporary folder, and forgetSessions() deletes them after the run.
+    ...(input.resumeSessionId ? ["--resume", input.resumeSessionId] : []),
     ...(input.model ? ["--model", input.model] : []),
   ];
 }
 
 /** Variables the agent's process never needs: the deploy token and Studio's root secret stay with the harness. */
-const WITHHELD_ENV = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "PX_TELEMETRY_SECRET", "CF_REVOKED_TOKEN"];
+const WITHHELD_ENV = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "PX_TELEMETRY_SECRET", "CF_REVOKED_TOKEN", "REVOKED_CF_TOKEN"];
 
 /**
  * The real CLI. It runs with the user's own environment (so the existing Claude Code login is used; CLAUDE_CONFIG_DIR is
@@ -211,6 +228,11 @@ export function createClaudeCliRunner(bin: string): ClaudeRunner {
     return env;
   };
   return {
+    forgetSessions(cwd) {
+      // Only a folder named for one of this harness's own temporary run folders is ever removed.
+      const dir = claudeSessionDir(cwd);
+      if (/px-bench-/.test(dir) && existsSync(dir)) rmSync(dir, { recursive: true, force: true });
+    },
     async version() {
       const [cmd, args] = command(["--version"]);
       const out = spawnSync(cmd, args, { encoding: "utf8", env: childEnv(), timeout: 30_000, shell: viaShell, windowsHide: true });
@@ -257,6 +279,7 @@ export interface CliNumbers {
   numTurns: number | null;
   durationMs: number | null;
   resultText: string | null;
+  sessionId: string | null;
   missingFields: string[];
 }
 
@@ -308,6 +331,7 @@ export function parseCliResult(stdout: string): CliNumbers {
     numTurns,
     durationMs,
     resultText: typeof p.result === "string" ? p.result : null,
+    sessionId: typeof p.session_id === "string" && p.session_id.length > 0 ? p.session_id : null,
     missingFields: missing,
   };
 }
@@ -320,6 +344,8 @@ export interface OwnerStats {
   approvalsApproved: number;
   /** Reviews the owner could not complete (the route refused). */
   refused: number;
+  /** Brick secrets the owner bound in Studio (names only; values are generated per run and never recorded). */
+  secretsBound: string[];
   /** Approvals the owner rejected because they were not a preview deploy (production, a promotion): the run is preview only. */
   rejectedNotPreview: Array<{ approvalId: string; action: string; env: string | null }>;
   /** For each review: from when the request was stored to the owner's decision. */
@@ -332,7 +358,7 @@ export interface OwnerStats {
  */
 export function startOwnerLoop(params: { call: StudioCall; session: string; orgId: string; project: string; intervalMs: number; now: () => number }) {
   const { call, session, orgId, project } = params;
-  const stats: OwnerStats = { proposalsAccepted: 0, approvalsApproved: 0, refused: 0, rejectedNotPreview: [], waitMs: 0 };
+  const stats: OwnerStats = { proposalsAccepted: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 };
   let stopped = false;
   const waited = (createdAt: unknown) => {
     const t = typeof createdAt === "string" ? Date.parse(createdAt) : NaN;
@@ -383,6 +409,55 @@ export function startOwnerLoop(params: { call: StudioCall; session: string; orgI
       return stats;
     },
   };
+}
+
+export const GENERIC_OWNER_REPLY = "Please continue until the app is deployed to preview; the harness instructions win where they conflict with my answers.";
+export const DEFAULT_MAX_AGENT_CALLS = 8;
+
+/**
+ * The scripted owner's reply when the agent stops before its preview deploy: the answer under `## <n>. <title>` in the
+ * brief's answers when a question in the agent's last message names that title, followed by the generic line; otherwise
+ * the generic line alone.
+ */
+export function ownerReply(answers: string | undefined, agentText: string | null): { text: string; source: "answers" | "generic"; section: string | null } {
+  const questions = (agentText ?? "").split(/(?<=[?.!])\s+|\n+/).filter((q) => q.includes("?")).map((q) => q.toLowerCase());
+  if (answers && questions.length > 0) {
+    const sections = [...answers.matchAll(/^## (\d+)\.\s*(.+)$/gm)];
+    for (let i = 0; i < sections.length; i += 1) {
+      const heading = sections[i]!;
+      const title = heading[2]!.trim();
+      const words = title.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
+      if (words.length === 0 || !questions.some((q) => words.some((w) => q.includes(w)))) continue;
+      const end = sections[i + 1]?.index ?? answers.length;
+      const body = answers.slice(heading.index! + heading[0].length, end).trim();
+      if (body) return { text: `${body}\n\n${GENERIC_OWNER_REPLY}`, source: "answers", section: `${heading[1]}. ${title}` };
+    }
+  }
+  return { text: GENERIC_OWNER_REPLY, source: "generic", section: null };
+}
+
+/**
+ * The owner binds each brick secret the blueprint still needs (readiness UNBOUND_BRICK_SECRET), as a person would in
+ * Studio: the session secrets route with a bindTarget, and a fresh random 32-byte value. Returns the names bound; the
+ * values are only ever added to `hideValues` (so every record is checked against them) and never recorded.
+ */
+export async function bindUnboundSecrets(params: { call: StudioCall; session: string; orgId: string; project: string; randomHex: (bytes: number) => string; hideValues: Record<string, string> }): Promise<{ bound: string[]; failed: string[] }> {
+  const { call, session, orgId, project } = params;
+  const state = await call("GET", `/api/projects/${project}`, undefined, session, orgId);
+  const needs = ((state.body.readiness as { needs?: Array<{ code?: string; path?: string }> } | undefined)?.needs ?? []).filter((n) => n.code === "UNBOUND_BRICK_SECRET");
+  const bound: string[] = [];
+  const failed: string[] = [];
+  for (const need of needs) {
+    const m = /^bricks\.([^.]+)\.secrets\.(.+)$/.exec(String(need.path ?? ""));
+    if (!m) continue;
+    const [, brickId, secretName] = m as unknown as [string, string, string];
+    const value = params.randomHex(32);
+    params.hideValues[`secret_${brickId}_${secretName}`] = value;
+    const ref = `sec_${brickId}_${secretName}`.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    const res = await call("POST", `/api/projects/${project}/secrets`, { ref, kind: "brick_secret", label: secretName, appOrBrick: brickId, value, bindTarget: { targetKind: "brick", targetId: brickId, secretName } }, session, orgId);
+    (res.status === 200 || res.status === 201 ? bound : failed).push(`${brickId}.${secretName}`);
+  }
+  return { bound, failed };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -436,8 +511,31 @@ export const RunRecordSchema = z.strictObject({
     numTurns: z.number().nullable(),
     durationMs: z.number().nullable(),
     missingFields: z.array(z.string()),
+    /** `claude -p` invocations (the first, then one per owner reply); turns are counted separately, in numTurns. */
+    agentCalls: z.number().int().min(0),
   }),
-  limits: z.strictObject({ maxBudgetUsd: z.number().positive(), wallTimeCapMs: z.number().int().positive() }),
+  /** Each `claude -p` call: what prompted it, what the CLI reported, and its final message (redacted, cut to 2000 characters). */
+  agentCalls: z.array(
+    z.strictObject({
+      call: z.number().int().min(1),
+      prompt: z.enum(["brief", "change-request", "owner-reply"]),
+      reply: z.strictObject({ source: z.enum(["answers", "generic"]), section: z.string().nullable() }).nullable(),
+      resumed: z.boolean(),
+      exitCode: z.number().int().nullable(),
+      timedOut: z.boolean(),
+      subtype: z.string().nullable(),
+      isError: z.boolean().nullable(),
+      costUsd: z.number().nullable(),
+      numTurns: z.number().nullable(),
+      durationMs: z.number().nullable(),
+      wallTimeMs: z.number().int().min(0),
+      modelIds: z.array(z.string()),
+      maxBudgetUsd: z.number(),
+      resultText: z.string().nullable(),
+      secretsBoundAfter: z.array(z.string()),
+    }),
+  ),
+  limits: z.strictObject({ maxBudgetUsd: z.number().positive(), wallTimeCapMs: z.number().int().positive(), maxAgentCalls: z.number().int().positive() }),
   wallTimeMs: z.number().int().min(0),
   agentWallTimeMs: z.number().int().min(0).nullable(),
   ownerReview: z.strictObject({
@@ -445,6 +543,7 @@ export const RunRecordSchema = z.strictObject({
     proposalsAccepted: z.number().int().min(0),
     approvalsApproved: z.number().int().min(0),
     refused: z.number().int().min(0),
+    secretsBound: z.array(z.string()),
     rejectedNotPreview: z.array(z.strictObject({ approvalId: z.string(), action: z.string(), env: z.string().nullable() })),
     waitMs: z.number().min(0),
   }),
@@ -901,6 +1000,8 @@ export interface AgentBenchDeps {
   model?: string;
   maxBudgetUsd?: number;
   wallTimeCapMs?: number;
+  /** The most `claude -p` calls in one run (the first plus owner replies); default 8. */
+  maxAgentCalls?: number;
   /** Where the run's empty working folder and MCP config are made (a temp folder by default). */
   workRoot?: string;
   ownerIntervalMs?: number;
@@ -918,6 +1019,7 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const maxBudgetUsd = deps.maxBudgetUsd ?? DEFAULT_MAX_BUDGET_USD;
   const wallTimeCapMs = deps.wallTimeCapMs ?? WALL_TIME_CAP_MS;
+  const maxAgentCalls = deps.maxAgentCalls ?? DEFAULT_MAX_AGENT_CALLS;
   const { token, accountId } = deps.credentials;
   if (GLOBAL_API_KEY.test(token.trim())) throw new BenchRefusal("CLOUDFLARE_API_TOKEN looks like a Global API Key (37 hex characters): use a scoped API token; nothing was sent");
   if (typeof deps.rootSecret !== "string" || deps.rootSecret.trim().length < 16) throw new BenchRefusal("PX_TELEMETRY_SECRET (Studio's root secret, 16+ characters) is required");
@@ -956,11 +1058,12 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     incompleteReason: null,
     incompleteKind: null,
     iteration: deps.iteration ?? 1,
-    cli: { version: null, exitCode: null, timedOut: false, subtype: null, isError: null, modelIds: [], modelIdSource: "missing", requestedModel: deps.model ?? null, costUsd: null, costLabel: "client-estimated", numTurns: null, durationMs: null, missingFields: [] },
-    limits: { maxBudgetUsd, wallTimeCapMs },
+    cli: { version: null, exitCode: null, timedOut: false, subtype: null, isError: null, modelIds: [], modelIdSource: "missing", requestedModel: deps.model ?? null, costUsd: null, costLabel: "client-estimated", numTurns: null, durationMs: null, missingFields: [], agentCalls: 0 },
+    agentCalls: [],
+    limits: { maxBudgetUsd, wallTimeCapMs, maxAgentCalls },
     wallTimeMs: 0,
     agentWallTimeMs: null,
-    ownerReview: { count: 0, proposalsAccepted: 0, approvalsApproved: 0, refused: 0, rejectedNotPreview: [], waitMs: 0 },
+    ownerReview: { count: 0, proposalsAccepted: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 },
     project,
     previewUrl: null,
     deployed: false,
@@ -1019,26 +1122,117 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     record.cli.version = await deps.runner.version().catch(() => null);
     const agentStarted = now();
     say(`3. ${record.cli.version ?? "claude"} running (budget $${maxBudgetUsd}, wall cap ${Math.round(wallTimeCapMs / 60_000)} min)`);
-    let out: ClaudeRunOutput | null = null;
-    try {
-      out = await deps.runner.run({ prompt, cwd, mcpConfigPath, mcp, ...(deps.model ? { model: deps.model } : {}), maxBudgetUsd, timeoutMs: wallTimeCapMs });
-    } catch (error) {
-      reasons.push({ kind: "infra", text: `the CLI failed: ${hide(error instanceof Error ? error.message : String(error))}` });
+    // The agent works in calls: the first with the prompt, then, while it has stopped short of a live preview, one more per
+    // owner reply on the same session (--resume). The budget and the wall cap are shared by every call.
+    const deadline = agentStarted + wallTimeCapMs;
+    let spent = 0;
+    let sessionId: string | null = null;
+    let nextPrompt = prompt;
+    let reply: { source: "answers" | "generic"; section: string | null } | null = null;
+    const texts: string[] = [];
+    const baselineRev = baselineRevision;
+    const done = async () => {
+      const preview = await readPreviewState({ call, session, orgId, project });
+      if (deps.task === "brief") return preview.deployed;
+      const state = await call("GET", `/api/projects/${project}`, undefined, session, orgId);
+      const rev = Number(state.body.revision ?? 0);
+      return rev > baselineRev && preview.deployedRev === rev;
+    };
+    for (let n = 1; n <= maxAgentCalls; n += 1) {
+      const remainingMs = deadline - now();
+      const remainingUsd = Math.round((maxBudgetUsd - spent) * 10_000) / 10_000;
+      if (remainingMs <= 0) {
+        reasons.push({ kind: "agent", text: `wall-time cap hit: ${Math.round(wallTimeCapMs / 60_000)} min used across ${n - 1} agent call(s)` });
+        break;
+      }
+      if (remainingUsd <= 0.01) {
+        reasons.push({ kind: "agent", text: `budget cap hit: $${spent.toFixed(2)} of $${maxBudgetUsd} used across ${n - 1} agent call(s)` });
+        break;
+      }
+      const callStarted = now();
+      let out: ClaudeRunOutput | null = null;
+      try {
+        out = await deps.runner.run({ prompt: nextPrompt, cwd, mcpConfigPath, mcp, ...(deps.model ? { model: deps.model } : {}), maxBudgetUsd: remainingUsd, timeoutMs: remainingMs, ...(sessionId ? { resumeSessionId: sessionId } : {}) });
+      } catch (error) {
+        reasons.push({ kind: "infra", text: `the CLI failed: ${hide(error instanceof Error ? error.message : String(error))}` });
+        break;
+      }
+      const numbers = parseCliResult(out.stdout);
+      spent += numbers.costUsd ?? 0;
+      if (numbers.resultText) texts.push(numbers.resultText);
+      const entry: RunRecord["agentCalls"][number] = {
+        call: n,
+        prompt: n === 1 ? (deps.task === "brief" ? "brief" : "change-request") : "owner-reply",
+        reply: n === 1 ? null : reply,
+        resumed: n > 1,
+        exitCode: out.exitCode,
+        timedOut: out.timedOut,
+        subtype: numbers.subtype,
+        isError: numbers.isError,
+        costUsd: numbers.costUsd,
+        numTurns: numbers.numTurns,
+        durationMs: numbers.durationMs,
+        wallTimeMs: Math.max(0, Math.round(now() - callStarted)),
+        modelIds: numbers.modelIds,
+        maxBudgetUsd: remainingUsd,
+        resultText: numbers.resultText === null ? null : hide(numbers.resultText).slice(0, 2000),
+        secretsBoundAfter: [],
+      };
+      record.agentCalls.push(entry);
+      const sum = (key: "costUsd" | "numTurns" | "durationMs") => {
+        const values = record.agentCalls.map((c) => c[key]).filter((v): v is number => typeof v === "number");
+        return values.length === 0 ? null : values.reduce((x, y) => x + y, 0);
+      };
+      record.cli = {
+        ...record.cli,
+        exitCode: out.exitCode,
+        timedOut: record.cli.timedOut || out.timedOut,
+        subtype: numbers.subtype,
+        isError: numbers.isError,
+        modelIds: [...new Set([...record.cli.modelIds, ...numbers.modelIds])],
+        modelIdSource: record.cli.modelIdSource !== "missing" ? record.cli.modelIdSource : numbers.modelIdSource,
+        costUsd: sum("costUsd"),
+        numTurns: sum("numTurns"),
+        durationMs: sum("durationMs"),
+        missingFields: [...new Set([...record.cli.missingFields, ...numbers.missingFields])],
+        agentCalls: record.agentCalls.length,
+      };
+      say(`4.${n} CLI call ${n}: exit ${String(out.exitCode)}, ${numbers.subtype ?? "?"}, ${numbers.numTurns ?? "?"} turns, $${numbers.costUsd ?? "?"} (client-estimated), models ${numbers.modelIds.join(", ") || "not reported"}`);
+      if (out.timedOut) {
+        reasons.push({ kind: "agent", text: `wall-time cap hit: the CLI was stopped after ${Math.round(wallTimeCapMs / 60_000)} min` });
+        break;
+      }
+      if (numbers.subtype === "error_max_budget_usd") {
+        reasons.push({ kind: "agent", text: `budget cap hit: the CLI stopped at its $${maxBudgetUsd} cap` });
+        break;
+      }
+      if (out.exitCode !== 0 || numbers.isError === true || (numbers.subtype !== null && numbers.subtype !== "success")) {
+        reasons.push({ kind: "agent", text: `the CLI ended with exit ${String(out.exitCode)}, ${numbers.subtype ?? "no result subtype"}` });
+        break;
+      }
+      if (await done()) break;
+      // The owner's human steps between calls: bind the brick secrets the blueprint still needs, then reply.
+      const secrets_ = await bindUnboundSecrets({ call, session, orgId, project, randomHex: deps.randomHex, hideValues: secrets });
+      owner.stats.secretsBound.push(...secrets_.bound);
+      entry.secretsBoundAfter = secrets_.bound;
+      if (secrets_.failed.length > 0) say(`   the owner could not bind ${secrets_.failed.join(", ")}`);
+      if (n === maxAgentCalls) break;
+      if (!numbers.sessionId) {
+        reasons.push({ kind: "infra", text: "the CLI reported no session_id, so the owner could not reply" });
+        break;
+      }
+      sessionId = numbers.sessionId;
+      const r = ownerReply(deps.task === "brief" ? deps.brief.answers : undefined, numbers.resultText);
+      reply = { source: r.source, section: r.section };
+      nextPrompt = r.text;
     }
+    deps.runner.forgetSessions?.(cwd);
     const agentEnded = now();
     record.agentWallTimeMs = Math.max(0, Math.round(agentEnded - agentStarted));
     const stats = await owner.stop();
     owner = null;
-    record.ownerReview = { count: stats.proposalsAccepted + stats.approvalsApproved, ...stats, waitMs: Math.round(stats.waitMs) };
-    if (out) {
-      const numbers = parseCliResult(out.stdout);
-      record.cli = { ...record.cli, exitCode: out.exitCode, timedOut: out.timedOut, subtype: numbers.subtype, isError: numbers.isError, modelIds: numbers.modelIds, modelIdSource: numbers.modelIdSource, costUsd: numbers.costUsd, numTurns: numbers.numTurns, durationMs: numbers.durationMs, missingFields: numbers.missingFields };
-      if (out.timedOut) reasons.push({ kind: "agent", text: `wall-time cap hit: the CLI was stopped after ${Math.round(wallTimeCapMs / 60_000)} min` });
-      else if (numbers.subtype === "error_max_budget_usd") reasons.push({ kind: "agent", text: `budget cap hit: the CLI stopped at its ${maxBudgetUsd} cap` });
-      else if (out.exitCode !== 0 || numbers.isError === true || (numbers.subtype !== null && numbers.subtype !== "success")) reasons.push({ kind: "agent", text: `the CLI ended with exit ${String(out.exitCode)}, ${numbers.subtype ?? "no result subtype"}` });
-      say(`4. CLI: exit ${String(out.exitCode)}, ${numbers.subtype ?? "?"}, ${numbers.numTurns ?? "?"} turns, $${numbers.costUsd ?? "?"} (client-estimated), models ${numbers.modelIds.join(", ") || "not reported"}`);
-      if (deps.task === "change-live-app") record.change = { timeToLiveMs: null, redeploys: 0, hotApplies: 0, noops: 0, parts: [], agentFlaggedUnsupported: /^\s*UNSUPPORTED:/im.test(numbers.resultText ?? "") };
-    }
+    record.ownerReview = { count: stats.proposalsAccepted + stats.approvalsApproved + stats.secretsBound.length, ...stats, waitMs: Math.round(stats.waitMs) };
+    if (deps.task === "change-live-app") record.change = { timeToLiveMs: null, redeploys: 0, hotApplies: 0, noops: 0, parts: [], agentFlaggedUnsupported: texts.some((t) => /^\s*UNSUPPORTED:/im.test(t)) };
 
     // ---- scoring, on whatever exists now
     phase = "score";
@@ -1071,7 +1265,7 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
   } finally {
     if (owner) {
       const stats = await owner.stop().catch(() => null);
-      if (stats) record.ownerReview = { count: stats.proposalsAccepted + stats.approvalsApproved, ...stats, waitMs: Math.round(stats.waitMs) };
+      if (stats) record.ownerReview = { count: stats.proposalsAccepted + stats.approvalsApproved + stats.secretsBound.length, ...stats, waitMs: Math.round(stats.waitMs) };
     }
     if (server) await server.close().catch(() => undefined);
     phase = "teardown";
@@ -1231,6 +1425,12 @@ async function main(argv: string[]): Promise<number> {
     console.error(`--task must be "brief" or "change-live-app"`);
     return 2;
   }
+  const callsArg = arg("--max-agent-calls");
+  const maxAgentCalls = callsArg === undefined ? DEFAULT_MAX_AGENT_CALLS : Number(callsArg);
+  if (!Number.isInteger(maxAgentCalls) || maxAgentCalls < 1) {
+    console.error("--max-agent-calls must be a whole number from 1");
+    return 2;
+  }
   const budgetArg = arg("--max-budget-usd");
   const maxBudgetUsd = budgetArg === undefined ? DEFAULT_MAX_BUDGET_USD : Number(budgetArg);
   if (!Number.isFinite(maxBudgetUsd) || maxBudgetUsd <= 0) {
@@ -1265,6 +1465,7 @@ async function main(argv: string[]): Promise<number> {
   const record = await runAgentBench({
     task,
     iteration,
+    maxAgentCalls,
     brief,
     ...(fromRun ? { fromRun } : {}),
     credentials,
