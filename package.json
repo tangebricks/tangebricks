@@ -55,6 +55,7 @@
     "poc:widget": "vitest run -c vitest.live.config.ts",
     "poc:h5-hosted": "node scripts/poc-h5-hosted.ts",
     "poc:teardown": "node scripts/poc-teardown.ts",
+    "live:studio-deploy": "node scripts/live-studio-deploy.ts",
     "poc:restore": "node scripts/poc-restore.ts",
     "poc:rollback": "node scripts/poc-rollback.ts",
     "ops:restore-drill": "node scripts/restore-drill.ts",

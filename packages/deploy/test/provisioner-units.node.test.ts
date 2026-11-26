@@ -257,7 +257,8 @@ describe("the Cloudflare client", () => {
     expect(client.calls).toHaveLength(1);
     const call = client.calls[0]!;
     expect(Object.keys(call).sort()).toEqual(["atMs", "attempt", "method", "ms", "n", "outcome", "path", "status"]);
-    expect(call.path).toBe("/accounts/{account}/d1/database?name=x");
+    // story R53: lists are paged, so the query carries page and per_page beside the name
+    expect(call.path).toBe("/accounts/{account}/d1/database?name=x&page=1&per_page=100");
     expect(JSON.stringify(client.calls)).not.toContain(ACCOUNT);
     expect(JSON.stringify(client.calls)).not.toContain(TOKEN);
   });

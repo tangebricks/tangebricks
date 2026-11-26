@@ -108,7 +108,8 @@ export function computeReadiness(
         message: `identity "${state.identity}" requires brick "${state.identity}" to be enabled in bricks`,
         suggestedFix: `Enable brick "${state.identity}" with enable_brick or set identity to "stub"`,
       });
-    } else if (!enabledIdentity.manifest.provides.includes(IDENTITY_CAPABILITY)) {
+    } else if (!enabledIdentity.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === IDENTITY_CAPABILITY)) {
+      // (a capability may carry a version, "user-identity@1.0.0"; the name is compared, as the assembler does)
       needs.push({
         code: "INVALID_IDENTITY_BRICK",
         path: "identity",

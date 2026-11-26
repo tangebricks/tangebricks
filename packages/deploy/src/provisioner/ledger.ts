@@ -1,12 +1,13 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { dirname } from "node:path";
-import { PROOF_PREFIX, isProofName } from "./names.ts";
+import { PROOF_NAME_POLICY } from "./names.ts";
+import type { NamePolicy } from "./names.ts";
 
 // The record of what this tool created in the owner's account. Teardown deletes only what is listed here, and only if the
 // name carries the proof's prefix. An entry is written BEFORE the create call is made ("creating"), so a crash between the
 // call and the answer still leaves a trace and nothing is created that the ledger does not know about.
 
-export type ResourceKind = "d1_database" | "worker_script" | "workflow" | "d1_bookmark" | "allow_destructive";
+export type ResourceKind = "d1_database" | "worker_script" | "workflow" | "queue" | "d1_bookmark" | "allow_destructive";
 export interface LedgerEntry {
   kind: ResourceKind;
   name: string;
@@ -60,7 +61,7 @@ export interface Ledger {
   removed(kind: ResourceKind, name: string): void;
 }
 
-export function openLedger(store: LedgerStore, newSuffix: () => string, now: () => Date = () => new Date()): Ledger {
+export function openLedger(store: LedgerStore, newSuffix: () => string, now: () => Date = () => new Date(), policy: NamePolicy = PROOF_NAME_POLICY): Ledger {
   let data = store.read();
   if (!data) {
     data = { suffix: newSuffix(), entries: [] };
@@ -78,7 +79,7 @@ export function openLedger(store: LedgerStore, newSuffix: () => string, now: () 
       return entry !== undefined && entry.status !== "removed";
     },
     planned(kind, name) {
-      if (!isProofName(name)) throw new Error(`refusing to record "${name}": it does not carry the proof's prefix ${PROOF_PREFIX}`);
+      if (!policy.isName(name)) throw new Error(`refusing to record "${name}": it does not carry the proof's prefix ${policy.prefix}`);
       const existing = find(kind, name);
       if (existing) {
         existing.status = "creating";

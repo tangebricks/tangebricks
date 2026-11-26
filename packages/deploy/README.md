@@ -41,6 +41,37 @@ Trigger rule: **a run without a verified workspace is refused.**
 - The routes that execute bricks inline (`/__px/rehearse`, `/__px/runs`, `/__px/runs/rerun`) take the same control-plane signature (method, path, time, body; story 1.17) and a one-time `requestId` (a UUID) in the signed body. The id is recorded in `px_control_requests(request_id PRIMARY KEY, path, workspace_id, created_at)` before any executor runs; a second use gets `409 DUPLICATE_REQUEST` and executes nothing, so a captured request replayed inside the window debits once. A missing or malformed `requestId` is 400; a stale, wrong-path, legacy body-only or webhook signature is 401. Rows older than an hour are pruned opportunistically. Their signed body must also name a tenant `workspaceId` (400 `NO_WORKSPACE` or `BAD_WORKSPACE` otherwise). The read-only pulls (GET `/__px/events`, `/__px/logs`, `/__px/metrics` and `/__px/data/*` reads) take the same signature without a request id; every signed `/__px/data/*` write (POST, PATCH, PUT, DELETE) must carry a one-time `requestId` (a UUID) in its signed query string, claimed in the same `px_control_requests` ledger before the write (400 without one, 409 `DUPLICATE_REQUEST` on reuse).
 - The Workflow hands that workspace to `runGraph`, which gives it to every executor as the read-only `ctx.workspaceId`. The runtime has no default workspace: `runGraph` refuses a run without one (`RunRefusedError`, `NO_WORKSPACE`) before any node runs, and a run whose params carry none (or `__app__`) ends non-retryably before its graph is read. Executors never take a workspace from inputs, payload or config: `credit-wallet.debit` fails `WORKSPACE_MISMATCH` and debits nothing when its input names another workspace.
 
+## Studio's one real deploy path (story 1.2)
+
+Studio deploys with `createHttpCloudflareApiClient` (`src/http-control-plane.ts`), the `CloudflareApiClient` over Cloudflare's
+REST API. MCP's deploy tools call Studio's routes, so they use the same client. The client is built on the provisioner's REST
+client (`src/provisioner/cloudflare.ts`), so auth, retries, error classes, secret redaction and the request budget are shared
+with the proof scripts. There is no second HTTP stack.
+
+- **Endpoints.** Workers: upload with `keep_bindings` for secrets; `PUT .../secrets`; `GET`/`PUT .../schedules`;
+  `.../subdomain`. Also D1, Queues (`GET`/`POST /queues`, `DELETE /queues/{id}`), Workflows and the account record. A method
+  whose endpoint has not been checked against the live API says so in a comment.
+- **Bookkeeping.** The project's own D1 holds two tables: `_projectx_migrations` and `_projectx_studio_state` (the build,
+  code and graph hashes, and the schedule rows). The Worker's code hash is the version annotation `workers/message`. An
+  unchanged redeploy is a no-op with zero write calls.
+- **Tokens.** `verifyCloudflareToken(token, accountId, { client })` asks Cloudflare. It tries
+  `GET /accounts/{id}/tokens/verify`, and on a 401 or code 1000 tries `GET /user/tokens/verify`, because a user token
+  verifies only there. It reads permissions from the token's own policies when an account token may read them. Otherwise it
+  makes one harmless read per capability and names each refusal. A read proves Read only: the report says `verifiedBy: "read-probe"`, marks the Edit permissions unconfirmed, and its summary says the first deploy will confirm them. A 400/404 read reports the capability unavailable; a 5xx or network failure propagates as unreachable, never as a verdict on the token. It needs a client. The spelling-based classifier
+  (`cf_revoked_...`) is reachable only through the fake, `MockCloudflareControlPlane`, which is for tests only. Studio uses the
+  fake only with `PX_DEPLOY_CLIENT=fake` and `PX_ENVIRONMENT` test or development; anywhere else that setting is refused.
+- **Rate limit.** Every request attempt, retries included, takes a token from a bucket of 1,100 per five minutes per account (per process, and per account rather than per user; the shared budgets are a bounded LRU),
+  below Cloudflare's 1,200 (`createRequestBudget`, `sharedRequestBudget`). A request waits for budget instead of failing. A 429
+  is still retried after `Retry-After`.
+- **Smoke check.** The check before a traffic shift sends the gate's `x-poc-key`, so a redeploy that uploads code passes the
+  access-key gate.
+- **Lists** (scripts, D1, queues, Workflows) are read page by page (`page`/`per_page`, stopping at `result_info.total_pages`, a short page or a repeated page); the paging parameters of `/workers/scripts`, `/queues` and `/workflows` are not yet checked against the live API.
+- **workers.dev.** An account without a workers.dev subdomain gets `NO_WORKERS_DEV_SUBDOMAIN`, with steps to enable it.
+  Nothing creates the subdomain.
+
+The live proof is `pnpm live:studio-deploy`. See [docs/live-deploy.md](../../docs/live-deploy.md) for the token permissions,
+the env file, the commands, the teardown and what the proof creates.
+
 ## Verification
 
 The fault matrix is continuously verified by:

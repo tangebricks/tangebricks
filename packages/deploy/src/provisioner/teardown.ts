@@ -1,4 +1,6 @@
-import { PROOF_PREFIX, assertProofName, isProofName } from "./names.ts";
+import { PROOF_NAME_POLICY } from "./names.ts";
+import type { NamePolicy } from "./names.ts";
+import { CloudflareApiError } from "./cloudflare.ts";
 import type { Client } from "./cloudflare.ts";
 import type { Ledger, ResourceKind } from "./ledger.ts";
 
@@ -13,9 +15,10 @@ export interface TeardownResult {
   unledgered: Array<{ kind: ResourceKind; name: string }>;
 }
 
-const ORDER: Record<ResourceKind, number> = { workflow: 0, worker_script: 1, d1_database: 2, d1_bookmark: 3, allow_destructive: 4 };
+const ORDER: Record<ResourceKind, number> = { workflow: 0, worker_script: 1, queue: 2, d1_database: 3, d1_bookmark: 4, allow_destructive: 5 };
 
-export async function teardown(client: Client, ledger: Ledger): Promise<TeardownResult> {
+export async function teardown(client: Client, ledger: Ledger, policy: NamePolicy = PROOF_NAME_POLICY): Promise<TeardownResult> {
+  const assertProofName = (name: string) => policy.assertName(name);
   const result: TeardownResult = { removed: [], alreadyGone: [], unledgered: [] };
   const entries = ledger
     .entries()
@@ -42,6 +45,15 @@ export async function teardown(client: Client, ledger: Ledger): Promise<Teardown
     try {
       if (entry.kind === "workflow") await client.deleteWorkflow(entry.name);
       else if (entry.kind === "worker_script") await client.deleteScript(entry.name);
+      else if (entry.kind === "queue") {
+        const queue = (await client.listQueues()).find((q) => q.name === entry.name && (entry.id === undefined || q.id === entry.id));
+        if (!queue) {
+          result.alreadyGone.push({ kind: entry.kind, name: entry.name });
+          ledger.removed(entry.kind, entry.name);
+          continue;
+        }
+        await client.deleteQueue(queue.id);
+      }
       else if (entry.kind === "d1_database") {
         // delete by the id the ledger recorded, after checking that the id still belongs to a database of that name
         const named = (await client.listDatabases(entry.name)).filter((d) => d.name === entry.name);
@@ -61,19 +73,35 @@ export async function teardown(client: Client, ledger: Ledger): Promise<Teardown
     ledger.removed(entry.kind, entry.name);
   }
 
-  result.unledgered = await findUnledgered(client, ledger);
+  result.unledgered = await findUnledgered(client, ledger, policy);
   return result;
 }
 
 /** Proof-prefixed resources in the account that the ledger does not list as live. Read-only. */
-export async function findUnledgered(client: Client, ledger: Ledger): Promise<Array<{ kind: ResourceKind; name: string }>> {
+export async function findUnledgered(client: Client, ledger: Ledger, policy: NamePolicy = PROOF_NAME_POLICY): Promise<Array<{ kind: ResourceKind; name: string }>> {
+  const PROOF_PREFIX = policy.prefix;
+  const isProofName = (name: string) => policy.isName(name);
   const live = new Set(ledger.entries().filter((e) => e.status !== "removed").map((e) => `${e.kind}:${e.name}`));
   const out: Array<{ kind: ResourceKind; name: string }> = [];
   const consider = (kind: ResourceKind, name: string) => {
     if (name.startsWith(PROOF_PREFIX) && isProofName(name) && !live.has(`${kind}:${name}`)) out.push({ kind, name });
   };
   for (const name of await client.listScripts()) consider("worker_script", name);
-  for (const database of await client.listDatabases(PROOF_PREFIX)) consider("d1_database", database.name);
+  // every database, filtered here by exact prefix: the list endpoint's name= is a search, not a prefix match
+  for (const database of await client.listDatabases()) consider("d1_database", database.name);
   for (const name of await client.listWorkflows()) consider("workflow", name);
+  // Queues are listed only for a policy other than the proof's: the original proof made none, and its tokens may lack Queues.
+  // An account without Queues has no queue of ours either.
+  if (policy !== PROOF_NAME_POLICY) {
+    let queues: Array<{ name: string }> = [];
+    try {
+      queues = await client.listQueues();
+    } catch (error) {
+      // 404: no Queues endpoint for this account. 400 only when Cloudflare says Queues is not enabled; any other refusal fails.
+      const notEnabled = error instanceof CloudflareApiError && (error.status === 404 || (error.status === 400 && /not (enabled|available|entitled)|enable queues/i.test(`${error.message} ${error.details.join(" ")}`)));
+      if (!notEnabled) throw error;
+    }
+    for (const queue of queues) consider("queue", queue.name);
+  }
   return out;
 }

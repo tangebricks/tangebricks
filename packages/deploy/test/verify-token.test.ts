@@ -132,8 +132,11 @@ describe("Story 5.2 — Cloudflare Scoped Token Template & Per-Permission Verifi
   });
 
   it("supports multi-account tokens and selects requestedAccountId when provided", async () => {
+    // The spelling-based classifier is test-only: it answers through the fake client (no registered token), never without one.
     const multiReportDefault = await verifyCloudflareToken(
       "cf_multi_account_valid_token_1234",
+      undefined,
+      new MockCloudflareControlPlane(),
     );
     expect(multiReportDefault.ok).toBe(true);
     expect(multiReportDefault.accounts).toHaveLength(2);
@@ -142,6 +145,7 @@ describe("Story 5.2 — Cloudflare Scoped Token Template & Per-Permission Verifi
     const multiReportSecond = await verifyCloudflareToken(
       "cf_multi_account_valid_token_1234",
       "fedcba9876543210fedcba9876543210",
+      { client: new MockCloudflareControlPlane() },
     );
     expect(multiReportSecond.ok).toBe(true);
     expect(multiReportSecond.accountId).toBe("fedcba9876543210fedcba9876543210");

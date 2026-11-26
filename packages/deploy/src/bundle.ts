@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 import { findDynamicEvaluation } from "@poc/harness";
@@ -82,6 +82,23 @@ export interface BundleWorkerOptions {
    * bundle never sets this, so the deployed Workflow runs only the catalog's real executors.
    */
   fixtureBricksModule?: string;
+  /**
+   * Resolve every @poc/<brick> import to bricks/<brick>/src/index.ts in this repository, for an assembled project whose bricks
+   * are not dependencies of the folder it is written to (Studio's live path enables bricks such as core-auth that the
+   * repository root does not depend on). Off by default: the proof scripts keep resolving through node_modules.
+   */
+  resolveRepoBricks?: boolean;
+}
+
+function repoBrickAliases(): Record<string, string> {
+  const bricks = join(repoRoot, "bricks");
+  if (!existsSync(bricks)) return {};
+  const out: Record<string, string> = {};
+  for (const dir of readdirSync(bricks)) {
+    const entry = join(bricks, dir, "src", "index.ts");
+    if (existsSync(entry)) out[`@poc/${dir}`] = slash(entry);
+  }
+  return out;
 }
 
 export async function bundleWorker(options: BundleWorkerOptions): Promise<WorkerBundle> {
@@ -120,6 +137,7 @@ export async function bundleWorker(options: BundleWorkerOptions): Promise<Worker
     conditions: ["workerd", "worker", "browser"],
     mainFields: ["module", "main"],
     external: ["cloudflare:*"],
+    ...(options.resolveRepoBricks ? { alias: repoBrickAliases() } : {}),
     legalComments: "none",
     metafile: true,
     logLevel: "silent",

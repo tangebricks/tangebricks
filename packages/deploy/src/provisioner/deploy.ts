@@ -9,6 +9,7 @@ import { CloudflareApiError, isCloudflareError } from "./cloudflare.ts";
 import type { CallRecord, Client } from "./cloudflare.ts";
 import type { Ledger } from "./ledger.ts";
 import type { ResourceNames } from "./names.ts";
+import { KEY_HEADER } from "../worker/gate.ts";
 
 // Deploys one assembled project to the owner's account by converging: read what exists, do only what is missing, and say
 // what was done. A second run with nothing changed does nothing and says so.
@@ -307,7 +308,7 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
 
   // The address needs the account's workers.dev name. The owner chooses it once; this tool does not create it.
   const subdomain = await client.getAccountSubdomain();
-  if (subdomain === null) throw new DeployError("this account has no workers.dev name yet; register one in the Cloudflare dashboard (Workers & Pages) and run again. This tool does not create one for you.");
+  if (subdomain === null) throw new DeployError("this account has no workers.dev name yet; register one in the Cloudflare dashboard (Workers & Pages > Overview > your subdomain: choose a name and save) and run again. This tool does not create one for you.");
 
   if (input.lock) {
     const plan = await planDeploy({ ...input, lock: input.lock });
@@ -594,7 +595,7 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
       if (!isAlreadyActiveAt100) {
         // Smoke check on the new version taking 0% traffic
         try {
-          await runSmokeCheck(client, scriptUrl, names.script, newVersionId);
+          await runSmokeCheck(client, scriptUrl, names.script, newVersionId, smokeKeyFor(input));
         } catch (smokeErr) {
           if (deployHistoryId) {
             await client.queryDatabase(databaseId, [
@@ -614,7 +615,7 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
               ...(pct < 100 && fromVersionId ? [{ versionId: fromVersionId, percentage: 100 - pct }] : []),
             ]);
             if (pct < 100) {
-              await runSmokeCheck(client, scriptUrl, names.script, newVersionId);
+              await runSmokeCheck(client, scriptUrl, names.script, newVersionId, smokeKeyFor(input));
             }
           }
         } else {
@@ -781,11 +782,21 @@ async function uploadVersionWithDiagnosis(input: DeployInput, databaseId: string
   }
 }
 
-async function runSmokeCheck(
+/**
+ * The access key the smoke check presents. The deployed Worker sits behind the access-key gate (worker/gate.ts), which answers
+ * 401 to any request without it, so a smoke check without the key fails every redeploy that uploads code. Only the gate
+ * reads this header: a Worker that binds its secret under another name (the MCP endpoint) gets no header.
+ */
+export function smokeKeyFor(input: Pick<DeployInput, "accessKey" | "secretBinding">): string | undefined {
+  return (input.secretBinding ?? KEY_BINDING) === KEY_BINDING ? input.accessKey : undefined;
+}
+
+export async function runSmokeCheck(
   client: Client,
   url: string,
   scriptName: string,
   versionId: string,
+  accessKey?: string,
   sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
 ): Promise<void> {
   const endpoints = ["/healthz", "/readyz"];
@@ -796,7 +807,7 @@ async function runSmokeCheck(
     let success = false;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        const res = await client.fetchWithVersionOverride(targetUrl, scriptName, versionId);
+        const res = await client.fetchWithVersionOverride(targetUrl, scriptName, versionId, accessKey ? { headers: { [KEY_HEADER]: accessKey } } : undefined);
         lastBody = await res.text();
         if (res.ok) {
           success = true;

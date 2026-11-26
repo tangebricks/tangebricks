@@ -40,6 +40,11 @@ export default defineConfig({
           PX_CONN_KEY: "test-only-px-conn-key-0123456789abcdef",
           PX_TOKEN_KEK: "test-only-px-token-kek-0123456789abcdef",
           PX_TELEMETRY_SECRET: "test-only-px-telemetry-secret-0123456789",
+          // Story R53: Studio deploys through the real Cloudflare client by default. The suite opts into the in-memory fake
+          // explicitly; studio-api refuses this value when PX_ENVIRONMENT is production.
+          PX_DEPLOY_CLIENT: "fake",
+          // The fake is honoured only when PX_ENVIRONMENT is explicitly "test" or "development".
+          PX_ENVIRONMENT: "test",
           // Story 0.21: requests in tests carry no client IP, so every signup and login in the whole run counts against
           // the one "unknown" IP bucket. The IP-keyed auth limits are raised for the suite (never removed); the
           // rate-limit tests pass their own PX_RATE_LIMITS (or none) to exercise the real numbers.

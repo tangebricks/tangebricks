@@ -53,9 +53,22 @@ export {
   createByocProvisioner,
   createHostedSandboxProvisioner,
   deriveEnvironmentResourceNames,
+  inactiveTokenReport,
+  isMutatingApiCall,
   validateDeployPlan,
   verifyCloudflareToken,
 } from "./target.ts";
+export {
+  NO_WORKERS_DEV_SUBDOMAIN_MESSAGE,
+  PERMISSION_GROUP_NAMES,
+  STUDIO_COMPATIBILITY_DATE,
+  STUDIO_STATE_TABLE,
+  createHttpCloudflareApiClient,
+  isHttpWriteCall,
+} from "./http-control-plane.ts";
+export type { HttpCloudflareApiClient, HttpControlPlaneOptions } from "./http-control-plane.ts";
+export { createRequestBudget, sharedRequestBudget, DEFAULT_REQUEST_BUDGET, REQUEST_BUDGET_WINDOW_MS } from "./provisioner/cloudflare.ts";
+export type { RequestBudget } from "./provisioner/cloudflare.ts";
 export type {
   AnalyzeMigrationsInput,
   AnalyzeMigrationsOptions,

@@ -195,7 +195,6 @@ import {
   ByocCloudflareTarget,
   DeployEnvNameSchema,
   HostedSandboxTarget,
-  MockCloudflareControlPlane,
   PlatformSandboxDeployTargetSchema,
   SANDBOX_D1_MAX_BYTES,
   SANDBOX_D1_MAX_ROWS,
@@ -218,9 +217,42 @@ import {
   deriveEnvironmentResourceNames,
   inspectOutboundPaymentAndSsrf,
   isLivePaymentCredential,
+  inactiveTokenReport,
   verifyCloudflareToken,
   wrapSandboxD1WithStorageCap,
 } from "../../../packages/deploy/src/target.ts";
+import type { CloudflareApiClient } from "../../../packages/deploy/src/target.ts";
+import { WORKFLOW_BINDING, WORKFLOW_CLASS } from "../../../packages/deploy/src/worker/graph-run.ts";
+import { KEY_HEADER } from "../../../packages/deploy/src/worker/gate.ts";
+import { NO_WORKERS_DEV_SUBDOMAIN_MESSAGE, isHttpWriteCall } from "../../../packages/deploy/src/http-control-plane.ts";
+import type { HttpCloudflareApiClient } from "../../../packages/deploy/src/http-control-plane.ts";
+import {
+  CloudflareApiError,
+  CloudflareMalformedError,
+  CloudflareNetworkError,
+  RequestGuardError,
+} from "../../../packages/deploy/src/provisioner/cloudflare.ts";
+import { createRedactor } from "../../../packages/deploy/src/provisioner/redact.ts";
+import {
+  asFakeControlPlane,
+  deriveWorkerAccessKey,
+  getStudioControlPlane,
+  getStudioFakeControlPlane,
+  getStudioVerificationClient,
+  resetStudioFakeControlPlanes,
+  studioDeployClientMode,
+  StudioDeployClientConfigError,
+} from "./deploy-client.ts";
+import type { StudioDeployClientEnv, StudioDeployOptions } from "./deploy-client.ts";
+export {
+  deriveWorkerAccessKey,
+  getStudioControlPlane,
+  getStudioFakeControlPlane,
+  getStudioVerificationClient,
+  studioDeployClientMode,
+  StudioDeployClientConfigError,
+};
+export type { StudioDeployClientEnv, StudioDeployOptions };
 import {
   handleDataBrowserRequest,
   isImmutableLedgerTable,
@@ -536,6 +568,11 @@ function executorsNotConfiguredBody(error: unknown) {
 export interface StudioApiAppOptions {
   /** Executors for workflow runs, rehearsals and reruns. Tests inject fakes here; the default has none. */
   readonly executors?: Executors;
+  /**
+   * How the real Cloudflare client reaches Cloudflare and bundles what it uploads (story R53). Default: global fetch and no
+   * bundler. Tests pass a fake Cloudflare's fetch; the live proof script passes the real fetch and the Node bundler.
+   */
+  readonly deploy?: StudioDeployOptions;
 }
 
 export {
@@ -893,7 +930,6 @@ function getIntegrationOAuthConfig(appSlug: string): {
   };
 }
 
-const studioControlPlanesByAccount = new Map<string, MockCloudflareControlPlane>();
 const studioProjectAssembleCounts = new Map<string, number>();
 let studioSandboxPlatform = new SandboxDispatchPlatform();
 
@@ -1147,16 +1183,6 @@ async function loadProjectSandboxSummary(
   };
 }
 
-export function getStudioControlPlane(accountId: string): MockCloudflareControlPlane {
-  const key = accountId.toLowerCase();
-  let cp = studioControlPlanesByAccount.get(key);
-  if (!cp) {
-    cp = new MockCloudflareControlPlane();
-    studioControlPlanesByAccount.set(key, cp);
-  }
-  return cp;
-}
-
 export function getProjectAssembleCount(project: string, revision?: number): number {
   if (revision !== undefined) {
     return studioProjectAssembleCounts.get(`${project}:r${revision}`) ?? 0;
@@ -1171,7 +1197,7 @@ export function getProjectAssembleCount(project: string, revision?: number): num
 export function resetStudioDeployTestState(options?: {
   createSandboxD1?: (sandboxId: string, dbName: string) => D1Like;
 }): void {
-  studioControlPlanesByAccount.clear();
+  resetStudioFakeControlPlanes();
   studioProjectAssembleCounts.clear();
   studioSandboxPlatform = new SandboxDispatchPlatform(
     options?.createSandboxD1 ? { createD1: options.createSandboxD1 } : undefined,
@@ -1314,8 +1340,61 @@ const STUDIO_SIGNED_INGRESS_PATHS: ReadonlyArray<string | RegExp> = [
   /^\/api\/projects\/[^/]+\/telemetry\/webhook$/,
 ];
 
+/** A deploy the real client refuses before writing anything; app.onError answers it as JSON with its status. */
+export class StudioDeployRefusal extends Error {
+  readonly code: string;
+  readonly status: number;
+  readonly detail?: Record<string, unknown>;
+  constructor(code: string, message: string, status = 422, detail?: Record<string, unknown>) {
+    super(message);
+    this.name = "StudioDeployRefusal";
+    this.code = code;
+    this.status = status;
+    if (detail) this.detail = detail;
+  }
+  getResponse(): Response {
+    return Response.json({ error: { code: this.code, message: this.message, ...(this.detail ?? {}) } }, { status: this.status });
+  }
+}
+
 export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
   const app = new Hono<{ Bindings: StudioApiEnv }>();
+
+  // Studio keeps an HMAC of each Worker secret in its own state (secretHashes). It is bookkeeping, never part of an answer:
+  // every JSON response from the API and MCP routes has the key removed, wherever it sits.
+  app.use("*", async (c, next) => {
+    await next();
+    const path = new URL(c.req.url).pathname;
+    if (!(path.startsWith("/api/") || path === "/mcp")) return;
+    const type = c.res.headers.get("content-type") ?? "";
+    if (!type.includes("application/json")) return;
+    const text = await c.res.clone().text();
+    if (!text.includes("secretHashes")) return;
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return;
+    }
+    const strip = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(strip);
+      if (value && typeof value === "object") {
+        return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([k]) => k !== "secretHashes").map(([k, v]) => [k, strip(v)]));
+      }
+      // MCP answers carry tool results as JSON text
+      if (typeof value === "string" && value.includes("secretHashes") && value.trimStart().startsWith("{")) {
+        try {
+          return JSON.stringify(strip(JSON.parse(value)));
+        } catch {
+          return value;
+        }
+      }
+      return value;
+    };
+    const headers = new Headers(c.res.headers);
+    headers.delete("content-length");
+    c.res = new Response(JSON.stringify(strip(body)), { status: c.res.status, statusText: c.res.statusText, headers });
+  });
 
   app.onError((err, c) => {
     if (err instanceof ConnectionRefConflictError) {
@@ -9123,10 +9202,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       },
     });
 
-    const verification = await verifyCloudflareToken(
+    const verified = await verifyDeployTokenForRoute(
+      c.env,
       plaintextToken,
       parsed.data.accountId,
     );
+    if (!verified.ok) return verified.response;
+    const verification = verified.report;
 
     if (!verification.ok || !verification.accountId) {
       await recordOnboardingFunnelEvent(db, {
@@ -9300,7 +9382,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     };
 
     if (existingMeta.status === "revoked" && !body.token) {
-      const revokedReport = await verifyCloudflareToken("cf_revoked_token");
+      // Revoked in Studio: nothing to ask Cloudflare. The report is made locally.
+      const revokedReport = inactiveTokenReport("disabled");
       return c.json(
         {
           ok: false,
@@ -9311,12 +9394,15 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
+    // simulatedStatus is a test hook understood only by the fake client; the real client always checks the stored token.
+    const simulatedStatus =
+      studioDeployClientMode(c.env) === "fake" ? body.simulatedStatus : undefined;
     let tokenToVerify: string;
-    if (body.simulatedStatus === "expired") {
+    if (simulatedStatus === "expired") {
       tokenToVerify = "cf_expired_token";
     } else if (
-      body.simulatedStatus === "revoked" ||
-      body.simulatedStatus === "disabled"
+      simulatedStatus === "revoked" ||
+      simulatedStatus === "disabled"
     ) {
       tokenToVerify = "cf_revoked_token";
     } else if (body.token && body.token.trim().length > 0) {
@@ -9334,10 +9420,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const verification = await verifyCloudflareToken(
+    const recheckVerified = await verifyDeployTokenForRoute(
+      c.env,
       tokenToVerify,
       existingMeta.accountId,
     );
+    if (!recheckVerified.ok) return recheckVerified.response;
+    const verification = recheckVerified.report;
 
     let nextStatus: DeployTokenStatus = "active";
     if (!verification.ok) {
@@ -9585,11 +9674,72 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     return deployments;
   }
 
+  /**
+   * Verifies a deploy token for a route. The real client asks Cloudflare and needs the account id from the request (400
+   * ACCOUNT_ID_REQUIRED without one); Cloudflare being unreachable is 502, never a pass.
+   */
+  async function verifyDeployTokenForRoute(
+    env: StudioApiEnv,
+    token: string,
+    accountId: string | undefined,
+  ): Promise<
+    | { ok: true; report: Awaited<ReturnType<typeof verifyCloudflareToken>> }
+    | { ok: false; response: Response }
+  > {
+    let client: CloudflareApiClient;
+    try {
+      client = getStudioVerificationClient(env, appOptions.deploy);
+    } catch (error) {
+      return {
+        ok: false,
+        response: Response.json(
+          { error: { code: "DEPLOY_CLIENT_MISCONFIGURED", message: error instanceof Error ? error.message : String(error) } },
+          { status: 500 },
+        ),
+      };
+    }
+    const account = accountId?.trim();
+    if (!asFakeControlPlane(client) && !account) {
+      return {
+        ok: false,
+        response: Response.json(
+          {
+            error: {
+              code: "ACCOUNT_ID_REQUIRED",
+              message: "accountId (your 32-character Cloudflare account id) is required: the token is verified against that account.",
+            },
+          },
+          { status: 400 },
+        ),
+      };
+    }
+    try {
+      return { ok: true, report: await verifyCloudflareToken(token, account || undefined, { client }) };
+    } catch (error) {
+      if (error instanceof RequestGuardError) {
+        return { ok: false, response: Response.json({ error: { code: "GUARD_REFUSED", message: error.message } }, { status: 403 }) };
+      }
+      return {
+        ok: false,
+        response: Response.json(
+          {
+            error: {
+              code: "CLOUDFLARE_UNREACHABLE",
+              message: `Could not verify the token with Cloudflare: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          },
+          { status: 502 },
+        ),
+      };
+    }
+  }
+
   async function enrichEnvironmentWithDriftAndHistory(
     db: D1Like,
     project: string,
     envRecord: ProjectEnvironmentTargetRecord,
     currentHashes: CurrentBlueprintHashes,
+    env: StudioApiEnv,
   ) {
     const deployedState: PersistedDeployedState =
       (envRecord.deployedState as PersistedDeployedState | null) ?? {};
@@ -9606,24 +9756,43 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     );
     const controlPlane =
       tokenMeta && tokenMeta.status === "active"
-        ? getStudioControlPlane(envRecord.target.accountId)
+        ? getStudioControlPlane(envRecord.target.accountId, env, appOptions.deploy)
+        : undefined;
+    // The real client needs the decrypted token to read the account; the fake finds its own registered one.
+    const driftTokenResolver =
+      controlPlane && !asFakeControlPlane(controlPlane)
+        ? createStudioTokenResolver(db, env)
         : undefined;
 
-    const driftReport = await checkEnvironmentDrift(
-      envRecord.target,
-      {
-        project,
-        deployedRev: envRecord.deployedRev,
-        buildHash: envRecord.buildHash,
-        codeHash: envRecord.codeHash,
-        graphHash: envRecord.graphHash,
-        appliedMigrations: deployedState.appliedMigrations ?? [],
-        queues: deployedState.queues ?? [],
-        cronTriggers: deployedState.cronTriggers ?? [],
-      },
-      currentHashes,
-      controlPlane,
-    );
+    const expectedDeployment = {
+      project,
+      deployedRev: envRecord.deployedRev,
+      buildHash: envRecord.buildHash,
+      codeHash: envRecord.codeHash,
+      graphHash: envRecord.graphHash,
+      appliedMigrations: deployedState.appliedMigrations ?? [],
+      queues: deployedState.queues ?? [],
+      cronTriggers: deployedState.cronTriggers ?? [],
+      ...(deployedState.liveCodeHash ? { liveCodeHash: deployedState.liveCodeHash } : {}),
+      ...(deployedState.studioVersionIds ? { trustedVersionIds: deployedState.studioVersionIds } : {}),
+    };
+    // Reading the account can fail (Cloudflare unreachable, a refused read). That never fails the request it is part of (a
+    // deploy that has completed, the environments list): the drift is then "unknown", with the reason, and the blueprint
+    // half of the report (Studio's own data) is still given.
+    let drift: { status: "checked" } | { status: "unknown"; error: string } = { status: "checked" };
+    let driftReport: Awaited<ReturnType<typeof checkEnvironmentDrift>>;
+    try {
+      driftReport = await checkEnvironmentDrift(
+        envRecord.target,
+        expectedDeployment,
+        currentHashes,
+        controlPlane,
+        driftTokenResolver ? { resolveToken: driftTokenResolver } : undefined,
+      );
+    } catch (error) {
+      drift = { status: "unknown", error: createRedactor([env.PX_TELEMETRY_SECRET ?? ""])(error instanceof Error ? error.message : String(error)) };
+      driftReport = await checkEnvironmentDrift(envRecord.target, expectedDeployment, currentHashes, undefined);
+    }
 
     return {
       ...envRecord,
@@ -9637,6 +9806,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         latestDeployment?.rollbackFromDeploymentId ??
         null,
       driftReport,
+      drift,
       deployments,
     };
   }
@@ -9699,6 +9869,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           project,
           envRec,
           currentHashes,
+          c.env,
         ),
       );
     }
@@ -9777,6 +9948,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     .optional();
 
   interface PersistedDeployedState {
+    /** Real client: HMAC (keyed by the root secret) of each secret value bound to the Worker. Never the value. */
+    secretHashes?: Record<string, string>;
+    /** Real client: sha256 of the Worker bundle actually uploaded (the drift check compares the account against this). */
+    liveCodeHash?: string;
+    /** Real client: the Worker version ids Studio made itself (its uploads and secret puts), newest first, at most 50. */
+    studioVersionIds?: string[];
+    /** Real client: each brick secret's name and the vault ref the deploy resolved it from (ref ids only, never a value). */
+    secretRefs?: Record<string, string>;
     appliedMigrations?: string[];
     appliedMigrationSql?: Record<string, string>;
     queues?: string[];
@@ -10293,13 +10472,16 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         .toLowerCase()
         .replace(/[^a-z0-9_]+/g, "_")
         .replace(/^_+|_+$/g, "")}`;
-      const matchedRow = validVaultRows.find(
-        (r) =>
-          (req.ref && r.ref === req.ref) ||
-          r.label.toUpperCase() === req.name.toUpperCase() ||
-          r.ref.toLowerCase() === req.name.toLowerCase() ||
-          r.ref.toLowerCase() === normalizedSuggestedRef,
-      );
+      // The blueprint's explicit binding wins over any row that merely shares the name: only without one is a row matched by
+      // label or by ref spelling.
+      const matchedRow = req.ref
+        ? validVaultRows.find((r) => r.ref === req.ref)
+        : validVaultRows.find(
+            (r) =>
+              r.label.toUpperCase() === req.name.toUpperCase() ||
+              r.ref.toLowerCase() === req.name.toLowerCase() ||
+              r.ref.toLowerCase() === normalizedSuggestedRef,
+          );
       if (matchedRow) {
         configuredSecretNames.add(req.name);
         configuredSecretValues[req.name] = `sealed:${matchedRow.ref}`;
@@ -10400,6 +10582,278 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     };
   }
 
+  /**
+   * What the real client uploads for one environment (story R53): the bundled Worker (gate, GraphRunner Workflow, signed
+   * /__px routes around the assembled project), its non-secret bindings, the one GraphRunner Workflow its graphs run on, and
+   * its secrets: the derived access key, the project's derived control-plane and webhook secrets (story 1.17; never the root),
+   * and any brick secret from the vault. Refuses, before anything is written, when it cannot build a Worker that would work.
+   */
+  async function prepareRealWorkerUpload(params: {
+    env: StudioApiEnv;
+    project: string;
+    envName: DeployEnvName;
+    buildHash: string;
+    target: DeployTarget;
+    configuredSecretValues: Record<string, string>;
+  }): Promise<{
+    bundleCode: string;
+    /** sha256 of the whole uploaded Worker (gate and runtime included): the code hash the account and drift compare. */
+    bundleSha: string;
+    accessKey: string;
+    workflows: Array<{ name: string; className: string }>;
+    workerBindings: Array<Record<string, unknown>>;
+    secrets: Record<string, string>;
+  }> {
+    const { env, project, envName } = params;
+    const bundle = appOptions.deploy?.bundle;
+    if (!bundle) {
+      throw new StudioDeployRefusal(
+        "DEPLOY_BUNDLER_NOT_CONFIGURED",
+        "This Studio has no Worker bundler, so it cannot build a deployable Worker. Run the deploy from a Studio started with a bundler (see docs/live-deploy.md).",
+        501,
+      );
+    }
+    const root = env.PX_TELEMETRY_SECRET;
+    if (typeof root !== "string" || root.trim().length < 16) {
+      throw new StudioDeployRefusal(
+        "NO_ROOT_SECRET",
+        "PX_TELEMETRY_SECRET is not set: the deployed Worker's per-project secrets are derived from it.",
+        500,
+      );
+    }
+    const buildRow = await params.env.STUDIO_DB.prepare(
+      "SELECT files_json FROM builds WHERE build_hash = ? AND project_id = ? LIMIT 1",
+    )
+      .bind(params.buildHash, project)
+      .first<{ files_json: string }>();
+    const files = buildRow ? (JSON.parse(buildRow.files_json) as Record<string, string>) : null;
+    if (!files || typeof files["src/index.ts"] !== "string") {
+      throw new StudioDeployRefusal(
+        "BUILD_NOT_ASSEMBLED",
+        `The blueprint of "${project}" did not assemble into a project, so there is nothing to deploy.`,
+        422,
+      );
+    }
+    const built = await bundle({ project, envName, files });
+    const { scriptName } = deriveEnvironmentResourceNames(project, params.target);
+    const workflowName = `${scriptName}-graphs`;
+    const derived = await projectWorkerSecretBindings(env, project);
+    const secrets: Record<string, string> = {
+      POC_ACCESS_KEY: await deriveWorkerAccessKey(root, project, envName),
+      PX_TELEMETRY_SECRET: derived.PX_TELEMETRY_SECRET!,
+      PX_TELEMETRY_WEBHOOK_SECRET: derived.PX_TELEMETRY_WEBHOOK_SECRET!,
+    };
+    // Brick secrets: the vault's plaintext, decrypted here and sent only in the secret's own request body.
+    const vaultKey = env.PX_VAULT_KEY ?? env.BETTER_AUTH_SECRET;
+    for (const [name, value] of Object.entries(params.configuredSecretValues)) {
+      if (!value.startsWith("sealed:")) continue;
+      const row = await env.STUDIO_DB.prepare(
+        "SELECT ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND ref = ? AND status = 'valid' LIMIT 1",
+      )
+        .bind(project, value.slice("sealed:".length))
+        .first<{ ciphertext_b64: string; iv_b64: string }>();
+      if (!row) {
+        throw new StudioDeployRefusal(
+          "SECRET_NOT_IN_VAULT",
+          `The secret ${name} is bound to ${value.slice("sealed:".length)}, which has no valid row in this project's vault: store it again before deploying.`,
+          422,
+        );
+      }
+      secrets[name] = await decryptSecretValue(row.ciphertext_b64, row.iv_b64, vaultKey);
+    }
+    return {
+      bundleCode: built.code,
+      bundleSha: built.sha256 ?? (await sha256Hex(built.code)),
+      accessKey: secrets.POC_ACCESS_KEY!,
+      workflows: [{ name: workflowName, className: WORKFLOW_CLASS }],
+      workerBindings: [
+        { type: "plain_text", name: "PX_ENVIRONMENT", text: envName },
+        { type: "plain_text", name: "PX_PROJECT_ID", text: project },
+        { type: "workflow", name: WORKFLOW_BINDING, workflow_name: workflowName, class_name: WORKFLOW_CLASS },
+      ],
+      secrets,
+    };
+  }
+
+  /** `sealed:<ref>` for each recorded name → ref whose ref still has a valid row in the project's vault; the rest left out. */
+  async function stillValidVaultRefs(db: D1Like, project: string, refs: Record<string, string>): Promise<Record<string, string>> {
+    const out: Record<string, string> = {};
+    for (const [name, ref] of Object.entries(refs)) {
+      const row = await db
+        .prepare("SELECT ref FROM studio_secret_vault WHERE project_id = ? AND ref = ? AND status = 'valid' LIMIT 1")
+        .bind(project, ref)
+        .first<{ ref: string }>();
+      if (row) out[name] = `sealed:${ref}`;
+    }
+    return out;
+  }
+
+  /** HMAC-SHA256 (keyed by the root secret) of each secret's name and value: what Studio keeps to know a secret changed. */
+  async function secretValueHashes(rootSecret: string, project: string, envName: string, secrets: Record<string, string>): Promise<Record<string, string>> {
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(rootSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const out: Record<string, string> = {};
+    for (const [name, value] of Object.entries(secrets)) {
+      // project and environment are in the message, so one value in two environments never gives the same hash
+      const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`px-worker-secret/v1\n${project}\n${envName}\n${name}\n${value}`));
+      out[name] = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+    return out;
+  }
+
+  /** The same keyed smoke check the CLI provisioner runs: /healthz with the gate's access key, a few tries. */
+  async function smokeCheckRealWorker(url: string, accessKey: string, firstDeploy: boolean): Promise<{ status: number; attempts: number }> {
+    const workerFetch = appOptions.deploy?.workerFetch ?? ((request: Request) => fetch(request));
+    const sleep = appOptions.deploy?.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+    // A new workers.dev address can take a while to answer: up to ~120 s for a first deploy, ~20 s for a redeploy, with
+    // backoff (1 s, 2 s, 4 s, 8 s, then 10 s). The budget counts the waits themselves, so an injected sleep keeps it exact.
+    const budgetMs = firstDeploy
+      ? (appOptions.deploy?.smokeTimeoutMs?.firstDeploy ?? 120_000)
+      : (appOptions.deploy?.smokeTimeoutMs?.redeploy ?? 20_000);
+    // The budget bounds wall time as well: each attempt is cut off by AbortSignal.timeout, and what counts is the larger of
+    // the time waited between attempts and the wall-clock time since the first one.
+    const started = Date.now();
+    let waited = 0;
+    const spent = () => Math.max(waited, Date.now() - started);
+    let last = "no answer";
+    for (let attempt = 1; ; attempt += 1) {
+      const attemptMs = Math.max(1_000, Math.min(10_000, budgetMs - spent()));
+      try {
+        const res = await workerFetch(new Request(`${url.replace(/\/+$/, "")}/healthz`, { headers: { [KEY_HEADER]: accessKey }, redirect: "manual", signal: AbortSignal.timeout(attemptMs) }));
+        if (res.ok) return { status: res.status, attempts: attempt };
+        last = `HTTP ${res.status}`;
+      } catch (error) {
+        last = error instanceof Error ? error.message : String(error);
+      }
+      const wait = Math.min(1_000 * 2 ** (attempt - 1), 10_000, budgetMs - spent());
+      if (wait <= 0) break;
+      await sleep(wait);
+      waited += wait;
+    }
+    waited = spent();
+    throw new StudioDeployRefusal("SMOKE_CHECK_FAILED", `The deployed Worker did not answer ${url}/healthz with its access key within ${Math.round(waited / 1000)} s: ${last}`, 502);
+  }
+
+  /**
+   * After the real upload: put the secrets whose value changed (or that the Worker lacks), delete the ones no longer bound,
+   * give the result its real address, and smoke-check the Worker when its code or secrets changed.
+   */
+  async function completeRealDeploy(p: {
+    env: StudioApiEnv;
+    project: string;
+    target: Extract<DeployTarget, { type: "byoc" }>;
+    deployId: string;
+    actorId: string;
+    controlPlane: CloudflareApiClient;
+    tokenResolver: ReturnType<typeof createStudioTokenResolver>;
+    upload: Awaited<ReturnType<typeof prepareRealWorkerUpload>>;
+    applied: Awaited<ReturnType<ReturnType<typeof createByocProvisioner>["apply"]>>;
+    previous: PersistedDeployedState;
+    /** A rollback never deletes a secret: what it did not put is left on the Worker and its hash carried forward. */
+    mode?: "deploy" | "rollback";
+  }) {
+    const { target, controlPlane, upload, applied } = p;
+    const mode = p.mode ?? "deploy";
+    const token = await p.tokenResolver(target.tokenRef, { actor: p.actorId, deployId: p.deployId, action: "secrets" });
+    const { scriptName } = deriveEnvironmentResourceNames(p.project, target);
+    const hashes = await secretValueHashes(p.env.PX_TELEMETRY_SECRET!, p.project, target.envName, upload.secrets);
+    const previousHashes = p.previous.secretHashes ?? {};
+    const live = await controlPlane.getScript(target.accountId, token, scriptName);
+    const liveSecrets = new Set(live?.secrets ?? []);
+    const actions = [...applied.appliedActions];
+    let secretsChanged = false;
+    const putVersionIds: Array<string | undefined> = [];
+    for (const [name, value] of Object.entries(upload.secrets)) {
+      if (previousHashes[name] === hashes[name] && liveSecrets.has(name)) continue;
+      const put = await controlPlane.putScriptSecret(target.accountId, token, scriptName, name, value);
+      putVersionIds.push(put.versionId);
+      secretsChanged = true;
+      actions.push({ kind: "secret", name, action: previousHashes[name] || liveSecrets.has(name) ? "update" : "create", summary: `Bound secret ${name} on ${scriptName}` });
+    }
+    for (const name of Object.keys(previousHashes)) {
+      if (mode === "rollback") break; // only a deploy, which knows every secret the blueprint binds, removes one
+      if (name in upload.secrets || !liveSecrets.has(name)) continue;
+      if (!controlPlane.deleteScriptSecret) continue;
+      await controlPlane.deleteScriptSecret(target.accountId, token, scriptName, name);
+      secretsChanged = true;
+      actions.push({ kind: "secret", name, action: "delete", summary: `Removed secret ${name} from ${scriptName}` });
+    }
+    // The Worker's address always comes from the account's workers.dev name, never the provisioner's placeholder (its noop
+    // path does not know the name, and a retry after a failed first deploy has no recorded address to fall back on).
+    const subdomain = controlPlane.getWorkersSubdomain ? await controlPlane.getWorkersSubdomain(target.accountId, token) : null;
+    if (controlPlane.getWorkersSubdomain && subdomain === null) throw new Error(NO_WORKERS_DEV_SUBDOMAIN_MESSAGE);
+    const url = subdomain ? `https://${scriptName}.${subdomain}.workers.dev` : applied.url;
+    // The versions Studio itself just made (its upload, then its secret puts) are recorded, so a later read can tell them from
+    // an out-of-band change: every version newer than (and including) the one uploaded, or just the newest after a secret put.
+    let studioVersionIds = p.previous.studioVersionIds ?? [];
+    if ((applied.rebuiltWorker || secretsChanged) && controlPlane.listScriptVersionIds) {
+      const ids = (await controlPlane.listScriptVersionIds(target.accountId, token, scriptName)) ?? [];
+      const uploaded = applied.rebuiltWorker ? ids.indexOf(applied.versionId) : -1;
+      // Secret puts: the ids their answers returned when every one returned one. Otherwise (no id in the answer, which is not
+      // checked against the live API) the newest versions, one per write, as made by Studio just now.
+      const returned = putVersionIds.length > 0 && putVersionIds.every((v) => typeof v === "string") ? (putVersionIds as string[]) : null;
+      const secretMade = returned ?? ids.slice(0, secretsChanged ? Math.min(ids.length, actions.length - applied.appliedActions.length) : 0);
+      const made = uploaded >= 0 ? [...ids.slice(0, uploaded + 1), ...(returned ?? [])] : secretMade;
+      studioVersionIds = [...new Set([...made, ...studioVersionIds])].slice(0, 50);
+    }
+    let smoke: { status: number; attempts: number } | null = null;
+    if (applied.rebuiltWorker || secretsChanged) smoke = await smokeCheckRealWorker(url, upload.accessKey, !p.previous.workerUrl);
+    // A rollback keeps the hashes of the secrets it did not touch (they are still bound to the Worker).
+    const keptHashes = mode === "rollback" ? Object.fromEntries(Object.entries(previousHashes).filter(([name]) => !(name in upload.secrets))) : {};
+    return {
+      secretHashes: { ...keptHashes, ...hashes },
+      studioVersionIds,
+      smoke,
+      result: {
+        ...applied,
+        url,
+        previewUrl: url,
+        appliedActions: actions,
+        changes: actions.length,
+        noChanges: actions.length === 0 && applied.noChanges,
+        action: applied.action === "noop" && secretsChanged ? ("update" as const) : applied.action,
+        // each secret put or delete is one write call
+        mutatingCallCount: applied.mutatingCallCount + (actions.length - applied.appliedActions.length),
+      },
+    };
+  }
+
+  /**
+   * A real deploy that failed: the audit log records what was done before the failure (the steps and every write call), and
+   * the caller gets Cloudflare's own code and message as a structured error, never a bare 500.
+   */
+  async function failRealDeploy(
+    error: unknown,
+    p: { db: D1Like; orgId: string; project: string; envName: string; deployId: string; caller: StudioCaller; controlPlane: CloudflareApiClient | null; steps: Array<{ stepName: string; action: string; resourceName: string }>; hideValues?: string[]; action?: string },
+  ): Promise<never> {
+    const httpCalls = (p.controlPlane as Partial<HttpCloudflareApiClient> | null)?.httpCalls ?? [];
+    const hide = createRedactor((p.hideValues ?? []).filter((v) => typeof v === "string"));
+    const writeCalls = httpCalls.filter(isHttpWriteCall).map((c) => ({ method: c.method, path: c.path, status: c.status }));
+    const partial = { deployId: p.deployId, steps: p.steps, writeCalls };
+    const message = hide(error instanceof Error ? error.message : String(error));
+    let refusal: StudioDeployRefusal;
+    if (error instanceof StudioDeployRefusal) refusal = new StudioDeployRefusal(error.code, error.message, error.status, { ...(error.detail ?? {}), partial });
+    else if (message.startsWith("NO_WORKERS_DEV_SUBDOMAIN")) refusal = new StudioDeployRefusal("NO_WORKERS_DEV_SUBDOMAIN", message, 422, { partial });
+    else if (error instanceof CloudflareApiError) refusal = new StudioDeployRefusal("CLOUDFLARE_ERROR", message, 502, { cloudflare: { status: error.status, codes: error.codes, details: error.details }, partial });
+    else if (error instanceof CloudflareNetworkError) refusal = new StudioDeployRefusal("CLOUDFLARE_UNREACHABLE", message, 502, { partial });
+    else if (error instanceof CloudflareMalformedError) refusal = new StudioDeployRefusal("CLOUDFLARE_ERROR", message, 502, { partial });
+    else if (error instanceof RequestGuardError) refusal = new StudioDeployRefusal("GUARD_REFUSED", message, 403, { partial });
+    else if (error instanceof StudioDeployClientConfigError) refusal = new StudioDeployRefusal(error.code, message, 500, { partial });
+    // Anything else (an error from the client's own checks, a token that cannot be decrypted, a bundler failure) is still a
+    // structured answer, never a bare 500; its message has every known secret hidden.
+    else refusal = new StudioDeployRefusal("DEPLOY_FAILED", message, 502, { partial });
+    await recordStudioAuditLog(p.db, {
+      orgId: p.orgId,
+      projectId: p.project,
+      actorType: p.caller.author.type,
+      actorId: p.caller.author.id,
+      action: p.action ?? "environment.deploy",
+      status: "failed",
+      targetRef: `${p.project}:${p.envName}`,
+      details: { code: refusal.code, message: refusal.message, ...partial },
+    }).catch(() => {});
+    throw refusal;
+  }
+
   async function executeEnvironmentDeployment(params: {
     env: StudioApiEnv;
     project: string;
@@ -10417,15 +10871,34 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const { env, project, orgId, envName, caller, ctx } = params;
     const db = env.STUDIO_DB;
     const deployId = `dep_${generateUuidV7()}`;
-    const controlPlane = getStudioControlPlane(ctx.envRecord.target.accountId);
+    const controlPlane = getStudioControlPlane(ctx.envRecord.target.accountId, env, appOptions.deploy);
+    const fakeControlPlane = asFakeControlPlane(controlPlane);
     const tokenResolver = createStudioTokenResolver(db, env);
     const stub = getBlueprintStub(env, project);
+    // The real client uploads a real Worker; the fake keeps the test-only placeholder bundle.
+    let realUpload: Awaited<ReturnType<typeof prepareRealWorkerUpload>> | null = null;
+    if (!fakeControlPlane) {
+      try {
+        realUpload = await prepareRealWorkerUpload({
+          env,
+          project,
+          envName,
+          buildHash: ctx.buildHash,
+          target: ctx.envRecord.target,
+          configuredSecretValues: ctx.configuredSecretValues,
+        });
+      } catch (error) {
+        return failRealDeploy(error, { db, orgId, project, envName, deployId, caller, controlPlane, steps: [], hideValues: [env.PX_TELEMETRY_SECRET ?? ""] });
+      }
+    }
+    const deployWorkflows = realUpload?.workflows ?? ctx.workflows;
 
     const provisioner = createByocProvisioner({
       apiClient: controlPlane,
       resolveToken: async (tokenRef, context) => {
+        // Always the vault's decrypted token (never a made-up one); the fake is only told which token is "real".
         const plainToken = await tokenResolver(tokenRef, context);
-        controlPlane.registerToken({
+        fakeControlPlane?.registerToken({
           token: plainToken,
           accountId: ctx.envRecord.target.accountId,
           accountName: ctx.envRecord.accountName,
@@ -10435,7 +10908,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     });
 
     const existingDeployedRev = ctx.envRecord.deployedRev;
-    const envState: DeployPlanEnvironmentState = {
+    // Real client: what is deployed is read from the account (the Worker's annotated code hash, the database's own state and
+    // migrations, the queues and Workflows Cloudflare lists), so "no changes" holds in the account, not just in Studio's memory.
+    const envState: DeployPlanEnvironmentState = realUpload ? { deployedRev: existingDeployedRev } : {
       deployedRev: existingDeployedRev,
       currentBuildHash: ctx.envRecord.buildHash,
       currentCodeHash: ctx.envRecord.codeHash,
@@ -10466,28 +10941,35 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       });
     }
 
-    const applyResult = await provisioner.apply({
+    const doneSteps: Array<{ stepName: string; action: string; resourceName: string }> = [];
+    let realSecretHashes: Record<string, string> | undefined;
+    let realStudioVersionIds: string[] | undefined;
+    const runApply = () => provisioner.apply({
       target: ctx.envRecord.target,
       project,
       actor: caller.author.id,
       deployId,
       buildHash: ctx.buildHash,
-      codeHash: ctx.codeHash,
+      // Real client: the hash of the Worker actually uploaded, so a change in the gate or runtime layer redeploys.
+      codeHash: realUpload?.bundleSha ?? ctx.codeHash,
       graphHash: ctx.graphHash,
       bundle: {
-        code: ctx.bundleCode,
-        sha256: ctx.codeHash,
+        code: realUpload?.bundleCode ?? ctx.bundleCode,
+        sha256: realUpload?.bundleSha ?? ctx.codeHash,
       },
       migrations: ctx.allMigrations,
       queues: ctx.queues,
       cronTriggers: ctx.cronTriggers,
-      workflows: ctx.workflows,
+      workflows: deployWorkflows,
       graphs: ctx.graphs,
       schedules: ctx.cronTriggers,
-      secrets: ctx.configuredSecretValues,
+      // Real client: secrets are synced after the upload by completeRealDeploy (changed values put, removed ones deleted).
+      secrets: realUpload ? {} : ctx.configuredSecretValues,
+      ...(realUpload ? { workerBindings: realUpload.workerBindings, trustedVersionIds: (ctx.deployedState as PersistedDeployedState).studioVersionIds ?? [] } : {}),
       envState,
       _actionOverride: params.actionOverride ?? "apply",
       onStep: async (step) => {
+        doneSteps.push({ stepName: step.stepName, action: step.action, resourceName: step.resourceName });
         const stepId = `dstep_${generateUuidV7()}`;
         await db
           .prepare(
@@ -10535,6 +11017,31 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       },
     } as Parameters<typeof provisioner.apply>[0]);
 
+    let applyResult: Awaited<ReturnType<typeof runApply>>;
+    if (!realUpload) {
+      applyResult = await runApply();
+    } else {
+      try {
+        const completed = await completeRealDeploy({
+          env,
+          project,
+          target: ctx.envRecord.target,
+          deployId,
+          actorId: caller.author.id,
+          controlPlane,
+          tokenResolver,
+          upload: realUpload,
+          applied: await runApply(),
+          previous: ctx.deployedState as PersistedDeployedState,
+        });
+        applyResult = completed.result;
+        realSecretHashes = completed.secretHashes;
+        realStudioVersionIds = completed.studioVersionIds;
+      } catch (error) {
+        return failRealDeploy(error, { db, orgId, project, envName, deployId, caller, controlPlane, steps: doneSteps, hideValues: [env.PX_TELEMETRY_SECRET ?? "", ...Object.values(realUpload.secrets)] });
+      }
+    }
+
     const mergedAppliedMigrations = Array.from(
       new Set([
         ...(ctx.deployedState.appliedMigrations ?? []),
@@ -10565,7 +11072,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       appliedMigrationSql: mergedAppliedMigrationSql,
       queues: ctx.queues,
       cronTriggers: ctx.cronTriggers,
-      workflows: ctx.workflows,
+      workflows: deployWorkflows,
       graphs: ctx.graphs,
       entities: (ctx.current.state.entities ?? []).map((e) => ({
         name: e.name,
@@ -10586,13 +11093,26 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
       noChanges: applyResult.noChanges,
       reusedCachedBuild,
+      ...(realSecretHashes ? { secretHashes: realSecretHashes } : {}),
+      ...(realUpload ? { liveCodeHash: realUpload.bundleSha } : {}),
+      ...(realStudioVersionIds ? { studioVersionIds: realStudioVersionIds } : {}),
+      ...(realUpload
+        ? {
+            secretRefs: Object.fromEntries(
+              Object.entries(ctx.configuredSecretValues)
+                .filter(([, v]) => v.startsWith("sealed:"))
+                .map(([name, v]) => [name, v.slice("sealed:".length)]),
+            ),
+          }
+        : {}),
     };
 
     const resourceNames = deriveEnvironmentResourceNames(
       project,
       ctx.envRecord.target,
     );
-    controlPlane.recordEnvironmentMetadata(
+    // The fake also remembers the applied migration names; the real account keeps them in the database's own table.
+    fakeControlPlane?.recordEnvironmentMetadata(
       ctx.envRecord.target.accountId,
       resourceNames.scriptName,
       resourceNames.databaseName,
@@ -10799,6 +11319,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         codeHash: ctx.codeHash,
         graphHash: ctx.graphHash,
       },
+      env,
     );
 
     return {
@@ -10818,7 +11339,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
       noChanges: applyResult.noChanges,
       mutatingCallCount: applyResult.mutatingCallCount,
-      scriptUploadCount: controlPlane.scriptUploadCount,
+      scriptUploadCount: controlPlane.scriptUploadCount ?? 0,
+      appliedActions: applyResult.appliedActions,
       steps: applyResult.steps,
       ...(params.promotedFromEnv
         ? { promotedFromEnv: params.promotedFromEnv }
@@ -12034,10 +12556,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     // Step 1: If a plaintext Cloudflare API token was supplied inline, verify & seal it and provision BYOC environments
     const inlineToken = (bodyData?.token ?? bodyData?.apiToken ?? "").trim();
     if (inlineToken) {
-      const verification = await verifyCloudflareToken(
+      const inlineVerified = await verifyDeployTokenForRoute(
+        c.env,
         inlineToken,
         bodyData?.accountId,
       );
+      if (!inlineVerified.ok) return inlineVerified.response;
+      const verification = inlineVerified.report;
       if (!verification.ok || !verification.accountId) {
         const errorCode = verification.isGlobalApiKey
           ? "GLOBAL_API_KEY_REJECTED"
@@ -12335,13 +12860,16 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         );
       }
 
-      const controlPlane = getStudioControlPlane(envRecord.target.accountId);
+      const controlPlane = asFakeControlPlane(
+        getStudioControlPlane(envRecord.target.accountId, c.env, appOptions.deploy),
+      );
       const resourceNames = deriveEnvironmentResourceNames(
         project,
         envRecord.target,
       );
 
-      if (bodyData?.simulateOutOfBand) {
+      // simulateOutOfBand is a test hook of the fake; against a real account it is ignored (drift is read, never made).
+      if (bodyData?.simulateOutOfBand && controlPlane) {
         const sim = bodyData.simulateOutOfBand;
         if (sim.workerHash || sim.deleteWorker) {
           controlPlane.mutateWorkerOutOfBand(
@@ -12394,6 +12922,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         project,
         envRecord,
         currentHashes,
+        c.env,
       );
 
       return c.json(
@@ -12734,7 +13263,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       }
 
       const deployId = `dep_${generateUuidV7()}`;
-      const controlPlane = getStudioControlPlane(envRecord.target.accountId);
+      const controlPlane = getStudioControlPlane(envRecord.target.accountId, c.env, appOptions.deploy);
+      const fakeControlPlane = asFakeControlPlane(controlPlane);
       const tokenResolver = createStudioTokenResolver(db, c.env);
       const stub = getBlueprintStub(c.env, project);
       const resourceNames = deriveEnvironmentResourceNames(
@@ -12746,7 +13276,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         apiClient: controlPlane,
         resolveToken: async (tokenRef, context) => {
           const plainToken = await tokenResolver(tokenRef, context);
-          controlPlane.registerToken({
+          fakeControlPlane?.registerToken({
             token: plainToken,
             accountId: envRecord.target.accountId,
             accountName: envRecord.accountName,
@@ -12755,43 +13285,79 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         },
       });
 
-      const liveWorker = await controlPlane.getWorkerScript(
-        envRecord.target.accountId,
-        "",
-        resourceNames.scriptName,
-      );
+      // Real path: every failure (bundling, reading, uploading, the secret sync, the smoke check) is a structured answer
+      // with the audit row, through failRealDeploy, as for a deploy.
+      const rollbackSteps: Array<{ stepName: string; action: string; resourceName: string }> = [];
+      let rollbackUpload: Awaited<ReturnType<typeof prepareRealWorkerUpload>> | null = null;
+      let applyResult!: Awaited<ReturnType<typeof provisioner.apply>>;
+      let rollbackSecretHashes: Record<string, string> | undefined;
+      let rollbackStudioVersionIds: string[] | undefined;
+      try {
+      const liveWorker = fakeControlPlane
+        ? await fakeControlPlane.getWorkerScript(
+            envRecord.target.accountId,
+            "",
+            resourceNames.scriptName,
+          )
+        : await controlPlane.getScript(
+            envRecord.target.accountId,
+            await tokenResolver(envRecord.target.tokenRef, {
+              actor: resolved.caller.author.id,
+              deployId,
+              action: "rollback",
+            }),
+            resourceNames.scriptName,
+          );
+      // The real client re-uploads the target build as a real Worker (bundled again from its stored files), under the hash
+      // of that bundle; the account's annotated hash is what it is compared with.
+      rollbackUpload = fakeControlPlane
+        ? null
+        : await prepareRealWorkerUpload({
+            env: c.env,
+            project,
+            envName,
+            buildHash: targetRow.build_hash,
+            target: envRecord.target,
+            // Exactly the vault refs the last deploy resolved each brick secret from (recorded as secretRefs), never a guess by
+            // name; a ref no longer in the vault leaves that secret on the Worker untouched (a rollback never deletes a secret).
+            configuredSecretValues: await stillValidVaultRefs(db, project, currentDeployedState.secretRefs ?? {}),
+          });
+      const targetCodeHash = rollbackUpload?.bundleSha ?? targetRow.code_hash;
       const effectiveCurrentCodeHash =
-        liveWorker?.sha256 ?? envRecord.codeHash ?? null;
+        liveWorker?.sha256 || (fakeControlPlane ? envRecord.codeHash : null) || null;
 
-      const applyResult = await provisioner.apply({
+      const appliedRollback = await provisioner.apply({
         target: envRecord.target,
         project,
         actor: resolved.caller.author.id,
         deployId,
         buildHash: targetRow.build_hash,
-        codeHash: targetRow.code_hash,
+        codeHash: targetCodeHash,
         graphHash: targetRow.graph_hash,
         bundle: {
-          code: bundleCode,
-          sha256: targetRow.code_hash,
+          code: rollbackUpload?.bundleCode ?? bundleCode,
+          sha256: targetCodeHash,
         },
         migrations: [],
         queues: targetState.queues ?? [],
         cronTriggers: targetState.cronTriggers ?? [],
-        workflows: targetState.workflows ?? [],
+        workflows: rollbackUpload?.workflows ?? targetState.workflows ?? [],
         graphs: targetState.graphs ?? {},
         schedules: targetState.cronTriggers ?? [],
+        // Real path: secrets are synced after the upload by completeRealDeploy, as for a deploy.
         secrets: {},
-        envState: {
+        ...(rollbackUpload ? { workerBindings: rollbackUpload.workerBindings, trustedVersionIds: currentDeployedState.studioVersionIds ?? [] } : {}),
+        // Real path: what is deployed is read from the account, as for a deploy.
+        envState: rollbackUpload ? { deployedRev: envRecord.deployedRev } : {
           deployedRev: envRecord.deployedRev,
           currentBuildHash:
-            effectiveCurrentCodeHash === targetRow.code_hash &&
+            effectiveCurrentCodeHash === targetCodeHash &&
             envRecord.graphHash === targetRow.graph_hash
               ? "force_restore_rollback"
               : envRecord.buildHash,
           currentCodeHash: effectiveCurrentCodeHash,
           currentGraphHash:
-            effectiveCurrentCodeHash === targetRow.code_hash
+            effectiveCurrentCodeHash === targetCodeHash
               ? "force_graph_restore"
               : envRecord.graphHash,
           databaseExists: true,
@@ -12804,6 +13370,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           })),
         },
         onStep: async (step) => {
+          rollbackSteps.push({ stepName: step.stepName, action: step.action, resourceName: step.resourceName });
           const stepId = `dstep_${generateUuidV7()}`;
           await db
             .prepare(
@@ -12829,9 +13396,45 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             .run();
         },
       });
+      if (rollbackUpload) {
+        // the same secret sync and keyed smoke check as a deploy, and the bookkeeping carried forward
+        const completed = await completeRealDeploy({
+          env: c.env,
+          project,
+          target: envRecord.target,
+          deployId,
+          actorId: resolved.caller.author.id,
+          controlPlane,
+          tokenResolver,
+          upload: rollbackUpload,
+          applied: appliedRollback,
+          previous: currentDeployedState,
+          mode: "rollback",
+        });
+        applyResult = completed.result;
+        rollbackSecretHashes = completed.secretHashes;
+        rollbackStudioVersionIds = completed.studioVersionIds;
+      } else {
+        applyResult = appliedRollback;
+      }
+      } catch (error) {
+        if (fakeControlPlane) throw error;
+        return failRealDeploy(error, {
+          db,
+          orgId: authz.orgId,
+          project,
+          envName,
+          deployId,
+          caller: resolved.caller,
+          controlPlane,
+          steps: rollbackSteps,
+          hideValues: [c.env.PX_TELEMETRY_SECRET ?? "", ...Object.values(rollbackUpload?.secrets ?? {})],
+          action: "environment.rollback",
+        });
+      }
 
-      // Ensure live control-plane metadata matches the restored target revision state
-      controlPlane.recordEnvironmentMetadata(
+      // Ensure the fake's metadata matches the restored target revision state (the real account was written by apply)
+      fakeControlPlane?.recordEnvironmentMetadata(
         envRecord.target.accountId,
         resourceNames.scriptName,
         resourceNames.databaseName,
@@ -12844,7 +13447,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           appliedMigrations: targetState.appliedMigrations ?? [],
         },
       );
-      controlPlane.mutateCronTriggersOutOfBand(
+      fakeControlPlane?.mutateCronTriggersOutOfBand(
         envRecord.target.accountId,
         resourceNames.scriptName,
         targetState.cronTriggers ?? [],
@@ -12871,6 +13474,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         rollbackFromDeploymentId,
         lastAction: "rollback",
         liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
+        // the real path's bookkeeping is carried through a rollback: the secrets it bound, and the bundle it uploaded
+        ...(rollbackSecretHashes ? { secretHashes: rollbackSecretHashes } : {}),
+        ...(rollbackStudioVersionIds ? { studioVersionIds: rollbackStudioVersionIds } : {}),
+        // the bindings did not change: the refs the Worker's brick secrets come from are carried forward
+        ...(currentDeployedState.secretRefs ? { secretRefs: currentDeployedState.secretRefs } : {}),
+        ...(rollbackUpload ? { liveCodeHash: rollbackUpload.bundleSha } : {}),
         noChanges: false,
         reusedCachedBuild: true,
       };
@@ -13019,6 +13628,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         project,
         updatedEnvRecord,
         currentHashes,
+        c.env,
       );
 
       return c.json(

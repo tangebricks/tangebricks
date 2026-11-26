@@ -75,6 +75,8 @@ export interface StudioApiEnv {
   DB?: D1Like;
   /** Deploy environment switch; "production" refuses placeholder executors (story 0.9). */
   PX_ENVIRONMENT?: string;
+  /** "fake" deploys to the in-memory Cloudflare fake (tests only; refused in production). Absent: the real Cloudflare client. */
+  PX_DEPLOY_CLIENT?: string;
   /** Comma-separated user ids of platform operators; only they may use `/api/admin/*` (story 16). */
   PX_PLATFORM_OPERATORS?: string;
   /** Comma-separated origins allowed to call with credentials (CORS, CSRF, WebSocket); unset = same origin only. */
