@@ -88,7 +88,7 @@ export function runTimestampOf(result: unknown): string | undefined {
 }
 
 /** Live result files outside evidence/deployed, recorded in the same integrity file: the restore drill's run (story 1.3). */
-export const EXTRA_LIVE_RESULT_FILES: readonly string[] = ["evidence/restore-drill.json"];
+export const EXTRA_LIVE_RESULT_FILES: readonly string[] = [];
 
 /** Every live result file (`*-result.json`) under evidence/deployed, plus EXTRA_LIVE_RESULT_FILES that exist, relative to `root`, forward slashes, sorted. */
 export function listLiveResultFiles(root: string): string[] {

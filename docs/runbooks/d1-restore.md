@@ -105,7 +105,7 @@ ProjectX includes an automated restore drill script (`scripts/restore-drill.ts`)
   pnpm ops:restore-drill --fake
   ```
 - **Live Account Rehearsal (`--live`):**
-  Runs against live Cloudflare infrastructure using provisioner credentials. Generates a temporary scratch database, executes the full restore drill, records step-by-step elapsed durations (`durationsMs`), and records stamped evidence in `evidence/restore-drill-scratch.json` (never `evidence/restore-drill.json`, which is the staging drill's).
+  Runs against live Cloudflare infrastructure using provisioner credentials. Generates a temporary scratch database, executes the full restore drill, records step-by-step elapsed durations (`durationsMs`), and records stamped evidence in `evidence/restore-drill-scratch.json` (never `evidence/deployed/restore-drill-result.json`, which is the staging drill's).
   ```bash
   pnpm ops:restore-drill --live
   ```
@@ -124,7 +124,7 @@ ProjectX includes an automated restore drill script (`scripts/restore-drill.ts`)
 
   The restore discards anything written to the staging database while the drill runs (a few seconds), so run it when staging is quiet. A concurrent write also makes the fingerprint check fail.
 
-  The evidence, `evidence/restore-drill.json`, carries the run's start time, per-step timings and the total, the verification flags, the git SHA and the label; never an account id, a database uuid, a bookmark or a workers.dev address (the script refuses to write it otherwise). Record the run in `evidence/deployed/integrity.json` like any live run:
+  The evidence, `evidence/deployed/restore-drill-result.json`, carries the run's start time, per-step timings and the total, the verification flags, the git SHA and the label; never an account id, a database uuid, a bookmark or a workers.dev address (the script refuses to write it otherwise). Record the run in `evidence/deployed/integrity.json` like any live run:
   ```bash
   pnpm evidence:record-live
   ```

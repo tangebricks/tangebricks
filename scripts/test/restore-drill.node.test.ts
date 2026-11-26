@@ -95,7 +95,7 @@ describe("D1 restore automated drill (UC9.5)", () => {
 });
 
 describe("restore drill, scratch evidence file", () => {
-  test("a scratch run writes evidence/restore-drill-scratch.json, never evidence/restore-drill.json", async () => {
+  test("a scratch run writes evidence/restore-drill-scratch.json, never the staging evidence", async () => {
     const { client } = setupFake();
     const dir = mkdtempSync(join(tmpdir(), "drill-evidence-dir-"));
     const before = process.env.POC_EVIDENCE_DIR;
@@ -107,6 +107,7 @@ describe("restore drill, scratch evidence file", () => {
       else process.env.POC_EVIDENCE_DIR = before;
     }
     expect(existsSync(join(dir, "restore-drill.json"))).toBe(false);
+    expect(existsSync(join(dir, "deployed", "restore-drill-result.json"))).toBe(false);
     const text = readFileSync(join(dir, "restore-drill-scratch.json"), "utf8");
     expect(JSON.parse(text)).toMatchObject({ target: "scratch" });
     expect(text).not.toMatch(/bm_\d+/);

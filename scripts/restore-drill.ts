@@ -303,7 +303,7 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
       : mode === "live";
 
   if (shouldWriteEvidence) {
-    // Scratch runs have their own file: evidence/restore-drill.json is the target-mode (staging) evidence only.
+    // Scratch runs have their own file: evidence/deployed/restore-drill-result.json is the target-mode (staging) evidence only.
     const outPath = options.evidencePath ?? resolve(getEvidenceDir(), "restore-drill-scratch.json");
     const provenance = stampEvidence("scripts/restore-drill.ts", "measured");
     const evidenceData = {
@@ -595,7 +595,7 @@ export async function runTargetRestoreDrill(options: TargetRestoreDrillOptions):
 
   const shouldWrite = options.writeEvidenceFile ?? true;
   if (shouldWrite) {
-    const outPath = options.evidencePath ?? resolve(getEvidenceDir(), "restore-drill.json");
+    const outPath = options.evidencePath ?? resolve(getEvidenceDir(), "deployed", "restore-drill-result.json");
     const evidenceData = {
       startedAt: result.startedAt,
       measuredAt: result.measuredAt,
