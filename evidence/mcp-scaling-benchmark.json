@@ -1,13 +1,13 @@
 {
   "tokenizer": "gpt-tokenizer 4.1.0, o200k_base",
-  "timestamp": "2026-11-26T23:59:58.075Z",
+  "timestamp": "2026-11-27T00:31:04.127Z",
   "tenBrickSessionRatioPercent": 3,
   "tenBrickSession": {
     "tier": "Tier 3: 10-Brick App (10 Bricks, 2 Tables)",
     "bricksCount": 10,
     "entitiesCount": 2,
     "filesCount": 26,
-    "conversationTokens": 3144,
+    "conversationTokens": 3146,
     "firstPartySourceTokens": 104289,
     "generatedFilesOnlyTokens": 23983,
     "ratioPercent": 3,
@@ -44,7 +44,7 @@
       "bricksCount": 10,
       "entitiesCount": 2,
       "filesCount": 26,
-      "conversationTokens": 3144,
+      "conversationTokens": 3146,
       "firstPartySourceTokens": 104289,
       "generatedFilesOnlyTokens": 23983,
       "ratioPercent": 3,
@@ -68,7 +68,7 @@
       "bricksCount": 16,
       "entitiesCount": 4,
       "filesCount": 38,
-      "conversationTokens": 3534,
+      "conversationTokens": 3532,
       "firstPartySourceTokens": 184540,
       "generatedFilesOnlyTokens": 41921,
       "ratioPercent": 1.9,
@@ -92,7 +92,7 @@
       "bricksCount": 39,
       "entitiesCount": 4,
       "filesCount": 66,
-      "conversationTokens": 5585,
+      "conversationTokens": 5589,
       "firstPartySourceTokens": 339656,
       "generatedFilesOnlyTokens": 74586,
       "ratioPercent": 1.6,
@@ -101,8 +101,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-26T23:59:53.965Z",
-    "gitSha": "82cf7b71aaeac8bc3aa936cd7e73f0d2ec155904",
+    "generatedAt": "2026-11-27T00:30:59.949Z",
+    "gitSha": "c52c3c6b15baa769400befc322817e71f395d143",
     "gitDirty": false,
     "generator": "scripts/benchmark-mcp-scale.ts",
     "inputKind": "measured"

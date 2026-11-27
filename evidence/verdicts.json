@@ -16,9 +16,9 @@
     },
     "H2": {
       "verdict": "pass",
-      "measured": "0.469 ratio",
+      "measured": "0.486 ratio",
       "reasons": [],
-      "recordedAt": "2026-11-27T00:02:33.147Z"
+      "recordedAt": "2026-11-27T00:33:42.417Z"
     },
     "H3": {
       "verdict": "pass",
@@ -43,9 +43,9 @@
     },
     "H7": {
       "verdict": "pass",
-      "measured": "0.427 seconds",
+      "measured": "0.443 seconds",
       "reasons": [],
-      "recordedAt": "2026-11-27T00:02:33.147Z"
+      "recordedAt": "2026-11-27T00:33:42.417Z"
     },
     "H8": {
       "verdict": "pass",
@@ -107,8 +107,8 @@
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-26T23:59:53.965Z",
-    "gitSha": "82cf7b71aaeac8bc3aa936cd7e73f0d2ec155904",
+    "generatedAt": "2026-11-27T00:30:59.949Z",
+    "gitSha": "c52c3c6b15baa769400befc322817e71f395d143",
     "gitDirty": false,
     "generator": "scripts/verify.ts",
     "inputKind": "measured"
