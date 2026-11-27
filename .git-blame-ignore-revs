@@ -1,0 +1,6 @@
+# Commits that only reformat code. `git blame` skips them once you run:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub reads this file on its own.)
+
+# Format the repository with Prettier (Strictness H6): the output of `pnpm format`, nothing else.
+1f1d7e62d721a40b9d041ae726dce22e362ca090
