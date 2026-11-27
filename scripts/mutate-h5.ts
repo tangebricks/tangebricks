@@ -84,7 +84,7 @@ const cases: Case[] = [
   {
     name: "a duplicate confirmation is not recognised and surfaces as an error",
     file: WALLET,
-    from: "const isDuplicateKey = (error: unknown) =>\n  /UNIQUE constraint failed: credit_ledger\\.workspace_id, credit_ledger\\.idempotency_key/.test(errorText(error));",
+    from: "const isDuplicateKey = (error: unknown) => /UNIQUE constraint failed: credit_ledger\\.workspace_id, credit_ledger\\.idempotency_key/.test(errorText(error));",
     to: "const isDuplicateKey = (_error: unknown) => false;",
   },
   {

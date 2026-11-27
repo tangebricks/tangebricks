@@ -133,7 +133,10 @@ export function scanStudioSourceForFakeControlPlane(source: string, filePath: st
   let accessorEnd = -1;
   if (accessorStart >= 0) {
     accessorEnd = lines.findIndex((l, i) => i > accessorStart && l.startsWith("}"));
-    const firstStatement = lines.slice(accessorStart + 1).find((l) => stripCommentsFromLine(l).trim() !== "");
+    // The first statement, which may be wrapped over several lines: the code lines up to the first one ending in ";".
+    const bodyCode = lines.slice(accessorStart + 1).map((l) => stripCommentsFromLine(l).trim()).filter((l) => l !== "");
+    const statementEnd = bodyCode.findIndex((l) => l.endsWith(";"));
+    const firstStatement = statementEnd < 0 ? undefined : bodyCode.slice(0, statementEnd + 1).join(" ");
     if (!firstStatement || !ACCESSOR_OPENING_GUARD.test(firstStatement)) {
       issue(accessorStart, 'getStudioFakeControlPlane must open with if (studioDeployClientMode(env) !== "fake") throw new StudioDeployClientConfigError(...)');
     }

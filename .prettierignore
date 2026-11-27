@@ -1,0 +1,40 @@
+# Files Prettier must not touch. `pnpm format`, `pnpm format:check` and the lefthook pre-commit all read this file
+# (Prettier also skips everything in .gitignore).
+
+# Generated and recorded files: written by scripts or captured from real runs, and checked byte for byte.
+evidence/
+catalog.json
+packages/assembler/catalog.generated.ts
+apps/studio-web/src/catalog-data.json
+corpus/
+fixtures/
+**/fixtures/**
+out/
+dist/
+node_modules/
+.wrangler/
+pnpm-lock.yaml
+
+# Tooling and planning folders that are not project source.
+_bmad/
+_bmad-output/
+.claude/
+.agents/
+
+# Markdown is prose, not code.
+*.md
+
+# JSON is written by scripts with JSON.stringify(value, null, 2) and compared byte for byte (`pnpm openapi:import
+# --all --check`, `pnpm catalog:conformance` spec hashes, `pnpm evidence:check`, proof inputs). Prettier would fold
+# short arrays onto one line, so every such check would see drift.
+*.json
+*.jsonc
+
+# The "no glue code" files of the live H12 run (packages/deploy/src/h12.ts GLUE_SCAN_FILES). The recorded run pinned
+# each file's sha256, and `pnpm proof:check` withholds H12's noGlueCode check when any of them changes, until the live
+# test is re-run. Keep them byte for byte as they are.
+packages/deploy/client/demo-entry.tsx
+bricks/credit-wallet/client/CreditWidget.tsx
+packages/deploy/client/support/widget-driver.tsx
+packages/deploy/client/live/H12.live.test.tsx
+packages/deploy/client/test/H12.rehearsal.test.tsx

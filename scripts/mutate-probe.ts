@@ -32,7 +32,7 @@ const cases: Case[] = [
   { name: "'not found' is called a refusal", file: P, from: "if (error.status === 404) return", to: "if (error.status === 404 && false as boolean) return" },
   { name: "a refused database list is not named", file: P, from: 'if (d1.state === "refused") report.missing.push("D1 (Read or Write)");', to: "" },
   { name: "a refused Worker list is not named", file: P, from: 'if (scripts.state === "refused" || subdomain.state === "refused") report.missing.push("Workers Scripts (Read or Write)");', to: "" },
-  { name: "a refused Workflow list is not named", file: P, from: 'if (workflows.state === "refused") report.missing.push(', to: 'if (false as boolean) report.missing.push(' },
+  { name: "a refused Workflow list is not named", file: P, from: 'if (workflows.state === "refused")\n    report.missing.push(', to: 'if (false as boolean)\n    report.missing.push(' },
   { name: "an account with no workers.dev name counts as ready", file: P, from: "subdomain.value !== null && report.missing.length === 0", to: "report.missing.length === 0" },
   { name: "missing permissions do not stop it being ready", file: P, from: "subdomain.value !== null && report.missing.length === 0 &&", to: "subdomain.value !== null &&" },
   { name: "a token about to expire counts as ready", file: P, from: "(report.token.daysLeft === null || report.token.daysLeft >= 1)", to: "true" },
