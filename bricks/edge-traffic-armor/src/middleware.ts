@@ -17,8 +17,16 @@ export interface ArmorMiddlewareOptions {
   rateLimit?: {
     limit: number;
     windowSeconds: number;
-    /** What a request is counted by: the client IP (default) or the verified workspace. */
-    key?: "ip" | "workspace";
+    /**
+     * The counter's name (default `armor`). Each bucket counts separately, so an app can mount the middleware several
+     * times with different numbers, and `PX_RATE_LIMITS` overrides the numbers by bucket.
+     */
+    bucket?: string;
+    /**
+     * What a request is counted by: the client IP (default), the verified workspace, or the signed-in user (`user`
+     * variable, `uid` or `id`). `workspace` and `user` fall back to the IP when there is none.
+     */
+    key?: "ip" | "workspace" | "user";
   };
   enforceIpRules?: boolean;
 }
@@ -42,12 +50,12 @@ export function trafficArmorMiddleware(options: ArmorMiddlewareOptions = {}): Mi
       }
     }
 
-    // 2. Rate Limit Check: the shared SDK limiter (story 0.21), bucket "armor", counted in px_rate_limits. Fails open:
+    // 2. Rate Limit Check: the shared SDK limiter (story 0.21), bucket "armor" unless named, counted in px_rate_limits. Fails open:
     // an armor limit is a traffic shield, not an auth control. A refused request is still logged as an incident.
     if (options.rateLimit) {
       const limiter = rateLimit(
         {
-          bucket: "armor",
+          bucket: options.rateLimit.bucket ?? "armor",
           limit: options.rateLimit.limit,
           windowSeconds: options.rateLimit.windowSeconds,
           key: options.rateLimit.key ?? "ip",

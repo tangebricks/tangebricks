@@ -8,7 +8,7 @@ import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import { PX_RATE_LIMITS_DDL, applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 
-// Story 2.2: the bricks work outside the monorepo. The four packages are packed with `pnpm pack`, a fixture project in
+// Story 2.2: the bricks work outside the monorepo. The packages (sdk and four bricks) are packed with `pnpm pack`, a fixture project in
 // a temp directory outside the repo installs the tarballs (not workspace links), bundles its own Hono entry with
 // esbuild from its own node_modules, runs it in workerd (Miniflare) with a D1 binding, applies the migrations the
 // installed packages ship, and passes a smoke test: one user's workspace, wallet and audit log, and a second user in
@@ -20,9 +20,10 @@ const PACKAGES = {
   "@poc/multi-workspace": join(root, "bricks", "multi-workspace"),
   "@poc/credit-wallet": join(root, "bricks", "credit-wallet"),
   "@poc/audit-trail": join(root, "bricks", "audit-trail"),
+  "@poc/edge-traffic-armor": join(root, "bricks", "edge-traffic-armor"),
 } as const;
 type PackageName = keyof typeof PACKAGES;
-const BRICKS = ["@poc/multi-workspace", "@poc/credit-wallet", "@poc/audit-trail"] as const;
+const BRICKS = ["@poc/multi-workspace", "@poc/credit-wallet", "@poc/audit-trail", "@poc/edge-traffic-armor"] as const;
 const SETUP_TIMEOUT = 600_000;
 
 const isInside = (path: string, dir: string) => {
@@ -30,7 +31,7 @@ const isInside = (path: string, dir: string) => {
   return rel !== "" && !rel.startsWith("..") && !rel.startsWith(sep) && !/^[A-Za-z]:/.test(rel);
 };
 
-// Child budgets, all well inside SETUP_TIMEOUT: 4 packs + install + typecheck = 4*45 + 240 + 90 = 510 s. The children
+// Child budgets, all well inside SETUP_TIMEOUT: 5 packs + install + typecheck = 5*45 + 240 + 90 = 555 s. The children
 // run asynchronously, so each one's own timeout fires (with its clear message) before the hook's.
 const PACK_TIMEOUT = 45_000;
 const INSTALL_TIMEOUT = 240_000;
@@ -319,6 +320,8 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       "@poc/credit-wallet/migrations/0004_milli_credits.sql",
       "@poc/audit-trail/migrations/0001_audit_trail.sql",
       "@poc/audit-trail/migrations/0002_capability_rows.sql",
+      "@poc/edge-traffic-armor/migrations/0001_edge_traffic_armor.sql",
+      "@poc/edge-traffic-armor/migrations/0002_px_rate_limits.sql",
     ]);
     const db = (await mf!.getD1Database("DB")) as unknown as D1Like;
     const { results } = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all<{ name: string }>();
@@ -332,6 +335,8 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       "credit_orders",
       "credit_action_costs",
       "audit_events",
+      "arm_ip_rules",
+      "arm_blocked_requests",
       "px_rate_limits",
     ]) {
       expect(tables).toContain(table);
@@ -446,6 +451,23 @@ describe("story 2.2: smoke test of the mounted bricks in workerd", () => {
       const row = await db.prepare("SELECT COUNT(*) AS n FROM px_rate_limits WHERE key LIKE ?").bind(`${bucket}:%`).first<{ n: number }>();
       expect(row?.n, bucket).toBeGreaterThan(0);
     }
+  });
+
+  test("edge-traffic-armor: a named bucket keyed by user answers 429 past its limit, per user, and logs an incident", async () => {
+    const db = (await mf!.getD1Database("DB")) as unknown as D1Like;
+    expect((await call("GET", "/v1/ping", { user: A })).status).toBe(200);
+    expect((await call("GET", "/v1/ping", { user: A })).status).toBe(200);
+    const limited = await call("GET", "/v1/ping", { user: A });
+    expect(limited.status, limited.text).toBe(429);
+    expect(limited.json.code).toBe("RATE_LIMITED");
+    // B comes from the same address (the test sends no client IP) and still has their own count.
+    expect((await call("GET", "/v1/ping", { user: B })).status).toBe(200);
+    const counters = await db.prepare("SELECT COUNT(*) AS n FROM px_rate_limits WHERE key LIKE 'fixture-ping:%'").first<{ n: number }>();
+    expect(counters?.n).toBe(2);
+    const incidents = await db
+      .prepare("SELECT COUNT(*) AS n FROM arm_blocked_requests WHERE block_reason = 'rate_limit' AND path = '/v1/ping'")
+      .first<{ n: number }>();
+    expect(incidents?.n).toBe(1);
   });
 
   test("a suspended workspace cannot spend: requireNotSuspended runs after the workspace guard", async () => {

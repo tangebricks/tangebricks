@@ -170,6 +170,69 @@ describe("Traffic Armor HTTP Middleware & API", () => {
     expect(incidents?.n).toBe(1);
   });
 
+  it("defaults to bucket armor keyed by IP: two users on one IP share a count", async () => {
+    const app = new Hono<ArmorEnv & { Variables: { user?: { uid: string } } }>();
+    app.use("*", async (c, next) => {
+      const uid = c.req.header("x-test-user");
+      if (uid) c.set("user", { uid });
+      await next();
+    });
+    app.use("*", trafficArmorMiddleware({ rateLimit: { limit: 2, windowSeconds: 3600 } }));
+    app.get("/ping", (c) => c.text("pong"));
+
+    const ip = { "cf-connecting-ip": "203.0.113.10" };
+    expect((await app.request("/ping", { headers: { ...ip, "x-test-user": "u_a" } }, { DB: db })).status).toBe(200);
+    expect((await app.request("/ping", { headers: { ...ip, "x-test-user": "u_b" } }, { DB: db })).status).toBe(200);
+    expect((await app.request("/ping", { headers: { ...ip, "x-test-user": "u_c" } }, { DB: db })).status).toBe(429);
+    const rows = await db.prepare("SELECT count(*) AS n FROM px_rate_limits WHERE key LIKE 'armor:%'").first<{ n: number }>();
+    expect(rows?.n).toBe(1);
+  });
+
+  it("counts a named bucket separately from another bucket", async () => {
+    const app = new Hono<ArmorEnv>();
+    app.use("/a", trafficArmorMiddleware({ rateLimit: { bucket: "bucket-a", limit: 1, windowSeconds: 3600 } }));
+    app.use("/b", trafficArmorMiddleware({ rateLimit: { bucket: "bucket-b", limit: 1, windowSeconds: 3600 } }));
+    app.get("/a", (c) => c.text("a"));
+    app.get("/b", (c) => c.text("b"));
+
+    const headers = { "cf-connecting-ip": "203.0.113.20" };
+    expect((await app.request("/a", { headers }, { DB: db })).status).toBe(200);
+    // Bucket b has its own count, so the same IP still passes there once.
+    expect((await app.request("/b", { headers }, { DB: db })).status).toBe(200);
+    expect((await app.request("/a", { headers }, { DB: db })).status).toBe(429);
+    expect((await app.request("/b", { headers }, { DB: db })).status).toBe(429);
+    const a = await db.prepare("SELECT count(*) AS n FROM px_rate_limits WHERE key LIKE 'bucket-a:%'").first<{ n: number }>();
+    const b = await db.prepare("SELECT count(*) AS n FROM px_rate_limits WHERE key LIKE 'bucket-b:%'").first<{ n: number }>();
+    const armor = await db.prepare("SELECT count(*) AS n FROM px_rate_limits WHERE key LIKE 'armor:%'").first<{ n: number }>();
+    expect([a?.n, b?.n, armor?.n]).toEqual([1, 1, 0]);
+  });
+
+  it("key user counts per signed-in user on one IP and falls back to the IP without a user", async () => {
+    const app = new Hono<ArmorEnv & { Variables: { user?: { uid: string } } }>();
+    app.use("*", async (c, next) => {
+      const uid = c.req.header("x-test-user");
+      if (uid) c.set("user", { uid });
+      await next();
+    });
+    app.use("*", trafficArmorMiddleware({ rateLimit: { bucket: "per-user", limit: 2, windowSeconds: 3600, key: "user" } }));
+    app.get("/ping", (c) => c.text("pong"));
+
+    const ip = { "cf-connecting-ip": "203.0.113.30" };
+    const asUser = (uid: string) => app.request("/ping", { headers: { ...ip, "x-test-user": uid } }, { DB: db });
+    expect((await asUser("u_a")).status).toBe(200);
+    expect((await asUser("u_a")).status).toBe(200);
+    expect((await asUser("u_a")).status).toBe(429);
+    // User B on the same IP has their own count.
+    expect((await asUser("u_b")).status).toBe(200);
+    expect((await asUser("u_b")).status).toBe(200);
+    // No user: counted by the IP, separately from both users.
+    expect((await app.request("/ping", { headers: ip }, { DB: db })).status).toBe(200);
+    const incidents = await db
+      .prepare("SELECT count(*) AS n FROM arm_blocked_requests WHERE block_reason = 'rate_limit' AND workspace_id IS NULL")
+      .first<{ n: number }>();
+    expect(incidents?.n).toBe(1);
+  });
+
   it("manages IP rules via API", async () => {
     const app = new Hono<ArmorEnv>();
     app.use("/api/*", stubWorkspaceContext);

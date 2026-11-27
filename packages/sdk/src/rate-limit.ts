@@ -281,5 +281,6 @@ export function rateLimit(rule: RateLimitRule, options: RateLimitOptions = {}): 
       });
     }
     await next();
+    return;
   };
 }

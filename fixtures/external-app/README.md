@@ -1,7 +1,7 @@
 # External app fixture
 
 A small project that uses bricks the way a project outside this monorepo would: it installs `@poc/sdk`,
-`@poc/multi-workspace`, `@poc/credit-wallet` and `@poc/audit-trail` from packed tarballs and mounts them on its own
+`@poc/multi-workspace`, `@poc/credit-wallet`, `@poc/audit-trail` and `@poc/edge-traffic-armor` from packed tarballs and mounts them on its own
 Hono app in `src/index.ts`. It is not a workspace package (`fixtures/` is outside the `pnpm-workspace.yaml` globs).
 
 `package.json` holds `TARBALL:<name>` placeholders. `test/external-app.node.test.ts` packs the packages, copies this
@@ -10,7 +10,8 @@ bundles `src/index.ts` with esbuild, runs it in workerd with a D1 binding, appli
 smoke test.
 
 The entry mounts the workspace guard with `requireNotSuspended` after it, and credit-wallet's manifest rate limits
-with the SDK's `rateLimit`, as the assembler does. `packageManager` pins pnpm to the repo's version, `.npmrc` pins
+with the SDK's `rateLimit`, as the assembler does. It also mounts edge-traffic-armor's middleware on `GET /v1/ping`
+with a named bucket counted per user. `packageManager` pins pnpm to the repo's version, `.npmrc` pins
 `node-linker=isolated` (so the install layout does not depend on user config), and `tsconfig.json` lets the test
 typecheck `src/` against the installed packages.
 
