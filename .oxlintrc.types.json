@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // Type-aware gate (`pnpm lint:types`, oxlint --type-aware via oxlint-tsgolint). Only these four rules run, and only
+  // on the money, auth and deploy paths the `lint:types` script names; `pnpm lint` (.oxlintrc.json) stays the fast,
+  // repo-wide correctness gate and does not read this file.
+  "categories": {
+    "correctness": "off"
+  },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "typescript/switch-exhaustiveness-check": "error"
+  },
+  // Every ignore of .oxlintrc.json, kept identical (scripts/test/oxlint-types-gate.node.test.ts checks it).
+  "ignorePatterns": [
+    "**/evidence/**",
+    "**/catalog.json",
+    "packages/assembler/catalog.generated.ts",
+    "apps/studio-web/src/catalog-data.json",
+    "**/corpus/**",
+    "**/fixtures/**",
+    "**/out/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.wrangler/**",
+    "_bmad/**",
+    "_bmad-output/**",
+    ".claude/**",
+    ".agents/**",
+    "**/*.md"
+  ]
+}

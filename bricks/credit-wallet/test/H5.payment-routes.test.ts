@@ -230,7 +230,7 @@ describe("the wallet routes beyond the ported tests", () => {
 
   it("twenty parallel verify calls over HTTP credit the order once", async () => {
     const orderId = await paidOrder();
-    const responses = await Promise.all(Array.from({ length: 20 }, () => call("/api/payments/verify", "user-123", null, { order_id: orderId })));
+    const responses = await Promise.all(Array.from({ length: 20 }, async () => call("/api/payments/verify", "user-123", null, { order_id: orderId })));
     const bodies = await Promise.all(responses.map(json));
     expect(bodies.filter((b) => b.credited === true).length).toBe(1);
     expect(bodies.filter((b) => b.status === "already_processed").length).toBe(19);
