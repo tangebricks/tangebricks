@@ -6,6 +6,10 @@ import { createWorkspaceRoutes, requireNotSuspended, workspaceMiddleware } from 
 import { createFakeGateway, createWalletRoutes } from "@poc/credit-wallet";
 import { createAuditRoutes } from "@poc/audit-trail";
 import { trafficArmorMiddleware } from "@poc/edge-traffic-armor";
+import { createOidcMiddleware } from "@poc/oidc-verify";
+import { createRbacRoutes } from "@poc/rbac-policy";
+import { createPlatformAdminRoutes } from "@poc/platform-admin";
+import { auditRecorder } from "@poc/audit-trail";
 import { rateLimit } from "@poc/sdk";
 
 // The project chooses where the bricks live. Every brick route is relative, so any prefix works. The manifests'
@@ -34,7 +38,7 @@ app.use("*", stubIdentity);
 // 2. The workspace guard on the workspace-scoped paths (each manifest's guardPaths). workspaceMiddleware resolves the
 //    workspace from the x-workspace-id header and refuses non-members; requireNotSuspended then refuses a suspended
 //    workspace (multi-workspace's manifest names it as the guard's `suspension`).
-for (const path of ["/wallet", "/wallet/*", "/payments/create-order", "/audit", "/audit/*"]) {
+for (const path of ["/wallet", "/wallet/*", "/payments/create-order", "/audit", "/audit/*", "/roles", "/roles/*", "/policies", "/policies/*"]) {
   app.use(`${PREFIX}${path}`, workspaceMiddleware);
   app.use(`${PREFIX}${path}`, requireNotSuspended);
 }
@@ -54,10 +58,23 @@ app.on("POST", `${PREFIX}/payments/webhook`, rateLimit({ bucket: "wallet-webhook
 app.use(`${PREFIX}/ping`, trafficArmorMiddleware({ enforceIpRules: false, rateLimit: { bucket: "fixture-ping", limit: 2, windowSeconds: 3600, key: "user" } }));
 app.get(`${PREFIX}/ping`, (c) => c.json({ ok: true }));
 
-// 5. The bricks' route factories, mounted under the project's prefix.
+// 5. The bricks' route factories, mounted under the project's prefix. platform-admin sits outside the workspace guard
+//    (operators act across workspaces) and writes its audit rows through audit-trail's recorder.
 app.route(PREFIX, createWorkspaceRoutes());
 app.route(PREFIX, createWalletRoutes({ gateway, currency: "INR", creditsPerUnit: 10 }));
 app.route(PREFIX, createAuditRoutes());
+app.route(PREFIX, createRbacRoutes());
+app.route(PREFIX, createPlatformAdminRoutes({ auditRecorder }));
+
+// 6. oidc-verify on its own path, the way a project with a real identity provider mounts it in place of the stub: HS256
+//    with the secret from the OIDC_HS256_SECRET binding, the email copied from the token's `email` claim.
+const oidc = new Hono();
+oidc.use("*", createOidcMiddleware({ issuer: "https://idp.external-app.test", audience: "external-app", algorithms: ["HS256"], hs256SecretName: "OIDC_HS256_SECRET" }));
+oidc.get("/me", (c) => {
+  const user = c.get("user" as never) as { uid?: string; email?: string } | undefined;
+  return user ? c.json({ uid: user.uid, email: user.email ?? null }) : c.json({ error: "Unauthorized" }, 401);
+});
+app.route("/oidc", oidc);
 
 // Test-only: plays the payment provider's part by marking an order paid. A real project has no such route.
 app.post("/__test__/gateway/orders/:orderId/paid", async (c) => {

@@ -202,6 +202,7 @@ describe("a complete run", () => {
       "migration_applied",
       "migration_applied",
       "migration_applied",
+      "migration_applied",
       "script_uploaded",
       "workflow_registered",
       "address_enabled",

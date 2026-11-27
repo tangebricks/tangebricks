@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "8e7af1ef8b44032dd505ca6c2df515c16094720ae766549bec7094491b82b193",
+  "catalogVersion": "e04e210e3ee4d305ecce7af8e8e42f65b170cb64e1bf7e557dec6114e3a20d1e",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -2441,7 +2441,7 @@ export const catalog: Catalog = {
         "manifestVersion": 2,
         "kind": "brick",
         "id": "multi-workspace",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "trust": "first-party",
         "isolation": "none",
         "provides": [
@@ -2449,7 +2449,8 @@ export const catalog: Catalog = {
         ],
         "requires": [],
         "migrations": [
-          "migrations/0001_multi_workspace.sql"
+          "migrations/0001_multi_workspace.sql",
+          "migrations/0002_invite_email_expiry.sql"
         ],
         "routePrefixes": [
           "workspaces"
@@ -2532,7 +2533,8 @@ export const catalog: Catalog = {
         }
       },
       "files": {
-        "migrations/0001_multi_workspace.sql": "-- multi-workspace 0001: workspaces and who belongs to them.\n-- Reference: cephlow apps/api-worker/schema.sql (workspaces, workspace_members).\n--\n-- Differences from cephlow, each on purpose:\n--   * No balance, transfer code or per-action cost here. Those belong to the credit-wallet brick; this brick owns\n--     only identity and membership, so either can be enabled without the other.\n--   * Tables carry the brick's prefix (mw_), so two bricks can never collide.\n--   * Membership is a primary key on (workspace_id, user_id), so a user cannot hold two roles in one workspace.\n\nCREATE TABLE IF NOT EXISTS mw_workspaces (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  owner_id TEXT NOT NULL,\n  suspended INTEGER NOT NULL DEFAULT 0 CHECK (suspended IN (0, 1)),\n  suspended_reason TEXT,\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS mw_workspaces_owner_idx ON mw_workspaces(owner_id);\n\nCREATE TABLE IF NOT EXISTS mw_members (\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),\n  joined_at TEXT NOT NULL DEFAULT (datetime('now')),\n  PRIMARY KEY (workspace_id, user_id)\n);\n\nCREATE INDEX IF NOT EXISTS mw_members_user_idx ON mw_members(user_id);\n\nCREATE TABLE IF NOT EXISTS mw_invites (\n  token TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),\n  created_by TEXT NOT NULL,\n  used INTEGER NOT NULL DEFAULT 0 CHECK (used IN (0, 1)),\n  used_by TEXT,\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS mw_invites_workspace_idx ON mw_invites(workspace_id);\n"
+        "migrations/0001_multi_workspace.sql": "-- multi-workspace 0001: workspaces and who belongs to them.\n-- Reference: cephlow apps/api-worker/schema.sql (workspaces, workspace_members).\n--\n-- Differences from cephlow, each on purpose:\n--   * No balance, transfer code or per-action cost here. Those belong to the credit-wallet brick; this brick owns\n--     only identity and membership, so either can be enabled without the other.\n--   * Tables carry the brick's prefix (mw_), so two bricks can never collide.\n--   * Membership is a primary key on (workspace_id, user_id), so a user cannot hold two roles in one workspace.\n\nCREATE TABLE IF NOT EXISTS mw_workspaces (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  owner_id TEXT NOT NULL,\n  suspended INTEGER NOT NULL DEFAULT 0 CHECK (suspended IN (0, 1)),\n  suspended_reason TEXT,\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS mw_workspaces_owner_idx ON mw_workspaces(owner_id);\n\nCREATE TABLE IF NOT EXISTS mw_members (\n  workspace_id TEXT NOT NULL,\n  user_id TEXT NOT NULL,\n  role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),\n  joined_at TEXT NOT NULL DEFAULT (datetime('now')),\n  PRIMARY KEY (workspace_id, user_id)\n);\n\nCREATE INDEX IF NOT EXISTS mw_members_user_idx ON mw_members(user_id);\n\nCREATE TABLE IF NOT EXISTS mw_invites (\n  token TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL,\n  role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),\n  created_by TEXT NOT NULL,\n  used INTEGER NOT NULL DEFAULT 0 CHECK (used IN (0, 1)),\n  used_by TEXT,\n  created_at TEXT NOT NULL DEFAULT (datetime('now'))\n);\n\nCREATE INDEX IF NOT EXISTS mw_invites_workspace_idx ON mw_invites(workspace_id);\n",
+        "migrations/0002_invite_email_expiry.sql": "-- multi-workspace 0002: invites addressed to an email and invites that expire (version 1.1.0).\n--\n-- Both columns are nullable and added, never back-filled: an invite made before this migration (or without the new\n-- fields) is an open invite that never expires, exactly as before.\n--   * email: stored lower-cased. Only a caller whose verified email matches (ignoring case) can accept the invite, and\n--     it is listed in that caller's pending invites.\n--   * expires_at: ISO-8601 in UTC (for example 2026-12-04T09:30:00.000Z). An invite past it is refused on accept.\n\nALTER TABLE mw_invites ADD COLUMN email TEXT CHECK (email IS NULL OR length(email) BETWEEN 3 AND 254);\nALTER TABLE mw_invites ADD COLUMN expires_at TEXT;\n\nCREATE INDEX IF NOT EXISTS mw_invites_email_idx ON mw_invites(email);\n"
       }
     },
     "oauth-server": {
@@ -2627,7 +2629,7 @@ export const catalog: Catalog = {
         "manifestVersion": 2,
         "kind": "brick",
         "id": "oidc-verify",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "trust": "first-party",
         "isolation": "none",
         "provides": [
@@ -2647,7 +2649,7 @@ export const catalog: Catalog = {
             "type": "string",
             "format": "url",
             "maxLength": 512,
-            "default": "https://auth.example.com"
+            "default": ""
           },
           "audience": {
             "type": "string",
@@ -2661,12 +2663,10 @@ export const catalog: Catalog = {
             "default": ""
           },
           "algorithms": {
-            "type": "enum",
-            "values": [
-              "RS256",
-              "ES256",
-              "EdDSA"
-            ],
+            "type": "string",
+            "pattern": "^(RS256|ES256|EdDSA|HS256)(, *(RS256|ES256|EdDSA|HS256))*$",
+            "example": "ES256,HS256",
+            "maxLength": 64,
             "default": "RS256"
           },
           "clockSkewSec": {
@@ -2692,6 +2692,25 @@ export const catalog: Catalog = {
             "format": "claim-path",
             "maxLength": 512,
             "default": ""
+          },
+          "emailClaim": {
+            "type": "string",
+            "format": "claim-path",
+            "maxLength": 512,
+            "default": "email",
+            "since": "2.1.0"
+          },
+          "emailVerifiedClaim": {
+            "type": "string",
+            "format": "claim-path",
+            "maxLength": 512,
+            "default": "email_verified",
+            "since": "2.1.0"
+          },
+          "trustUnverifiedEmail": {
+            "type": "boolean",
+            "default": false,
+            "since": "2.1.0"
           },
           "audienceClaim": {
             "type": "string",
@@ -3008,7 +3027,7 @@ export const catalog: Catalog = {
         "manifestVersion": 2,
         "kind": "brick",
         "id": "platform-admin",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "trust": "first-party",
         "isolation": "none",
         "provides": [
@@ -3415,7 +3434,7 @@ export const catalog: Catalog = {
         "manifestVersion": 2,
         "kind": "brick",
         "id": "rbac-policy",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "trust": "first-party",
         "isolation": "none",
         "provides": [

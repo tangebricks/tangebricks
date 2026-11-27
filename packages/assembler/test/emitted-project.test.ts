@@ -30,7 +30,7 @@ const call = async (path: string, headers: Record<string, string> = {}, init: Re
 
 /** Applies the emitted migrations, in the order the project's own file names give, to an empty database. */
 async function freshDatabase(): Promise<void> {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"])
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_invites", "mw_members", "mw_workspaces"])
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   for (const path of Object.keys(emittedSql).sort()) await applyMigration(db, emittedSql[path]!);
 }
@@ -41,11 +41,12 @@ describe("the project the setup step wrote", () => {
     expect(typeof app!.fetch).toBe("function");
     expect(Object.keys(emittedFiles).sort()).toEqual([
       "migrations/0001_multi-workspace__0001_multi_workspace.sql",
-      "migrations/0002_credit-wallet__0001_credit_wallet.sql",
-      "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
-      "migrations/0004_credit-wallet__0003_order_currency.sql", // story 2.3: credit-wallet's order currency
-      "migrations/0005_credit-wallet__0004_milli_credits.sql", // story 2.5: credit-wallet's milli-credits
-      "migrations/0006_shell__px_rate_limits.sql", // story 0.21: credit-wallet declares rate limits
+      "migrations/0002_multi-workspace__0002_invite_email_expiry.sql", // story 2.8: invite email and expiry
+      "migrations/0003_credit-wallet__0001_credit_wallet.sql",
+      "migrations/0004_credit-wallet__0002_workspace_scoped_idempotency.sql",
+      "migrations/0005_credit-wallet__0003_order_currency.sql", // story 2.3: credit-wallet's order currency
+      "migrations/0006_credit-wallet__0004_milli_credits.sql", // story 2.5: credit-wallet's milli-credits
+      "migrations/0007_shell__px_rate_limits.sql", // story 0.21: credit-wallet declares rate limits
       "openapi.json",
       "package.json",
       "project.json",

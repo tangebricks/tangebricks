@@ -1,7 +1,7 @@
 import { getJwksKey, resolveJwksUri } from "./jwks.ts";
 import { OidcVerificationError, type OidcUserContext, type OidcVerifyConfig } from "./types.ts";
 
-function base64UrlDecode(str: string): Uint8Array {
+function base64UrlDecode(str: string): Uint8Array<ArrayBuffer> {
   try {
     const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
     const padLen = (4 - (base64.length % 4)) % 4;
@@ -267,8 +267,15 @@ export async function verifyJwt(token: string, config: OidcVerifyConfig, options
     }
   }
 
+  const rawEmail = getByDotPath(payload, config.emailClaim || "email");
+  const email = typeof rawEmail === "string" && rawEmail.trim().length > 0 ? rawEmail.trim() : undefined;
+  const rawVerified = getByDotPath(payload, config.emailVerifiedClaim || "email_verified");
+  const emailVerified = typeof rawVerified === "boolean" ? rawVerified : undefined;
+
   return {
     userId,
+    ...(email !== undefined ? { email } : {}),
+    ...(emailVerified !== undefined ? { emailVerified } : {}),
     workspaceId,
     roles,
     claims: payload,

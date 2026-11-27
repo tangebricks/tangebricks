@@ -125,7 +125,7 @@ describe("the official MCP client against this server", () => {
     expect(built.isError, text(built)).toBeFalsy();
     expect(JSON.parse(text(built))).toMatchObject({
       project: "interop",
-      files: 15,
+      files: 16,
       bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"],
       entities: ["invoices"],
     });

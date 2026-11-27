@@ -2,14 +2,15 @@
   "manifestVersion": 2,
   "kind": "brick",
   "id": "multi-workspace",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "trust": "first-party",
   "provides": [
     "workspace-context"
   ],
   "requires": [],
   "migrations": [
-    "migrations/0001_multi_workspace.sql"
+    "migrations/0001_multi_workspace.sql",
+    "migrations/0002_invite_email_expiry.sql"
   ],
   "routePrefixes": [
     "workspaces"

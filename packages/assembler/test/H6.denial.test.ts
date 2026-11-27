@@ -63,7 +63,7 @@ const orderRows = async (workspace: string) =>
 
 /** An empty database with the project's own migrations, two tenants made through the project's own API, balances seeded. */
 async function world(): Promise<World> {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"])
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_invites", "mw_members", "mw_workspaces"])
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   for (const path of Object.keys(sql).sort()) await applyMigration(db, sql[path]!);
   const create = async (user: string, name: string) => (await call("/api/workspaces", user, null, { name })).body!.workspace.id as string;

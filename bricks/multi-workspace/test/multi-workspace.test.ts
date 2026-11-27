@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_multi_workspace.sql?raw";
+import migration2 from "../migrations/0002_invite_email_expiry.sql?raw";
 import { createWorkspaceRoutes, type WorkspaceEnv } from "../src/index.ts";
 
 const db = env.DB as D1Like;
@@ -13,6 +14,7 @@ async function resetDb(): Promise<void> {
   await db.prepare("DROP TABLE IF EXISTS mw_members").run();
   await db.prepare("DROP TABLE IF EXISTS mw_workspaces").run();
   await applyMigration(db, migration);
+  await applyMigration(db, migration2);
 }
 
 beforeEach(async () => {

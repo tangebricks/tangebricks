@@ -270,9 +270,9 @@
       "behaviourTest": "bricks/oidc-verify/test/conformance.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 13,
+      "testsRun": 17,
       "testsSkipped": 0,
-      "assertionCount": 59
+      "assertionCount": 87
     },
     {
       "id": "omnichannel-outbound",
@@ -506,8 +506,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-27T07:56:32.974Z",
-    "gitSha": "d105a4e19354a6e5c54053547fb2ea3789e61e47",
+    "generatedAt": "2026-11-27T10:25:04.673Z",
+    "gitSha": "8bac107869a09fa6b43deafc6f342d905afdfee2",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

@@ -49,12 +49,13 @@ const registryKnown = new WeakSet<object>();
 
 /**
  * Story 2.5: whether this database has the workspace registry (`mw_workspaces`), read from `sqlite_master` once per
- * database object and cached once found.
+ * database object and cached once found. A view of that name counts (story 2.8: an app that keeps its own workspace
+ * tables exposes them to the bricks as `mw_*` views; see docs/adopting-existing-tables.md).
  */
 export async function hasWorkspaceRegistry(db: D1Like): Promise<boolean> {
   if (registryKnown.has(db)) return true;
   const row = await db
-    .prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .prepare("SELECT 1 AS present FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?")
     .bind(WORKSPACE_REGISTRY_TABLE)
     .first<{ present: number }>();
   if (row) registryKnown.add(db);

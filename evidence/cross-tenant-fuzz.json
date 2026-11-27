@@ -1,6 +1,6 @@
 {
   "routeCount": 41,
-  "honoRouteCount": 196,
+  "honoRouteCount": 202,
   "specOnlyRoutes": [
     "GET /api/ai",
     "POST /api/ai",
@@ -53,14 +53,14 @@
     "GET /api/webhooks",
     "POST /api/webhooks"
   ],
-  "cases": 1870,
+  "cases": 1920,
   "casesByAttack": {
-    "HEADER_B": 984,
-    "QUERY_B": 246,
-    "BODY_B": 128,
-    "ID_GUESS": 194,
+    "HEADER_B": 1008,
+    "QUERY_B": 252,
+    "BODY_B": 130,
+    "ID_GUESS": 206,
     "ROLE_ESCALATION": 26,
-    "UNAUTH": 226,
+    "UNAUTH": 232,
     "NOT_OPERATOR": 66
   },
   "attacks": [
@@ -306,6 +306,12 @@
     {
       "method": "GET",
       "route": "/api/onboarding/flows/:key/analytics",
+      "attack": "ID_GUESS",
+      "reason": "no B row id fits every path param after seeding"
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/workspaces/:id/invites/:token",
       "attack": "ID_GUESS",
       "reason": "no B row id fits every path param after seeding"
     },
@@ -1903,6 +1909,12 @@
       "failures": []
     },
     {
+      "route": "/api/workspaces/invites/mine",
+      "method": "GET",
+      "cases": 6,
+      "failures": []
+    },
+    {
       "route": "/api/workspaces/:id",
       "method": "GET",
       "cases": 9,
@@ -1912,6 +1924,30 @@
       "route": "/api/workspaces/:id/invites",
       "method": "POST",
       "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces/:id/members",
+      "method": "GET",
+      "cases": 9,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces/:id",
+      "method": "PATCH",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces/:id/members/:userId",
+      "method": "PATCH",
+      "cases": 10,
+      "failures": []
+    },
+    {
+      "route": "/api/workspaces/:id/invites",
+      "method": "GET",
+      "cases": 9,
       "failures": []
     },
     {
@@ -3205,6 +3241,12 @@
       "failures": []
     },
     {
+      "route": "/api/workspaces/:id/invites/:token",
+      "method": "DELETE",
+      "cases": 6,
+      "failures": []
+    },
+    {
       "route": "/api/assets/:id",
       "method": "DELETE",
       "cases": 10,
@@ -3296,8 +3338,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-27T07:56:32.974Z",
-    "gitSha": "d105a4e19354a6e5c54053547fb2ea3789e61e47",
+    "generatedAt": "2026-11-27T10:25:04.673Z",
+    "gitSha": "8bac107869a09fa6b43deafc6f342d905afdfee2",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

@@ -16,7 +16,7 @@ const sql = import.meta.glob("../../../out/invoice-flow/migrations/*.sql", { que
 const app = Object.values(entry)[0]?.default;
 const db = env.DB as D1Like;
 
-const TABLES = ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces", "ent_invoices"];
+const TABLES = ["credit_ledger", "credit_orders", "credit_wallets", "mw_invites", "mw_members", "mw_workspaces", "ent_invoices"];
 async function freshDatabase() {
   for (const table of TABLES) await db.prepare(`DROP TABLE IF EXISTS "${table}"`).run();
   for (const path of Object.keys(sql).sort()) await applyMigration(db, sql[path]!);
