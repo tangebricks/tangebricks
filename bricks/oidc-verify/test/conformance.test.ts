@@ -703,18 +703,52 @@ describe("oidc-verify 2.1.0: email claim, configuration and algorithm lists", ()
     const get = async (app: Hono, token: string) =>
       ((await (await app.fetch(new Request("http://x/me", { headers: { Authorization: `Bearer ${token}` } }), {})).json()) as any).user;
 
-    const user = await get(meApp(config, fetcher), await sign({ email: "Person@Example.com" }));
-    expect(user).toMatchObject({ id: "usr_e", uid: "usr_e", email: "Person@Example.com" });
+    const user = await get(meApp(config, fetcher), await sign({ email: "Person@Example.com", email_verified: true }));
+    expect(user).toMatchObject({ id: "usr_e", uid: "usr_e", email: "Person@Example.com", emailVerified: true });
 
-    const custom = await get(meApp({ ...config, emailClaim: "profile.mail" }, fetcher), await sign({ email: "x@y.z", profile: { mail: "m@y.z" } }));
+    const custom = await get(
+      meApp({ ...config, emailClaim: "profile.mail", emailVerifiedClaim: "profile.mail_ok" }, fetcher),
+      await sign({ email: "x@y.z", profile: { mail: "m@y.z", mail_ok: true } }),
+    );
     expect(custom.email).toBe("m@y.z");
 
-    const notString = await get(meApp(config, fetcher), await sign({ email: ["a@b.c"] }));
+    const notString = await get(meApp(config, fetcher), await sign({ email: ["a@b.c"], email_verified: true }));
     expect(notString.uid).toBe("usr_e");
     expect("email" in notString).toBe(false);
 
-    const verified = await verifyJwt(await sign({ email: "v@x.io" }), config, { fetcher });
-    expect(verified.email).toBe("v@x.io");
+    const verified = await verifyJwt(await sign({ email: "v@x.io", email_verified: true }), config, { fetcher });
+    expect(verified).toMatchObject({ email: "v@x.io", emailVerified: true });
+  });
+
+  it("sets user.email only for a verified email, unless the app opts in with trustUnverifiedEmail", async () => {
+    const { issuer, fetcher, sign } = await es256Setup();
+    const config = { issuer, audience: "authenticated", jwksUri: `${issuer}/jwks`, algorithms: ["ES256"] };
+    const get = async (app: Hono, token: string) =>
+      ((await (await app.fetch(new Request("http://x/me", { headers: { Authorization: `Bearer ${token}` } }), {})).json()) as any).user;
+    const strict = meApp(config, fetcher);
+    const trusting = meApp({ ...config, trustUnverifiedEmail: true }, fetcher);
+
+    // Verified: the email is set, and so is emailVerified.
+    expect(await get(strict, await sign({ email: "v@x.io", email_verified: true }))).toMatchObject({ email: "v@x.io", emailVerified: true });
+    // Unverified (false): no email, emailVerified false; the opt-in sets the email but keeps emailVerified false.
+    const unverified = await get(strict, await sign({ email: "u@x.io", email_verified: false }));
+    expect(unverified.emailVerified).toBe(false);
+    expect("email" in unverified).toBe(false);
+    expect(await get(trusting, await sign({ email: "u@x.io", email_verified: false }))).toMatchObject({ email: "u@x.io", emailVerified: false });
+    // Claim missing (or not a boolean): no email and no emailVerified; the opt-in sets the email only.
+    for (const extra of [{}, { email_verified: "true" }]) {
+      const missing = await get(strict, await sign({ email: "m@x.io", ...extra }));
+      expect("email" in missing || "emailVerified" in missing).toBe(false);
+      const optedIn = await get(trusting, await sign({ email: "m@x.io", ...extra }));
+      expect(optedIn.email).toBe("m@x.io");
+      expect("emailVerified" in optedIn).toBe(false);
+    }
+    // The opt-in also arrives from the env as text.
+    const fromEnv = meApp(config, fetcher);
+    const res = await fromEnv.fetch(new Request("http://x/me", { headers: { Authorization: `Bearer ${await sign({ email: "e@x.io" })}` } }), {
+      trustUnverifiedEmail: "true",
+    });
+    expect(((await res.json()) as any).user.email).toBe("e@x.io");
   });
 
   it("with no issuer configured the middleware answers 500 oidc_not_configured, with or without a token", async () => {
@@ -735,10 +769,10 @@ describe("oidc-verify 2.1.0: email claim, configuration and algorithm lists", ()
     const hmacKey = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const hsToken = await signJwt(
       { alg: "HS256", typ: "JWT" },
-      { iss: issuer, aud: "authenticated", sub: "usr_h", email: "h@x.io", exp: nowSec() + 600 },
+      { iss: issuer, aud: "authenticated", sub: "usr_h", email: "h@x.io", email_verified: true, exp: nowSec() + 600 },
       hmacKey,
     );
-    const esToken = await sign({ email: "e@x.io" });
+    const esToken = await sign({ email: "e@x.io", email_verified: true });
     const app = new Hono();
     app.use("*", createOidcMiddleware({}, { fetcher }));
     app.get("/me", (c) => c.json({ user: c.get("user" as any) ?? null }));

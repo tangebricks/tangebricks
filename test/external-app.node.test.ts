@@ -527,7 +527,14 @@ describe("story 2.8: oidc-verify, rbac-policy, platform-admin and the new worksp
 
   test("oidc-verify verifies an HS256 token and sets the user's id and email; a bad token is 401", async () => {
     const now = Math.floor(Date.now() / 1000);
-    const token = await hs256({ iss: "https://idp.external-app.test", aud: "external-app", sub: "oidc-user", email: "Oidc@Example.test", exp: now + 600 });
+    const token = await hs256({
+      iss: "https://idp.external-app.test",
+      aud: "external-app",
+      sub: "oidc-user",
+      email: "Oidc@Example.test",
+      email_verified: true,
+      exp: now + 600,
+    });
     const me = (await mf!.dispatchFetch("https://external-app.test/oidc/me", {
       headers: { Authorization: `Bearer ${token}` },
     } as never)) as unknown as Response;

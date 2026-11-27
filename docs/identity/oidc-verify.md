@@ -67,6 +67,6 @@ A project whose identity is `stub` cannot reach production by any path:
 
 ## Email and algorithm lists (2.1.0)
 
-`user.email` is copied from the `emailClaim` claim (default `email`) when it is a string. The `algorithms` setting is a
+`user.email` is copied from the `emailClaim` claim (default `email`) when it is a string and the `emailVerifiedClaim` claim (default `email_verified`) is `true`; that boolean is copied to `user.emailVerified`. `trustUnverifiedEmail: true` sets the email without the verified claim; it is risky, because multi-workspace's emailed invites trust `user.email`, so use it only for a provider that signs tokens for verified addresses alone. The `algorithms` setting is a
 comma-separated list from `RS256`, `ES256`, `EdDSA` and `HS256`; a provider that signs with both a JWKS key and a shared
 secret (for example ES256 and HS256) lists both, and names the secret's env binding with `hs256SecretName`.

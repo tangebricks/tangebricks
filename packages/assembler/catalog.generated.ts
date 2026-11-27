@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "8a9f3bd3bdb20e81f402ccd4799a17010aa26358fb1545019a27dc31faba01f2",
+  "catalogVersion": "e04e210e3ee4d305ecce7af8e8e42f65b170cb64e1bf7e557dec6114e3a20d1e",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -2664,7 +2664,7 @@ export const catalog: Catalog = {
           },
           "algorithms": {
             "type": "string",
-            "pattern": "^(RS256|ES256|EdDSA|HS256)(,(RS256|ES256|EdDSA|HS256))*$",
+            "pattern": "^(RS256|ES256|EdDSA|HS256)(, *(RS256|ES256|EdDSA|HS256))*$",
             "example": "ES256,HS256",
             "maxLength": 64,
             "default": "RS256"
@@ -2698,6 +2698,18 @@ export const catalog: Catalog = {
             "format": "claim-path",
             "maxLength": 512,
             "default": "email",
+            "since": "2.1.0"
+          },
+          "emailVerifiedClaim": {
+            "type": "string",
+            "format": "claim-path",
+            "maxLength": 512,
+            "default": "email_verified",
+            "since": "2.1.0"
+          },
+          "trustUnverifiedEmail": {
+            "type": "boolean",
+            "default": false,
             "since": "2.1.0"
           },
           "audienceClaim": {
@@ -3015,7 +3027,7 @@ export const catalog: Catalog = {
         "manifestVersion": 2,
         "kind": "brick",
         "id": "platform-admin",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "trust": "first-party",
         "isolation": "none",
         "provides": [

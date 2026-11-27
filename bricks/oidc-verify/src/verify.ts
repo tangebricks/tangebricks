@@ -269,10 +269,13 @@ export async function verifyJwt(token: string, config: OidcVerifyConfig, options
 
   const rawEmail = getByDotPath(payload, config.emailClaim || "email");
   const email = typeof rawEmail === "string" && rawEmail.trim().length > 0 ? rawEmail.trim() : undefined;
+  const rawVerified = getByDotPath(payload, config.emailVerifiedClaim || "email_verified");
+  const emailVerified = typeof rawVerified === "boolean" ? rawVerified : undefined;
 
   return {
     userId,
     ...(email !== undefined ? { email } : {}),
+    ...(emailVerified !== undefined ? { emailVerified } : {}),
     workspaceId,
     roles,
     claims: payload,

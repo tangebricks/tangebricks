@@ -40,6 +40,14 @@ export interface OidcVerifyConfig {
   rolesClaim?: string;
   /** Dot-path for the user's email in the token payload. Defaults to "email". Used only when the claim is a string. */
   emailClaim?: string;
+  /** Dot-path for the claim that says the email is verified. Defaults to "email_verified". Only a boolean counts. */
+  emailVerifiedClaim?: string;
+  /**
+   * Risky: set `user.email` even when the token does not say the email is verified (claim missing). Defaults to false:
+   * then `user.email` is set only when the verified claim is `true`. Turn it on only for a provider that issues tokens
+   * for verified addresses alone, because other bricks (emailed invites) trust `user.email`.
+   */
+  trustUnverifiedEmail?: boolean;
   /** Dot-path or claim name for audience validation. Defaults to "aud". */
   audienceClaim?: string;
   /** Binding/environment variable name containing symmetric secret for HS256 legacy verification. */
@@ -52,6 +60,8 @@ export interface OidcUserContext {
   userId: string;
   /** The email claim (`emailClaim`, default `email`) when the token carries it as a string. */
   email?: string;
+  /** The `emailVerifiedClaim` claim when it is a boolean; undefined when the token does not carry it. */
+  emailVerified?: boolean;
   workspaceId?: string;
   roles: string[];
   claims: Record<string, unknown>;

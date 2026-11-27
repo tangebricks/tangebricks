@@ -7,7 +7,8 @@
 - `POST /workspaces/:id/invites` takes an optional `email` and an optional `expiresInSeconds` (60 seconds to 90 days;
   no expiry by default), and answers them back as `email` and `expiresAt`.
 - Accept refuses an expired invite (410 `INVITE_EXPIRED`) and an emailed invite whose address is not the caller's
-  verified email, ignoring case (403 `INVITE_EMAIL_MISMATCH`). It still never changes an existing member's role
+  email, ignoring case, or whose identity step marked the email unverified (`emailVerified: false`) (403
+  `INVITE_EMAIL_MISMATCH`); `/workspaces/invites/mine` lists nothing for such a caller. It still never changes an existing member's role
   (409 `ALREADY_MEMBER`).
 - New routes, with the same auth (API keys refused) and rank rules: `GET /workspaces/:id/members`, `PATCH
   /workspaces/:id` (rename; admin or owner), `PATCH /workspaces/:id/members/:userId` (set a role; the caller must rank
@@ -15,6 +16,7 @@
   invites, expired ones flagged; admin or owner), `DELETE /workspaces/:id/invites/:token` (admin or owner) and
   `GET /workspaces/invites/mine` (pending, unexpired invites addressed to the caller's email). Writes on a suspended
   workspace are refused.
+- Every route takes the caller from `user.uid`, or `user.id` when there is no `uid`.
 - The routes no longer read change counts: accept, member removal and the delete fence read their outcome back. The
   same SQL then works when `mw_*` are views over an app's own tables (docs/adopting-existing-tables.md).
 

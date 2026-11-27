@@ -30,6 +30,11 @@ export function resolveOidcConfigFromSettings(settings: Record<string, unknown> 
 
   const emailClaim = typeof settings.emailClaim === "string" && settings.emailClaim ? settings.emailClaim : "email";
 
+  const emailVerifiedClaim = typeof settings.emailVerifiedClaim === "string" && settings.emailVerifiedClaim ? settings.emailVerifiedClaim : "email_verified";
+
+  // From the env a boolean setting may arrive as the text "true".
+  const trustUnverifiedEmail = settings.trustUnverifiedEmail === true || settings.trustUnverifiedEmail === "true";
+
   const audienceClaim = typeof settings.audienceClaim === "string" && settings.audienceClaim ? settings.audienceClaim : "aud";
 
   const hs256SecretName = typeof settings.hs256SecretName === "string" && settings.hs256SecretName ? settings.hs256SecretName : undefined;
@@ -44,6 +49,8 @@ export function resolveOidcConfigFromSettings(settings: Record<string, unknown> 
     workspaceClaim,
     rolesClaim,
     emailClaim,
+    emailVerifiedClaim,
+    trustUnverifiedEmail,
     audienceClaim,
     hs256SecretName,
   };
@@ -130,7 +137,9 @@ export function createOidcMiddleware(config: Partial<OidcVerifyConfig> = {}, opt
     const user: AuthUser = {
       id: verified.userId,
       uid: verified.userId,
-      ...(verified.email !== undefined ? { email: verified.email } : {}),
+      // The email only when the token says it is verified, or when the app has chosen to trust it anyway.
+      ...(verified.email !== undefined && (verified.emailVerified === true || effectiveConfig.trustUnverifiedEmail === true) ? { email: verified.email } : {}),
+      ...(verified.emailVerified !== undefined ? { emailVerified: verified.emailVerified } : {}),
       workspaceId: verified.workspaceId,
       roles: verified.roles,
       claims: verified.claims,

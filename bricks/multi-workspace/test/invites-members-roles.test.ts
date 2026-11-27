@@ -252,3 +252,61 @@ describe("invite list and revoke", () => {
     expect(res.json.code).toBe("WORKSPACE_SUSPENDED");
   });
 });
+
+/** An app whose identity step sets exactly this `user` (and nothing else) on every request. */
+function appAs(user: Record<string, unknown>) {
+  const custom = new Hono<WorkspaceEnv>();
+  custom.use("*", async (c, next) => {
+    c.set("user", user as never);
+    await next();
+  });
+  custom.route("/", createWorkspaceRoutes());
+  return async (method: string, path: string, body?: unknown) => {
+    const res = await custom.request(
+      `http://localhost${path}`,
+      { method, ...(body !== undefined ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}) },
+      { DB: db },
+    );
+    return { status: res.status, json: (await res.json()) as any };
+  };
+}
+
+describe("an email the identity step marked unverified is not trusted", () => {
+  it("emailed accept is refused (403 INVITE_EMAIL_MISMATCH) and /mine lists nothing; an open invite still works", async () => {
+    const emailed = await send("POST", "/workspaces/ws_1/invites", "usr_owner", { role: "member", email: "u@x.io" });
+    const unverified = appAs({ uid: "usr_u", email: "u@x.io", emailVerified: false });
+    expect((await unverified("GET", "/workspaces/invites/mine")).json).toEqual({ invites: [] });
+    const refused = await unverified("POST", `/workspaces/invites/${emailed.json.token}/accept`);
+    expect(refused.status).toBe(403);
+    expect(refused.json.error.code).toBe("INVITE_EMAIL_MISMATCH");
+    expect(await roleOf("usr_u")).toBeUndefined();
+
+    const verified = appAs({ uid: "usr_u", email: "u@x.io", emailVerified: true });
+    expect((await verified("GET", "/workspaces/invites/mine")).json.invites).toHaveLength(1);
+    expect((await verified("POST", `/workspaces/invites/${emailed.json.token}/accept`)).status).toBe(200);
+
+    const open = await send("POST", "/workspaces/ws_1/invites", "usr_owner", { role: "member" });
+    expect((await appAs({ uid: "usr_v", email: "v@x.io", emailVerified: false })("POST", `/workspaces/invites/${open.json.token}/accept`)).status).toBe(200);
+  });
+});
+
+describe("a user with only `id` (no `uid`) is the same caller on every route", () => {
+  it("creates, lists, renames, invites, lists members and invites, sets a role and removes", async () => {
+    const asId = appAs({ id: "usr_idonly", email: "idonly@x.io", emailVerified: true });
+    const created = await asId("POST", "/workspaces", { name: "Id Only" });
+    expect(created.status).toBe(201);
+    const ws = created.json.workspace.id as string;
+    expect(created.json.workspace.ownerId).toBe("usr_idonly");
+    expect((await asId("GET", "/workspaces")).json.workspaces.map((w: { id: string }) => w.id)).toEqual([ws]);
+    expect((await asId("GET", `/workspaces/${ws}`)).status).toBe(200);
+    expect((await asId("PATCH", `/workspaces/${ws}`, { name: "Renamed" })).status).toBe(200);
+    const inv = await asId("POST", `/workspaces/${ws}/invites`, { role: "member" });
+    expect(inv.status).toBe(201);
+    expect((await asId("GET", `/workspaces/${ws}/invites`)).json.invites).toHaveLength(1);
+    await send("POST", `/workspaces/invites/${inv.json.token}/accept`, "usr_joiner");
+    expect((await asId("GET", `/workspaces/${ws}/members`)).json.members).toHaveLength(2);
+    expect((await asId("PATCH", `/workspaces/${ws}/members/usr_joiner`, { role: "admin" })).status).toBe(200);
+    expect((await asId("DELETE", `/workspaces/${ws}/members/usr_joiner`)).status).toBe(200);
+    expect((await asId("DELETE", `/workspaces/${ws}`)).status).toBe(200);
+  });
+});

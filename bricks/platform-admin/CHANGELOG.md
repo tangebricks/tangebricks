@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.1 — usable outside the monorepo (story 2.8)
 
 - README: a "Using outside the monorepo" section; the external-app test packs and installs the package. No behaviour
   change.

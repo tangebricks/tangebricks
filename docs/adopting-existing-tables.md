@@ -24,6 +24,10 @@ them is up to the view.
 | `mw_members` | `workspace_id`, `user_id`, `role` (`owner`, `admin` or `member`), `joined_at`; one row per (workspace, user) |
 | `mw_invites` | `token` (unique), `workspace_id`, `role`, `created_by`, `used` (0 or 1), `used_by`, `created_at`, `email` (lower-case or null), `expires_at` (ISO-8601 UTC or null) |
 
+`GET /workspaces/invites/mine` compares `mw_invites.email` with the caller's lower-cased email exactly, so an index on
+the email column can serve it. If the app's table may hold mixed-case addresses, have the view return `lower(...)` of
+the column instead: correct, but then the lookup cannot use that index.
+
 Rules for the triggers:
 
 - **INSERT.** The brick inserts without `created_at`, `joined_at`, `suspended` or `suspended_reason` (a view has no

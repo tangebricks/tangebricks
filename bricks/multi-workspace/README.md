@@ -30,7 +30,7 @@ named in the path gets 404, so a workspace's existence never leaks. Writes on a 
 | `GET /workspaces/invites/mine` | anyone | Unused, unexpired invites addressed to the caller's email, with the workspace name. |
 | `POST /workspaces/invites/:token/accept` | anyone | Joins the workspace with the invite's role. |
 
-- **Invites.** `email` (optional) is stored lower-cased; only a caller whose verified `user.email` matches it, ignoring
+- **Invites.** `email` (optional) is stored lower-cased; only a caller whose `user.email` matches it, ignoring
   case, can accept (403 `INVITE_EMAIL_MISMATCH`), and it shows in that caller's `/workspaces/invites/mine`.
   `expiresInSeconds` (optional, 60 seconds to 90 days) sets `expiresAt` (ISO-8601, UTC); past it, accept answers 410
   `INVITE_EXPIRED`. Without them an invite is open to anyone with the token and never expires. An invite whose inviter
@@ -83,5 +83,7 @@ See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-mono
   `applyMigration` from `@poc/sdk`, called from bundled worker code). Apply this brick's migrations before the bricks that require
   `workspace-context`.
 - **Identity.** The brick authenticates no one. An earlier middleware of yours must verify the caller and set
-  `user` to `{ uid, email? }`; without it every route answers 401. Set `email` only from a verified source: emailed
-  invites trust it. oidc-verify sets both from the token.
+  `user` to `{ uid, email?, emailVerified? }` (`id` is taken when there is no `uid`); without it every route answers
+  401. Set `email` only from a verified source: emailed invites trust it. A caller with `emailVerified: false` cannot
+  accept an emailed invite and lists no invites under `/workspaces/invites/mine`. oidc-verify sets `email` only for a
+  verified address unless told otherwise (`trustUnverifiedEmail`).

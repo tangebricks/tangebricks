@@ -50,7 +50,10 @@ function callerId(user: AuthUser | undefined): string | undefined {
   return typeof id === "string" && id.length > 0 ? id : undefined;
 }
 
-/** The caller's verified email, lower-cased, or "" when the identity step set none. */
+/**
+ * The caller's email, lower-cased, or "" when the identity step set none. Emailed invites trust it: the identity step
+ * must set `email` only from a verified source (and `emailVerified: false` makes the routes refuse it).
+ */
 function callerEmail(user: AuthUser): string {
   return typeof user.email === "string" ? user.email.trim().toLowerCase() : "";
 }
@@ -99,7 +102,8 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // List the workspaces the caller belongs to.
   router.get("/workspaces", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     try {
       // The caller's own memberships in every workspace they belong to: this route lists workspaces, so it runs before
       // any one workspace is chosen. Bound to the caller's user_id.
@@ -108,7 +112,7 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
         .raw(
           "SELECT m.role AS role, w.id AS id, w.name AS name, w.owner_id AS owner_id, w.suspended AS suspended, w.created_at AS created_at " +
             "FROM mw_members m JOIN mw_workspaces w ON m.workspace_id = w.id WHERE m.user_id = ? ORDER BY w.created_at, w.id",
-          [user.uid],
+          [uid],
         )
         .all<{ role: WorkspaceRole; id: string; name: string; owner_id: string; suspended: number; created_at: string }>();
       return c.json({
@@ -130,16 +134,17 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // Create a workspace and make the caller its owner, in one batch: both rows or neither.
   router.post("/workspaces", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const body = CreateWorkspaceSchema.safeParse(await c.req.json().catch(() => ({})));
     if (!body.success) return c.json(err("VALIDATION_ERROR", "Name required (1 to 100 characters)"), 400);
     const id = crypto.randomUUID();
     try {
       await c.env.DB.batch([
-        c.env.DB.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(id, body.data.name, user.uid),
-        c.env.DB.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").bind(id, user.uid),
+        c.env.DB.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(id, body.data.name, uid),
+        c.env.DB.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").bind(id, uid),
       ]);
-      return c.json({ workspace: { id, name: body.data.name, ownerId: user.uid, suspended: false, role: "owner" as const } }, 201);
+      return c.json({ workspace: { id, name: body.data.name, ownerId: uid, suspended: false, role: "owner" as const } }, 201);
     } catch (error) {
       console.error("POST /workspaces:", error);
       return c.json({ error: "Internal error" }, 500);
@@ -166,8 +171,9 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
       if (invite.used) return c.json(err("INVITE_ALREADY_USED", "Invite token has already been used"), 409);
       if (invite.suspended) return c.json(SUSPENDED, 403);
       if (isExpired(invite.expires_at)) return c.json(err("INVITE_EXPIRED", "Invite has expired"), 410);
-      // An emailed invite is for that address only: the caller's verified email must match, ignoring case.
-      if (invite.email && invite.email.toLowerCase() !== callerEmail(user)) {
+      // An emailed invite is for that address only: the caller's verified email must match, ignoring case. An email the
+      // identity step marked unverified (`emailVerified: false`) matches nothing.
+      if (invite.email && (user.emailVerified === false || invite.email.toLowerCase() !== callerEmail(user))) {
         return c.json(err("INVITE_EMAIL_MISMATCH", "This invite was sent to another email address"), 403);
       }
 
@@ -225,14 +231,15 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
     const user = c.get("user");
     if (!user || !callerId(user)) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const email = callerEmail(user);
-    if (!email) return c.json({ invites: [] });
+    // Only a verified email lists invites: none when the identity step set no email, or marked it unverified.
+    if (!email || user.emailVerified === false) return c.json({ invites: [] });
     try {
       // tenant-lint: allow the caller is not yet a member of the inviting workspaces; bound to the caller's own email
       const { results } = await systemScope(c.env.DB, "invites addressed to the caller")
         .raw(
           "SELECT i.token AS token, i.workspace_id AS workspace_id, i.role AS role, i.email AS email, i.created_by AS created_by, " +
             "i.created_at AS created_at, i.expires_at AS expires_at, w.name AS workspace_name " +
-            "FROM mw_invites i JOIN mw_workspaces w ON i.workspace_id = w.id WHERE lower(i.email) = ? AND i.used = 0 ORDER BY i.created_at, i.token",
+            "FROM mw_invites i JOIN mw_workspaces w ON i.workspace_id = w.id WHERE i.email = ? AND i.used = 0 ORDER BY i.created_at, i.token",
           [email],
         )
         .all<InviteRow & { workspace_name: string }>();
@@ -257,14 +264,15 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // Workspace-scoped detail route: returns 404 (not 403) for non-members to prevent workspace existence leakage.
   router.get("/workspaces/:id", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
     try {
       const row = await systemScope(c.env.DB, "workspace detail check")
         .raw(
           "SELECT m.role AS role, w.id AS id, w.name AS name, w.owner_id AS owner_id, w.suspended AS suspended, w.created_at AS created_at " +
             "FROM mw_members m JOIN mw_workspaces w ON m.workspace_id = w.id WHERE m.workspace_id = ? AND m.user_id = ?",
-          [workspaceId, user.uid],
+          [workspaceId, uid],
         )
         .first<{ role: WorkspaceRole; id: string; name: string; owner_id: string; suspended: number; created_at: string }>();
       if (!row) {
@@ -296,7 +304,8 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // no membership, so nothing can act for it. Standalone (no hook), other bricks' rows are left.
   router.delete("/workspaces/:id", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
     // Story 1.10: the id names an object-store prefix in the purge, so it must be one plain segment.
     if (!WORKSPACE_ID.test(workspaceId)) return c.json(err("VALIDATION_ERROR", "Invalid workspace id"), 400);
@@ -304,7 +313,7 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
       const membership = await systemScope(c.env.DB, "workspace delete role check")
         .raw(
           "SELECT m.role AS role, w.suspended AS suspended, w.suspended_reason AS suspended_reason FROM mw_members m JOIN mw_workspaces w ON m.workspace_id = w.id WHERE m.workspace_id = ? AND m.user_id = ?",
-          [workspaceId, user.uid],
+          [workspaceId, uid],
         )
         .first<{ role: WorkspaceRole; suspended: number; suspended_reason: string | null }>();
       if (!membership) {
@@ -345,7 +354,8 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // Create single-use invite token (owner/admin only, at a role at or below the inviter's)
   router.post("/workspaces/:id/invites", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
     const body = InviteSchema.safeParse(await c.req.json().catch(() => ({})));
     if (!body.success) return c.json(err("VALIDATION_ERROR", "Invalid invite parameters"), 400);
@@ -354,7 +364,7 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
       const membership = await systemScope(c.env.DB, "workspace invite permission check")
         .raw(
           "SELECT m.role AS role, w.suspended AS suspended FROM mw_members m JOIN mw_workspaces w ON m.workspace_id = w.id WHERE m.workspace_id = ? AND m.user_id = ?",
-          [workspaceId, user.uid],
+          [workspaceId, uid],
         )
         .first<{ role: WorkspaceRole; suspended: number }>();
       if (!membership) return c.json(err("NOT_FOUND", "Workspace not found"), 404);
@@ -371,7 +381,7 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
       const email = body.data.email ?? null;
       const expiresAt = body.data.expiresInSeconds === undefined ? null : new Date(Date.now() + body.data.expiresInSeconds * 1000).toISOString();
       await c.env.DB.prepare("INSERT INTO mw_invites (token, workspace_id, role, created_by, email, expires_at) VALUES (?, ?, ?, ?, ?, ?)")
-        .bind(token, workspaceId, body.data.role, user.uid, email, expiresAt)
+        .bind(token, workspaceId, body.data.role, uid, email, expiresAt)
         .run();
 
       return c.json({ token, workspaceId, role: body.data.role, email, expiresAt }, 201);
@@ -384,7 +394,8 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // Remove a member: revokes access immediately
   router.delete("/workspaces/:id/members/:userId", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
     const targetUserId = c.req.param("userId");
 
@@ -392,7 +403,7 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
       const callerMembership = await systemScope(c.env.DB, "member removal permission check")
         .raw(
           "SELECT m.role AS role, w.suspended AS suspended FROM mw_members m JOIN mw_workspaces w ON m.workspace_id = w.id WHERE m.workspace_id = ? AND m.user_id = ?",
-          [workspaceId, user.uid],
+          [workspaceId, uid],
         )
         .first<{ role: WorkspaceRole; suspended: number }>();
       if (!callerMembership) return c.json(err("NOT_FOUND", "Workspace not found"), 404);
@@ -402,7 +413,7 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
         .first<{ role: WorkspaceRole }>();
       if (!target) return c.json(err("NOT_FOUND", "Member not found"), 404);
       // Story 1.10: a caller removes only themselves or members of strictly lower rank.
-      if (user.uid !== targetUserId && ROLE_RANK[callerMembership.role] <= ROLE_RANK[target.role]) {
+      if (uid !== targetUserId && ROLE_RANK[callerMembership.role] <= ROLE_RANK[target.role]) {
         return c.json(err("FORBIDDEN", "Insufficient permissions to remove member"), 403);
       }
 
@@ -428,10 +439,11 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // List the members of a workspace: any member may. A non-member gets 404, as on the detail route.
   router.get("/workspaces/:id/members", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
     try {
-      const membership = await membershipOf(c.env.DB, workspaceId, user.uid, "member list permission check");
+      const membership = await membershipOf(c.env.DB, workspaceId, uid, "member list permission check");
       if (!membership) return c.json(err("NOT_FOUND", "Workspace not found"), 404);
       const { results } = await systemScope(c.env.DB, "member list")
         .raw("SELECT user_id, role, joined_at FROM mw_members WHERE workspace_id = ? ORDER BY joined_at, user_id", [workspaceId])
@@ -446,12 +458,13 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // Rename a workspace: admin or owner, not while suspended.
   router.patch("/workspaces/:id", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
     const body = CreateWorkspaceSchema.safeParse(await c.req.json().catch(() => ({})));
     if (!body.success) return c.json(err("VALIDATION_ERROR", "Name required (1 to 100 characters)"), 400);
     try {
-      const membership = await membershipOf(c.env.DB, workspaceId, user.uid, "workspace rename permission check");
+      const membership = await membershipOf(c.env.DB, workspaceId, uid, "workspace rename permission check");
       if (!membership) return c.json(err("NOT_FOUND", "Workspace not found"), 404);
       if (membership.suspended) return c.json(SUSPENDED, 403);
       if (ROLE_RANK[membership.role] < ROLE_RANK.admin) return c.json(err("FORBIDDEN", "Only owner or admin can rename the workspace"), 403);
@@ -483,13 +496,14 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // can make or unmake an owner here (the last owner is therefore always kept). Not while suspended.
   router.patch("/workspaces/:id/members/:userId", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
     const targetUserId = c.req.param("userId");
     const body = SetRoleSchema.safeParse(await c.req.json().catch(() => ({})));
     if (!body.success) return c.json(err("VALIDATION_ERROR", "role must be owner, admin or member"), 400);
     try {
-      const membership = await membershipOf(c.env.DB, workspaceId, user.uid, "member role permission check");
+      const membership = await membershipOf(c.env.DB, workspaceId, uid, "member role permission check");
       if (!membership) return c.json(err("NOT_FOUND", "Workspace not found"), 404);
       if (membership.suspended) return c.json(SUSPENDED, 403);
       const target = await systemScope(c.env.DB, "member role target check")
@@ -525,10 +539,11 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // List a workspace's pending (unused) invites, expired ones included with their `expiresAt`: admin or owner only.
   router.get("/workspaces/:id/invites", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
     try {
-      const membership = await membershipOf(c.env.DB, workspaceId, user.uid, "invite list permission check");
+      const membership = await membershipOf(c.env.DB, workspaceId, uid, "invite list permission check");
       if (!membership) return c.json(err("NOT_FOUND", "Workspace not found"), 404);
       if (ROLE_RANK[membership.role] < ROLE_RANK.admin) return c.json(err("FORBIDDEN", "Only owner or admin can list invites"), 403);
       const { results } = await systemScope(c.env.DB, "invite list")
@@ -559,11 +574,12 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
   // invite.
   router.delete("/workspaces/:id/invites/:token", async (c) => {
     const user = c.get("user");
-    if (!user) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
+    const uid = callerId(user);
+    if (!user || !uid) return c.json(err("UNAUTHORIZED", "Unauthorized"), 401);
     const workspaceId = c.req.param("id");
     const token = c.req.param("token");
     try {
-      const membership = await membershipOf(c.env.DB, workspaceId, user.uid, "invite revoke permission check");
+      const membership = await membershipOf(c.env.DB, workspaceId, uid, "invite revoke permission check");
       if (!membership) return c.json(err("NOT_FOUND", "Workspace not found"), 404);
       if (membership.suspended) return c.json(SUSPENDED, 403);
       if (ROLE_RANK[membership.role] < ROLE_RANK.admin) return c.json(err("FORBIDDEN", "Only owner or admin can revoke invites"), 403);

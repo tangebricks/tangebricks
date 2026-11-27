@@ -34,7 +34,7 @@
     },
     "algorithms": {
       "type": "string",
-      "pattern": "^(RS256|ES256|EdDSA|HS256)(,(RS256|ES256|EdDSA|HS256))*$",
+      "pattern": "^(RS256|ES256|EdDSA|HS256)(, *(RS256|ES256|EdDSA|HS256))*$",
       "example": "ES256,HS256",
       "maxLength": 64,
       "default": "RS256"
@@ -64,6 +64,17 @@
       "type": "string",
       "format": "claim-path",
       "default": "email",
+      "since": "2.1.0"
+    },
+    "emailVerifiedClaim": {
+      "type": "string",
+      "format": "claim-path",
+      "default": "email_verified",
+      "since": "2.1.0"
+    },
+    "trustUnverifiedEmail": {
+      "type": "boolean",
+      "default": false,
       "since": "2.1.0"
     },
     "audienceClaim": {
