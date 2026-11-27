@@ -22,7 +22,7 @@
     "deploy_plan": 84,
     "deploy_apply": 111
   },
-  "perPageMaxTokens": 367,
+  "perPageMaxTokens": 369,
   "perPageCeiling": 400,
   "perPageByTool": {
     "search_bricks": {
@@ -44,7 +44,7 @@
     "list_runs": {
       "tool": "list_runs",
       "pagesChecked": 1,
-      "maxPageTokens": 367,
+      "maxPageTokens": 369,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -52,7 +52,7 @@
     "query_logs": {
       "tool": "query_logs",
       "pagesChecked": 1,
-      "maxPageTokens": 297,
+      "maxPageTokens": 299,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -78,8 +78,8 @@
   "sessionB": {
     "calls": 7,
     "toolDefTokens": 1364,
-    "ioTokens": 5923,
-    "totalTokens": 7287,
+    "ioTokens": 5965,
+    "totalTokens": 7329,
     "maxTotalTokens": 8000,
     "passed": true,
     "byCall": [
@@ -122,15 +122,15 @@
       {
         "tool": "test_workflow",
         "requestTokens": 37,
-        "responseTokens": 1936,
-        "totalTokens": 1973
+        "responseTokens": 1978,
+        "totalTokens": 2015
       }
     ]
   },
   "violations": [],
   "provenance": {
-    "generatedAt": "2026-11-27T04:21:36.700Z",
-    "gitSha": "e543ced04dc929c23196a7cf67520e8be10f89da",
+    "generatedAt": "2026-11-27T04:38:22.935Z",
+    "gitSha": "929ad2a6ba9f5bfdcf1ddefa10ff53fe2c5770d2",
     "gitDirty": false,
     "generator": "scripts/mcp-budget.ts",
     "inputKind": "measured"

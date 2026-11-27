@@ -77,6 +77,8 @@ export class CloudflareMalformedError extends Error {
     this.status = status;
   }
 }
+/** A list whose total_count exceeds what was read: still a CloudflareMalformedError, but one worth re-reading first. */
+class CountLagError extends CloudflareMalformedError {}
 /**
  * A request a caller's own guard refused before it was sent (the live proof's write guard). Never a network failure: the
  * client rethrows it unchanged, with no retry, so it is reported as a refusal, not as Cloudflare being unreachable.
@@ -209,6 +211,8 @@ export interface ClientOptions {
 export const LIST_PAGE_SIZE = 100;
 /** A list longer than this many pages is refused rather than read forever. */
 const MAX_LIST_PAGES = 200;
+/** How many times a list whose total_count runs ahead of its items is read before it is refused (waits 1 s, then 2 s, ...). */
+const LIST_COUNT_LAG_TRIES = 4;
 
 const readOnly = (sql: string) => /^\s*select\b/i.test(sql);
 export const sqlKindOf = (statements: Array<{ sql: string }>): "select" | "write" => (statements.every((s) => readOnly(s.sql)) ? "select" : "write");
@@ -448,6 +452,19 @@ export function createClient(options: ClientOptions): Client {
    * it, otherwise at a short page; an endpoint that ignores paging (the same items again) stops at the first repeat.
    */
   async function listAll<T>(path: string, key: (item: T) => string, query: Record<string, string> = {}): Promise<T[]> {
+    // Cloudflare's total_count can briefly lag a delete (it still counts a database or script that was just removed), so a
+    // count larger than what was read is re-read a few times, with a short wait, before the list is refused as partial.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await listAllOnce(path, key, query);
+      } catch (error) {
+        if (!(error instanceof CountLagError) || attempt >= LIST_COUNT_LAG_TRIES) throw error;
+        await sleep(1000 * attempt);
+      }
+    }
+  }
+
+  async function listAllOnce<T>(path: string, key: (item: T) => string, query: Record<string, string>): Promise<T[]> {
     const out: T[] = [];
     const seen = new Set<string>();
     let totalCount: number | undefined;
@@ -477,7 +494,7 @@ export function createClient(options: ClientOptions): Client {
       if (page === MAX_LIST_PAGES) throw new CloudflareMalformedError("GET", path, 200, `more than ${MAX_LIST_PAGES} pages`);
     }
     if (totalCount !== undefined && totalCount > out.length) {
-      throw new CloudflareMalformedError("GET", path, 200, `Cloudflare counts ${totalCount} items but only ${out.length} were read; refusing a partial list`);
+      throw new CountLagError("GET", path, 200, `Cloudflare counts ${totalCount} items but only ${out.length} were read; refusing a partial list`);
     }
     return out;
   }
