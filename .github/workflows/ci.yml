@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The gate is split into four parallel jobs. Together they run every check the old single
+  # The gate is split into five parallel jobs. Together they run every check the old single
   # sequential `cp0` job ran (ci:cp4 -> cp0..cp3, then cp5..cp10 and mcp:budget), each exactly once:
   #   vitest (3 shards) - the full `vitest run` (workers, dom and node projects). It covers every
   #                       `vitest run <subset>` in ci:cp1..cp10 and the @poc/studio-web unit tests.
@@ -30,6 +30,8 @@ jobs:
   #                       Then the live-canary fetch (continue-on-error) and `pnpm ci:tiers`
   #                       (catalog:tiers), so evidence:check sees only committed evidence.
   #   proof             - `pnpm ci:proof`: boot, proof, restore drill and the studio/beta/sandbox gates.
+  #   coverage          - `pnpm coverage:money` against its thresholds (money and auth code only), the coverage
+  #                       table in the step summary, the json summary as an artifact, then `pnpm coverage:proof`.
   # `cp0` aggregates them. Branch protection requires a check named `cp0`; this job fails unless
   # every job above succeeded (cancelled or skipped counts as failure), so the required check
   # keeps blocking merges without a branch-protection change.
@@ -165,16 +167,63 @@ jobs:
       - name: Run boot, proof, restore-drill and studio/beta/sandbox gates
         run: pnpm ci:proof
 
+  # Coverage of the money and auth code only (credit-wallet, metered-usage, checkout-gateway, subscription-plans,
+  # core-auth, llm-gateway, packages/gateway-adapters), separate from the vitest shards so they are unchanged.
+  # vitest.coverage.config.ts holds the per-brick thresholds; with CI set, autoUpdate is off, so this job never rewrites
+  # them and only fails when coverage drops below one. coverage:proof then shows a threshold failure fails a run.
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm 10.18.0
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.0
+
+      - name: Setup Node.js >= 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Run money and auth coverage against the thresholds
+        run: pnpm coverage:money
+
+      - name: Publish the coverage table to the step summary
+        if: always()
+        run: |
+          if [ -f coverage/coverage-table.txt ]; then
+            { echo "## Money and auth coverage"; echo; echo '```'; cat coverage/coverage-table.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No coverage table was written." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the coverage summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-summary
+          path: coverage/coverage-summary.json
+          if-no-files-found: warn
+
+      - name: Prove a threshold failure fails the run
+        run: pnpm coverage:proof
+
   # The required check. Fails closed: passes only when every parallel job ended in success.
   # A matrix job's result is success only when all of its shards succeeded.
   cp0:
-    needs: [vitest, e2e, gates, proof]
+    needs: [vitest, e2e, gates, proof, coverage]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require every parallel job to succeed
         run: |
-          for r in "${{ needs.vitest.result }}" "${{ needs.e2e.result }}" "${{ needs.gates.result }}" "${{ needs.proof.result }}"; do
+          for r in "${{ needs.vitest.result }}" "${{ needs.e2e.result }}" "${{ needs.gates.result }}" "${{ needs.proof.result }}" "${{ needs.coverage.result }}"; do
             [ "$r" = "success" ] || { echo "a required job ended: $r"; exit 1; }
           done
           echo "all parallel jobs succeeded"

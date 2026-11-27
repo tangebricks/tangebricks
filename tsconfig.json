@@ -32,6 +32,7 @@
     "vitest.workers.config.ts",
     "vitest.dom.config.ts",
     "vitest.node.config.ts",
-    "vitest.live.config.ts"
+    "vitest.live.config.ts",
+    "vitest.coverage.config.ts"
   ]
 }

@@ -18,6 +18,8 @@ out/
 *.env
 .env.*
 .dev.vars
+# Coverage reports from `pnpm coverage:money` (vitest.coverage.config.ts); rebuilt on every run.
+coverage/
 test-results/
 playwright-report/
 apps/studio-web/dist/
