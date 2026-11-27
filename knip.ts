@@ -63,8 +63,21 @@ const config: KnipConfig = {
     },
     "bricks/*": {},
   },
-  // Generated and recorded files are never analysed.
-  ignore: ["out/**", "coverage/**", "**/dist/**", "evidence/**", "corpus/**", "catalog.json", "**/catalog-*.json"],
+  // Generated and recorded files are never analysed, nor the agent tooling folders (.agents/, .claude/, _bmad/), which
+  // hold vendored skill scripts run by the coding agents, not product code (oxlint and Prettier ignore them too).
+  ignore: [
+    "out/**",
+    "coverage/**",
+    "**/dist/**",
+    "evidence/**",
+    "corpus/**",
+    "catalog.json",
+    "**/catalog-*.json",
+    ".agents/**",
+    ".claude/**",
+    "_bmad/**",
+    "_bmad-output/**",
+  ],
 };
 
 export default config;
