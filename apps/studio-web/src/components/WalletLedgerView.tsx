@@ -7,7 +7,7 @@ import { getActiveOrg, useStudioStore } from "../store.ts";
  * Story 2.5: a credit amount as exact decimal text (up to three decimals). Whole thousandths are formatted with integer
  * arithmetic when the server sent them; an older server's plain number is shown as it came.
  */
-export function formatLedgerCredits(credits: number, milli?: number): string {
+function formatLedgerCredits(credits: number, milli?: number): string {
   if (typeof milli !== "number" || !Number.isSafeInteger(milli)) return String(credits);
   const abs = Math.abs(milli);
   const fraction = String(abs % 1000)

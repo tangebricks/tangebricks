@@ -2,7 +2,7 @@ import { assemble } from "../packages/assembler/src/index.ts";
 import type { Catalog } from "../packages/assembler/src/index.ts";
 import { catalog as defaultCatalog } from "../packages/assembler/catalog.generated.ts";
 
-export interface ExcludedBrick {
+interface ExcludedBrick {
   id: string;
   reason: string;
 }

@@ -16,10 +16,10 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const INTEGRITY_REL = "evidence/deployed/integrity.json";
-export const DEPLOYED_REL = "evidence/deployed";
-export const CHANGELOG_REL = "CHANGELOG.md";
+const DEPLOYED_REL = "evidence/deployed";
+const CHANGELOG_REL = "CHANGELOG.md";
 
-export interface LiveEvidenceSource {
+interface LiveEvidenceSource {
   /** First column of the README's live-evidence table; also how release:check finds the row. */
   key: string;
   hypothesis: string;
@@ -29,7 +29,7 @@ export interface LiveEvidenceSource {
   file: string;
 }
 
-export const LIVE_EVIDENCE: readonly LiveEvidenceSource[] = [
+const LIVE_EVIDENCE: readonly LiveEvidenceSource[] = [
   { key: "H5 (hosted)", hypothesis: "H5", part: "hosted D1 half", file: "evidence/deployed/h5-hosted-result.json" },
   { key: "H9 (deployed)", hypothesis: "H9", part: "deployed MCP Worker half", file: "evidence/deployed/mcp-result.json" },
   { key: "H10", hypothesis: "H10", part: "whole hypothesis", file: "evidence/deployed/h10-result.json" },
@@ -38,7 +38,7 @@ export const LIVE_EVIDENCE: readonly LiveEvidenceSource[] = [
 ];
 
 export const STATUS_RECORDED = "recorded";
-export const STATUS_HAND_EDITED = "hand-edited, unverified";
+const STATUS_HAND_EDITED = "hand-edited, unverified";
 
 /**
  * Live result files known to have been edited by hand without a re-run. While a file's recorded run timestamp is the
@@ -56,7 +56,7 @@ export const KNOWN_HAND_EDITS: Readonly<Record<string, { runTimestamp: string; n
   },
 };
 
-export interface IntegrityEntry {
+interface IntegrityEntry {
   sha256: string;
   /** The run's own start time (`commandStartedAt` or the equivalent field), copied from the result file. */
   runTimestamp: string;
@@ -73,12 +73,12 @@ export interface IntegrityFile {
 const DESCRIPTION =
   "sha256 and run timestamp of every live result file under evidence/deployed. proof:check fails when a file's hash changes while its run timestamp does not (edited without a re-run), or when a file has no entry. Record a genuine re-run with `pnpm evidence:record-live`; never edit this file by hand.";
 
-export function sha256File(path: string): string {
+function sha256File(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
 /** The run's start time from a live result object, or undefined when the file carries none. */
-export function runTimestampOf(result: unknown): string | undefined {
+function runTimestampOf(result: unknown): string | undefined {
   if (!result || typeof result !== "object") return undefined;
   const r = result as Record<string, unknown>;
   for (const key of ["commandStartedAt", "startedAt", "at"]) {
@@ -88,10 +88,10 @@ export function runTimestampOf(result: unknown): string | undefined {
 }
 
 /** Live result files outside evidence/deployed, recorded in the same integrity file: the restore drill's run (story 1.3). */
-export const EXTRA_LIVE_RESULT_FILES: readonly string[] = [];
+const EXTRA_LIVE_RESULT_FILES: readonly string[] = [];
 
 /** Every live result file (`*-result.json`) under evidence/deployed, plus EXTRA_LIVE_RESULT_FILES that exist, relative to `root`, forward slashes, sorted. */
-export function listLiveResultFiles(root: string): string[] {
+function listLiveResultFiles(root: string): string[] {
   const out: string[] = [];
   const walk = (rel: string) => {
     const abs = join(root, rel);
@@ -107,14 +107,14 @@ export function listLiveResultFiles(root: string): string[] {
   return out.sort();
 }
 
-export interface IntegrityRead {
+interface IntegrityRead {
   integrity?: IntegrityFile;
   /** set when the file exists but cannot be read as an integrity record */
   error?: string;
 }
 
 /** Reads evidence/deployed/integrity.json without throwing: a malformed file comes back as an INTEGRITY_UNREADABLE error. */
-export function loadIntegrity(root: string): IntegrityRead {
+function loadIntegrity(root: string): IntegrityRead {
   const p = join(root, INTEGRITY_REL);
   if (!existsSync(p)) return {};
   let parsed: unknown;
@@ -135,7 +135,7 @@ export function readIntegrity(root: string): IntegrityFile | undefined {
 }
 
 /** The status and note an entry must carry, given the pinned hand edits. */
-export function pinnedLabelFor(rel: string, runTimestamp: string): { status: string; note?: string } {
+function pinnedLabelFor(rel: string, runTimestamp: string): { status: string; note?: string } {
   const pin = KNOWN_HAND_EDITS[rel];
   if (pin && pin.runTimestamp === runTimestamp) return { status: STATUS_HAND_EDITED, note: pin.note };
   return { status: STATUS_RECORDED };

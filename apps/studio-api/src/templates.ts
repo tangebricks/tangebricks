@@ -6,7 +6,7 @@ import b2bPreset from "../../../presets/b2b-workspace-app.blueprint.json" with {
 import marketplacePreset from "../../../presets/marketplace.blueprint.json" with { type: "json" };
 import stripeDiscordOpsPreset from "../../../presets/stripe-discord-ops.blueprint.json" with { type: "json" };
 
-export const STARTER_TEMPLATE_IDS = ["ai-credits-saas", "b2b-workspace-app", "marketplace", "stripe-discord-ops"] as const;
+const STARTER_TEMPLATE_IDS = ["ai-credits-saas", "b2b-workspace-app", "marketplace", "stripe-discord-ops"] as const;
 
 export type StarterTemplateId = (typeof STARTER_TEMPLATE_IDS)[number];
 

@@ -16,12 +16,12 @@ import { recordStudioAuditLog } from "./auth.ts";
 import type { StudioCaller } from "./auth.ts";
 import { STUDIO_APPROVAL_REQUESTS_DDL } from "./blueprint-do.ts";
 
-export type ApprovalAction = "deploy" | "promote" | "rollback" | "revert" | "sandbox_deploy" | "promote_to_byoc" | "import";
+type ApprovalAction = "deploy" | "promote" | "rollback" | "revert" | "sandbox_deploy" | "promote_to_byoc" | "import";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected" | "consumed" | "expired";
 
 /** How long an approval request stays usable after it is created. */
-export const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
+const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** What an approval is bound to. The org always comes from `authorizeProjectAccess`, never from input. */
 export interface ApprovalBinding {
@@ -97,7 +97,7 @@ export interface ApprovalErrorBody {
 export type RequireApprovalResult =
   { ok: true; approvalId: string | null; consumedAt?: string } | { ok: false; status: 403 | 404 | 409; body: ApprovalErrorBody };
 
-export async function ensureApprovalSchema(db: D1Like): Promise<void> {
+async function ensureApprovalSchema(db: D1Like): Promise<void> {
   await db.batch(STUDIO_APPROVAL_REQUESTS_DDL.map((sql) => db.prepare(sql)));
 }
 

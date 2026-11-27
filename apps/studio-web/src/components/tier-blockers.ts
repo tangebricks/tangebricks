@@ -1,4 +1,4 @@
-export const TIER_BLOCKER_DESCRIPTIONS: Record<string, string> = {
+const TIER_BLOCKER_DESCRIPTIONS: Record<string, string> = {
   ASSERTIONS_BELOW_MIN: "Test assertions below production minimum",
   CONFORMANCE_KIT_MISSING: "Missing shared brick conformance kit suite",
   BEHAVIOUR_TEST_NOT_EXECUTED: "Behaviour test has not been executed",

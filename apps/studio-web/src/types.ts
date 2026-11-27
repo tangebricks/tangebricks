@@ -1,107 +1,47 @@
 import { enabledSchedules } from "@poc/assembler/schedules";
 import type { ScheduleSettingCondition } from "@poc/assembler/schedules";
 import {
-  EDGE_ID_PATTERN,
   ENTITY_NAME_PATTERN,
   ENTITY_RELATION_PATTERN,
   ENUM_VALUE_PATTERN,
-  EntityDefinitionSchema,
-  EntityFieldSchema,
-  NODE_ID_PATTERN,
-  WORKFLOW_ID_PATTERN,
   applyOp,
   applyOps,
   buildCatalogNodeRegistry,
   computeReadiness,
-  computeSemanticDiff,
   createEmptyBlueprint,
-  evaluateProposalSelection,
-  isValidSecretRefHandle,
   normalizeBlueprintState,
   semanticHash as canonicalSemanticHash,
-  summarizeProposalOps,
-  toSdkEntity,
 } from "@poc/blueprint";
-import { RESERVED_FIELD_NAMES, checkWire, parseEntities, validateGraph } from "@poc/sdk";
-import {
-  extractStepExpressionPills,
-  extractTemplatePlaceholders,
-  hasForbiddenSegment,
-  isSafePropertySegment,
-  resolveStepExpressions,
-  traverseSafePropertyPath,
-  validateStepExpression,
-} from "@poc/runtime/expressions";
-import type { ParsedPillExpression, StepExpressionValidationResult } from "@poc/runtime/expressions";
+import { RESERVED_FIELD_NAMES } from "@poc/sdk";
+import { extractStepExpressionPills, extractTemplatePlaceholders, validateStepExpression } from "@poc/runtime/expressions";
 import type {
   BlueprintMetadata,
   BlueprintState as CanonicalBlueprintState,
-  BrickDiffUpdate,
   BrickEntry,
   EntityDefinition as CanonicalEntityDefinition,
-  EntityDiffUpdate,
-  EntityFieldDiffUpdate,
-  ProposalActor,
   ProposalRecord,
-  ProposalSelectionEvaluation,
   ProposalStatus,
   ReadinessNeed,
   ReadinessResult,
   SecretRef,
-  SecretRefDiffUpdate,
   SemanticDiff,
   SettingValue,
   WorkflowDefinition,
-  WorkflowDiffUpdate,
   WorkflowEdge,
   WorkflowNode,
-  WorkflowNodeDiffUpdate,
   WorkflowTrigger,
 } from "@poc/blueprint";
 import catalogDataJson from "./catalog-data.json";
 import presetsDataJson from "./presets-data.json";
 
-export {
-  EDGE_ID_PATTERN,
-  ENTITY_NAME_PATTERN,
-  ENTITY_RELATION_PATTERN,
-  ENUM_VALUE_PATTERN,
-  EntityDefinitionSchema,
-  EntityFieldSchema,
-  NODE_ID_PATTERN,
-  RESERVED_FIELD_NAMES,
-  WORKFLOW_ID_PATTERN,
-  applyOp,
-  applyOps,
-  buildCatalogNodeRegistry,
-  checkWire,
-  computeReadiness,
-  computeSemanticDiff,
-  createEmptyBlueprint,
-  evaluateProposalSelection,
-  extractStepExpressionPills,
-  extractTemplatePlaceholders,
-  hasForbiddenSegment,
-  isSafePropertySegment,
-  isValidSecretRefHandle,
-  normalizeBlueprintState,
-  parseEntities,
-  resolveStepExpressions,
-  summarizeProposalOps,
-  toSdkEntity,
-  traverseSafePropertyPath,
-  validateGraph,
-  validateStepExpression,
-};
-export type { ParsedPillExpression, StepExpressionValidationResult };
-
+export { extractStepExpressionPills, validateStepExpression };
 export function semanticHash(state: BlueprintState): string {
   return canonicalSemanticHash(normalizeBlueprintState(state as CanonicalBlueprintState));
 }
 
 export type EntityFieldType = "text" | "string" | "number" | "integer" | "boolean" | "enum" | "json" | "datetime" | "relation" | "date" | "money" | "longtext";
 
-export interface EntityFieldBase {
+interface EntityFieldBase {
   name: string;
   required?: boolean;
   unique?: boolean;
@@ -150,26 +90,15 @@ export interface BlueprintState extends Omit<CanonicalBlueprintState, "metadata"
 }
 
 export type {
-  BlueprintMetadata,
-  BrickDiffUpdate,
-  BrickEntry,
-  EntityDiffUpdate,
-  EntityFieldDiffUpdate,
-  ProposalActor,
   ProposalRecord,
-  ProposalSelectionEvaluation,
   ProposalStatus,
   ReadinessNeed,
   ReadinessResult,
-  SecretRef,
-  SecretRefDiffUpdate,
   SemanticDiff,
   SettingValue,
   WorkflowDefinition,
-  WorkflowDiffUpdate,
   WorkflowEdge,
   WorkflowNode,
-  WorkflowNodeDiffUpdate,
   WorkflowTrigger,
 };
 
@@ -228,14 +157,14 @@ export interface CatalogNodeDefinition {
   sideEffects: "none" | "read" | "write";
 }
 
-export interface CatalogBrickUiSettingMeta {
+interface CatalogBrickUiSettingMeta {
   widget?: "slider" | "select" | "toggle" | "text" | "secret";
   label?: string;
   helpText?: string;
   help?: string;
 }
 
-export interface CatalogBrickRoute {
+interface CatalogBrickRoute {
   factory: string;
   mountAt: string;
   options?: Record<string, unknown>;
@@ -243,7 +172,7 @@ export interface CatalogBrickRoute {
   guardWith?: string;
 }
 
-export interface CatalogBrickTriggers {
+interface CatalogBrickTriggers {
   /** Story 1.20: `enabledWhen` wires a schedule only while a condition on the brick's settings holds. */
   schedules?: Array<{ id: string; cron: string; handler: string; enabledWhen?: ScheduleSettingCondition }>;
   queues?: Array<{ id: string; handler: string; maxBatch?: number; dlq?: boolean }>;
@@ -292,7 +221,7 @@ export interface CatalogBrickManifest {
   };
 }
 
-export interface CatalogNodePackManifest {
+interface CatalogNodePackManifest {
   manifestVersion: 2;
   kind: "node-pack";
   id: string;
@@ -516,7 +445,7 @@ export function brickSecretNames(manifest: Pick<CatalogBrickManifest, "secrets">
 
 export const DEFAULT_CATALOG: Record<string, CatalogBrickManifest> = (catalogDataJson as unknown as { bricks: Record<string, CatalogBrickManifest> }).bricks;
 
-export const DEFAULT_NODE_PACKS: Record<string, { manifest: CatalogNodePackManifest }> =
+const DEFAULT_NODE_PACKS: Record<string, { manifest: CatalogNodePackManifest }> =
   (
     catalogDataJson as unknown as {
       nodePacks?: Record<string, { manifest: CatalogNodePackManifest }>;
@@ -530,7 +459,7 @@ export const DEFAULT_INTEGRATIONS: Record<string, { manifest: CatalogIntegration
     }
   ).integrations ?? {};
 
-export const DEFAULT_CATALOG_VERSION: string = (catalogDataJson as unknown as { catalogVersion?: string }).catalogVersion ?? "";
+const DEFAULT_CATALOG_VERSION: string = (catalogDataJson as unknown as { catalogVersion?: string }).catalogVersion ?? "";
 
 type BlueprintCatalogInput = Parameters<typeof computeReadiness>[1];
 type BlueprintNodeRegistryInput = NonNullable<Parameters<typeof computeReadiness>[2]>;
@@ -575,7 +504,7 @@ const permissiveConfigSchema = {
 
 const BASE_CATALOG_NODE_REGISTRY = buildCatalogNodeRegistry(toBlueprintCatalog(DEFAULT_CATALOG));
 
-export const STUDIO_NODE_REGISTRY: BlueprintNodeRegistryInput = {
+const STUDIO_NODE_REGISTRY: BlueprintNodeRegistryInput = {
   has: (type: string) => BASE_CATALOG_NODE_REGISTRY.has(type) || type.includes(".") || type === "trigger",
   get: (type: string) => {
     const catalogMatch = BASE_CATALOG_NODE_REGISTRY.get(type);
@@ -665,7 +594,7 @@ interface RawPreset {
   metadata?: BlueprintMetadata;
 }
 
-export function normalizePresetToBlueprint(raw: RawPreset): BlueprintState {
+function normalizePresetToBlueprint(raw: RawPreset): BlueprintState {
   const bricks: BrickEntry[] = raw.bricks.map((entry) =>
     typeof entry === "string" ? { id: entry, config: {} } : { id: entry.id, config: entry.config ?? {} },
   );
@@ -1110,7 +1039,7 @@ export function formatEntityDdl(entity: EntityDefinition, previousEntity?: Entit
   return ddl;
 }
 
-export function getReservedEntityRoutePrefixes(catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG): Set<string> {
+function getReservedEntityRoutePrefixes(catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG): Set<string> {
   const reserved = new Set<string>();
   for (const manifest of Object.values(catalog)) {
     for (const prefix of manifest.routePrefixes ?? []) {
@@ -1428,7 +1357,7 @@ export function computeDestructiveEntityImpact(
   };
 }
 
-export interface BrickEnableConflict {
+interface BrickEnableConflict {
   brickA: string;
   brickB: string;
   reason: string;
@@ -1967,7 +1896,7 @@ export function getPaletteCatalogItems(
   return items;
 }
 
-export function entityFieldTypeToPortDataType(fieldType: EntityFieldType | string): CatalogNodePort["dataType"] {
+function entityFieldTypeToPortDataType(fieldType: EntityFieldType | string): CatalogNodePort["dataType"] {
   switch (fieldType) {
     case "number":
     case "integer":
@@ -2005,7 +1934,7 @@ function toEntityMap(entities: EntityLookupInput = []): Record<string, EntityDef
   return { ...(entities as Record<string, EntityDefinition>) };
 }
 
-export function resolveNodeBoundEntity(node: WorkflowNode, entities: EntityLookupInput = []): EntityDefinition | null {
+function resolveNodeBoundEntity(node: WorkflowNode, entities: EntityLookupInput = []): EntityDefinition | null {
   const entityMap = toEntityMap(entities);
   const rawData = (node.data as Record<string, unknown> | undefined) ?? {};
   const explicitEntity = typeof rawData.entity === "string" && rawData.entity.trim() ? rawData.entity.trim() : "";
@@ -2110,7 +2039,7 @@ export function getEffectiveNodePorts(
   };
 }
 
-export interface DataPillFieldOption {
+interface DataPillFieldOption {
   nodeId: string;
   nodeLabel: string;
   nodeType: string;

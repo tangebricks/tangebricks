@@ -50,9 +50,9 @@ import { serveStudioOverHttp } from "./lib/studio-http.ts";
 import type { StudioHttpServer } from "./lib/studio-http.ts";
 
 const repoRoot = resolve(import.meta.dirname, "..");
-export const PRIVATE_BENCHMARK_DIR = join(repoRoot, "_bmad-output", "initiative-projectx-roadmap", "benchmark");
-export const DEFAULT_BRIEFS_DIR = join(PRIVATE_BENCHMARK_DIR, "briefs");
-export const DEFAULT_OUT = join(PRIVATE_BENCHMARK_DIR, "benchmark-v0.json");
+const PRIVATE_BENCHMARK_DIR = join(repoRoot, "_bmad-output", "initiative-projectx-roadmap", "benchmark");
+const DEFAULT_BRIEFS_DIR = join(PRIVATE_BENCHMARK_DIR, "briefs");
+const DEFAULT_OUT = join(PRIVATE_BENCHMARK_DIR, "benchmark-v0.json");
 /**
  * The briefs run by default: our own, written for the segment (credit- or usage-billed AI SaaS). The ids are public slugs;
  * the brief, answers and review text stay in the private briefs folder. Older briefs stay on disk but are not run by default.
@@ -60,16 +60,16 @@ export const DEFAULT_OUT = join(PRIVATE_BENCHMARK_DIR, "benchmark-v0.json");
 export const DEFAULT_BRIEF_IDS = ["grant-drafts", "repair-quotes", "lease-digest"] as const;
 /** The brief whose deployed run change-live-app changes when --from-run is not given. */
 export const CHANGE_LIVE_APP_BRIEF: (typeof DEFAULT_BRIEF_IDS)[number] = "repair-quotes";
-export const DEFAULT_MAX_BUDGET_USD = 10;
-export const WALL_TIME_CAP_MS = 45 * 60 * 1000;
-export const MCP_SERVER_NAME = "projectx";
+const DEFAULT_MAX_BUDGET_USD = 10;
+const WALL_TIME_CAP_MS = 45 * 60 * 1000;
+const MCP_SERVER_NAME = "projectx";
 /** The kill rule as the roadmap writes it; evaluated from the numbers, the decision is the owner's. */
-export const KILL_RULE =
+const KILL_RULE =
   "If the real model cannot build any brief end to end (deployed, >= 9/12 checks) after two fix iterations, pivot MCP toward 'agent edits an existing template'.";
 /** The literal bar: 9 of the 12 lines. */
-export const KILL_RULE_PASSES_NEEDED = 9;
+const KILL_RULE_PASSES_NEEDED = 9;
 /** The primary bar (owner decision 2026-11-26): the same 75% as 9/12, over the applicable lines only. */
-export const APPLICABLE_SHARE_NEEDED = 0.75;
+const APPLICABLE_SHARE_NEEDED = 0.75;
 export const KILL_RULE_VERSION = "v0-applicable-lines (owner decision 2026-11-26)";
 /** The debit the change-live-app task asks for, in credits. */
 export const CHANGE_DEBIT_CREDITS = 5;
@@ -80,7 +80,7 @@ export const FREE_PLAN_UNSUPPORTED_REASON =
 // Briefs
 
 /** Every op kind a review file's `allowOps` may name: the blueprint's own list. */
-export const OP_KINDS = OP_TYPES;
+const OP_KINDS = OP_TYPES;
 
 /** A decision `match` written as `/source/flags` is a regular expression; anything else is a lowercase phrase. */
 function decisionPattern(match: string): RegExp | null {
@@ -92,7 +92,7 @@ function decisionPattern(match: string): RegExp | null {
  * The owner's review file (`<briefsDir>/<id>/review.json`, private): what the brief needs, so the scripted owner can accept
  * proposals that serve it and reject the rest, and its explicit decisions for questions a person would answer.
  */
-export const ReviewFileSchema = z.strictObject({
+const ReviewFileSchema = z.strictObject({
   /** The brick ids the brief needs. */
   bricks: z.array(z.string().min(1)),
   /** Entity names the brief needs; a trailing `*` matches a prefix (`invoice*`). */
@@ -176,7 +176,7 @@ export class BenchRefusal extends Error {
 // ---------------------------------------------------------------------------------------------------------------------
 // Prompts
 
-export function briefPrompt(project: string, brief: LoadedBrief): string {
+function briefPrompt(project: string, brief: LoadedBrief): string {
   return [
     `Build the SaaS MVP described below with ProjectX, through the "${MCP_SERVER_NAME}" MCP tools only. You have no file or shell tools.`,
     "",
@@ -203,7 +203,7 @@ export function briefPrompt(project: string, brief: LoadedBrief): string {
   ].join("\n");
 }
 
-export function changeLiveAppPrompt(project: string): string {
+function changeLiveAppPrompt(project: string): string {
   return [
     `The app in ProjectX project "${project}" is live on its preview environment (pass project "${project}" to every tool). Change it through the "${MCP_SERVER_NAME}" MCP tools only (you have no file or shell tools):`,
     "",
@@ -235,7 +235,7 @@ export interface ClaudeRunInput {
   resumeSessionId?: string;
 }
 
-export interface ClaudeRunOutput {
+interface ClaudeRunOutput {
   exitCode: number | null;
   stdout: string;
   stderr: string;
@@ -292,7 +292,7 @@ const WITHHELD_ENV = ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "PX_TELEM
  * The real CLI. It runs with the user's own environment (so the existing Claude Code login is used; CLAUDE_CONFIG_DIR is
  * left as it is), minus the harness's secrets. The prompt goes in on stdin. At the wall-time cap the process is killed.
  */
-export function createClaudeCliRunner(bin: string): ClaudeRunner {
+function createClaudeCliRunner(bin: string): ClaudeRunner {
   // A .cmd shim on Windows only runs through the shell; then every argument is quoted, and one the shell could still
   // reinterpret (a quote, %, ! or a line break) is refused rather than passed.
   const viaShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(bin);
@@ -420,7 +420,7 @@ export function parseCliResult(stdout: string): CliNumbers {
 // The scripted owner
 
 /** One thing the scripted owner did. Details hold names and refs, never a secret value or a brief's text. */
-export const OWNER_ACTION_KINDS = [
+const OWNER_ACTION_KINDS = [
   "accept",
   "reject",
   "accept-unreviewed",
@@ -433,7 +433,7 @@ export const OWNER_ACTION_KINDS = [
   "approve-failed",
 ] as const;
 /** The "-failed" kinds: the route refused the owner's click (detail: HTTP status and id); the request is tried again on the next poll. */
-export type OwnerActionKind = (typeof OWNER_ACTION_KINDS)[number];
+type OwnerActionKind = (typeof OWNER_ACTION_KINDS)[number];
 export type OwnerAct = (kind: OwnerActionKind, detail: string) => void;
 
 const entityAllowed = (allowed: string[], name: string) =>
@@ -442,7 +442,7 @@ const entityAllowed = (allowed: string[], name: string) =>
   );
 
 /** What an op touches: the bricks (by id, and by the brick a workflow node type belongs to) and the entities it names. */
-export function opTouches(op: Record<string, unknown>, catalog: Catalog = defaultCatalog): { bricks: string[]; entities: string[] } {
+function opTouches(op: Record<string, unknown>, catalog: Catalog = defaultCatalog): { bricks: string[]; entities: string[] } {
   const bricks = new Set<string>();
   const entities = new Set<string>();
   const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
@@ -515,7 +515,7 @@ export function reviewProposal(review: ReviewFile, ops: unknown[], catalog: Cata
 }
 
 /** What the owner did with one deploy approval: approved it, rejected it (not a preview deploy), or the route refused. */
-export interface ApprovalOutcome {
+interface ApprovalOutcome {
   approvalId: string;
   action: string;
   env: string | null;
@@ -668,7 +668,7 @@ export function startOwnerLoop(params: {
 }
 
 export const GENERIC_OWNER_REPLY = "Please continue until the app is deployed to preview; the harness instructions win where they conflict with my answers.";
-export const DEFAULT_MAX_AGENT_CALLS = 8;
+const DEFAULT_MAX_AGENT_CALLS = 8;
 
 /** How many identical replies the owner sends to an agent that has made no progress before it stops the run. */
 export const MAX_IDENTICAL_BLOCKED_REPLIES = 2;
@@ -888,13 +888,13 @@ export async function bindUnboundSecrets(params: {
 // The record
 
 const OutcomeSchema = z.enum(["pass", "partial", "n/a", "fail"]);
-export const CheckSchema = z.strictObject({
+const CheckSchema = z.strictObject({
   line: z.number().int().min(1).max(12),
   name: z.string().min(1),
   outcome: OutcomeSchema,
   evidence: z.string().min(1),
 });
-export type Check = z.infer<typeof CheckSchema>;
+type Check = z.infer<typeof CheckSchema>;
 
 const TeardownSchema = z.object({
   removed: z.array(z.object({ kind: z.string(), name: z.string() }).passthrough()),
@@ -1166,7 +1166,7 @@ export const COST_NOTE = "total corrected 2026-11-26: resumed calls report cumul
  * difference from the session's previous report, and the run's total is the sum (the session's last cumulative value).
  * A record whose numbers are already right comes back unchanged; a corrected one gets `costNote`. Nothing else changes.
  */
-export function repairRunCosts(record: RunRecord): { record: RunRecord; before: number | null; after: number | null; changed: boolean } {
+function repairRunCosts(record: RunRecord): { record: RunRecord; before: number | null; after: number | null; changed: boolean } {
   const before = record.cli.costUsd;
   if (record.agentCalls.length === 0) return { record, before, after: before, changed: false };
   let last: number | null = null;
@@ -1222,7 +1222,7 @@ export function repairCostsInFolder(out: string): Array<{ where: string; runId: 
 }
 
 /** The runs already in the results file, older records upgraded; the kill rule is always evaluated again from them. */
-export function loadRuns(outPath: string): RunRecord[] {
+function loadRuns(outPath: string): RunRecord[] {
   if (!existsSync(outPath)) return [];
   const raw = JSON.parse(readFileSync(outPath, "utf8")) as { runs?: unknown };
   if (!Array.isArray(raw.runs)) throw new BenchRefusal(`${outPath} has no runs list`);
@@ -1297,7 +1297,7 @@ export function agentProgress(revisions: Array<{ revision?: number; author?: { t
   return `agent r${newest}:preview ${String(previewDeployedRev)}`;
 }
 
-export function readRun(outPath: string, runId: string): RunRecord {
+function readRun(outPath: string, runId: string): RunRecord {
   if (!existsSync(outPath)) throw new BenchRefusal(`no results file at ${outPath}`);
   const run = loadRuns(outPath).find((r) => r.runId === runId);
   if (!run) throw new BenchRefusal(`run "${runId}" is not in ${outPath}`);
@@ -1405,7 +1405,7 @@ const CHECK_NAMES: Record<number, string> = {
 };
 
 /** Every line, when the run stopped before anything could be scored. */
-export function unscoredChecks(reason: string): Check[] {
+function unscoredChecks(reason: string): Check[] {
   return Array.from({ length: 12 }, (_, i) => {
     const line = i + 1;
     const na = NOT_APPLICABLE[line];
@@ -1415,7 +1415,7 @@ export function unscoredChecks(reason: string): Check[] {
   });
 }
 
-export function scoreOf(checks: Check[]) {
+function scoreOf(checks: Check[]) {
   const count = (o: Check["outcome"]) => checks.filter((c) => c.outcome === o).length;
   const notApplicable = count("n/a");
   return { passes: count("pass"), partials: count("partial"), notApplicable, fails: count("fail"), applicable: checks.length - notApplicable };
@@ -1431,7 +1431,7 @@ interface ScoreContext {
   ownerStats: OwnerStats;
 }
 
-export interface PreviewState {
+interface PreviewState {
   deployed: boolean;
   url: string | null;
   deployedRev: number | null;
@@ -1449,7 +1449,7 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   }
 }
 
-export async function readPreviewState(ctx: Pick<ScoreContext, "call" | "session" | "orgId" | "project">): Promise<PreviewState> {
+async function readPreviewState(ctx: Pick<ScoreContext, "call" | "session" | "orgId" | "project">): Promise<PreviewState> {
   const envs = await ctx.call("GET", `/api/projects/${ctx.project}/environments`, undefined, ctx.session, ctx.orgId);
   const list = (envs.body.environments as Array<Record<string, unknown>> | undefined) ?? [];
   const envOf = (name: string) => list.find((e) => e.envName === name);
@@ -1496,7 +1496,7 @@ async function ownerTool(ctx: Pick<ScoreContext, "call" | "session" | "orgId" | 
   return { isError: result?.isError === true || res.body.error !== undefined, body };
 }
 
-export async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promise<Check[]> {
+async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promise<Check[]> {
   const checks = new Map<number, Check>();
   const set = (line: number, outcome: Check["outcome"], evidence: string) => checks.set(line, { line, name: CHECK_NAMES[line]!, outcome, evidence });
   for (const [line, na] of Object.entries(NOT_APPLICABLE)) set(Number(line), "n/a", na.reason);

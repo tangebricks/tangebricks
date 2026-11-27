@@ -44,7 +44,7 @@ export async function resolveJwksUri(issuer: string, configuredUri?: string, fet
   return `${cleanIssuer}/.well-known/jwks.json`;
 }
 
-export async function fetchJwksFromNetwork(jwksUri: string, fetcher: typeof fetch, now: number, existingEntry?: JwksCacheEntry): Promise<JwksCacheEntry> {
+async function fetchJwksFromNetwork(jwksUri: string, fetcher: typeof fetch, now: number, existingEntry?: JwksCacheEntry): Promise<JwksCacheEntry> {
   let res: Response;
   try {
     res = await fetcher(jwksUri, {

@@ -26,7 +26,8 @@ jobs:
   #                       its JSON report.
   #   gates             - `pnpm lint` (oxlint correctness), `pnpm lint:types` (type-aware oxlint on the money, auth
   #                       and deploy paths), `pnpm format:check` (Prettier), `pnpm lint:deps` (import boundaries,
-  #                       dependency-cruiser), then `pnpm ci:gates`: lints, typecheck,
+  #                       dependency-cruiser), `pnpm lint:unused` (unused files, exports and dependencies,
+  #                       knip), then `pnpm ci:gates`: lints, typecheck,
   #                       catalog, evidence, story and MCP gates.
   #                       Then the live-canary fetch (continue-on-error) and `pnpm ci:tiers`
   #                       (catalog:tiers), so evidence:check sees only committed evidence.
@@ -132,6 +133,10 @@ jobs:
       # dependency-cruiser: brick, package and app import boundaries (docs/import-boundaries.md).
       - name: Run import boundary gate
         run: pnpm lint:deps
+
+      # knip: unused files, exports and dependencies; exact, reasoned exceptions in scripts/lint-unused-allowlist.ts.
+      - name: Run unused code gate
+        run: pnpm lint:unused
 
       # Runs first so evidence:check validates only the committed evidence/ files.
       - name: Run lint, typecheck, catalog, evidence, story and MCP gates

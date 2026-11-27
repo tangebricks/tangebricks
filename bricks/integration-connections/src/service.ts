@@ -2,7 +2,7 @@ import { scoped, type D1Like } from "@poc/sdk";
 import { isForbiddenIntegrationHost } from "@poc/assembler";
 import type { IntegrationManifestFile } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
-import { computePkceChallengeS256, generateOAuthStateToken, generatePkceVerifier, sealWorkspaceCredentials, unsealWorkspaceCredentials } from "./crypto.ts";
+import { computePkceChallengeS256, generateOAuthStateToken, generatePkceVerifier, sealWorkspaceCredentials } from "./crypto.ts";
 import type { WorkspaceSealedCredentials } from "./crypto.ts";
 
 export interface OAuthProviderConfig {
@@ -146,14 +146,14 @@ export class IntegrationConnectionsError extends Error {
 }
 
 /** Story 1.15 (A10): the longest caller-supplied account label kept, and only when the provider returned none. */
-export const MAX_CALLER_ACCOUNT_LABEL_LENGTH = 128;
+const MAX_CALLER_ACCOUNT_LABEL_LENGTH = 128;
 
 /**
  * Story 1.15 (A11): the `allowedRedirectUris` setting (a comma string) or an already-split list, as the exact
  * `https://` URIs a caller may ask for as `redirect_uri`. Blank entries and anything that is not an https URL are
  * dropped, so a malformed entry never widens the allowlist.
  */
-export function parseAllowedRedirectUris(raw: string | readonly string[] | undefined): string[] {
+function parseAllowedRedirectUris(raw: string | readonly string[] | undefined): string[] {
   if (raw === undefined) return [];
   const entries = typeof raw === "string" ? raw.split(",") : [...raw];
   const out: string[] = [];
@@ -171,7 +171,7 @@ export function parseAllowedRedirectUris(raw: string | readonly string[] | undef
 }
 
 /** The callback URL the brick itself serves for a provider: `<publicBaseUrl>/api/integrations/<provider>/callback`. */
-export function defaultCallbackUrl(providerSlug: string, publicBaseUrl?: string): string {
+function defaultCallbackUrl(providerSlug: string, publicBaseUrl?: string): string {
   const base = (publicBaseUrl ?? "https://app.projectx.local").replace(/\/+$/, "");
   return `${base}/api/integrations/${providerSlug}/callback`;
 }
@@ -546,5 +546,3 @@ export async function listWorkspaceIntegrations(
     };
   });
 }
-
-export { unsealWorkspaceCredentials };

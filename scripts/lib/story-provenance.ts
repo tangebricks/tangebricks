@@ -6,28 +6,14 @@ import { z } from "zod";
 
 const defaultRepoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
-export const StoryProvenanceSchema = z.object({
+const StoryProvenanceSchema = z.object({
   agent: z.string().min(1, "missing provenance.agent"),
   model: z.string().min(1, "missing provenance.model"),
   commits: z.array(z.string().regex(/^[0-9a-f]{7,40}$/i, "commit must be 7-40 hex chars")).min(1, "missing provenance.commits"),
   evidence: z.string().min(1, "missing provenance.evidence"),
 });
 
-export type StoryProvenance = z.infer<typeof StoryProvenanceSchema>;
-
-export const StoryFrontMatterSchema = z.object({
-  type: z.string().optional(),
-  title: z.string().optional(),
-  parent: z.string().optional(),
-  epic: z.union([z.number(), z.string()]).optional(),
-  id: z.union([z.number(), z.string()]).optional(),
-  status: z.string(),
-  after: z.array(z.any()).optional(),
-  covers: z.array(z.string()).optional(),
-  provenance: StoryProvenanceSchema.optional(),
-});
-
-export type StoryFrontMatter = z.infer<typeof StoryFrontMatterSchema>;
+type StoryProvenance = z.infer<typeof StoryProvenanceSchema>;
 
 export interface StoryValidationResult {
   file: string;
@@ -55,7 +41,7 @@ function parseYamlScalar(val: string): any {
   return trimmed;
 }
 
-export function parseStoryFrontMatter(content: string): { frontMatter: Record<string, any>; raw: string } | null {
+function parseStoryFrontMatter(content: string): { frontMatter: Record<string, any>; raw: string } | null {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return null;
 
@@ -148,7 +134,7 @@ export function parseStoryFrontMatter(content: string): { frontMatter: Record<st
   return { frontMatter: result, raw };
 }
 
-export function parseStoryFile(filePath: string): { frontMatter: Record<string, any>; raw: string } | null {
+function parseStoryFile(filePath: string): { frontMatter: Record<string, any>; raw: string } | null {
   if (!existsSync(filePath)) return null;
   const content = readFileSync(filePath, "utf8");
   return parseStoryFrontMatter(content);
@@ -179,7 +165,7 @@ export interface ValidateStoryOptions {
   targetRef?: string;
 }
 
-export function isNonCodePath(file: string): boolean {
+function isNonCodePath(file: string): boolean {
   const normalized = file.trim().replace(/\\/g, "/");
   if (!normalized) return true;
   if (normalized.endsWith(".md")) return true;
@@ -432,7 +418,7 @@ export function parseTaskFileStories(markdown: string): TaskFileStory[] {
   return stories;
 }
 
-export function commitBelongsToStory(subject: string, storyId: string): boolean {
+function commitBelongsToStory(subject: string, storyId: string): boolean {
   const trimmed = subject.trim();
   if (trimmed.startsWith(`${storyId}:`)) return true;
   if (trimmed.startsWith(`${storyId} rework`)) return true;

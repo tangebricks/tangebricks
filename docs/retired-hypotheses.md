@@ -20,8 +20,10 @@ evidence stay in git history. This file records what each one measured last, why
   the evidence files `evidence/census.json` and `evidence/load-results.json` (only the H4 census test produced them), the
   `@dafthunk/*` aliases and the wasm plugin in `vitest.workers.config.ts`, the `@poc/dafthunk` dependency and the `vendor:*`, `poc:load`,
   `poc:census` and `poc:h4` scripts.
-- **Not removed:** the third-party devDependencies that only the vendored nodes used (`@cf-wasm/*`, `@gltf-transform/core`,
-  `@mapbox/martini`, `d3-*`, `geotiff`, `exifreader` and similar) and the Dafthunk entries in `scripts/build-ua-graph.ts`. Remove them in a later cleanup once checked.
+- **Not removed at the time:** the third-party devDependencies that only the vendored nodes used (`@cf-wasm/*`, `@gltf-transform/core`,
+  `@mapbox/martini`, `d3-*`, `geotiff`, `exifreader` and similar) and the Dafthunk entries in `scripts/build-ua-graph.ts`. Story 1.31
+  (`pnpm lint:unused`) removed those devDependencies, together with the other root devDependencies nothing imported. The
+  entries in `scripts/build-ua-graph.ts` remain.
 - **Licence:** Dafthunk's licence (MIT-style, `vendor/dafthunk/LICENSE`) imposes no obligation once the code is removed. The vendored code and its
   licence stay at that tag in the private pre-public history; they are not in this repository.
 - **To bring it back:** restore it from the `dafthunk-bridge-final` tag of the private pre-public history.

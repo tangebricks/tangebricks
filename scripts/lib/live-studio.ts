@@ -35,7 +35,7 @@ export interface CallLine {
   write: boolean;
 }
 
-export const isWrite = (method: string, path: string, body: string): boolean => {
+const isWrite = (method: string, path: string, body: string): boolean => {
   if (method === "GET") return false;
   if (method === "POST" && /\/d1\/database\/[^/]+\/query$/.test(path)) {
     try {

@@ -13,7 +13,7 @@ const LIVE_SMOKE_WORKSPACE = "ws_live_smoke";
 
 const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
-export interface CanaryOperationSpec {
+interface CanaryOperationSpec {
   operationId: string;
   inputs?: Record<string, unknown>;
   expect?: {
@@ -23,7 +23,7 @@ export interface CanaryOperationSpec {
   sandboxOnly?: boolean;
 }
 
-export interface CanaryWebhookSpec {
+interface CanaryWebhookSpec {
   trigger: string;
   sendVia: "provider-test-endpoint" | "skip";
 }
@@ -35,7 +35,7 @@ export interface CanaryPlan {
   webhook?: CanaryWebhookSpec;
 }
 
-export interface CanaryOperationResult {
+interface CanaryOperationResult {
   operationId: string;
   httpStatus: number;
   durationMs: number;
@@ -67,12 +67,12 @@ export interface IsLiveVerifiedOptions {
   policyPath?: string;
 }
 
-export const LIVE_CREDENTIAL_PATTERNS: readonly RegExp[] = [/\b(?:sk|rk)_live_[A-Za-z0-9]+/i, /\bwhsec_live_[A-Za-z0-9]+/i, /\blive_secret_[A-Za-z0-9]+/i];
+const LIVE_CREDENTIAL_PATTERNS: readonly RegExp[] = [/\b(?:sk|rk)_live_[A-Za-z0-9]+/i, /\bwhsec_live_[A-Za-z0-9]+/i, /\blive_secret_[A-Za-z0-9]+/i];
 
 /**
  * Throws CANARY_LIVE_CREDENTIAL_REFUSED if the secret matches known live production key patterns.
  */
-export function refuseLiveCredentials(secret: string): void {
+function refuseLiveCredentials(secret: string): void {
   if (!secret || typeof secret !== "string") return;
   for (const pattern of LIVE_CREDENTIAL_PATTERNS) {
     if (pattern.test(secret)) {

@@ -99,5 +99,3 @@ export function StudioApp(props: StudioShellProps = {}) {
 
   return <QueryClientProvider client={queryClient}>{user ? <StudioShell {...props} /> : <AuthScreen />}</QueryClientProvider>;
 }
-
-export default StudioApp;
