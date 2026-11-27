@@ -11092,42 +11092,53 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       actorId: p.caller.author.id,
       secrets: p.secrets,
     });
-    const doRes = await getBlueprintStub(p.env, p.project).fetch("http://blueprint-do/ops", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-studio-caller-role": p.role },
-      body: JSON.stringify({
-        project: p.project,
-        orgId: p.orgId,
-        callerRole: p.role,
-        author: p.caller.author,
-        summary: `Studio: bind generated secret${stored.length > 1 ? "s" : ""} ${stored.map((s) => s.name).join(", ")} (approved preview deploy)`,
-        ops: stored.map((s, i) => ({
-          opId: `bind-generated-${s.ref}-${Date.now()}-${i}`,
-          type: "bind_secret_ref",
-          targetKind: "brick",
-          targetId: s.brick,
-          secretName: s.name,
-          ref: s.ref,
-        })),
-      }),
-    });
+    // A ref the approved blueprint already binds to the same brick and name (a re-imported blueprint carries the ref of the
+    // secret generated in its old project, with no vault row here) needs no bind: the blueprint must not move for it.
+    const approvedRefs = p.approved.state.secretRefs ?? [];
+    const toBind = stored.filter(
+      (s) => !approvedRefs.some((r) => r.targetKind === "brick" && r.targetId === s.brick && r.secretName === s.name && r.ref === s.ref),
+    );
+    const doStatus =
+      toBind.length === 0
+        ? 200
+        : (
+            await getBlueprintStub(p.env, p.project).fetch("http://blueprint-do/ops", {
+              method: "POST",
+              headers: { "content-type": "application/json", "x-studio-caller-role": p.role },
+              body: JSON.stringify({
+                project: p.project,
+                orgId: p.orgId,
+                callerRole: p.role,
+                author: p.caller.author,
+                summary: `Studio: bind generated secret${toBind.length > 1 ? "s" : ""} ${toBind.map((s) => s.name).join(", ")} (approved preview deploy)`,
+                ops: toBind.map((s, i) => ({
+                  opId: `bind-generated-${s.ref}-${Date.now()}-${i}`,
+                  type: "bind_secret_ref",
+                  targetKind: "brick",
+                  targetId: s.brick,
+                  secretName: s.name,
+                  ref: s.ref,
+                })),
+              }),
+            })
+          ).status;
     await recordStudioAuditLog(db, {
       orgId: p.orgId,
       projectId: p.project,
       actorType: p.caller.author.type,
       actorId: p.caller.author.id,
       action: "secret.generate",
-      status: doRes.status === 200 ? "succeeded" : "failed",
+      status: doStatus === 200 ? "succeeded" : "failed",
       targetRef: `${p.project}:${p.envName}`,
       details: { envName: p.envName, secrets: stored.map((s) => ({ name: s.name, ref: s.ref, brick: s.brick, created: s.created })) },
     });
-    if (doRes.status !== 200) {
+    if (doStatus !== 200) {
       return {
         ok: false,
         status: 500,
         error: {
           code: "GENERATED_SECRET_BIND_FAILED",
-          message: `The generated secret${stored.length > 1 ? "s" : ""} ${stored.map((s) => s.name).join(", ")} could not be bound (HTTP ${doRes.status}); nothing was deployed. Retry the deploy.`,
+          message: `The generated secret${stored.length > 1 ? "s" : ""} ${stored.map((s) => s.name).join(", ")} could not be bound (HTTP ${doStatus}); nothing was deployed. Retry the deploy.`,
         },
       };
     }
@@ -11141,17 +11152,21 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     });
     if (!ctx.ok) return { ok: false, status: 422, error: ctx.error };
     // Only the bind may have changed the blueprint: any other op that landed after the approval is not deployed under it. The
-    // blueprint, less the refs just bound, must hash as the approved one did (the assembled code carries the refs, so the
-    // build and code hashes themselves move with the bind).
-    const bound = new Set(stored.map((b) => `${b.brick}|${b.name}|${b.ref}`));
-    const withoutBound = {
-      ...ctx.current.state,
-      secretRefs: (ctx.current.state.secretRefs ?? []).filter((r) => !(r.targetKind === "brick" && bound.has(`${r.targetId}|${r.secretName}|${r.ref}`))),
+    // blueprint must be the approved one with exactly these binds applied (one revision for the bind batch, none when nothing
+    // needed binding), and hash as that (the assembled code carries the refs, so the build hash itself moves with the bind).
+    const bindKey = (r: { targetKind: string; targetId: string; secretName: string }) => `${r.targetKind}|${r.targetId}|${r.secretName}`;
+    const rebound = new Set(toBind.map((s) => bindKey({ targetKind: "brick", targetId: s.brick, secretName: s.name })));
+    const expected = {
+      ...p.approved.state,
+      secretRefs: [
+        ...approvedRefs.filter((r) => !rebound.has(bindKey(r))),
+        ...toBind.map((s) => ({ ref: s.ref, targetKind: "brick" as const, targetId: s.brick, secretName: s.name })),
+      ],
     };
     if (
-      ctx.current.revision !== p.approved.revision + 1 ||
-      computeBlueprintCodeHash(withoutBound) !== computeBlueprintCodeHash(p.approved.state) ||
-      computeBlueprintGraphHash(withoutBound) !== computeBlueprintGraphHash(p.approved.state)
+      ctx.current.revision !== p.approved.revision + (toBind.length > 0 ? 1 : 0) ||
+      computeBlueprintCodeHash(ctx.current.state) !== computeBlueprintCodeHash(expected) ||
+      computeBlueprintGraphHash(ctx.current.state) !== computeBlueprintGraphHash(expected)
     ) {
       return {
         ok: false,

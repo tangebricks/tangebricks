@@ -211,8 +211,11 @@ export interface ClientOptions {
 export const LIST_PAGE_SIZE = 100;
 /** A list longer than this many pages is refused rather than read forever. */
 const MAX_LIST_PAGES = 200;
-/** How many times a list whose total_count runs ahead of its items is read before it is refused (waits 1 s, then 2 s, ...). */
-const LIST_COUNT_LAG_TRIES = 4;
+/**
+ * The waits between re-reads of a list whose total_count runs ahead of its items, before it is refused: about a minute in
+ * all (8 reads), since Cloudflare's D1 list was seen still counting a just-deleted database after several seconds.
+ */
+const LIST_COUNT_LAG_WAITS_MS: readonly number[] = [1_000, 2_000, 4_000, 8_000, 15_000, 15_000, 15_000];
 
 const readOnly = (sql: string) => /^\s*select\b/i.test(sql);
 export const sqlKindOf = (statements: Array<{ sql: string }>): "select" | "write" => (statements.every((s) => readOnly(s.sql)) ? "select" : "write");
@@ -453,13 +456,14 @@ export function createClient(options: ClientOptions): Client {
    */
   async function listAll<T>(path: string, key: (item: T) => string, query: Record<string, string> = {}): Promise<T[]> {
     // Cloudflare's total_count can briefly lag a delete (it still counts a database or script that was just removed), so a
-    // count larger than what was read is re-read a few times, with a short wait, before the list is refused as partial.
-    for (let attempt = 1; ; attempt += 1) {
+    // count larger than what was read is re-read, with growing waits for about a minute, before the list is refused as partial.
+    for (let attempt = 0; ; attempt += 1) {
       try {
         return await listAllOnce(path, key, query);
       } catch (error) {
-        if (!(error instanceof CountLagError) || attempt >= LIST_COUNT_LAG_TRIES) throw error;
-        await sleep(1000 * attempt);
+        const wait = LIST_COUNT_LAG_WAITS_MS[attempt];
+        if (!(error instanceof CountLagError) || wait === undefined) throw error;
+        await sleep(wait);
       }
     }
   }
