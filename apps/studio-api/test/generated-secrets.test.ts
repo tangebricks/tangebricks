@@ -317,6 +317,109 @@ describe("story 1.19: generated secrets on an approved preview deploy", () => {
     expect(await deployCount(w.project, "preview")).toBe(1);
   });
 
+  it("a recorded agent blueprint re-imported (its BETTER_AUTH_SECRET ref already bound, no vault row) deploys by session: the generation is not APPROVAL_STALE", async () => {
+    // The shape a benchmark run exports after its approved preview deploy, and change-live-app imports into a fresh project:
+    // the generated secret's ref is in the bundle, but the new project's vault holds no row for it.
+    const w = await world();
+    const ref = generatedSecretRef("BETTER_AUTH_SECRET");
+    const bundle = {
+      schemaVersion: 2,
+      project: w.project,
+      identity: "core-auth",
+      bricks: [
+        { id: "core-auth", config: {} },
+        { id: "credit-wallet", config: {} },
+        { id: "dynamic-entities", config: {} },
+        { id: "multi-workspace", config: {} },
+      ],
+      entities: [
+        {
+          name: "invoices",
+          fields: [
+            { name: "customer_email", type: "text", required: true, maxLength: 255 },
+            { name: "amount_cents", type: "number", required: true, min: 0 },
+            { name: "status", type: "enum", required: true, values: ["draft", "sent", "paid"] },
+          ],
+        },
+        { name: "customers", fields: [{ name: "email", type: "text", required: true, maxLength: 255 }] },
+      ],
+      workflows: [],
+      secretRefs: [{ ref, targetKind: "brick", targetId: "core-auth", secretName: "BETTER_AUTH_SECRET" }],
+      metadata: { displayName: "Recorded agent app" },
+      exportedRevision: { revision: 7, semanticHash: "recorded" },
+    };
+    const imported = await call(`/api/projects/${w.project}/import`, {
+      token: w.owner.token,
+      headers: { "x-org-id": w.orgId },
+      body: { bundle, mode: "replace" },
+    });
+    expect([200, 201], JSON.stringify(imported.body)).toContain(imported.status);
+    const plan = await call(`/api/projects/${w.project}/environments/preview/plan`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} });
+    expect(plan.status, JSON.stringify(plan.body)).toBe(200);
+    expect(plan.body.secrets).toContainEqual(expect.objectContaining({ name: "BETTER_AUTH_SECRET", status: "will_generate" }));
+    const before = await call(`/api/projects/${w.project}`, { token: w.owner.token });
+
+    const deployed = await call(`/api/projects/${w.project}/environments/preview/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} });
+    expect(deployed.status, JSON.stringify(deployed.body)).toBe(200);
+    expect(deployed.body.ok).toBe(true);
+    expect(await deployCount(w.project, "preview")).toBe(1);
+    const row = await vaultRow(w.project, ref);
+    expect(row?.key_hint).toBe(GENERATED_SECRET_KEY_HINT);
+    // the ref was already bound, so nothing needed binding: the blueprint did not move
+    const after = await call(`/api/projects/${w.project}`, { token: w.owner.token });
+    expect(after.body.revision).toBe(before.body.revision);
+    expect(after.body.state.secretRefs).toContainEqual(expect.objectContaining({ targetId: "core-auth", secretName: "BETTER_AUTH_SECRET", ref }));
+    const value = await decryptSecretValue(row!.ciphertext_b64, row!.iv_b64, TEST_ENV.PX_VAULT_KEY);
+    for (const body of seenBodies) expect(body.includes(value)).toBe(false);
+  });
+
+  it("the same re-imported blueprint deployed by an MCP token: one approval deploys it, and an op sneaked in after the approval is still refused", async () => {
+    const w = await world();
+    const ref = generatedSecretRef("BETTER_AUTH_SECRET");
+    const imported = await call(`/api/projects/${w.project}/ops`, {
+      token: w.owner.token,
+      headers: { "x-org-id": w.orgId },
+      body: {
+        ops: [
+          { opId: "r-wallet", type: "enable_brick", brickId: "credit-wallet", config: {} },
+          { opId: "r-dyn", type: "enable_brick", brickId: "dynamic-entities", config: {} },
+          { opId: "r-id", type: "set_identity", identity: "core-auth" },
+          { opId: "r-bind", type: "bind_secret_ref", ref, targetKind: "brick", targetId: "core-auth", secretName: "BETTER_AUTH_SECRET" },
+        ],
+      },
+    });
+    expect(imported.status, JSON.stringify(imported.body)).toBe(200);
+
+    studioApp = hookedApp;
+    betweenGateAndBind = async () => {
+      betweenGateAndBind = null;
+      const sneaked = await call(`/api/projects/${w.project}/ops`, {
+        token: w.owner.token,
+        headers: { "x-org-id": w.orgId },
+        body: { ops: [{ opId: "sneak", type: "set_metadata", metadata: { displayName: "Sneaked in after the approval" } }] },
+      });
+      expect(sneaked.status, JSON.stringify(sneaked.body)).toBe(200);
+    };
+    const stale = await approvedAgentDeploy(w);
+    expect(stale.retried.json.error?.code, stale.retried.text).toBe("APPROVAL_STALE");
+    expect(await deployCount(w.project, "preview")).toBe(0);
+
+    // the row is stored now; a fresh project with the same pre-bound ref and no sneaked op deploys under one approval
+    const w2 = await world();
+    const seeded = await call(`/api/projects/${w2.project}/ops`, {
+      token: w2.owner.token,
+      headers: { "x-org-id": w2.orgId },
+      body: { ops: [{ opId: "r-bind", type: "bind_secret_ref", ref, targetKind: "brick", targetId: "core-auth", secretName: "BETTER_AUTH_SECRET" }] },
+    });
+    expect(seeded.status, JSON.stringify(seeded.body)).toBe(200);
+    studioApp = defaultStudioApp;
+    const ok = await approvedAgentDeploy(w2);
+    expect(ok.approval.summary.generate).toEqual(["generate BETTER_AUTH_SECRET"]);
+    expect(ok.retried.isError, ok.retried.text).toBe(false);
+    expect(await deployCount(w2.project, "preview")).toBe(1);
+    expect(await vaultRow(w2.project, ref)).not.toBeNull();
+  });
+
   it("a secret generated for preview never satisfies a direct production deploy: MISSING_REQUIRED_SECRETS names it", async () => {
     const w = await world({ identity: "core-auth" });
     const preview = await call(`/api/projects/${w.project}/environments/preview/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} });

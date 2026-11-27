@@ -11,14 +11,16 @@ const TOKEN = "cfut_R53AnnotationsTokeneeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const ACCOUNT = "0123456789abcdef0123456789abcdef";
 const target: DeployTarget = { type: "byoc", accountId: ACCOUNT, tokenRef: "tok_r53_reference", envName: "preview" };
 
-function setup(fakeOptions: Partial<Parameters<typeof createFakeCloudflare>[0]> = {}) {
+function setup(fakeOptions: Partial<Parameters<typeof createFakeCloudflare>[0]> = {}, waits: number[] = []) {
   const fake = createFakeCloudflare({
     token: TOKEN,
     accountId: ACCOUNT,
     tokenGroups: ["Account Settings Read", "Workers Scripts Write", "D1 Write", "Queues Write"],
     ...fakeOptions,
   });
-  const sleep = async () => {};
+  const sleep = async (ms: number) => {
+    waits.push(ms);
+  };
   const cp = createHttpCloudflareApiClient({ fetch: fake.fetch, sleep, budgetFor: () => createRequestBudget({ sleep }) });
   const provisioner = createByocProvisioner({ apiClient: cp, resolveToken: async () => TOKEN });
   const rest = createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, sleep });
@@ -104,13 +106,33 @@ describe("the code-hash annotation, wherever the version list puts it", () => {
 });
 
 describe("lists never stop early silently", () => {
-  test("a total_count larger than what was read is refused", async () => {
-    const { fake, rest } = setup();
+  test("a total_count larger than what was read is refused, after about a minute of re-reads", async () => {
+    const waits: number[] = [];
+    const { fake, rest } = setup({}, waits);
+    let reads = 0;
     fake.fail({
-      when: (m, p) => m === "GET" && p.endsWith("/workers/scripts"),
+      when: (m, p) => m === "GET" && p.endsWith("/workers/scripts") && ++reads > 0,
       respond: { status: 200, body: { success: true, errors: [], result: [{ id: "one" }], result_info: { page: 1, per_page: 100, count: 1, total_count: 7 } } },
     });
     await expect(rest.listScripts()).rejects.toThrow(/counts 7 items but only 1 were read/);
+    expect(reads).toBe(8);
+    expect(waits).toEqual([1_000, 2_000, 4_000, 8_000, 15_000, 15_000, 15_000]);
+    expect(waits.reduce((a, b) => a + b, 0)).toBe(60_000);
+  });
+
+  test("a total_count that lags a delete for five reads (past the old ~6 s window) settles and the list is returned", async () => {
+    const waits: number[] = [];
+    const { fake, rest } = setup({}, waits);
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/d1/database"),
+      times: 5,
+      respond: {
+        status: 200,
+        body: { success: true, errors: [], result: [{ uuid: "db-1", name: "kept" }], result_info: { page: 1, per_page: 100, count: 1, total_count: 2 } },
+      },
+    });
+    await expect(rest.listDatabases()).resolves.toEqual([]);
+    expect(waits).toEqual([1_000, 2_000, 4_000, 8_000, 15_000]);
   });
 
   test("a total_count that briefly lags a delete is re-read, and the settled list is returned", async () => {
