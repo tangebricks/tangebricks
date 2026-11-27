@@ -38,7 +38,7 @@ if (typeof globalThis.ResizeObserver === "undefined") {
   (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = PolyfillResizeObserver;
 }
 
-export interface StudioCanvasNodeData extends Record<string, unknown> {
+interface StudioCanvasNodeData extends Record<string, unknown> {
   nodeId: string;
   workflowId: string;
   label: string;
@@ -67,7 +67,7 @@ export interface StudioCanvasNodeData extends Record<string, unknown> {
   prefersReducedMotion?: boolean;
 }
 
-export function computeEdgeItemCount(
+function computeEdgeItemCount(
   upstreamTelemetry: NodeLiveTelemetryState | undefined,
   sourceHandle = "out",
   downstreamTelemetry?: NodeLiveTelemetryState,
@@ -223,7 +223,7 @@ export function computeDeterministicDagLayout(
   return result;
 }
 
-export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({ data, selected }: NodeProps<Node<StudioCanvasNodeData>>) {
+const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({ data, selected }: NodeProps<Node<StudioCanvasNodeData>>) {
   const selectItem = useStudioStore((s) => s.selectItem);
   const roleMeta = classifyNodeRole(data.nodeType);
 

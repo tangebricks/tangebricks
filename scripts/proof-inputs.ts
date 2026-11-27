@@ -41,7 +41,7 @@ function walkFiles(baseRoot: string, subDir: string, filterExt?: RegExp): string
   return results;
 }
 
-export function collectTrackedInputFiles(repoRoot: string): string[] {
+function collectTrackedInputFiles(repoRoot: string): string[] {
   const tracked = new Set<string>([
     "hypotheses.json",
     "ported-tests.json",

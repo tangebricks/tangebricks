@@ -20,7 +20,7 @@ export interface StudioDeployClientEnv {
 }
 
 /** The only environments in which the fake may be chosen. */
-export const FAKE_DEPLOY_CLIENT_ENVIRONMENTS: readonly string[] = ["test", "development"];
+const FAKE_DEPLOY_CLIENT_ENVIRONMENTS: readonly string[] = ["test", "development"];
 
 /** How Studio's real client reaches Cloudflare and builds what it uploads. Tests and the live proof script inject these. */
 export interface StudioDeployOptions {

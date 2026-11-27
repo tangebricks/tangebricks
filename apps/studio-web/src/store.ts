@@ -78,7 +78,7 @@ import type {
 
 export const MAX_UNDO_STACK_DEPTH = 60;
 
-export interface UndoRedoEntry {
+interface UndoRedoEntry {
   ops: Array<Record<string, unknown>>;
   inverseOps: Array<Record<string, unknown>>;
   summary: string;
@@ -93,7 +93,7 @@ export interface CanvasVisualDiffState {
   toState: BlueprintState;
 }
 
-export interface DirtyTargetState {
+interface DirtyTargetState {
   kind: "brick" | "entity" | "node";
   id: string;
   workflowId?: string;
@@ -102,7 +102,7 @@ export interface DirtyTargetState {
   baseRevision: number;
 }
 
-export interface PendingConflictState {
+interface PendingConflictState {
   targetKind: "brick" | "entity" | "node";
   targetId: string;
   workflowId?: string;
@@ -132,7 +132,7 @@ export interface NodeLiveTelemetryState {
   timestamp: string;
 }
 
-export interface StudioRunsFilterState {
+interface StudioRunsFilterState {
   env: "preview" | "production";
   workflowId: string;
   status: string;
@@ -142,7 +142,7 @@ export interface StudioRunsFilterState {
   to: string;
 }
 
-export interface ActiveRunReplayState {
+interface ActiveRunReplayState {
   run: RunHistoryItem;
   stepEvents: WorkflowRunStepEvent[];
   nodeMap: Record<string, NodeLiveTelemetryState>;
@@ -184,14 +184,14 @@ export interface IncomingRevisionEnvelope {
   timestamp?: string;
 }
 
-export interface HighlightInfo {
+interface HighlightInfo {
   authorLabel: string;
   isAgent: boolean;
   revision: number;
   expiresAt: number;
 }
 
-export interface DiffComparisonSelection {
+interface DiffComparisonSelection {
   fromRev: number;
   toRev: number;
 }
@@ -395,7 +395,7 @@ export interface StudioState {
   resetStore: (initial?: Partial<StudioState>) => void;
 }
 
-export function reconcileSecretsWithBlueprint(vaultSecrets: StudioSecretMetadata[], blueprint: BlueprintState | null): StudioSecretMetadata[] {
+function reconcileSecretsWithBlueprint(vaultSecrets: StudioSecretMetadata[], blueprint: BlueprintState | null): StudioSecretMetadata[] {
   const usedByMap = new Map<string, StudioSecretUsedByTarget[]>();
   for (const sr of blueprint?.secretRefs ?? []) {
     const list = usedByMap.get(sr.ref) ?? [];

@@ -35,7 +35,7 @@ export interface BrickTenantTables {
 /**
  * Derives tenant tables and global tables for a single brick from its manifest and migrations.
  */
-export function getTenantTablesForBrick(brickDir: string): BrickTenantTables {
+function getTenantTablesForBrick(brickDir: string): BrickTenantTables {
   const manifestPath = join(brickDir, "brick.manifest.json");
   if (!existsSync(manifestPath)) {
     return {

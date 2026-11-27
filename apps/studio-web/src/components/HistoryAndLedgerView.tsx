@@ -33,7 +33,7 @@ function computeFallbackDiffFromRevisions(project: string, revisions: RevisionSu
   );
 }
 
-export function AuthorFilterPills({
+function AuthorFilterPills({
   revisions,
   activeFilter,
   onSelectFilter,
@@ -91,7 +91,7 @@ export function AuthorFilterPills({
   );
 }
 
-export function SemanticDiffPanel({
+function SemanticDiffPanel({
   project,
   fromRev,
   toRev,

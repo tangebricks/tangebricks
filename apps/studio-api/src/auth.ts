@@ -58,7 +58,7 @@ export type StudioCaller =
 /** The only scopes an MCP token can carry. Anything else (including `*` and `write`) is refused at issuance. */
 export const STUDIO_MCP_SCOPES: readonly StudioMcpScope[] = ["read", "edit", "deploy", "connect"];
 
-export function isStudioMcpScope(value: string): value is StudioMcpScope {
+function isStudioMcpScope(value: string): value is StudioMcpScope {
   return (STUDIO_MCP_SCOPES as readonly string[]).includes(value);
 }
 
@@ -411,7 +411,7 @@ export async function resolveStudioCaller(
   };
 }
 
-export async function computeAuditIpHash(request?: Request | null, explicitIpHash?: string | null): Promise<string> {
+async function computeAuditIpHash(request?: Request | null, explicitIpHash?: string | null): Promise<string> {
   if (explicitIpHash && explicitIpHash.trim().length > 0) {
     return explicitIpHash.trim();
   }
@@ -2083,7 +2083,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
 
 const DEFAULT_TEST_SESSION_TOKEN = "studio-cp1-test-owner-token-0123456789";
 /** The one project the seeded test MCP token is bound to. */
-export const DEFAULT_TEST_PROJECT_ID = "default-project";
+const DEFAULT_TEST_PROJECT_ID = "default-project";
 
 /**
  * Seeds a default test user, organization (`org_default`), and MCP/session token in `STUDIO_DB`

@@ -1,9 +1,7 @@
 import { createEmptyBlueprint } from "@poc/blueprint";
 import { QueryClient } from "@tanstack/react-query";
-import { DEFAULT_CATALOG } from "./types.ts";
 import type {
   BlueprintState,
-  CatalogBrickManifest,
   ProposalRecord,
   ProposalStatus,
   ReadinessResult,
@@ -238,17 +236,6 @@ export async function fetchProjectDetail(project: string): Promise<{
   return data;
 }
 
-export async function fetchBrickCatalog(): Promise<Record<string, CatalogBrickManifest>> {
-  try {
-    const res = await fetch("/api/catalog", { credentials: "include" });
-    if (!res.ok) return DEFAULT_CATALOG;
-    const data = (await res.json()) as { bricks?: Record<string, CatalogBrickManifest> };
-    return data.bricks ?? DEFAULT_CATALOG;
-  } catch {
-    return DEFAULT_CATALOG;
-  }
-}
-
 export async function fetchProjectRevisions(project: string, limit = 50): Promise<RevisionSummary[]> {
   try {
     const res = await fetch(`/api/projects/${encodeURIComponent(project)}/revisions?limit=${limit}`, { credentials: "include" });
@@ -277,7 +264,7 @@ export interface CommitOpsResponse {
   readiness: ReadinessResult;
 }
 
-export interface CommitOpsConflictDetail {
+interface CommitOpsConflictDetail {
   code?: string;
   message?: string;
   baseRevision?: number;
@@ -540,44 +527,7 @@ export async function reauthorizeProjectConnection(
   };
 }
 
-export async function startOAuthConnection(
-  project: string,
-  app: string,
-  options?: { ref?: string; scopes?: string[] },
-): Promise<{
-  ok: boolean;
-  app: string;
-  connectionRef: string;
-  state: string;
-  codeChallenge: string;
-  codeChallengeMethod: "S256";
-  authorizeUrl: string;
-}> {
-  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/connections/oauth/${encodeURIComponent(app)}/start`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(options ?? {}),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as {
-      error?: { message?: string };
-      message?: string;
-    } | null;
-    throw new Error(body?.error?.message ?? body?.message ?? `OAuth2 start failed (${res.status})`);
-  }
-  return (await res.json()) as {
-    ok: boolean;
-    app: string;
-    connectionRef: string;
-    state: string;
-    codeChallenge: string;
-    codeChallengeMethod: "S256";
-    authorizeUrl: string;
-  };
-}
-
-export interface TestStepStructuredError {
+interface TestStepStructuredError {
   message: string;
   whatHappened: string;
   why: string;
@@ -946,7 +896,7 @@ export interface CloudflareTokenMetadataSummary {
   revokedAt?: string | null;
 }
 
-export interface BlueprintDriftReportPayload {
+interface BlueprintDriftReportPayload {
   hasCodeDrift: boolean;
   hasGraphDrift: boolean;
   deployedRev: number | null;
@@ -959,7 +909,7 @@ export interface BlueprintDriftReportPayload {
   currentGraphHash: string;
 }
 
-export interface OutOfBandDriftItemPayload {
+interface OutOfBandDriftItemPayload {
   resource: "worker" | "d1" | "queue" | "cron";
   expected: string;
   actual: string | null;
@@ -1103,26 +1053,6 @@ export async function fetchProjectEnvironments(
     activeToken: CloudflareTokenMetadataSummary | null;
     environments: ProjectDeployEnvironmentRecord[];
     sandbox?: StudioSandboxSummaryPayload | null;
-  };
-}
-
-export async function fetchProjectSandbox(
-  project: string,
-  orgId?: string,
-): Promise<{
-  project: string;
-  orgId: string;
-  sandbox: StudioSandboxSummaryPayload | null;
-}> {
-  const qs = orgId ? `?orgId=${encodeURIComponent(orgId)}` : "";
-  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/sandbox${qs}`, { credentials: "include" });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch project sandbox (${res.status})`);
-  }
-  return (await res.json()) as {
-    project: string;
-    orgId: string;
-    sandbox: StudioSandboxSummaryPayload | null;
   };
 }
 
@@ -1416,7 +1346,7 @@ export interface DestructiveMigrationWarningPayload {
   message: string;
 }
 
-export interface DeployPlanSecretCheckPayload {
+interface DeployPlanSecretCheckPayload {
   name: string;
   ref?: string;
   requiredByBrick: string;
@@ -1426,7 +1356,7 @@ export interface DeployPlanSecretCheckPayload {
   generate?: "random-32-bytes";
 }
 
-export interface DeployPlanBlockerPayload {
+interface DeployPlanBlockerPayload {
   code: string;
   message: string;
   remediation: string;
@@ -1501,7 +1431,7 @@ export interface DeployPlanPayload {
   environment?: ProjectDeployEnvironmentRecord;
 }
 
-export interface DeploymentStepPayload {
+interface DeploymentStepPayload {
   stepOrder: number;
   stepName: string;
   resourceKind: "token" | "d1" | "migration" | "queue" | "worker" | "workflow" | "graph";
@@ -1717,29 +1647,6 @@ export async function checkProjectEnvironmentDrift(
     envName: "preview" | "production";
     driftReport: DriftReportPayload;
     environment: ProjectDeployEnvironmentRecord;
-  };
-}
-
-export async function fetchEnvironmentDeployments(
-  project: string,
-  envName: "preview" | "production",
-  orgId?: string,
-): Promise<{
-  project: string;
-  envName: "preview" | "production";
-  deployments: EnvironmentDeploymentRecordPayload[];
-}> {
-  const qs = orgId ? `?orgId=${encodeURIComponent(orgId)}` : "";
-  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/deployments${qs}`, {
-    credentials: "include",
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch environment deployments (${res.status})`);
-  }
-  return (await res.json()) as {
-    project: string;
-    envName: "preview" | "production";
-    deployments: EnvironmentDeploymentRecordPayload[];
   };
 }
 
@@ -2154,7 +2061,7 @@ export async function fetchWorkspaceLedger(
 // CP6 Story 6.3 — Structured Logs & Errors Panel API Client
 // ============================================================================
 
-export type StructuredLogLevelPayload = "debug" | "info" | "warn" | "error";
+type StructuredLogLevelPayload = "debug" | "info" | "warn" | "error";
 
 export interface StructuredLogEntryPayload {
   seq?: number;
@@ -2245,42 +2152,13 @@ export async function fetchEnvironmentLogs(
   return (await res.json()) as EnvironmentLogsResponse;
 }
 
-export async function ingestEnvironmentLogs(
-  project: string,
-  envName: "preview" | "production",
-  body: {
-    orgId?: string;
-    entries: Array<Partial<StructuredLogEntryPayload> & { level: StructuredLogLevelPayload; message: string }>;
-    secretValues?: string[];
-  },
-): Promise<{
-  ok: boolean;
-  ingestedCount: number;
-  logs: StructuredLogEntryPayload[];
-}> {
-  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/logs`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to ingest structured logs (${res.status})`);
-  }
-  return (await res.json()) as {
-    ok: boolean;
-    ingestedCount: number;
-    logs: StructuredLogEntryPayload[];
-  };
-}
-
 // ============================================================================
 // CP6 Story 6.4 — Backend Health & Metrics Panel API Client
 // ============================================================================
 
 export type HealthWindowPayload = "1h" | "24h" | "7d";
 
-export interface BrickHealthMetricPayload {
+interface BrickHealthMetricPayload {
   brickId: string;
   routePrefix: string;
   requestCount: number;
@@ -2292,20 +2170,20 @@ export interface BrickHealthMetricPayload {
   p99Ms: number;
 }
 
-export interface QueueHealthMetricPayload {
+interface QueueHealthMetricPayload {
   queueName: string;
   depth: number;
   dlqCount: number;
   updatedAt: string;
 }
 
-export interface TopFailingWorkflowMetricPayload {
+interface TopFailingWorkflowMetricPayload {
   workflowId: string;
   failedCount: number;
   lastFailedRunId: string | null;
 }
 
-export interface HealthTimeSeriesBucketPayload {
+interface HealthTimeSeriesBucketPayload {
   bucketTs: string;
   requestCount: number;
   error5xxCount: number;
@@ -2379,23 +2257,6 @@ export async function fetchEnvironmentHealth(
   return (await res.json()) as EnvironmentHealthSummaryPayload;
 }
 
-export async function seedEnvironmentHealth(
-  project: string,
-  envName: "preview" | "production",
-  body: Record<string, unknown>,
-): Promise<EnvironmentHealthSummaryPayload> {
-  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/health/seed`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to seed backend health metrics (${res.status})`);
-  }
-  return (await res.json()) as EnvironmentHealthSummaryPayload;
-}
-
 // ============================================================================
 // CP7 Story 7.2 — Draft-Branch Proposal Mode & Unified Activity Feed API Client
 // ============================================================================
@@ -2447,40 +2308,6 @@ export async function fetchProjectProposals(project: string, status?: ProposalSt
   } catch {
     return [];
   }
-}
-
-export async function createProjectProposal(
-  project: string,
-  body: {
-    baseRevision?: number;
-    summary?: string;
-    ops: unknown[];
-    author?: { type: "human" | "agent"; id: string; client?: string };
-  },
-): Promise<{
-  ok: true;
-  proposalId: string;
-  proposal: ProposalRecord;
-  revision: number;
-}> {
-  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/proposals`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
-  const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!res.ok || !data) {
-    const errObj = data?.error as { message?: string; issues?: Array<{ message: string }> } | undefined;
-    const msg = errObj?.issues?.map((i) => i.message).join("; ") ?? errObj?.message ?? `Failed to create proposal (${res.status})`;
-    throw new Error(msg);
-  }
-  return {
-    ok: true,
-    proposalId: String(data.proposalId ?? ""),
-    proposal: data.proposal as ProposalRecord,
-    revision: Number(data.revision ?? 0),
-  };
 }
 
 export async function acceptProjectProposal(
@@ -2667,7 +2494,7 @@ export interface StudioAuditLogEntry {
   ipHash: string;
 }
 
-export interface StudioAuditLogsResponse {
+interface StudioAuditLogsResponse {
   project?: string;
   orgId: string;
   auditLogs: StudioAuditLogEntry[];

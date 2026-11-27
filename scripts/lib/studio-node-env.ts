@@ -9,7 +9,7 @@ import type { StudioApiEnv } from "../../apps/studio-api/src/index.ts";
 // Object namespace, as the e2e backend does (apps/studio-web/e2e/global-setup.ts), without the WebSocket bridge. Used by
 // scripts/live-studio-deploy.ts and by its offline tests. Not a test double for Cloudflare: Studio's own storage only.
 
-export function createNodeSqliteD1(path = ":memory:"): D1Like & { close(): void } {
+function createNodeSqliteD1(path = ":memory:"): D1Like & { close(): void } {
   const sqlite = new DatabaseSync(path);
   const inside = new WeakMap<object, { sql: string; params: SQLInputValue[] }>();
   const execute = ({ sql, params }: { sql: string; params: SQLInputValue[] }): D1Result => {

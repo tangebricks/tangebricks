@@ -1,0 +1,341 @@
+// The findings `pnpm lint:unused` accepts (story 1.31). Each entry names one file, one kind of finding and the exact
+// symbols (or dependencies) accepted there, with the reason. There are no globs and no whole-file or whole-kind
+// exceptions: a new unused export, type or dependency, even in a file listed here, fails the gate. An entry that no
+// longer matches a finding also fails the gate, so this list only shrinks as the code is cleaned up.
+//
+// Kinds are knip's issue types. A "duplicates" name is the duplicated export names joined with "|", sorted.
+
+type UnusedKind = "exports" | "types" | "duplicates" | "dependencies" | "devDependencies";
+
+export interface UnusedAllowance {
+  /** Repo-relative path, forward slashes. For dependencies, the package.json that declares them. */
+  readonly file: string;
+  readonly kind: UnusedKind;
+  readonly names: readonly string[];
+  readonly reason: string;
+}
+
+const REASON = {
+  proofInput:
+    "Proof input: scripts/proof-inputs.ts hashes every file under packages/*/src, packages/*/test, test/ and the proven " +
+    "bricks (credit-wallet, multi-workspace, dynamic-entities) into the recorded inputsHash, and several of these files are " +
+    "also mutation-script targets or live-run modules. Following story 1.30, they are left as recorded. Follow-up: unexport " +
+    "or delete these in a change that refreshes the evidence.",
+  workerDefault:
+    "studio-api's Worker entry (wrangler.jsonc main): the default export is the module Workers loads, and `app` is the " +
+    "named export the package's importers and tests use. Both are the same Hono app on purpose.",
+  manifestNpmDependency:
+    "Mirrors bricks/binary-assets/brick.manifest.json npmDependencies, which the assembler writes into an emitted project's " +
+    "package.json; check-manifests requires the two to match. Dropping it changes the emitted project, so it stays.",
+  brickContract:
+    "bricks/contracts.ts is the documented brick contract surface (the four layers), re-exporting the canonical schemas " +
+    "and types from packages/assembler/src/schemas.ts for brick authors. Kept as public API on purpose.",
+  presetsAlias: "WEBHOOK_PRESETS is the public alias of PRESETS; bricks/webhook-gateway/test/webhook-replay.workerd.test.ts imports it.",
+  rootWorkspaceLinks:
+    "Root links to workspace packages. An assembled project under out/ imports bricks by package name and resolves them " +
+    "up through the repo root; whether any Node-side run still needs these links is not proven, so they stay. Follow-up: " +
+    "drop each one after a full suite and e2e run without it.",
+} as const;
+
+export const UNUSED_ALLOWLIST: readonly UnusedAllowance[] = [
+  { file: "apps/studio-api/src/index.ts", kind: "duplicates", names: ["app|default"], reason: REASON.workerDefault },
+  { file: "bricks/binary-assets/package.json", kind: "dependencies", names: ["zod"], reason: REASON.manifestNpmDependency },
+  {
+    file: "bricks/contracts.ts",
+    kind: "exports",
+    names: [
+      "PortDataTypeSchema",
+      "PortDescriptorSchema",
+      "RouteDefinitionSchema",
+      "PrivacyTableDefinitionSchema",
+      "PrivacyDefinitionSchema",
+      "WorkerPrivacyDefinitionSchema",
+    ],
+    reason: REASON.brickContract,
+  },
+  {
+    file: "bricks/contracts.ts",
+    kind: "types",
+    names: [
+      "PortDataType",
+      "PortDescriptor",
+      "SettingDeprecated",
+      "SettingDefinition",
+      "RouteDefinition",
+      "PrivacyTableDefinition",
+      "PrivacyDefinition",
+      "WorkerPrivacyDefinition",
+      "BrickManifest",
+    ],
+    reason: REASON.brickContract,
+  },
+  { file: "bricks/credit-wallet/client/wallet-client.ts", kind: "exports", names: ["WalletClientError"], reason: REASON.proofInput },
+  { file: "bricks/credit-wallet/client/wallet-client.ts", kind: "types", names: ["WalletBalance"], reason: REASON.proofInput },
+  { file: "bricks/credit-wallet/src/import-balances.ts", kind: "exports", names: ["exactDecimalSum"], reason: REASON.proofInput },
+  { file: "bricks/credit-wallet/src/import-balances.ts", kind: "types", names: ["ImportRowStatus", "ImportRowReport"], reason: REASON.proofInput },
+  {
+    file: "bricks/credit-wallet/test/support/cephlow-control.ts",
+    kind: "exports",
+    names: ["CEPHLOW2_SCHEMA", "cephlowVerify", "cephlowDeduct"],
+    reason: REASON.proofInput,
+  },
+  { file: "bricks/credit-wallet/test/support/workload.ts", kind: "exports", names: ["CEPHLOW2_TABLES"], reason: REASON.proofInput },
+  { file: "bricks/credit-wallet/test/support/workload.ts", kind: "types", names: ["LedgerRow"], reason: REASON.proofInput },
+  { file: "bricks/webhook-gateway/src/presets.ts", kind: "duplicates", names: ["PRESETS|WEBHOOK_PRESETS"], reason: REASON.presetsAlias },
+  {
+    file: "package.json",
+    kind: "devDependencies",
+    names: ["@poc/dynamic-entities", "@poc/integration-connections", "@poc/integrations", "@poc/studio-api", "@poc/studio-web"],
+    reason: REASON.rootWorkspaceLinks,
+  },
+  { file: "packages/blueprint/src/issues.ts", kind: "exports", names: ["missingSecretsRemediation"], reason: REASON.proofInput },
+  { file: "packages/blueprint/src/ops.ts", kind: "duplicates", names: ["opTargets|targetKey"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/h10.ts", kind: "types", names: ["RunFacts", "UploadFacts", "H10Facts"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/h11.ts", kind: "exports", names: ["H11_PAYLOAD", "H11_WORKSPACE"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/h11.ts", kind: "types", names: ["H11Run", "Timings", "H11Facts"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/h12.ts", kind: "types", names: ["WalletClientLike", "H12Observation", "H12Facts"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/h5-hosted.ts", kind: "exports", names: ["isKnownScale"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/h5-hosted.ts", kind: "types", names: ["LedgerRowFact", "HostedFacts"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/mcp-bundle.ts", kind: "exports", names: ["MCP_MEASUREMENT_SCOPES"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/mcp-measure.ts", kind: "exports", names: ["FULL_REPEATS", "LADDER_BUILDS", "PROTOCOL_VERSION"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/mcp-measure.ts", kind: "types", names: ["Exchange", "Attempt", "StoredCheck", "RungResult"], reason: REASON.proofInput },
+  {
+    file: "packages/deploy/src/provisioner/cloudflare.ts",
+    kind: "exports",
+    names: ["API_BASE", "CLOUDFLARE_REQUESTS_PER_WINDOW", "LIST_PAGE_SIZE", "sqlKindOf"],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/deploy/src/provisioner/cloudflare.ts", kind: "types", names: ["Outcome"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/provisioner/deploy.ts", kind: "exports", names: ["DB_BINDING", "MAIN_MODULE", "smokeKeyFor"], reason: REASON.proofInput },
+  {
+    file: "packages/deploy/src/provisioner/deploy.ts",
+    kind: "types",
+    names: ["WorkflowSpec", "ObservabilityDeploySpec", "IsolatedBrickWorker", "Change"],
+    reason: REASON.proofInput,
+  },
+  {
+    file: "packages/deploy/src/provisioner/index.ts",
+    kind: "exports",
+    names: [
+      "HIDDEN",
+      "PROOF_NAME_POLICY",
+      "STUDIO_TEST_PREFIX",
+      "isStudioTestName",
+      "API_BASE",
+      "CLOUDFLARE_REQUESTS_PER_WINDOW",
+      "DEFAULT_REQUEST_BUDGET",
+      "REQUEST_BUDGET_WINDOW_MS",
+      "DB_BINDING",
+      "MAIN_MODULE",
+      "readDeployedLock",
+    ],
+    reason: REASON.proofInput,
+  },
+  {
+    file: "packages/deploy/src/provisioner/index.ts",
+    kind: "types",
+    names: [
+      "Credentials",
+      "NamePolicy",
+      "Ledger",
+      "LedgerData",
+      "LedgerEntry",
+      "ResourceKind",
+      "KeyStore",
+      "CloudflareError",
+      "AccountState",
+      "Change",
+      "DeployResult",
+      "ObservabilityDeploySpec",
+      "RollbackInput",
+      "TelemetryWebhookConfig",
+      "UploadFailureClass",
+      "WorkflowSpec",
+      "ProbeReport",
+      "Reading",
+      "ReadState",
+      "BrickChangeKind",
+      "DeployPlan",
+      "DeployPlanInput",
+      "PlannedBrick",
+      "PlannedMigration",
+      "PlannedSetting",
+      "WorkerReason",
+    ],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/deploy/src/provisioner/ledger.ts", kind: "types", names: ["LedgerEntry"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/provisioner/names.ts", kind: "exports", names: ["STUDIO_TEST_PREFIX", "isStudioTestName"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/provisioner/plan-core.ts", kind: "types", names: ["BrickChangeKind", "PlanBlock"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/provisioner/plan.ts", kind: "exports", names: ["readDeployedLock"], reason: REASON.proofInput },
+  {
+    file: "packages/deploy/src/provisioner/plan.ts",
+    kind: "types",
+    names: ["BrickChangeKind", "PlannedBrick", "PlannedMigration", "PlannedSetting", "WorkerReason"],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/deploy/src/provisioner/probe.ts", kind: "types", names: ["ReadState", "Reading"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/provisioner/redact.ts", kind: "exports", names: ["HIDDEN"], reason: REASON.proofInput },
+  {
+    file: "packages/deploy/src/sandbox-dispatcher.ts",
+    kind: "duplicates",
+    names: [
+      "SANDBOX_DAILY_REQUEST_LIMIT|SANDBOX_DAILY_REQUEST_QUOTA",
+      "SANDBOX_D1_MAX_ROWS|SANDBOX_D1_ROW_CAP",
+      "SANDBOX_D1_BYTES_CAP|SANDBOX_D1_MAX_BYTES",
+      "SANDBOX_OUTBOUND_RATE_LIMIT_PER_MIN|SANDBOX_OUTBOUND_RPM_LIMIT",
+    ],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/deploy/src/sandbox-dispatcher.ts", kind: "exports", names: ["default"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/sandbox-dispatcher.ts", kind: "types", names: ["SandboxOutboundRateLimiterOptions"], reason: REASON.proofInput },
+  {
+    file: "packages/deploy/src/target.ts",
+    kind: "exports",
+    names: [
+      "DEFAULT_SANDBOX_DISPATCH_NAMESPACE",
+      "SANDBOX_D1_BYTES_CAP",
+      "SANDBOX_D1_ROW_CAP",
+      "SANDBOX_DAILY_REQUEST_QUOTA",
+      "SANDBOX_OUTBOUND_RATE_LIMIT_PER_MIN",
+      "defaultSandboxDispatchPlatform",
+      "extractSandboxIdFromRequest",
+    ],
+    reason: REASON.proofInput,
+  },
+  {
+    file: "packages/deploy/src/target.ts",
+    kind: "types",
+    names: [
+      "DispatchNamespaceBinding",
+      "DispatchWorkerStub",
+      "GuardedSandboxD1",
+      "SandboxDatabaseRecord",
+      "SandboxDispatcherEnv",
+      "SandboxErrorCode",
+      "SandboxGuardrailCode",
+      "SandboxStorageCapOptions",
+      "SandboxStorageStats",
+      "SandboxWorkerRecord",
+      "GetScriptOptions",
+    ],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/deploy/src/worker/proof-bricks.ts", kind: "duplicates", names: ["PROOF_BRICKS|fixtureManifests"], reason: REASON.proofInput },
+  { file: "packages/deploy/src/worker/proof-bricks.ts", kind: "exports", names: ["fixtureManifests", "fixtureExecutors"], reason: REASON.proofInput },
+  { file: "packages/deploy/test/support/fake-cloudflare.ts", kind: "types", names: ["ScriptVersion", "Deployment"], reason: REASON.proofInput },
+  {
+    file: "packages/gateway-adapters/src/delivery-http.ts",
+    kind: "exports",
+    names: ["DEFAULT_DELIVERY_TIMEOUT_MS", "DeliveryTimeoutError"],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/gateway-adapters/test/support/providers.ts", kind: "exports", names: ["CASHFREE_SECRET"], reason: REASON.proofInput },
+  {
+    file: "packages/integrations/src/importer.ts",
+    kind: "exports",
+    names: [
+      "derefObject",
+      "mapSchemaTypeToPortType",
+      "diffServers",
+      "normalizeUrlForCompare",
+      "extractSpecSecurity",
+      "hasUnsupportedScheme",
+      "parseSecurityRequirements",
+      "satisfiesRequirement",
+    ],
+    reason: REASON.proofInput,
+  },
+  {
+    file: "packages/integrations/src/importer.ts",
+    kind: "types",
+    names: ["DerefResult", "SchemaTypeMappingResult", "DetectedSpecVersion"],
+    reason: REASON.proofInput,
+  },
+  {
+    file: "packages/integrations/src/response.ts",
+    kind: "exports",
+    names: [
+      "OUTPUT_PORT_IDENTIFIER",
+      "RESERVED_OUTPUT_PORTS",
+      "MAX_OUTPUT_SCHEMA_DEPTH",
+      "flattenResponseSchema",
+      "mapResponseOutputs",
+      "ERROR_CODE_NAMES",
+      "ERROR_MESSAGE_NAMES",
+      "ERROR_TYPE_NAMES",
+      "errorShapeAtLevel",
+      "deriveErrorShape",
+      "jsonSchemaOfResponse",
+    ],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/integrations/src/response.ts", kind: "types", names: ["FlatResponseSchema", "ErrorShape"], reason: REASON.proofInput },
+  { file: "packages/integrations/src/servers.ts", kind: "exports", names: ["normalizeUrlForCompare", "expandServerVariables"], reason: REASON.proofInput },
+  {
+    file: "packages/integrations/src/util.ts",
+    kind: "exports",
+    names: ["VALID_IDENTIFIER_REGEX", "canonicalStringify", "specHashCache"],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/mcp-server/src/self-correction-eval.ts", kind: "types", names: ["SelfCorrectionStepLog"], reason: REASON.proofInput },
+  {
+    file: "packages/mcp-server/src/token-budget.ts",
+    kind: "exports",
+    names: ["BUDGET_TOKENIZER", "SINGLE_TOOL_DEF_TOKEN_CEILING", "TEN_SCALE_BRICKS"],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/mcp-server/src/token-budget.ts", kind: "types", names: ["PerPageToolSummary", "TokenBudgetViolation"], reason: REASON.proofInput },
+  {
+    file: "packages/mcp-server/src/tools.ts",
+    kind: "exports",
+    names: ["brickMatchesQuery", "isMoneyNodeType", "NO_DEPLOY_TARGET_REMEDIATION", "noDeployTargetIssue", "OP_TYPES"],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/mcp-server/src/tools.ts", kind: "types", names: ["ToolResult"], reason: REASON.proofInput },
+  { file: "packages/mcp-server/test/support/session.ts", kind: "types", names: ["Exchange"], reason: REASON.proofInput },
+  { file: "packages/mcp-server/test/support/test-verifier.ts", kind: "exports", names: ["TEST_TOKEN_CLIENT", "ALL_TEST_SCOPES"], reason: REASON.proofInput },
+  { file: "packages/runtime/src/connections.ts", kind: "duplicates", names: ["ensureConnectionsTable|ensurePxConnectionsTable"], reason: REASON.proofInput },
+  { file: "packages/runtime/src/connections.ts", kind: "exports", names: ["SHARED_CONNECTION_WORKSPACE"], reason: REASON.proofInput },
+  { file: "packages/runtime/src/egress.ts", kind: "exports", names: ["defaultResolveHost", "IntegrationEgressError"], reason: REASON.proofInput },
+  {
+    file: "packages/runtime/src/integration-executor.ts",
+    kind: "exports",
+    names: [
+      "DEFAULT_SECRET_HEADER_AND_FIELD_NAMES",
+      "NON_SECRET_CONNECTION_METADATA_KEYS",
+      "applyConnectionAuth",
+      "findErrorMappingForStatus",
+      "getByDotPath",
+      "isPlainObject",
+      "parseLinkNextUrl",
+      "resolveConnectionForOperation",
+      "resolveParamValue",
+      "setByDotPath",
+      "substitutePathParams",
+      "trackSecretValue",
+      "validatePathSegmentValue",
+      "validateRawPathTemplate",
+    ],
+    reason: REASON.proofInput,
+  },
+  {
+    file: "packages/runtime/src/integration/body-encoding.ts",
+    kind: "exports",
+    names: ["encodeBracketForm", "matchesVariant", "validateVariants"],
+    reason: REASON.proofInput,
+  },
+  {
+    file: "packages/runtime/src/integration/response-decoding.ts",
+    kind: "exports",
+    names: ["MAX_ERROR_BODY_CHARS", "capErrorBody", "providerErrorField", "evaluatePredicate"],
+    reason: REASON.proofInput,
+  },
+  { file: "packages/runtime/src/param-serialization.ts", kind: "types", names: ["SerializedParam"], reason: REASON.proofInput },
+  { file: "packages/runtime/src/rehearse.ts", kind: "exports", names: ["refuseMissingWorkspace"], reason: REASON.proofInput },
+  { file: "packages/sdk/src/budget.ts", kind: "exports", names: ["DEFAULT_FANOUT_LIMIT"], reason: REASON.proofInput },
+  { file: "packages/sdk/src/egress-guard.ts", kind: "types", names: ["IPv4Octets"], reason: REASON.proofInput },
+  { file: "test/support/emitted.ts", kind: "exports", names: ["relativeToRepo"], reason: REASON.proofInput },
+  { file: "test/support/h9-emitted-source.ts", kind: "exports", names: ["H9_SOURCE_BRICK_DIRS", "H9_EMITTED_SOURCE_FILE"], reason: REASON.proofInput },
+  { file: "test/support/tokens.ts", kind: "types", names: ["SourceFile"], reason: REASON.proofInput },
+];

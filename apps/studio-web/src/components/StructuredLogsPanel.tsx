@@ -3,7 +3,7 @@ import { fetchEnvironmentLogs } from "../api.ts";
 import type { StructuredLogEntryPayload } from "../api.ts";
 import { useStudioStore } from "../store.ts";
 
-export type LogLevelFilter = "all" | "error" | "warn" | "info" | "debug";
+type LogLevelFilter = "all" | "error" | "warn" | "info" | "debug";
 
 export interface StructuredLogsFilterState {
   env: "preview" | "production";

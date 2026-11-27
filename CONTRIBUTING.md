@@ -66,6 +66,25 @@ from its entry point rather than importing the file.
 `docs/import-boundaries.md` explains the rules and lists every existing exception. Do not add an exception
 to get a change through; an exception names one file and the exact files it may import, with a reason.
 
+## Unused code
+
+`pnpm lint:unused` ([knip](https://knip.dev), settings in `knip.ts`) fails on unused files, exports, exported types,
+duplicate exports and dependencies, and on dependencies a file imports without declaring them. CI runs it in the
+`gates` job; it takes about 10 seconds.
+
+When it names something:
+
+- Delete it if nothing uses it: the file, the dependency (`pnpm remove`), or the `export` keyword when only its own
+  file uses the symbol.
+- If code reaches a file by path rather than by import (a spawned script, an esbuild entry, a generated import
+  string), add the file to that workspace's `entry` in `knip.ts`, with a comment saying who loads it.
+- Exports a brick manifest names (route factories, executors, capability exports, guards, handlers) are safe without
+  any of this: they must be exported by the brick's package entry, and knip never reports an entry's exports.
+- Only if it must stay anyway, add an entry to `scripts/lint-unused-allowlist.ts`: the file, the kind of finding and
+  the exact names, with a reason that says why it stays (public API kept on purpose, used by name at run time, a proof
+  input left as recorded). No globs and no whole-file entries. An entry that no longer matches a finding fails the
+  gate, so delete it once the code is cleaned up.
+
 ## Sign your commits (DCO)
 
 This project uses the [Developer Certificate of Origin 1.1](https://developercertificate.org/).
