@@ -71,7 +71,8 @@ describe("two cold runs that differ in folder, time zone and clock", () => {
 
   test("make the same files: every path and every SHA-256 equal", () => {
     // 11 since story 0.21 (credit-wallet's rate limits bring the px_rate_limits migration); 12 since story 2.3
-    // (credit-wallet's order currency migration); 13 since story 2.5 (its milli-credit migration).
+    // (credit-wallet's order currency migration); 13 since story 2.5 (its milli-credit migration); 14 since story 2.8
+    // (multi-workspace's 0002).
     expect(second.report.files).toBe(14);
     expect(Object.keys(first.report.hashes)).toHaveLength(14);
     expect(second.report.hashes).toEqual(first.report.hashes);
@@ -137,8 +138,9 @@ test("H7 report", async ({ task }) => {
   // A run stopped by a refused outside attempt has no files to compare. That is the network check's finding (a fail),
   // not evidence that the assembler makes different files (a kill).
   const stoppedByTrap = runs.some((run) => run.failure !== null);
-  // 12 files since story 2.3 (credit-wallet's order currency migration); 13 since story 2.5 (its milli-credit migration).
-  const sameFiles = JSON.stringify(second.report.hashes) === JSON.stringify(first.report.hashes) && first.report.files === 13 && second.report.files === 13;
+  // 12 files since story 2.3 (credit-wallet's order currency migration); 13 since story 2.5 (its milli-credit migration);
+  // 14 since story 2.8 (multi-workspace's invite email and expiry migration).
+  const sameFiles = JSON.stringify(second.report.hashes) === JSON.stringify(first.report.hashes) && first.report.files === 14 && second.report.files === 14;
   const clockShifted = (second.report.clockMs - first.report.clockMs) / 86_400_000 > 399;
   const slowest = Math.max(first.wallSeconds, second.wallSeconds);
   record(task, {
