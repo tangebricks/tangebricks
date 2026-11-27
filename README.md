@@ -28,7 +28,7 @@ Everything in this section is generated from the committed evidence by `pnpm rea
 | H3 | Executors cannot read secrets their manifest does not declare | pass | 4/4 checks | — | — | 4 | local re-measure 2026-11-27 |
 | H5 | The extracted wallet stays correct under concurrency | pass | 0 runs of 20 | ≤ 0 runs of 20 | ≥ 1 runs of 20 | 5 | local re-measure 2026-11-27; hosted D1 half: live run, **stale (run 2026-10-21)** |
 | H6 | Bricks compose from a blueprint without hand edits | pass | 5/5 checks | — | — | 5 | local re-measure 2026-11-27 |
-| H7 | Assembly is deterministic, offline and fast | pass | 0.398 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-27 |
+| H7 | Assembly is deterministic, offline and fast | pass | 0.441 seconds | < 5 seconds | > 30 seconds | 2 | local re-measure 2026-11-27 |
 | H8 | An entity declaration yields tenant-safe CRUD | pass | 7/7 checks | — | — | 7 | local re-measure 2026-11-27 |
 | H9 | An MCP session builds the project at a fraction of the source tokens | pass | 5.4 percent | ≤ 15 percent | > 40 percent | 3 | local re-measure 2026-11-27; deployed MCP Worker half: live run, **stale (run 2026-10-21)** |
 | H10 | The project deploys to the owner's Cloudflare account over REST, idempotently | pass | 16.695 seconds | ≤ 120 seconds | > 600 seconds | 7 | live run, **stale (run 2026-10-21)** |

@@ -43,9 +43,9 @@
     },
     "H7": {
       "verdict": "pass",
-      "measured": "0.398 seconds",
+      "measured": "0.441 seconds",
       "reasons": [],
-      "recordedAt": "2026-11-27T02:14:28.066Z"
+      "recordedAt": "2026-11-27T03:02:11.613Z"
     },
     "H8": {
       "verdict": "pass",
@@ -107,8 +107,8 @@
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-27T02:11:50.374Z",
-    "gitSha": "442084b1095c398199afbf3cf50393950de1c4a9",
+    "generatedAt": "2026-11-27T02:59:30.231Z",
+    "gitSha": "625bd38087cf7a68ff12a0cf9fc8ca404a75f318",
     "gitDirty": false,
     "generator": "scripts/verify.ts",
     "inputKind": "measured"
