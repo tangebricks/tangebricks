@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "8b2f264b27d3311636a1ffe3dcd104a1360ee0524e295a542ece08b1d29cca4a",
+  "catalogVersion": "8e7af1ef8b44032dd505ca6c2df515c16094720ae766549bec7094491b82b193",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -1538,7 +1538,7 @@ export const catalog: Catalog = {
         "manifestVersion": 2,
         "kind": "brick",
         "id": "edge-traffic-armor",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "trust": "first-party",
         "isolation": "none",
         "provides": [

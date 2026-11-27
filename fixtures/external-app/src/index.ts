@@ -5,6 +5,7 @@ import type { MiddlewareHandler } from "hono";
 import { createWorkspaceRoutes, requireNotSuspended, workspaceMiddleware } from "@poc/multi-workspace";
 import { createFakeGateway, createWalletRoutes } from "@poc/credit-wallet";
 import { createAuditRoutes } from "@poc/audit-trail";
+import { trafficArmorMiddleware } from "@poc/edge-traffic-armor";
 import { rateLimit } from "@poc/sdk";
 
 // The project chooses where the bricks live. Every brick route is relative, so any prefix works. The manifests'
@@ -46,7 +47,14 @@ app.on("POST", `${PREFIX}/payments/create-order`, rateLimit({ bucket: "wallet-cr
 app.on("POST", `${PREFIX}/payments/verify`, rateLimit({ bucket: "wallet-verify", limit: 60, windowSeconds: 60, key: "ip" }));
 app.on("POST", `${PREFIX}/payments/webhook`, rateLimit({ bucket: "wallet-webhook", limit: 300, windowSeconds: 60, key: "ip" }));
 
-// 4. The bricks' route factories, mounted under the project's prefix.
+// 4. edge-traffic-armor's middleware on one of the project's own paths: a named bucket counted per signed-in user (it
+//    falls back to the IP for a request with no user). Past the limit it answers 429 and logs an incident in
+//    arm_blocked_requests. IP rules are per workspace, and this path has none, so they are off.
+//    The window is an hour so the test's few requests never straddle a window boundary.
+app.use(`${PREFIX}/ping`, trafficArmorMiddleware({ enforceIpRules: false, rateLimit: { bucket: "fixture-ping", limit: 2, windowSeconds: 3600, key: "user" } }));
+app.get(`${PREFIX}/ping`, (c) => c.json({ ok: true }));
+
+// 5. The bricks' route factories, mounted under the project's prefix.
 app.route(PREFIX, createWorkspaceRoutes());
 app.route(PREFIX, createWalletRoutes({ gateway, currency: "INR", creditsPerUnit: 10 }));
 app.route(PREFIX, createAuditRoutes());
