@@ -10,5 +10,11 @@
     "@poc/sdk": "workspace:*",
     "hono": "4.13.20",
     "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@poc/assembler": "workspace:*",
+    "@poc/core-nodes": "workspace:*",
+    "@poc/runtime": "workspace:*",
+    "vitest": "5.1.1"
   }
 }

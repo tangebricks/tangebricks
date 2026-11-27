@@ -12,6 +12,8 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@poc/multi-workspace": "workspace:*"
+    "@poc/harness": "workspace:*",
+    "@poc/multi-workspace": "workspace:*",
+    "vitest": "5.1.1"
   }
 }

@@ -43,6 +43,29 @@ The repository was formatted in one mechanical commit, listed in `.git-blame-ign
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
+## Import boundaries
+
+`pnpm lint:deps` ([dependency-cruiser](https://github.com/sverweij/dependency-cruiser), settings in
+`.dependency-cruiser.cjs`) checks what bricks, packages and apps may import. CI runs it in the `gates` job.
+
+- A brick (`bricks/<id>/src`, `test`, `client`) imports its own files by relative path, and anything else only
+  as a package: `@poc/sdk`, node built-ins, `cloudflare:*`, and packages its own `package.json` declares,
+  through their entry point and `exports` (`@poc/credit-wallet`, not `@poc/credit-wallet/src/wallet.ts`).
+- No brick imports a file in another brick's folder (`../../credit-wallet/src/...`), and no package does either.
+- `packages/*` never import `apps/*`.
+
+To use another package from a brick, declare it in that brick's `package.json`: `dependencies` when `src`
+imports it at runtime, `devDependencies` when only tests or client code that is not shipped do. A client entry the
+brick exports and ships (for example integration-connections' `"./client"`) declares `react` as a
+`peerDependency`, plus a `devDependency` for its tests; only client code that is not exported or shipped may keep
+`react` dev-only. Use `workspace:*` for `@poc/*`
+packages and the exact version the root `package.json` pins for anything else (for example
+`"vitest": "5.1.1"`), then run `pnpm install`. If the other brick does not export what you need, export it
+from its entry point rather than importing the file.
+
+`docs/import-boundaries.md` explains the rules and lists every existing exception. Do not add an exception
+to get a change through; an exception names one file and the exact files it may import, with a reason.
+
 ## Sign your commits (DCO)
 
 This project uses the [Developer Certificate of Origin 1.1](https://developercertificate.org/).

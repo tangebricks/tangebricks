@@ -8,7 +8,7 @@ import walletMigration from "../../../../bricks/credit-wallet/migrations/0001_cr
 import walletMigration0002 from "../../../../bricks/credit-wallet/migrations/0002_workspace_scoped_idempotency.sql?raw";
 import walletMigration0003 from "../../../../bricks/credit-wallet/migrations/0003_order_currency.sql?raw";
 import walletMigration0004 from "../../../../bricks/credit-wallet/migrations/0004_milli_credits.sql?raw";
-import { createFakeGateway, createWalletRoutes } from "../../../../bricks/credit-wallet/src/index.ts";
+import { createFakeGateway, createWalletRoutes } from "@poc/credit-wallet";
 import { createSqliteD1 } from "../../../../bricks/credit-wallet/client/test/support/sqlite-d1.ts";
 import { existsSync, readFileSync } from "node:fs";
 import { DEMO_PAGE_FILE } from "../../../../test/support/demo-page-path.ts";

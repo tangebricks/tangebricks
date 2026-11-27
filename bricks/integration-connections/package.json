@@ -8,6 +8,7 @@
     "./client": "./client/index.ts"
   },
   "dependencies": {
+    "@poc/assembler": "workspace:*",
     "@poc/harness": "workspace:*",
     "@poc/sdk": "workspace:*",
     "hono": "4.13.20",
@@ -15,6 +16,12 @@
   },
   "devDependencies": {
     "@poc/multi-workspace": "workspace:*",
-    "@poc/runtime": "workspace:*"
+    "@poc/runtime": "workspace:*",
+    "@testing-library/react": "16.3.3",
+    "react": "19.3.1",
+    "vitest": "5.1.1"
+  },
+  "peerDependencies": {
+    "react": "19.3.1"
   }
 }

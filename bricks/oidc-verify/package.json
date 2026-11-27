@@ -10,5 +10,8 @@
     "@poc/sdk": "workspace:*",
     "@poc/runtime": "workspace:*",
     "hono": "4.13.20"
+  },
+  "devDependencies": {
+    "vitest": "5.1.1"
   }
 }
