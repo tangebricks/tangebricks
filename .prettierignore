@@ -11,6 +11,7 @@ fixtures/
 **/fixtures/**
 out/
 dist/
+coverage/
 node_modules/
 .wrangler/
 pnpm-lock.yaml

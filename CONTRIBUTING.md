@@ -8,6 +8,19 @@ Thanks for your interest in projectx-poc.
 2. Run the local gate: `pnpm check:changed`. It typechecks the workspace and runs the tests affected by your change. It must exit 0.
 3. Open the pull request against `main`. CI and the `Security` workflow run on every pull request into `main`.
 
+## Coverage of the money and auth code
+
+`pnpm coverage:money` runs the tests of the money and auth bricks (credit-wallet, metered-usage,
+checkout-gateway, subscription-plans, core-auth, llm-gateway) and `packages/gateway-adapters` with V8
+coverage, prints a per-file table and writes `coverage/coverage-summary.json`. It fails when any brick falls
+below its thresholds in `vitest.coverage.config.ts`. CI runs it in the `coverage` job, where the thresholds
+are never rewritten.
+
+Locally, `autoUpdate` raises a brick's thresholds (to whole percents) when your change adds coverage, by
+editing `vitest.coverage.config.ts`. Commit that change with your pull request, so the floor moves up with
+the code. Do not lower a threshold to make a run pass; add the missing tests. `pnpm coverage:proof` shows
+that a run below a threshold fails.
+
 ## Formatting
 
 The code is formatted with [Prettier](https://prettier.io/) (pinned in `package.json`, settings in

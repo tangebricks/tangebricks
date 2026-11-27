@@ -25,6 +25,7 @@
     "**/out/**",
     "**/node_modules/**",
     "**/dist/**",
+    "coverage/**",
     "**/.wrangler/**",
     "_bmad/**",
     "_bmad-output/**",
