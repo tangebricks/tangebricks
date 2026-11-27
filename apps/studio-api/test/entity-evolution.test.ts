@@ -24,7 +24,10 @@ describe("entity evolution ADD COLUMN statements (story 1.18)", () => {
     expect(entityAddColumnStatements("things", undefined, { name: "owner_id", type: "relation", relation: "users" } as never)[0]!.sql).toBe(
       'ALTER TABLE things ADD COLUMN "owner_id" TEXT CHECK (length("owner_id") = 36);',
     );
-    expect(entityAddColumnStatements("things", undefined, { name: "fee", type: "money", currencies: ["INR"] } as never).map((s) => s.column)).toEqual(["fee", "fee__currency"]);
+    expect(entityAddColumnStatements("things", undefined, { name: "fee", type: "money", currencies: ["INR"] } as never).map((s) => s.column)).toEqual([
+      "fee",
+      "fee__currency",
+    ]);
   });
 
   it("a field that becomes money gains its currency column; other unchanged or changed fields add nothing", () => {
@@ -47,7 +50,12 @@ describe("entity evolution ADD COLUMN statements (story 1.18)", () => {
       { name: "owner_id", type: "relation", relation: "users" },
     ];
     for (const field of fields) for (const { sql } of entityAddColumnStatements("evo_things", undefined, field as never)) await db.prepare(sql).run();
-    for (const { sql } of entityAddColumnStatements("evo_things", { name: "fee", type: "number" }, { name: "fee", type: "money", currencies: ["INR"] } as never)) await db.prepare(sql).run();
+    for (const { sql } of entityAddColumnStatements("evo_things", { name: "fee", type: "number" }, {
+      name: "fee",
+      type: "money",
+      currencies: ["INR"],
+    } as never))
+      await db.prepare(sql).run();
     await db.prepare("INSERT INTO evo_things (id, fee, fee__currency, due_on) VALUES ('a', 100, 'INR', '2026-11-26')").run();
     await expect(db.prepare("INSERT INTO evo_things (id, due_on) VALUES ('b', '2026-13-01')").run()).rejects.toThrow(/CHECK constraint failed/);
     await expect(db.prepare("INSERT INTO evo_things (id, fee, fee__currency) VALUES ('c', 1, 'USD')").run()).rejects.toThrow(/CHECK constraint failed/);

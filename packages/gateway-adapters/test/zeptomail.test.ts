@@ -23,7 +23,6 @@ interface Seen {
   body: string | null;
 }
 
-
 // A fetch that never answers but honours its abort signal (as the platform fetch does).
 const hangingFetch = (_url: string, init?: RequestInit) =>
   new Promise<Response>((_, reject) => {
@@ -58,7 +57,11 @@ const channel = (config: Record<string, unknown> = { region: "in" }): DeliveryCh
 describe("ZeptoMail adapter: send", () => {
   it("POSTs /v1.1/email on the configured region with the Zoho-enczapikey header; 201 request_id is sent", async () => {
     const { a, seen } = adapter(() => json(sendSuccess, 201));
-    const result = await a.send(channel({ region: "in", fromName: "Example" }), { recipient: "asha@example.org", subject: "Hello", body: "Hi Asha" }, { apiKey: TOKEN });
+    const result = await a.send(
+      channel({ region: "in", fromName: "Example" }),
+      { recipient: "asha@example.org", subject: "Hello", body: "Hi Asha" },
+      { apiKey: TOKEN },
+    );
     expect(result).toEqual({ status: "sent", externalId: sendSuccess.request_id });
     expect(seen).toHaveLength(1);
     expect(seen[0]!.url).toBe("https://api.zeptomail.in/v1.1/email");
@@ -74,7 +77,11 @@ describe("ZeptoMail adapter: send", () => {
 
   it("a token given with its prefix is not prefixed twice; bodyFormat html sends htmlbody", async () => {
     const { a, seen } = adapter(() => json(sendSuccess, 201));
-    await a.send(channel({ region: "com", bodyFormat: "html" }), { recipient: "a@example.org", subject: "S", body: "<p>x</p>" }, { apiKey: `Zoho-enczapikey ${TOKEN}` });
+    await a.send(
+      channel({ region: "com", bodyFormat: "html" }),
+      { recipient: "a@example.org", subject: "S", body: "<p>x</p>" },
+      { apiKey: `Zoho-enczapikey ${TOKEN}` },
+    );
     expect(seen[0]!.url).toBe("https://api.zeptomail.com/v1.1/email");
     expect(seen[0]!.headers.get("authorization")).toBe(`Zoho-enczapikey ${TOKEN}`);
     expect(JSON.parse(seen[0]!.body!).htmlbody).toBe("<p>x</p>");
@@ -106,7 +113,11 @@ describe("ZeptoMail adapter: send", () => {
 
   it("401 is failed, not retryable", async () => {
     const { a } = adapter(() => json(invalidToken, 401));
-    expect(await a.send(channel(), { recipient: "a@example.org", body: "x" }, { apiKey: TOKEN })).toEqual({ status: "failed", error: "ZEPTOMAIL_HTTP_401_TM_3301", retryable: false });
+    expect(await a.send(channel(), { recipient: "a@example.org", body: "x" }, { apiKey: TOKEN })).toEqual({
+      status: "failed",
+      error: "ZEPTOMAIL_HTTP_401_TM_3301",
+      retryable: false,
+    });
   });
 
   it("429 and a 503 with Retry-After are retryable; any other 5xx and a network error are not (the outcome may be unknown)", async () => {
@@ -116,13 +127,21 @@ describe("ZeptoMail adapter: send", () => {
       retryable: true,
       retryAfterMs: 1000,
     });
-    expect(await adapter(() => new Response("busy", { status: 503, headers: { "retry-after": "1" } })).a.send(channel(), { recipient: "a@example.org", body: "x" }, { apiKey: TOKEN })).toMatchObject({
+    expect(
+      await adapter(() => new Response("busy", { status: 503, headers: { "retry-after": "1" } })).a.send(
+        channel(),
+        { recipient: "a@example.org", body: "x" },
+        { apiKey: TOKEN },
+      ),
+    ).toMatchObject({
       status: "failed",
       error: "ZEPTOMAIL_HTTP_503",
       retryable: true,
     });
     for (const status of [500, 502, 503]) {
-      expect(await adapter(() => new Response("oops", { status })).a.send(channel(), { recipient: "a@example.org", body: "x" }, { apiKey: TOKEN })).toMatchObject({
+      expect(
+        await adapter(() => new Response("oops", { status })).a.send(channel(), { recipient: "a@example.org", body: "x" }, { apiKey: TOKEN }),
+      ).toMatchObject({
         status: "failed",
         error: `ZEPTOMAIL_HTTP_${status}`,
         retryable: false,
@@ -184,7 +203,10 @@ describe("ZeptoMail adapter: send", () => {
 
   it("no region, no token: nothing is sent (no defaults)", async () => {
     const { a, seen } = adapter(() => json(sendSuccess, 201));
-    expect(await a.send(channel({}), { recipient: "a@example.org", body: "x" }, { apiKey: TOKEN })).toMatchObject({ status: "failed", error: "ZEPTOMAIL_NOT_CONFIGURED" });
+    expect(await a.send(channel({}), { recipient: "a@example.org", body: "x" }, { apiKey: TOKEN })).toMatchObject({
+      status: "failed",
+      error: "ZEPTOMAIL_NOT_CONFIGURED",
+    });
     expect(await a.send(channel(), { recipient: "a@example.org", body: "x" }, {})).toMatchObject({ status: "failed", error: "ZEPTOMAIL_NOT_CONFIGURED" });
     expect(seen).toHaveLength(0);
     expect(a.checkConfig!({ channel_type: "email", sender_address: "a@b.co", config: {} })).toMatch(/region/);

@@ -94,12 +94,7 @@ export class VectorMemoryService {
   /**
    * Creates a vector index.
    */
-  async createIndex(
-    workspaceId: string,
-    nameRaw: string,
-    dimensions = 384,
-    metric: VectorMetric = "cosine"
-  ): Promise<VectorIndex> {
+  async createIndex(workspaceId: string, nameRaw: string, dimensions = 384, metric: VectorMetric = "cosine"): Promise<VectorIndex> {
     const id = `idx_${crypto.randomUUID().replace(/-/g, "")}`;
     const name = nameRaw.trim();
     const now = new Date().toISOString();
@@ -133,22 +128,13 @@ export class VectorMemoryService {
    * Lists vector indexes for a workspace.
    */
   async listIndexes(workspaceId: string): Promise<VectorIndex[]> {
-    return scoped(this.db, workspaceId).select<VectorIndex>(
-      "vec_indexes",
-      undefined,
-      [],
-      { orderBy: "name ASC" },
-    );
+    return scoped(this.db, workspaceId).select<VectorIndex>("vec_indexes", undefined, [], { orderBy: "name ASC" });
   }
 
   /**
    * Upserts document chunks with embeddings into the index.
    */
-  async upsertChunks(
-    workspaceId: string,
-    indexId: string,
-    chunks: DocumentChunkInput[]
-  ): Promise<{ ok: boolean; count: number; error?: string }> {
+  async upsertChunks(workspaceId: string, indexId: string, chunks: DocumentChunkInput[]): Promise<{ ok: boolean; count: number; error?: string }> {
     const index = await this.getIndex(workspaceId, indexId);
     if (!index) return { ok: false, count: 0, error: "Vector index not found" };
 
@@ -183,13 +169,7 @@ export class VectorMemoryService {
   /**
    * Queries top-K nearest neighbors using cosine similarity.
    */
-  async search(
-    workspaceId: string,
-    indexId: string,
-    queryVector: number[],
-    topK = 5,
-    minScore = 0.0
-  ): Promise<SearchResult[]> {
+  async search(workspaceId: string, indexId: string, queryVector: number[], topK = 5, minScore = 0.0): Promise<SearchResult[]> {
     interface RawDoc {
       id: string;
       chunk_index: number;
@@ -198,11 +178,7 @@ export class VectorMemoryService {
       metadata_json: string | null;
     }
 
-    const rows = await scoped(this.db, workspaceId).select<RawDoc>(
-      "vec_documents",
-      "index_id = ?",
-      [indexId],
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawDoc>("vec_documents", "index_id = ?", [indexId]);
 
     const scored: SearchResult[] = [];
 

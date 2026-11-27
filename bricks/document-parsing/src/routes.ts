@@ -23,7 +23,7 @@ const ExtractDocSchema = z.object({
       z.object({
         pattern: z.string().min(1),
         type: z.enum(["string", "number"]).optional(),
-      })
+      }),
     )
     .optional(),
 });
@@ -117,12 +117,7 @@ export function createDocumentRoutes(): Hono<DocumentEnv> {
 
     const service = c.get("parsingService") || new DocumentParsingService(c.env.DB);
     try {
-      const extraction = await service.extractStructuredData(
-        workspaceId,
-        docId,
-        parsed.data.schemaName,
-        parsed.data.customRules
-      );
+      const extraction = await service.extractStructuredData(workspaceId, docId, parsed.data.schemaName, parsed.data.customRules);
       return c.json(extraction, 201);
     } catch (e: any) {
       return c.json({ error: e.message || "Extraction failed" }, 404);

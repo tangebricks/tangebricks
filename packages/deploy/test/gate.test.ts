@@ -8,9 +8,15 @@ const KEY = "correct-horse-battery-staple-0123";
 const DEMO = "<!doctype html><p>demo page, no data</p>";
 
 function setup() {
-  const app = { fetch: vi.fn(async (request: Request, _env: unknown, _ctx: unknown) => new Response(JSON.stringify({ reached: new URL(request.url).pathname }), { status: 200, headers: { "content-type": "application/json" } })) };
+  const app = {
+    fetch: vi.fn(
+      async (request: Request, _env: unknown, _ctx: unknown) =>
+        new Response(JSON.stringify({ reached: new URL(request.url).pathname }), { status: 200, headers: { "content-type": "application/json" } }),
+    ),
+  };
   const worker = createGatedWorker({ app, demoHtml: DEMO });
-  const call = (path: string, init: RequestInit = {}, env: Record<string, unknown> = { POC_ACCESS_KEY: KEY, DB: "a-binding" }) => worker.fetch(new Request(`https://x.example${path}`, init), env, {});
+  const call = (path: string, init: RequestInit = {}, env: Record<string, unknown> = { POC_ACCESS_KEY: KEY, DB: "a-binding" }) =>
+    worker.fetch(new Request(`https://x.example${path}`, init), env, {});
   return { app, call };
 }
 const withKey = (value: string): RequestInit => ({ headers: { [KEY_HEADER]: value } });
@@ -61,13 +67,16 @@ describe("the demo page", () => {
 });
 
 describe("everything else needs the key", () => {
-  test.each(["/", "/api/wallet", "/api/invoices", "/api/workspaces", "/api/invoices/123", "/health", "/anything/else"])("%s without a key is 401 and never reaches the project", async (path) => {
-    const { app, call } = setup();
-    const res = await call(path);
-    expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "unauthorized" });
-    expect(app.fetch).not.toHaveBeenCalled();
-  });
+  test.each(["/", "/api/wallet", "/api/invoices", "/api/workspaces", "/api/invoices/123", "/health", "/anything/else"])(
+    "%s without a key is 401 and never reaches the project",
+    async (path) => {
+      const { app, call } = setup();
+      const res = await call(path);
+      expect(res.status).toBe(401);
+      expect(await res.json()).toEqual({ error: "unauthorized" });
+      expect(app.fetch).not.toHaveBeenCalled();
+    },
+  );
 
   test.each([
     ["an empty key", ""],
@@ -112,7 +121,8 @@ describe("everything else needs the key", () => {
 
   test("the key works for every method", async () => {
     const { app, call } = setup();
-    for (const method of ["GET", "POST", "PATCH", "DELETE", "PUT", "OPTIONS"]) expect((await call("/api/x", { method, headers: { [KEY_HEADER]: KEY } })).status, method).toBe(200);
+    for (const method of ["GET", "POST", "PATCH", "DELETE", "PUT", "OPTIONS"])
+      expect((await call("/api/x", { method, headers: { [KEY_HEADER]: KEY } })).status, method).toBe(200);
     expect(app.fetch).toHaveBeenCalledTimes(6);
   });
 });
@@ -128,7 +138,7 @@ describe("a deployment with no usable key refuses everyone", () => {
     ["a key that is an object", { POC_ACCESS_KEY: { toString: () => "x".repeat(40) } }],
   ])("%s is 503 for a caller with the matching header, an empty one, and none", async (_label, env) => {
     const { app, call } = setup();
-    const guess = typeof (env as { POC_ACCESS_KEY?: unknown }).POC_ACCESS_KEY === "string" ? ((env as { POC_ACCESS_KEY: string }).POC_ACCESS_KEY) : "";
+    const guess = typeof (env as { POC_ACCESS_KEY?: unknown }).POC_ACCESS_KEY === "string" ? (env as { POC_ACCESS_KEY: string }).POC_ACCESS_KEY : "";
     for (const init of [withKey(guess), withKey(""), {}]) expect((await call("/api/wallet", init, env)).status).toBe(503);
     expect(app.fetch).not.toHaveBeenCalled();
   });
@@ -147,7 +157,11 @@ describe("nothing the gate says contains the key", () => {
     const SHORT = "identifiable-12";
     expect(SHORT.length).toBeLessThan(MIN_KEY_LENGTH);
     const texts: string[] = [];
-    for (const res of [await call("/api/wallet", withKey("a-wrong-but-recognisable-key-0000")), await call("/api/wallet"), await call("/api/wallet", withKey(SHORT), { POC_ACCESS_KEY: SHORT })]) {
+    for (const res of [
+      await call("/api/wallet", withKey("a-wrong-but-recognisable-key-0000")),
+      await call("/api/wallet"),
+      await call("/api/wallet", withKey(SHORT), { POC_ACCESS_KEY: SHORT }),
+    ]) {
       texts.push(await res.text(), JSON.stringify([...res.headers]));
     }
     expect(texts).toHaveLength(6);

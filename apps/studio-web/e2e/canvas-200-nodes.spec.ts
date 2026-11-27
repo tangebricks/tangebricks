@@ -62,9 +62,7 @@ test.describe("200-Node @xyflow/react Workflow Canvas & R45 Drag Latency Benchma
       }
 
       const frameDeltas: number[] = [];
-      let lastTs = await new Promise<number>((resolve) =>
-        requestAnimationFrame((ts) => resolve(ts)),
-      );
+      let lastTs = await new Promise<number>((resolve) => requestAnimationFrame((ts) => resolve(ts)));
 
       for (let frame = 0; frame < 60; frame += 1) {
         const panX = Math.round(Math.sin(frame / 10) * 180 - frame * 4);
@@ -72,17 +70,14 @@ test.describe("200-Node @xyflow/react Workflow Canvas & R45 Drag Latency Benchma
         const zoom = (0.65 + (frame % 20) * 0.015).toFixed(3);
         viewport.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
 
-        const nowTs = await new Promise<number>((resolve) =>
-          requestAnimationFrame((ts) => resolve(ts)),
-        );
+        const nowTs = await new Promise<number>((resolve) => requestAnimationFrame((ts) => resolve(ts)));
         frameDeltas.push(nowTs - lastTs);
         lastTs = nowTs;
       }
 
       const sorted = [...frameDeltas].sort((a, b) => a - b);
       const medianFrameMs = sorted[Math.floor(sorted.length / 2)]!;
-      const meanFrameMs =
-        frameDeltas.reduce((acc, v) => acc + v, 0) / frameDeltas.length;
+      const meanFrameMs = frameDeltas.reduce((acc, v) => acc + v, 0) / frameDeltas.length;
       const effectiveFps = 1000 / Math.max(medianFrameMs, 1);
       const meanFps = 1000 / Math.max(meanFrameMs, 1);
 
@@ -108,9 +103,7 @@ test.describe("200-Node @xyflow/react Workflow Canvas & R45 Drag Latency Benchma
       const startY = rect.top + rect.height / 2;
 
       const stepLatencies: number[] = [];
-      let lastTs = await new Promise<number>((resolve) =>
-        requestAnimationFrame((ts) => resolve(ts)),
-      );
+      let lastTs = await new Promise<number>((resolve) => requestAnimationFrame((ts) => resolve(ts)));
 
       for (let step = 1; step <= 30; step += 1) {
         const nextX = startX + step * 8;
@@ -124,9 +117,7 @@ test.describe("200-Node @xyflow/react Workflow Canvas & R45 Drag Latency Benchma
           }),
         );
         rfNode.style.transform = `translate(${48 + step * 8}px, ${48 + step * 4}px)`;
-        const nowTs = await new Promise<number>((resolve) =>
-          requestAnimationFrame((ts) => resolve(ts)),
-        );
+        const nowTs = await new Promise<number>((resolve) => requestAnimationFrame((ts) => resolve(ts)));
         stepLatencies.push(nowTs - lastTs);
         lastTs = nowTs;
       }

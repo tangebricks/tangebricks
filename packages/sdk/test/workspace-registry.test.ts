@@ -13,17 +13,26 @@ beforeEach(async () => {
   expect.hasAssertions();
   await db.prepare("DROP TABLE IF EXISTS mw_workspaces").run();
   await db.prepare("DROP TABLE IF EXISTS audit_events").run();
-  await db.prepare("CREATE TABLE mw_workspaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, owner_id TEXT NOT NULL, suspended INTEGER NOT NULL DEFAULT 0, suspended_reason TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))").run();
+  await db
+    .prepare(
+      "CREATE TABLE mw_workspaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, owner_id TEXT NOT NULL, suspended INTEGER NOT NULL DEFAULT 0, suspended_reason TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+    )
+    .run();
   await db
     .prepare(
       "CREATE TABLE audit_events (id TEXT PRIMARY KEY, workspace_id TEXT, actor_id TEXT, actor_type TEXT, actor_email TEXT, action TEXT, target_type TEXT, target_id TEXT, metadata_json TEXT, created_at TEXT, dedupe_key TEXT, via_capability INTEGER)",
     )
     .run();
-  for (const id of ["ws_a", "ws_b", "ws_c"]) await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, 'o')").bind(id, id.toUpperCase()).run();
+  for (const id of ["ws_a", "ws_b", "ws_c"])
+    await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, 'o')").bind(id, id.toUpperCase()).run();
 });
 
 const audit = (ws: string, options: { afterChange?: boolean } = { afterChange: true }) =>
-  auditStatement(db, { workspaceId: ws, actorType: "user", actorId: "op", action: "platform.workspace.suspend", targetType: "workspace", targetId: ws }, options);
+  auditStatement(
+    db,
+    { workspaceId: ws, actorType: "user", actorId: "op", action: "platform.workspace.suspend", targetType: "workspace", targetId: ws },
+    options,
+  );
 const auditCount = async () => (await db.prepare("SELECT COUNT(*) AS n FROM audit_events").first<{ n: number }>())?.n;
 const row = (id: string) => db.prepare("SELECT suspended, suspended_reason FROM mw_workspaces WHERE id = ?").bind(id).first();
 
@@ -42,7 +51,9 @@ describe("auditStatement (story 2.6)", () => {
     for (const actorType of ["support_impersonator", "api_key"]) {
       expect(() => auditStatement(db, { workspaceId: "ws_a", actorType: actorType as never, actorId: "x", action: "a" })).toThrow(RangeError);
     }
-    expect(() => auditStatement(db, { workspaceId: "ws_a", actorType: "user", actorId: "x", action: "a", metadata: { big: "x".repeat(5000) } })).toThrow(RangeError);
+    expect(() => auditStatement(db, { workspaceId: "ws_a", actorType: "user", actorId: "x", action: "a", metadata: { big: "x".repeat(5000) } })).toThrow(
+      RangeError,
+    );
   });
 });
 
@@ -53,9 +64,17 @@ describe("setWorkspaceSuspended (story 2.6)", () => {
     expect(await row("ws_a")).toEqual({ suspended: 1, suspended_reason: "operator" });
     expect(await findWorkspaceState(d, "ws_a")).toEqual({ suspended: true, reason: "operator", deleting: false, checked: true });
     expect(await findWorkspaceState(d, "ws_b")).toEqual({ suspended: false, reason: null, deleting: false, checked: true });
-    expect(await setWorkspaceSuspended(d, "ws_a", true, [audit("ws_a")])).toEqual({ ok: true, changed: false, before: { suspended: true, reason: "operator" } });
+    expect(await setWorkspaceSuspended(d, "ws_a", true, [audit("ws_a")])).toEqual({
+      ok: true,
+      changed: false,
+      before: { suspended: true, reason: "operator" },
+    });
     expect(await auditCount()).toBe(1);
-    expect(await setWorkspaceSuspended(d, "ws_a", false, [audit("ws_a")])).toEqual({ ok: true, changed: true, before: { suspended: true, reason: "operator" } });
+    expect(await setWorkspaceSuspended(d, "ws_a", false, [audit("ws_a")])).toEqual({
+      ok: true,
+      changed: true,
+      before: { suspended: true, reason: "operator" },
+    });
     expect(await row("ws_a")).toEqual({ suspended: 0, suspended_reason: null });
     expect(await setWorkspaceSuspended(d, "ws_a", false, [audit("ws_a")])).toEqual({ ok: true, changed: false, before: { suspended: false, reason: null } });
     expect(await auditCount()).toBe(2);
@@ -65,12 +84,14 @@ describe("setWorkspaceSuspended (story 2.6)", () => {
     await db.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = 'billing' WHERE id = 'ws_b'").run();
     await db.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = NULL WHERE id = 'ws_c'").run();
     for (const ws of ["ws_b", "ws_c"]) {
-      for (const suspended of [true, false]) expect(await setWorkspaceSuspended(fresh(), ws, suspended, [audit(ws)])).toEqual({ ok: false, reason: "other_suspension" });
+      for (const suspended of [true, false])
+        expect(await setWorkspaceSuspended(fresh(), ws, suspended, [audit(ws)])).toEqual({ ok: false, reason: "other_suspension" });
     }
     expect(await row("ws_b")).toEqual({ suspended: 1, suspended_reason: "billing" });
     expect(await row("ws_c")).toEqual({ suspended: 1, suspended_reason: null });
     await db.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = 'deleting' WHERE id = 'ws_b'").run();
-    for (const suspended of [true, false]) expect(await setWorkspaceSuspended(fresh(), "ws_b", suspended, [audit("ws_b")])).toEqual({ ok: false, reason: "deleting" });
+    for (const suspended of [true, false])
+      expect(await setWorkspaceSuspended(fresh(), "ws_b", suspended, [audit("ws_b")])).toEqual({ ok: false, reason: "deleting" });
     expect(await findWorkspaceState(fresh(), "ws_b")).toMatchObject({ deleting: true });
     expect(await auditCount()).toBe(0);
   });
@@ -81,7 +102,9 @@ describe("setWorkspaceSuspended (story 2.6)", () => {
     await expect(setWorkspaceSuspended(d, "ws_a", true, [audit("ws_a")])).rejects.toThrow();
     expect(await row("ws_a")).toEqual({ suspended: 0, suspended_reason: null });
     await expect(setWorkspaceSuspended(d, "ws_a", true, [db.prepare("DELETE FROM mw_workspaces") as never])).rejects.toThrow(TypeError);
-    await expect(setWorkspaceSuspended(d, "ws_a", true, [{ id: "x", workspaceId: "ws_a", statement: db.prepare("DELETE FROM mw_workspaces") } as never])).rejects.toThrow(TypeError);
+    await expect(
+      setWorkspaceSuspended(d, "ws_a", true, [{ id: "x", workspaceId: "ws_a", statement: db.prepare("DELETE FROM mw_workspaces") } as never]),
+    ).rejects.toThrow(TypeError);
     await expect(setWorkspaceSuspended(d, "ws_a", true, [audit("ws_b")])).rejects.toThrow(TypeError);
     await expect(setWorkspaceSuspended(d, "ws_a", true, [audit("ws_a", {})])).rejects.toThrow(TypeError);
     // A deduplicated (INSERT OR IGNORE) statement could let the change commit without its row: refused.

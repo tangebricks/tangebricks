@@ -11,9 +11,7 @@ export interface CreatedTableInfo {
  * Reused from check-manifests.ts migration parser.
  */
 export function extractCreatedTables(sqlContent: string): CreatedTableInfo[] {
-  const stripped = sqlContent
-    .replace(/--[^\r\n]*/g, "")
-    .replace(/\/\*[\s\S]*?\*\//g, "");
+  const stripped = sqlContent.replace(/--[^\r\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
   const results: CreatedTableInfo[] = [];
   const createTableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z0-9_"]+)\s*\(([\s\S]*?)\)\s*;/gi;
   for (const match of stripped.matchAll(createTableRegex)) {
@@ -57,14 +55,8 @@ export function getTenantTablesForBrick(brickDir: string): BrickTenantTables {
   }
 
   const brickId = typeof manifest.id === "string" ? manifest.id : "";
-  const globalTablesList: Array<{ table: string; reason?: string }> = Array.isArray(manifest.globalTables)
-    ? manifest.globalTables
-    : [];
-  const globalTables = new Set(
-    globalTablesList
-      .filter((g) => typeof g.reason === "string" && g.reason.trim().length > 0)
-      .map((g) => g.table),
-  );
+  const globalTablesList: Array<{ table: string; reason?: string }> = Array.isArray(manifest.globalTables) ? manifest.globalTables : [];
+  const globalTables = new Set(globalTablesList.filter((g) => typeof g.reason === "string" && g.reason.trim().length > 0).map((g) => g.table));
 
   const tenantTables = new Set<string>();
   const allTables = new Set<string>();

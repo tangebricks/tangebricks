@@ -17,7 +17,7 @@ async function resetDb(): Promise<void> {
         payload_json TEXT NOT NULL DEFAULT '{}',
         status TEXT NOT NULL DEFAULT 'queued',
         created_at TEXT NOT NULL DEFAULT '2026-01-01'
-      )`
+      )`,
     )
     .run();
 }
@@ -38,47 +38,33 @@ describe("packages/sdk scoped() attack resistance", () => {
 
     it("rejects comments and trailing injection: ? IS NOT NULL OR 1=1) --", async () => {
       const s = scoped(db, "ws_a");
-      await expect(
-        s.select("job_queues", "? IS NOT NULL OR 1=1) --", ["val"])
-      ).rejects.toThrow(/WHERE_UNSAFE/);
+      await expect(s.select("job_queues", "? IS NOT NULL OR 1=1) --", ["val"])).rejects.toThrow(/WHERE_UNSAFE/);
     });
 
     it("rejects semicolons (stacked queries)", async () => {
       const s = scoped(db, "ws_a");
-      await expect(
-        s.select("job_queues", "status = 'queued'; DROP TABLE job_queues")
-      ).rejects.toThrow(/WHERE_UNSAFE/);
+      await expect(s.select("job_queues", "status = 'queued'; DROP TABLE job_queues")).rejects.toThrow(/WHERE_UNSAFE/);
     });
 
     it("rejects block comments /* ... */", async () => {
       const s = scoped(db, "ws_a");
-      await expect(
-        s.select("job_queues", "status = 'queued' /* comment */")
-      ).rejects.toThrow(/WHERE_UNSAFE/);
+      await expect(s.select("job_queues", "status = 'queued' /* comment */")).rejects.toThrow(/WHERE_UNSAFE/);
     });
 
     it("rejects UNION expressions", async () => {
       const s = scoped(db, "ws_a");
-      await expect(
-        s.first("job_queues", "id = ? UNION SELECT 1,2,3,4,5,6,7", ["j1"])
-      ).rejects.toThrow(/WHERE_UNSAFE/);
+      await expect(s.first("job_queues", "id = ? UNION SELECT 1,2,3,4,5,6,7", ["j1"])).rejects.toThrow(/WHERE_UNSAFE/);
     });
 
     it("rejects SELECT subqueries", async () => {
       const s = scoped(db, "ws_a");
-      await expect(
-        s.update("job_queues", { status: "failed" }, "id IN (SELECT id FROM job_queues)")
-      ).rejects.toThrow(/WHERE_UNSAFE/);
+      await expect(s.update("job_queues", { status: "failed" }, "id IN (SELECT id FROM job_queues)")).rejects.toThrow(/WHERE_UNSAFE/);
     });
 
     it("rejects unbalanced parentheses", async () => {
       const s = scoped(db, "ws_a");
-      await expect(
-        s.delete("job_queues", "status = 'queued' AND (status = 'failed'")
-      ).rejects.toThrow(/WHERE_UNSAFE/);
-      await expect(
-        s.select("job_queues", "status = 'queued')")
-      ).rejects.toThrow(/WHERE_UNSAFE/);
+      await expect(s.delete("job_queues", "status = 'queued' AND (status = 'failed'")).rejects.toThrow(/WHERE_UNSAFE/);
+      await expect(s.select("job_queues", "status = 'queued')")).rejects.toThrow(/WHERE_UNSAFE/);
     });
   });
 
@@ -88,7 +74,7 @@ describe("packages/sdk scoped() attack resistance", () => {
       await expect(
         s.select("job_queues", "status = ?", ["queued"], {
           orderBy: "(SELECT count(*) FROM job_queues)",
-        })
+        }),
       ).rejects.toThrow(/ORDER_BY_UNSAFE/);
     });
 
@@ -97,7 +83,7 @@ describe("packages/sdk scoped() attack resistance", () => {
       await expect(
         s.select("job_queues", undefined, undefined, {
           orderBy: "created_at; DROP TABLE job_queues",
-        })
+        }),
       ).rejects.toThrow(/ORDER_BY_UNSAFE/);
     });
 
@@ -149,10 +135,7 @@ describe("packages/sdk scoped() attack resistance", () => {
     it("blocks UNION from another table", () => {
       const s = scoped(db, "ws_a");
       expect(() => {
-        s.raw("SELECT * FROM job_queues WHERE workspace_id = ? UNION SELECT * FROM job_queues WHERE id = ?", [
-          "ws_a",
-          "j2",
-        ]);
+        s.raw("SELECT * FROM job_queues WHERE workspace_id = ? UNION SELECT * FROM job_queues WHERE id = ?", ["ws_a", "j2"]);
       }).toThrow(/TENANT_PREDICATE_MISSING/);
     });
 
@@ -172,9 +155,7 @@ describe("packages/sdk scoped() attack resistance", () => {
     it("blocks JOIN across tables", () => {
       const s = scoped(db, "ws_a");
       expect(() => {
-        s.raw("SELECT jobs.id, secrets.v FROM job_queues jobs JOIN secrets ON 1=1 WHERE jobs.workspace_id = ?", [
-          "ws_a",
-        ]);
+        s.raw("SELECT jobs.id, secrets.v FROM job_queues jobs JOIN secrets ON 1=1 WHERE jobs.workspace_id = ?", ["ws_a"]);
       }).toThrow(/TENANT_PREDICATE_MISSING/);
     });
 
@@ -195,9 +176,7 @@ describe("packages/sdk scoped() attack resistance", () => {
     it("blocks INSERT ... SELECT subquery", () => {
       const s = scoped(db, "ws_a");
       expect(() => {
-        s.raw("INSERT INTO job_queues (id, workspace_id) SELECT id, workspace_id FROM other_jobs WHERE workspace_id = ?", [
-          "ws_a",
-        ]);
+        s.raw("INSERT INTO job_queues (id, workspace_id) SELECT id, workspace_id FROM other_jobs WHERE workspace_id = ?", ["ws_a"]);
       }).toThrow(/TENANT_PREDICATE_MISSING/);
     });
 

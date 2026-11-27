@@ -107,29 +107,21 @@ test.describe("Story 8.3 — Full Keyboard-Only Navigation & Canvas Flow", () =>
     await expect(connectMenu).toBeVisible();
 
     // Verify incompatible port option is disabled and shows type-mismatch reason
-    const incompatibleOption = page.getByTestId(
-      "connect-to-option-node-http-request-2-strict_number",
-    );
+    const incompatibleOption = page.getByTestId("connect-to-option-node-http-request-2-strict_number");
     await expect(incompatibleOption).toBeDisabled();
     await expect(incompatibleOption).toHaveAttribute("aria-disabled", "true");
-    await expect(
-      page.getByTestId(
-        "connect-to-incompatible-reason-node-http-request-2-strict_number",
-      ),
-    ).toContainText(/Cannot connect .* output to number input/i);
+    await expect(page.getByTestId("connect-to-incompatible-reason-node-http-request-2-strict_number")).toContainText(
+      /Cannot connect .* output to number input/i,
+    );
 
     // Compatible port option is focused; press Enter to wire the edge
-    const compatibleOption = page.getByTestId(
-      "connect-to-option-node-http-request-2-in",
-    );
+    const compatibleOption = page.getByTestId("connect-to-option-node-http-request-2-in");
     await expect(compatibleOption).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(connectMenu).toBeHidden();
 
     // Verify aria-live polite announcement of connection
-    await expect(page.getByTestId("studio-aria-live-region")).toContainText(
-      /Connected .* to/i,
-    );
+    await expect(page.getByTestId("studio-aria-live-region")).toContainText(/Connected .* to/i);
 
     // 7. Traverse connected nodes on canvas using ArrowRight and ArrowLeft
     await triggerNode.focus();
@@ -177,20 +169,14 @@ test.describe("Story 8.3 — Full Keyboard-Only Navigation & Canvas Flow", () =>
     const outlineRegion = page.getByTestId("workflow-outline-region");
     await expect(outlineRegion).toBeVisible();
 
-    const outlineStep1 = page.getByTestId(
-      "workflow-outline-step-node-webhook-1",
-    );
-    const outlineStep2 = page.getByTestId(
-      "workflow-outline-step-node-http-request-2",
-    );
+    const outlineStep1 = page.getByTestId("workflow-outline-step-node-webhook-1");
+    const outlineStep2 = page.getByTestId("workflow-outline-step-node-http-request-2");
     await outlineStep1.focus();
     await expect(outlineStep1).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(outlineStep2).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("inspector-node-id")).toHaveText(
-      "node-http-request-2",
-    );
+    await expect(page.getByTestId("inspector-node-id")).toHaveText("node-http-request-2");
 
     // Toggle Outline View off via Alt+O
     await page.keyboard.press("Alt+o");

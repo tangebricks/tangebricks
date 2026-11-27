@@ -36,7 +36,10 @@ export function relationKeyHint(keys: readonly unknown[] | undefined): string | 
 /** Columns the router adds itself, and names SQLite treats as the row id. A declared field may not take any of them. */
 export const RESERVED_FIELD_NAMES: ReadonlySet<string> = new Set(["id", "workspace_id", "created_at", "updated_at", "rowid", "oid", "_rowid_"]);
 
-const fieldName = z.string().regex(NAME).refine((n) => !RESERVED_FIELD_NAMES.has(n), { message: "this name is used by the system" });
+const fieldName = z
+  .string()
+  .regex(NAME)
+  .refine((n) => !RESERVED_FIELD_NAMES.has(n), { message: "this name is used by the system" });
 const required = z.boolean().default(false);
 
 const fieldSchema = z.discriminatedUnion("type", [
@@ -55,7 +58,12 @@ const fieldSchema = z.discriminatedUnion("type", [
     required,
     currencies: z.array(z.string().regex(CURRENCY, "must be a 3-letter upper-case ISO-4217 code such as INR")).min(1).max(20),
   }),
-  z.strictObject({ name: fieldName, type: z.literal("longtext"), required, maxLength: z.number().int().min(1).max(LONGTEXT_MAX_LENGTH).default(LONGTEXT_DEFAULT_LENGTH) }),
+  z.strictObject({
+    name: fieldName,
+    type: z.literal("longtext"),
+    required,
+    maxLength: z.number().int().min(1).max(LONGTEXT_MAX_LENGTH).default(LONGTEXT_DEFAULT_LENGTH),
+  }),
 ]);
 export type EntityField = z.infer<typeof fieldSchema>;
 
@@ -72,7 +80,8 @@ export const entitySchema = z
     for (const field of entity.fields) {
       if (seen.has(field.name)) problem(`field "${field.name}" is declared twice`);
       seen.add(field.name);
-      if (field.type === "number" && field.min !== undefined && field.max !== undefined && field.min > field.max) problem(`field "${field.name}" has min above max`);
+      if (field.type === "number" && field.min !== undefined && field.max !== undefined && field.min > field.max)
+        problem(`field "${field.name}" has min above max`);
       if (field.type === "enum" && new Set(field.values).size !== field.values.length) problem(`field "${field.name}" lists a value twice`);
       if (field.type === "money" && new Set(field.currencies).size !== field.currencies.length) problem(`field "${field.name}" lists a currency twice`);
     }
@@ -85,9 +94,7 @@ export const entitySchema = z
   });
 export type Entity = z.infer<typeof entitySchema>;
 
-export type ParsedEntities =
-  | { ok: true; entities: Entity[] }
-  | { ok: false; errors: string[]; issues?: BudgetIssue[] };
+export type ParsedEntities = { ok: true; entities: Entity[] } | { ok: false; errors: string[]; issues?: BudgetIssue[] };
 
 /** The columns a field is stored in: one, except a money field, which also has `<name>__currency`. */
 export function fieldColumns(field: EntityField): string[] {

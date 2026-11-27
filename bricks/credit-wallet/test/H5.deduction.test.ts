@@ -22,14 +22,18 @@ const edge = (source: string, target: string): GraphEdge => ({ id: `${source}-${
 const registry = createRegistry([...toyRegistry.values(), ...creditWalletBricks]);
 const executors = new Map<string, Executor>([...toyExecutors, ...creditWalletExecutors]);
 const charge = (amount: number) =>
-  runGraph(
-    { nodes: [node("t", "trigger.manual"), node("pay", "credit-wallet.deduct", { amount })], edges: [edge("t", "pay")] },
-    registry,
-    executors,
-    { payload: { workspaceId: WS, userId: "user-123" }, env: { DB: db }, workspaceId: WS },
-  );
+  runGraph({ nodes: [node("t", "trigger.manual"), node("pay", "credit-wallet.deduct", { amount })], edges: [edge("t", "pay")] }, registry, executors, {
+    payload: { workspaceId: WS, userId: "user-123" },
+    env: { DB: db },
+    workspaceId: WS,
+  });
 const ledger = async () =>
-  (await db.prepare("SELECT type, amount_milli AS amount, balance_after_milli AS balance_after FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid").bind(WS).all<{ type: string; amount: number; balance_after: number }>()).results;
+  (
+    await db
+      .prepare("SELECT type, amount_milli AS amount, balance_after_milli AS balance_after FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid")
+      .bind(WS)
+      .all<{ type: string; amount: number; balance_after: number }>()
+  ).results;
 
 beforeEach(async () => {
   expect.hasAssertions(); // a ported test that asserts nothing would pass whatever the code does; this makes it fail instead

@@ -72,7 +72,9 @@ describe("findClientWorkspaceReads", () => {
     expect(lint(text, svc)).toHaveLength(1);
     expect(findClientWorkspaceReads([{ path: svc, text }], [{ file: svc, rule: "body-read", reason: "test" }])).toEqual([]);
     // a body-read exemption does not cover a query read in the same file
-    expect(findClientWorkspaceReads([{ path: svc, text: `const ws = c.req.query("workspaceId");` }], [{ file: svc, rule: "body-read", reason: "test" }])).toHaveLength(1);
+    expect(
+      findClientWorkspaceReads([{ path: svc, text: `const ws = c.req.query("workspaceId");` }], [{ file: svc, rule: "body-read", reason: "test" }]),
+    ).toHaveLength(1);
     for (const e of EXEMPTIONS) {
       expect(e.rule).not.toBe("*");
       expect(e.reason.length).toBeGreaterThan(10);
@@ -87,10 +89,9 @@ describe("findClientWorkspaceReads", () => {
 });
 
 describe("CLI", () => {
-  const run = (bricksDir?: string) =>
-    spawnSync(process.execPath, [SCRIPT, ...(bricksDir ? ["--bricks-dir", bricksDir] : [])], { cwd: ROOT, encoding: "utf8" });
+  const run = (bricksDir?: string) => spawnSync(process.execPath, [SCRIPT, ...(bricksDir ? ["--bricks-dir", bricksDir] : [])], { cwd: ROOT, encoding: "utf8" });
 
-  test("exits 1 and prints file:line for a seeded c.req.query(\"workspaceId\")", () => {
+  test('exits 1 and prints file:line for a seeded c.req.query("workspaceId")', () => {
     const dir = mkdtempSync(join(tmpdir(), "ws-id-lint-"));
     tempDirs.push(dir);
     mkdirSync(join(dir, "seeded", "src"), { recursive: true });

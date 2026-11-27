@@ -131,10 +131,7 @@ describe("UC3.10 — Refactor sweep (UC3)", () => {
   describe("AC2: Line counts and modular decomposition constraints", () => {
     it("packages/runtime/src/integration-executor.ts line count is <= 300 lines", () => {
       const lines = executorSource.split(/\r?\n/).length;
-      expect(
-        lines,
-        `integration-executor.ts must be <= 300 lines (actual: ${lines})`,
-      ).toBeLessThanOrEqual(300);
+      expect(lines, `integration-executor.ts must be <= 300 lines (actual: ${lines})`).toBeLessThanOrEqual(300);
     });
 
     it("no file in packages/runtime/src/integration/* is > 350 lines", () => {
@@ -152,10 +149,7 @@ describe("UC3.10 — Refactor sweep (UC3)", () => {
 
       for (const [filename, source] of Object.entries(integrationFiles)) {
         const fileLines = source.split(/\r?\n/).length;
-        expect(
-          fileLines,
-          `${filename} must be <= 350 lines (actual: ${fileLines})`,
-        ).toBeLessThanOrEqual(350);
+        expect(fileLines, `${filename} must be <= 350 lines (actual: ${fileLines})`).toBeLessThanOrEqual(350);
       }
     });
 
@@ -197,10 +191,9 @@ describe("UC3.10 — Refactor sweep (UC3)", () => {
       for (const { name, manifest } of PACKS) {
         const unsupported = manifest.fidelity?.unsupported ?? [];
         for (const entry of unsupported) {
-          expect(
-            UC3_COVERED_CODES.has(entry.code),
-            `Pack ${name} operation ${entry.op} contains unsupported code ${entry.code} which was covered by UC3`,
-          ).toBe(false);
+          expect(UC3_COVERED_CODES.has(entry.code), `Pack ${name} operation ${entry.op} contains unsupported code ${entry.code} which was covered by UC3`).toBe(
+            false,
+          );
         }
       }
     });

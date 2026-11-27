@@ -21,13 +21,17 @@ const PREFIX = "../../../out/two-brick/";
 const emittedFiles = Object.fromEntries(Object.entries(emittedText).map(([path, text]) => [path.slice(PREFIX.length), text]));
 
 const call = async (path: string, headers: Record<string, string> = {}, init: RequestInit = {}) => {
-  const response = await app!.fetch(new Request(`http://localhost${path}`, { ...init, headers: { ...headers, ...(init.headers as Record<string, string> | undefined) } }), { DB: db });
+  const response = await app!.fetch(
+    new Request(`http://localhost${path}`, { ...init, headers: { ...headers, ...(init.headers as Record<string, string> | undefined) } }),
+    { DB: db },
+  );
   return { status: response.status, body: (await response.json().catch(() => null)) as Record<string, any> | null };
 };
 
 /** Applies the emitted migrations, in the order the project's own file names give, to an empty database. */
 async function freshDatabase(): Promise<void> {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"])
+    await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   for (const path of Object.keys(emittedSql).sort()) await applyMigration(db, emittedSql[path]!);
 }
 
@@ -72,12 +76,20 @@ describe("the emitted project runs", () => {
   });
 
   test("the emitted migrations apply, in order, to an empty database", async () => {
-    const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_%' ESCAPE '\\' AND name NOT LIKE 'sqlite%' ORDER BY name").all<{ name: string }>()).results.map((r) => r.name);
+    const tables = (
+      await db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_%' ESCAPE '\\' AND name NOT LIKE 'sqlite%' ORDER BY name")
+        .all<{ name: string }>()
+    ).results.map((r) => r.name);
     expect(tables).toEqual(expect.arrayContaining(["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"]));
   });
 
   test("a signed-in user creates a workspace and reads its wallet through the emitted Worker: 200", async () => {
-    const created = await call("/api/workspaces", { "x-test-user": "alice", "content-type": "application/json" }, { method: "POST", body: JSON.stringify({ name: "Acme" }) });
+    const created = await call(
+      "/api/workspaces",
+      { "x-test-user": "alice", "content-type": "application/json" },
+      { method: "POST", body: JSON.stringify({ name: "Acme" }) },
+    );
     expect(created.status).toBe(201);
     const workspaceId = created.body!.workspace.id as string;
 
@@ -87,7 +99,11 @@ describe("the emitted project runs", () => {
   });
 
   test("the wallet shows what the database holds", async () => {
-    const created = await call("/api/workspaces", { "x-test-user": "alice", "content-type": "application/json" }, { method: "POST", body: JSON.stringify({ name: "Acme" }) });
+    const created = await call(
+      "/api/workspaces",
+      { "x-test-user": "alice", "content-type": "application/json" },
+      { method: "POST", body: JSON.stringify({ name: "Acme" }) },
+    );
     const workspaceId = created.body!.workspace.id as string;
     await call("/api/wallet", { "x-test-user": "alice", "x-workspace-id": workspaceId }); // opens the wallet
     await db.prepare("UPDATE credit_wallets SET balance_milli = 77000 WHERE workspace_id = ?").bind(workspaceId).run();
@@ -95,20 +111,36 @@ describe("the emitted project runs", () => {
   });
 
   test("the workspace brick's list route is mounted and scoped to the caller", async () => {
-    await call("/api/workspaces", { "x-test-user": "alice", "content-type": "application/json" }, { method: "POST", body: JSON.stringify({ name: "Alice's" }) });
+    await call(
+      "/api/workspaces",
+      { "x-test-user": "alice", "content-type": "application/json" },
+      { method: "POST", body: JSON.stringify({ name: "Alice's" }) },
+    );
     await call("/api/workspaces", { "x-test-user": "bob", "content-type": "application/json" }, { method: "POST", body: JSON.stringify({ name: "Bob's" }) });
     const list = await call("/api/workspaces", { "x-test-user": "alice" });
     expect(list.body!.workspaces.map((w: { name: string }) => w.name)).toEqual(["Alice's"]);
   });
 
   test("the wiring refuses what it should: no identity 401, no workspace 400, not a member 403", async () => {
-    const created = await call("/api/workspaces", { "x-test-user": "alice", "content-type": "application/json" }, { method: "POST", body: JSON.stringify({ name: "Acme" }) });
+    const created = await call(
+      "/api/workspaces",
+      { "x-test-user": "alice", "content-type": "application/json" },
+      { method: "POST", body: JSON.stringify({ name: "Acme" }) },
+    );
     const workspaceId = created.body!.workspace.id as string;
     expect((await call("/api/wallet", { "x-workspace-id": workspaceId })).status).toBe(401);
     expect((await call("/api/wallet", { "x-test-user": "alice" })).status).toBe(400);
     expect((await call("/api/wallet", { "x-test-user": "bob", "x-workspace-id": workspaceId })).status).toBe(403);
     expect((await call("/api/wallet/history", { "x-test-user": "bob", "x-workspace-id": workspaceId })).status).toBe(403);
-    expect((await call("/api/payments/create-order", { "x-test-user": "bob", "x-workspace-id": workspaceId, "content-type": "application/json" }, { method: "POST", body: JSON.stringify({ amount: 100 }) })).status).toBe(403);
+    expect(
+      (
+        await call(
+          "/api/payments/create-order",
+          { "x-test-user": "bob", "x-workspace-id": workspaceId, "content-type": "application/json" },
+          { method: "POST", body: JSON.stringify({ amount: 100 }) },
+        )
+      ).status,
+    ).toBe(403);
   });
 
   test("a route the project does not have is a 404, not an error", async () => {

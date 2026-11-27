@@ -9,15 +9,13 @@ const EntrySchema = z.strictObject({
   supports: z.string().optional(),
 });
 
-export const PortListSchema = z
-  .strictObject({ version: z.literal(1), about: z.string(), tests: z.array(EntrySchema).min(1) })
-  .superRefine((list, ctx) => {
-    const titles = list.tests.map((t) => t.title);
-    if (new Set(titles).size !== titles.length) ctx.addIssue({ code: "custom", message: "titles in the port list must be unique" });
-    for (const t of list.tests) {
-      if (t.kind !== "ported" && !t.why) ctx.addIssue({ code: "custom", message: `"${t.title}" is ${t.kind} and needs a reason` });
-    }
-  });
+export const PortListSchema = z.strictObject({ version: z.literal(1), about: z.string(), tests: z.array(EntrySchema).min(1) }).superRefine((list, ctx) => {
+  const titles = list.tests.map((t) => t.title);
+  if (new Set(titles).size !== titles.length) ctx.addIssue({ code: "custom", message: "titles in the port list must be unique" });
+  for (const t of list.tests) {
+    if (t.kind !== "ported" && !t.why) ctx.addIssue({ code: "custom", message: `"${t.title}" is ${t.kind} and needs a reason` });
+  }
+});
 
 export type PortList = z.infer<typeof PortListSchema>;
 

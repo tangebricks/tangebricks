@@ -71,10 +71,13 @@ export function requireFeature(featureKey: string): MiddlewareHandler<PlanEnv> {
     const service = new PlanService(c.env.DB);
     const allowed = await service.hasFeature(workspace.id, featureKey);
     if (!allowed) {
-      return c.json({
-        error: "Feature not available on current plan",
-        requiredFeature: featureKey,
-      }, 403);
+      return c.json(
+        {
+          error: "Feature not available on current plan",
+          requiredFeature: featureKey,
+        },
+        403,
+      );
     }
 
     await next();

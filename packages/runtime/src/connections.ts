@@ -200,13 +200,7 @@ export async function deriveConnectionVaultKey(rawKeyMaterial?: string) {
   const material = rawKeyMaterial.trim();
   const encoded = new TextEncoder().encode(`projectx-studio-vault-v1:${material}`);
   const digest = await crypto.subtle.digest("SHA-256", encoded);
-  return crypto.subtle.importKey(
-    "raw",
-    digest,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
+  return crypto.subtle.importKey("raw", digest, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 
 export async function sealConnectionCredentials(
@@ -221,11 +215,7 @@ export async function sealConnectionCredentials(
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const serialized = JSON.stringify(credentials);
   const encoded = new TextEncoder().encode(serialized);
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    encoded,
-  );
+  const encryptedBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
   const primarySecret = String(
     credentials.accessToken ??
       credentials.apiKey ??
@@ -243,19 +233,11 @@ export async function sealConnectionCredentials(
   };
 }
 
-export async function unsealConnectionCredentials(
-  ciphertextB64: string,
-  ivB64: string,
-  rawKeyMaterial?: string,
-): Promise<SealedConnectionCredentials> {
+export async function unsealConnectionCredentials(ciphertextB64: string, ivB64: string, rawKeyMaterial?: string): Promise<SealedConnectionCredentials> {
   const key = await deriveConnectionVaultKey(rawKeyMaterial);
   const iv = fromBase64(ivB64);
   const ciphertext = fromBase64(ciphertextB64);
-  const decryptedBuffer = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    key,
-    ciphertext,
-  );
+  const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
   const text = new TextDecoder().decode(decryptedBuffer);
   try {
     const parsed = JSON.parse(text);
@@ -296,25 +278,16 @@ export async function ensureConnectionsTable(db: D1Like): Promise<void> {
 
 export const ensurePxConnectionsTable = ensureConnectionsTable;
 
-export async function upsertSealedConnection(
-  db: D1Like,
-  input: UpsertSealedConnectionInput,
-  connKey?: string,
-): Promise<ConnectionMetadataRecord> {
+export async function upsertSealedConnection(db: D1Like, input: UpsertSealedConnectionInput, connKey?: string): Promise<ConnectionMetadataRecord> {
   await ensureConnectionsTable(db);
   const nowIso = new Date().toISOString();
   const projectId = input.projectId ?? "default";
   const envName = input.envName ?? "preview";
   const workspaceId = input.workspaceId ?? input.credentials.workspaceId ?? "default";
   const authType: CaseAAuthType =
-    input.authType ??
-    input.credentials.authType ??
-    (input.credentials.accessToken || input.credentials.refreshToken ? "oauth2" : "apiKey");
+    input.authType ?? input.credentials.authType ?? (input.credentials.accessToken || input.credentials.refreshToken ? "oauth2" : "apiKey");
   const scopes = input.scopes ?? input.credentials.scopes ?? [];
-  const expiresAt =
-    input.expiresAt !== undefined
-      ? parseExpiresAtMs(input.expiresAt)
-      : parseExpiresAtMs(input.credentials.expiresAt);
+  const expiresAt = input.expiresAt !== undefined ? parseExpiresAtMs(input.expiresAt) : parseExpiresAtMs(input.credentials.expiresAt);
   const status: CaseAConnectionStatus = input.status ?? "connected";
   const lastCheckedAt = input.lastCheckedAt !== undefined ? input.lastCheckedAt : nowIso;
   const label = input.label ?? input.ref;
@@ -469,22 +442,17 @@ async function findPxConnectionRow(
   const withProject = (...values: unknown[]) => (project ? [...values, project] : values);
   for (const candidate of candidates) {
     const byRef = await db
-      .prepare(
-        `SELECT * FROM px_connections WHERE ref = ?1 AND workspace_id IN (?2, '${SHARED_CONNECTION_WORKSPACE}')${projectClause} LIMIT 1`,
-      )
+      .prepare(`SELECT * FROM px_connections WHERE ref = ?1 AND workspace_id IN (?2, '${SHARED_CONNECTION_WORKSPACE}')${projectClause} LIMIT 1`)
       .bind(...withProject(candidate, targetWorkspaceId))
       .first<PxConnectionRow>();
     if (byRef) return byRef;
   }
 
-  const appToSearch =
-    targetApp ?? (candidates.length > 0 ? candidates[candidates.length - 1] : undefined);
+  const appToSearch = targetApp ?? (candidates.length > 0 ? candidates[candidates.length - 1] : undefined);
   if (appToSearch) {
     for (const workspace of [targetWorkspaceId, SHARED_CONNECTION_WORKSPACE]) {
       const byApp = await db
-        .prepare(
-          `SELECT * FROM px_connections WHERE app = ?1 AND workspace_id = ?2${projectClause} ORDER BY updated_at DESC LIMIT 1`,
-        )
+        .prepare(`SELECT * FROM px_connections WHERE app = ?1 AND workspace_id = ?2${projectClause} ORDER BY updated_at DESC LIMIT 1`)
         .bind(...withProject(appToSearch, workspace))
         .first<PxConnectionRow>();
       if (byApp) return byApp;
@@ -543,20 +511,12 @@ async function emitConnectionExpiredTelemetry(
   }
 }
 
-export async function sealWorkspaceCredentialsWithAad(
-  credentials: SealedConnectionCredentials,
-  workspaceId: string,
-  rawKeyMaterial?: string,
-): Promise<string> {
+export async function sealWorkspaceCredentialsWithAad(credentials: SealedConnectionCredentials, workspaceId: string, rawKeyMaterial?: string): Promise<string> {
   const key = await deriveConnectionVaultKey(rawKeyMaterial);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const aad = new TextEncoder().encode(workspaceId);
   const encoded = new TextEncoder().encode(JSON.stringify(credentials));
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv, additionalData: aad },
-    key,
-    encoded,
-  );
+  const encryptedBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: aad }, key, encoded);
   return JSON.stringify({
     v: 1,
     iv: toBase64(iv),
@@ -573,14 +533,10 @@ export async function unsealWorkspaceCredentialsWithAad(
   try {
     parsedEnvelope = JSON.parse(sealedEnvelope) as { iv?: string; ct?: string };
   } catch {
-    throw new Error(
-      `WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: Malformed sealed_credentials envelope for workspace "${workspaceId}"`,
-    );
+    throw new Error(`WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: Malformed sealed_credentials envelope for workspace "${workspaceId}"`);
   }
   if (typeof parsedEnvelope.iv !== "string" || typeof parsedEnvelope.ct !== "string") {
-    throw new Error(
-      `WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: Missing IV or ciphertext in sealed_credentials for workspace "${workspaceId}"`,
-    );
+    throw new Error(`WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: Missing IV or ciphertext in sealed_credentials for workspace "${workspaceId}"`);
   }
   const key = await deriveConnectionVaultKey(rawKeyMaterial);
   const iv = fromBase64(parsedEnvelope.iv);
@@ -589,15 +545,9 @@ export async function unsealWorkspaceCredentialsWithAad(
 
   let decryptedBuffer: ArrayBuffer;
   try {
-    decryptedBuffer = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv, additionalData: aad },
-      key,
-      ciphertext,
-    );
+    decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv, additionalData: aad }, key, ciphertext);
   } catch {
-    throw new Error(
-      `WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: AES-GCM authentication failed for workspace "${workspaceId}" (AAD mismatch or tampered ciphertext)`,
-    );
+    throw new Error(`WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: AES-GCM authentication failed for workspace "${workspaceId}" (AAD mismatch or tampered ciphertext)`);
   }
 
   const text = new TextDecoder().decode(decryptedBuffer);
@@ -619,18 +569,13 @@ interface IntConnectionD1Row {
   updated_at: string;
 }
 
-export async function resolveCaseBWorkspaceConnection(
-  providerRaw: string,
-  options: ResolveCaseAConnectionOptions,
-): Promise<Record<string, unknown>> {
+export async function resolveCaseBWorkspaceConnection(providerRaw: string, options: ResolveCaseAConnectionOptions): Promise<Record<string, unknown>> {
   const db = options.db;
   const provider = providerRaw.trim().toLowerCase();
   // Immutable RunContext.workspaceId: never trust caller-supplied selector/node/payload workspaceId
   const workspaceId = (options.workspaceId ?? "").trim();
   if (!workspaceId) {
-    throw new Error(
-      `NO_WORKSPACE: the run has no verified workspace, so no workspace connection for provider "${provider}" is resolved`,
-    );
+    throw new Error(`NO_WORKSPACE: the run has no verified workspace, so no workspace connection for provider "${provider}" is resolved`);
   }
 
   if (!db) {
@@ -656,51 +601,33 @@ export async function resolveCaseBWorkspaceConnection(
   }
 
   if (!row) {
-    throw new Error(
-      `WORKSPACE_CONNECTION_NOT_FOUND: No workspace connection found for provider "${provider}" in workspace "${workspaceId}"`,
-    );
+    throw new Error(`WORKSPACE_CONNECTION_NOT_FOUND: No workspace connection found for provider "${provider}" in workspace "${workspaceId}"`);
   }
 
   if (row.status === "revoked") {
-    throw new Error(
-      `CONNECTION_EXPIRED: Workspace connection for provider "${provider}" in workspace "${workspaceId}" has been revoked`,
-    );
+    throw new Error(`CONNECTION_EXPIRED: Workspace connection for provider "${provider}" in workspace "${workspaceId}" has been revoked`);
   }
 
   // Unseal verifying AES-GCM AAD === workspaceId
-  const decrypted = await unsealWorkspaceCredentialsWithAad(
-    row.sealed_credentials,
-    workspaceId,
-    options.connKey,
-  );
+  const decrypted = await unsealWorkspaceCredentialsWithAad(row.sealed_credentials, workspaceId, options.connKey);
 
   if (options.trackedSecrets) {
     collectSecretStringsFromValue(decrypted, options.trackedSecrets);
   }
 
   const nowMs = options.now ? options.now() : Date.now();
-  const expiresAt =
-    parseExpiresAtMs(row.expires_at) ?? parseExpiresAtMs(decrypted.expiresAt);
-  const refreshToken =
-    typeof decrypted.refreshToken === "string" && decrypted.refreshToken.trim().length > 0
-      ? decrypted.refreshToken.trim()
-      : undefined;
+  const expiresAt = parseExpiresAtMs(row.expires_at) ?? parseExpiresAtMs(decrypted.expiresAt);
+  const refreshToken = typeof decrypted.refreshToken === "string" && decrypted.refreshToken.trim().length > 0 ? decrypted.refreshToken.trim() : undefined;
 
-  const isExpiringOrExpired =
-    row.status === "expired" ||
-    (expiresAt !== null && expiresAt <= nowMs + OAUTH_REFRESH_BUFFER_MS);
+  const isExpiringOrExpired = row.status === "expired" || (expiresAt !== null && expiresAt <= nowMs + OAUTH_REFRESH_BUFFER_MS);
 
   if (isExpiringOrExpired) {
     if (!refreshToken) {
       await db
-        .prepare(
-          "UPDATE int_connections SET status = 'expired', updated_at = ? WHERE workspace_id = ? AND provider = ?",
-        )
+        .prepare("UPDATE int_connections SET status = 'expired', updated_at = ? WHERE workspace_id = ? AND provider = ?")
         .bind(new Date(nowMs).toISOString(), workspaceId, provider)
         .run();
-      throw new Error(
-        `CONNECTION_EXPIRED: Workspace connection for provider "${provider}" in workspace "${workspaceId}" is expired and has no refresh token`,
-      );
+      throw new Error(`CONNECTION_EXPIRED: Workspace connection for provider "${provider}" in workspace "${workspaceId}" is expired and has no refresh token`);
     }
 
     const lockKey = `ws:${workspaceId}:${provider}`;
@@ -756,41 +683,18 @@ export async function resolveCaseBWorkspaceConnection(
         }
 
         if (response.status === 400 || response.status === 401 || !response.ok) {
-          const errCode =
-            typeof parsedTokenBody.error === "string"
-              ? parsedTokenBody.error
-              : `http_${response.status}`;
+          const errCode = typeof parsedTokenBody.error === "string" ? parsedTokenBody.error : `http_${response.status}`;
           await db
-            .prepare(
-              "UPDATE int_connections SET status = 'expired', refresh_lock_until = NULL, updated_at = ? WHERE workspace_id = ? AND provider = ?",
-            )
+            .prepare("UPDATE int_connections SET status = 'expired', refresh_lock_until = NULL, updated_at = ? WHERE workspace_id = ? AND provider = ?")
             .bind(new Date(nowMs).toISOString(), workspaceId, provider)
             .run();
-          throw new Error(
-            `CONNECTION_EXPIRED: OAuth2 token refresh failed (${errCode}) for workspace "${workspaceId}" provider "${provider}"`,
-          );
+          throw new Error(`CONNECTION_EXPIRED: OAuth2 token refresh failed (${errCode}) for workspace "${workspaceId}" provider "${provider}"`);
         }
 
-        const newAccessToken = String(
-          parsedTokenBody.access_token ??
-            parsedTokenBody.accessToken ??
-            decrypted.accessToken ??
-            "",
-        );
-        const newRefreshToken = String(
-          parsedTokenBody.refresh_token ??
-            parsedTokenBody.refreshToken ??
-            refreshToken,
-        );
-        const expiresInSec =
-          typeof parsedTokenBody.expires_in === "number" &&
-          Number.isFinite(parsedTokenBody.expires_in)
-            ? parsedTokenBody.expires_in
-            : 3600;
-        const newExpiresAt =
-          typeof parsedTokenBody.expires_at === "number"
-            ? parsedTokenBody.expires_at
-            : nowMs + expiresInSec * 1000;
+        const newAccessToken = String(parsedTokenBody.access_token ?? parsedTokenBody.accessToken ?? decrypted.accessToken ?? "");
+        const newRefreshToken = String(parsedTokenBody.refresh_token ?? parsedTokenBody.refreshToken ?? refreshToken);
+        const expiresInSec = typeof parsedTokenBody.expires_in === "number" && Number.isFinite(parsedTokenBody.expires_in) ? parsedTokenBody.expires_in : 3600;
+        const newExpiresAt = typeof parsedTokenBody.expires_at === "number" ? parsedTokenBody.expires_at : nowMs + expiresInSec * 1000;
 
         const updatedCredentials: SealedConnectionCredentials = {
           ...decrypted,
@@ -808,11 +712,7 @@ export async function resolveCaseBWorkspaceConnection(
           collectSecretStringsFromValue(updatedCredentials, options.trackedSecrets);
         }
 
-        const resealedEnvelope = await sealWorkspaceCredentialsWithAad(
-          updatedCredentials,
-          workspaceId,
-          options.connKey,
-        );
+        const resealedEnvelope = await sealWorkspaceCredentialsWithAad(updatedCredentials, workspaceId, options.connKey);
 
         await db
           .prepare(
@@ -824,13 +724,7 @@ export async function resolveCaseBWorkspaceConnection(
                  updated_at = ?
              WHERE workspace_id = ? AND provider = ?`,
           )
-          .bind(
-            resealedEnvelope,
-            newExpiresAt,
-            new Date(nowMs).toISOString(),
-            workspaceId,
-            provider,
-          )
+          .bind(resealedEnvelope, newExpiresAt, new Date(nowMs).toISOString(), workspaceId, provider)
           .run();
 
         return {
@@ -869,17 +763,11 @@ export async function resolveCaseAConnection(
   }
   const db = options.db;
   if (!db) {
-    const label =
-      typeof nameOrSelector === "string"
-        ? nameOrSelector
-        : (nameOrSelector.ref ?? nameOrSelector.app ?? "unknown");
+    const label = typeof nameOrSelector === "string" ? nameOrSelector : (nameOrSelector.ref ?? nameOrSelector.app ?? "unknown");
     throw new Error(`connection "${label}" was not provided`);
   }
 
-  const { candidates, targetApp, targetWorkspaceId } = buildLookupCandidates(
-    nameOrSelector,
-    options,
-  );
+  const { candidates, targetApp, targetWorkspaceId } = buildLookupCandidates(nameOrSelector, options);
   const row = await findPxConnectionRow(db, candidates, targetApp, targetWorkspaceId, options.projectId);
   if (!row) {
     const label = candidates[0] ?? targetApp ?? "unknown";
@@ -887,48 +775,26 @@ export async function resolveCaseAConnection(
   }
 
   if (row.status === "revoked") {
-    throw new Error(
-      `CONNECTION_EXPIRED: Connection "${row.ref}" for app "${row.app}" has been revoked`,
-    );
+    throw new Error(`CONNECTION_EXPIRED: Connection "${row.ref}" for app "${row.app}" has been revoked`);
   }
 
-  const decrypted = await unsealConnectionCredentials(
-    row.ciphertext_b64,
-    row.iv_b64,
-    options.connKey,
-  );
+  const decrypted = await unsealConnectionCredentials(row.ciphertext_b64, row.iv_b64, options.connKey);
 
   if (options.trackedSecrets) {
     collectSecretStringsFromValue(decrypted, options.trackedSecrets);
   }
 
   const nowMs = options.now ? options.now() : Date.now();
-  const expiresAt =
-    parseExpiresAtMs(row.expires_at) ?? parseExpiresAtMs(decrypted.expiresAt);
-  const refreshToken =
-    typeof decrypted.refreshToken === "string" && decrypted.refreshToken.trim().length > 0
-      ? decrypted.refreshToken.trim()
-      : undefined;
+  const expiresAt = parseExpiresAtMs(row.expires_at) ?? parseExpiresAtMs(decrypted.expiresAt);
+  const refreshToken = typeof decrypted.refreshToken === "string" && decrypted.refreshToken.trim().length > 0 ? decrypted.refreshToken.trim() : undefined;
 
-  const isExpiringOrExpired =
-    row.status === "expired" ||
-    (expiresAt !== null && expiresAt <= nowMs + OAUTH_REFRESH_BUFFER_MS);
+  const isExpiringOrExpired = row.status === "expired" || (expiresAt !== null && expiresAt <= nowMs + OAUTH_REFRESH_BUFFER_MS);
 
   if (isExpiringOrExpired) {
     if (!refreshToken) {
-      await db
-        .prepare("UPDATE px_connections SET status = 'expired', updated_at = ? WHERE ref = ?")
-        .bind(new Date(nowMs).toISOString(), row.ref)
-        .run();
-      await emitConnectionExpiredTelemetry(
-        db,
-        row,
-        "OAuth2 token expired and no refresh_token is available",
-        options,
-      );
-      throw new Error(
-        `CONNECTION_EXPIRED: Connection "${row.ref}" for app "${row.app}" is expired and has no refresh token`,
-      );
+      await db.prepare("UPDATE px_connections SET status = 'expired', updated_at = ? WHERE ref = ?").bind(new Date(nowMs).toISOString(), row.ref).run();
+      await emitConnectionExpiredTelemetry(db, row, "OAuth2 token expired and no refresh_token is available", options);
+      throw new Error(`CONNECTION_EXPIRED: Connection "${row.ref}" for app "${row.app}" is expired and has no refresh token`);
     }
 
     const existingPromise = activeRefreshPromises.get(row.ref);
@@ -940,9 +806,7 @@ export async function resolveCaseAConnection(
       try {
         const lockUntil = nowMs + REFRESH_LOCK_DURATION_MS;
         await db
-          .prepare(
-            "UPDATE px_connections SET refresh_lock_until = ? WHERE ref = ? AND (refresh_lock_until IS NULL OR refresh_lock_until < ?)",
-          )
+          .prepare("UPDATE px_connections SET refresh_lock_until = ? WHERE ref = ? AND (refresh_lock_until IS NULL OR refresh_lock_until < ?)")
           .bind(lockUntil, row.ref, nowMs)
           .run();
 
@@ -983,47 +847,19 @@ export async function resolveCaseAConnection(
         }
 
         if (response.status === 400 || response.status === 401 || !response.ok) {
-          const errCode =
-            typeof parsedTokenBody.error === "string"
-              ? parsedTokenBody.error
-              : `http_${response.status}`;
+          const errCode = typeof parsedTokenBody.error === "string" ? parsedTokenBody.error : `http_${response.status}`;
           await db
-            .prepare(
-              "UPDATE px_connections SET status = 'expired', refresh_lock_until = NULL, updated_at = ? WHERE ref = ?",
-            )
+            .prepare("UPDATE px_connections SET status = 'expired', refresh_lock_until = NULL, updated_at = ? WHERE ref = ?")
             .bind(new Date(nowMs).toISOString(), row.ref)
             .run();
-          await emitConnectionExpiredTelemetry(
-            db,
-            row,
-            `Token refresh failed with ${errCode} (HTTP ${response.status})`,
-            options,
-          );
-          throw new Error(
-            `CONNECTION_EXPIRED: OAuth2 token refresh failed (${errCode}) for connection "${row.ref}"`,
-          );
+          await emitConnectionExpiredTelemetry(db, row, `Token refresh failed with ${errCode} (HTTP ${response.status})`, options);
+          throw new Error(`CONNECTION_EXPIRED: OAuth2 token refresh failed (${errCode}) for connection "${row.ref}"`);
         }
 
-        const newAccessToken = String(
-          parsedTokenBody.access_token ??
-            parsedTokenBody.accessToken ??
-            decrypted.accessToken ??
-            "",
-        );
-        const newRefreshToken = String(
-          parsedTokenBody.refresh_token ??
-            parsedTokenBody.refreshToken ??
-            refreshToken,
-        );
-        const expiresInSec =
-          typeof parsedTokenBody.expires_in === "number" &&
-          Number.isFinite(parsedTokenBody.expires_in)
-            ? parsedTokenBody.expires_in
-            : 3600;
-        const newExpiresAt =
-          typeof parsedTokenBody.expires_at === "number"
-            ? parsedTokenBody.expires_at
-            : nowMs + expiresInSec * 1000;
+        const newAccessToken = String(parsedTokenBody.access_token ?? parsedTokenBody.accessToken ?? decrypted.accessToken ?? "");
+        const newRefreshToken = String(parsedTokenBody.refresh_token ?? parsedTokenBody.refreshToken ?? refreshToken);
+        const expiresInSec = typeof parsedTokenBody.expires_in === "number" && Number.isFinite(parsedTokenBody.expires_in) ? parsedTokenBody.expires_in : 3600;
+        const newExpiresAt = typeof parsedTokenBody.expires_at === "number" ? parsedTokenBody.expires_at : nowMs + expiresInSec * 1000;
 
         const updatedCredentials: SealedConnectionCredentials = {
           ...decrypted,

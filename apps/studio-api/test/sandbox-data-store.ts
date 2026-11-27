@@ -11,12 +11,8 @@ export interface TestSandboxDataStore {
   rawD1: D1Like;
 }
 
-export async function activateTestSandbox(
-  studioDb: D1Like,
-  options: { project: string; orgId: string; sandboxId?: string },
-): Promise<TestSandboxDataStore> {
-  const sandboxId =
-    options.sandboxId ?? `sbx_test_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+export async function activateTestSandbox(studioDb: D1Like, options: { project: string; orgId: string; sandboxId?: string }): Promise<TestSandboxDataStore> {
+  const sandboxId = options.sandboxId ?? `sbx_test_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
   const nowIso = new Date().toISOString();
   const expiresIso = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   await studioDb
@@ -26,14 +22,7 @@ export async function activateTestSandbox(
          deployed_rev, preview_url, status, created_at, expires_at
        ) VALUES (?, ?, ?, 'px-sandboxes', 'test_build', 'test_code', 'test_graph', 1, ?, 'active', ?, ?)`,
     )
-    .bind(
-      sandboxId,
-      options.project,
-      options.orgId,
-      `https://${sandboxId}.sandbox.projectx.dev`,
-      nowIso,
-      expiresIso,
-    )
+    .bind(sandboxId, options.project, options.orgId, `https://${sandboxId}.sandbox.projectx.dev`, nowIso, expiresIso)
     .run();
   const record = await getStudioSandboxPlatform().ensureDatabase(sandboxId);
   return { sandboxId, rawD1: record.rawD1 };
@@ -41,9 +30,7 @@ export async function activateTestSandbox(
 
 /** Every table name in a database (sqlite_master), sorted; used to prove a route created no table there. */
 export async function listTableNames(db: D1Like): Promise<string[]> {
-  const res = await db
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
-    .all<{ name: string }>();
+  const res = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all<{ name: string }>();
   return (res.results ?? []).map((r) => r.name).sort();
 }
 

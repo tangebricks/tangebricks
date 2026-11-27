@@ -46,22 +46,23 @@ export class MeteringService {
   /**
    * Registers a meter definition (e.g., api_calls, compute_ms, storage_gb).
    */
-  async defineMeter(
-    keyRaw: string,
-    nameRaw: string,
-    aggregation: MeterAggregation = "sum"
-  ): Promise<MeterDefinition> {
+  async defineMeter(keyRaw: string, nameRaw: string, aggregation: MeterAggregation = "sum"): Promise<MeterDefinition> {
     const key = keyRaw.trim().toLowerCase();
     const name = nameRaw.trim();
     const now = new Date().toISOString();
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO meter_definitions (key, name, aggregation, created_at)
       VALUES (?, ?, ?, ?)
       ON CONFLICT(key) DO UPDATE SET
         name = excluded.name,
         aggregation = excluded.aggregation
-    `).bind(key, name, aggregation, now).run();
+    `,
+      )
+      .bind(key, name, aggregation, now)
+      .run();
 
     return {
       key,
@@ -75,27 +76,24 @@ export class MeteringService {
    * Retrieves a meter definition.
    */
   async getMeter(key: string): Promise<MeterDefinition | null> {
-    return await this.db.prepare(
-      "SELECT key, name, aggregation, created_at FROM meter_definitions WHERE key = ?"
-    ).bind(key.trim().toLowerCase()).first<MeterDefinition>();
+    return await this.db
+      .prepare("SELECT key, name, aggregation, created_at FROM meter_definitions WHERE key = ?")
+      .bind(key.trim().toLowerCase())
+      .first<MeterDefinition>();
   }
 
   /**
    * Lists all defined meters.
    */
   async listMeters(): Promise<MeterDefinition[]> {
-    const res = await this.db.prepare(
-      "SELECT key, name, aggregation, created_at FROM meter_definitions ORDER BY key ASC"
-    ).all<MeterDefinition>();
+    const res = await this.db.prepare("SELECT key, name, aggregation, created_at FROM meter_definitions ORDER BY key ASC").all<MeterDefinition>();
     return res.results;
   }
 
   /**
    * Ingests a single usage event with idempotency protection and atomic aggregation.
    */
-  async ingestEvent(
-    event: MeterEventInput
-  ): Promise<{ ok: boolean; duplicate?: boolean; eventId?: string; error?: string }> {
+  async ingestEvent(event: MeterEventInput): Promise<{ ok: boolean; duplicate?: boolean; eventId?: string; error?: string }> {
     const meter = await this.getMeter(event.meterKey);
     if (!meter) {
       return { ok: false, error: `Meter '${event.meterKey}' is not defined` };
@@ -117,8 +115,7 @@ export class MeteringService {
 
     // Check idempotency if key provided. Keys belong to a workspace (migration 0002, AD-V2): the same key sent by
     // another workspace is a different event, so the lookup is always by (workspace_id, idempotency_key).
-    const findByKey = async (key: string) =>
-      scoped(this.db, event.workspaceId).first<{ id: string }>("meter_events", "idempotency_key = ?", [key]);
+    const findByKey = async (key: string) => scoped(this.db, event.workspaceId).first<{ id: string }>("meter_events", "idempotency_key = ?", [key]);
     if (event.idempotencyKey) {
       const existing = await findByKey(event.idempotencyKey);
       if (existing) {
@@ -141,9 +138,7 @@ export class MeteringService {
     try {
       await this.db.batch([
         this.db
-          .prepare(
-            "INSERT INTO meter_events (id, workspace_id, meter_key, value, idempotency_key, timestamp, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          )
+          .prepare("INSERT INTO meter_events (id, workspace_id, meter_key, value, idempotency_key, timestamp, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?)")
           .bind(eventId, event.workspaceId, meter.key, value, event.idempotencyKey || null, timestamp, metadataJson),
         this.db
           .prepare(
@@ -173,17 +168,12 @@ export class MeteringService {
   /**
    * Retrieves usage aggregate for a specific workspace and meter in a window.
    */
-  async getUsage(
-    workspaceId: string,
-    meterKeyRaw: string,
-    windowPeriod: string = getCurrentWindow()
-  ): Promise<MeterUsageAggregate> {
+  async getUsage(workspaceId: string, meterKeyRaw: string, windowPeriod: string = getCurrentWindow()): Promise<MeterUsageAggregate> {
     const meterKey = meterKeyRaw.trim().toLowerCase();
-    const row = await scoped(this.db, workspaceId).first<MeterUsageAggregate>(
-      "meter_aggregates",
-      "meter_key = ? AND window_period = ?",
-      [meterKey, windowPeriod]
-    );
+    const row = await scoped(this.db, workspaceId).first<MeterUsageAggregate>("meter_aggregates", "meter_key = ? AND window_period = ?", [
+      meterKey,
+      windowPeriod,
+    ]);
 
     if (row) return row;
 
@@ -200,15 +190,7 @@ export class MeteringService {
   /**
    * Lists usage aggregates across all meters for a workspace in a window.
    */
-  async getUsageSummary(
-    workspaceId: string,
-    windowPeriod: string = getCurrentWindow()
-  ): Promise<MeterUsageAggregate[]> {
-    return scoped(this.db, workspaceId).select<MeterUsageAggregate>(
-      "meter_aggregates",
-      "window_period = ?",
-      [windowPeriod],
-      { orderBy: "meter_key ASC" }
-    );
+  async getUsageSummary(workspaceId: string, windowPeriod: string = getCurrentWindow()): Promise<MeterUsageAggregate[]> {
+    return scoped(this.db, workspaceId).select<MeterUsageAggregate>("meter_aggregates", "window_period = ?", [windowPeriod], { orderBy: "meter_key ASC" });
   }
 }

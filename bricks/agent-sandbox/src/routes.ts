@@ -70,7 +70,7 @@ export function createAgentSandboxRoutes(): Hono<AgentEnv> {
       parsed.data.description,
       parsed.data.parametersSchema,
       parsed.data.handlerType as HandlerType,
-      parsed.data.handlerTarget
+      parsed.data.handlerTarget,
     );
 
     return c.json({ tool }, 201);
@@ -96,12 +96,7 @@ export function createAgentSandboxRoutes(): Hono<AgentEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("agentSandbox") || new AgentSandboxService(c.env.DB);
-    const result = await service.callTool(
-      workspaceId,
-      toolName,
-      parsed.data.arguments,
-      parsed.data.sessionId
-    );
+    const result = await service.callTool(workspaceId, toolName, parsed.data.arguments, parsed.data.sessionId);
 
     if (!result.ok) {
       return c.json({ error: result.error, durationMs: result.durationMs }, 400);
@@ -129,11 +124,7 @@ export function createAgentSandboxRoutes(): Hono<AgentEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("agentSandbox") || new AgentSandboxService(c.env.DB);
-    const session = await service.createSession(
-      workspaceId,
-      parsed.data.agentName,
-      parsed.data.initialState
-    );
+    const session = await service.createSession(workspaceId, parsed.data.agentName, parsed.data.initialState);
 
     return c.json({ session }, 201);
   });

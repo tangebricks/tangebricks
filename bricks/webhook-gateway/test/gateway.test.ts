@@ -4,14 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_webhook_gateway.sql?raw";
-import {
-  createWebhookRoutes,
-  WebhookService,
-  signHmacSha256,
-  signStripeWebhookPayload,
-  verifyWithScheme,
-  type WebhookSignatureScheme,
-} from "../src/index.ts";
+import { createWebhookRoutes, WebhookService, signHmacSha256, signStripeWebhookPayload, verifyWithScheme, type WebhookSignatureScheme } from "../src/index.ts";
 import type { WebhookEnv } from "../src/routes.ts";
 import type { WebhookGatewayAdapter } from "../src/gateway.ts";
 
@@ -20,13 +13,7 @@ const WS_A = "ws_wh_alpha";
 const WS_B = "ws_wh_beta";
 
 async function resetDb(): Promise<void> {
-  for (const table of [
-    "px_webhook_deliveries",
-    "wh_subscriptions",
-    "px_connections",
-    "wh_deliveries",
-    "wh_endpoints",
-  ]) {
+  for (const table of ["px_webhook_deliveries", "wh_subscriptions", "px_connections", "wh_deliveries", "wh_endpoints"]) {
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   }
   await applyMigration(db, migration);
@@ -231,7 +218,7 @@ describe("Webhook Routes Integration (/api/webhooks/*)", () => {
         headers: { "X-Signature-SHA256": sig },
         body,
       }),
-      { DB: db }
+      { DB: db },
     );
 
     expect(res.status).toBe(200);
@@ -267,23 +254,10 @@ describe("Webhook Routes Integration (/api/webhooks/*)", () => {
     // Seal a Stripe webhook signing secret into px_connections using AES-GCM with PX_CONN_KEY
     const pxConnKey = "test-px-conn-master-key-for-stripe-webhook-12345";
     const webhookSecret = "whsec_stripe_live_signing_secret_987654321";
-    const rawKeyMaterial = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(`projectx-studio-vault-v1:${pxConnKey}`),
-    );
-    const aesKey = await crypto.subtle.importKey(
-      "raw",
-      rawKeyMaterial,
-      { name: "AES-GCM", length: 256 },
-      false,
-      ["encrypt", "decrypt"],
-    );
+    const rawKeyMaterial = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`projectx-studio-vault-v1:${pxConnKey}`));
+    const aesKey = await crypto.subtle.importKey("raw", rawKeyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const cipherBuf = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv },
-      aesKey,
-      new TextEncoder().encode(JSON.stringify({ webhookSecret })),
-    );
+    const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, new TextEncoder().encode(JSON.stringify({ webhookSecret })));
     const toBase64 = (u8: Uint8Array) => {
       let bin = "";
       for (const b of u8) bin += String.fromCharCode(b);
@@ -509,7 +483,9 @@ describe("webhook endpoint create and rotate need owner/admin (story 0.6)", () =
     return app;
   }
   const create = (role: string | null, body = JSON.stringify({ name: "Hook", slug: "hook-a" })) =>
-    appAs(role).fetch(new Request("http://localhost/api/webhooks/endpoints", { method: "POST", headers: { "Content-Type": "application/json" }, body }), { DB: db });
+    appAs(role).fetch(new Request("http://localhost/api/webhooks/endpoints", { method: "POST", headers: { "Content-Type": "application/json" }, body }), {
+      DB: db,
+    });
   const rotate = (role: string | null, id: string) =>
     appAs(role).fetch(new Request(`http://localhost/api/webhooks/endpoints/${id}/rotate`, { method: "POST" }), { DB: db });
 

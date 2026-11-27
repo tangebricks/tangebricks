@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  EgressForbiddenError,
-  assertPublicUrl,
-  createPublicUrlFetch,
-  isForbiddenIntegrationHost,
-  isPrivateAddress,
-  type HostResolver,
-} from "../src/index.ts";
+import { EgressForbiddenError, assertPublicUrl, createPublicUrlFetch, isForbiddenIntegrationHost, isPrivateAddress, type HostResolver } from "../src/index.ts";
 
 const publicResolver: HostResolver = async () => ["93.184.216.34"];
 

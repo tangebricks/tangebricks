@@ -43,9 +43,7 @@ export interface OutboundMessage {
  * throttling code. A network error or timeout after the request may have left is never retryable (it may have been
  * delivered): it is `failed` with an error ending in `UNKNOWN_OUTCOME`. `retryAfterMs` passes on a Retry-After.
  */
-export type DeliveryResult =
-  | { status: "sent"; externalId: string }
-  | { status: "failed"; error: string; retryable: boolean; retryAfterMs?: number };
+export type DeliveryResult = { status: "sent"; externalId: string } | { status: "failed"; error: string; retryable: boolean; retryAfterMs?: number };
 
 /**
  * How a sender is proven to belong to the channel. `credential`: the provider itself confirmed it for these
@@ -53,10 +51,7 @@ export type DeliveryResult =
  * sender address and an admin confirms it. `unavailable`: the provider could not answer (429, 5xx, network): not a
  * "no", so the brick leaves the channel's verified state as it was.
  */
-export type SenderVerification =
-  | { method: "credential"; verified: boolean }
-  | { method: "code" }
-  | { method: "unavailable"; error: string };
+export type SenderVerification = { method: "credential"; verified: boolean } | { method: "code" } | { method: "unavailable"; error: string };
 
 export type DeliveryStatus = "delivered" | "read" | "failed";
 

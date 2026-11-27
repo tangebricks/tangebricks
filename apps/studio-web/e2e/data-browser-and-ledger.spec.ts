@@ -41,16 +41,13 @@ test.describe("Workspace-Scoped Data Browser & Read-Only Production Guardrails (
       };
     });
 
-    const seedRes = await page.request.post(
-      "/api/projects/acme-saas/environments/preview/data/seed",
-      {
-        data: {
-          tables: {
-            ent_invoices: [...workspaceAInvoices, ...workspaceBInvoices],
-          },
+    const seedRes = await page.request.post("/api/projects/acme-saas/environments/preview/data/seed", {
+      data: {
+        tables: {
+          ent_invoices: [...workspaceAInvoices, ...workspaceBInvoices],
         },
       },
-    );
+    });
     expect(seedRes.status()).toBe(200);
 
     // 3. Navigate to Data -> Data Browser sub-tab
@@ -115,22 +112,19 @@ test.describe("Workspace-Scoped Data Browser & Read-Only Production Guardrails (
     await expect(page.getByTestId("data-browser-row-inv_a_1")).toBeVisible();
 
     // 7. Ledger tables are immutable in the API whatever the data store holds
-    const ledgerWriteRes = await page.request.post(
-      "/api/projects/acme-saas/environments/preview/data/tables/wallet_ledger/rows?workspaceId=workspace_A",
-      {
-        data: {
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-          row: {
-            id: "led_illegal",
-            entry_type: "grant",
-            delta_credits: 999999,
-            balance_after: 999999,
-            reason: "Tamper",
-          },
+    const ledgerWriteRes = await page.request.post("/api/projects/acme-saas/environments/preview/data/tables/wallet_ledger/rows?workspaceId=workspace_A", {
+      data: {
+        workspaceId: "workspace_A",
+        confirmWrite: true,
+        row: {
+          id: "led_illegal",
+          entry_type: "grant",
+          delta_credits: 999999,
+          balance_after: 999999,
+          reason: "Tamper",
         },
       },
-    );
+    });
     expect(ledgerWriteRes.status()).toBe(403);
     const ledgerWriteJson = (await ledgerWriteRes.json()) as { error: { code: string } };
     expect(ledgerWriteJson.error.code).toBe("LEDGER_IMMUTABLE_READ_ONLY");
@@ -139,29 +133,24 @@ test.describe("Workspace-Scoped Data Browser & Read-Only Production Guardrails (
     // the browser shows the no-data-store state instead of rows; writes are still refused with 403
     await page.getByTestId("data-browser-table-invoices").click();
     await page.getByTestId("data-browser-env-production").click();
-    await expect(page.getByTestId("data-browser-readonly-badge")).toContainText(
-      "Read-only in production",
-    );
+    await expect(page.getByTestId("data-browser-readonly-badge")).toContainText("Read-only in production");
     await expect(page.getByTestId("data-browser-no-data-store")).toBeVisible();
     await expect(page.getByTestId("data-browser-error-alert")).toHaveCount(0);
     await expect(page.getByTestId("data-browser-add-row-button")).toHaveCount(0);
     await expect(page.getByTestId("data-browser-edit-row-inv_a_1")).toHaveCount(0);
 
-    const prodWriteRes = await page.request.post(
-      "/api/projects/acme-saas/environments/production/data/tables/ent_invoices/rows?workspaceId=workspace_A",
-      {
-        data: {
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-          row: {
-            id: "inv_prod_blocked",
-            title: "Blocked Prod Write",
-            amount_cents: 500,
-            created_at: "2026-04-19T12:00:00Z",
-          },
+    const prodWriteRes = await page.request.post("/api/projects/acme-saas/environments/production/data/tables/ent_invoices/rows?workspaceId=workspace_A", {
+      data: {
+        workspaceId: "workspace_A",
+        confirmWrite: true,
+        row: {
+          id: "inv_prod_blocked",
+          title: "Blocked Prod Write",
+          amount_cents: 500,
+          created_at: "2026-04-19T12:00:00Z",
         },
       },
-    );
+    });
     expect(prodWriteRes.status()).toBe(403);
     const prodWriteJson = (await prodWriteRes.json()) as { error: { code: string } };
     expect(prodWriteJson.error.code).toBe("PRODUCTION_DATA_WRITE_FORBIDDEN");
@@ -182,9 +171,7 @@ test.describe("Workspace-Scoped Data Browser & Read-Only Production Guardrails (
     await page.getByTestId("data-browser-confirm-submit").click();
 
     await expect(page.getByTestId("data-browser-confirm-modal")).toHaveCount(0);
-    await expect(page.getByTestId("data-browser-row-inv_a_1")).toContainText(
-      "Invoice A-1 Updated E2E",
-    );
+    await expect(page.getByTestId("data-browser-row-inv_a_1")).toContainText("Invoice A-1 Updated E2E");
     await expect(page.getByTestId("data-browser-row-inv_a_1")).toContainText("2500");
     await expect(page.getByTestId("data-browser-audit-panel")).toContainText("update");
     await expect(page.getByTestId("data-browser-audit-panel")).toContainText("inv_a_1");
@@ -197,9 +184,7 @@ test.describe("Workspace-Scoped Data Browser & Read-Only Production Guardrails (
     await expect(page.getByTestId("data-browser-view")).toBeVisible();
 
     await page.getByTestId("data-browser-table-invoices").click();
-    await expect(page.getByTestId("data-browser-row-inv_a_1")).toContainText(
-      "Invoice A-1 Updated E2E",
-    );
+    await expect(page.getByTestId("data-browser-row-inv_a_1")).toContainText("Invoice A-1 Updated E2E");
     await expect(page.getByTestId("data-browser-audit-panel")).toContainText("update");
     await expect(page.getByTestId("data-browser-audit-panel")).toContainText("inv_a_1");
   });
@@ -226,9 +211,7 @@ test.describe("Workspace-Scoped Data Browser & Read-Only Production Guardrails (
     await expect(page.getByTestId("wallet-ledger-view")).toBeVisible();
 
     // 3. The preview sandbox's credit-wallet tables are empty: the immutable ledger renders with a zero balance
-    await expect(page.getByTestId("ledger-immutable-badge")).toContainText(
-      "Immutable Ledger (Read-only)",
-    );
+    await expect(page.getByTestId("ledger-immutable-badge")).toContainText("Immutable Ledger (Read-only)");
     await expect(page.getByTestId("ledger-current-balance-value")).toContainText("0");
     await expect(page.getByTestId("ledger-no-data-store")).toHaveCount(0);
     await expect(page.getByTestId("ledger-error-alert")).toHaveCount(0);
@@ -251,21 +234,16 @@ test.describe("Workspace-Scoped Data Browser & Read-Only Production Guardrails (
     expect(ledgerStyles!.balanceBg).not.toBe("rgba(0, 0, 0, 0)");
 
     // 4. Production has no data store Studio can reach: the API answers 503 NOT_CONFIGURED
-    const prodLedgerRes = await page.request.get(
-      "/api/projects/acme-saas/environments/production/ledger?workspaceId=workspace_A",
-    );
+    const prodLedgerRes = await page.request.get("/api/projects/acme-saas/environments/production/ledger?workspaceId=workspace_A");
     expect(prodLedgerRes.status()).toBe(503);
     const prodLedgerBody = (await prodLedgerRes.json()) as { error: { code: string } };
     expect(prodLedgerBody.error.code).toBe("NOT_CONFIGURED");
 
     // 5. Verify LEDGER_IMMUTABLE_READ_ONLY on direct write attempts in both preview and production
     for (const envName of ["preview", "production"] as const) {
-      const ledgerWrite = await page.request.post(
-        `/api/projects/acme-saas/environments/${envName}/ledger?workspaceId=workspace_A`,
-        {
-          data: { workspaceId: "workspace_A", confirmWrite: true, balance: 999999 },
-        },
-      );
+      const ledgerWrite = await page.request.post(`/api/projects/acme-saas/environments/${envName}/ledger?workspaceId=workspace_A`, {
+        data: { workspaceId: "workspace_A", confirmWrite: true, balance: 999999 },
+      });
       expect(ledgerWrite.status()).toBe(403);
       const ledgerWriteBody = (await ledgerWrite.json()) as { error: { code: string } };
       expect(ledgerWriteBody.error.code).toBe("LEDGER_IMMUTABLE_READ_ONLY");

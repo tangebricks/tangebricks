@@ -169,9 +169,7 @@ describe("UC3.4 Parameter serialization and fidelity", () => {
         dataType: "string",
         style: "label",
       };
-      expect(() => serializeParam(labelParam, "test")).toThrowError(
-        /INTEGRATION_UNSUPPORTED_FEATURE/,
-      );
+      expect(() => serializeParam(labelParam, "test")).toThrowError(/INTEGRATION_UNSUPPORTED_FEATURE/);
 
       const matrixParam: IntegrationOperationParam = {
         name: "id",
@@ -179,9 +177,7 @@ describe("UC3.4 Parameter serialization and fidelity", () => {
         dataType: "string",
         style: "matrix",
       };
-      expect(() => serializeParam(matrixParam, "test")).toThrowError(
-        /INTEGRATION_UNSUPPORTED_FEATURE/,
-      );
+      expect(() => serializeParam(matrixParam, "test")).toThrowError(/INTEGRATION_UNSUPPORTED_FEATURE/);
     });
 
     it("case 11: value outside enum -> rejected INTEGRATION_INVALID_PARAM before fetch", () => {
@@ -191,9 +187,7 @@ describe("UC3.4 Parameter serialization and fidelity", () => {
         dataType: "string",
         enum: ["active", "inactive"],
       };
-      expect(() => serializeParam(enumParam, "archived")).toThrowError(
-        /INTEGRATION_INVALID_PARAM/,
-      );
+      expect(() => serializeParam(enumParam, "archived")).toThrowError(/INTEGRATION_INVALID_PARAM/);
       // Valid value does not throw
       expect(() => serializeParam(enumParam, "active")).not.toThrow();
     });
@@ -383,28 +377,16 @@ describe("UC3.4 Parameter serialization and fidelity", () => {
 
     it("Path params with allowReserved:true may contain '/' but still reject '..', '%2e%2e', '\\' and '@'", () => {
       // allowReserved: false rejects '/'
-      expect(() => validatePathSegmentValue("name", "projects/p/locations/l", false)).toThrowError(
-        /INTEGRATION_HOST_FORBIDDEN/,
-      );
+      expect(() => validatePathSegmentValue("name", "projects/p/locations/l", false)).toThrowError(/INTEGRATION_HOST_FORBIDDEN/);
 
       // allowReserved: true allows '/'
-      expect(validatePathSegmentValue("name", "projects/p/locations/l", true)).toBe(
-        "projects/p/locations/l",
-      );
+      expect(validatePathSegmentValue("name", "projects/p/locations/l", true)).toBe("projects/p/locations/l");
 
       // But still strictly rejects traversal & forbidden characters
-      expect(() => validatePathSegmentValue("name", "../forbidden", true)).toThrowError(
-        /INTEGRATION_HOST_FORBIDDEN/,
-      );
-      expect(() => validatePathSegmentValue("name", "%2e%2e/forbidden", true)).toThrowError(
-        /INTEGRATION_HOST_FORBIDDEN/,
-      );
-      expect(() => validatePathSegmentValue("name", "a\\b", true)).toThrowError(
-        /INTEGRATION_HOST_FORBIDDEN/,
-      );
-      expect(() => validatePathSegmentValue("name", "user@host", true)).toThrowError(
-        /INTEGRATION_HOST_FORBIDDEN/,
-      );
+      expect(() => validatePathSegmentValue("name", "../forbidden", true)).toThrowError(/INTEGRATION_HOST_FORBIDDEN/);
+      expect(() => validatePathSegmentValue("name", "%2e%2e/forbidden", true)).toThrowError(/INTEGRATION_HOST_FORBIDDEN/);
+      expect(() => validatePathSegmentValue("name", "a\\b", true)).toThrowError(/INTEGRATION_HOST_FORBIDDEN/);
+      expect(() => validatePathSegmentValue("name", "user@host", true)).toThrowError(/INTEGRATION_HOST_FORBIDDEN/);
     });
   });
 });

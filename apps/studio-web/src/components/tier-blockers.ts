@@ -9,8 +9,5 @@ export const TIER_BLOCKER_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function humanizeBlocker(blocker: string): string {
-  return (
-    TIER_BLOCKER_DESCRIPTIONS[blocker] ??
-    blocker.replace(/_/g, " ").toLowerCase()
-  );
+  return TIER_BLOCKER_DESCRIPTIONS[blocker] ?? blocker.replace(/_/g, " ").toLowerCase();
 }

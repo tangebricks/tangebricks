@@ -10,8 +10,23 @@ import { createFakeCloudflare } from "./support/fake-cloudflare.ts";
 const TOKEN = "cfut_Zq8rLm3VxN2pTb7YkWd4HsJc9GaE5uRo6QiXf1BvPn0AyMt";
 const ACCOUNT = "0123456789abcdef0123456789abcdef";
 const KEY = "9f".repeat(32);
-const PREVIOUS: ProjectLock = { project: "demo", bricks: [{ id: "alpha", version: "1.0.0", settings: { limit: 5 } }, { id: "beta", version: "1.2.0", settings: { mode: "a" } }], migrations: ["0001_initial.sql"] };
-const NEXT: ProjectLock = { project: "demo", bricks: [{ id: "alpha", version: "1.4.0", settings: { limit: 9 } }, { id: "beta", version: "1.2.0", settings: { mode: "b", extra: true } }, { id: "gamma", version: "0.1.0", settings: {} }], migrations: ["0001_initial.sql", "0002_add_col.sql", "0003_drop.sql"] };
+const PREVIOUS: ProjectLock = {
+  project: "demo",
+  bricks: [
+    { id: "alpha", version: "1.0.0", settings: { limit: 5 } },
+    { id: "beta", version: "1.2.0", settings: { mode: "a" } },
+  ],
+  migrations: ["0001_initial.sql"],
+};
+const NEXT: ProjectLock = {
+  project: "demo",
+  bricks: [
+    { id: "alpha", version: "1.4.0", settings: { limit: 9 } },
+    { id: "beta", version: "1.2.0", settings: { mode: "b", extra: true } },
+    { id: "gamma", version: "0.1.0", settings: {} },
+  ],
+  migrations: ["0001_initial.sql", "0002_add_col.sql", "0003_drop.sql"],
+};
 const M1 = { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" };
 const M2 = { name: "0002_add_col.sql", sql: "ALTER TABLE items ADD COLUMN note TEXT;" };
 const M3 = { name: "0003_drop.sql", sql: "DROP TABLE items;" };
@@ -20,11 +35,28 @@ describe("Studio plan and planDeploy agree (UC8.8 AC3)", () => {
   test("same migrations, bricks and settings for the same inputs", async () => {
     const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT });
     const client = createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, alsoHide: [KEY] });
-    const ledger = openLedger(memoryStore(), () => "0a1b2c3d", () => new Date());
+    const ledger = openLedger(
+      memoryStore(),
+      () => "0a1b2c3d",
+      () => new Date(),
+    );
     const names = resourceNames("0a1b2c3d");
-    const bundle = { code: "export default { fetch() { return new Response('ok'); } };", sha256: "bundle_sha_parity_00000000000000000000000000000000000000000000000000" };
+    const bundle = {
+      code: "export default { fetch() { return new Response('ok'); } };",
+      sha256: "bundle_sha_parity_00000000000000000000000000000000000000000000000000",
+    };
     await deploy({ client, ledger, names, accessKey: KEY, bundle, migrations: [M1], compatibilityDate: "2026-10-01", lock: PREVIOUS });
-    const provisioned = await planDeploy({ client, ledger, names, accessKey: KEY, bundle, migrations: [M1, M2, M3], compatibilityDate: "2026-10-01", lock: NEXT, allowDestructive: true });
+    const provisioned = await planDeploy({
+      client,
+      ledger,
+      names,
+      accessKey: KEY,
+      bundle,
+      migrations: [M1, M2, M3],
+      compatibilityDate: "2026-10-01",
+      lock: NEXT,
+      allowDestructive: true,
+    });
 
     const controlPlane = new MockCloudflareControlPlane();
     controlPlane.registerToken({ token: "cf_live_token_parity_12345", accountId: ACCOUNT, accountName: "Acme BYOC" });

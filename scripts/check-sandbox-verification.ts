@@ -127,24 +127,16 @@ export function runVitestSuite(testFiles: string[], tmpFile: string): void {
   }
 
   if (process.platform === "win32") {
-    spawnSync(
-      "cmd.exe",
-      ["/d", "/s", "/c", "pnpm", "vitest", "run", ...testFiles, "--reporter=json", `--outputFile=${tmpFile}`],
-      { cwd: repoRoot, stdio: "inherit" },
-    );
+    spawnSync("cmd.exe", ["/d", "/s", "/c", "pnpm", "vitest", "run", ...testFiles, "--reporter=json", `--outputFile=${tmpFile}`], {
+      cwd: repoRoot,
+      stdio: "inherit",
+    });
   } else {
-    spawnSync(
-      "pnpm",
-      ["vitest", "run", ...testFiles, "--reporter=json", `--outputFile=${tmpFile}`],
-      { cwd: repoRoot, stdio: "inherit" },
-    );
+    spawnSync("pnpm", ["vitest", "run", ...testFiles, "--reporter=json", `--outputFile=${tmpFile}`], { cwd: repoRoot, stdio: "inherit" });
   }
 }
 
-export function evaluateSandboxVerification(
-  verificationMap: Record<string, string>,
-  testStatusMap: Map<string, string>,
-): Cp9VerificationReport {
+export function evaluateSandboxVerification(verificationMap: Record<string, string>, testStatusMap: Map<string, string>): Cp9VerificationReport {
   // AC 4: Check if any mapped test was renamed or not found
   for (const [, testName] of Object.entries(verificationMap)) {
     if (!testStatusMap.has(testName) && !testStatusMap.has(testName.trim())) {
@@ -295,7 +287,9 @@ export function runSandboxVerification(options: { testResultsFile?: string } = {
   console.log(`[cp9-sandbox-verification] ${isSuccess ? "PASSED" : "FAILED"}: Generated ${evidencePath}`);
   console.log(`- Time to Preview: ${report.timeToSandboxPreviewMs} ms (< ${report.timeToPreviewLimitMs} ms: ${report.timeToPreviewPassed ? "PASS" : "FAIL"})`);
   console.log(`- Quota / TTL / Abuse Guardrails: ${report.status === "passed" ? "5/5 PASSED" : "FAILED"}`);
-  console.log(`- Lossless BYOC Promotion: sandboxBuildHash === byocBuildHash (${report.promotion.identicalBuildHash ? "MATCH" : "DRIFT"}) with 0 extra assemble() calls`);
+  console.log(
+    `- Lossless BYOC Promotion: sandboxBuildHash === byocBuildHash (${report.promotion.identicalBuildHash ? "MATCH" : "DRIFT"}) with 0 extra assemble() calls`,
+  );
 
   if (!isSuccess) {
     console.error("[cp9-sandbox-verification] FAIL: Sandbox verification checks failed.");
@@ -303,10 +297,7 @@ export function runSandboxVerification(options: { testResultsFile?: string } = {
   }
 }
 
-const isMain =
-  process.argv[1] &&
-  resolve(process.argv[1]).toLowerCase() ===
-    resolve(fileURLToPath(import.meta.url)).toLowerCase();
+const isMain = process.argv[1] && resolve(process.argv[1]).toLowerCase() === resolve(fileURLToPath(import.meta.url)).toLowerCase();
 
 if (isMain) {
   try {

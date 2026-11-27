@@ -66,35 +66,21 @@ export async function checkEnvironmentDrift(
   },
 ): Promise<DriftReport> {
   const target = DeployTargetSchema.parse(rawTarget);
-  const { scriptName: defaultScriptName, databaseName: defaultDbName } =
-    deriveEnvironmentResourceNames(expectedDeployment.project, target);
+  const { scriptName: defaultScriptName, databaseName: defaultDbName } = deriveEnvironmentResourceNames(expectedDeployment.project, target);
   const scriptName = expectedDeployment.scriptName ?? defaultScriptName;
   const databaseName = expectedDeployment.databaseName ?? defaultDbName;
 
   const hasBeenDeployed = Boolean(
-    expectedDeployment.deployedRev !== null &&
-      expectedDeployment.deployedRev !== undefined &&
-      (expectedDeployment.buildHash || expectedDeployment.codeHash),
+    expectedDeployment.deployedRev !== null && expectedDeployment.deployedRev !== undefined && (expectedDeployment.buildHash || expectedDeployment.codeHash),
   );
 
   const deployedRev = expectedDeployment.deployedRev ?? 0;
   const currentRev = currentBlueprintHashes.currentRev;
-  const expectedCodeHash =
-    expectedDeployment.codeHash ?? expectedDeployment.buildHash ?? null;
+  const expectedCodeHash = expectedDeployment.codeHash ?? expectedDeployment.buildHash ?? null;
   const expectedGraphHash = expectedDeployment.graphHash ?? null;
 
-  const hasCodeDrift = hasBeenDeployed
-    ? Boolean(
-        expectedCodeHash &&
-          expectedCodeHash !== currentBlueprintHashes.codeHash,
-      )
-    : false;
-  const hasGraphDrift = hasBeenDeployed
-    ? Boolean(
-        expectedGraphHash &&
-          expectedGraphHash !== currentBlueprintHashes.graphHash,
-      )
-    : false;
+  const hasCodeDrift = hasBeenDeployed ? Boolean(expectedCodeHash && expectedCodeHash !== currentBlueprintHashes.codeHash) : false;
+  const hasGraphDrift = hasBeenDeployed ? Boolean(expectedGraphHash && expectedGraphHash !== currentBlueprintHashes.graphHash) : false;
 
   const outOfBandDrift: OutOfBandDriftItem[] = [];
 
@@ -129,10 +115,7 @@ export async function checkEnvironmentDrift(
         } else {
           const liveScriptHash = liveScript.codeHash ?? liveScript.sha256;
           const expectedLive = expectedDeployment.liveCodeHash ?? expectedCodeHash;
-          if (
-            liveScript.sha256 !== expectedLive &&
-            liveScriptHash !== expectedLive
-          ) {
+          if (liveScript.sha256 !== expectedLive && liveScriptHash !== expectedLive) {
             outOfBandDrift.push({
               resource: "worker",
               expected: expectedLive,
@@ -144,9 +127,7 @@ export async function checkEnvironmentDrift(
       }
 
       if (expectedDeployment.appliedMigrations !== undefined) {
-        const liveDb = apiClient.getDatabase
-          ? await apiClient.getDatabase(target.accountId, token, databaseName)
-          : null;
+        const liveDb = apiClient.getDatabase ? await apiClient.getDatabase(target.accountId, token, databaseName) : null;
         const expectedMigs = expectedDeployment.appliedMigrations;
         if (!liveDb && expectedMigs.length > 0) {
           outOfBandDrift.push({
@@ -168,17 +149,9 @@ export async function checkEnvironmentDrift(
         }
       }
 
-      if (
-        expectedDeployment.queues &&
-        expectedDeployment.queues.length > 0 &&
-        apiClient.listQueues
-      ) {
-        const liveQueues = (
-          await apiClient.listQueues(target.accountId, token)
-        ).map((q) => q.queueName);
-        const missingQueues = expectedDeployment.queues.filter(
-          (q) => !liveQueues.includes(q),
-        );
+      if (expectedDeployment.queues && expectedDeployment.queues.length > 0 && apiClient.listQueues) {
+        const liveQueues = (await apiClient.listQueues(target.accountId, token)).map((q) => q.queueName);
+        const missingQueues = expectedDeployment.queues.filter((q) => !liveQueues.includes(q));
         if (missingQueues.length > 0) {
           outOfBandDrift.push({
             resource: "queue",
@@ -189,21 +162,12 @@ export async function checkEnvironmentDrift(
         }
       }
 
-      if (
-        expectedDeployment.cronTriggers &&
-        expectedDeployment.cronTriggers.length > 0
-      ) {
+      if (expectedDeployment.cronTriggers && expectedDeployment.cronTriggers.length > 0) {
         const liveCrons =
           apiClient instanceof MockCloudflareControlPlane
-            ? await apiClient.getCronTriggers(
-                target.accountId,
-                token,
-                scriptName,
-              )
+            ? await apiClient.getCronTriggers(target.accountId, token, scriptName)
             : (liveScript?.cronTriggers ?? []);
-        const expectedSorted = [...expectedDeployment.cronTriggers]
-          .sort()
-          .join(", ");
+        const expectedSorted = [...expectedDeployment.cronTriggers].sort().join(", ");
         const actualSorted = [...liveCrons].sort().join(", ");
         if (expectedSorted !== actualSorted) {
           outOfBandDrift.push({
@@ -217,8 +181,7 @@ export async function checkEnvironmentDrift(
     }
   }
 
-  const inSync =
-    !hasCodeDrift && !hasGraphDrift && outOfBandDrift.length === 0;
+  const inSync = !hasCodeDrift && !hasGraphDrift && outOfBandDrift.length === 0;
 
   return {
     inSync,
@@ -228,8 +191,7 @@ export async function checkEnvironmentDrift(
       deployedRev,
       currentRev,
       deployedBuildHash: expectedDeployment.buildHash ?? null,
-      currentBuildHash:
-        currentBlueprintHashes.buildHash ?? currentBlueprintHashes.codeHash,
+      currentBuildHash: currentBlueprintHashes.buildHash ?? currentBlueprintHashes.codeHash,
       deployedCodeHash: expectedDeployment.codeHash ?? null,
       currentCodeHash: currentBlueprintHashes.codeHash,
       deployedGraphHash: expectedDeployment.graphHash ?? null,

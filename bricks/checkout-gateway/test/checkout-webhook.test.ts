@@ -85,9 +85,18 @@ describe("checkout with a payment gateway (story 2.3)", () => {
     expect(session.checkout_url).toBe(""); // no placeholder URL
     expect(session.customer_id).toBe(USER);
     // 15000 + 18% GST = 17700, in the smallest unit, upper-case currency
-    expect(await gateway.fetchOrder(session.id as string, undefined)).toEqual({ orderId: session.id, status: "ACTIVE", amountMinor: 17700, currency: "INR", customerId: USER });
+    expect(await gateway.fetchOrder(session.id as string, undefined)).toEqual({
+      orderId: session.id,
+      status: "ACTIVE",
+      amountMinor: 17700,
+      currency: "INR",
+      customerId: USER,
+    });
     // the provider's reference is stored, and the order is fetched by it
-    const stored = await db.prepare("SELECT provider_ref, line_items_json FROM pay_checkout_sessions WHERE id = ?").bind(session.id).first<{ provider_ref: string; line_items_json: string }>();
+    const stored = await db
+      .prepare("SELECT provider_ref, line_items_json FROM pay_checkout_sessions WHERE id = ?")
+      .bind(session.id)
+      .first<{ provider_ref: string; line_items_json: string }>();
     expect(stored?.provider_ref).toBe(`ref_${session.id}`);
     expect(JSON.parse(stored!.line_items_json)).toEqual(createBody.lineItems);
   });
@@ -196,7 +205,15 @@ describe("checkout with a payment gateway (story 2.3)", () => {
     expect(await first.json()).toMatchObject({ status: "PAID" });
     expect(await sessionStatus(session.id)).toBe("completed");
     const invoice = await new CheckoutService(db).getInvoiceBySessionId(WS, session.id);
-    expect(invoice).toMatchObject({ workspace_id: WS, total_cents: 17700, subtotal_cents: 15000, tax_cents: 2700, currency: "inr", status: "paid", invoice_number: `INV-${session.id}` });
+    expect(invoice).toMatchObject({
+      workspace_id: WS,
+      total_cents: 17700,
+      subtotal_cents: 15000,
+      tax_cents: 2700,
+      currency: "inr",
+      status: "paid",
+      invoice_number: `INV-${session.id}`,
+    });
     expect(invoice!.line_items).toEqual(createBody.lineItems);
 
     const second = await postWebhook(app, hook);

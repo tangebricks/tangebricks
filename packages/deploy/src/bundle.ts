@@ -14,10 +14,7 @@ export { STARTUP_LIMIT_MS, WORKER_SIZE_LIMIT_BYTES };
 // the access-key gate and the demo page (src/worker/gate.ts, client/demo-entry.tsx). It is Node-side code and is part of
 // the deploy clock (H10): it runs before the upload.
 
-const repoRoot =
-  typeof import.meta.dirname === "string"
-    ? resolve(import.meta.dirname, "..", "..", "..")
-    : ".";
+const repoRoot = typeof import.meta.dirname === "string" ? resolve(import.meta.dirname, "..", "..", "..") : ".";
 const slash = (path: string) => path.replace(/\\/g, "/");
 
 export interface WorkerBundle {

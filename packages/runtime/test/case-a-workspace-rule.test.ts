@@ -19,11 +19,7 @@ const db = (env as unknown as { DB: D1Like }).DB;
 const CONN_KEY = "case-a-workspace-rule-conn-key-2026";
 
 async function seed(ref: string, app: string, workspaceId: string, projectId: string, token: string) {
-  await upsertSealedConnection(
-    db,
-    { ref, app, workspaceId, projectId, envName: "preview", authType: "apiKey", credentials: { apiKey: token } },
-    CONN_KEY,
-  );
+  await upsertSealedConnection(db, { ref, app, workspaceId, projectId, envName: "preview", authType: "apiKey", credentials: { apiKey: token } }, CONN_KEY);
 }
 
 const resolve = (selector: Parameters<typeof resolveCaseAConnection>[0], workspaceId: string, projectId?: string) =>

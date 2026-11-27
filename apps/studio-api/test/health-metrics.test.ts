@@ -31,10 +31,7 @@ interface CallOptions {
   env?: Partial<StudioApiEnv>;
 }
 
-async function callStudio(
-  path: string,
-  options: CallOptions = {},
-): Promise<Response> {
+async function callStudio(path: string, options: CallOptions = {}): Promise<Response> {
   const headers = new Headers(options.headers);
   if (options.token) headers.set("authorization", `Bearer ${options.token}`);
 
@@ -147,145 +144,136 @@ describe("apps/studio-api — Story 6.4 Backend Health & Metrics Panel Endpoints
     expect(createProjRes.status).toBe(201);
 
     // Viewer is forbidden from seeding health metrics (403)
-    const viewerSeedRes = await callStudio(
-      `/api/projects/${project}/environments/preview/health/seed`,
-      {
-        method: "POST",
-        token: viewerToken,
-        headers: { "x-org-id": orgId },
-        body: { reset: true },
-      },
-    );
+    const viewerSeedRes = await callStudio(`/api/projects/${project}/environments/preview/health/seed`, {
+      method: "POST",
+      token: viewerToken,
+      headers: { "x-org-id": orgId },
+      body: { reset: true },
+    });
     expect(viewerSeedRes.status).toBe(403);
 
     // Builder/Owner seeds deterministic 1h, 24h, and 7d telemetry + Cloudflare GraphQL Analytics snapshot
-    const seedRes = await callStudio(
-      `/api/projects/${project}/environments/preview/health/seed`,
-      {
-        method: "POST",
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-        env: operatorEnv,
-        body: {
-          // Story 1.4: seeded rows belong to one of the project's own workspaces (its preview workspace here).
-          workspaceId: "ws_default",
-          reset: true,
-          now: baseNow,
-          window: "1h",
-          samples: [
-            // 18 successful requests and 2 5xx errors across webhook-gateway and credit-wallet in 1h window (total 20 req, 10% 5xx)
-            ...Array.from({ length: 12 }, (_, idx) => ({
-              ts: min15Ago,
-              routePrefix: "/webhooks/stripe",
-              brickId: "webhook-gateway",
-              status: idx === 0 ? 500 : 200,
-              latencyMs: 15 + idx * 5,
-              d1Queries: 2,
-              d1LatencyMs: 4,
-              d1Errors: 0,
-            })),
-            ...Array.from({ length: 8 }, (_, idx) => ({
-              ts: min15Ago,
-              routePrefix: "/api/wallet/debit",
-              brickId: "credit-wallet",
-              status: idx === 0 ? 503 : idx === 1 ? 422 : 200,
-              latencyMs: 40 + idx * 25,
-              d1Queries: 3,
-              d1LatencyMs: 7,
-              d1Errors: idx === 0 ? 1 : 0,
-            })),
-          ],
-          rollups: [
-            {
-              bucketMinute: hours8Ago,
-              routePrefix: "/api/entities/invoices",
-              brickId: "dynamic-entities",
-              requestCount: 80,
-              error4xxCount: 2,
-              error5xxCount: 3,
-              latencySamplesMs: [18, 28, 45, 95, 160],
-              d1QueryCount: 160,
-              d1LatencyMs: 5.5,
-              d1ErrorCount: 1,
-            },
-            {
-              bucketMinute: days4Ago,
-              routePrefix: "/api/notify/push",
-              brickId: "in-app-notifications",
-              requestCount: 100,
-              error4xxCount: 0,
-              error5xxCount: 0,
-              latencySamplesMs: [10, 14, 22, 34, 65],
-              d1QueryCount: 100,
-              d1LatencyMs: 3.1,
-              d1ErrorCount: 0,
-            },
-          ],
-          runs: [
-            {
-              runId: "run_health_ok_1",
-              workflowId: "wf_invoice_settled",
-              revision: 1,
-              triggerType: "webhook",
-              workspaceId: "ws_alpha",
-              status: "succeeded",
-              durationMs: 48,
-              retries: 0,
-              startedAt: min15Ago,
-              endedAt: min15Ago,
-            },
-            {
-              runId: "run_health_fail_1",
-              workflowId: "wf_wallet_settlement",
-              revision: 2,
-              triggerType: "webhook",
-              workspaceId: "ws_alpha",
-              status: "failed",
-              durationMs: 190,
-              retries: 2,
-              errorStack: "Error: credit-wallet D1 lock contention",
-              startedAt: min15Ago,
-              endedAt: min15Ago,
-            },
-          ],
-          queues: [
+    const seedRes = await callStudio(`/api/projects/${project}/environments/preview/health/seed`, {
+      method: "POST",
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+      env: operatorEnv,
+      body: {
+        // Story 1.4: seeded rows belong to one of the project's own workspaces (its preview workspace here).
+        workspaceId: "ws_default",
+        reset: true,
+        now: baseNow,
+        window: "1h",
+        samples: [
+          // 18 successful requests and 2 5xx errors across webhook-gateway and credit-wallet in 1h window (total 20 req, 10% 5xx)
+          ...Array.from({ length: 12 }, (_, idx) => ({
+            ts: min15Ago,
+            routePrefix: "/webhooks/stripe",
+            brickId: "webhook-gateway",
+            status: idx === 0 ? 500 : 200,
+            latencyMs: 15 + idx * 5,
+            d1Queries: 2,
+            d1LatencyMs: 4,
+            d1Errors: 0,
+          })),
+          ...Array.from({ length: 8 }, (_, idx) => ({
+            ts: min15Ago,
+            routePrefix: "/api/wallet/debit",
+            brickId: "credit-wallet",
+            status: idx === 0 ? 503 : idx === 1 ? 422 : 200,
+            latencyMs: 40 + idx * 25,
+            d1Queries: 3,
+            d1LatencyMs: 7,
+            d1Errors: idx === 0 ? 1 : 0,
+          })),
+        ],
+        rollups: [
+          {
+            bucketMinute: hours8Ago,
+            routePrefix: "/api/entities/invoices",
+            brickId: "dynamic-entities",
+            requestCount: 80,
+            error4xxCount: 2,
+            error5xxCount: 3,
+            latencySamplesMs: [18, 28, 45, 95, 160],
+            d1QueryCount: 160,
+            d1LatencyMs: 5.5,
+            d1ErrorCount: 1,
+          },
+          {
+            bucketMinute: days4Ago,
+            routePrefix: "/api/notify/push",
+            brickId: "in-app-notifications",
+            requestCount: 100,
+            error4xxCount: 0,
+            error5xxCount: 0,
+            latencySamplesMs: [10, 14, 22, 34, 65],
+            d1QueryCount: 100,
+            d1LatencyMs: 3.1,
+            d1ErrorCount: 0,
+          },
+        ],
+        runs: [
+          {
+            runId: "run_health_ok_1",
+            workflowId: "wf_invoice_settled",
+            revision: 1,
+            triggerType: "webhook",
+            workspaceId: "ws_alpha",
+            status: "succeeded",
+            durationMs: 48,
+            retries: 0,
+            startedAt: min15Ago,
+            endedAt: min15Ago,
+          },
+          {
+            runId: "run_health_fail_1",
+            workflowId: "wf_wallet_settlement",
+            revision: 2,
+            triggerType: "webhook",
+            workspaceId: "ws_alpha",
+            status: "failed",
+            durationMs: 190,
+            retries: 2,
+            errorStack: "Error: credit-wallet D1 lock contention",
+            startedAt: min15Ago,
+            endedAt: min15Ago,
+          },
+        ],
+        queues: [
+          {
+            queueName: "px-outbound-queue",
+            pendingCount: 18,
+            dlqCount: 2,
+            updatedAt: min15Ago,
+          },
+        ],
+        cloudflareAnalytics: {
+          workersInvocationsAdaptive: {
+            requests: 20,
+            errors: 2,
+            p50Ms: 52.5,
+            p95Ms: 215,
+            p99Ms: 215,
+          },
+          queuesBacklogAdaptive: [
             {
               queueName: "px-outbound-queue",
-              pendingCount: 18,
+              depth: 18,
               dlqCount: 2,
               updatedAt: min15Ago,
             },
           ],
-          cloudflareAnalytics: {
-            workersInvocationsAdaptive: {
-              requests: 20,
-              errors: 2,
-              p50Ms: 52.5,
-              p95Ms: 215,
-              p99Ms: 215,
-            },
-            queuesBacklogAdaptive: [
-              {
-                queueName: "px-outbound-queue",
-                depth: 18,
-                dlqCount: 2,
-                updatedAt: min15Ago,
-              },
-            ],
-          },
         },
       },
-    );
+    });
     expect(seedRes.status).toBe(200);
 
     // Viewer can read 1h health metrics
-    const health1hRes = await callStudio(
-      `/api/projects/${project}/environments/preview/health?window=1h&now=${encodeURIComponent(baseNow)}`,
-      {
-        token: viewerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const health1hRes = await callStudio(`/api/projects/${project}/environments/preview/health?window=1h&now=${encodeURIComponent(baseNow)}`, {
+      token: viewerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(health1hRes.status).toBe(200);
     const body1h = (await health1hRes.json()) as EnvironmentHealthSummary & {
       project: string;
@@ -322,26 +310,20 @@ describe("apps/studio-api — Story 6.4 Backend Health & Metrics Panel Endpoints
     expect(body1h.analyticsReconciliation?.deltaPercent).toBeLessThanOrEqual(1);
 
     // Viewer can read 24h and 7d windows
-    const health24hRes = await callStudio(
-      `/api/projects/${project}/environments/preview/health?window=24h&now=${encodeURIComponent(baseNow)}`,
-      {
-        token: viewerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const health24hRes = await callStudio(`/api/projects/${project}/environments/preview/health?window=24h&now=${encodeURIComponent(baseNow)}`, {
+      token: viewerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(health24hRes.status).toBe(200);
     const body24h = (await health24hRes.json()) as EnvironmentHealthSummary;
     expect(body24h.requestCount).toBe(100); // 20 + 80
     expect(body24h.error5xxCount).toBe(5); // 2 + 3
     expect(body24h.errorRatePercent).toBe(5);
 
-    const health7dRes = await callStudio(
-      `/api/projects/${project}/environments/preview/health?window=7d&now=${encodeURIComponent(baseNow)}`,
-      {
-        token: viewerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const health7dRes = await callStudio(`/api/projects/${project}/environments/preview/health?window=7d&now=${encodeURIComponent(baseNow)}`, {
+      token: viewerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(health7dRes.status).toBe(200);
     const body7d = (await health7dRes.json()) as EnvironmentHealthSummary;
     expect(body7d.requestCount).toBe(200); // 20 + 80 + 100
@@ -349,13 +331,10 @@ describe("apps/studio-api — Story 6.4 Backend Health & Metrics Panel Endpoints
     expect(body7d.errorRatePercent).toBe(2.5);
 
     // Production environment is isolated from preview HTTP rollups and queue metrics
-    const prodRes = await callStudio(
-      `/api/projects/${project}/environments/production/health?window=1h&now=${encodeURIComponent(baseNow)}`,
-      {
-        token: viewerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const prodRes = await callStudio(`/api/projects/${project}/environments/production/health?window=1h&now=${encodeURIComponent(baseNow)}`, {
+      token: viewerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(prodRes.status).toBe(200);
     const prodBody = (await prodRes.json()) as EnvironmentHealthSummary;
     expect(prodBody.requestCount).toBe(0);

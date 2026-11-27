@@ -65,12 +65,8 @@ test.describe("Story 9.3 — Zero-Credential Instant Sandbox Preview & One-Click
 
     const instantSandboxBtn = page.getByTestId("deploy-instant-sandbox-button");
     const connectByocBtn = page.getByTestId("deploy-connect-byoc-button");
-    await expect(instantSandboxBtn).toContainText(
-      "Try in Instant Sandbox Preview (No Cloudflare account needed — free for 7 days)",
-    );
-    await expect(connectByocBtn).toContainText(
-      "Connect my Cloudflare account (BYOC)",
-    );
+    await expect(instantSandboxBtn).toContainText("Try in Instant Sandbox Preview (No Cloudflare account needed — free for 7 days)");
+    await expect(connectByocBtn).toContainText("Connect my Cloudflare account (BYOC)");
 
     // 4. Launch Instant Sandbox Preview
     await instantSandboxBtn.click();
@@ -88,30 +84,25 @@ test.describe("Story 9.3 — Zero-Credential Instant Sandbox Preview & One-Click
     const timeToPreviewMs = Date.now() - t0;
     expect(timeToPreviewMs).toBeLessThan(120_000);
 
-    const sandboxBuildHash = await sandboxBadge.getAttribute(
-      "data-sandbox-build-hash",
-    );
+    const sandboxBuildHash = await sandboxBadge.getAttribute("data-sandbox-build-hash");
     expect(sandboxBuildHash).toBeTruthy();
 
     // 5. Insert a sample entity row into usage_ledgers in the sandbox preview
     const insertStatus = await page.evaluate(async (slug) => {
-      const res = await fetch(
-        `/api/projects/${encodeURIComponent(slug)}/environments/preview/data/tables/usage_ledgers/rows`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            workspaceId: "ws_e2e_promote",
-            confirmWrite: true,
-            row: {
-              id: "row_e2e_1",
-              metric: "llm_tokens",
-              units: 750,
-            },
-          }),
-        },
-      );
+      const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/environments/preview/data/tables/usage_ledgers/rows`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          workspaceId: "ws_e2e_promote",
+          confirmWrite: true,
+          row: {
+            id: "row_e2e_1",
+            metric: "llm_tokens",
+            units: 750,
+          },
+        }),
+      });
       return res.status;
     }, projectSlug);
     expect(insertStatus).toBe(201);
@@ -124,12 +115,8 @@ test.describe("Story 9.3 — Zero-Credential Instant Sandbox Preview & One-Click
     // Story 17: sandbox rows are no longer copied on promote, so there is no copy option.
     await expect(page.getByTestId("promote-copy-sample-data-checkbox")).toHaveCount(0);
 
-    await page
-      .getByTestId("move-to-byoc-token-input")
-      .fill("cf_ut_valid_e2e_promote_token_99887766");
-    await page
-      .getByTestId("move-to-byoc-account-id-input")
-      .fill("abcdef0123456789abcdef0123456789");
+    await page.getByTestId("move-to-byoc-token-input").fill("cf_ut_valid_e2e_promote_token_99887766");
+    await page.getByTestId("move-to-byoc-account-id-input").fill("abcdef0123456789abcdef0123456789");
     await page.getByTestId("move-to-byoc-submit-button").click();
 
     await expect(moveModal).toBeHidden({ timeout: 15_000 });
@@ -138,33 +125,23 @@ test.describe("Story 9.3 — Zero-Credential Instant Sandbox Preview & One-Click
     const promotedBanner = page.getByTestId("promoted-byoc-banner");
     await expect(promotedBanner).toBeVisible({ timeout: 15_000 });
 
-    const byocBuildHash = await page
-      .getByTestId("promoted-byoc-build-hash")
-      .textContent();
-    const promotedSandboxHash = await page
-      .getByTestId("promoted-sandbox-build-hash")
-      .textContent();
+    const byocBuildHash = await page.getByTestId("promoted-byoc-build-hash").textContent();
+    const promotedSandboxHash = await page.getByTestId("promoted-sandbox-build-hash").textContent();
     expect(byocBuildHash).toBe(sandboxBuildHash);
     expect(promotedSandboxHash).toBe(sandboxBuildHash);
 
-    await expect(page.getByTestId("promoted-old-sandbox-destroyed")).toHaveText(
-      "true",
-    );
+    await expect(page.getByTestId("promoted-old-sandbox-destroyed")).toHaveText("true");
     await expect(sandboxBadge).toBeHidden();
     await expect(page.getByTestId("env-badge")).toContainText(/^Preview r\d+$/);
 
     // 8. Story 17: with the sandbox destroyed there is no data store Studio can reach (NOT_CONFIGURED, no STUDIO_DB
     // fallback), and the sandbox status is promoted
     const verifyByocData = await page.evaluate(async (slug) => {
-      const rowsRes = await fetch(
-        `/api/projects/${encodeURIComponent(slug)}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_e2e_promote`,
-        { credentials: "include" },
-      );
+      const rowsRes = await fetch(`/api/projects/${encodeURIComponent(slug)}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_e2e_promote`, {
+        credentials: "include",
+      });
       const rowsBody = (await rowsRes.json()) as { error?: { code?: string } };
-      const sbRes = await fetch(
-        `/api/projects/${encodeURIComponent(slug)}/sandbox`,
-        { credentials: "include" },
-      );
+      const sbRes = await fetch(`/api/projects/${encodeURIComponent(slug)}/sandbox`, { credentials: "include" });
       const sbText = await sbRes.text();
       let sbBody: { sandbox: { status: string } | null } | null = null;
       try {

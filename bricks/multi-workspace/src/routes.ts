@@ -136,7 +136,11 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
       const [, inserted] = await c.env.DB.batch([
         // tenant-lint: allow consumes the same single-use token just looked up, before the invitee is a member
         c.env.DB.prepare("UPDATE mw_invites SET used = 1, used_by = ? WHERE token = ? AND used = 0").bind(user.uid, token),
-        c.env.DB.prepare("INSERT INTO mw_members (workspace_id, user_id, role) SELECT ?, ?, ? WHERE changes() = 1").bind(invite.workspace_id, user.uid, invite.role),
+        c.env.DB.prepare("INSERT INTO mw_members (workspace_id, user_id, role) SELECT ?, ?, ? WHERE changes() = 1").bind(
+          invite.workspace_id,
+          user.uid,
+          invite.role,
+        ),
       ]);
       if ((inserted?.meta.changes ?? 0) !== 1) return c.json(err("INVITE_ALREADY_USED", "Invite token has already been used"), 409);
 
@@ -259,9 +263,9 @@ export function createWorkspaceRoutes(options: WorkspaceRoutesOptions = {}): Hon
       }
 
       const token = `inv_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
-      await c.env.DB.prepare(
-        "INSERT INTO mw_invites (token, workspace_id, role, created_by) VALUES (?, ?, ?, ?)"
-      ).bind(token, workspaceId, body.data.role, user.uid).run();
+      await c.env.DB.prepare("INSERT INTO mw_invites (token, workspace_id, role, created_by) VALUES (?, ?, ?, ?)")
+        .bind(token, workspaceId, body.data.role, user.uid)
+        .run();
 
       return c.json({ token, workspaceId, role: body.data.role }, 201);
     } catch (error) {

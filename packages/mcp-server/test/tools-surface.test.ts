@@ -4,11 +4,7 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { TOOLS } from "../src/index.ts";
 import mcpMigrationSql from "../migrations/0001_mcp_server.sql?raw";
-import {
-  app as studioApp,
-  encryptSecretValue,
-  type StudioApiEnv,
-} from "../../../apps/studio-api/src/index.ts";
+import { app as studioApp, encryptSecretValue, type StudioApiEnv } from "../../../apps/studio-api/src/index.ts";
 import { ensureTestProjectToken } from "../../../apps/studio-api/test/project-token.ts";
 import { acceptProposalAsOwner } from "../../../apps/studio-api/test/human-session.ts";
 
@@ -18,11 +14,7 @@ const studioDb = studioEnv.STUDIO_DB as D1Like;
 
 let rpcId = 1;
 
-async function callStudioMcp(
-  name: string,
-  args: Record<string, unknown>,
-  extraHeaders: Record<string, string> = {},
-) {
+async function callStudioMcp(name: string, args: Record<string, unknown>, extraHeaders: Record<string, string> = {}) {
   // Story 0.15: every MCP token is bound to one project; the call presents the token for the project it names.
   const project = typeof args.project === "string" ? args.project : "default-project";
   const { headers: authHeaders } = await ensureTestProjectToken(studioEnv, project);
@@ -102,9 +94,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     expect(bricksPage.items.length).toBeLessThanOrEqual(5);
     expect(bricksPage.items.map((b) => b.id)).toContain("credit-wallet");
 
-    const brickDetail = (
-      await callStudioMcp("get_brick", { id: "credit-wallet" })
-    ).json<{ id: string; provides: string[]; needs: string[] }>();
+    const brickDetail = (await callStudioMcp("get_brick", { id: "credit-wallet" })).json<{ id: string; provides: string[]; needs: string[] }>();
     expect(brickDetail.id).toBe("credit-wallet");
     expect(brickDetail.needs).toContain("workspace-context");
 
@@ -129,9 +119,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     expect(nodesPage.items.every((n) => n.source === "core")).toBe(true);
 
     const firstNodeType = nodesPage.items[0]!.type;
-    const nodeDetail = (
-      await callStudioMcp("get_node", { type: firstNodeType })
-    ).json<{
+    const nodeDetail = (await callStudioMcp("get_node", { type: firstNodeType })).json<{
       type: string;
       role: string;
       source: string;
@@ -222,9 +210,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
 
     expect(applied.project).toBe(project);
     expect(applied.safety.moneyAffectingHint).toBe(true);
-    expect(applied.safety.moneyAffectingOps).toContain(
-      "enable_brick:credit-wallet",
-    );
+    expect(applied.safety.moneyAffectingOps).toContain("enable_brick:credit-wallet");
     // AD-V8: the agent's edit is a pending proposal (the live blueprint stays at 0) until a person accepts it in Studio.
     expect(applied.status).toBe("pending");
     expect(applied.revision).toBe(0);
@@ -233,9 +219,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     expect(((await acceptedRes.json()) as { revision: number }).revision).toBe(1);
 
     // 4. Blueprint read & validate: get_blueprint_summary, get_blueprint_slice, validate_blueprint
-    const summary = (
-      await callStudioMcp("get_blueprint_summary", { project })
-    ).json<{
+    const summary = (await callStudioMcp("get_blueprint_summary", { project })).json<{
       rev: number;
       bricks: string[];
       entities: string[];
@@ -243,11 +227,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
       needs: unknown[];
     }>();
     expect(summary.rev).toBe(1);
-    expect(summary.bricks).toEqual([
-      "credit-wallet",
-      "dynamic-entities",
-      "multi-workspace",
-    ]);
+    expect(summary.bricks).toEqual(["credit-wallet", "dynamic-entities", "multi-workspace"]);
     expect(summary.entities).toEqual(["invoices"]);
     expect(summary.workflows).toEqual([
       {
@@ -275,9 +255,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     expect(slice.slice.workflow.id).toBe("wf_invoice");
     expect(slice.slice.entity.name).toBe("invoices");
 
-    const validation = (
-      await callStudioMcp("validate_blueprint", { project })
-    ).json<{
+    const validation = (await callStudioMcp("validate_blueprint", { project })).json<{
       rev: number;
       ready: boolean;
       needs: unknown[];
@@ -292,8 +270,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     const plantedStripeKey = "sk_" + "live_51PlantedSecretCredential999999999";
     const plantedWebhookSecret = "whs" + "ec_PlantedWebhookSecretValue888888888";
 
-    const { headers: authHeaders, orgId, userId } =
-      await ensureTestProjectToken(studioEnv, project);
+    const { headers: authHeaders, orgId, userId } = await ensureTestProjectToken(studioEnv, project);
 
     // Verify MCP token is also forbidden from calling POST /api/projects/:project/secrets directly (AD-S12)
     const directAgentAttempt = await studioApp.request(
@@ -315,10 +292,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     expect(directAgentAttempt.status).toBe(403);
 
     // Seed sealed secret in studio_secret_vault as a human owner would via Studio Connections Center
-    const sealed = await encryptSecretValue(
-      plantedStripeKey,
-      studioEnv.PX_VAULT_KEY ?? studioEnv.BETTER_AUTH_SECRET,
-    );
+    const sealed = await encryptSecretValue(plantedStripeKey, studioEnv.PX_VAULT_KEY ?? studioEnv.BETTER_AUTH_SECRET);
     await studioDb
       .prepare(
         `INSERT OR REPLACE INTO studio_secret_vault (
@@ -326,15 +300,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
            ciphertext_b64, iv_b64, key_hint, status, created_by, updated_at
          ) VALUES (?, ?, ?, 'sec_stripe_key', 'api_key', 'Stripe Live Key', 'stripe', 'all', ?, ?, ?, 'valid', ?, datetime('now'))`,
       )
-      .bind(
-        `vault_${project}_sec_stripe_key`,
-        orgId,
-        project,
-        sealed.ciphertextB64,
-        sealed.ivB64,
-        sealed.keyHint,
-        userId,
-      )
+      .bind(`vault_${project}_sec_stripe_key`, orgId, project, sealed.ciphertextB64, sealed.ivB64, sealed.keyHint, userId)
       .run();
 
     // Agent attempts to pass a raw secret to request_connection -> rejected by strict schema
@@ -366,9 +332,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     expect(consent.project).toBe(project);
     expect(consent.ref).toBe("sec_stripe_key");
     expect(consent.status).toBe("awaiting_human_consent");
-    expect(consent.consentUrl).toContain(
-      `/projects/${project}/connections/consent?`,
-    );
+    expect(consent.consentUrl).toContain(`/projects/${project}/connections/consent?`);
     expect(JSON.stringify(consent)).not.toContain(plantedStripeKey);
 
     // list_connections returns metadata and ref handle, never the sealed secret value
@@ -531,20 +495,14 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
       semanticHash: string;
     };
 
-    const httpStateRes = await studioApp.request(
-      `/api/projects/${sharedProject}`,
-      { method: "GET", headers: authHeaders },
-      studioEnv,
-    );
+    const httpStateRes = await studioApp.request(`/api/projects/${sharedProject}`, { method: "GET", headers: authHeaders }, studioEnv);
     expect(httpStateRes.status).toBe(200);
     const httpState = (await httpStateRes.json()) as {
       revision: number;
       semanticHash: string;
     };
 
-    const mcpSummary = (
-      await callStudioMcp("get_blueprint_summary", { project: sharedProject })
-    ).json<{ rev: number; semanticHash: string }>();
+    const mcpSummary = (await callStudioMcp("get_blueprint_summary", { project: sharedProject })).json<{ rev: number; semanticHash: string }>();
 
     expect(mcpApply.revision).toBe(1);
     expect(httpState.revision).toBe(mcpApply.revision);
@@ -552,11 +510,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
     expect(mcpSummary.semanticHash).toBe(httpState.semanticHash);
 
     // Step 2: Build / Plan / Deploy via HTTP and via MCP -> assert identical buildHash
-    const httpBuildRes = await studioApp.request(
-      `/api/projects/${sharedProject}/build`,
-      { method: "POST", headers: authHeaders },
-      studioEnv,
-    );
+    const httpBuildRes = await studioApp.request(`/api/projects/${sharedProject}/build`, { method: "POST", headers: authHeaders }, studioEnv);
     expect(httpBuildRes.status).toBe(200);
     const httpBuild = (await httpBuildRes.json()) as {
       revision: number;
@@ -638,11 +592,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
       })
     ).json<{ items: Array<{ runId: string; status: string }> }>();
 
-    const httpRunsRes = await studioApp.request(
-      `/api/projects/${sharedProject}/runs?workflowId=wf_order`,
-      { method: "GET", headers: authHeaders },
-      studioEnv,
-    );
+    const httpRunsRes = await studioApp.request(`/api/projects/${sharedProject}/runs?workflowId=wf_order`, { method: "GET", headers: authHeaders }, studioEnv);
     const httpRuns = (await httpRunsRes.json()) as {
       runs: Array<{ runId: string; status: string }>;
     };
@@ -660,11 +610,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
       stepEvents: Array<{ nodeId: string; status: string }>;
     }>();
 
-    const httpTraceRes = await studioApp.request(
-      `/api/projects/${sharedProject}/runs/${mcpTestRun.runId}`,
-      { method: "GET", headers: authHeaders },
-      studioEnv,
-    );
+    const httpTraceRes = await studioApp.request(`/api/projects/${sharedProject}/runs/${mcpTestRun.runId}`, { method: "GET", headers: authHeaders }, studioEnv);
     const httpTrace = (await httpTraceRes.json()) as {
       run: { runId: string; status: string; workflowId: string };
       stepEvents: Array<{ nodeId: string; status: string }>;
@@ -672,9 +618,7 @@ describe("Story 7.1 — Evolved MCP Tool Surface & Dual-Surface Contract (AC 1, 
 
     expect(mcpTrace.run.runId).toBe(httpTrace.run.runId);
     expect(mcpTrace.run.status).toBe(httpTrace.run.status);
-    expect(mcpTrace.stepEvents.map((s) => s.nodeId)).toEqual(
-      httpTrace.stepEvents.map((s) => s.nodeId),
-    );
+    expect(mcpTrace.stepEvents.map((s) => s.nodeId)).toEqual(httpTrace.stepEvents.map((s) => s.nodeId));
 
     // Compare query_logs (MCP vs HTTP)
     const mcpLogs = (

@@ -188,9 +188,7 @@ describe("UC3.6 — Runtime Content Types and Binary Payloads via host BlobStore
     let capturedBodyBytes: Uint8Array | undefined;
     const fetcher: IntegrationFetcher = async (_input, init) => {
       capturedHeaders = Object.fromEntries(
-        init?.headers instanceof Headers
-          ? init.headers.entries()
-          : Object.entries((init?.headers as Record<string, string>) ?? {}),
+        init?.headers instanceof Headers ? init.headers.entries() : Object.entries((init?.headers as Record<string, string>) ?? {}),
       );
       if (init?.body instanceof ReadableStream) {
         const reader = init.body.getReader();
@@ -229,9 +227,7 @@ describe("UC3.6 — Runtime Content Types and Binary Payloads via host BlobStore
     );
 
     expect(result.status).toBe(201);
-    expect(capturedHeaders["content-type"] ?? capturedHeaders["Content-Type"]).toBe(
-      "application/octet-stream",
-    );
+    expect(capturedHeaders["content-type"] ?? capturedHeaders["Content-Type"]).toBe("application/octet-stream");
     expect(capturedBodyBytes).toEqual(rawBytes);
   });
 
@@ -247,9 +243,7 @@ describe("UC3.6 — Runtime Content Types and Binary Payloads via host BlobStore
     let capturedBodyText: string = "";
     const fetcher: IntegrationFetcher = async (_input, init) => {
       capturedHeaders = Object.fromEntries(
-        init?.headers instanceof Headers
-          ? init.headers.entries()
-          : Object.entries((init?.headers as Record<string, string>) ?? {}),
+        init?.headers instanceof Headers ? init.headers.entries() : Object.entries((init?.headers as Record<string, string>) ?? {}),
       );
       if (typeof init?.body === "string") {
         capturedBodyText = init.body;
@@ -312,9 +306,7 @@ describe("UC3.6 — Runtime Content Types and Binary Payloads via host BlobStore
     const fetcher: IntegrationFetcher = async (_input, init) => {
       capturedBody = init?.body;
       const headers = Object.fromEntries(
-        init?.headers instanceof Headers
-          ? init.headers.entries()
-          : Object.entries((init?.headers as Record<string, string>) ?? {}),
+        init?.headers instanceof Headers ? init.headers.entries() : Object.entries((init?.headers as Record<string, string>) ?? {}),
       );
       capturedContentType = headers["content-type"] ?? headers["Content-Type"];
       return new Response(JSON.stringify({ lines: 1 }), {
@@ -340,7 +332,7 @@ describe("UC3.6 — Runtime Content Types and Binary Payloads via host BlobStore
     expect(capturedBody).toBe("Hello world raw string payload");
   });
 
-  it("a 3 MB application/pdf response is stored in the BlobStore, and the output is {blobRef, contentType:\"application/pdf\", size}", async () => {
+  it('a 3 MB application/pdf response is stored in the BlobStore, and the output is {blobRef, contentType:"application/pdf", size}', async () => {
     const blobStore = createMemoryBlobStore();
     const pdfSize = 3 * 1024 * 1024;
     const pdfBytes = new Uint8Array(pdfSize);

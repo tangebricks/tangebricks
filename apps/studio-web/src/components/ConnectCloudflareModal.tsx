@@ -1,17 +1,7 @@
 import { useEffect, useState } from "react";
-import {
-  DEFAULT_CLOUDFLARE_TEMPLATE_URL,
-  fetchCloudflareTokenTemplate,
-  postCloudflareFunnelEvent,
-  verifyAndSaveCloudflareToken,
-} from "../api.ts";
+import { DEFAULT_CLOUDFLARE_TEMPLATE_URL, fetchCloudflareTokenTemplate, postCloudflareFunnelEvent, verifyAndSaveCloudflareToken } from "../api.ts";
 import { safeHref } from "../safe-href.ts";
-import type {
-  CloudflareAccountChoice,
-  CloudflarePermissionStatusRow,
-  CloudflareTokenMetadataSummary,
-  ProjectDeployEnvironmentRecord,
-} from "../api.ts";
+import type { CloudflareAccountChoice, CloudflarePermissionStatusRow, CloudflareTokenMetadataSummary, ProjectDeployEnvironmentRecord } from "../api.ts";
 
 export interface ConnectCloudflareModalProps {
   open: boolean;
@@ -19,10 +9,7 @@ export interface ConnectCloudflareModalProps {
   projectSlug: string;
   replaceTokenRef?: string | null;
   onClose: () => void;
-  onConnected: (payload: {
-    token: CloudflareTokenMetadataSummary;
-    environments: ProjectDeployEnvironmentRecord[];
-  }) => void;
+  onConnected: (payload: { token: CloudflareTokenMetadataSummary; environments: ProjectDeployEnvironmentRecord[] }) => void;
 }
 
 const DEFAULT_PERMISSION_ROWS: CloudflarePermissionStatusRow[] = [
@@ -56,32 +43,17 @@ const DEFAULT_PERMISSION_ROWS: CloudflarePermissionStatusRow[] = [
   },
 ];
 
-export function ConnectCloudflareModal({
-  open,
-  orgId,
-  projectSlug,
-  replaceTokenRef,
-  onClose,
-  onConnected,
-}: ConnectCloudflareModalProps) {
-  const [templateUrl, setTemplateUrl] = useState(
-    DEFAULT_CLOUDFLARE_TEMPLATE_URL,
-  );
+export function ConnectCloudflareModal({ open, orgId, projectSlug, replaceTokenRef, onClose, onConnected }: ConnectCloudflareModalProps) {
+  const [templateUrl, setTemplateUrl] = useState(DEFAULT_CLOUDFLARE_TEMPLATE_URL);
   const [tokenInput, setTokenInput] = useState("");
   const [accountIdInput, setAccountIdInput] = useState("");
   const [accountNameInput, setAccountNameInput] = useState("");
-  const [availableAccounts, setAvailableAccounts] = useState<
-    CloudflareAccountChoice[]
-  >([]);
-  const [permissionRows, setPermissionRows] = useState<
-    CloudflarePermissionStatusRow[]
-  >(DEFAULT_PERMISSION_ROWS);
+  const [availableAccounts, setAvailableAccounts] = useState<CloudflareAccountChoice[]>([]);
+  const [permissionRows, setPermissionRows] = useState<CloudflarePermissionStatusRow[]>(DEFAULT_PERMISSION_ROWS);
   const [hasChecked, setHasChecked] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
-  const [remediationUrl, setRemediationUrl] = useState(
-    DEFAULT_CLOUDFLARE_TEMPLATE_URL,
-  );
+  const [remediationUrl, setRemediationUrl] = useState(DEFAULT_CLOUDFLARE_TEMPLATE_URL);
 
   useEffect(() => {
     if (!open || !orgId) return;
@@ -173,11 +145,7 @@ export function ConnectCloudflareModal({
       onClose();
     } catch (err) {
       setHasChecked(true);
-      setErrorBanner(
-        err instanceof Error
-          ? err.message
-          : "Failed to verify Cloudflare token",
-      );
+      setErrorBanner(err instanceof Error ? err.message : "Failed to verify Cloudflare token");
     } finally {
       setIsVerifying(false);
     }
@@ -196,16 +164,9 @@ export function ConnectCloudflareModal({
           <div>
             <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
               <span>☁</span>
-              <span>
-                {replaceTokenRef
-                  ? "Replace Cloudflare API Token"
-                  : "Connect Cloudflare (BYOC)"}
-              </span>
+              <span>{replaceTokenRef ? "Replace Cloudflare API Token" : "Connect Cloudflare (BYOC)"}</span>
             </h2>
-            <p
-              data-testid="cf-wizard-explanation"
-              className="text-xs text-amber-300 font-semibold mt-1"
-            >
+            <p data-testid="cf-wizard-explanation" className="text-xs text-amber-300 font-semibold mt-1">
               Your backend runs in your own Cloudflare account. We never host it.
             </p>
           </div>
@@ -223,14 +184,10 @@ export function ConnectCloudflareModal({
         <div className="p-3.5 rounded-md bg-surface-base border border-border space-y-2">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <div className="text-xs font-bold text-text-primary">
-                Step 1 · Create a least-privilege scoped API token
-              </div>
+              <div className="text-xs font-bold text-text-primary">Step 1 · Create a least-privilege scoped API token</div>
               <p className="text-[11px] text-text-secondary mt-0.5">
-                Opens Cloudflare with the 4 required permissions pre-selected (
-                <code className="font-mono text-accent">Workers Scripts: Edit</code>,{" "}
-                <code className="font-mono text-accent">D1: Edit</code>,{" "}
-                <code className="font-mono text-accent">Queues: Edit</code>,{" "}
+                Opens Cloudflare with the 4 required permissions pre-selected (<code className="font-mono text-accent">Workers Scripts: Edit</code>,{" "}
+                <code className="font-mono text-accent">D1: Edit</code>, <code className="font-mono text-accent">Queues: Edit</code>,{" "}
                 <code className="font-mono text-accent">Account Settings: Read</code>
                 ).
               </p>
@@ -251,10 +208,7 @@ export function ConnectCloudflareModal({
         {/* Step 2: Token Paste & Account Selection */}
         <form onSubmit={runVerification} className="space-y-4">
           <div>
-            <label
-              htmlFor="cf-token-input-field"
-              className="block text-xs font-semibold text-text-secondary mb-1"
-            >
+            <label htmlFor="cf-token-input-field" className="block text-xs font-semibold text-text-secondary mb-1">
               Step 2 · Paste your Cloudflare API Token
             </label>
             <input
@@ -267,18 +221,12 @@ export function ConnectCloudflareModal({
               placeholder="cf_..."
               className="w-full px-3 py-2 rounded bg-surface-control border border-border-strong font-mono text-xs text-text-primary"
             />
-            <p className="text-[11px] text-text-muted mt-1">
-              Encrypted at rest with AES-256-GCM envelope encryption. Never
-              exposed to AI agents or logs.
-            </p>
+            <p className="text-[11px] text-text-muted mt-1">Encrypted at rest with AES-256-GCM envelope encryption. Never exposed to AI agents or logs.</p>
           </div>
 
           {availableAccounts.length > 1 ? (
             <div>
-              <label
-                htmlFor="cf-account-selector-field"
-                className="block text-xs font-semibold text-text-secondary mb-1"
-              >
+              <label htmlFor="cf-account-selector-field" className="block text-xs font-semibold text-text-secondary mb-1">
                 Select Cloudflare Account ({availableAccounts.length} accounts detected)
               </label>
               <select
@@ -303,10 +251,7 @@ export function ConnectCloudflareModal({
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label
-                  htmlFor="cf-account-id-field"
-                  className="block text-xs font-semibold text-text-secondary mb-1"
-                >
+                <label htmlFor="cf-account-id-field" className="block text-xs font-semibold text-text-secondary mb-1">
                   Account ID (optional if token resolves single account)
                 </label>
                 <input
@@ -320,10 +265,7 @@ export function ConnectCloudflareModal({
                 />
               </div>
               <div>
-                <label
-                  htmlFor="cf-account-name-field"
-                  className="block text-xs font-semibold text-text-secondary mb-1"
-                >
+                <label htmlFor="cf-account-name-field" className="block text-xs font-semibold text-text-secondary mb-1">
                   Account Label (optional)
                 </label>
                 <input
@@ -340,14 +282,9 @@ export function ConnectCloudflareModal({
           )}
 
           {/* Step 3: Per-Permission Verification Checklist */}
-          <div
-            data-testid="cf-permissions-checklist"
-            className="p-3.5 rounded-md bg-surface-base border border-border space-y-2"
-          >
+          <div data-testid="cf-permissions-checklist" className="p-3.5 rounded-md bg-surface-base border border-border space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-text-primary">
-                Step 3 · Required Permission Check
-              </span>
+              <span className="text-xs font-bold text-text-primary">Step 3 · Required Permission Check</span>
               {hasChecked && (
                 <button
                   type="button"
@@ -386,18 +323,12 @@ export function ConnectCloudflareModal({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-semibold">{perm.label}</span>
-                      <span
-                        data-testid={`cf-perm-status-${perm.id}`}
-                        className="font-mono text-[11px] font-bold"
-                      >
+                      <span data-testid={`cf-perm-status-${perm.id}`} className="font-mono text-[11px] font-bold">
                         {statusBadgeText}
                       </span>
                     </div>
                     {hasChecked && !perm.granted && perm.plainError && (
-                      <div
-                        data-testid={`cf-perm-error-${perm.id}`}
-                        className="text-[11px] text-rose-300 flex items-center justify-between gap-2 flex-wrap"
-                      >
+                      <div data-testid={`cf-perm-error-${perm.id}`} className="text-[11px] text-rose-300 flex items-center justify-between gap-2 flex-wrap">
                         <span>{perm.plainError}</span>
                         <a
                           href={safeHref(perm.remediationUrl) ?? safeHref(remediationUrl)}
@@ -417,11 +348,7 @@ export function ConnectCloudflareModal({
           </div>
 
           {errorBanner && (
-            <div
-              role="alert"
-              data-testid="cf-verification-error"
-              className="p-3 rounded bg-rose-950/80 border border-rose-700 text-rose-200 text-xs space-y-2"
-            >
+            <div role="alert" data-testid="cf-verification-error" className="p-3 rounded bg-rose-950/80 border border-rose-700 text-rose-200 text-xs space-y-2">
               <div className="font-semibold">✕ {errorBanner}</div>
               <div className="flex items-center gap-3">
                 <a
@@ -462,9 +389,7 @@ export function ConnectCloudflareModal({
               disabled={isVerifying}
               className="px-4 py-1.5 rounded bg-accent text-text-on-accent font-bold text-xs hover:opacity-90 disabled:opacity-40"
             >
-              {isVerifying
-                ? "Verifying permissions…"
-                : "Verify & Connect Account"}
+              {isVerifying ? "Verifying permissions…" : "Verify & Connect Account"}
             </button>
           </div>
         </form>

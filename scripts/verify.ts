@@ -105,12 +105,7 @@ if (offlineOnly && outDirOverride && requested.length === 0 && existsSync(offlin
   emittedRecords = new Map(ASSEMBLED_PROJECTS.map((blueprint) => [blueprint.project, cached.emitted[blueprint.project]] as const));
 } else {
   // Test files are named "<id>.<topic>.test.ts"; the trailing dot keeps H1 from matching H10.
-  const filters =
-    requested.length > 0
-      ? requested.map((id) => `${id}.`)
-      : offlineOnly
-        ? OFFLINE_HYPOTHESES.map((id) => `${id}.`)
-        : [];
+  const filters = requested.length > 0 ? requested.map((id) => `${id}.`) : offlineOnly ? OFFLINE_HYPOTHESES.map((id) => `${id}.`) : [];
   mkdirSync(evidenceDir, { recursive: true });
   mkdirSync(runDir, { recursive: true });
   rmSync(rawPath, { force: true });
@@ -220,13 +215,18 @@ const nodeSideChecks: Record<string, () => Record<string, boolean | null>> = {
     const scan = scanAssemblerForBrickNames();
     for (const hit of scan.found) console.error(`assembler names a brick: ${hit}`);
     const assembled = assemble(TWO_BRICK_BLUEPRINT, catalog);
-    const owned = assembled.ok ? checkDenialTestsRepoOwned(assembled.files, DENIAL_TESTS) : { ok: false, problems: ["the two-brick blueprint did not assemble"] };
+    const owned = assembled.ok
+      ? checkDenialTestsRepoOwned(assembled.files, DENIAL_TESTS)
+      : { ok: false, problems: ["the two-brick blueprint did not assemble"] };
     // The repo's own denial tests must also have run in this run (a file that was deleted from the run, or never ran, is not ownership).
     const ran = raw.testOutcomes.filter((o) => o.file?.endsWith(DENIAL_TESTS) && o.state === "passed");
     if (ran.length === 0) owned.problems.push(`no test from ${DENIAL_TESTS} ran`);
     for (const problem of owned.problems) console.error(`denial tests: ${problem}`);
     // The two booleans the report test computes are only believed if every attack it stands on really ran and passed.
-    const attacks = checkPortedTests(denialList, raw.testOutcomes.filter((o) => o.file?.endsWith(DENIAL_TESTS)));
+    const attacks = checkPortedTests(
+      denialList,
+      raw.testOutcomes.filter((o) => o.file?.endsWith(DENIAL_TESTS)),
+    );
     for (const problem of attacks.problems) console.error(`h6-denial-tests.json: ${problem}`);
     const reported = raw.results.H6?.checks ?? {};
     return {
@@ -251,7 +251,8 @@ const nodeSideChecks: Record<string, () => Record<string, boolean | null>> = {
       const anyFailed = status.problems.some((p) => p.startsWith("failed:"));
       const anyLost = status.problems.some((p) => !p.startsWith("failed:"));
       if (anyFailed) checks[name] = false;
-      else if (anyLost || !(name in reported)) checks[name] = null; // not reported: delete whatever the tests gave
+      else if (anyLost || !(name in reported))
+        checks[name] = null; // not reported: delete whatever the tests gave
       else checks[name] = reported[name] === true;
     }
     // No entity or field name may be written into code: the assembler, the shared contract, the router, or any emitted source other than the entry's own wiring.
@@ -278,16 +279,27 @@ for (const [id, compute] of Object.entries(nodeSideChecks)) {
 if (selected.some((h) => h.id === "H9") && raw.results.H9) {
   const breakdownPath = h9BreakdownPath(runDir);
   const scored = breakdownPath
-    ? (JSON.parse(readFileSync(breakdownPath, "utf8")) as { scored?: { conversationTokens?: number; firstPartySourceTokens?: number; toolCalls?: number; byMessage?: Array<{ what: string }> } }).scored
+    ? (
+        JSON.parse(readFileSync(breakdownPath, "utf8")) as {
+          scored?: { conversationTokens?: number; firstPartySourceTokens?: number; toolCalls?: number; byMessage?: Array<{ what: string }> };
+        }
+      ).scored
     : undefined;
-  const recomputed = scored?.conversationTokens && scored.firstPartySourceTokens ? Math.round((scored.conversationTokens / scored.firstPartySourceTokens) * 1000) / 10 : undefined;
+  const recomputed =
+    scored?.conversationTokens && scored.firstPartySourceTokens
+      ? Math.round((scored.conversationTokens / scored.firstPartySourceTokens) * 1000) / 10
+      : undefined;
   if (raw.results.H9.measured !== undefined && (recomputed === undefined || raw.results.H9.measured !== recomputed)) {
-    console.error(`H9: the reported ratio ${raw.results.H9.measured} does not match the breakdown (${recomputed ?? "no breakdown"}); treating it as not measured`);
+    console.error(
+      `H9: the reported ratio ${raw.results.H9.measured} does not match the breakdown (${recomputed ?? "no breakdown"}); treating it as not measured`,
+    );
     delete raw.results.H9.measured;
   }
   const counted = scored?.byMessage?.filter((m) => m.what.startsWith("tools/call")).length;
   if (counted === undefined || counted !== scored?.toolCalls) {
-    console.error(`H9: the tool-call count (${scored?.toolCalls ?? "none"}) does not match the calls in the breakdown (${counted ?? "no breakdown"}); treating the check as not reported`);
+    console.error(
+      `H9: the tool-call count (${scored?.toolCalls ?? "none"}) does not match the calls in the breakdown (${counted ?? "no breakdown"}); treating the check as not reported`,
+    );
     if (raw.results.H9.checks) delete raw.results.H9.checks.fiveToolCallsOrFewer;
   } else if (raw.results.H9.checks) {
     raw.results.H9.checks.fiveToolCallsOrFewer = counted <= 5; // from the exchanges themselves, whatever the report said
@@ -324,7 +336,9 @@ if (selected.some((h) => h.id === "H9")) {
     };
     const ten = h9Data.forInformation?.tenBricks;
     if (ten?.ratioPercent !== undefined) {
-      console.error(`10-brick session ratio: ${ten.ratioPercent}% (${ten.conversationTokens} conversation tokens / ${ten.firstPartySourceTokens} source tokens)`);
+      console.error(
+        `10-brick session ratio: ${ten.ratioPercent}% (${ten.conversationTokens} conversation tokens / ${ten.firstPartySourceTokens} source tokens)`,
+      );
     }
   }
 }
@@ -335,7 +349,14 @@ if (selected.some((h) => h.id === "H10")) {
     const callsText = readLfText(callsPath);
     const resultText = readLfText(resultPath);
     const sources: Record<string, string> = {};
-    for (const file of ["scripts/poc-deploy.ts", "packages/deploy/src/h10.ts", ...["access-key", "cloudflare", "credentials", "deploy", "index", "ledger", "names", "redact", "teardown"].map((n) => `packages/deploy/src/provisioner/${n}.ts`)]) sources[file] = readLfText(join(root, file));
+    for (const file of [
+      "scripts/poc-deploy.ts",
+      "packages/deploy/src/h10.ts",
+      ...["access-key", "cloudflare", "credentials", "deploy", "index", "ledger", "names", "redact", "teardown"].map(
+        (n) => `packages/deploy/src/provisioner/${n}.ts`,
+      ),
+    ])
+      sources[file] = readLfText(join(root, file));
     const evaluation = evaluateH10({ callsText, result: JSON.parse(resultText) as H10Result, sources, evidenceTexts: [callsText, resultText] });
     raw.results.H10 = { ...(evaluation.measured !== undefined ? { measured: evaluation.measured } : {}), checks: evaluation.checks };
     extraNotes.H10 = evaluation.notes;
@@ -391,8 +412,7 @@ if (selected.some((h) => h.id === "H12")) {
 
 // A test file named "<id>.<topic>.test.ts" that has a failing test, or failed to load, counts against
 // that hypothesis whether or not its report test passed.
-const brokenFileFor = (id: string): string | undefined =>
-  raw.failedFiles.find((file) => (file.split("/").pop() ?? "").startsWith(`${id}.`));
+const brokenFileFor = (id: string): string | undefined => raw.failedFiles.find((file) => (file.split("/").pop() ?? "").startsWith(`${id}.`));
 
 interface Row {
   id: string;
@@ -436,15 +456,9 @@ const previousFile: { inputsHash?: string; generatedBy?: string; verdicts?: Reco
 const previous = previousFile.verdicts ?? {};
 const sameInputs = previousFile.inputsHash === inputsHash;
 
-const verdicts: Record<string, Record<string, unknown>> =
-  requested.length > 0
-    ? Object.fromEntries(
-        Object.entries(previous).map(([id, entry]) => [
-          id,
-          sameInputs ? { ...entry } : { ...entry, stale: true },
-        ]),
-      )
-    : {};
+const verdicts: Record<string, Record<string, unknown>> = requested.length > 0
+  ? Object.fromEntries(Object.entries(previous).map(([id, entry]) => [id, sameInputs ? { ...entry } : { ...entry, stale: true }]))
+  : {};
 const nowIso = new Date().toISOString();
 const liveSet = new Set<string>(LIVE_HYPOTHESES);
 
@@ -467,19 +481,11 @@ for (const row of rows) {
     prevEntry.verdict === row.verdict &&
     prevEntry.measured === row.measured &&
     JSON.stringify(prevEntry.reasons) === JSON.stringify(row.reasons);
-  const rowRecordedAt =
-    liveSet.has(row.id) && prevRecordedAt
-      ? prevRecordedAt
-      : sameInputs && sameRowOutcome && prevRecordedAt
-        ? prevRecordedAt
-        : nowIso;
+  const rowRecordedAt = liveSet.has(row.id) && prevRecordedAt ? prevRecordedAt : sameInputs && sameRowOutcome && prevRecordedAt ? prevRecordedAt : nowIso;
   verdicts[row.id] = { verdict: row.verdict, measured: row.measured, reasons: row.reasons, recordedAt: rowRecordedAt };
 }
 
-const generatedBy =
-  requested.length > 0 && !sameInputs
-    ? `node scripts/verify.ts ${requested.join(" ")}`
-    : "node scripts/verify.ts";
+const generatedBy = requested.length > 0 && !sameInputs ? `node scripts/verify.ts ${requested.join(" ")}` : "node scripts/verify.ts";
 
 const prov = stampEvidence("scripts/verify.ts", "measured");
 writeEvidence(
@@ -524,11 +530,19 @@ for (const [project, record] of emittedRecords) {
     console.log(`Assembled project ${project}: unchanged since it was written (${record.checked} files re-read and compared)`);
   } else if (record.unchanged === true) {
     emittedBroken = true;
-    console.error(`Assembled project ${project}: the record says unchanged but the check did not read the files back (checked ${record.checked ?? "nothing"} of ${record.expected ?? "?"})`);
+    console.error(
+      `Assembled project ${project}: the record says unchanged but the check did not read the files back (checked ${record.checked ?? "nothing"} of ${record.expected ?? "?"})`,
+    );
   } else {
     emittedBroken = true;
-    const detail = [...(record.changed ?? []).map((f) => `changed ${f}`), ...(record.missing ?? []).map((f) => `missing ${f}`), ...(record.extra ?? []).map((f) => `extra ${f}`)];
-    console.error(`Assembled project ${project}: ${record.unchanged === false ? "CHANGED while the tests ran (" + detail.join(", ") + ")" : "the run did not finish checking it"}`);
+    const detail = [
+      ...(record.changed ?? []).map((f) => `changed ${f}`),
+      ...(record.missing ?? []).map((f) => `missing ${f}`),
+      ...(record.extra ?? []).map((f) => `extra ${f}`),
+    ];
+    console.error(
+      `Assembled project ${project}: ${record.unchanged === false ? "CHANGED while the tests ran (" + detail.join(", ") + ")" : "the run did not finish checking it"}`,
+    );
   }
 }
 

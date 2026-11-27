@@ -57,12 +57,7 @@ function readInitialLogsState(project: string): StructuredLogsFilterState {
   const urlQ = params.get("logQ");
   const urlLiveTail = params.get("liveTail");
 
-  const resolvedEnv =
-    urlEnv === "production" || urlEnv === "preview"
-      ? urlEnv
-      : stored.env === "production"
-        ? "production"
-        : "preview";
+  const resolvedEnv = urlEnv === "production" || urlEnv === "preview" ? urlEnv : stored.env === "production" ? "production" : "preview";
 
   const validLevels: LogLevelFilter[] = ["all", "error", "warn", "info", "debug"];
   const resolvedLevel: LogLevelFilter =
@@ -81,20 +76,14 @@ function readInitialLogsState(project: string): StructuredLogsFilterState {
     runId: urlRun !== null ? urlRun : (stored.runId ?? ""),
     nodeId: urlNode !== null ? urlNode : (stored.nodeId ?? ""),
     q: urlQ !== null ? urlQ : (stored.q ?? ""),
-    liveTail:
-      urlLiveTail !== null
-        ? urlLiveTail !== "0" && urlLiveTail !== "false"
-        : (stored.liveTail ?? true),
+    liveTail: urlLiveTail !== null ? urlLiveTail !== "0" && urlLiveTail !== "false" : (stored.liveTail ?? true),
   };
 }
 
 function persistLogsState(project: string, state: StructuredLogsFilterState): void {
   if (typeof window === "undefined") return;
   try {
-    window.sessionStorage.setItem(
-      `${STORAGE_PREFIX}${project}`,
-      JSON.stringify(state),
-    );
+    window.sessionStorage.setItem(`${STORAGE_PREFIX}${project}`, JSON.stringify(state));
   } catch {
     // Ignore storage write errors
   }
@@ -200,26 +189,17 @@ function getLevelBadgeMeta(level: StructuredLogEntryPayload["level"]): {
   }
 }
 
-function matchesClientFilter(
-  entry: StructuredLogEntryPayload,
-  filters: StructuredLogsFilterState,
-): boolean {
+function matchesClientFilter(entry: StructuredLogEntryPayload, filters: StructuredLogsFilterState): boolean {
   if (filters.level !== "all" && entry.level !== filters.level) {
     return false;
   }
-  if (
-    filters.workspaceId.trim() &&
-    entry.workspaceId !== filters.workspaceId.trim()
-  ) {
+  if (filters.workspaceId.trim() && entry.workspaceId !== filters.workspaceId.trim()) {
     return false;
   }
   if (filters.brickId.trim() && entry.brickId !== filters.brickId.trim()) {
     return false;
   }
-  if (
-    filters.workflowId.trim() &&
-    entry.workflowId !== filters.workflowId.trim()
-  ) {
+  if (filters.workflowId.trim() && entry.workflowId !== filters.workflowId.trim()) {
     return false;
   }
   if (filters.runId.trim() && entry.runId !== filters.runId.trim()) {
@@ -230,7 +210,8 @@ function matchesClientFilter(
   }
   if (filters.q.trim()) {
     const needle = filters.q.trim().toLowerCase();
-    const hay = `${entry.message} ${entry.fieldsJson ?? ""} ${entry.errorStack ?? ""} ${entry.nodeId ?? ""} ${entry.runId ?? ""} ${entry.brickId ?? ""} ${entry.workspaceId ?? ""}`.toLowerCase();
+    const hay =
+      `${entry.message} ${entry.fieldsJson ?? ""} ${entry.errorStack ?? ""} ${entry.nodeId ?? ""} ${entry.runId ?? ""} ${entry.brickId ?? ""} ${entry.workspaceId ?? ""}`.toLowerCase();
     if (!hay.includes(needle)) {
       return false;
     }
@@ -248,19 +229,14 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
   const activeOrgId = useStudioStore((s) => s.activeOrgId);
   const startRunReplay = useStudioStore((s) => s.startRunReplay);
 
-  const project =
-    propProject ?? projectState?.project ?? activeProjectId ?? "default";
+  const project = propProject ?? projectState?.project ?? activeProjectId ?? "default";
 
-  const [filters, setFilters] = useState<StructuredLogsFilterState>(() =>
-    readInitialLogsState(project),
-  );
+  const [filters, setFilters] = useState<StructuredLogsFilterState>(() => readInitialLogsState(project));
   const [logs, setLogs] = useState<StructuredLogEntryPayload[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pausedByScroll, setPausedByScroll] = useState(false);
-  const [expandedLogIds, setExpandedLogIds] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [expandedLogIds, setExpandedLogIds] = useState<Record<string, boolean>>({});
 
   const nextCursorRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -269,12 +245,9 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
     persistLogsState(project, filters);
   }, [project, filters]);
 
-  const updateFilter = useCallback(
-    (patch: Partial<StructuredLogsFilterState>) => {
-      setFilters((prev) => ({ ...prev, ...patch }));
-    },
-    [],
-  );
+  const updateFilter = useCallback((patch: Partial<StructuredLogsFilterState>) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   const loadLogs = useCallback(
     async (currentFilters: StructuredLogsFilterState) => {
@@ -284,8 +257,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
       try {
         const res = await fetchEnvironmentLogs(project, currentFilters.env, {
           orgId: activeOrgId ?? undefined,
-          level:
-            currentFilters.level === "all" ? undefined : currentFilters.level,
+          level: currentFilters.level === "all" ? undefined : currentFilters.level,
           workspaceId: currentFilters.workspaceId.trim() || undefined,
           brickId: currentFilters.brickId.trim() || undefined,
           workflowId: currentFilters.workflowId.trim() || undefined,
@@ -296,15 +268,10 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
         });
         const entries = Array.isArray(res.logs) ? res.logs : [];
         setLogs(entries);
-        const maxSeq = entries.reduce(
-          (acc, item) => Math.max(acc, item.seq ?? 0),
-          res.nextCursor ?? 0,
-        );
+        const maxSeq = entries.reduce((acc, item) => Math.max(acc, item.seq ?? 0), res.nextCursor ?? 0);
         nextCursorRef.current = maxSeq;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load structured logs",
-        );
+        setError(err instanceof Error ? err.message : "Failed to load structured logs");
       } finally {
         setLoading(false);
       }
@@ -314,17 +281,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
 
   useEffect(() => {
     void loadLogs(filters);
-  }, [
-    loadLogs,
-    filters.env,
-    filters.level,
-    filters.workspaceId,
-    filters.brickId,
-    filters.workflowId,
-    filters.runId,
-    filters.nodeId,
-    filters.q,
-  ]);
+  }, [loadLogs, filters.env, filters.level, filters.workspaceId, filters.brickId, filters.workflowId, filters.runId, filters.nodeId, filters.q]);
 
   // Listen for live WebSocket log frames
   useEffect(() => {
@@ -360,10 +317,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
     };
   }, [project, filters.env, filters.liveTail, pausedByScroll]);
 
-  const filteredLogs = useMemo(
-    () => logs.filter((entry) => matchesClientFilter(entry, filters)),
-    [logs, filters],
-  );
+  const filteredLogs = useMemo(() => logs.filter((entry) => matchesClientFilter(entry, filters)), [logs, filters]);
 
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -379,11 +333,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
   const handleJumpToReplay = useCallback(
     async (entry: StructuredLogEntryPayload) => {
       if (!entry.runId) return;
-      await startRunReplay(
-        entry.runId,
-        filters.env,
-        entry.nodeId ?? null,
-      );
+      await startRunReplay(entry.runId, filters.env, entry.nodeId ?? null);
     },
     [startRunReplay, filters.env],
   );
@@ -399,16 +349,11 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
   const enabledBricks = projectState?.bricks ?? [];
 
   return (
-    <div
-      data-testid="structured-logs-panel"
-      className="space-y-3 text-xs"
-    >
+    <div data-testid="structured-logs-panel" className="space-y-3 text-xs">
       {/* Header + Live Tail + Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-bold text-text-primary">
-            ▤ Structured Logs &amp; Errors ({filteredLogs.length})
-          </span>
+          <span className="font-bold text-text-primary">▤ Structured Logs &amp; Errors ({filteredLogs.length})</span>
           <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 font-mono text-[10px] text-emerald-300">
             Redaction: active ([REDACTED])
           </span>
@@ -450,18 +395,8 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
                 : "bg-surface-control border-border-strong text-text-secondary"
             }`}
           >
-            <span
-              className={`inline-block w-2 h-2 rounded-full ${
-                filters.liveTail && !pausedByScroll
-                  ? "bg-emerald-400 animate-pulse"
-                  : "bg-slate-500"
-              }`}
-            />
-            {filters.liveTail
-              ? pausedByScroll
-                ? "Live Tail (Paused on scroll)"
-                : "Live Tail: ON"
-              : "Live Tail: OFF"}
+            <span className={`inline-block w-2 h-2 rounded-full ${filters.liveTail && !pausedByScroll ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
+            {filters.liveTail ? (pausedByScroll ? "Live Tail (Paused on scroll)" : "Live Tail: ON") : "Live Tail: OFF"}
           </button>
 
           {pausedByScroll && (
@@ -495,11 +430,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
       {/* Filter Bar: Level Pills + Facet Controls */}
       <div className="flex flex-wrap items-center gap-2 p-2.5 rounded bg-surface-base border border-border">
         {/* Level Pills */}
-        <div
-          role="group"
-          aria-label="Filter logs by level"
-          className="flex items-center gap-1"
-        >
+        <div role="group" aria-label="Filter logs by level" className="flex items-center gap-1">
           {(["all", "error", "warn", "info", "debug"] as const).map((lvl) => {
             const active = filters.level === lvl;
             return (
@@ -510,9 +441,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
                 aria-pressed={active}
                 onClick={() => updateFilter({ level: lvl })}
                 className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase border transition ${
-                  active
-                    ? "bg-accent/20 border-accent text-accent"
-                    : "bg-surface-control border-border text-text-muted hover:text-text-primary"
+                  active ? "bg-accent/20 border-accent text-accent" : "bg-surface-control border-border text-text-muted hover:text-text-primary"
                 }`}
               >
                 {lvl}
@@ -526,9 +455,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
           aria-label="Filter by log level"
           data-testid="logs-filter-level"
           value={filters.level}
-          onChange={(e) =>
-            updateFilter({ level: e.target.value as LogLevelFilter })
-          }
+          onChange={(e) => updateFilter({ level: e.target.value as LogLevelFilter })}
           className="px-2 py-1 rounded bg-surface-control border border-border-strong font-mono text-[11px] text-text-primary"
         >
           <option value="all">All levels</option>
@@ -616,13 +543,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
           className="px-2.5 py-1 rounded bg-surface-control border border-border-strong font-mono text-[11px] text-text-primary flex-1 min-w-[160px]"
         />
 
-        {(filters.level !== "all" ||
-          filters.workspaceId ||
-          filters.brickId ||
-          filters.workflowId ||
-          filters.runId ||
-          filters.nodeId ||
-          filters.q) && (
+        {(filters.level !== "all" || filters.workspaceId || filters.brickId || filters.workflowId || filters.runId || filters.nodeId || filters.q) && (
           <button
             type="button"
             data-testid="logs-clear-filters-button"
@@ -656,28 +577,16 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
 
       {/* Monospace Structured Log Rows */}
       {filteredLogs.length === 0 ? (
-        <div
-          data-testid="logs-empty-state"
-          className="p-4 rounded bg-surface-base border border-border text-text-muted text-center font-mono text-[11px]"
-        >
-          {loading
-            ? "Loading structured logs…"
-            : "No structured log entries match the active filters."}
+        <div data-testid="logs-empty-state" className="p-4 rounded bg-surface-base border border-border text-text-muted text-center font-mono text-[11px]">
+          {loading ? "Loading structured logs…" : "No structured log entries match the active filters."}
         </div>
       ) : (
-        <div
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          data-testid="logs-scroll-container"
-          className="space-y-1.5 max-h-72 overflow-y-auto font-mono"
-        >
+        <div ref={scrollContainerRef} onScroll={handleScroll} data-testid="logs-scroll-container" className="space-y-1.5 max-h-72 overflow-y-auto font-mono">
           {filteredLogs.map((entry) => {
             const badge = getLevelBadgeMeta(entry.level);
             const isExpanded = Boolean(expandedLogIds[entry.logId]);
             const hasDetails =
-              Boolean(entry.errorStack) ||
-              (entry.fields && Object.keys(entry.fields).length > 0) ||
-              (entry.fieldsJson && entry.fieldsJson !== "{}");
+              Boolean(entry.errorStack) || (entry.fields && Object.keys(entry.fields).length > 0) || (entry.fieldsJson && entry.fieldsJson !== "{}");
 
             return (
               <div
@@ -690,10 +599,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     {/* Timestamp */}
-                    <span
-                      data-testid={`log-ts-${entry.logId}`}
-                      className="text-[10px] text-text-muted shrink-0"
-                    >
+                    <span data-testid={`log-ts-${entry.logId}`} className="text-[10px] text-text-muted shrink-0">
                       {entry.ts}
                     </span>
 
@@ -725,11 +631,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
                       <button
                         type="button"
                         data-testid={`log-chip-node-${entry.logId}`}
-                        title={
-                          entry.runId
-                            ? `Jump to node ${entry.nodeId} in Run Replay`
-                            : `Filter by node ${entry.nodeId}`
-                        }
+                        title={entry.runId ? `Jump to node ${entry.nodeId} in Run Replay` : `Filter by node ${entry.nodeId}`}
                         onClick={() => {
                           if (entry.runId) {
                             void handleJumpToReplay(entry);
@@ -747,9 +649,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
                       <button
                         type="button"
                         data-testid={`log-chip-brick-${entry.logId}`}
-                        onClick={() =>
-                          updateFilter({ brickId: entry.brickId ?? "" })
-                        }
+                        onClick={() => updateFilter({ brickId: entry.brickId ?? "" })}
                         className="px-1.5 py-0.5 rounded bg-purple-500/15 hover:bg-purple-500/25 border border-purple-400/40 text-purple-200 text-[10px]"
                       >
                         brick:{entry.brickId}
@@ -760,9 +660,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
                       <button
                         type="button"
                         data-testid={`log-chip-workspace-${entry.logId}`}
-                        onClick={() =>
-                          updateFilter({ workspaceId: entry.workspaceId ?? "" })
-                        }
+                        onClick={() => updateFilter({ workspaceId: entry.workspaceId ?? "" })}
                         className="px-1.5 py-0.5 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/40 text-emerald-200 text-[10px]"
                       >
                         ws:{entry.workspaceId}
@@ -770,10 +668,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
                     )}
 
                     {/* Log Message */}
-                    <span
-                      data-testid={`log-message-${entry.logId}`}
-                      className="text-[11px] text-text-primary break-all"
-                    >
+                    <span data-testid={`log-message-${entry.logId}`} className="text-[11px] text-text-primary break-all">
                       {entry.message}
                     </span>
                   </div>
@@ -806,15 +701,10 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
                 </div>
 
                 {isExpanded && hasDetails && (
-                  <div
-                    data-testid={`log-details-${entry.logId}`}
-                    className="p-2 rounded bg-slate-900/90 border border-border space-y-1.5 text-[11px]"
-                  >
+                  <div data-testid={`log-details-${entry.logId}`} className="p-2 rounded bg-slate-900/90 border border-border space-y-1.5 text-[11px]">
                     {entry.fields && Object.keys(entry.fields).length > 0 && (
                       <div>
-                        <div className="text-[10px] text-text-muted mb-0.5">
-                          Structured Fields (JSON):
-                        </div>
+                        <div className="text-[10px] text-text-muted mb-0.5">Structured Fields (JSON):</div>
                         <pre
                           data-testid={`log-fields-json-${entry.logId}`}
                           className="p-1.5 rounded bg-slate-950 border border-border overflow-x-auto text-[10px] text-emerald-200"
@@ -825,9 +715,7 @@ export function StructuredLogsPanel({ project: propProject }: StructuredLogsPane
                     )}
                     {entry.errorStack && (
                       <div>
-                        <div className="text-[10px] text-rose-300 mb-0.5">
-                          Error Stack Trace:
-                        </div>
+                        <div className="text-[10px] text-rose-300 mb-0.5">Error Stack Trace:</div>
                         <pre
                           data-testid={`log-error-stack-${entry.logId}`}
                           className="p-1.5 rounded bg-rose-950/40 border border-rose-500/40 overflow-x-auto text-[10px] text-rose-200 whitespace-pre-wrap"

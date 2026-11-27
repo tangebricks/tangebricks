@@ -107,7 +107,15 @@ export const auditRecorder: AuditRecorder = Object.freeze({
   },
 
   async outcome(db: D1Like, workspaceId: string, pendingId: string, actorId: string, outcome: Record<string, unknown>): Promise<{ id: string }> {
-    const made = auditStatement(db, { workspaceId, actorType: "user", actorId, action: AUDIT_OUTCOME_ACTION, targetType: "audit_event", targetId: pendingId, metadata: outcome });
+    const made = auditStatement(db, {
+      workspaceId,
+      actorType: "user",
+      actorId,
+      action: AUDIT_OUTCOME_ACTION,
+      targetType: "audit_event",
+      targetId: pendingId,
+      metadata: outcome,
+    });
     await made.statement.run();
     return { id: made.id };
   },

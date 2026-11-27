@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { rollbackProjectEnvironment } from "../api.ts";
-import type {
-  DeployPlanPayload,
-  EnvironmentDeploymentRecordPayload,
-  ProjectDeployEnvironmentRecord,
-} from "../api.ts";
+import type { DeployPlanPayload, EnvironmentDeploymentRecordPayload, ProjectDeployEnvironmentRecord } from "../api.ts";
 
 export interface RollbackModalProps {
   open: boolean;
@@ -24,16 +20,7 @@ export interface RollbackModalProps {
   }) => void;
 }
 
-export function RollbackModal({
-  open,
-  projectSlug,
-  orgId,
-  envName,
-  targetDeployment,
-  currentDeployment,
-  onClose,
-  onRolledBack,
-}: RollbackModalProps) {
+export function RollbackModal({ open, projectSlug, orgId, envName, targetDeployment, currentDeployment, onClose, onRolledBack }: RollbackModalProps) {
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [plan, setPlan] = useState<DeployPlanPayload | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -73,11 +60,7 @@ export function RollbackModal({
       })
       .catch((err) => {
         if (!cancelled) {
-          setErrorMessage(
-            err instanceof Error
-              ? err.message
-              : "Failed to load rollback diff plan",
-          );
+          setErrorMessage(err instanceof Error ? err.message : "Failed to load rollback diff plan");
         }
       })
       .finally(() => {
@@ -95,13 +78,8 @@ export function RollbackModal({
 
   const destructiveWarnings = plan?.d1.destructiveWarnings ?? [];
   const hasDestructiveWarnings = destructiveWarnings.length > 0;
-  const requiredMigrationNames = Array.from(
-    new Set(destructiveWarnings.map((w) => w.migrationName)),
-  );
-  const canConfirm =
-    !loadingPlan &&
-    !executing &&
-    (!hasDestructiveWarnings || confirmDestructive);
+  const requiredMigrationNames = Array.from(new Set(destructiveWarnings.map((w) => w.migrationName)));
+  const canConfirm = !loadingPlan && !executing && (!hasDestructiveWarnings || confirmDestructive);
 
   const handleConfirmRollback = async () => {
     if (!canConfirm) return;
@@ -110,13 +88,8 @@ export function RollbackModal({
     try {
       const res = await rollbackProjectEnvironment(projectSlug, envName, {
         targetDeploymentId: targetDeployment.deployId,
-        confirmDestructive: hasDestructiveWarnings
-          ? confirmDestructive
-          : undefined,
-        confirmedMigrationNames:
-          hasDestructiveWarnings && confirmDestructive
-            ? requiredMigrationNames
-            : undefined,
+        confirmDestructive: hasDestructiveWarnings ? confirmDestructive : undefined,
+        confirmedMigrationNames: hasDestructiveWarnings && confirmDestructive ? requiredMigrationNames : undefined,
         orgId,
       });
 
@@ -133,8 +106,7 @@ export function RollbackModal({
         rollbackFromDeploymentId: res.rollbackFromDeploymentId,
         revision: res.revision ?? targetDeployment.revision,
         buildHash: res.buildHash ?? targetDeployment.buildHash,
-        statusMessage:
-          res.statusMessage ?? `Rolled back to r${targetDeployment.revision}`,
+        statusMessage: res.statusMessage ?? `Rolled back to r${targetDeployment.revision}`,
       });
       onRolledBack?.({
         deployId: res.deployId,
@@ -145,9 +117,7 @@ export function RollbackModal({
         environment: res.environment,
       });
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : "Failed to execute rollback",
-      );
+      setErrorMessage(err instanceof Error ? err.message : "Failed to execute rollback");
     } finally {
       setExecuting(false);
     }
@@ -173,14 +143,10 @@ export function RollbackModal({
             </h2>
             <p className="text-xs text-text-secondary mt-1">
               Redeploys cached build{" "}
-              <code
-                data-testid="rollback-target-build-hash"
-                className="font-mono text-amber-300"
-              >
+              <code data-testid="rollback-target-build-hash" className="font-mono text-amber-300">
                 {targetDeployment.buildHash.slice(0, 14)}
               </code>{" "}
-              and restores workflow graphs &amp; schedules without rebuilding from
-              scratch.
+              and restores workflow graphs &amp; schedules without rebuilding from scratch.
             </p>
           </div>
           <button
@@ -209,31 +175,20 @@ export function RollbackModal({
           <span className="text-amber-300 font-bold">→ Roll back to →</span>
           <div className="space-y-0.5">
             <div className="text-text-muted">Target Historical Deployment</div>
-            <div
-              data-testid="rollback-target-summary"
-              className="font-mono font-semibold text-emerald-300"
-            >
-              {targetDeployment.versionLabel} · r{targetDeployment.revision} (
-              {targetDeployment.buildHash.slice(0, 10)})
+            <div data-testid="rollback-target-summary" className="font-mono font-semibold text-emerald-300">
+              {targetDeployment.versionLabel} · r{targetDeployment.revision} ({targetDeployment.buildHash.slice(0, 10)})
             </div>
           </div>
         </div>
 
         {loadingPlan && (
-          <div
-            data-testid="rollback-plan-loading"
-            className="p-4 rounded bg-surface-base border border-border text-xs text-text-secondary"
-          >
+          <div data-testid="rollback-plan-loading" className="p-4 rounded bg-surface-base border border-border text-xs text-text-secondary">
             Computing rollback diff against current {envName} state…
           </div>
         )}
 
         {errorMessage && (
-          <div
-            role="alert"
-            data-testid="rollback-error-banner"
-            className="p-3 rounded bg-rose-950/80 border border-rose-700 text-rose-200 text-xs"
-          >
+          <div role="alert" data-testid="rollback-error-banner" className="p-3 rounded bg-rose-950/80 border border-rose-700 text-rose-200 text-xs">
             ✕ {errorMessage}
           </div>
         )}
@@ -241,69 +196,38 @@ export function RollbackModal({
         {plan && (
           <div className="space-y-3 text-xs">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div
-                data-testid="rollback-worker-diff-card"
-                className="p-3 rounded bg-surface-base border border-border space-y-1"
-              >
+              <div data-testid="rollback-worker-diff-card" className="p-3 rounded bg-surface-base border border-border space-y-1">
                 <div className="font-semibold text-text-primary flex items-center justify-between">
                   <span>Worker Bundle ({plan.worker.scriptName})</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono text-[10px]">
-                    Cached Build Reused
-                  </span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono text-[10px]">Cached Build Reused</span>
                 </div>
                 <div className="font-mono text-[11px] text-text-secondary">
-                  Code:{" "}
-                  {(plan.worker.currentCodeHash ?? "none").slice(0, 10)} →{" "}
-                  {(plan.worker.nextCodeHash ?? targetDeployment.codeHash).slice(
-                    0,
-                    10,
-                  )}
+                  Code: {(plan.worker.currentCodeHash ?? "none").slice(0, 10)} → {(plan.worker.nextCodeHash ?? targetDeployment.codeHash).slice(0, 10)}
                 </div>
                 <div className="font-mono text-[11px] text-text-secondary">
-                  Graph:{" "}
-                  {(plan.worker.currentGraphHash ?? "none").slice(0, 10)} →{" "}
-                  {(
-                    plan.worker.nextGraphHash ?? targetDeployment.graphHash
-                  ).slice(0, 10)}
+                  Graph: {(plan.worker.currentGraphHash ?? "none").slice(0, 10)} → {(plan.worker.nextGraphHash ?? targetDeployment.graphHash).slice(0, 10)}
                 </div>
               </div>
 
-              <div
-                data-testid="rollback-workflows-diff-card"
-                className="p-3 rounded bg-surface-base border border-border space-y-1"
-              >
-                <div className="font-semibold text-text-primary">
-                  Workflows &amp; Schedules ({plan.d1.databaseName})
+              <div data-testid="rollback-workflows-diff-card" className="p-3 rounded bg-surface-base border border-border space-y-1">
+                <div className="font-semibold text-text-primary">Workflows &amp; Schedules ({plan.d1.databaseName})</div>
+                <div className="text-text-secondary">
+                  Workflows: {plan.workflows.length === 0 ? "0 workflows" : plan.workflows.map((w) => `${w.workflowName} (${w.action})`).join(", ")}
                 </div>
                 <div className="text-text-secondary">
-                  Workflows:{" "}
-                  {plan.workflows.length === 0
-                    ? "0 workflows"
-                    : plan.workflows
-                        .map((w) => `${w.workflowName} (${w.action})`)
-                        .join(", ")}
-                </div>
-                <div className="text-text-secondary">
-                  Cron schedules: {plan.cronTriggers.currentCrons.length} →{" "}
-                  {plan.cronTriggers.nextCrons.length}
+                  Cron schedules: {plan.cronTriggers.currentCrons.length} → {plan.cronTriggers.nextCrons.length}
                 </div>
               </div>
             </div>
 
             {hasDestructiveWarnings && (
-              <div
-                data-testid="rollback-destructive-migration-guard"
-                className="p-3.5 rounded bg-amber-950/70 border border-amber-600/70 space-y-2.5"
-              >
+              <div data-testid="rollback-destructive-migration-guard" className="p-3.5 rounded bg-amber-950/70 border border-amber-600/70 space-y-2.5">
                 <div className="font-bold text-amber-200 flex items-center gap-2">
                   <span>⚠</span>
-                  <span>
-                    Destructive Schema Downgrade / Applied Migration Warning
-                  </span>
+                  <span>Destructive Schema Downgrade / Applied Migration Warning</span>
                 </div>
                 <p className="text-amber-100/90 text-[11px]">
-                  The current {envName} environment has applied D1 migrations or
-                  schema tables/columns that do not exist in{" "}
+                  The current {envName} environment has applied D1 migrations or schema tables/columns that do not exist in{" "}
                   <strong>
                     {targetDeployment.versionLabel} (r
                     {targetDeployment.revision})
@@ -312,10 +236,7 @@ export function RollbackModal({
                 </p>
                 <ul className="list-disc list-inside space-y-1 font-mono text-[11px] text-amber-200">
                   {destructiveWarnings.map((w, i) => (
-                    <li
-                      key={`${w.migrationName}:${i}`}
-                      data-testid={`rollback-destructive-warning-${i}`}
-                    >
+                    <li key={`${w.migrationName}:${i}`} data-testid={`rollback-destructive-warning-${i}`}>
                       [{w.kind}] {w.migrationName}: {w.message}
                     </li>
                   ))}
@@ -328,10 +249,7 @@ export function RollbackModal({
                     onChange={(e) => setConfirmDestructive(e.target.checked)}
                     className="rounded border-amber-500"
                   />
-                  <span>
-                    I understand this rollback crosses destructive schema or D1
-                    migration boundaries and confirm proceeding.
-                  </span>
+                  <span>I understand this rollback crosses destructive schema or D1 migration boundaries and confirm proceeding.</span>
                 </label>
               </div>
             )}
@@ -339,21 +257,13 @@ export function RollbackModal({
         )}
 
         {rolledBackSuccess && (
-          <div
-            data-testid="rollback-success-banner"
-            className="p-3 rounded bg-emerald-950/80 border border-emerald-600 text-emerald-200 text-xs space-y-1"
-          >
+          <div data-testid="rollback-success-banner" className="p-3 rounded bg-emerald-950/80 border border-emerald-600 text-emerald-200 text-xs space-y-1">
             <div className="font-bold">
-              ✓ {rolledBackSuccess.statusMessage} (Cached artifact{" "}
-              <code className="font-mono">
-                {rolledBackSuccess.buildHash?.slice(0, 12)}
-              </code>
-              )
+              ✓ {rolledBackSuccess.statusMessage} (Cached artifact <code className="font-mono">{rolledBackSuccess.buildHash?.slice(0, 12)}</code>)
             </div>
             {rolledBackSuccess.rollbackFromDeploymentId && (
               <div className="font-mono text-[11px] text-emerald-300">
-                Recorded new deployment {rolledBackSuccess.deployId} (rolled back
-                from {rolledBackSuccess.rollbackFromDeploymentId})
+                Recorded new deployment {rolledBackSuccess.deployId} (rolled back from {rolledBackSuccess.rollbackFromDeploymentId})
               </div>
             )}
           </div>
@@ -376,9 +286,7 @@ export function RollbackModal({
               onClick={() => void handleConfirmRollback()}
               className="px-3.5 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {executing
-                ? "Rolling back…"
-                : `Confirm Rollback to ${targetDeployment.versionLabel} (r${targetDeployment.revision})`}
+              {executing ? "Rolling back…" : `Confirm Rollback to ${targetDeployment.versionLabel} (r${targetDeployment.revision})`}
             </button>
           )}
         </div>

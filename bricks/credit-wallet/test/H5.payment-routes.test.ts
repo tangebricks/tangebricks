@@ -22,7 +22,8 @@ const db = env.DB as D1Like;
 let gateway: FakeGateway;
 
 async function reset(): Promise<void> {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs", "mw_members", "mw_workspaces"])
+    await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, mwMigration);
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
@@ -30,7 +31,10 @@ async function reset(): Promise<void> {
   await applyMigration(db, walletMigration0004);
 }
 async function addMember(workspaceId: string, userId: string, role = "owner", suspended = false): Promise<void> {
-  await db.prepare("INSERT OR IGNORE INTO mw_workspaces (id, name, owner_id, suspended) VALUES (?, ?, 'o', ?)").bind(workspaceId, workspaceId, suspended ? 1 : 0).run();
+  await db
+    .prepare("INSERT OR IGNORE INTO mw_workspaces (id, name, owner_id, suspended) VALUES (?, ?, 'o', ?)")
+    .bind(workspaceId, workspaceId, suspended ? 1 : 0)
+    .run();
   await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, ?)").bind(workspaceId, userId, role).run();
 }
 
@@ -65,7 +69,8 @@ const balance = async (workspace: string) => {
   const milli = await createWallet(db, undefined).getBalanceMilli(workspace);
   return milli === null ? null : milli / 1000;
 };
-const ledgerRows = async (workspace: string) => (await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
+const ledgerRows = async (workspace: string) =>
+  (await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
 const orderRows = async () => (await db.prepare("SELECT COUNT(*) AS n FROM credit_orders").first<{ n: number }>())!.n;
 
 /** A paid-for order for ws-abc owned by `owner`, ready to be confirmed. */
@@ -201,9 +206,12 @@ describe("the wallet routes beyond the ported tests", () => {
     expect(res.status).toBe(404);
   });
 
-  it.each([[{ order_id: 7 }], [{ order_id: "" }], [{ order_id: "x".repeat(201) }], ["not json"]])("verify with the body %j is rejected with 400", async (body) => {
-    expect((await call("/api/payments/verify", "user-123", null, body as never)).status).toBe(400);
-  });
+  it.each([[{ order_id: 7 }], [{ order_id: "" }], [{ order_id: "x".repeat(201) }], ["not json"]])(
+    "verify with the body %j is rejected with 400",
+    async (body) => {
+      expect((await call("/api/payments/verify", "user-123", null, body as never)).status).toBe(400);
+    },
+  );
 
   it.each([[150.5], ["150"], [null], [0], [1e12]])("create-order with an amount of %j is rejected with 400 and creates nothing", async (amount) => {
     const res = await call("/api/payments/create-order", "user-123", "ws-abc", { amount });

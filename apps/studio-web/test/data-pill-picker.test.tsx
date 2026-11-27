@@ -151,18 +151,10 @@ describe("Structured Data-Pill Picker and Dynamic Data-Driven Ports", () => {
 
     // Trigger node bound to `invoices` entity exposes dynamic `col-*` output ports
     expect(screen.getByTestId("inspector-node-dynamic-ports")).toBeTruthy();
-    expect(screen.getByTestId("dynamic-port-out-col-id").textContent).toContain(
-      "col-id:string",
-    );
-    expect(screen.getByTestId("dynamic-port-out-col-amount").textContent).toContain(
-      "col-amount:number",
-    );
-    expect(screen.getByTestId("dynamic-port-out-col-status").textContent).toContain(
-      "col-status:string",
-    );
-    expect(
-      screen.getByTestId("dynamic-port-out-col-customer_email").textContent,
-    ).toContain("col-customer_email:string");
+    expect(screen.getByTestId("dynamic-port-out-col-id").textContent).toContain("col-id:string");
+    expect(screen.getByTestId("dynamic-port-out-col-amount").textContent).toContain("col-amount:number");
+    expect(screen.getByTestId("dynamic-port-out-col-status").textContent).toContain("col-status:string");
+    expect(screen.getByTestId("dynamic-port-out-col-customer_email").textContent).toContain("col-customer_email:string");
 
     // Select `format_email` node to verify dynamic `ph-customer_name` input port from `{{customer_name}}`
     useStudioStore.getState().selectItem({
@@ -175,9 +167,7 @@ describe("Structured Data-Pill Picker and Dynamic Data-Driven Ports", () => {
       expect(screen.getByTestId("inspector-node-id").textContent).toBe("format_email");
     });
 
-    expect(
-      screen.getByTestId("dynamic-port-in-ph-customer_name").textContent,
-    ).toContain("ph-customer_name:string");
+    expect(screen.getByTestId("dynamic-port-in-ph-customer_name").textContent).toContain("ph-customer_name:string");
   });
 
   it("2. maps upstream entity fields in the Data-Pill Picker with zero typed expressions, renders pill chips, and commits update_node", async () => {
@@ -204,24 +194,16 @@ describe("Structured Data-Pill Picker and Dynamic Data-Driven Ports", () => {
     // Verify Data Pill chip is rendered with step title, field name, and type badge
     const statusChip = screen.getByTestId("data-pill-chip-field-status");
     expect(statusChip.textContent).toContain("[Invoice Created → status : string]");
-    expect(statusChip.getAttribute("data-pill-expression")).toBe(
-      "{{steps.trig_invoice.output.status}}",
-    );
+    expect(statusChip.getAttribute("data-pill-expression")).toBe("{{steps.trig_invoice.output.status}}");
 
     // Save `if_paid` node and verify `update_node` payload
     fireEvent.click(screen.getByTestId("inspector-node-save"));
 
     await waitFor(() => {
-      expect(
-        dispatchedOps.some(
-          (op) => op.type === "update_node" && op.nodeId === "if_paid",
-        ),
-      ).toBe(true);
+      expect(dispatchedOps.some((op) => op.type === "update_node" && op.nodeId === "if_paid")).toBe(true);
     });
 
-    const updateIfOp = dispatchedOps.find(
-      (op) => op.type === "update_node" && op.nodeId === "if_paid",
-    );
+    const updateIfOp = dispatchedOps.find((op) => op.type === "update_node" && op.nodeId === "if_paid");
     expect(updateIfOp?.data).toMatchObject({
       field: "{{steps.trig_invoice.output.status}}",
       operator: "eq",
@@ -243,14 +225,10 @@ describe("Structured Data-Pill Picker and Dynamic Data-Driven Ports", () => {
     // Pick `customer_email` into `to`
     fireEvent.click(screen.getByTestId("open-pill-picker-to"));
     fireEvent.click(screen.getByTestId("pill-option-trig_invoice-customer_email"));
-    expect(
-      screen.getByTestId("data-pill-chip-to-customer_email").textContent,
-    ).toContain("[Invoice Created → customer_email : string]");
+    expect(screen.getByTestId("data-pill-chip-to-customer_email").textContent).toContain("[Invoice Created → customer_email : string]");
 
     // Clear default template and pick `id` and `amount` into `template`
-    const templateInput = screen.getByTestId(
-      "node-config-input-template",
-    ) as HTMLInputElement;
+    const templateInput = screen.getByTestId("node-config-input-template") as HTMLInputElement;
     fireEvent.change(templateInput, { target: { value: "" } });
 
     fireEvent.click(screen.getByTestId("open-pill-picker-template"));
@@ -258,9 +236,7 @@ describe("Structured Data-Pill Picker and Dynamic Data-Driven Ports", () => {
     fireEvent.click(screen.getByTestId("pill-option-trig_invoice-amount"));
 
     expect(screen.getByTestId("data-pill-chip-template-id")).toBeTruthy();
-    expect(
-      screen.getByTestId("data-pill-chip-template-amount").textContent,
-    ).toContain("[Invoice Created → amount : number]");
+    expect(screen.getByTestId("data-pill-chip-template-amount").textContent).toContain("[Invoice Created → amount : number]");
 
     // Remove `amount` pill chip via its × button
     fireEvent.click(screen.getByTestId("remove-pill-template-amount"));
@@ -269,36 +245,29 @@ describe("Structured Data-Pill Picker and Dynamic Data-Driven Ports", () => {
 
     // Toggle "Advanced: Edit raw expression" on `template`
     fireEvent.click(screen.getByTestId("toggle-raw-expression-template"));
-    const rawInput = screen.getByTestId(
-      "raw-expression-input-template",
-    ) as HTMLInputElement;
+    const rawInput = screen.getByTestId("raw-expression-input-template") as HTMLInputElement;
     expect(rawInput.value).toContain("{{steps.trig_invoice.output.id}}");
 
     // Enter a reference to a non-ancestor node -> live validation error
     fireEvent.change(rawInput, {
       target: { value: "{{steps.non_ancestor.output.id}}" },
     });
-    expect(
-      screen.getByTestId("expression-validation-error-template").textContent,
-    ).toContain("Node 'non_ancestor' is not an upstream ancestor");
+    expect(screen.getByTestId("expression-validation-error-template").textContent).toContain("Node 'non_ancestor' is not an upstream ancestor");
 
     // Enter a reference to an unknown field on `trig_invoice` -> live validation error
     fireEvent.change(rawInput, {
       target: { value: "{{steps.trig_invoice.output.missing_col}}" },
     });
-    expect(
-      screen.getByTestId("expression-validation-error-template").textContent,
-    ).toContain("Field 'missing_col' does not exist on upstream node 'trig_invoice'");
+    expect(screen.getByTestId("expression-validation-error-template").textContent).toContain(
+      "Field 'missing_col' does not exist on upstream node 'trig_invoice'",
+    );
 
     // Fix back to a valid expression -> validation error clears
     fireEvent.change(rawInput, {
       target: {
-        value:
-          "Invoice {{steps.trig_invoice.output.id}} for {{steps.trig_invoice.output.customer_email}}",
+        value: "Invoice {{steps.trig_invoice.output.id}} for {{steps.trig_invoice.output.customer_email}}",
       },
     });
-    expect(
-      screen.queryByTestId("expression-validation-error-template"),
-    ).toBeNull();
+    expect(screen.queryByTestId("expression-validation-error-template")).toBeNull();
   });
 });

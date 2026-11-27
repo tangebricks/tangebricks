@@ -25,7 +25,11 @@ beforeEach(async () => {
 });
 
 let rpcId = 1;
-async function callTool(app: ReturnType<typeof createMcpApp>, name: string, args: Record<string, unknown>): Promise<{ isError: boolean; json: Record<string, any>; text: string }> {
+async function callTool(
+  app: ReturnType<typeof createMcpApp>,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<{ isError: boolean; json: Record<string, any>; text: string }> {
   const res = await app.fetch(
     new Request("http://localhost/mcp", {
       method: "POST",

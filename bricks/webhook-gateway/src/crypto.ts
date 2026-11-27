@@ -43,13 +43,7 @@ export async function sha256HexString(input: string): Promise<string> {
  */
 export async function signHmacSha256(payload: string, secret: string): Promise<string> {
   const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const signature = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
   return toHex(signature);
 }
@@ -57,11 +51,7 @@ export async function signHmacSha256(payload: string, secret: string): Promise<s
 /**
  * Computes a Stripe-Signature header (`t=<timestamp>,v1=<hex>`) over `${timestamp}.${payload}`.
  */
-export async function signStripeWebhookPayload(
-  payload: string,
-  secret: string,
-  timestampSeconds = Math.floor(Date.now() / 1000),
-): Promise<string> {
+export async function signStripeWebhookPayload(payload: string, secret: string, timestampSeconds = Math.floor(Date.now() / 1000)): Promise<string> {
   const signedPayload = `${timestampSeconds}.${payload}`;
   const sigHex = await signHmacSha256(signedPayload, secret);
   return `t=${timestampSeconds},v1=${sigHex}`;
@@ -72,7 +62,10 @@ export async function signStripeWebhookPayload(
  */
 export function verifySharedSecret(headerValue: string, secret: string): boolean {
   if (!headerValue || !secret) return false;
-  const cleaned = headerValue.trim().replace(/^Bearer\s+/i, "").trim();
+  const cleaned = headerValue
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .trim();
   const enc = new TextEncoder();
   return timingSafeEqual(enc.encode(cleaned), enc.encode(secret.trim()));
 }
@@ -80,11 +73,7 @@ export function verifySharedSecret(headerValue: string, secret: string): boolean
 /**
  * Unseals a credential row from `px_connections` using AES-GCM 256-bit `PX_CONN_KEY`.
  */
-export async function unsealPxConnectionSecret(
-  ciphertextB64: string,
-  ivB64: string,
-  connKey?: string,
-): Promise<string> {
+export async function unsealPxConnectionSecret(ciphertextB64: string, ivB64: string, connKey?: string): Promise<string> {
   if (!connKey || connKey.trim().length === 0) {
     // No fallback key: never unseal with a value written in source.
     throw new Error("Missing required secret PX_CONN_KEY");
@@ -92,33 +81,15 @@ export async function unsealPxConnectionSecret(
   const material = connKey.trim();
   const encodedKey = new TextEncoder().encode(`projectx-studio-vault-v1:${material}`);
   const digest = await crypto.subtle.digest("SHA-256", encodedKey);
-  const key = await crypto.subtle.importKey(
-    "raw",
-    digest,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["decrypt"],
-  );
+  const key = await crypto.subtle.importKey("raw", digest, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
   const iv = fromBase64(ivB64);
   const ciphertext = fromBase64(ciphertextB64);
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    key,
-    ciphertext,
-  );
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
   const text = new TextDecoder().decode(decrypted);
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
     if (typeof parsed === "object" && parsed !== null) {
-      return String(
-        parsed.webhookSecret ??
-          parsed.signingSecret ??
-          parsed.secret ??
-          parsed.apiKey ??
-          parsed.accessToken ??
-          parsed.token ??
-          "",
-      );
+      return String(parsed.webhookSecret ?? parsed.signingSecret ?? parsed.secret ?? parsed.apiKey ?? parsed.accessToken ?? parsed.token ?? "");
     }
     return String(parsed);
   } catch {

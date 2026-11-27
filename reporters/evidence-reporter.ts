@@ -153,12 +153,15 @@ export default class EvidenceReporter implements Reporter {
     let todo = 0;
 
     // Track execution stats per module
-    const moduleStatsMap = new Map<string, {
-      testsRun: number;
-      testsSkipped: number;
-      modulePassed: boolean;
-      assertionCount: number;
-    }>();
+    const moduleStatsMap = new Map<
+      string,
+      {
+        testsRun: number;
+        testsSkipped: number;
+        modulePassed: boolean;
+        assertionCount: number;
+      }
+    >();
 
     for (const module of testModules) {
       if (module.state() === "failed") failedFiles.push(module.moduleId.replace(/\\/g, "/"));

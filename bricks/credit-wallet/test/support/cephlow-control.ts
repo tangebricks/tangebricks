@@ -87,10 +87,7 @@ export async function cephlowVerify(db: D1Like, orderId: string): Promise<{ cred
   if (cfOrder.order_status !== "PAID") return { credited: false };
 
   const credits = (cfOrder.order_amount || orderRow.amount) * 1; // CREDITS_PER_RUPEE = 1
-  const ws = await db
-    .prepare("SELECT current_balance FROM workspaces WHERE id = ?")
-    .bind(orderRow.workspace_id)
-    .first<{ current_balance: number }>();
+  const ws = await db.prepare("SELECT current_balance FROM workspaces WHERE id = ?").bind(orderRow.workspace_id).first<{ current_balance: number }>();
   if (!ws) return { credited: false };
 
   const newBalance = ws.current_balance + credits;

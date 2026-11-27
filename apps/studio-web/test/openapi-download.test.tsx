@@ -34,15 +34,16 @@ describe("Story 10.5 — Studio Web Download OpenAPI 3.1 Spec button", () => {
   });
 
   test("renders Download OpenAPI 3.1 Spec button in Project Overview and fetches /api/projects/:project/openapi.json", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
-      new Response(
-        JSON.stringify({
-          openapi: "3.1.0",
-          info: { title: "invoice-flow", version: "0.0.0" },
-          paths: {},
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            openapi: "3.1.0",
+            info: { title: "invoice-flow", version: "0.0.0" },
+            paths: {},
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
     );
 
     render(<OverviewBackendMap />);
@@ -53,10 +54,7 @@ describe("Story 10.5 — Studio Web Download OpenAPI 3.1 Spec button", () => {
 
     fireEvent.click(btn);
     await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledWith(
-        "/api/projects/invoice-flow/openapi.json",
-        expect.objectContaining({ credentials: "include" }),
-      );
+      expect(fetchSpy).toHaveBeenCalledWith("/api/projects/invoice-flow/openapi.json", expect.objectContaining({ credentials: "include" }));
     });
   });
 
@@ -91,26 +89,14 @@ describe("Story 10.5 — Studio Web Download OpenAPI 3.1 Spec button", () => {
       );
     });
 
-    const { unmount } = render(
-      <DeployPlanModal
-        open={true}
-        projectSlug="invoice-flow"
-        orgId="org_1"
-        onClose={() => {}}
-      />,
-    );
+    const { unmount } = render(<DeployPlanModal open={true} projectSlug="invoice-flow" orgId="org_1" onClose={() => {}} />);
 
     const modalBtn = screen.getByTestId("download-openapi-btn");
     expect(modalBtn).toBeDefined();
-    expect(modalBtn.getAttribute("data-openapi-url")).toBe(
-      "/api/projects/invoice-flow/openapi.json?rev=3",
-    );
+    expect(modalBtn.getAttribute("data-openapi-url")).toBe("/api/projects/invoice-flow/openapi.json?rev=3");
     fireEvent.click(modalBtn);
     await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledWith(
-        "/api/projects/invoice-flow/openapi.json?rev=3",
-        expect.objectContaining({ credentials: "include" }),
-      );
+      expect(fetchSpy).toHaveBeenCalledWith("/api/projects/invoice-flow/openapi.json?rev=3", expect.objectContaining({ credentials: "include" }));
     });
 
     unmount();

@@ -1,10 +1,6 @@
 import type { D1Like, StructuredLogContext, StructuredLogLevel, StructuredLogger } from "@poc/sdk";
 import { z } from "zod";
-import {
-  VALUE_PATTERNS,
-  scrubValuePatterns,
-  type ValuePattern,
-} from "./value-patterns.ts";
+import { VALUE_PATTERNS, scrubValuePatterns, type ValuePattern } from "./value-patterns.ts";
 
 export { VALUE_PATTERNS, scrubValuePatterns, type ValuePattern };
 
@@ -13,31 +9,16 @@ export const MAX_FIELD_PREVIEW_BYTES = 8 * 1024; // 8,192 bytes per top-level fi
 export const MAX_TOTAL_PREVIEW_BYTES = 16 * 1024; // 16,384 bytes total per preview column
 export const TELEMETRY_SIGNATURE_HEADER = "x-px-signature";
 
-export const SECRET_KEY_REGEX =
-  /^(authorization|cookie|set-cookie|x-api-key|api[-_]?key|.*token.*|.*secret.*|.*password.*)$/i;
+export const SECRET_KEY_REGEX = /^(authorization|cookie|set-cookie|x-api-key|api[-_]?key|.*token.*|.*secret.*|.*password.*)$/i;
 
-export const INLINE_HEADER_SECRET_REGEX =
-  /\b(cookie|set-cookie|x-api-key|api[-_]?key)\s*([:=])\s*[^\s,;]+/gi;
+export const INLINE_HEADER_SECRET_REGEX = /\b(cookie|set-cookie|x-api-key|api[-_]?key)\s*([:=])\s*[^\s,;]+/gi;
 
-export const SECRET_VALUE_PATTERNS: readonly RegExp[] = VALUE_PATTERNS.map(
-  (p) => p.regex,
-);
+export const SECRET_VALUE_PATTERNS: readonly RegExp[] = VALUE_PATTERNS.map((p) => p.regex);
 
-export const StepStatusSchema = z.enum([
-  "queued",
-  "running",
-  "succeeded",
-  "failed",
-  "skipped",
-]);
+export const StepStatusSchema = z.enum(["queued", "running", "succeeded", "failed", "skipped"]);
 export type StepStatus = z.infer<typeof StepStatusSchema>;
 
-export const RunStatusSchema = z.enum([
-  "queued",
-  "running",
-  "succeeded",
-  "failed",
-]);
+export const RunStatusSchema = z.enum(["queued", "running", "succeeded", "failed"]);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
 export const RunRecordSchema = z.object({
@@ -116,9 +97,7 @@ export const TelemetryWebhookPayloadSchema = z.object({
   events: z.array(StepEventSchema).default([]),
   logs: z.array(StructuredLogEntrySchema).optional(),
 });
-export type TelemetryWebhookPayload = z.infer<
-  typeof TelemetryWebhookPayloadSchema
->;
+export type TelemetryWebhookPayload = z.infer<typeof TelemetryWebhookPayloadSchema>;
 
 export const TelemetryWsFrameSchema = z.object({
   type: z.literal("telemetry"),
@@ -352,7 +331,6 @@ const PX_TELEMETRY_SCOPE_INDEX_DDL: readonly string[] = [
   "CREATE INDEX IF NOT EXISTS idx_px_queue_metrics_ws_env ON px_queue_metrics(workspace_id, env_name)",
 ];
 
-
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -370,10 +348,7 @@ function utf8ToBase64(text: string): string {
 }
 
 function utf8ToBase64Url(text: string): string {
-  return utf8ToBase64(text)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
+  return utf8ToBase64(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function sliceUtf8ByBytes(text: string, maxBytes: number): string {
@@ -398,10 +373,7 @@ export interface RedactTelemetryOptions {
   valuePatterns?: Iterable<ValuePattern | { kind: string; regex?: RegExp; pattern?: RegExp }>;
 }
 
-function mergeSecretFieldNames(
-  secretFieldNames?: Iterable<string>,
-  additionalRedactKeys?: Iterable<string>,
-): Set<string> {
+function mergeSecretFieldNames(secretFieldNames?: Iterable<string>, additionalRedactKeys?: Iterable<string>): Set<string> {
   const secretFields = new Set<string>();
   const addFrom = (iter?: Iterable<string>) => {
     if (!iter) return;
@@ -534,11 +506,7 @@ export function collectSecretKeyedValues(
 
   if (typeof Headers !== "undefined" && value instanceof Headers) {
     value.forEach((v, k) => {
-      if (
-        SECRET_KEY_REGEX.test(k) ||
-        secretFields.has(k) ||
-        secretFields.has(k.toLowerCase())
-      ) {
+      if (SECRET_KEY_REGEX.test(k) || secretFields.has(k) || secretFields.has(k.toLowerCase())) {
         addSecretCandidateString(v, sink);
       }
     });
@@ -546,10 +514,7 @@ export function collectSecretKeyedValues(
   }
 
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    const isSecretKey =
-      SECRET_KEY_REGEX.test(k) ||
-      secretFields.has(k) ||
-      secretFields.has(k.toLowerCase());
+    const isSecretKey = SECRET_KEY_REGEX.test(k) || secretFields.has(k) || secretFields.has(k.toLowerCase());
     if (isSecretKey) {
       if (typeof v === "string") {
         addSecretCandidateString(v, sink);
@@ -563,10 +528,7 @@ export function collectSecretKeyedValues(
   return sink;
 }
 
-export function redactTelemetryString(
-  input: string,
-  options: RedactTelemetryOptions = {},
-): string {
+export function redactTelemetryString(input: string, options: RedactTelemetryOptions = {}): string {
   let out = input;
   const tokens = buildExpandedSecretTokens(options.secretValues);
   for (const token of tokens) {
@@ -575,23 +537,14 @@ export function redactTelemetryString(
     }
   }
   // Scrub inline Basic credentials in strings (Bearer is handled via VALUE_PATTERNS)
-  out = out.replace(
-    /\bBasic\s+[A-Za-z0-9._~+/=-]{6,}/gi,
-    `$1 ${REDACTED_PLACEHOLDER}`,
-  );
-  out = out.replace(
-    INLINE_HEADER_SECRET_REGEX,
-    `$1$2${REDACTED_PLACEHOLDER}`,
-  );
+  out = out.replace(/\bBasic\s+[A-Za-z0-9._~+/=-]{6,}/gi, `$1 ${REDACTED_PLACEHOLDER}`);
+  out = out.replace(INLINE_HEADER_SECRET_REGEX, `$1$2${REDACTED_PLACEHOLDER}`);
   // Value-pattern scrubbing with kinded placeholders (UC9.3)
   out = scrubValuePatterns(out, options.valuePatterns);
   return out;
 }
 
-export function redactTelemetryPayload(
-  value: unknown,
-  options: RedactTelemetryOptions = {},
-): unknown {
+export function redactTelemetryPayload(value: unknown, options: RedactTelemetryOptions = {}): unknown {
   const combinedSecrets = new Set<string>();
   if (options.secretValues) {
     for (const s of options.secretValues) {
@@ -600,10 +553,7 @@ export function redactTelemetryPayload(
       }
     }
   }
-  const secretFields = mergeSecretFieldNames(
-    options.secretFieldNames,
-    options.additionalRedactKeys,
-  );
+  const secretFields = mergeSecretFieldNames(options.secretFieldNames, options.additionalRedactKeys);
   collectSecretKeyedValues(value, combinedSecrets, secretFields);
 
   const seen = new WeakSet<object>();
@@ -649,11 +599,7 @@ export function redactTelemetryPayload(
       if (typeof Headers !== "undefined" && current instanceof Headers) {
         const headersObj: Record<string, string> = {};
         current.forEach((v, k) => {
-          if (
-            SECRET_KEY_REGEX.test(k) ||
-            secretFields.has(k) ||
-            secretFields.has(k.toLowerCase())
-          ) {
+          if (SECRET_KEY_REGEX.test(k) || secretFields.has(k) || secretFields.has(k.toLowerCase())) {
             headersObj[k] = REDACTED_PLACEHOLDER;
           } else {
             headersObj[k] = scrubString(v);
@@ -665,11 +611,7 @@ export function redactTelemetryPayload(
       const record = current as Record<string, unknown>;
       const result: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(record)) {
-        if (
-          SECRET_KEY_REGEX.test(key) ||
-          secretFields.has(key) ||
-          secretFields.has(key.toLowerCase())
-        ) {
+        if (SECRET_KEY_REGEX.test(key) || secretFields.has(key) || secretFields.has(key.toLowerCase())) {
           result[key] = REDACTED_PLACEHOLDER;
         } else {
           result[key] = walk(val);
@@ -700,19 +642,10 @@ export function truncateTelemetryPreview(
 
   let candidate: unknown = redacted;
 
-  if (
-    typeof redacted === "object" &&
-    redacted !== null &&
-    !Array.isArray(redacted)
-  ) {
+  if (typeof redacted === "object" && redacted !== null && !Array.isArray(redacted)) {
     const processedObj: Record<string, unknown> = {};
-    for (const [key, fieldVal] of Object.entries(
-      redacted as Record<string, unknown>,
-    )) {
-      const fieldText =
-        typeof fieldVal === "string"
-          ? fieldVal
-          : (JSON.stringify(fieldVal) ?? "null");
+    for (const [key, fieldVal] of Object.entries(redacted as Record<string, unknown>)) {
+      const fieldText = typeof fieldVal === "string" ? fieldVal : (JSON.stringify(fieldVal) ?? "null");
       const fieldBytes = utf8ByteLength(fieldText);
       if (fieldBytes > maxFieldBytes) {
         const previewBudget = Math.max(256, maxFieldBytes - 160);
@@ -749,10 +682,7 @@ export function truncateTelemetryPreview(
     if (envelopeBytes <= maxTotalBytes || previewBudget <= 64) {
       return envelopeJson;
     }
-    previewBudget = Math.max(
-      64,
-      previewBudget - (envelopeBytes - maxTotalBytes) - 32,
-    );
+    previewBudget = Math.max(64, previewBudget - (envelopeBytes - maxTotalBytes) - 32);
   }
 }
 
@@ -764,25 +694,12 @@ function bytesToHex(bytes: Uint8Array): string {
   return hex;
 }
 
-export async function signTelemetryPayload(
-  payloadText: string,
-  secret: string,
-): Promise<string> {
+export async function signTelemetryPayload(payloadText: string, secret: string): Promise<string> {
   if (typeof secret !== "string" || secret.length === 0) {
     throw new Error("PX_TELEMETRY_SECRET must be a non-empty string");
   }
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sigBuffer = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(payloadText),
-  );
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sigBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(payloadText));
   return `sha256=${bytesToHex(new Uint8Array(sigBuffer))}`;
 }
 
@@ -836,12 +753,7 @@ export async function verifyTelemetrySignature(
   signatureHeader: string | null | undefined,
   secret: string | null | undefined,
 ): Promise<boolean> {
-  if (
-    typeof secret !== "string" ||
-    secret.length === 0 ||
-    typeof signatureHeader !== "string" ||
-    signatureHeader.trim().length === 0
-  ) {
+  if (typeof secret !== "string" || secret.length === 0 || typeof signatureHeader !== "string" || signatureHeader.trim().length === 0) {
     return false;
   }
   const normalizedGiven = signatureHeader.trim().startsWith("sha256=")
@@ -904,10 +816,7 @@ export async function signControlPlaneRequest(
   const signedAt = String(Math.floor(nowMs / 1000));
   return {
     [SIGNED_AT_HEADER]: signedAt,
-    [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(
-      controlPlaneCanonical(method, controlPlanePath(path), signedAt, body),
-      secret,
-    ),
+    [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(controlPlaneCanonical(method, controlPlanePath(path), signedAt, body), secret),
   };
 }
 
@@ -941,9 +850,7 @@ export async function checkControlPlaneSignature(
     request.headers.get(TELEMETRY_SIGNATURE_HEADER),
     options.secret,
   );
-  return valid
-    ? null
-    : { status: 401, code: "UNAUTHORIZED_TELEMETRY_SIGNATURE", message: "Missing or invalid X-Px-Signature" };
+  return valid ? null : { status: 401, code: "UNAUTHORIZED_TELEMETRY_SIGNATURE", message: "Missing or invalid X-Px-Signature" };
 }
 
 // --- One-time request ids (story 1.17) ---------------------------------------------------------------------------------
@@ -991,7 +898,10 @@ export async function claimControlRequest(
   // Occasional, index-backed pruning (about one claim in CONTROL_REQUEST_PRUNE_ONE_IN); `prune` forces or skips it.
   if (claim.prune ?? Math.random() < 1 / CONTROL_REQUEST_PRUNE_ONE_IN) {
     try {
-      await db.prepare("DELETE FROM px_control_requests WHERE created_at < ?1").bind(nowMs - CONTROL_REQUEST_RETENTION_MS).run();
+      await db
+        .prepare("DELETE FROM px_control_requests WHERE created_at < ?1")
+        .bind(nowMs - CONTROL_REQUEST_RETENTION_MS)
+        .run();
     } catch {
       // pruning is best effort
     }
@@ -1035,10 +945,7 @@ export async function admitExecutingControlRequest(
   if (typeof requestId !== "string" || !CONTROL_REQUEST_ID_PATTERN.test(requestId)) {
     return {
       ok: false,
-      response: Response.json(
-        { error: { code: "BAD_REQUEST_ID", message: "the signed body must carry a requestId (a UUID), used once" } },
-        { status: 400 },
-      ),
+      response: Response.json({ error: { code: "BAD_REQUEST_ID", message: "the signed body must carry a requestId (a UUID), used once" } }, { status: 400 }),
     };
   }
   if (!options.db) {
@@ -1060,10 +967,7 @@ export async function admitExecutingControlRequest(
   if (!fresh) {
     return {
       ok: false,
-      response: Response.json(
-        { error: { code: "DUPLICATE_REQUEST", message: "this requestId has already been used; nothing was executed" } },
-        { status: 409 },
-      ),
+      response: Response.json({ error: { code: "DUPLICATE_REQUEST", message: "this requestId has already been used; nothing was executed" } }, { status: 409 }),
     };
   }
   return { ok: true, body };
@@ -1118,8 +1022,7 @@ function refuseTelemetryWrite(kind: string, message: string): never {
   throw new TelemetryWriteRefusedError(kind, message);
 }
 
-const nonEmpty = (value: unknown): string | undefined =>
-  typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+const nonEmpty = (value: unknown): string | undefined => (typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined);
 
 /** The normalised scope; throws TelemetryScopeError when it names neither a project nor a workspace. */
 export function normalizeTelemetryScope(scope: TelemetryScope | null | undefined): TelemetryScope {
@@ -1153,8 +1056,7 @@ export interface TelemetryWriteOptions {
 
 // --- Tables -----------------------------------------------------------------------------------------------------------
 
-const isDuplicateColumnError = (error: unknown) =>
-  /duplicate column/i.test(error instanceof Error ? error.message : String(error));
+const isDuplicateColumnError = (error: unknown) => /duplicate column/i.test(error instanceof Error ? error.message : String(error));
 
 interface TableInfoRow {
   name: string;
@@ -1387,9 +1289,7 @@ async function refuseIdCollision(
 ): Promise<void> {
   if (Number(result?.meta?.changes ?? 1) > 0) return;
   const other = await db
-    .prepare(
-      `SELECT 1 AS hit FROM ${table} WHERE ${idColumn} = ?1 AND NOT (workspace_id IS ?2 AND project_id IS ?3) LIMIT 1`,
-    )
+    .prepare(`SELECT 1 AS hit FROM ${table} WHERE ${idColumn} = ?1 AND NOT (workspace_id IS ?2 AND project_id IS ?3) LIMIT 1`)
     .bind(id, workspaceId, projectId)
     .first<{ hit: number }>();
   if (other) {
@@ -1397,11 +1297,7 @@ async function refuseIdCollision(
   }
 }
 
-export async function upsertRunRecord(
-  db: D1Like,
-  run: RunRecord,
-  writeOptions: TelemetryWriteOptions = {},
-): Promise<void> {
+export async function upsertRunRecord(db: D1Like, run: RunRecord, writeOptions: TelemetryWriteOptions = {}): Promise<void> {
   if (!nonEmpty((run as { workspaceId?: unknown } | null)?.workspaceId)) {
     refuseTelemetryWrite("run", "a run record must name its workspace");
   }
@@ -1446,17 +1342,11 @@ export interface InsertStepEventOptions extends TelemetryWriteOptions {
   captureStepIoInProd?: boolean;
 }
 
-export async function insertStepEvent(
-  db: D1Like,
-  event: StepEvent,
-  options: InsertStepEventOptions = {},
-): Promise<StepEvent> {
+export async function insertStepEvent(db: D1Like, event: StepEvent, options: InsertStepEventOptions = {}): Promise<StepEvent> {
   if (!nonEmpty((event as { workspaceId?: unknown } | null)?.workspaceId)) {
     refuseTelemetryWrite("step_event", "a step event must name its run's workspace");
   }
-  const suppressProdIo =
-    options.captureStepIoInProd === false &&
-    (options.envName ?? "production") === "production";
+  const suppressProdIo = options.captureStepIoInProd === false && (options.envName ?? "production") === "production";
   const parsed = StepEventSchema.parse({
     ...event,
     ...(suppressProdIo ? { inputPreview: "{}", outputPreview: "{}" } : {}),
@@ -1586,11 +1476,7 @@ function mapStepEventRow(row: D1StepEventRow): StepEvent {
 }
 
 /** The run with this id if it is inside `scope`; null otherwise (a run of another project or workspace is not found). */
-export async function getRunRecord(
-  db: D1Like,
-  runId: string,
-  scope: TelemetryScope,
-): Promise<RunRecord | null> {
+export async function getRunRecord(db: D1Like, runId: string, scope: TelemetryScope): Promise<RunRecord | null> {
   const { clauses, args } = scopeSql(scope);
   const row = await db
     .prepare(`SELECT * FROM px_runs WHERE run_id = ? AND ${clauses.join(" AND ")}`)
@@ -1599,11 +1485,7 @@ export async function getRunRecord(
   return row ? mapRunRow(row) : null;
 }
 
-export async function listRunRecords(
-  db: D1Like,
-  scope: TelemetryScope,
-  options: { workflowId?: string; limit?: number } = {},
-): Promise<RunRecord[]> {
+export async function listRunRecords(db: D1Like, scope: TelemetryScope, options: { workflowId?: string; limit?: number } = {}): Promise<RunRecord[]> {
   const limit = Math.max(1, Math.min(200, options.limit ?? 50));
   const { clauses, args } = scopeSql(scope);
   if (options.workflowId) {
@@ -1617,11 +1499,7 @@ export async function listRunRecords(
   return (res.results ?? []).map(mapRunRow);
 }
 
-export async function listStepEventsForRun(
-  db: D1Like,
-  runId: string,
-  scope: TelemetryScope,
-): Promise<StepEvent[]> {
+export async function listStepEventsForRun(db: D1Like, runId: string, scope: TelemetryScope): Promise<StepEvent[]> {
   const { clauses, args } = scopeSql(scope);
   const res = await db
     .prepare(`SELECT * FROM px_step_events WHERE run_id = ? AND ${clauses.join(" AND ")} ORDER BY seq ASC`)
@@ -1645,8 +1523,7 @@ export async function listStepEventsAfterCursor(
   const rows = res.results ?? [];
   const hasMore = rows.length > clampedLimit;
   const page = rows.slice(0, clampedLimit).map(mapStepEventRow);
-  const nextCursor =
-    page.length > 0 ? (page[page.length - 1]!.cursor ?? afterCursor) : afterCursor;
+  const nextCursor = page.length > 0 ? (page[page.length - 1]!.cursor ?? afterCursor) : afterCursor;
   return {
     events: page,
     nextCursor,
@@ -1676,17 +1553,11 @@ function pullScope(url: URL, options: TelemetryPullOptions): TelemetryScope | nu
   return { ...(projectId ? { projectId } : {}), ...(workspaceId ? { workspaceId } : {}) };
 }
 
-export async function handleTelemetryEventsPullRequest(
-  request: Request,
-  options: TelemetryPullOptions,
-): Promise<Response | null> {
+export async function handleTelemetryEventsPullRequest(request: Request, options: TelemetryPullOptions): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== "/__px/events") return null;
   if (request.method !== "GET") {
-    return Response.json(
-      { error: { code: "METHOD_NOT_ALLOWED", message: "Expected GET /__px/events" } },
-      { status: 405 },
-    );
+    return Response.json({ error: { code: "METHOD_NOT_ALLOWED", message: "Expected GET /__px/events" } }, { status: 405 });
   }
 
   const refusal = await checkControlPlaneSignature(request, {
@@ -1702,12 +1573,7 @@ export async function handleTelemetryEventsPullRequest(
   const limitRaw = url.searchParams.get("limit") ?? "100";
   const after = Number(afterRaw);
   const limit = Number(limitRaw);
-  if (
-    !Number.isInteger(after) ||
-    after < 0 ||
-    !Number.isInteger(limit) ||
-    limit < 1
-  ) {
+  if (!Number.isInteger(after) || after < 0 || !Number.isInteger(limit) || limit < 1) {
     return Response.json(
       {
         error: {
@@ -1745,9 +1611,7 @@ export const DEFAULT_TELEMETRY_RETENTION_DAYS = 7;
 export const MIN_TELEMETRY_RETENTION_DAYS = 1;
 export const MAX_TELEMETRY_RETENTION_DAYS = 30;
 
-export function resolveRunRetentionDays(
-  raw?: number | string | null,
-): number {
+export function resolveRunRetentionDays(raw?: number | string | null): number {
   if (raw === undefined || raw === null || raw === "") {
     return DEFAULT_RUN_RETENTION_DAYS;
   }
@@ -1755,15 +1619,10 @@ export function resolveRunRetentionDays(
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return DEFAULT_RUN_RETENTION_DAYS;
   }
-  return Math.min(
-    MAX_RUN_RETENTION_DAYS,
-    Math.max(MIN_RUN_RETENTION_DAYS, Math.floor(parsed)),
-  );
+  return Math.min(MAX_RUN_RETENTION_DAYS, Math.max(MIN_RUN_RETENTION_DAYS, Math.floor(parsed)));
 }
 
-export function resolveConfigurableRunRetentionDays(
-  raw?: number | string | null,
-): number {
+export function resolveConfigurableRunRetentionDays(raw?: number | string | null): number {
   if (raw === undefined || raw === null || raw === "") {
     return DEFAULT_RUN_RETENTION_DAYS;
   }
@@ -1774,9 +1633,7 @@ export function resolveConfigurableRunRetentionDays(
   return Math.min(MAX_RUN_RETENTION_DAYS, Math.max(1, Math.floor(parsed)));
 }
 
-export function resolveTelemetryRetentionDays(
-  raw?: number | string | null,
-): number {
+export function resolveTelemetryRetentionDays(raw?: number | string | null): number {
   if (raw === undefined || raw === null || raw === "") {
     return DEFAULT_TELEMETRY_RETENTION_DAYS;
   }
@@ -1784,10 +1641,7 @@ export function resolveTelemetryRetentionDays(
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return DEFAULT_TELEMETRY_RETENTION_DAYS;
   }
-  return Math.min(
-    MAX_TELEMETRY_RETENTION_DAYS,
-    Math.max(MIN_TELEMETRY_RETENTION_DAYS, Math.floor(parsed)),
-  );
+  return Math.min(MAX_TELEMETRY_RETENTION_DAYS, Math.max(MIN_TELEMETRY_RETENTION_DAYS, Math.floor(parsed)));
 }
 
 export interface PruneTelemetryOptions {
@@ -1809,23 +1663,12 @@ export interface PruneTelemetryResult {
   telemetryRetentionDays?: number;
 }
 
-export async function pruneExpiredTelemetryRuns(
-  db: D1Like,
-  options: PruneTelemetryOptions = {},
-): Promise<PruneTelemetryResult> {
+export async function pruneExpiredTelemetryRuns(db: D1Like, options: PruneTelemetryOptions = {}): Promise<PruneTelemetryResult> {
   await ensureTelemetryTables(db);
-  const hasExplicitRunRetention =
-    options.runRetentionDays !== undefined &&
-    options.runRetentionDays !== null &&
-    options.runRetentionDays !== "";
+  const hasExplicitRunRetention = options.runRetentionDays !== undefined && options.runRetentionDays !== null && options.runRetentionDays !== "";
   const hasExplicitTelemetryRetention =
-    options.telemetryRetentionDays !== undefined &&
-    options.telemetryRetentionDays !== null &&
-    options.telemetryRetentionDays !== "";
-  const hasLegacyRetention =
-    options.retentionDays !== undefined &&
-    options.retentionDays !== null &&
-    options.retentionDays !== "";
+    options.telemetryRetentionDays !== undefined && options.telemetryRetentionDays !== null && options.telemetryRetentionDays !== "";
+  const hasLegacyRetention = options.retentionDays !== undefined && options.retentionDays !== null && options.retentionDays !== "";
 
   const runRetentionDays = hasExplicitRunRetention
     ? resolveConfigurableRunRetentionDays(options.runRetentionDays)
@@ -1846,12 +1689,8 @@ export async function pruneExpiredTelemetryRuns(
           ? Date.parse(options.now)
           : Date.now();
   const effectiveNowMs = Number.isFinite(nowMs) ? nowMs : Date.now();
-  const cutoffIso = new Date(
-    effectiveNowMs - runRetentionDays * 86_400_000,
-  ).toISOString();
-  const telemetryCutoffIso = new Date(
-    effectiveNowMs - telemetryRetentionDays * 86_400_000,
-  ).toISOString();
+  const cutoffIso = new Date(effectiveNowMs - runRetentionDays * 86_400_000).toISOString();
+  const telemetryCutoffIso = new Date(effectiveNowMs - telemetryRetentionDays * 86_400_000).toISOString();
 
   const expiredEventsCountRow = await db
     .prepare(
@@ -1876,10 +1715,7 @@ export async function pruneExpiredTelemetryRuns(
     .bind(telemetryCutoffIso)
     .first<{ cnt: number }>();
 
-  const expiredRunsCountRow = await db
-    .prepare("SELECT COUNT(*) AS cnt FROM px_runs WHERE started_at < ?1")
-    .bind(cutoffIso)
-    .first<{ cnt: number }>();
+  const expiredRunsCountRow = await db.prepare("SELECT COUNT(*) AS cnt FROM px_runs WHERE started_at < ?1").bind(cutoffIso).first<{ cnt: number }>();
 
   const deletedStepEvents = Number(expiredEventsCountRow?.cnt ?? 0);
   const deletedLogs = Number(expiredLogsCountRow?.cnt ?? 0);
@@ -1909,17 +1745,11 @@ export async function pruneExpiredTelemetryRuns(
   }
 
   if (deletedHttpRollups > 0) {
-    await db
-      .prepare("DELETE FROM px_http_rollups WHERE bucket_minute < ?1")
-      .bind(telemetryCutoffIso)
-      .run();
+    await db.prepare("DELETE FROM px_http_rollups WHERE bucket_minute < ?1").bind(telemetryCutoffIso).run();
   }
 
   if (deletedRuns > 0) {
-    await db
-      .prepare("DELETE FROM px_runs WHERE started_at < ?1")
-      .bind(cutoffIso)
-      .run();
+    await db.prepare("DELETE FROM px_runs WHERE started_at < ?1").bind(cutoffIso).run();
   }
 
   return {
@@ -1948,8 +1778,7 @@ export async function runScheduledTelemetryRetentionPrune(
   return pruneExpiredTelemetryRuns(env.DB, {
     retentionDays: options.retentionDays ?? env.PX_RUN_RETENTION_DAYS,
     runRetentionDays: options.runRetentionDays,
-    telemetryRetentionDays:
-      options.telemetryRetentionDays ?? env.PX_TELEMETRY_RETENTION_DAYS,
+    telemetryRetentionDays: options.telemetryRetentionDays ?? env.PX_TELEMETRY_RETENTION_DAYS,
     now: options.now ?? controller?.scheduledTime ?? Date.now(),
   });
 }
@@ -1976,36 +1805,22 @@ export interface RunHistoryQueryPage {
   hasMore: boolean;
 }
 
-export async function findResolvingRetryRunId(
-  db: D1Like,
-  runId: string,
-  scope: TelemetryScope,
-): Promise<string | null> {
+export async function findResolvingRetryRunId(db: D1Like, runId: string, scope: TelemetryScope): Promise<string | null> {
   await ensureTelemetryTables(db);
   const { clauses, args } = scopeSql(scope);
   const resolvedRow = await db
-    .prepare(
-      `SELECT run_id FROM px_runs WHERE retry_of_run_id = ? AND status = 'succeeded' AND ${clauses.join(" AND ")} ORDER BY started_at DESC LIMIT 1`,
-    )
+    .prepare(`SELECT run_id FROM px_runs WHERE retry_of_run_id = ? AND status = 'succeeded' AND ${clauses.join(" AND ")} ORDER BY started_at DESC LIMIT 1`)
     .bind(runId, ...args)
     .first<{ run_id: string }>();
   return resolvedRow?.run_id ?? null;
 }
 
-export async function queryRunHistory(
-  db: D1Like,
-  scope: TelemetryScope,
-  filters: RunHistoryQueryFilters = {},
-): Promise<RunHistoryQueryPage> {
+export async function queryRunHistory(db: D1Like, scope: TelemetryScope, filters: RunHistoryQueryFilters = {}): Promise<RunHistoryQueryPage> {
   const scoped = scopeSql(scope);
   await ensureTelemetryTables(db);
   const limit = Math.max(1, Math.min(200, filters.limit ?? 50));
-  const offsetRaw =
-    filters.cursor !== undefined && filters.cursor !== null && filters.cursor !== ""
-      ? Number(filters.cursor)
-      : 0;
-  const offset =
-    Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
+  const offsetRaw = filters.cursor !== undefined && filters.cursor !== null && filters.cursor !== "" ? Number(filters.cursor) : 0;
+  const offset = Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
 
   const whereClauses: string[] = [...scoped.clauses];
   const bindArgs: unknown[] = [...scoped.args];
@@ -2046,23 +1861,16 @@ export async function queryRunHistory(
   const enriched: RunHistorySummary[] = [];
   for (const run of pageRows) {
     const failedEvent = await db
-      .prepare(
-        `SELECT node_id FROM px_step_events WHERE run_id = ? AND status = 'failed' AND ${scoped.clauses.join(" AND ")} ORDER BY seq ASC LIMIT 1`,
-      )
+      .prepare(`SELECT node_id FROM px_step_events WHERE run_id = ? AND status = 'failed' AND ${scoped.clauses.join(" AND ")} ORDER BY seq ASC LIMIT 1`)
       .bind(run.runId, ...scoped.args)
       .first<{ node_id: string }>();
 
     const stepCountRow = await db
-      .prepare(
-        `SELECT COUNT(DISTINCT node_id) AS cnt FROM px_step_events WHERE run_id = ? AND ${scoped.clauses.join(" AND ")}`,
-      )
+      .prepare(`SELECT COUNT(DISTINCT node_id) AS cnt FROM px_step_events WHERE run_id = ? AND ${scoped.clauses.join(" AND ")}`)
       .bind(run.runId, ...scoped.args)
       .first<{ cnt: number }>();
 
-    const resolvedByRunId =
-      run.status === "failed"
-        ? await findResolvingRetryRunId(db, run.runId, scope)
-        : null;
+    const resolvedByRunId = run.status === "failed" ? await findResolvingRetryRunId(db, run.runId, scope) : null;
 
     enriched.push({
       ...run,
@@ -2092,17 +1900,11 @@ export function isTelemetryPreviewTruncated(previewText: string): {
       if (parsed && parsed.__truncated === true) {
         return {
           truncated: true,
-          ...(typeof parsed.originalBytes === "number"
-            ? { originalBytes: parsed.originalBytes }
-            : {}),
+          ...(typeof parsed.originalBytes === "number" ? { originalBytes: parsed.originalBytes } : {}),
         };
       }
       for (const val of Object.values(parsed)) {
-        if (
-          typeof val === "object" &&
-          val !== null &&
-          (val as Record<string, unknown>).__truncated === true
-        ) {
+        if (typeof val === "object" && val !== null && (val as Record<string, unknown>).__truncated === true) {
           const orig = (val as Record<string, unknown>).originalBytes;
           return {
             truncated: true,
@@ -2143,10 +1945,7 @@ function nextLogId(): string {
   return `log_${Date.now()}_${logIdCounter}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function extractRawErrorStack(
-  rawFields: Record<string, unknown>,
-  explicitStack?: string | null,
-): string | null {
+function extractRawErrorStack(rawFields: Record<string, unknown>, explicitStack?: string | null): string | null {
   if (typeof explicitStack === "string" && explicitStack.trim().length > 0) {
     return explicitStack;
   }
@@ -2156,20 +1955,13 @@ function extractRawErrorStack(
   if (rawFields.error instanceof Error) {
     return rawFields.error.stack ?? `${rawFields.error.name}: ${rawFields.error.message}`;
   }
-  if (
-    typeof rawFields.error === "object" &&
-    rawFields.error !== null &&
-    typeof (rawFields.error as { stack?: unknown }).stack === "string"
-  ) {
+  if (typeof rawFields.error === "object" && rawFields.error !== null && typeof (rawFields.error as { stack?: unknown }).stack === "string") {
     return (rawFields.error as { stack: string }).stack;
   }
   return null;
 }
 
-export function redactStructuredLogEntry(
-  input: RawStructuredLogInput,
-  options: RedactTelemetryOptions = {},
-): StructuredLogEntry {
+export function redactStructuredLogEntry(input: RawStructuredLogInput, options: RedactTelemetryOptions = {}): StructuredLogEntry {
   const rawFields: Record<string, unknown> =
     input.fields && typeof input.fields === "object" && !Array.isArray(input.fields)
       ? { ...input.fields }
@@ -2177,9 +1969,7 @@ export function redactStructuredLogEntry(
         ? (() => {
             try {
               const parsed = JSON.parse(input.fieldsJson);
-              return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
-                ? (parsed as Record<string, unknown>)
-                : {};
+              return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
             } catch {
               return {};
             }
@@ -2194,10 +1984,7 @@ export function redactStructuredLogEntry(
       }
     }
   }
-  const mergedSecretFields = mergeSecretFieldNames(
-    options.secretFieldNames,
-    options.additionalRedactKeys,
-  );
+  const mergedSecretFields = mergeSecretFieldNames(options.secretFieldNames, options.additionalRedactKeys);
   collectSecretKeyedValues(rawFields, combinedSecrets, mergedSecretFields);
 
   const redactOpts: RedactTelemetryOptions = {
@@ -2213,42 +2000,21 @@ export function redactStructuredLogEntry(
 
   const redactedFieldsObj = redactTelemetryPayload(cleanedFieldsInput, redactOpts);
   const redactedFields: Record<string, unknown> =
-    typeof redactedFieldsObj === "object" &&
-    redactedFieldsObj !== null &&
-    !Array.isArray(redactedFieldsObj)
+    typeof redactedFieldsObj === "object" && redactedFieldsObj !== null && !Array.isArray(redactedFieldsObj)
       ? (redactedFieldsObj as Record<string, unknown>)
       : {};
 
   const redactedMessage = redactTelemetryString(String(input.message ?? ""), redactOpts);
-  const redactedErrorStack = rawErrorStack
-    ? redactTelemetryString(rawErrorStack, redactOpts)
-    : null;
+  const redactedErrorStack = rawErrorStack ? redactTelemetryString(rawErrorStack, redactOpts) : null;
   const fieldsJson = truncateTelemetryPreview(redactedFields, redactOpts);
 
-  const runId =
-    input.runId ??
-    (typeof rawFields.runId === "string" ? rawFields.runId : null);
-  const workflowId =
-    input.workflowId ??
-    (typeof rawFields.workflowId === "string" ? rawFields.workflowId : null);
-  const revision =
-    typeof input.revision === "number"
-      ? input.revision
-      : typeof rawFields.revision === "number"
-        ? rawFields.revision
-        : null;
-  const nodeId =
-    input.nodeId ??
-    (typeof rawFields.nodeId === "string" ? rawFields.nodeId : null);
-  const brickId =
-    input.brickId ??
-    (typeof rawFields.brickId === "string" ? rawFields.brickId : null);
-  const workspaceId =
-    input.workspaceId ??
-    (typeof rawFields.workspaceId === "string" ? rawFields.workspaceId : null);
-  const requestId =
-    input.requestId ??
-    (typeof rawFields.requestId === "string" ? rawFields.requestId : null);
+  const runId = input.runId ?? (typeof rawFields.runId === "string" ? rawFields.runId : null);
+  const workflowId = input.workflowId ?? (typeof rawFields.workflowId === "string" ? rawFields.workflowId : null);
+  const revision = typeof input.revision === "number" ? input.revision : typeof rawFields.revision === "number" ? rawFields.revision : null;
+  const nodeId = input.nodeId ?? (typeof rawFields.nodeId === "string" ? rawFields.nodeId : null);
+  const brickId = input.brickId ?? (typeof rawFields.brickId === "string" ? rawFields.brickId : null);
+  const workspaceId = input.workspaceId ?? (typeof rawFields.workspaceId === "string" ? rawFields.workspaceId : null);
+  const requestId = input.requestId ?? (typeof rawFields.requestId === "string" ? rawFields.requestId : null);
 
   return StructuredLogEntrySchema.parse({
     logId: input.logId && input.logId.trim() ? input.logId.trim() : nextLogId(),
@@ -2406,11 +2172,7 @@ export interface StructuredLogQueryPage {
   hasMore: boolean;
 }
 
-export async function queryStructuredLogs(
-  db: D1Like,
-  scope: TelemetryScope,
-  filters: StructuredLogQueryFilters = {},
-): Promise<StructuredLogQueryPage> {
+export async function queryStructuredLogs(db: D1Like, scope: TelemetryScope, filters: StructuredLogQueryFilters = {}): Promise<StructuredLogQueryPage> {
   const scoped = scopeSql(scope);
   await ensureTelemetryTables(db);
   const limit = Math.max(1, Math.min(500, filters.limit ?? 100));
@@ -2514,15 +2276,11 @@ export interface BoundStructuredLogger extends StructuredLogger {
   getEntries(): StructuredLogEntry[];
 }
 
-export function createStructuredLogger(
-  options: CreateStructuredLoggerOptions = {},
-): BoundStructuredLogger {
+export function createStructuredLogger(options: CreateStructuredLoggerOptions = {}): BoundStructuredLogger {
   const entries: StructuredLogEntry[] = [];
   const pending: Promise<StructuredLogEntry>[] = [];
 
-  const buildLogger = (
-    ctx: StructuredLogContext & { envName?: string },
-  ): BoundStructuredLogger => {
+  const buildLogger = (ctx: StructuredLogContext & { envName?: string }): BoundStructuredLogger => {
     const emit = (
       level: StructuredLogLevel,
       message: string,
@@ -2532,31 +2290,16 @@ export function createStructuredLogger(
         const rawInput: RawStructuredLogInput = {
           level,
           message,
-          runId:
-            ctx.runId ??
-            (typeof fields?.runId === "string" ? fields.runId : null),
-          workflowId:
-            ctx.workflowId ??
-            (typeof fields?.workflowId === "string" ? fields.workflowId : null),
-          revision:
-            ctx.revision ??
-            (typeof fields?.revision === "number" ? fields.revision : null),
-          nodeId:
-            ctx.nodeId ??
-            (typeof fields?.nodeId === "string" ? fields.nodeId : null),
-          brickId:
-            ctx.brickId ??
-            (typeof fields?.brickId === "string" ? fields.brickId : null),
+          runId: ctx.runId ?? (typeof fields?.runId === "string" ? fields.runId : null),
+          workflowId: ctx.workflowId ?? (typeof fields?.workflowId === "string" ? fields.workflowId : null),
+          revision: ctx.revision ?? (typeof fields?.revision === "number" ? fields.revision : null),
+          nodeId: ctx.nodeId ?? (typeof fields?.nodeId === "string" ? fields.nodeId : null),
+          brickId: ctx.brickId ?? (typeof fields?.brickId === "string" ? fields.brickId : null),
           // A logger bound to a run carries the run's workspace, and a log field cannot replace it (AD-S19).
-          workspaceId:
-            ctx.workspaceId ??
-            (typeof fields?.workspaceId === "string" ? fields.workspaceId : null),
-          requestId:
-            ctx.requestId ??
-            (typeof fields?.requestId === "string" ? fields.requestId : null),
+          workspaceId: ctx.workspaceId ?? (typeof fields?.workspaceId === "string" ? fields.workspaceId : null),
+          requestId: ctx.requestId ?? (typeof fields?.requestId === "string" ? fields.requestId : null),
           fields: fields ?? {},
-          errorStack:
-            typeof fields?.errorStack === "string" ? fields.errorStack : null,
+          errorStack: typeof fields?.errorStack === "string" ? fields.errorStack : null,
           envName: ctx.envName ?? "preview",
         };
 
@@ -2595,17 +2338,11 @@ export function createStructuredLogger(
   return buildLogger(options.context ?? {});
 }
 
-export async function handleTelemetryLogsPullRequest(
-  request: Request,
-  options: TelemetryPullOptions & { pxEnv?: string },
-): Promise<Response | null> {
+export async function handleTelemetryLogsPullRequest(request: Request, options: TelemetryPullOptions & { pxEnv?: string }): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== "/__px/logs") return null;
   if (request.method !== "GET") {
-    return Response.json(
-      { error: { code: "METHOD_NOT_ALLOWED", message: "Expected GET /__px/logs" } },
-      { status: 405 },
-    );
+    return Response.json({ error: { code: "METHOD_NOT_ALLOWED", message: "Expected GET /__px/logs" } }, { status: 405 });
   }
 
   const refusal = await checkControlPlaneSignature(request, {
@@ -2621,12 +2358,7 @@ export async function handleTelemetryLogsPullRequest(
   const limitRaw = url.searchParams.get("limit") ?? "100";
   const after = Number(afterRaw);
   const limit = Number(limitRaw);
-  if (
-    !Number.isInteger(after) ||
-    after < 0 ||
-    !Number.isInteger(limit) ||
-    limit < 1
-  ) {
+  if (!Number.isInteger(after) || after < 0 || !Number.isInteger(limit) || limit < 1) {
     return Response.json(
       {
         error: {
@@ -2805,13 +2537,7 @@ export interface EnvironmentHealthSummary {
 
 export function toMinuteBucketIso(ts?: string | number | Date): string {
   const date =
-    ts instanceof Date
-      ? new Date(ts.getTime())
-      : typeof ts === "number"
-        ? new Date(ts)
-        : typeof ts === "string" && ts.trim()
-          ? new Date(ts)
-          : new Date();
+    ts instanceof Date ? new Date(ts.getTime()) : typeof ts === "number" ? new Date(ts) : typeof ts === "string" && ts.trim() ? new Date(ts) : new Date();
   const valid = Number.isFinite(date.getTime()) ? date : new Date();
   valid.setUTCSeconds(0, 0);
   return valid.toISOString();
@@ -2831,10 +2557,7 @@ function computeQuantileFromSorted(sorted: number[], q: number): number {
   const upper = Math.ceil(pos);
   if (lower === upper) return roundMetric(sorted[lower]!, 2);
   const weight = pos - lower;
-  return roundMetric(
-    sorted[lower]! * (1 - weight) + sorted[upper]! * weight,
-    2,
-  );
+  return roundMetric(sorted[lower]! * (1 - weight) + sorted[upper]! * weight, 2);
 }
 
 export function computeLatencyQuantiles(values: number[]): {
@@ -2842,9 +2565,7 @@ export function computeLatencyQuantiles(values: number[]): {
   p95Ms: number;
   p99Ms: number;
 } {
-  const clean = values
-    .filter((v) => typeof v === "number" && Number.isFinite(v) && v >= 0)
-    .sort((a, b) => a - b);
+  const clean = values.filter((v) => typeof v === "number" && Number.isFinite(v) && v >= 0).sort((a, b) => a - b);
   if (clean.length === 0) {
     return { p50Ms: 0, p95Ms: 0, p99Ms: 0 };
   }
@@ -2868,16 +2589,9 @@ function parseLatencyBucketsJson(raw: string | null | undefined): ParsedLatencyB
     if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
       const obj = parsed as Record<string, unknown>;
       return {
-        samples: Array.isArray(obj.samples)
-          ? obj.samples.filter((n): n is number => typeof n === "number" && Number.isFinite(n))
-          : undefined,
-        d1Samples: Array.isArray(obj.d1Samples)
-          ? obj.d1Samples.filter((n): n is number => typeof n === "number" && Number.isFinite(n))
-          : undefined,
-        buckets:
-          typeof obj.buckets === "object" && obj.buckets !== null && !Array.isArray(obj.buckets)
-            ? (obj.buckets as Record<string, number>)
-            : undefined,
+        samples: Array.isArray(obj.samples) ? obj.samples.filter((n): n is number => typeof n === "number" && Number.isFinite(n)) : undefined,
+        d1Samples: Array.isArray(obj.d1Samples) ? obj.d1Samples.filter((n): n is number => typeof n === "number" && Number.isFinite(n)) : undefined,
+        buckets: typeof obj.buckets === "object" && obj.buckets !== null && !Array.isArray(obj.buckets) ? (obj.buckets as Record<string, number>) : undefined,
       };
     }
   } catch {
@@ -2910,11 +2624,7 @@ function buildHistogramBuckets(samples: number[]): Record<string, number> {
   return buckets;
 }
 
-export async function upsertHttpRollup(
-  db: D1Like,
-  input: HttpRollupInput,
-  writeOptions: TelemetryWriteOptions = {},
-): Promise<void> {
+export async function upsertHttpRollup(db: D1Like, input: HttpRollupInput, writeOptions: TelemetryWriteOptions = {}): Promise<void> {
   const workspaceId = nonEmpty((input as { workspaceId?: unknown } | null)?.workspaceId);
   if (!workspaceId) refuseTelemetryWrite("http_rollup", "an HTTP rollup must name the workspace of its requests");
   const projectId = nonEmpty(writeOptions.projectId) ?? null;
@@ -2932,8 +2642,7 @@ export async function upsertHttpRollup(
 
   const samples = Array.isArray(input.latencySamplesMs) ? input.latencySamplesMs : [];
   const d1Samples = Array.isArray(input.d1SamplesMs) ? input.d1SamplesMs : [];
-  const computedQuantiles =
-    samples.length > 0 ? computeLatencyQuantiles(samples) : null;
+  const computedQuantiles = samples.length > 0 ? computeLatencyQuantiles(samples) : null;
 
   const p50Ms = roundMetric(input.p50Ms ?? computedQuantiles?.p50Ms ?? 0, 2);
   const p95Ms = roundMetric(input.p95Ms ?? computedQuantiles?.p95Ms ?? 0, 2);
@@ -2949,18 +2658,7 @@ export async function upsertHttpRollup(
 
   // project_id is NULL outside Studio, and NULL never conflicts in a key, so the upsert is an UPDATE of the row with the
   // same key (project compared with IS) followed by an INSERT when there was none, in one batch (one transaction).
-  const values = [
-    requestCount,
-    error4xxCount,
-    error5xxCount,
-    latencyBucketsJson,
-    p50Ms,
-    p95Ms,
-    p99Ms,
-    d1QueryCount,
-    d1LatencyMs,
-    d1ErrorCount,
-  ];
+  const values = [requestCount, error4xxCount, error5xxCount, latencyBucketsJson, p50Ms, p95Ms, p99Ms, d1QueryCount, d1LatencyMs, d1ErrorCount];
   const key = [bucketMinute, routePrefix, brickId, envName, workspaceId, projectId];
   await db.batch([
     db
@@ -3008,11 +2706,7 @@ interface D1HttpRollupRow {
   env_name: string;
 }
 
-export async function recordHttpRequestSamples(
-  db: D1Like,
-  samples: HttpRequestSampleInput[],
-  writeOptions: TelemetryWriteOptions = {},
-): Promise<void> {
+export async function recordHttpRequestSamples(db: D1Like, samples: HttpRequestSampleInput[], writeOptions: TelemetryWriteOptions = {}): Promise<void> {
   if (!Array.isArray(samples) || samples.length === 0) return;
   // Every sample names its request's workspace; one that does not refuses the whole batch, and nothing is written.
   if (samples.some((sample) => !nonEmpty((sample as { workspaceId?: unknown } | null)?.workspaceId))) {
@@ -3095,60 +2789,45 @@ export async function recordHttpRequestSamples(
       .first<D1HttpRollupRow>();
 
     const existingParsed = parseLatencyBucketsJson(existing?.latency_buckets_json);
-    const mergedLatencies = [
-      ...(existingParsed.samples ?? []),
-      ...group.latencies,
-    ];
-    const mergedD1Latencies = [
-      ...(existingParsed.d1Samples ?? []),
-      ...group.d1Latencies,
-    ];
+    const mergedLatencies = [...(existingParsed.samples ?? []), ...group.latencies];
+    const mergedD1Latencies = [...(existingParsed.d1Samples ?? []), ...group.d1Latencies];
     const quantiles = computeLatencyQuantiles(mergedLatencies);
     const d1Quantiles = computeLatencyQuantiles(mergedD1Latencies);
 
-    await upsertHttpRollup(db, {
-      workspaceId: group.workspaceId,
-      bucketMinute: group.bucketMinute,
-      routePrefix: group.routePrefix,
-      brickId: group.brickId,
-      envName: group.envName,
-      requestCount: Number(existing?.request_count ?? 0) + group.requestCount,
-      error4xxCount: Number(existing?.error_4xx_count ?? 0) + group.error4xxCount,
-      error5xxCount: Number(existing?.error_5xx_count ?? 0) + group.error5xxCount,
-      latencySamplesMs: mergedLatencies,
-      d1SamplesMs: mergedD1Latencies,
-      p50Ms: quantiles.p50Ms,
-      p95Ms: quantiles.p95Ms,
-      p99Ms: quantiles.p99Ms,
-      d1QueryCount: Number(existing?.d1_query_count ?? 0) + group.d1Queries,
-      d1LatencyMs:
-        mergedD1Latencies.length > 0
-          ? d1Quantiles.p50Ms
-          : Number(existing?.d1_latency_ms ?? 0),
-      d1ErrorCount: Number(existing?.d1_error_count ?? 0) + group.d1Errors,
-    }, { projectId });
+    await upsertHttpRollup(
+      db,
+      {
+        workspaceId: group.workspaceId,
+        bucketMinute: group.bucketMinute,
+        routePrefix: group.routePrefix,
+        brickId: group.brickId,
+        envName: group.envName,
+        requestCount: Number(existing?.request_count ?? 0) + group.requestCount,
+        error4xxCount: Number(existing?.error_4xx_count ?? 0) + group.error4xxCount,
+        error5xxCount: Number(existing?.error_5xx_count ?? 0) + group.error5xxCount,
+        latencySamplesMs: mergedLatencies,
+        d1SamplesMs: mergedD1Latencies,
+        p50Ms: quantiles.p50Ms,
+        p95Ms: quantiles.p95Ms,
+        p99Ms: quantiles.p99Ms,
+        d1QueryCount: Number(existing?.d1_query_count ?? 0) + group.d1Queries,
+        d1LatencyMs: mergedD1Latencies.length > 0 ? d1Quantiles.p50Ms : Number(existing?.d1_latency_ms ?? 0),
+        d1ErrorCount: Number(existing?.d1_error_count ?? 0) + group.d1Errors,
+      },
+      { projectId },
+    );
   }
 }
 
-export async function upsertQueueMetrics(
-  db: D1Like,
-  input: QueueMetricInput,
-  writeOptions: TelemetryWriteOptions = {},
-): Promise<void> {
+export async function upsertQueueMetrics(db: D1Like, input: QueueMetricInput, writeOptions: TelemetryWriteOptions = {}): Promise<void> {
   const workspaceId = nonEmpty((input as { workspaceId?: unknown } | null)?.workspaceId);
   if (!workspaceId) refuseTelemetryWrite("queue_metric", "a queue metric must name the workspace of its jobs");
   const projectId = nonEmpty(writeOptions.projectId) ?? null;
   await ensureTelemetryTables(db);
   const queueName = input.queueName.trim();
-  const pendingCount = Math.max(
-    0,
-    Math.trunc(input.pendingCount ?? input.depth ?? 0),
-  );
+  const pendingCount = Math.max(0, Math.trunc(input.pendingCount ?? input.depth ?? 0));
   const dlqCount = Math.max(0, Math.trunc(input.dlqCount ?? 0));
-  const updatedAt =
-    input.updatedAt && input.updatedAt.trim()
-      ? input.updatedAt.trim()
-      : new Date().toISOString();
+  const updatedAt = input.updatedAt && input.updatedAt.trim() ? input.updatedAt.trim() : new Date().toISOString();
   const envName = input.envName?.trim() || "preview";
 
   // As for rollups: UPDATE the row with this key (project compared with IS), else INSERT it, in one batch.
@@ -3217,9 +2896,7 @@ export async function queryEnvironmentMetrics(
           : Date.now();
   const effectiveNowMs = Number.isFinite(nowMs) ? nowMs : Date.now();
   const windowMinutes = resolveWindowDurationMinutes(window);
-  const cutoffIso = new Date(
-    effectiveNowMs - windowMinutes * 60_000,
-  ).toISOString();
+  const cutoffIso = new Date(effectiveNowMs - windowMinutes * 60_000).toISOString();
 
   const rollupRes = await db
     .prepare(
@@ -3362,14 +3039,20 @@ export async function queryEnvironmentMetrics(
         p95Ms = q.p95Ms;
         p99Ms = q.p99Ms;
       } else if (b.p50s.length > 0) {
-        p50Ms = computeQuantileFromSorted([...b.p50s].sort((x, y) => x - y), 0.5);
-        p95Ms = computeQuantileFromSorted([...b.p95s].sort((x, y) => x - y), 0.95);
-        p99Ms = computeQuantileFromSorted([...b.p99s].sort((x, y) => x - y), 0.99);
+        p50Ms = computeQuantileFromSorted(
+          [...b.p50s].sort((x, y) => x - y),
+          0.5,
+        );
+        p95Ms = computeQuantileFromSorted(
+          [...b.p95s].sort((x, y) => x - y),
+          0.95,
+        );
+        p99Ms = computeQuantileFromSorted(
+          [...b.p99s].sort((x, y) => x - y),
+          0.99,
+        );
       }
-      const errorRatePercent =
-        b.requestCount > 0
-          ? roundMetric((b.error5xxCount / b.requestCount) * 100, 2)
-          : 0;
+      const errorRatePercent = b.requestCount > 0 ? roundMetric((b.error5xxCount / b.requestCount) * 100, 2) : 0;
       return {
         brickId: b.brickId,
         routePrefix: b.routePrefix,
@@ -3398,10 +3081,7 @@ export async function queryEnvironmentMetrics(
   let totalRuns = 0;
   let succeededRuns = 0;
   let failedRuns = 0;
-  const failedByWorkflow = new Map<
-    string,
-    { workflowId: string; failedCount: number; lastFailedRunId: string | null }
-  >();
+  const failedByWorkflow = new Map<string, { workflowId: string; failedCount: number; lastFailedRunId: string | null }>();
 
   for (const run of runRows) {
     totalRuns += 1;
@@ -3426,8 +3106,7 @@ export async function queryEnvironmentMetrics(
     .sort((a, b) => b.failedCount - a.failedCount || a.workflowId.localeCompare(b.workflowId))
     .slice(0, 5);
 
-  const successRatePercent =
-    totalRuns > 0 ? roundMetric((succeededRuns / totalRuns) * 100, 2) : 100;
+  const successRatePercent = totalRuns > 0 ? roundMetric((succeededRuns / totalRuns) * 100, 2) : 100;
 
   // Query queue metrics for environment
   const queuesRes = await db
@@ -3477,11 +3156,7 @@ export async function queryEnvironmentMetrics(
 
     let bFailedRuns = 0;
     for (const run of runRows) {
-      if (
-        run.status === "failed" &&
-        run.started_at >= bStartIso &&
-        run.started_at < bEndIso
-      ) {
+      if (run.status === "failed" && run.started_at >= bStartIso && run.started_at < bEndIso) {
         bFailedRuns += 1;
       }
     }
@@ -3490,7 +3165,10 @@ export async function queryEnvironmentMetrics(
       bSamples.length > 0
         ? computeLatencyQuantiles(bSamples).p95Ms
         : bP95s.length > 0
-          ? computeQuantileFromSorted([...bP95s].sort((a, b) => a - b), 0.95)
+          ? computeQuantileFromSorted(
+              [...bP95s].sort((a, b) => a - b),
+              0.95,
+            )
           : 0;
 
     series.push({
@@ -3503,10 +3181,7 @@ export async function queryEnvironmentMetrics(
   }
 
   const requestsPerMinute = roundMetric(totalRequests / windowMinutes, 2);
-  const errorRatePercent =
-    totalRequests > 0
-      ? roundMetric((total5xx / totalRequests) * 100, 2)
-      : 0;
+  const errorRatePercent = totalRequests > 0 ? roundMetric((total5xx / totalRequests) * 100, 2) : 0;
 
   return {
     ok: true,
@@ -3553,27 +3228,12 @@ export function reconcileCloudflareAnalyticsWithD1Metrics(
   const cfQueues = cfAnalytics.queuesBacklogAdaptive;
 
   const windowMinutes = resolveWindowDurationMinutes(d1Metrics.window);
-  const requestCount =
-    typeof cfWorkers?.requests === "number" && cfWorkers.requests >= d1Metrics.requestCount
-      ? cfWorkers.requests
-      : d1Metrics.requestCount;
-  const error5xxCount =
-    typeof cfWorkers?.errors === "number" && cfWorkers.errors >= d1Metrics.error5xxCount
-      ? cfWorkers.errors
-      : d1Metrics.error5xxCount;
+  const requestCount = typeof cfWorkers?.requests === "number" && cfWorkers.requests >= d1Metrics.requestCount ? cfWorkers.requests : d1Metrics.requestCount;
+  const error5xxCount = typeof cfWorkers?.errors === "number" && cfWorkers.errors >= d1Metrics.error5xxCount ? cfWorkers.errors : d1Metrics.error5xxCount;
 
-  const latencyP50Ms =
-    d1Metrics.latencyP50Ms > 0
-      ? d1Metrics.latencyP50Ms
-      : roundMetric(cfWorkers?.p50Ms ?? 0, 2);
-  const latencyP95Ms =
-    d1Metrics.latencyP95Ms > 0
-      ? d1Metrics.latencyP95Ms
-      : roundMetric(cfWorkers?.p95Ms ?? 0, 2);
-  const latencyP99Ms =
-    d1Metrics.latencyP99Ms > 0
-      ? d1Metrics.latencyP99Ms
-      : roundMetric(cfWorkers?.p99Ms ?? 0, 2);
+  const latencyP50Ms = d1Metrics.latencyP50Ms > 0 ? d1Metrics.latencyP50Ms : roundMetric(cfWorkers?.p50Ms ?? 0, 2);
+  const latencyP95Ms = d1Metrics.latencyP95Ms > 0 ? d1Metrics.latencyP95Ms : roundMetric(cfWorkers?.p95Ms ?? 0, 2);
+  const latencyP99Ms = d1Metrics.latencyP99Ms > 0 ? d1Metrics.latencyP99Ms : roundMetric(cfWorkers?.p99Ms ?? 0, 2);
 
   const mergedQueueMap = new Map<string, QueueHealthMetric>();
   for (const q of d1Metrics.queues) {
@@ -3600,12 +3260,7 @@ export function reconcileCloudflareAnalyticsWithD1Metrics(
 
   const deltaPercent =
     typeof cfWorkers?.requests === "number" && cfWorkers.requests > 0
-      ? roundMetric(
-          (Math.abs(cfWorkers.requests - d1Metrics.requestCount) /
-            cfWorkers.requests) *
-            100,
-          2,
-        )
+      ? roundMetric((Math.abs(cfWorkers.requests - d1Metrics.requestCount) / cfWorkers.requests) * 100, 2)
       : 0;
 
   return {
@@ -3613,23 +3268,16 @@ export function reconcileCloudflareAnalyticsWithD1Metrics(
     requestCount,
     requestsPerMinute: roundMetric(requestCount / windowMinutes, 2),
     error5xxCount,
-    errorRatePercent:
-      requestCount > 0 ? roundMetric((error5xxCount / requestCount) * 100, 2) : 0,
+    errorRatePercent: requestCount > 0 ? roundMetric((error5xxCount / requestCount) * 100, 2) : 0,
     latencyP50Ms,
     latencyP95Ms,
     latencyP99Ms,
     queues: [...mergedQueueMap.values()],
     analyticsReconciliation: {
       source: "cloudflare-graphql+d1",
-      ...(typeof cfWorkers?.requests === "number"
-        ? { cloudflareRequests: cfWorkers.requests }
-        : {}),
-      ...(typeof cfWorkers?.errors === "number"
-        ? { cloudflareErrors: cfWorkers.errors }
-        : {}),
-      ...(typeof cfWorkers?.p95Ms === "number"
-        ? { cloudflareP95Ms: cfWorkers.p95Ms }
-        : {}),
+      ...(typeof cfWorkers?.requests === "number" ? { cloudflareRequests: cfWorkers.requests } : {}),
+      ...(typeof cfWorkers?.errors === "number" ? { cloudflareErrors: cfWorkers.errors } : {}),
+      ...(typeof cfWorkers?.p95Ms === "number" ? { cloudflareP95Ms: cfWorkers.p95Ms } : {}),
       deltaPercent,
     },
   };
@@ -3645,10 +3293,7 @@ export async function handleTelemetryMetricsRequest(
   const url = new URL(request.url);
   if (url.pathname !== "/__px/metrics") return null;
   if (request.method !== "GET") {
-    return Response.json(
-      { error: { code: "METHOD_NOT_ALLOWED", message: "Expected GET /__px/metrics" } },
-      { status: 405 },
-    );
+    return Response.json({ error: { code: "METHOD_NOT_ALLOWED", message: "Expected GET /__px/metrics" } }, { status: 405 });
   }
 
   const refusal = await checkControlPlaneSignature(request, {
@@ -3681,8 +3326,5 @@ export async function handleTelemetryMetricsRequest(
     now: options.now,
   });
 
-  return Response.json(
-    { ...summary, ...(scope.workspaceId ? { workspaceId: scope.workspaceId } : {}) },
-    { status: 200 },
-  );
+  return Response.json({ ...summary, ...(scope.workspaceId ? { workspaceId: scope.workspaceId } : {}) }, { status: 200 });
 }

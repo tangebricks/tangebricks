@@ -6,13 +6,7 @@ import { catalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_mcp_server.sql?raw";
-import {
-  PROTOCOL_VERSION,
-  createDurableObjectBlueprintClient,
-  createMcpApp,
-  projectHash,
-  withinRateLimit,
-} from "../src/index.ts";
+import { PROTOCOL_VERSION, createDurableObjectBlueprintClient, createMcpApp, projectHash, withinRateLimit } from "../src/index.ts";
 import type { BlueprintDoNamespaceLike } from "../src/index.ts";
 import { ALL_TOOLS, toolDescriptions } from "../src/tools.ts";
 import { createEntityRoutes } from "../../../bricks/dynamic-entities/src/index.ts";
@@ -48,12 +42,20 @@ interface Send {
   env?: Record<string, unknown>;
 }
 async function post(message: unknown, send: Send = {}, appUnderTest = app): Promise<Reply> {
-  const headers: Record<string, string> = { "content-type": "application/json", accept: "application/json, text/event-stream", ...(send.token === null ? {} : { authorization: `Bearer ${send.token ?? testToken(projectOf(message) ?? "p")}` }) };
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    accept: "application/json, text/event-stream",
+    ...(send.token === null ? {} : { authorization: `Bearer ${send.token ?? testToken(projectOf(message) ?? "p")}` }),
+  };
   for (const [name, value] of Object.entries(send.headers ?? {})) {
     if (value === null) delete headers[name];
     else headers[name] = value;
   }
-  const response = await appUnderTest.fetch(new Request("http://localhost/mcp", { method: "POST", headers, body: send.raw ?? JSON.stringify(message) }), { DB: db, BLUEPRINT_DO: scopedDoNamespace, ...send.env });
+  const response = await appUnderTest.fetch(new Request("http://localhost/mcp", { method: "POST", headers, body: send.raw ?? JSON.stringify(message) }), {
+    DB: db,
+    BLUEPRINT_DO: scopedDoNamespace,
+    ...send.env,
+  });
   const text = await response.text();
   let body: any = null;
   try {
@@ -85,7 +87,8 @@ async function enableReviewed(project: string, bricks: Array<string | { id: stri
   const accepted = await doClient.acceptProposal!({ project, proposalId: proposed.proposalId, reviewer: { type: "human", id: "test:studio-reviewer" } });
   expect(accepted.ok).toBe(true);
 }
-const count = async (table: string, project: string) => (await db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE project = ?`).bind(project).first<{ n: number }>())!.n;
+const count = async (table: string, project: string) =>
+  (await db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE project = ?`).bind(project).first<{ n: number }>())!.n;
 
 beforeEach(async () => {
   expect.hasAssertions();
@@ -99,14 +102,25 @@ describe("the protocol", () => {
     const reply = await post(request("initialize", { protocolVersion: PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: "test", version: "1" } }));
     expect(reply.status).toBe(200);
     expect(reply.headers.get("content-type")).toBe("application/json");
-    expect(reply.body).toMatchObject({ jsonrpc: "2.0", id: expect.any(Number), result: { protocolVersion: "2025-11-25", capabilities: { tools: { listChanged: false } }, serverInfo: { name: "projectx-poc-assembler", version: "0.0.0" } } });
+    expect(reply.body).toMatchObject({
+      jsonrpc: "2.0",
+      id: expect.any(Number),
+      result: {
+        protocolVersion: "2025-11-25",
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: "projectx-poc-assembler", version: "0.0.0" },
+      },
+    });
     expect(reply.body.result.instructions).toMatch(/enable_brick/);
     // stateless: no session is assigned
     expect(reply.headers.get("mcp-session-id")).toBeNull();
   });
 
   it("answers with its own version even when the client asks for another", async () => {
-    expect((await post(request("initialize", { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "old", version: "1" } }))).body.result.protocolVersion).toBe("2025-11-25");
+    expect(
+      (await post(request("initialize", { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "old", version: "1" } }))).body.result
+        .protocolVersion,
+    ).toBe("2025-11-25");
   });
 
   it("the response carries the request's id, whether a number or a string", async () => {
@@ -170,10 +184,7 @@ describe("the protocol", () => {
       "query_logs",
       "deploy_plan",
     ]);
-    expect(tools.filter((t) => t.annotations?.destructiveHint).map((t) => t.name)).toEqual([
-      "apply_ops",
-      "deploy_apply",
-    ]);
+    expect(tools.filter((t) => t.annotations?.destructiveHint).map((t) => t.name)).toEqual(["apply_ops", "deploy_apply"]);
     expect(tools.find((t) => t.name === "apply_ops")!.inputSchema.required).toEqual(["project", "ops"]);
     expect(tools.find((t) => t.name === "deploy_apply")!.inputSchema.additionalProperties).not.toBe(true);
   });
@@ -203,7 +214,17 @@ describe("a request the server cannot read", () => {
     ["not JSON", { raw: "{nope" }, 400, -32700],
     ["an empty body", { raw: "" }, 400, -32700],
     ["a list (batching was removed)", { raw: JSON.stringify([{ jsonrpc: "2.0", id: 1, method: "ping" }]) }, 400, -32600],
-    ["a list holding two valid requests", { raw: JSON.stringify([{ jsonrpc: "2.0", id: 1, method: "ping" }, { jsonrpc: "2.0", id: 2, method: "ping" }]) }, 400, -32600],
+    [
+      "a list holding two valid requests",
+      {
+        raw: JSON.stringify([
+          { jsonrpc: "2.0", id: 1, method: "ping" },
+          { jsonrpc: "2.0", id: 2, method: "ping" },
+        ]),
+      },
+      400,
+      -32600,
+    ],
     ["a number", { raw: "7" }, 400, -32600],
     ["null", { raw: "null" }, 400, -32600],
     ["the wrong jsonrpc version", { raw: JSON.stringify({ jsonrpc: "1.0", id: 1, method: "ping" }) }, 400, -32600],
@@ -265,7 +286,11 @@ describe("who may call", () => {
     for (const send of [{}, { token: "" }, { token: null }, { token: TOKEN }]) {
       expect((await post(request("ping"), send as Send, unverified)).status).toBe(503);
       expect((await post(request("tools/list"), send as Send, unverified)).status).toBe(503);
-      const call = await post(request("tools/call", { name: "enable_brick", arguments: { project: "p1", bricks: ["multi-workspace"] } }), send as Send, unverified);
+      const call = await post(
+        request("tools/call", { name: "enable_brick", arguments: { project: "p1", bricks: ["multi-workspace"] } }),
+        send as Send,
+        unverified,
+      );
       expect(call.status).toBe(503);
     }
     expect(await count("mcp_projects", "p1")).toBe(0);
@@ -304,7 +329,10 @@ describe("who may call", () => {
   it("too many calls in a minute are 429 with Retry-After, and the refused call does nothing", async () => {
     const limited = createMcpApp({ catalog, callsPerMinute: 3, verifyToken: testTokenVerifier });
     const results: number[] = [];
-    for (let i = 0; i < 5; i += 1) results.push((await post(request("tools/call", { name: "enable_brick", arguments: { project: "rate", bricks: ["multi-workspace"] } }), {}, limited)).status);
+    for (let i = 0; i < 5; i += 1)
+      results.push(
+        (await post(request("tools/call", { name: "enable_brick", arguments: { project: "rate", bricks: ["multi-workspace"] } }), {}, limited)).status,
+      );
     expect(results).toEqual([200, 200, 200, 429, 429]);
     const refused = await post(request("tools/call", { name: "list_bricks", arguments: {} }), {}, limited);
     expect(refused.headers.get("retry-after")).toBe("60");
@@ -482,15 +510,25 @@ describe("enable_brick", () => {
 
   it("settings are checked and stored; enabling again replaces the settings, and the brick is listed once", async () => {
     await callTool("enable_brick", { project: "shop", bricks: ["multi-workspace"] });
-    await callTool("enable_brick", { project: "shop", bricks: [{ id: "binary-assets", config: { maxFileSizeBytes: (10) * 1024 } }] });
-    await callTool("enable_brick", { project: "shop", bricks: [{ id: "binary-assets", config: { maxFileSizeBytes: (20) * 1024, workspaceQuotaBytes: 100 * 1048576 } }] });
+    await callTool("enable_brick", { project: "shop", bricks: [{ id: "binary-assets", config: { maxFileSizeBytes: 10 * 1024 } }] });
+    await callTool("enable_brick", {
+      project: "shop",
+      bricks: [{ id: "binary-assets", config: { maxFileSizeBytes: 20 * 1024, workspaceQuotaBytes: 100 * 1048576 } }],
+    });
     const snap = (await stored("shop"))!;
-    expect(snap.blueprint.bricks).toEqual([{ id: "binary-assets", config: { maxFileSizeBytes: (20) * 1024, workspaceQuotaBytes: 100 * 1048576 } }, { id: "multi-workspace", config: {} }]);
+    expect(snap.blueprint.bricks).toEqual([
+      { id: "binary-assets", config: { maxFileSizeBytes: 20 * 1024, workspaceQuotaBytes: 100 * 1048576 } },
+      { id: "multi-workspace", config: {} },
+    ]);
     expect(await count("mcp_projects", "shop")).toBe(0);
   });
 
   it.each([
-    ["a brick that does not exist", { project: "p", bricks: ["no-such-brick"] }, new RegExp(`unknown brick "no-such-brick" \\(available: ${Object.keys(catalog.bricks).sort().join(", ")}\\)`)],
+    [
+      "a brick that does not exist",
+      { project: "p", bricks: ["no-such-brick"] },
+      new RegExp(`unknown brick "no-such-brick" \\(available: ${Object.keys(catalog.bricks).sort().join(", ")}\\)`),
+    ],
     ["a setting that does not exist", { project: "p", bricks: [{ id: "credit-wallet", config: { creditPerUnit: 2 } }] }, /unknown setting "creditPerUnit"/],
     ["a setting out of range", { project: "p", bricks: [{ id: "credit-wallet", config: { creditsPerUnit: 0 } }] }, /must be a whole number from 1 to 1000000/],
     ["a setting of the wrong kind", { project: "p", bricks: [{ id: "credit-wallet", config: { minOrderAmount: "ten" } }] }, /must be a whole number/],
@@ -538,7 +576,14 @@ describe("enable_brick", () => {
   });
 
   it("twenty calls at once for twenty different bricks' settings all land: none is lost", async () => {
-    const replies = await Promise.all(Array.from({ length: 20 }, (_, i) => callTool("enable_brick", { project: "busy", bricks: [i % 2 === 0 ? { id: "binary-assets", config: { maxFileSizeBytes: (i + 1) * 1024 } } : "multi-workspace"] })));
+    const replies = await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        callTool("enable_brick", {
+          project: "busy",
+          bricks: [i % 2 === 0 ? { id: "binary-assets", config: { maxFileSizeBytes: (i + 1) * 1024 } } : "multi-workspace"],
+        }),
+      ),
+    );
     expect(replies.every((r) => r.status === 200 && !r.body.result.isError)).toBe(true);
     const row = (await stored("busy"))!;
     const bricks = row.blueprint.bricks as Array<{ id: string }>;
@@ -547,14 +592,17 @@ describe("enable_brick", () => {
   });
 
   it("twenty different bricks enabled at once on one project: none is lost", async () => {
-    await Promise.all(["binary-assets", "dynamic-entities", "multi-workspace"].flatMap((brick) => Array.from({ length: 7 }, () => callTool("enable_brick", { project: "three", bricks: [brick] }))));
+    await Promise.all(
+      ["binary-assets", "dynamic-entities", "multi-workspace"].flatMap((brick) =>
+        Array.from({ length: 7 }, () => callTool("enable_brick", { project: "three", bricks: [brick] })),
+      ),
+    );
     const row = (await stored("three"))!;
     expect((row.blueprint.bricks as Array<{ id: string }>).map((b) => b.id)).toEqual(["binary-assets", "dynamic-entities", "multi-workspace"]);
   });
 });
 
 describe("enable_brick with a list", () => {
-
   it("enables several bricks in one call, in one write, and the project is complete when the list is", async () => {
     const reply = toolJson(await callTool("enable_brick", { project: "shop", bricks: ["binary-assets", "multi-workspace"] }));
     expect(reply.enabled).toEqual(["binary-assets", "multi-workspace"]);
@@ -563,9 +611,12 @@ describe("enable_brick with a list", () => {
   });
 
   it("a brick with settings and a brick without can be mixed in one list", async () => {
-    await callTool("enable_brick", { project: "mix", bricks: ["multi-workspace", { id: "binary-assets", config: { maxFileSizeBytes: (7) * 1024 } }, "dynamic-entities"] });
+    await callTool("enable_brick", {
+      project: "mix",
+      bricks: ["multi-workspace", { id: "binary-assets", config: { maxFileSizeBytes: 7 * 1024 } }, "dynamic-entities"],
+    });
     expect((await stored("mix"))!.blueprint.bricks).toEqual([
-      { id: "binary-assets", config: { maxFileSizeBytes: (7) * 1024 } },
+      { id: "binary-assets", config: { maxFileSizeBytes: 7 * 1024 } },
       { id: "dynamic-entities", config: {} },
       { id: "multi-workspace", config: {} },
     ]);
@@ -578,7 +629,10 @@ describe("enable_brick with a list", () => {
   });
 
   it("one bad item refuses the whole list: nothing is written, not even the good items, and the bad one is named", async () => {
-    const reply = await callTool("enable_brick", { project: "atomic", bricks: ["multi-workspace", "no-such-brick", { id: "credit-wallet", config: { creditsPerUnit: 0 } }] });
+    const reply = await callTool("enable_brick", {
+      project: "atomic",
+      bricks: ["multi-workspace", "no-such-brick", { id: "credit-wallet", config: { creditsPerUnit: 0 } }],
+    });
     expect(reply.body.result.isError).toBe(true);
     expect(toolText(reply)).toMatch(/unknown brick "no-such-brick"/);
     expect(toolText(reply)).toMatch(/credit-wallet: setting "creditsPerUnit" must be a whole number/); // every problem at once, not only the first
@@ -595,16 +649,22 @@ describe("enable_brick with a list", () => {
   });
 
   it("the same brick twice in one list is refused rather than guessed at", async () => {
-    const reply = await callTool("enable_brick", { project: "twice", bricks: [{ id: "credit-wallet", config: { creditsPerUnit: 1 } }, { id: "credit-wallet", config: { creditsPerUnit: 2 } }] });
+    const reply = await callTool("enable_brick", {
+      project: "twice",
+      bricks: [
+        { id: "credit-wallet", config: { creditsPerUnit: 1 } },
+        { id: "credit-wallet", config: { creditsPerUnit: 2 } },
+      ],
+    });
     expect(toolText(reply)).toMatch(/brick "credit-wallet" is listed twice.*nothing was changed/);
     expect(await stored("twice")).toBeNull();
   });
 
   it("a list changes the bricks it names and leaves the others alone", async () => {
-    await callTool("enable_brick", { project: "edit", bricks: ["multi-workspace", { id: "binary-assets", config: { maxFileSizeBytes: (3) * 1024 } }] });
-    await callTool("enable_brick", { project: "edit", bricks: [{ id: "binary-assets", config: { maxFileSizeBytes: (9) * 1024 } }, "dynamic-entities"] });
+    await callTool("enable_brick", { project: "edit", bricks: ["multi-workspace", { id: "binary-assets", config: { maxFileSizeBytes: 3 * 1024 } }] });
+    await callTool("enable_brick", { project: "edit", bricks: [{ id: "binary-assets", config: { maxFileSizeBytes: 9 * 1024 } }, "dynamic-entities"] });
     expect((await stored("edit"))!.blueprint.bricks).toEqual([
-      { id: "binary-assets", config: { maxFileSizeBytes: (9) * 1024 } },
+      { id: "binary-assets", config: { maxFileSizeBytes: 9 * 1024 } },
       { id: "dynamic-entities", config: {} },
       { id: "multi-workspace", config: {} },
     ]);
@@ -616,7 +676,11 @@ describe("enable_brick with a list", () => {
     ["one brick written the old way", { project: "p", brick: "multi-workspace" }, /bricks: .*(required|undefined)/],
     ["a list where an item is a number", { project: "p", bricks: ["multi-workspace", 5] }, /bricks\.1: .*(allowed forms|expected)/],
     ["a list where an item has a misspelt key", { project: "p", bricks: [{ idd: "multi-workspace" }] }, /bricks\.0\.id: .*|bricks\.0: .*Unrecognized key/],
-    ["a list where one setting is an object", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: { $ne: 1 } } }] }, /bricks\.1\.config\.creditsPerUnit/],
+    [
+      "a list where one setting is an object",
+      { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: { $ne: 1 } } }] },
+      /bricks\.1\.config\.creditsPerUnit/,
+    ],
     ["a list that is text", { project: "p", bricks: "multi-workspace" }, /bricks: .*expected array/],
     ["a list item whose id is not a brick name", { project: "p", bricks: ["multi-workspace", "x'; DROP TABLE mcp_projects; --"] }, /bricks\.1: .*pattern/],
   ])("%s is a tool error that points at the item, and writes nothing", async (_label, args, message) => {
@@ -629,7 +693,14 @@ describe("enable_brick with a list", () => {
   });
 
   it("many lists at once that overlap all land: every brick named by any of them ends up enabled", async () => {
-    const lists = [["binary-assets"], ["multi-workspace", "binary-assets"], ["dynamic-entities"], ["multi-workspace"], ["dynamic-entities", "binary-assets"], ["binary-assets", "multi-workspace", "dynamic-entities"]];
+    const lists = [
+      ["binary-assets"],
+      ["multi-workspace", "binary-assets"],
+      ["dynamic-entities"],
+      ["multi-workspace"],
+      ["dynamic-entities", "binary-assets"],
+      ["binary-assets", "multi-workspace", "dynamic-entities"],
+    ];
     const replies = await Promise.all(Array.from({ length: 18 }, (_, i) => callTool("enable_brick", { project: "crowd", bricks: lists[i % lists.length] })));
     expect(replies.every((r) => !r.body.result.isError)).toBe(true);
     const after = (await stored("crowd"))!;
@@ -642,19 +713,47 @@ describe("define_entity with a list", () => {
   const field = [{ name: "label", type: "text" }];
 
   it("declares several tables in one call, in one write, kept in name order", async () => {
-    const reply = toolJson(await callTool("define_entity", { project: "many", entities: [{ name: "zebras", fields: field }, { name: "apples", fields: field }, { name: "mangoes", fields: field }] }));
+    const reply = toolJson(
+      await callTool("define_entity", {
+        project: "many",
+        entities: [
+          { name: "zebras", fields: field },
+          { name: "apples", fields: field },
+          { name: "mangoes", fields: field },
+        ],
+      }),
+    );
     expect(reply.entities).toEqual(["apples", "mangoes", "zebras"]);
     expect((await stored("many"))!.version).toBe(1);
   });
 
   it("the order of the list does not matter", async () => {
-    await callTool("define_entity", { project: "xy", entities: [{ name: "x_things", fields: field }, { name: "y_things", fields: field }] });
-    await callTool("define_entity", { project: "yx", entities: [{ name: "y_things", fields: field }, { name: "x_things", fields: field }] });
+    await callTool("define_entity", {
+      project: "xy",
+      entities: [
+        { name: "x_things", fields: field },
+        { name: "y_things", fields: field },
+      ],
+    });
+    await callTool("define_entity", {
+      project: "yx",
+      entities: [
+        { name: "y_things", fields: field },
+        { name: "x_things", fields: field },
+      ],
+    });
     expect((await stored("xy"))!.blueprint).toEqual((await stored("yx"))!.blueprint);
   });
 
   it("one bad table refuses the whole list: nothing is stored, and the bad one is named", async () => {
-    const reply = await callTool("define_entity", { project: "atomic", entities: [{ name: "apples", fields: field }, { name: "wallet", fields: field }, { name: "mangoes", fields: field }] });
+    const reply = await callTool("define_entity", {
+      project: "atomic",
+      entities: [
+        { name: "apples", fields: field },
+        { name: "wallet", fields: field },
+        { name: "mangoes", fields: field },
+      ],
+    });
     expect(reply.body.result.isError).toBe(true);
     expect(toolText(reply)).toMatch(/entity "wallet" uses a name that a brick's routes already use.*nothing was changed/);
     expect(await stored("atomic")).toBeNull();
@@ -663,19 +762,43 @@ describe("define_entity with a list", () => {
   it("a refused list leaves an existing project exactly as it was, version included", async () => {
     await callTool("define_entity", { project: "keep", entities: [{ name: "apples", fields: field }] });
     const before = await stored("keep");
-    await callTool("define_entity", { project: "keep", entities: [{ name: "mangoes", fields: field }, { name: "wallet", fields: field }] });
+    await callTool("define_entity", {
+      project: "keep",
+      entities: [
+        { name: "mangoes", fields: field },
+        { name: "wallet", fields: field },
+      ],
+    });
     expect(await stored("keep")).toEqual(before);
   });
 
   it("the same table twice in one list is refused", async () => {
-    const reply = await callTool("define_entity", { project: "twice", entities: [{ name: "apples", fields: field }, { name: "apples", fields: [{ name: "other", type: "text" }] }] });
+    const reply = await callTool("define_entity", {
+      project: "twice",
+      entities: [
+        { name: "apples", fields: field },
+        { name: "apples", fields: [{ name: "other", type: "text" }] },
+      ],
+    });
     expect(toolText(reply)).toMatch(/entity "apples" is declared twice.*nothing was changed/);
     expect(await stored("twice")).toBeNull();
   });
 
   it("a list replaces the tables it names and keeps the others", async () => {
-    await callTool("define_entity", { project: "swap", entities: [{ name: "apples", fields: field }, { name: "mangoes", fields: field }] });
-    await callTool("define_entity", { project: "swap", entities: [{ name: "mangoes", fields: [{ name: "colour", type: "text" }] }, { name: "pears", fields: field }] });
+    await callTool("define_entity", {
+      project: "swap",
+      entities: [
+        { name: "apples", fields: field },
+        { name: "mangoes", fields: field },
+      ],
+    });
+    await callTool("define_entity", {
+      project: "swap",
+      entities: [
+        { name: "mangoes", fields: [{ name: "colour", type: "text" }] },
+        { name: "pears", fields: field },
+      ],
+    });
     const entities = (await stored("swap"))!.blueprint.entities;
     expect(entities.map((e: { name: string }) => e.name)).toEqual(["apples", "mangoes", "pears"]);
     expect(entities[1]!.fields.map((f: { name: string }) => f.name)).toEqual(["colour"]);
@@ -698,8 +821,28 @@ describe("define_entity with a list", () => {
   it.each([
     ["an empty list", { project: "p", entities: [] }, /entities: .*>=1 items/],
     ["one table written the old way", { project: "p", entity: { name: "apples", fields: field } }, /entities: .*(required|undefined)/],
-    ["a list where the second table has no fields", { project: "p", entities: [{ name: "apples", fields: field }, { name: "empty", fields: [] }] }, /entities\.1\.fields/],
-    ["a list where the second table has a field named for a system column", { project: "p", entities: [{ name: "apples", fields: field }, { name: "things", fields: [{ name: "workspace_id", type: "text" }] }] }, /entities\.1\.fields\.0\.name/],
+    [
+      "a list where the second table has no fields",
+      {
+        project: "p",
+        entities: [
+          { name: "apples", fields: field },
+          { name: "empty", fields: [] },
+        ],
+      },
+      /entities\.1\.fields/,
+    ],
+    [
+      "a list where the second table has a field named for a system column",
+      {
+        project: "p",
+        entities: [
+          { name: "apples", fields: field },
+          { name: "things", fields: [{ name: "workspace_id", type: "text" }] },
+        ],
+      },
+      /entities\.1\.fields\.0\.name/,
+    ],
   ])("%s is a tool error that points at the item, and writes nothing", async (_label, args, message) => {
     const reply = await callTool("define_entity", args);
     expect(reply.body.result.isError).toBe(true);
@@ -710,7 +853,11 @@ describe("define_entity with a list", () => {
 
   it("many lists at once that overlap all land, and the table they all name ends up declared once", async () => {
     const lists = [["apples"], ["apples", "mangoes"], ["pears"], ["mangoes", "pears", "apples"]];
-    const replies = await Promise.all(Array.from({ length: 12 }, (_, i) => callTool("define_entity", { project: "crowd", entities: lists[i % lists.length]!.map((name) => ({ name, fields: field })) })));
+    const replies = await Promise.all(
+      Array.from({ length: 12 }, (_, i) =>
+        callTool("define_entity", { project: "crowd", entities: lists[i % lists.length]!.map((name) => ({ name, fields: field })) }),
+      ),
+    );
     expect(replies.every((r) => !r.body.result.isError)).toBe(true);
     const after = (await stored("crowd"))!;
     expect(after.blueprint.entities.map((e: { name: string }) => e.name)).toEqual(["apples", "mangoes", "pears"]);
@@ -719,7 +866,14 @@ describe("define_entity with a list", () => {
 });
 
 describe("define_entity", () => {
-  const invoices = { name: "invoices", fields: [{ name: "client_name", type: "text", required: true }, { name: "amount", type: "number" }, { name: "status", type: "enum", values: ["draft", "paid"] }] };
+  const invoices = {
+    name: "invoices",
+    fields: [
+      { name: "client_name", type: "text", required: true },
+      { name: "amount", type: "number" },
+      { name: "status", type: "enum", values: ["draft", "paid"] },
+    ],
+  };
 
   it("stores the entity, says what the project still needs, and replaces an entity of the same name", async () => {
     const first = toolJson(await callTool("define_entity", { project: "ent", entities: [invoices] }));
@@ -739,9 +893,17 @@ describe("define_entity", () => {
   });
 
   it.each([
-    ["an entity named for a brick's routes", { name: "wallet", fields: [{ name: "label", type: "text" }] }, /entity "wallet" uses a name that a brick's routes already use/],
+    [
+      "an entity named for a brick's routes",
+      { name: "wallet", fields: [{ name: "label", type: "text" }] },
+      /entity "wallet" uses a name that a brick's routes already use/,
+    ],
     ["a field named for a system column", { name: "things", fields: [{ name: "workspace_id", type: "text" }] }, /entities\.0\.fields\.0\.name/],
-    ["an enum value that would break the SQL", { name: "things", fields: [{ name: "kind", type: "enum", values: ["a'); DROP TABLE x; --"] }] }, /entities\.0\.fields\.0\.values/],
+    [
+      "an enum value that would break the SQL",
+      { name: "things", fields: [{ name: "kind", type: "enum", values: ["a'); DROP TABLE x; --"] }] },
+      /entities\.0\.fields\.0\.values/,
+    ],
   ])("%s is a tool error and changes nothing", async (_label, entity, message) => {
     const reply = await callTool("define_entity", { project: "ent", entities: [entity] });
     expect(reply.body.result.isError).toBe(true);
@@ -771,7 +933,13 @@ describe("define_entity", () => {
 });
 
 describe("build_project", () => {
-  const invoices = { name: "invoices", fields: [{ name: "client_name", type: "text", required: true }, { name: "amount", type: "number" }] };
+  const invoices = {
+    name: "invoices",
+    fields: [
+      { name: "client_name", type: "text", required: true },
+      { name: "amount", type: "number" },
+    ],
+  };
   async function readyProject(project: string) {
     await callTool("enable_brick", { project, bricks: ["multi-workspace"] });
     await enableReviewed(project, [{ id: "credit-wallet", config: { creditsPerUnit: 10 } }]);
@@ -784,7 +952,12 @@ describe("build_project", () => {
     const reply = await callTool("build_project", { project: "invoice-flow" });
     expect(reply.body.result.isError).toBeUndefined();
     const summary = toolJson(reply);
-    expect(summary).toMatchObject({ project: "invoice-flow", files: 15, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
+    expect(summary).toMatchObject({
+      project: "invoice-flow",
+      files: 15,
+      bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"],
+      entities: ["invoices"],
+    });
     expect(summary.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(summary.bytes).toBeGreaterThan(1000);
     // the answer is short and holds none of the project's source
@@ -796,15 +969,25 @@ describe("build_project", () => {
     await readyProject("invoice-flow");
     const summary = toolJson(await callTool("build_project", { project: "invoice-flow" }));
     const direct = assemble(
-      { project: "invoice-flow", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 10 } }, "dynamic-entities"], entities: [invoices] },
+      {
+        project: "invoice-flow",
+        bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 10 } }, "dynamic-entities"],
+        entities: [invoices],
+      },
       catalog,
     );
     if (!direct.ok) throw new Error(direct.errors.join("; "));
-    const stored = (await db.prepare("SELECT path, content, sha256 FROM mcp_files WHERE project = 'invoice-flow' ORDER BY path").all<{ path: string; content: string; sha256: string }>()).results;
+    const stored = (
+      await db
+        .prepare("SELECT path, content, sha256 FROM mcp_files WHERE project = 'invoice-flow' ORDER BY path")
+        .all<{ path: string; content: string; sha256: string }>()
+    ).results;
     expect(Object.fromEntries(stored.map((r) => [r.path, r.content]))).toEqual(direct.files);
     expect(Object.fromEntries(stored.map((r) => [r.path, r.sha256]))).toEqual(await hashFiles(direct.files));
     expect(summary.hash).toBe(await projectHash(direct.files));
-    const build = await db.prepare("SELECT project_hash, file_count, byte_count FROM mcp_builds WHERE project = 'invoice-flow'").first<{ project_hash: string; file_count: number; byte_count: number }>();
+    const build = await db
+      .prepare("SELECT project_hash, file_count, byte_count FROM mcp_builds WHERE project = 'invoice-flow'")
+      .first<{ project_hash: string; file_count: number; byte_count: number }>();
     expect(build).toEqual({ project_hash: summary.hash, file_count: 15, byte_count: summary.bytes }); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003; story 2.5 its 0004
   });
 
@@ -860,7 +1043,9 @@ describe("build_project", () => {
   it("entities with nothing to serve them are refused with the brick to enable", async () => {
     await callTool("enable_brick", { project: "orphan", bricks: ["multi-workspace"] });
     await callTool("define_entity", { project: "orphan", entities: [invoices] });
-    expect(toolText(await callTool("build_project", { project: "orphan" }))).toMatch(/entities are declared but no enabled brick handles them \(enable one of: dynamic-entities\)/);
+    expect(toolText(await callTool("build_project", { project: "orphan" }))).toMatch(
+      /entities are declared but no enabled brick handles them \(enable one of: dynamic-entities\)/,
+    );
   });
 
   it("two builds of one project at once leave a whole, consistent set of files", async () => {
@@ -868,7 +1053,8 @@ describe("build_project", () => {
     const replies = await Promise.all(Array.from({ length: 6 }, () => callTool("build_project", { project: "race" })));
     const hashes = new Set(replies.map((r) => toolJson(r).hash));
     expect(hashes.size).toBe(1);
-    const stored = (await db.prepare("SELECT path, content FROM mcp_files WHERE project = 'race' ORDER BY path").all<{ path: string; content: string }>()).results;
+    const stored = (await db.prepare("SELECT path, content FROM mcp_files WHERE project = 'race' ORDER BY path").all<{ path: string; content: string }>())
+      .results;
     expect(stored).toHaveLength(15);
     expect(await projectHash(Object.fromEntries(stored.map((r) => [r.path, r.content])))).toBe([...hashes][0]);
   });
@@ -905,7 +1091,12 @@ describe("the errors a client would see", () => {
   });
 
   it("nothing the server says contains the access token", async () => {
-    const texts = [(await post(request("initialize", {}))).text, (await post(request("tools/list"))).text, (await callTool("list_bricks", {})).text, (await post(undefined, { raw: "{" })).text];
+    const texts = [
+      (await post(request("initialize", {}))).text,
+      (await post(request("tools/list"))).text,
+      (await callTool("list_bricks", {})).text,
+      (await post(undefined, { raw: "{" })).text,
+    ];
     for (const text of texts) expect(text).not.toContain(TOKEN);
   });
 });
@@ -976,10 +1167,17 @@ describe("deploy_apply reports only real deploy state (story 0.9, R-F)", () => {
   });
 });
 
-
 describe("define_entity: relations, date, money and longtext (story 1.18)", () => {
   const customer = { name: "customer", fields: [{ name: "label", type: "text", required: true }] };
-  const invoice = { name: "invoice", fields: [{ name: "customer_id", type: "relation", relation: "customer", required: true }, { name: "due_on", type: "date" }, { name: "total", type: "money", currencies: ["INR"] }, { name: "notes", type: "longtext" }] };
+  const invoice = {
+    name: "invoice",
+    fields: [
+      { name: "customer_id", type: "relation", relation: "customer", required: true },
+      { name: "due_on", type: "date" },
+      { name: "total", type: "money", currencies: ["INR"] },
+      { name: "notes", type: "longtext" },
+    ],
+  };
 
   it("tools/list gives agents the relation key and the date, money and longtext types (apply_ops, and the define_entity macro)", async () => {
     const tools = (await post(request("tools/list"))).body.result.tools as Array<{ name: string; description: string }>;
@@ -994,14 +1192,20 @@ describe("define_entity: relations, date, money and longtext (story 1.18)", () =
   });
 
   it("a relation to an undeclared entity is refused, naming the field and the entity", async () => {
-    const reply = await callTool("define_entity", { project: "rel", entities: [{ name: "invoice", fields: [{ name: "owner_id", type: "relation", relation: "ghost" }] }] });
+    const reply = await callTool("define_entity", {
+      project: "rel",
+      entities: [{ name: "invoice", fields: [{ name: "owner_id", type: "relation", relation: "ghost" }] }],
+    });
     expect(reply.body.result.isError).toBe(true);
     expect(toolText(reply)).toMatch(/field "owner_id" relates to entity "ghost", which is not declared/);
     expect(await stored("rel")).toBeNull();
   });
 
   it.each(["target", "entity", "to", "references", "targetEntity"])("the wrong key %s is refused with a pointer to relation", async (key) => {
-    const reply = await callTool("define_entity", { project: "rel", entities: [customer, { name: "invoice", fields: [{ name: "customer_id", type: "relation", [key]: "customer" }] }] });
+    const reply = await callTool("define_entity", {
+      project: "rel",
+      entities: [customer, { name: "invoice", fields: [{ name: "customer_id", type: "relation", [key]: "customer" }] }],
+    });
     expect(reply.body.result.isError).toBe(true);
     expect(toolText(reply)).toMatch(new RegExp(`"${key}" is not a field key: .*use type "relation" with the "relation" key`));
     expect(await stored("rel")).toBeNull();
@@ -1021,11 +1225,21 @@ describe("define_entity: relations, date, money and longtext (story 1.18)", () =
     const built = await callTool("build_project", { project: "rel-app" });
     expect(built.body.result.isError).toBeUndefined();
     const files = Object.fromEntries(
-      (await db.prepare("SELECT path, content FROM mcp_files WHERE project = 'rel-app'").all<{ path: string; content: string }>()).results.map((r) => [r.path, r.content]),
+      (await db.prepare("SELECT path, content FROM mcp_files WHERE project = 'rel-app'").all<{ path: string; content: string }>()).results.map((r) => [
+        r.path,
+        r.content,
+      ]),
     );
     const entities = JSON.parse(files["src/entities.json"]!);
-    expect(entities.find((e: { name: string }) => e.name === "invoice").fields[0]).toEqual({ name: "customer_id", type: "relation", required: true, relation: "customer" });
-    const migrations = Object.keys(files).filter((p) => /^migrations\/\d+_entity__/.test(p)).sort();
+    expect(entities.find((e: { name: string }) => e.name === "invoice").fields[0]).toEqual({
+      name: "customer_id",
+      type: "relation",
+      required: true,
+      relation: "customer",
+    });
+    const migrations = Object.keys(files)
+      .filter((p) => /^migrations\/\d+_entity__/.test(p))
+      .sort();
     expect(migrations.map((p) => p.replace(/^migrations\/\d+_/, ""))).toEqual(["entity__customer.sql", "entity__invoice.sql"]);
     expect(files[migrations[1]!]).toContain(`"customer_id" TEXT NOT NULL CHECK (length("customer_id") = 36)`);
     expect(files[migrations[1]!]).toContain(`"total__currency" TEXT CHECK ("total__currency" IN ('INR')`);
@@ -1042,7 +1256,11 @@ describe("define_entity: relations, date, money and longtext (story 1.18)", () =
         await next();
       });
       appUnderTest.route("/", router);
-      const res = await appUnderTest.request(`http://localhost${path}`, { method, headers: { "content-type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }, { DB: db });
+      const res = await appUnderTest.request(
+        `http://localhost${path}`,
+        { method, headers: { "content-type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) },
+        { DB: db },
+      );
       return { status: res.status, body: (await res.json()) as any };
     };
     const ownCustomer = (await send("ws_a", "POST", "/customer", { label: "Acme" })).body.item.id as string;

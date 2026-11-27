@@ -77,22 +77,15 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
       if (typeof v === "string") headers[k] = v;
     }
 
-    const allowUnsigned =
-      Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) ||
-      c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
+    const allowUnsigned = Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) || c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
     const service = new WebhookService(c.env.DB, {
       rotationGraceHours: options.rotationGraceHours,
       allowUnsignedForDev: allowUnsigned,
     });
-    const result = await service.ingestSubscriptionWebhook(
-      subscriptionId,
-      rawBody,
-      headers,
-      {
-        connKey: c.env.PX_CONN_KEY,
-        adapter: options.adapter,
-      },
-    );
+    const result = await service.ingestSubscriptionWebhook(subscriptionId, rawBody, headers, {
+      connKey: c.env.PX_CONN_KEY,
+      adapter: options.adapter,
+    });
 
     if (!result.ok) {
       return c.json(
@@ -134,27 +127,14 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
       return c.json({ error: "Invalid JSON body" }, 400);
     }
 
-    const allowUnsigned =
-      Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) ||
-      c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
+    const allowUnsigned = Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) || c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
 
-    if (
-      typeof body === "object" &&
-      body !== null &&
-      (body as { verifier?: unknown }).verifier === "none" &&
-      !allowUnsigned
-    ) {
+    if (typeof body === "object" && body !== null && (body as { verifier?: unknown }).verifier === "none" && !allowUnsigned) {
       return c.json({ error: "WEBHOOK_VERIFIER_NONE_FORBIDDEN" }, 400);
     }
 
-    if (
-      typeof body === "object" &&
-      body !== null &&
-      typeof (body as { verifier?: unknown }).verifier === "object"
-    ) {
-      const schemeParsed = WebhookSignatureSchemeSchema.safeParse(
-        (body as { verifier: unknown }).verifier,
-      );
+    if (typeof body === "object" && body !== null && typeof (body as { verifier?: unknown }).verifier === "object") {
+      const schemeParsed = WebhookSignatureSchemeSchema.safeParse((body as { verifier: unknown }).verifier);
       if (!schemeParsed.success) {
         const firstIssue = schemeParsed.error.issues[0];
         const path = firstIssue ? firstIssue.path.join(".") : "verifier";
@@ -170,15 +150,10 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
       }
     }
 
-    const schema = allowUnsigned
-      ? CreateSubscriptionDevSchema
-      : CreateSubscriptionSchema;
+    const schema = allowUnsigned ? CreateSubscriptionDevSchema : CreateSubscriptionSchema;
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return c.json(
-        { error: parsed.error.issues.map((i) => i.message).join(", ") },
-        400,
-      );
+      return c.json({ error: parsed.error.issues.map((i) => i.message).join(", ") }, 400);
     }
 
     const service = new WebhookService(c.env.DB, {
@@ -210,11 +185,7 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
   // Public ingress endpoint for inbound webhooks by slug
   app.post("/webhooks/ingress/:slug", async (c) => {
     const slug = c.req.param("slug");
-    const signature =
-      c.req.header("X-Signature-SHA256") ||
-      c.req.header("X-Hub-Signature-256") ||
-      c.req.header("Stripe-Signature") ||
-      "";
+    const signature = c.req.header("X-Signature-SHA256") || c.req.header("X-Hub-Signature-256") || c.req.header("Stripe-Signature") || "";
 
     const text = await c.req.text();
     const headers: Record<string, string> = {};
@@ -222,9 +193,7 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
       if (typeof v === "string") headers[k] = v;
     }
 
-    const allowUnsigned =
-      Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) ||
-      c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
+    const allowUnsigned = Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) || c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
     const service = new WebhookService(c.env.DB, {
       rotationGraceHours: options.rotationGraceHours,
       allowUnsignedForDev: allowUnsigned,
@@ -243,9 +212,7 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
     const ctx = c.get("ctx");
     if (!ctx) return c.json({ error: "Missing workspace context" }, 400);
 
-    const allowUnsigned =
-      Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) ||
-      c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
+    const allowUnsigned = Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) || c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
     const service = new WebhookService(c.env.DB, {
       rotationGraceHours: options.rotationGraceHours,
       allowUnsignedForDev: allowUnsigned,
@@ -271,16 +238,9 @@ export function createWebhookRoutes(options: WebhookRouteOptions = {}): Hono<Web
       return c.json({ error: "Invalid JSON body" }, 400);
     }
 
-    const allowUnsigned =
-      Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) ||
-      c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
+    const allowUnsigned = Boolean((options as { allowUnsignedForDev?: boolean })["allowUnsignedForDev"]) || c.env.PX_WEBHOOK_ALLOW_UNSIGNED === "dev";
 
-    if (
-      typeof body === "object" &&
-      body !== null &&
-      (body as { verifier?: unknown }).verifier === "none" &&
-      !allowUnsigned
-    ) {
+    if (typeof body === "object" && body !== null && (body as { verifier?: unknown }).verifier === "none" && !allowUnsigned) {
       return c.json({ error: "WEBHOOK_VERIFIER_NONE_FORBIDDEN" }, 400);
     }
 

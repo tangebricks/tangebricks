@@ -17,7 +17,11 @@ beforeEach(async () => {
 });
 
 const audit = (ws = "ws_a") =>
-  auditStatement(db, { workspaceId: ws, actorType: "user", actorId: "op", action: "platform.flag.set", targetType: "flag", targetId: "beta" }, { afterChange: true });
+  auditStatement(
+    db,
+    { workspaceId: ws, actorType: "user", actorId: "op", action: "platform.flag.set", targetType: "flag", targetId: "beta" },
+    { afterChange: true },
+  );
 const auditCount = async () => (await db.prepare("SELECT COUNT(*) AS n FROM audit_events").first<{ n: number }>())?.n;
 
 async function withAuditTable(): Promise<void> {
@@ -31,17 +35,47 @@ async function withAuditTable(): Promise<void> {
 
 describe("flagOverrides (story 2.6)", () => {
   test("set and clear change one workspace's override, which the flag evaluation then uses; repeats are no-ops", async () => {
-    expect(await flagOverrides.set(db, "ws_a", " BETA ", true, { allowOverrides: true })).toEqual({ ok: true, key: "beta", changed: true, before: null, after: true });
-    expect(await flagOverrides.set(db, "ws_a", "beta", true, { allowOverrides: true })).toEqual({ ok: true, key: "beta", changed: false, before: true, after: true });
-    expect(await flagOverrides.set(db, "ws_a", "beta", false, { allowOverrides: true })).toEqual({ ok: true, key: "beta", changed: true, before: true, after: false });
+    expect(await flagOverrides.set(db, "ws_a", " BETA ", true, { allowOverrides: true })).toEqual({
+      ok: true,
+      key: "beta",
+      changed: true,
+      before: null,
+      after: true,
+    });
+    expect(await flagOverrides.set(db, "ws_a", "beta", true, { allowOverrides: true })).toEqual({
+      ok: true,
+      key: "beta",
+      changed: false,
+      before: true,
+      after: true,
+    });
+    expect(await flagOverrides.set(db, "ws_a", "beta", false, { allowOverrides: true })).toEqual({
+      ok: true,
+      key: "beta",
+      changed: true,
+      before: true,
+      after: false,
+    });
     expect(await flagOverrides.set(db, "ws_a", "beta", true, { allowOverrides: true })).toMatchObject({ ok: true, changed: true });
     const service = new FeatureFlagService(db);
     expect(await service.isEnabled("beta", { workspaceId: "ws_a" })).toBe(true);
     expect(await service.isEnabled("beta", { workspaceId: "ws_b" })).toBe(false);
     expect(await flagOverrides.list(db, "ws_a")).toEqual([expect.objectContaining({ key: "beta", enabled: true })]);
     expect(await flagOverrides.list(db, "ws_b")).toEqual([]);
-    expect(await flagOverrides.clear(db, "ws_a", "beta", { allowOverrides: true })).toEqual({ ok: true, key: "beta", changed: true, before: true, after: null });
-    expect(await flagOverrides.clear(db, "ws_a", "beta", { allowOverrides: true })).toEqual({ ok: true, key: "beta", changed: false, before: null, after: null });
+    expect(await flagOverrides.clear(db, "ws_a", "beta", { allowOverrides: true })).toEqual({
+      ok: true,
+      key: "beta",
+      changed: true,
+      before: true,
+      after: null,
+    });
+    expect(await flagOverrides.clear(db, "ws_a", "beta", { allowOverrides: true })).toEqual({
+      ok: true,
+      key: "beta",
+      changed: false,
+      before: null,
+      after: null,
+    });
     expect(await flagOverrides.list(db, "ws_a")).toEqual([]);
   });
 
@@ -65,8 +99,14 @@ describe("flagOverrides (story 2.6)", () => {
     await db.prepare("CREATE TABLE mw_workspaces (id TEXT PRIMARY KEY, suspended INTEGER NOT NULL DEFAULT 0, suspended_reason TEXT)").run();
     await db.prepare("INSERT INTO mw_workspaces (id, suspended, suspended_reason) VALUES ('ws_a', 1, 'deleting')").run();
     const guard = workspaceNotDeletingGuard("ws_a");
-    expect(await flagOverrides.set(db, "ws_a", "beta", false, { allowOverrides: true, guard, alongside: () => [audit()] })).toEqual({ ok: false, code: "NOT_APPLIED" });
-    expect(await flagOverrides.clear(db, "ws_a", "beta", { allowOverrides: true, guard, alongside: () => [audit()] })).toEqual({ ok: false, code: "NOT_APPLIED" });
+    expect(await flagOverrides.set(db, "ws_a", "beta", false, { allowOverrides: true, guard, alongside: () => [audit()] })).toEqual({
+      ok: false,
+      code: "NOT_APPLIED",
+    });
+    expect(await flagOverrides.clear(db, "ws_a", "beta", { allowOverrides: true, guard, alongside: () => [audit()] })).toEqual({
+      ok: false,
+      code: "NOT_APPLIED",
+    });
     expect(await flagOverrides.get(db, "ws_a", "beta")).toBe(true);
     expect(await auditCount()).toBe(1);
     await db.prepare("UPDATE mw_workspaces SET suspended = 0, suspended_reason = NULL WHERE id = 'ws_a'").run();
@@ -88,7 +128,10 @@ describe("flagOverrides (story 2.6)", () => {
         return db.batch(statements);
       },
     };
-    expect(await flagOverrides.set(racing, "ws_a", "beta", false, { allowOverrides: true, alongside: () => [audit()] })).toEqual({ ok: false, code: "NOT_APPLIED" });
+    expect(await flagOverrides.set(racing, "ws_a", "beta", false, { allowOverrides: true, alongside: () => [audit()] })).toEqual({
+      ok: false,
+      code: "NOT_APPLIED",
+    });
     expect(await auditCount()).toBe(0);
     await db.prepare("UPDATE flag_overrides SET enabled = 1 WHERE workspace_id = 'ws_a'").run();
     expect(await flagOverrides.clear(racing, "ws_a", "beta", { allowOverrides: true, alongside: () => [audit()] })).toEqual({ ok: false, code: "NOT_APPLIED" });

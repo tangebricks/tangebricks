@@ -28,13 +28,9 @@ export interface Comparison<V extends RegistryViolation = RegistryViolation> {
   known: RegistryEntry[];
 }
 
-export const registryKeyOf = (x: { method: string; route: string; attack: string }) =>
-  `${x.method} ${x.route} ${x.attack}`;
+export const registryKeyOf = (x: { method: string; route: string; attack: string }) => `${x.method} ${x.route} ${x.attack}`;
 
-export function compareWithRegistry<V extends RegistryViolation>(
-  violations: V[],
-  entries: RegistryEntry[],
-): Comparison<V> {
+export function compareWithRegistry<V extends RegistryViolation>(violations: V[], entries: RegistryEntry[]): Comparison<V> {
   const entryKeys = new Set(entries.map(registryKeyOf));
   const violationKeys = new Set(violations.map(registryKeyOf));
   const seen = new Set<string>();
@@ -53,15 +49,9 @@ export function compareWithRegistry<V extends RegistryViolation>(
 }
 
 /** One line per NEW_FAILURE and STALE_ENTRY; `registryFile` is named in the STALE_ENTRY fix-it line. */
-export function describeComparison(
-  c: Comparison,
-  registryFile = "attack-suite.known-failures.json",
-): string[] {
+export function describeComparison(c: Comparison, registryFile = "attack-suite.known-failures.json"): string[] {
   return [
     ...c.newFailures.map((v) => `NEW_FAILURE ${v.method} ${v.route} ${v.attack}: ${v.detail}`),
-    ...c.staleEntries.map(
-      (e) =>
-        `STALE_ENTRY remove fixed entry ${e.method} ${e.route} ${e.attack} (story ${e.story}) from ${registryFile}`,
-    ),
+    ...c.staleEntries.map((e) => `STALE_ENTRY remove fixed entry ${e.method} ${e.route} ${e.attack} (story ${e.story}) from ${registryFile}`),
   ];
 }

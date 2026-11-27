@@ -61,10 +61,7 @@ export function createAuthRoutes(options: AuthRoutesOptions = {}): Hono<AuthAppE
         errBody.code === "USER_ALREADY_EXISTS" ||
         errBody.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" ||
         (errBody.message ?? "").toLowerCase().includes("already exists");
-      return c.json(
-        { error: errBody.message ?? "sign-up failed" },
-        isDuplicate ? 409 : 400,
-      );
+      return c.json({ error: errBody.message ?? "sign-up failed" }, isDuplicate ? 409 : 400);
     }
 
     copyAuthHeaders(res.headers, (k, v) => c.header(k, v));

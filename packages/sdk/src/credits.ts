@@ -97,6 +97,8 @@ export function formatMilli(milli: number): string {
   const sign = milli < 0 ? "-" : "";
   const abs = Math.abs(milli);
   const whole = Math.floor(abs / MILLI_PER_CREDIT);
-  const fraction = String(abs % MILLI_PER_CREDIT).padStart(CREDIT_DECIMALS, "0").replace(/0+$/, "");
+  const fraction = String(abs % MILLI_PER_CREDIT)
+    .padStart(CREDIT_DECIMALS, "0")
+    .replace(/0+$/, "");
   return `${sign}${whole}${fraction ? `.${fraction}` : ""}`;
 }

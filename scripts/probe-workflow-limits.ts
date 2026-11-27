@@ -43,14 +43,7 @@ export interface ProbeWorkflowLimitsOptions {
 }
 
 export async function probeWorkflowLimits(options: ProbeWorkflowLimitsOptions): Promise<WorkflowLimitsEvidence> {
-  const {
-    client,
-    maxStepBisection = 4096,
-    maxByteBisection = 2 * 1024 * 1024,
-    maxSubrequests = 1000,
-    maxRetries = 5,
-    accountPlan = "free",
-  } = options;
+  const { client, maxStepBisection = 4096, maxByteBisection = 2 * 1024 * 1024, maxSubrequests = 1000, maxRetries = 5, accountPlan = "free" } = options;
 
   const gitSha = options.gitSha || getHeadGitSha();
   const measuredAt = new Date().toISOString();
@@ -143,10 +136,7 @@ export async function probeWorkflowLimits(options: ProbeWorkflowLimitsOptions): 
   return evidence;
 }
 
-export function writeWorkflowsLimitsEvidence(
-  evidence: WorkflowLimitsEvidence,
-  targetDirOrPath?: string,
-): string {
+export function writeWorkflowsLimitsEvidence(evidence: WorkflowLimitsEvidence, targetDirOrPath?: string): string {
   if (!evidence.gitSha || evidence.gitSha.trim() === "") {
     throw new Error("Cannot write evidence: gitSha is empty");
   }

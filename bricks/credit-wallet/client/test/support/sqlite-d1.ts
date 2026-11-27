@@ -45,7 +45,10 @@ export function createSqliteD1(): D1Like & { close(): void } {
       },
       async all<Row>() {
         await sleep(getAdapterDelay());
-        const rows = sqlite.prepare(sql).all(...params).map((row) => ({ ...row }) as Row);
+        const rows = sqlite
+          .prepare(sql)
+          .all(...params)
+          .map((row) => ({ ...row }) as Row);
         return { results: rows, success: true, meta: { changes: 0 } } as D1Result<Row>;
       },
     };

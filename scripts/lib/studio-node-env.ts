@@ -31,7 +31,10 @@ export function createNodeSqliteD1(path = ":memory:"): D1Like & { close(): void 
         return execute({ sql, params });
       },
       async all<Row>() {
-        const rows = sqlite.prepare(sql).all(...params).map((row) => ({ ...row }) as Row);
+        const rows = sqlite
+          .prepare(sql)
+          .all(...params)
+          .map((row) => ({ ...row }) as Row);
         return { results: rows, success: true, meta: { changes: 0 } } as D1Result<Row>;
       },
     };
@@ -112,7 +115,8 @@ function createNodeDurableObjectNamespace(getEnv: () => StudioApiEnv): { namespa
     return instance;
   };
   const namespace = {
-    idFromName: (name: string) => ({ toString: () => name, equals: (other: { toString(): string }) => other.toString() === name, name }) as unknown as DurableObjectId,
+    idFromName: (name: string) =>
+      ({ toString: () => name, equals: (other: { toString(): string }) => other.toString() === name, name }) as unknown as DurableObjectId,
     get(id: DurableObjectId) {
       const instance = instanceFor((id as unknown as { name?: string }).name ?? id.toString());
       return {

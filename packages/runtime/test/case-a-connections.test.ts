@@ -1,20 +1,13 @@
 import { env } from "cloudflare:workers";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  IntegrationManifestSchema,
-  projectIntegrationToNodes,
-} from "@poc/assembler";
+import { IntegrationManifestSchema, projectIntegrationToNodes } from "@poc/assembler";
 import type { Catalog, IntegrationManifestFile } from "@poc/assembler";
 import { catalog as baseCatalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { ensureTelemetryTables } from "@poc/telemetry";
-import {
-  WebhookService,
-  createWebhookRoutes,
-  signStripeWebhookPayload,
-} from "../../../bricks/webhook-gateway/src/index.ts";
+import { WebhookService, createWebhookRoutes, signStripeWebhookPayload } from "../../../bricks/webhook-gateway/src/index.ts";
 import type { WebhookGatewayAdapter } from "../../../bricks/webhook-gateway/src/gateway.ts";
 import type { WebhookEnv } from "../../../bricks/webhook-gateway/src/routes.ts";
 import webhookGatewayMigration from "../../../bricks/webhook-gateway/migrations/0001_webhook_gateway.sql?raw";
@@ -84,17 +77,10 @@ const slackManifest: IntegrationManifestFile = IntegrationManifestSchema.parse({
   },
 });
 
-function withIntegrations(
-  integrations: Record<string, IntegrationManifestFile>,
-): Catalog {
+function withIntegrations(integrations: Record<string, IntegrationManifestFile>): Catalog {
   return {
     ...baseCatalog,
-    integrations: Object.fromEntries(
-      Object.entries(integrations).map(([app, manifest]) => [
-        app,
-        { manifest, nodes: projectIntegrationToNodes(manifest) },
-      ]),
-    ),
+    integrations: Object.fromEntries(Object.entries(integrations).map(([app, manifest]) => [app, { manifest, nodes: projectIntegrationToNodes(manifest) }])),
   };
 }
 
@@ -104,13 +90,7 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
 
   beforeEach(async () => {
     resetConnectionRefreshLocksForTest();
-    for (const table of [
-      "px_webhook_deliveries",
-      "wh_subscriptions",
-      "px_connections",
-      "wh_deliveries",
-      "wh_endpoints",
-    ]) {
+    for (const table of ["px_webhook_deliveries", "wh_subscriptions", "px_connections", "wh_deliveries", "wh_endpoints"]) {
       await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
     }
     await applyMigration(db, webhookGatewayMigration);
@@ -254,7 +234,8 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
           ],
           edges: [{ id: "e1", source: "trig", target: "post_slack" }],
         };
-        const result = await runGraph(graph, registry, runExecutors, { workspaceId: "ws_case_a", // the connection's own workspace (story 1.17)
+        const result = await runGraph(graph, registry, runExecutors, {
+          workspaceId: "ws_case_a", // the connection's own workspace (story 1.17)
           payload: {
             channel: "#billing",
             text: `Invoice Paid: ${input.providerEventId}`,
@@ -295,11 +276,7 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
       amount: 4900,
     });
     const nowSec = Math.floor(Date.now() / 1000);
-    const stripeSigHeader = await signStripeWebhookPayload(
-      rawBody,
-      "whsec_case_a_stripe_live_9900",
-      nowSec,
-    );
+    const stripeSigHeader = await signStripeWebhookPayload(rawBody, "whsec_case_a_stripe_live_9900", nowSec);
 
     // First delivery -> verifies signature, runs workflow, refreshes Slack OAuth2 token, calls Slack API
     const firstRes = await app.fetch(
@@ -324,9 +301,7 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
     expect(workflowRuns).toHaveLength(1);
     expect(refreshCallCount).toBe(1);
     expect(slackApiHeaders).toHaveLength(1);
-    expect(slackApiHeaders[0]?.authorization).toBe(
-      "Bearer xox" + "b-refreshed-fresh-token-9999",
-    );
+    expect(slackApiHeaders[0]?.authorization).toBe("Bearer xox" + "b-refreshed-fresh-token-9999");
 
     // Verify re-sealed credentials in px_connections have the new token and updated status
     const updatedRow = await db
@@ -334,11 +309,7 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
       .bind("sec_slack_oauth")
       .first<{ ciphertext_b64: string; iv_b64: string; status: string }>();
     expect(updatedRow?.status).toBe("connected");
-    const unsealedAfter = await unsealConnectionCredentials(
-      updatedRow!.ciphertext_b64,
-      updatedRow!.iv_b64,
-      pxConnKey,
-    );
+    const unsealedAfter = await unsealConnectionCredentials(updatedRow!.ciphertext_b64, updatedRow!.iv_b64, pxConnKey);
     expect(unsealedAfter.accessToken).toBe("xox" + "b-refreshed-fresh-token-9999");
     expect(unsealedAfter.refreshToken).toBe("xox" + "r-rotated-refresh-token-8888");
 
@@ -390,19 +361,7 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
           ciphertext_b64, iv_b64, key_hint, status, expires_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'connected', ?, datetime('now'))`,
       )
-      .bind(
-        "sec_slack_revoked",
-        "proj-case-a",
-        "preview",
-        "ws_case_a",
-        "slack",
-        "oauth2",
-        "[]",
-        sealed.ciphertextB64,
-        sealed.ivB64,
-        sealed.keyHint,
-        expiringMs,
-      )
+      .bind("sec_slack_revoked", "proj-case-a", "preview", "ws_case_a", "slack", "oauth2", "[]", sealed.ciphertextB64, sealed.ivB64, sealed.keyHint, expiringMs)
       .run();
 
     const failingOAuthFetcher: typeof fetch = async () =>
@@ -428,7 +387,8 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
       edges: [{ id: "e1", source: "trig", target: "post_slack_fail" }],
     };
 
-    const result = await runGraph(graph, registry, executors, { workspaceId: "ws_case_a", // the connection's own workspace (story 1.17)
+    const result = await runGraph(graph, registry, executors, {
+      workspaceId: "ws_case_a", // the connection's own workspace (story 1.17)
       payload: {
         channel: "#general",
         text: "Should fail with CONNECTION_EXPIRED",
@@ -445,16 +405,11 @@ describe("Story 10.2 — Case A Connections, OAuth2 Auto-Refresh & Webhook Gatew
     expect(result.failed.post_slack_fail).toContain("CONNECTION_EXPIRED");
 
     // Verify px_connections row was marked status = 'expired'
-    const connRow = await db
-      .prepare("SELECT status FROM px_connections WHERE ref = ?")
-      .bind("sec_slack_revoked")
-      .first<{ status: string }>();
+    const connRow = await db.prepare("SELECT status FROM px_connections WHERE ref = ?").bind("sec_slack_revoked").first<{ status: string }>();
     expect(connRow?.status).toBe("expired");
 
     // Verify connection.expired telemetry event was emitted into px_logs
-    const logRows = await db
-      .prepare("SELECT message FROM px_logs WHERE message LIKE '%connection.expired%'")
-      .all<{ message: string }>();
+    const logRows = await db.prepare("SELECT message FROM px_logs WHERE message LIKE '%connection.expired%'").all<{ message: string }>();
     expect((logRows.results ?? []).length).toBeGreaterThanOrEqual(1);
   });
 });

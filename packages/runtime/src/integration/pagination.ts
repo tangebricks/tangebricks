@@ -28,10 +28,7 @@ export interface PaginationState {
   nextCursor: string | null;
 }
 
-export function initPaginationState(
-  operation: IntegrationOperation,
-  targetUrl: URL,
-): PaginationState {
+export function initPaginationState(operation: IntegrationOperation, targetUrl: URL): PaginationState {
   const pagination = operation.pagination;
   const maxPages = pagination ? Math.min(Math.max(1, pagination.maxPages), 100) : 1;
   const currentPageUrl = new URL(targetUrl.toString());
@@ -85,9 +82,7 @@ export function updatePaginationOnPage(
   }
 
   if (pagination.style === "cursor") {
-    const cursorVal = pagination.nextCursorPath
-      ? getByDotPath(parsedBody, pagination.nextCursorPath)
-      : undefined;
+    const cursorVal = pagination.nextCursorPath ? getByDotPath(parsedBody, pagination.nextCursorPath) : undefined;
     if (typeof cursorVal === "string" && cursorVal.trim().length > 0) {
       if (pageIdx >= state.maxPages) {
         state.truncated = true;
@@ -95,10 +90,7 @@ export function updatePaginationOnPage(
         return false;
       }
       state.currentPageUrl = new URL(state.targetUrl.toString());
-      state.currentPageUrl.searchParams.set(
-        pagination.paramName || "cursor",
-        cursorVal.trim(),
-      );
+      state.currentPageUrl.searchParams.set(pagination.paramName || "cursor", cursorVal.trim());
       return true;
     }
     return false;
@@ -119,10 +111,7 @@ export function updatePaginationOnPage(
       return false;
     }
     state.currentPageUrl = new URL(state.targetUrl.toString());
-    state.currentPageUrl.searchParams.set(
-      pagination.paramName || "page",
-      String(pageIdx + 1),
-    );
+    state.currentPageUrl.searchParams.set(pagination.paramName || "page", String(pageIdx + 1));
     return true;
   }
 
@@ -138,10 +127,7 @@ export function updatePaginationOnPage(
     try {
       nextUrl = new URL(nextLink, state.targetUrl.origin);
     } catch {
-      throw new IntegrationCallError(
-        `INTEGRATION_HOST_FORBIDDEN: Invalid pagination Link URL "${nextLink}"`,
-        { code: "INTEGRATION_HOST_FORBIDDEN" },
-      );
+      throw new IntegrationCallError(`INTEGRATION_HOST_FORBIDDEN: Invalid pagination Link URL "${nextLink}"`, { code: "INTEGRATION_HOST_FORBIDDEN" });
     }
     if (!manifest.allowedHosts.includes(nextUrl.hostname)) {
       throw new IntegrationCallError(
@@ -197,10 +183,7 @@ export function updatePaginationOnPage(
     try {
       nextUrl = new URL(nextUrlStr, state.targetUrl.origin);
     } catch {
-      throw new IntegrationCallError(
-        `INTEGRATION_HOST_FORBIDDEN: Invalid pagination body URL "${nextUrlStr}"`,
-        { code: "INTEGRATION_HOST_FORBIDDEN" },
-      );
+      throw new IntegrationCallError(`INTEGRATION_HOST_FORBIDDEN: Invalid pagination body URL "${nextUrlStr}"`, { code: "INTEGRATION_HOST_FORBIDDEN" });
     }
     if (!manifest.allowedHosts.includes(nextUrl.hostname)) {
       throw new IntegrationCallError(
@@ -293,9 +276,7 @@ export function finalizePaginationResult(
     }
   }
 
-  const extractedData = operation.response?.dataPath
-    ? getByDotPath(finalBody, operation.response.dataPath)
-    : finalBody;
+  const extractedData = operation.response?.dataPath ? getByDotPath(finalBody, operation.response.dataPath) : finalBody;
 
   const headersRecord: Record<string, string> = {};
   state.lastHeaders.forEach((v, k) => {

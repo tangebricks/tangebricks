@@ -49,12 +49,7 @@ export function createTrafficArmorRoutes(): Hono<ArmorEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("armorService") || new TrafficArmorService(c.env.DB);
-    const rule = await service.addIpRule(
-      workspaceId,
-      parsed.data.ipOrCidr,
-      parsed.data.action as IpAction,
-      parsed.data.reason
-    );
+    const rule = await service.addIpRule(workspaceId, parsed.data.ipOrCidr, parsed.data.action as IpAction, parsed.data.reason);
 
     return c.json({ rule }, 201);
   });

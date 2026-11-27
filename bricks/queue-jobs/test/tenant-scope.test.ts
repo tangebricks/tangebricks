@@ -137,9 +137,13 @@ describe("JobQueueService Tenant Scoping (F-ISO-1)", () => {
     });
 
     // ws_a attempts to GET ws_b's job
-    const getRes = await app.request(`/jobs/${jobB.id}`, {
-      headers: { "x-workspace-id": WS_A },
-    }, { DB: db });
+    const getRes = await app.request(
+      `/jobs/${jobB.id}`,
+      {
+        headers: { "x-workspace-id": WS_A },
+      },
+      { DB: db },
+    );
     expect(getRes.status).toBe(404);
 
     // ws_a attempts to complete ws_b's job
@@ -153,7 +157,7 @@ describe("JobQueueService Tenant Scoping (F-ISO-1)", () => {
         },
         body: JSON.stringify({ result: { stolen: true } }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect([400, 404]).toContain(completeRes.status);
 
@@ -168,7 +172,7 @@ describe("JobQueueService Tenant Scoping (F-ISO-1)", () => {
         },
         body: JSON.stringify({ error: "Unauthorized abort" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect([400, 404]).toContain(failRes.status);
   });

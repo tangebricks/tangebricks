@@ -13,9 +13,7 @@ test.describe("R45 Performance & Visual Layout Gate", () => {
     await expect(page.getByTestId("auth-email-input")).toBeVisible();
     const coldLoadElapsedMs = performance.now() - coldLoadStart;
 
-    const bodyBg = await page.evaluate(
-      () => window.getComputedStyle(document.body).backgroundColor,
-    );
+    const bodyBg = await page.evaluate(() => window.getComputedStyle(document.body).backgroundColor);
     expect(bodyBg).toBe("rgb(2, 6, 23)");
     expect(coldLoadElapsedMs).toBeLessThan(3_000);
 
@@ -27,13 +25,9 @@ test.describe("R45 Performance & Visual Layout Gate", () => {
     // Verify Minimap and all 200 node bounding boxes have non-zero size, compiled Tailwind background, and zero pairwise overlaps
     const layoutVerification = await page.evaluate(() => {
       const minimap = document.querySelector(".react-flow__minimap") as HTMLElement | null;
-      const nodeEls = Array.from(
-        document.querySelectorAll('[data-testid^="canvas-node-"]'),
-      ) as HTMLElement[];
+      const nodeEls = Array.from(document.querySelectorAll('[data-testid^="canvas-node-"]')) as HTMLElement[];
 
-      const firstBg = nodeEls[0]
-        ? window.getComputedStyle(nodeEls[0]).backgroundColor
-        : "";
+      const firstBg = nodeEls[0] ? window.getComputedStyle(nodeEls[0]).backgroundColor : "";
 
       const rects = nodeEls.map((el) => {
         const r = el.getBoundingClientRect();
@@ -53,11 +47,7 @@ test.describe("R45 Performance & Visual Layout Gate", () => {
         const a = rects[i]!;
         for (let j = i + 1; j < rects.length; j += 1) {
           const b = rects[j]!;
-          const separated =
-            a.right <= b.left ||
-            a.left >= b.right ||
-            a.bottom <= b.top ||
-            a.top >= b.bottom;
+          const separated = a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom;
           if (!separated) {
             overlappingPairs += 1;
           }
@@ -89,9 +79,7 @@ test.describe("R45 Performance & Visual Layout Gate", () => {
       }
 
       const frameDeltas: number[] = [];
-      let lastTs = await new Promise<number>((resolve) =>
-        requestAnimationFrame((ts) => resolve(ts)),
-      );
+      let lastTs = await new Promise<number>((resolve) => requestAnimationFrame((ts) => resolve(ts)));
 
       for (let frame = 0; frame < 60; frame += 1) {
         const panX = Math.round(Math.sin(frame / 10) * 180 - frame * 4);
@@ -99,9 +87,7 @@ test.describe("R45 Performance & Visual Layout Gate", () => {
         const zoom = (0.65 + (frame % 20) * 0.015).toFixed(3);
         viewport.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
 
-        const nowTs = await new Promise<number>((resolve) =>
-          requestAnimationFrame((ts) => resolve(ts)),
-        );
+        const nowTs = await new Promise<number>((resolve) => requestAnimationFrame((ts) => resolve(ts)));
         frameDeltas.push(nowTs - lastTs);
         lastTs = nowTs;
       }
@@ -122,9 +108,7 @@ test.describe("R45 Performance & Visual Layout Gate", () => {
 
     // 4. Measure 30-step node drag frame latency (< 100 ms)
     const dragMetrics = await page.evaluate(async () => {
-      const nodeCard = document.querySelector(
-        '[data-testid="canvas-node-node-1"]',
-      ) as HTMLElement | null;
+      const nodeCard = document.querySelector('[data-testid="canvas-node-node-1"]') as HTMLElement | null;
       const rfNode = nodeCard?.closest(".react-flow__node") as HTMLElement | null;
       if (!nodeCard || !rfNode) {
         throw new Error("Missing .react-flow__node for node-1");
@@ -135,9 +119,7 @@ test.describe("R45 Performance & Visual Layout Gate", () => {
       const startY = rect.top + rect.height / 2;
 
       const stepLatencies: number[] = [];
-      let lastTs = await new Promise<number>((resolve) =>
-        requestAnimationFrame((ts) => resolve(ts)),
-      );
+      let lastTs = await new Promise<number>((resolve) => requestAnimationFrame((ts) => resolve(ts)));
 
       for (let step = 1; step <= 30; step += 1) {
         const nextX = startX + step * 8;
@@ -151,9 +133,7 @@ test.describe("R45 Performance & Visual Layout Gate", () => {
           }),
         );
         rfNode.style.transform = `translate(${48 + step * 8}px, ${48 + step * 4}px)`;
-        const nowTs = await new Promise<number>((resolve) =>
-          requestAnimationFrame((ts) => resolve(ts)),
-        );
+        const nowTs = await new Promise<number>((resolve) => requestAnimationFrame((ts) => resolve(ts)));
         stepLatencies.push(nowTs - lastTs);
         lastTs = nowTs;
       }

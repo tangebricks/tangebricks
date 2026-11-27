@@ -1,12 +1,5 @@
 import { z } from "zod";
-import {
-  NodePositionSchema,
-  SecretRefTargetKindSchema,
-  ViewportSchema,
-  WorkflowEdgeSchema,
-  WorkflowNodeSchema,
-  WorkflowTriggerSchema,
-} from "./schema.ts";
+import { NodePositionSchema, SecretRefTargetKindSchema, ViewportSchema, WorkflowEdgeSchema, WorkflowNodeSchema, WorkflowTriggerSchema } from "./schema.ts";
 import type {
   BlueprintMetadata,
   BlueprintState,
@@ -422,12 +415,8 @@ export function targetKey(op: Op, state?: BlueprintState): string[] {
     case "connect_edges":
       for (const edge of op.edges) {
         keys.add(`workflow:${op.workflowId}:edge:${edge.id}`);
-        keys.add(
-          `workflow:${op.workflowId}:port:${edge.source}:out:${edge.sourceHandle ?? "out"}`,
-        );
-        keys.add(
-          `workflow:${op.workflowId}:port:${edge.target}:in:${edge.targetHandle ?? "in"}`,
-        );
+        keys.add(`workflow:${op.workflowId}:port:${edge.source}:out:${edge.sourceHandle ?? "out"}`);
+        keys.add(`workflow:${op.workflowId}:port:${edge.target}:in:${edge.targetHandle ?? "in"}`);
       }
       break;
     case "disconnect_edge": {
@@ -435,12 +424,8 @@ export function targetKey(op: Op, state?: BlueprintState): string[] {
       const wf = state?.workflows.find((w) => w.id === op.workflowId);
       const edge = wf?.edges.find((e) => e.id === op.edgeId);
       if (edge) {
-        keys.add(
-          `workflow:${op.workflowId}:port:${edge.source}:out:${edge.sourceHandle ?? "out"}`,
-        );
-        keys.add(
-          `workflow:${op.workflowId}:port:${edge.target}:in:${edge.targetHandle ?? "in"}`,
-        );
+        keys.add(`workflow:${op.workflowId}:port:${edge.source}:out:${edge.sourceHandle ?? "out"}`);
+        keys.add(`workflow:${op.workflowId}:port:${edge.target}:in:${edge.targetHandle ?? "in"}`);
       }
       break;
     }
@@ -507,19 +492,13 @@ export function primaryTargetForOp(op: Op): string | null {
       return `workflow:${op.workflowId}:edge:${op.edgeId}`;
     case "bind_secret_ref":
     case "unbind_secret_ref":
-      return op.ref
-        ? `secret:${op.ref}`
-        : `secret:${op.targetKind}:${op.targetId}:${op.secretName}`;
+      return op.ref ? `secret:${op.ref}` : `secret:${op.targetKind}:${op.targetId}:${op.secretName}`;
     case "set_metadata":
       return null;
   }
 }
 
-export function collectOpTargets(
-  op: Op,
-  baseState: BlueprintState,
-  currentState: BlueprintState,
-): string[] {
+export function collectOpTargets(op: Op, baseState: BlueprintState, currentState: BlueprintState): string[] {
   const ordered = new Set<string>();
   const primary = primaryTargetForOp(op);
   if (primary) {
@@ -532,10 +511,7 @@ export function collectOpTargets(
     ordered.add(key);
   }
   if (op.type === "remove_workflow") {
-    for (const wf of [
-      baseState.workflows.find((w) => w.id === op.workflowId),
-      currentState.workflows.find((w) => w.id === op.workflowId),
-    ]) {
+    for (const wf of [baseState.workflows.find((w) => w.id === op.workflowId), currentState.workflows.find((w) => w.id === op.workflowId)]) {
       if (!wf) continue;
       for (const node of wf.nodes) {
         ordered.add(`workflow:${op.workflowId}:node:${node.id}`);

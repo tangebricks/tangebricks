@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  assemble,
-  checkSettingsUpgrade,
-  ManifestSchema,
-  type Catalog,
-  type ProjectLock,
-} from "../src/index.ts";
+import { assemble, checkSettingsUpgrade, ManifestSchema, type Catalog, type ProjectLock } from "../src/index.ts";
 
 function createMockCatalog(creditWalletManifest: any): Catalog {
   return {
@@ -101,9 +95,7 @@ describe("Settings upgrade re-validation (UC8.3)", () => {
     const catalog = createMockCatalog(newManifest);
     const result = checkSettingsUpgrade(previousLock, catalog);
 
-    expect(result.errors).toContain(
-      "setting credit-wallet.maxDebit=500 is outside 0..400 in 1.1.0"
-    );
+    expect(result.errors).toContain("setting credit-wallet.maxDebit=500 is outside 0..400 in 1.1.0");
   });
 
   it("Task 1: warns on deprecated setting with migration hint", () => {
@@ -422,9 +414,7 @@ describe("Settings upgrade re-validation (UC8.3)", () => {
     const result = assemble(blueprint, catalog, { previousLock });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors).toContain(
-        "setting credit-wallet.maxDebit=500 is outside 0..400 in 1.1.0"
-      );
+      expect(result.errors).toContain("setting credit-wallet.maxDebit=500 is outside 0..400 in 1.1.0");
     }
   });
 });

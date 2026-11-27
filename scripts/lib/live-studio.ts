@@ -67,7 +67,13 @@ export function createGuardedFetch(params: {
   const ownName = (name: unknown): name is string => typeof name === "string" && name.startsWith(ownPrefix) && STUDIO_TEST_NAME_POLICY.isName(name);
   const knownDbIds = new Set<string>();
   const knownQueueIds = new Set<string>();
-  const ledgeredDbIds = () => new Set(ledger.entries().filter((e) => e.kind === "d1_database" && e.status !== "removed" && e.id).map((e) => e.id!));
+  const ledgeredDbIds = () =>
+    new Set(
+      ledger
+        .entries()
+        .filter((e) => e.kind === "d1_database" && e.status !== "removed" && e.id)
+        .map((e) => e.id!),
+    );
   /** Binding types that address no other resource. */
   const PLAIN_BINDINGS = new Set(["plain_text", "secret_text", "secret_key", "json", "version_metadata"]);
   /** What an upload binds to must be this run's own: a ledgered database, its own Workflow, Worker or queue. */
@@ -81,7 +87,8 @@ export function createGuardedFetch(params: {
         if (!dbIds.has(String(b.database_id))) refuse(`binding ${String(b.name)} names D1 ${String(b.database_id)}, which is not a database this run ledgered`);
       } else if (type === "workflow") {
         if (!ownName(b.workflow_name)) refuse(`binding ${String(b.name)} names Workflow "${String(b.workflow_name)}", which is not this run's`);
-        if (b.script_name !== undefined && !ownName(b.script_name)) refuse(`binding ${String(b.name)} points at Worker "${String(b.script_name)}", which is not this run's`);
+        if (b.script_name !== undefined && !ownName(b.script_name))
+          refuse(`binding ${String(b.name)} points at Worker "${String(b.script_name)}", which is not this run's`);
         if (typeof b.class_name !== "string" || !/^[A-Za-z_$][\w$]*$/.test(b.class_name)) refuse(`binding ${String(b.name)} has no valid class_name`);
       } else if (type === "service") {
         if (!ownName(b.service)) refuse(`binding ${String(b.name)} names Worker "${String(b.service)}", which is not this run's`);
@@ -237,14 +244,23 @@ export function createGuardedFetch(params: {
 export const GLOBAL_API_KEY = /^[0-9a-f]{37}$/i;
 
 /** One way to call Studio's routes in-process (app.fetch), as a JSON client with an optional session and org. */
-export type StudioCall = (method: string, path: string, body?: unknown, session?: string, orgId?: string) => Promise<{ status: number; body: Record<string, unknown> }>;
+export type StudioCall = (
+  method: string,
+  path: string,
+  body?: unknown,
+  session?: string,
+  orgId?: string,
+) => Promise<{ status: number; body: Record<string, unknown> }>;
 
 export function createStudioCall(app: ReturnType<typeof createStudioApiApp>, env: StudioApiEnv): StudioCall {
   return async (method, path, body, session, orgId) => {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (session) headers.authorization = `Bearer ${session}`;
     if (orgId) headers["x-org-id"] = orgId;
-    const res = await app.fetch(new Request(`https://studio.local${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }), env);
+    const res = await app.fetch(
+      new Request(`https://studio.local${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+      env,
+    );
     const text = await res.text();
     let json: Record<string, unknown> = {};
     try {
@@ -280,7 +296,11 @@ export async function connectStudioOwner(params: {
   onConnect?: (connect: ConnectedOwner["connect"]) => void;
 }): Promise<ConnectedOwner> {
   const { call, suffix, project, must } = params;
-  const signup = await call("POST", "/api/auth/signup", { email: `owner-${suffix}@tangebricks.test`, password: `Pw-${params.randomHex(12)}!`, name: params.name });
+  const signup = await call("POST", "/api/auth/signup", {
+    email: `owner-${suffix}@tangebricks.test`,
+    password: `Pw-${params.randomHex(12)}!`,
+    name: params.name,
+  });
   must("signing up the run's Studio owner", signup.status === 201, signup);
   const session = String(signup.body.token);
   const org = await call("POST", "/api/orgs", { name: params.name, slug: `tangebricks-test-${suffix}` }, session);
@@ -288,9 +308,18 @@ export async function connectStudioOwner(params: {
   const orgId = String(org.body.id);
   const proj = await call("POST", `/api/orgs/${orgId}/projects`, { project }, session);
   must("creating the project", proj.status === 200 || proj.status === 201, proj);
-  const connect = await call("POST", `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, { token: params.token, accountId: params.accountId, projectId: project }, session);
+  const connect = await call(
+    "POST",
+    `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
+    { token: params.token, accountId: params.accountId, projectId: project },
+    session,
+  );
   const verification = connect.body.verification as { ok?: boolean; status?: string; permissions?: Array<{ label: string; granted: boolean }> } | undefined;
-  const summary = { httpStatus: connect.status, status: verification?.status, permissions: verification?.permissions?.map((p) => ({ label: p.label, granted: p.granted })) };
+  const summary = {
+    httpStatus: connect.status,
+    status: verification?.status,
+    permissions: verification?.permissions?.map((p) => ({ label: p.label, granted: p.granted })),
+  };
   params.onConnect?.(summary);
   must(
     "verify-and-save (the token must be active with every required permission)",
@@ -306,7 +335,10 @@ export type TeardownRecord = Omit<TeardownResult, "unledgered"> & { leftBehind: 
 export async function teardownAndVerify(rest: Client, ledger: ReturnType<typeof openLedger>): Promise<TeardownRecord> {
   const removed = await teardown(rest, ledger, STUDIO_TEST_NAME_POLICY);
   const leftBehind = await findUnledgered(rest, ledger, STUDIO_TEST_NAME_POLICY);
-  const stillListed = ledger.entries().filter((e) => e.status !== "removed").map((e) => ({ kind: e.kind, name: e.name }));
+  const stillListed = ledger
+    .entries()
+    .filter((e) => e.status !== "removed")
+    .map((e) => ({ kind: e.kind, name: e.name }));
   return { removed: removed.removed, alreadyGone: removed.alreadyGone, leftBehind: [...leftBehind, ...stillListed] };
 }
 
@@ -320,9 +352,21 @@ export async function runTeardownOnly(deps: {
 }): Promise<TeardownResult> {
   const data = deps.ledgerStore.read();
   if (!data) throw new LiveProofRefusal("there is no ledger in this state folder: nothing to tear down");
-  const ledger = openLedger(deps.ledgerStore, () => data.suffix, () => new Date(), STUDIO_TEST_NAME_POLICY);
+  const ledger = openLedger(
+    deps.ledgerStore,
+    () => data.suffix,
+    () => new Date(),
+    STUDIO_TEST_NAME_POLICY,
+  );
   const calls: CallLine[] = [];
-  const guarded = createGuardedFetch({ fetch: deps.cloudflareFetch, accountId: deps.credentials.accountId, ownPrefix: `px-${studioTestProject(ledger.suffix)}-`, ledger, log: calls, phase: () => "teardown" });
+  const guarded = createGuardedFetch({
+    fetch: deps.cloudflareFetch,
+    accountId: deps.credentials.accountId,
+    ownPrefix: `px-${studioTestProject(ledger.suffix)}-`,
+    ledger,
+    log: calls,
+    phase: () => "teardown",
+  });
   const client = createClient({ credentials: deps.credentials, fetch: guarded, ...(deps.sleep ? { sleep: deps.sleep } : {}) });
   return teardown(client, ledger, STUDIO_TEST_NAME_POLICY);
 }
@@ -358,7 +402,14 @@ export function openGuardedStudio(params: {
 }) {
   const { sleep } = params;
   const budget = params.budget ?? createRequestBudget({ sleep });
-  const guardedFetch = createGuardedFetch({ fetch: params.cloudflareFetch, accountId: params.credentials.accountId, ownPrefix: params.ownPrefix, ledger: params.ledger, log: params.calls, phase: params.phase });
+  const guardedFetch = createGuardedFetch({
+    fetch: params.cloudflareFetch,
+    accountId: params.credentials.accountId,
+    ownPrefix: params.ownPrefix,
+    ledger: params.ledger,
+    log: params.calls,
+    phase: params.phase,
+  });
   const rest: Client = createClient({ credentials: params.credentials, fetch: guardedFetch, sleep, budget, alsoHide: params.alsoHide });
   return {
     budget,
@@ -366,7 +417,9 @@ export function openGuardedStudio(params: {
     rest,
     boot() {
       const studio = createNodeStudioEnv({ rootSecret: params.rootSecret });
-      const app = createStudioApiApp({ deploy: { fetch: guardedFetch, workerFetch: params.workerFetch, bundle: params.bundle, sleep, budgetFor: () => budget } });
+      const app = createStudioApiApp({
+        deploy: { fetch: guardedFetch, workerFetch: params.workerFetch, bundle: params.bundle, sleep, budgetFor: () => budget },
+      });
       return { studio, app, call: createStudioCall(app, studio.env) };
     },
   };

@@ -10,24 +10,18 @@ export const TEST_TOKEN_USER_ID = "user:mcp-test";
 export const TEST_TOKEN_CLIENT = "mcp-test";
 export const ALL_TEST_SCOPES: readonly McpScope[] = ["read", "edit", "deploy", "connect"];
 
-const SHAPE =
-  /^test-mcp-token-0123456789\.(.+)\.((?:read|edit|deploy|connect)(?:\+(?:read|edit|deploy|connect))*)(?:~([A-Za-z0-9:_ -]{1,60}))?$/;
+const SHAPE = /^test-mcp-token-0123456789\.(.+)\.((?:read|edit|deploy|connect)(?:\+(?:read|edit|deploy|connect))*)(?:~([A-Za-z0-9:_ -]{1,60}))?$/;
 
 /**
  * A token bound to `project` with `scopes` (all four by default). `client` labels a distinct token (and author) for the
  * same project, the way two MCP clients would each hold their own token.
  */
-export function testToken(
-  project: string,
-  scopes: readonly McpScope[] = ALL_TEST_SCOPES,
-  client?: string,
-): string {
+export function testToken(project: string, scopes: readonly McpScope[] = ALL_TEST_SCOPES, client?: string): string {
   return `${TEST_TOKEN_SECRET}.${project}.${scopes.join("+")}${client ? `~${client}` : ""}`;
 }
 
 /** The author id a call made with testToken(project, scopes, client) is recorded under. */
-export const testTokenId = (project: string, client?: string) =>
-  client ? `mcp-test-token:${project}:${client}` : `mcp-test-token:${project}`;
+export const testTokenId = (project: string, client?: string) => (client ? `mcp-test-token:${project}:${client}` : `mcp-test-token:${project}`);
 
 export const testTokenVerifier: McpTokenVerifier = async (token) => {
   const match = SHAPE.exec(token);

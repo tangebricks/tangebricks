@@ -36,7 +36,11 @@ describe("story 1.17: provisioner bindings are derived per project, never the ro
 
     // Without a webhook URL the Worker still gets its derived control-plane secret and project id.
     const noUrl = await telemetryWebhookConfig(undefined, "proj-a", ROOT);
-    expect(telemetryWebhookBindings(noUrl).map((b) => b.name).sort()).toEqual(["PX_PROJECT_ID", "PX_TELEMETRY_SECRET", "PX_TELEMETRY_WEBHOOK_SECRET"]);
+    expect(
+      telemetryWebhookBindings(noUrl)
+        .map((b) => b.name)
+        .sort(),
+    ).toEqual(["PX_PROJECT_ID", "PX_TELEMETRY_SECRET", "PX_TELEMETRY_WEBHOOK_SECRET"]);
     await expect(telemetryWebhookConfig(undefined, "proj-a", "")).rejects.toThrow();
   });
 
@@ -46,11 +50,20 @@ describe("story 1.17: provisioner bindings are derived per project, never the ro
     const client = createClient({
       credentials: { token: TOKEN, accountId: ACCOUNT },
       fetch: async (request: Request) => {
-        sentBodies.push(await request.clone().text().catch(() => ""));
+        sentBodies.push(
+          await request
+            .clone()
+            .text()
+            .catch(() => ""),
+        );
         return fake.fetch(request);
       },
     });
-    const ledger = openLedger(memoryStore(), () => SUFFIX, () => new Date("2026-11-25T00:00:00Z"));
+    const ledger = openLedger(
+      memoryStore(),
+      () => SUFFIX,
+      () => new Date("2026-11-25T00:00:00Z"),
+    );
     const config = await telemetryWebhookConfig(undefined, "proj-a", ROOT);
     const input: DeployInput = {
       client,

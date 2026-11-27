@@ -78,9 +78,7 @@ const SAMPLE_REVISIONS: RevisionSummary[] = [
         workflow: {
           id: "wf-main",
           name: "Customer Onboarding",
-          nodes: [
-            { id: "node-start", type: "trigger.manual", label: "Start", data: {} },
-          ],
+          nodes: [{ id: "node-start", type: "trigger.manual", label: "Start", data: {} }],
           edges: [],
         },
       },
@@ -138,12 +136,8 @@ describe("Story 2.6: Revision History, Semantic Diff Viewer, and AI Change Ledge
 
     // Check revision badges & author badges
     expect(screen.getByTestId("ledger-rev-badge-3").textContent).toBe("r3");
-    expect(screen.getByTestId("ledger-author-badge-3").textContent).toContain(
-      "agent:claude-code",
-    );
-    expect(screen.getByTestId("ledger-author-badge-1").textContent).toContain(
-      "human:alice",
-    );
+    expect(screen.getByTestId("ledger-author-badge-3").textContent).toContain("agent:claude-code");
+    expect(screen.getByTestId("ledger-author-badge-1").textContent).toContain("human:alice");
 
     // Filter by Humans only
     fireEvent.click(screen.getByTestId("ledger-filter-humans"));
@@ -182,10 +176,7 @@ describe("Story 2.6: Revision History, Semantic Diff Viewer, and AI Change Ledge
       kind: "brick",
       id: "credit-wallet",
     });
-    expect(onFocusObject).toHaveBeenCalledWith(
-      { kind: "brick", id: "credit-wallet" },
-      "bricks",
-    );
+    expect(onFocusObject).toHaveBeenCalledWith({ kind: "brick", id: "credit-wallet" }, "bricks");
 
     // Click affected entity chip "customers"
     const entityChips = screen.getAllByTestId("ledger-target-entity-customers");
@@ -195,10 +186,7 @@ describe("Story 2.6: Revision History, Semantic Diff Viewer, and AI Change Ledge
       kind: "entity",
       id: "customers",
     });
-    expect(onFocusObject).toHaveBeenCalledWith(
-      { kind: "entity", id: "customers" },
-      "data",
-    );
+    expect(onFocusObject).toHaveBeenCalledWith({ kind: "entity", id: "customers" }, "data");
 
     // Click affected workflow node chip "node-enrich"
     fireEvent.click(screen.getByTestId("ledger-target-node-node-enrich"));
@@ -210,10 +198,7 @@ describe("Story 2.6: Revision History, Semantic Diff Viewer, and AI Change Ledge
       id: "node-enrich",
       workflowId: "wf-main",
     });
-    expect(onFocusObject).toHaveBeenCalledWith(
-      { kind: "node", id: "node-enrich", workflowId: "wf-main" },
-      "workflows",
-    );
+    expect(onFocusObject).toHaveBeenCalledWith({ kind: "node", id: "node-enrich", workflowId: "wf-main" }, "workflows");
   });
 
   test("3. renders Semantic Diff Viewer on 'View diff' or arbitrary revision pair comparison, showing added/removed/updated bricks, entities, and workflow nodes (AC 3, AC 4)", async () => {
@@ -234,18 +219,14 @@ describe("Story 2.6: Revision History, Semantic Diff Viewer, and AI Change Ledge
 
     expect(screen.getByTestId("semantic-diff-range").textContent).toBe("r2 → r3");
     // Updated brick credit-wallet (10 -> 25)
-    expect(screen.getByTestId("diff-brick-updated-credit-wallet").textContent).toContain(
-      "creditsPerUnit",
-    );
+    expect(screen.getByTestId("diff-brick-updated-credit-wallet").textContent).toContain("creditsPerUnit");
     // Updated entity customers (+ tier, - legacy_flag, ~ email)
     const entityDiff = screen.getByTestId("diff-entity-updated-customers");
     expect(entityDiff.textContent).toContain("+ Field tier");
     expect(entityDiff.textContent).toContain("- Field legacy_flag");
     expect(entityDiff.textContent).toContain("~ Field email");
     // Updated workflow wf-main (+ Node node-enrich)
-    expect(screen.getByTestId("diff-node-added-node-enrich").textContent).toContain(
-      "Enrich Customer",
-    );
+    expect(screen.getByTestId("diff-node-added-node-enrich").textContent).toContain("Enrich Customer");
 
     // Compare r0 -> r2 using the History revision selector
     fireEvent.change(screen.getByTestId("diff-from-select"), {

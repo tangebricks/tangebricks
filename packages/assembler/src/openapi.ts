@@ -27,9 +27,7 @@ export interface OpenApiSpec {
 }
 
 function takesEntities(manifest: BrickManifestFile): boolean {
-  return manifest.worker.routes.some((r) =>
-    Object.values(r.options).some((v) => typeof v === "object" && v !== null && "$entities" in v),
-  );
+  return manifest.worker.routes.some((r) => Object.values(r.options).some((v) => typeof v === "object" && v !== null && "$entities" in v));
 }
 
 function toPascalCase(value: string): string {
@@ -170,10 +168,7 @@ function normalizeOrderedBricks(
   return resolved;
 }
 
-function normalizeEntities(
-  blueprint: Pick<Blueprint, "entities">,
-  explicitEntities?: ReadonlyArray<Entity | RawEntityShape>,
-): RawEntityShape[] {
+function normalizeEntities(blueprint: Pick<Blueprint, "entities">, explicitEntities?: ReadonlyArray<Entity | RawEntityShape>): RawEntityShape[] {
   const source = explicitEntities ?? (Array.isArray(blueprint.entities) ? blueprint.entities : []);
   if (source.length === 0) return [];
 
@@ -196,23 +191,13 @@ function normalizeEntities(
             name: (rf as { name: string }).name,
             type: typeof (rf as { type?: unknown }).type === "string" ? (rf as { type: string }).type : "text",
             required: Boolean((rf as { required?: unknown }).required),
-            ...(typeof (rf as { maxLength?: unknown }).maxLength === "number"
-              ? { maxLength: (rf as { maxLength: number }).maxLength }
-              : {}),
+            ...(typeof (rf as { maxLength?: unknown }).maxLength === "number" ? { maxLength: (rf as { maxLength: number }).maxLength } : {}),
             ...(typeof (rf as { min?: unknown }).min === "number" ? { min: (rf as { min: number }).min } : {}),
             ...(typeof (rf as { max?: unknown }).max === "number" ? { max: (rf as { max: number }).max } : {}),
-            ...(Array.isArray((rf as { values?: unknown }).values)
-              ? { values: (rf as { values: string[] }).values }
-              : {}),
-            ...(typeof (rf as { target?: unknown }).target === "string"
-              ? { target: (rf as { target: string }).target }
-              : {}),
-            ...(typeof (rf as { relation?: unknown }).relation === "string"
-              ? { relation: (rf as { relation: string }).relation }
-              : {}),
-            ...(Array.isArray((rf as { currencies?: unknown }).currencies)
-              ? { currencies: (rf as { currencies: string[] }).currencies }
-              : {}),
+            ...(Array.isArray((rf as { values?: unknown }).values) ? { values: (rf as { values: string[] }).values } : {}),
+            ...(typeof (rf as { target?: unknown }).target === "string" ? { target: (rf as { target: string }).target } : {}),
+            ...(typeof (rf as { relation?: unknown }).relation === "string" ? { relation: (rf as { relation: string }).relation } : {}),
+            ...(Array.isArray((rf as { currencies?: unknown }).currencies) ? { currencies: (rf as { currencies: string[] }).currencies } : {}),
           });
         }
       }
@@ -238,10 +223,7 @@ function hasWebhookTriggerInWorkflows(workflows: unknown[] | undefined): boolean
     if (Array.isArray(record.nodes)) {
       for (const node of record.nodes) {
         const nodeType = typeof node?.type === "string" ? node.type : "";
-        if (
-          nodeType.includes("webhook") ||
-          (node?.role === "trigger" && (nodeType.startsWith("int:") || nodeType.includes("trigger")))
-        ) {
+        if (nodeType.includes("webhook") || (node?.role === "trigger" && (nodeType.startsWith("int:") || nodeType.includes("trigger")))) {
           return true;
         }
       }
@@ -255,20 +237,10 @@ export function generateOpenApiSpec(
   orderedBricks?: ReadonlyArray<OrderedBrickInput> | Catalog,
   explicitEntities?: ReadonlyArray<Entity | RawEntityShape>,
 ): OpenApiSpec {
-  const ordered = normalizeOrderedBricks(
-    { bricks: blueprint.bricks ?? [] },
-    orderedBricks,
-  );
-  const entities = normalizeEntities(
-    { entities: blueprint.entities ?? [] },
-    explicitEntities,
-  );
+  const ordered = normalizeOrderedBricks({ bricks: blueprint.bricks ?? [] }, orderedBricks);
+  const entities = normalizeEntities({ entities: blueprint.entities ?? [] }, explicitEntities);
 
-  const hasNonIdentityGuard = ordered.some((b) =>
-    b.manifest.worker.routes.some(
-      (r) => Boolean(r.guardWith) && r.guardWith !== IDENTITY_CAPABILITY,
-    ),
-  );
+  const hasNonIdentityGuard = ordered.some((b) => b.manifest.worker.routes.some((r) => Boolean(r.guardWith) && r.guardWith !== IDENTITY_CAPABILITY));
 
   const securitySchemes: Record<string, Record<string, unknown>> = {
     BearerAuth: {
@@ -299,9 +271,7 @@ export function generateOpenApiSpec(
   // 1. Emit path items for every enabled brick's routePrefixes
   for (const brick of ordered) {
     const mountAt = (brick.manifest.worker.routes[0]?.mountAt ?? "/api").replace(/\/+$/, "");
-    const requiresTenancyGuard = brick.manifest.worker.routes.some(
-      (r) => Boolean(r.guardWith) && r.guardWith !== IDENTITY_CAPABILITY,
-    );
+    const requiresTenancyGuard = brick.manifest.worker.routes.some((r) => Boolean(r.guardWith) && r.guardWith !== IDENTITY_CAPABILITY);
     const security: Array<Record<string, string[]>> = requiresTenancyGuard
       ? [
           { BearerAuth: [], WorkspaceHeader: [] },
@@ -391,9 +361,7 @@ export function generateOpenApiSpec(
     const entityMountAt = (entityBrick?.manifest.worker.routes[0]?.mountAt ?? "/api").replace(/\/+$/, "");
     const entityTag = entityBrick?.id ?? "entities";
     const entityRequiresTenancy = entityBrick
-      ? entityBrick.manifest.worker.routes.some(
-          (r) => Boolean(r.guardWith) && r.guardWith !== IDENTITY_CAPABILITY,
-        )
+      ? entityBrick.manifest.worker.routes.some((r) => Boolean(r.guardWith) && r.guardWith !== IDENTITY_CAPABILITY)
       : hasNonIdentityGuard;
 
     if (entityRequiresTenancy && !securitySchemes.WorkspaceHeader) {
@@ -610,9 +578,7 @@ export function generateOpenApiSpec(
   }
 
   // 3. Emit inbound webhook endpoint when a webhook brick is enabled or a workflow has a webhook trigger
-  const webhookBrick = ordered.find((b) =>
-    b.manifest.routePrefixes.some((p) => p === "webhooks" || p.startsWith("webhooks/")),
-  );
+  const webhookBrick = ordered.find((b) => b.manifest.routePrefixes.some((p) => p === "webhooks" || p.startsWith("webhooks/")));
   if (webhookBrick || hasWebhookTriggerInWorkflows(blueprint.workflows)) {
     const webhookTag = webhookBrick?.id ?? "webhooks";
     paths["/api/webhooks/in/{subscriptionId}"] = {

@@ -239,7 +239,11 @@ export function createHttpCloudflareApiClient(options: HttpControlPlaneOptions):
       const status: CloudflareTokenCheckResult["status"] =
         verified.status === "active" || verified.status === "disabled" || verified.status === "expired" ? verified.status : "invalid";
       if (status !== "active") {
-        return { ...refused(status, `Cloudflare reports this token as ${verified.status}.`), tokenId: verified.id ?? null, expiresOn: verified.expiresOn ?? null };
+        return {
+          ...refused(status, `Cloudflare reports this token as ${verified.status}.`),
+          tokenId: verified.id ?? null,
+          expiresOn: verified.expiresOn ?? null,
+        };
       }
 
       const permissions = {} as CloudflareTokenCheckResult["permissions"];
@@ -259,7 +263,9 @@ export function createHttpCloudflareApiClient(options: HttpControlPlaneOptions):
         for (const scope of REQUIRED_CLOUDFLARE_PERMISSIONS) {
           const granted = PERMISSION_GROUP_NAMES[scope].some((name) => groups!.includes(name));
           if (!granted) missingPermissions.push(scope);
-          permissions[scope] = granted ? { granted, confirmed: true } : { granted, message: `Missing "${scope}" permission on this token (its policies list: ${groups.join(", ") || "none"}).` };
+          permissions[scope] = granted
+            ? { granted, confirmed: true }
+            : { granted, message: `Missing "${scope}" permission on this token (its policies list: ${groups.join(", ") || "none"}).` };
         }
       } else {
         verifiedBy = "read-probe";
@@ -277,7 +283,11 @@ export function createHttpCloudflareApiClient(options: HttpControlPlaneOptions):
             await probes[scope]();
             // A read proves the permission group is there with at least Read; Edit is confirmed only by the first deploy.
             permissions[scope] = isEdit
-              ? { granted: true, confirmed: false, message: `Read access confirmed; "${scope}" will be confirmed by the first deploy (a token that cannot read its own policies is checked with reads only).` }
+              ? {
+                  granted: true,
+                  confirmed: false,
+                  message: `Read access confirmed; "${scope}" will be confirmed by the first deploy (a token that cannot read its own policies is checked with reads only).`,
+                }
               : { granted: true, confirmed: true };
           } catch (error) {
             missingPermissions.push(scope);
@@ -285,7 +295,10 @@ export function createHttpCloudflareApiClient(options: HttpControlPlaneOptions):
               permissions[scope] = { granted: false, message: `Missing "${scope}" permission on this token: Cloudflare refused a read that needs it.` };
             } else if (isStatus(error, 400, 404)) {
               // Not an outage: the account answered, and this capability is not available to it (for example Queues not enabled).
-              permissions[scope] = { granted: false, message: `"${scope}" is unavailable: Cloudflare answered ${(error as CloudflareApiError).status} to a read of it (the product may not be enabled on this account).` };
+              permissions[scope] = {
+                granted: false,
+                message: `"${scope}" is unavailable: Cloudflare answered ${(error as CloudflareApiError).status} to a read of it (the product may not be enabled on this account).`,
+              };
             } else throw error;
           }
         }
@@ -448,7 +461,10 @@ export function createHttpCloudflareApiClient(options: HttpControlPlaneOptions):
       const existing = await findDatabase(c, name);
       if (existing) return readDatabaseState(c, existing);
       const created = await c.createDatabase(name);
-      await c.queryDatabase(created.uuid, [...BOOKKEEPING_SQL, ...PLATFORM_TABLES_SQL].map((sql) => ({ sql })));
+      await c.queryDatabase(
+        created.uuid,
+        [...BOOKKEEPING_SQL, ...PLATFORM_TABLES_SQL].map((sql) => ({ sql })),
+      );
       return readDatabaseState(c, created);
     },
 
@@ -541,7 +557,12 @@ export function createHttpCloudflareApiClient(options: HttpControlPlaneOptions):
     },
 
     async listWorkflows(accountId, token): Promise<CloudflareWorkflowState[]> {
-      return (await restClient(accountId, token).listWorkflowDefinitions()).map((w) => ({ name: w.name, className: w.className, scriptName: w.scriptName, updatedAt: "" }));
+      return (await restClient(accountId, token).listWorkflowDefinitions()).map((w) => ({
+        name: w.name,
+        className: w.className,
+        scriptName: w.scriptName,
+        updatedAt: "",
+      }));
     },
 
     async putWorkflow(accountId, token, workflowName, definition) {

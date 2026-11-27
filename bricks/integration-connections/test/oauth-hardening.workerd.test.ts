@@ -59,8 +59,7 @@ describe("story 1.15: integration-connections OAuth hardening (A10, A11, A12)", 
       PX_CONN_KEY: pxConnKey,
     });
 
-  const countStates = async () =>
-    (await db.prepare("SELECT COUNT(*) AS n FROM int_oauth_states").first<{ n: number }>())?.n ?? 0;
+  const countStates = async () => (await db.prepare("SELECT COUNT(*) AS n FROM int_oauth_states").first<{ n: number }>())?.n ?? 0;
   const connectionRow = () =>
     db
       .prepare("SELECT account_label, external_account_id FROM int_connections WHERE workspace_id = 'ws_A' AND provider = 'google'")

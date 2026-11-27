@@ -29,9 +29,7 @@ export function runProofCheckCli(argv: string[] = process.argv.slice(2)): number
 
   const proofPath = join(targetRoot, "PROOF.md");
   const verdictsPath = join(targetRoot, "evidence", "verdicts.json");
-  const hypothesesPath = existsSync(join(targetRoot, "hypotheses.json"))
-    ? join(targetRoot, "hypotheses.json")
-    : join(repoRoot, "hypotheses.json");
+  const hypothesesPath = existsSync(join(targetRoot, "hypotheses.json")) ? join(targetRoot, "hypotheses.json") : join(repoRoot, "hypotheses.json");
 
   if (!existsSync(proofPath)) {
     console.error(`PROOF.md does not exist at ${proofPath}`);
@@ -56,9 +54,7 @@ export function runProofCheckCli(argv: string[] = process.argv.slice(2)): number
   } else if (committedData.inputsHash !== currentInputsHash) {
     const modified = findModifiedInputFiles(targetRoot, repoRoot);
     const fileList = modified.length > 0 ? `; modified input files: ${modified.join(", ")}` : "";
-    errors.push(
-      `Stale inputsHash in evidence/verdicts.json: committed ${committedData.inputsHash} !== current ${currentInputsHash}${fileList}`,
-    );
+    errors.push(`Stale inputsHash in evidence/verdicts.json: committed ${committedData.inputsHash} !== current ${currentInputsHash}${fileList}`);
   }
 
   // (a) Re-run verify.ts for offline hypotheses into a temporary directory (--out <dir>, never overwriting evidence/)
@@ -72,9 +68,7 @@ export function runProofCheckCli(argv: string[] = process.argv.slice(2)): number
     });
     const freshVerdictsPath = join(tempOutDir, "verdicts.json");
     if (!existsSync(freshVerdictsPath)) {
-      errors.push(
-        `verify.ts --out ${tempOutDir} failed to produce verdicts.json (exit ${run.status ?? "unknown"}): ${run.stderr || run.stdout}`,
-      );
+      errors.push(`verify.ts --out ${tempOutDir} failed to produce verdicts.json (exit ${run.status ?? "unknown"}): ${run.stderr || run.stdout}`);
     } else {
       freshData = JSON.parse(readFileSync(freshVerdictsPath, "utf8")) as VerdictsFile;
     }
@@ -99,23 +93,17 @@ export function runProofCheckCli(argv: string[] = process.argv.slice(2)): number
         continue;
       }
       if (committed.verdict !== fresh.verdict) {
-        errors.push(
-          `Verdict mismatch for ${h.id} in evidence/verdicts.json: committed "${committed.verdict}" !== re-measured "${fresh.verdict}"`,
-        );
+        errors.push(`Verdict mismatch for ${h.id} in evidence/verdicts.json: committed "${committed.verdict}" !== re-measured "${fresh.verdict}"`);
       }
       if (!TIMED_OFFLINE_HYPOTHESES.has(h.id)) {
         if (committed.measured !== fresh.measured) {
-          errors.push(
-            `Measured value mismatch for ${h.id} in evidence/verdicts.json: committed "${committed.measured}" !== re-measured "${fresh.measured}"`,
-          );
+          errors.push(`Measured value mismatch for ${h.id} in evidence/verdicts.json: committed "${committed.measured}" !== re-measured "${fresh.measured}"`);
         }
       } else {
         const expectedUnit = h.status === "live" && h.metric ? h.metric.unit : "";
         const num = Number.parseFloat(committed.measured);
         if (!Number.isFinite(num) || (expectedUnit && !committed.measured.endsWith(` ${expectedUnit}`))) {
-          errors.push(
-            `Invalid measured value for ${h.id} in evidence/verdicts.json: "${committed.measured}"`,
-          );
+          errors.push(`Invalid measured value for ${h.id} in evidence/verdicts.json: "${committed.measured}"`);
         }
       }
     }
@@ -140,9 +128,7 @@ export function runProofCheckCli(argv: string[] = process.argv.slice(2)): number
     const escapedMeasured = v.measured.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = new RegExp(`\\|\\s*${escapedId}\\s*\\|\\s*${v.verdict}\\s*\\|\\s*${escapedMeasured}\\s*\\|`, "i");
     if (!pattern.test(proofText)) {
-      errors.push(
-        `PROOF.md does not match verdicts.json for ${h.id}: expected "| ${h.id} | ${v.verdict} | ${v.measured} | ..."`,
-      );
+      errors.push(`PROOF.md does not match verdicts.json for ${h.id}: expected "| ${h.id} | ${v.verdict} | ${v.measured} | ..."`);
     }
   }
 
@@ -164,9 +150,7 @@ export function runProofCheckCli(argv: string[] = process.argv.slice(2)): number
   return 0;
 }
 
-const isMain =
-  process.argv[1] !== undefined &&
-  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+const isMain = process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 
 if (isMain) {
   process.exit(runProofCheckCli());

@@ -3,19 +3,12 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { IntegrationManifestSchema } from "@poc/assembler";
-import {
-  analyzeSpec,
-  extractOpenApi3Operations,
-  importIntegrationSpec,
-} from "../src/importer.ts";
+import { analyzeSpec, extractOpenApi3Operations, importIntegrationSpec } from "../src/importer.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe("UC2.3 wireName and identifier/operationId collision detection", () => {
-  const cashfreeFixturePath = resolve(
-    __dirname,
-    "fixtures/wire-name/cashfree-pg-min.openapi.json",
-  );
+  const cashfreeFixturePath = resolve(__dirname, "fixtures/wire-name/cashfree-pg-min.openapi.json");
   const cashfreeSpec = JSON.parse(readFileSync(cashfreeFixturePath, "utf8"));
 
   it("extracts wireName on params and body fields, reports IDENTIFIER_NORMALIZED, and retains both colliding ops", () => {

@@ -66,21 +66,22 @@ export class AdminConsoleService {
   /**
    * Registers a super admin or support agent.
    */
-  async addSuperAdmin(
-    userId: string,
-    email: string,
-    role: SuperAdminRole = "support_agent"
-  ): Promise<SuperAdminRecord> {
+  async addSuperAdmin(userId: string, email: string, role: SuperAdminRole = "support_agent"): Promise<SuperAdminRecord> {
     const now = new Date().toISOString();
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO adm_super_admins (user_id, email, role, is_active, created_at)
       VALUES (?, ?, ?, 1, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         email = excluded.email,
         role = excluded.role,
         is_active = 1
-    `).bind(userId.trim(), email.trim().toLowerCase(), role, now).run();
+    `,
+      )
+      .bind(userId.trim(), email.trim().toLowerCase(), role, now)
+      .run();
 
     return {
       user_id: userId.trim(),
@@ -95,9 +96,7 @@ export class AdminConsoleService {
    * Retrieves super admin details.
    */
   async getSuperAdmin(userId: string): Promise<SuperAdminRecord | null> {
-    const row = await this.db.prepare(
-      "SELECT user_id, email, role, is_active, created_at FROM adm_super_admins WHERE user_id = ?"
-    ).bind(userId.trim()).first<{
+    const row = await this.db.prepare("SELECT user_id, email, role, is_active, created_at FROM adm_super_admins WHERE user_id = ?").bind(userId.trim()).first<{
       user_id: string;
       email: string;
       role: SuperAdminRole;
@@ -129,12 +128,7 @@ export class AdminConsoleService {
   /**
    * Overrides tenant status (active, suspended, read_only).
    */
-  async setTenantStatus(
-    adminUserId: string,
-    workspaceId: string,
-    status: TenantStatus,
-    reason?: string
-  ): Promise<TenantOverrideRecord> {
+  async setTenantStatus(adminUserId: string, workspaceId: string, status: TenantStatus, reason?: string): Promise<TenantOverrideRecord> {
     const isAuthorized = await this.verifyAdminAccess(adminUserId, "support_agent");
     if (!isAuthorized) {
       throw new Error("Unauthorized: Super-admin or support privilege required");
@@ -143,7 +137,9 @@ export class AdminConsoleService {
     const now = new Date().toISOString();
     const reasonText = reason?.trim() || null;
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO adm_tenant_overrides (
         workspace_id, status, reason, custom_limits_json, updated_by, updated_at
       ) VALUES (?, ?, ?, '{}', ?, ?)
@@ -152,7 +148,10 @@ export class AdminConsoleService {
         reason = excluded.reason,
         updated_by = excluded.updated_by,
         updated_at = excluded.updated_at
-    `).bind(workspaceId, status, reasonText, adminUserId, now).run();
+    `,
+      )
+      .bind(workspaceId, status, reasonText, adminUserId, now)
+      .run();
 
     const override = await this.getTenantOverride(workspaceId);
     return override!;
@@ -162,9 +161,7 @@ export class AdminConsoleService {
    * Retrieves tenant override status.
    */
   async getTenantOverride(workspaceId: string): Promise<TenantOverrideRecord | null> {
-    const row = await this.db.prepare(
-      "SELECT * FROM adm_tenant_overrides WHERE workspace_id = ?"
-    ).bind(workspaceId).first<{
+    const row = await this.db.prepare("SELECT * FROM adm_tenant_overrides WHERE workspace_id = ?").bind(workspaceId).first<{
       workspace_id: string;
       status: TenantStatus;
       reason: string | null;
@@ -188,11 +185,7 @@ export class AdminConsoleService {
   /**
    * Sets custom enterprise limits for a tenant.
    */
-  async setTenantCustomLimits(
-    adminUserId: string,
-    workspaceId: string,
-    limits: Record<string, unknown>
-  ): Promise<TenantOverrideRecord> {
+  async setTenantCustomLimits(adminUserId: string, workspaceId: string, limits: Record<string, unknown>): Promise<TenantOverrideRecord> {
     const isAuthorized = await this.verifyAdminAccess(adminUserId, "super_admin");
     if (!isAuthorized) {
       throw new Error("Unauthorized: Super-admin privilege required to modify tenant limits");
@@ -201,7 +194,9 @@ export class AdminConsoleService {
     const now = new Date().toISOString();
     const limitsJson = JSON.stringify(limits);
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO adm_tenant_overrides (
         workspace_id, status, reason, custom_limits_json, updated_by, updated_at
       ) VALUES (?, 'active', NULL, ?, ?, ?)
@@ -209,7 +204,10 @@ export class AdminConsoleService {
         custom_limits_json = excluded.custom_limits_json,
         updated_by = excluded.updated_by,
         updated_at = excluded.updated_at
-    `).bind(workspaceId, limitsJson, adminUserId, now).run();
+    `,
+      )
+      .bind(workspaceId, limitsJson, adminUserId, now)
+      .run();
 
     const override = await this.getTenantOverride(workspaceId);
     return override!;
@@ -234,21 +232,17 @@ export class AdminConsoleService {
     const expiresAt = Date.now() + duration * 60 * 1000;
     const now = new Date().toISOString();
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO adm_impersonation_sessions (
         id, admin_user_id, impersonated_user_id, workspace_id,
         session_token, reason, expires_at, ended_at, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)
-    `).bind(
-      sessionId,
-      input.adminUserId,
-      input.impersonatedUserId.trim(),
-      input.workspaceId.trim(),
-      sessionToken,
-      input.reason.trim(),
-      expiresAt,
-      now
-    ).run();
+    `,
+      )
+      .bind(sessionId, input.adminUserId, input.impersonatedUserId.trim(), input.workspaceId.trim(), sessionToken, input.reason.trim(), expiresAt, now)
+      .run();
 
     return {
       id: sessionId,
@@ -267,9 +261,7 @@ export class AdminConsoleService {
    * Verifies an active impersonation token.
    */
   async verifyImpersonationToken(sessionToken: string): Promise<ImpersonationVerificationResult> {
-    const row = await this.db.prepare(
-      "SELECT * FROM adm_impersonation_sessions WHERE session_token = ?"
-    ).bind(sessionToken.trim()).first<{
+    const row = await this.db.prepare("SELECT * FROM adm_impersonation_sessions WHERE session_token = ?").bind(sessionToken.trim()).first<{
       id: string;
       admin_user_id: string;
       impersonated_user_id: string;
@@ -308,11 +300,16 @@ export class AdminConsoleService {
    */
   async endImpersonationSession(sessionToken: string): Promise<boolean> {
     const now = Date.now();
-    const res = await this.db.prepare(`
+    const res = await this.db
+      .prepare(
+        `
       UPDATE adm_impersonation_sessions
       SET ended_at = ?
       WHERE session_token = ? AND ended_at IS NULL
-    `).bind(now, sessionToken.trim()).run();
+    `,
+      )
+      .bind(now, sessionToken.trim())
+      .run();
 
     return res.meta.changes > 0;
   }
@@ -320,10 +317,7 @@ export class AdminConsoleService {
   /**
    * Lists recent impersonation sessions for security auditing.
    */
-  async listImpersonationSessions(
-    adminUserId: string,
-    options: { workspaceId?: string; limit?: number } = {}
-  ): Promise<ImpersonationSessionRecord[]> {
+  async listImpersonationSessions(adminUserId: string, options: { workspaceId?: string; limit?: number } = {}): Promise<ImpersonationSessionRecord[]> {
     const isAuthorized = await this.verifyAdminAccess(adminUserId, "auditor");
     if (!isAuthorized) {
       throw new Error("Unauthorized: Auditor or super-admin role required to view sessions");
@@ -340,17 +334,22 @@ export class AdminConsoleService {
     query += " ORDER BY created_at DESC LIMIT ?";
     params.push(options.limit || 50);
 
-    const rows = (await this.db.prepare(query).bind(...params).all<{
-      id: string;
-      admin_user_id: string;
-      impersonated_user_id: string;
-      workspace_id: string;
-      session_token: string;
-      reason: string;
-      expires_at: number;
-      ended_at: number | null;
-      created_at: string;
-    }>()).results;
+    const rows = (
+      await this.db
+        .prepare(query)
+        .bind(...params)
+        .all<{
+          id: string;
+          admin_user_id: string;
+          impersonated_user_id: string;
+          workspace_id: string;
+          session_token: string;
+          reason: string;
+          expires_at: number;
+          ended_at: number | null;
+          created_at: string;
+        }>()
+    ).results;
 
     return rows;
   }

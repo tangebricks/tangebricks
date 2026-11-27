@@ -26,7 +26,10 @@ export function isSafePropertySegment(segment: string): boolean {
 }
 
 export function hasForbiddenSegment(path: string): string | null {
-  for (const segment of path.split(".").map((s) => s.trim()).filter(Boolean)) {
+  for (const segment of path
+    .split(".")
+    .map((s) => s.trim())
+    .filter(Boolean)) {
     if (FORBIDDEN_SEGMENTS.has(segment)) {
       return segment;
     }
@@ -37,10 +40,7 @@ export function hasForbiddenSegment(path: string): string | null {
 /**
  * Pure property-path traversal using `Object.hasOwn`.
  */
-export function traverseSafePropertyPath(
-  root: unknown,
-  segments: readonly string[],
-): unknown {
+export function traverseSafePropertyPath(root: unknown, segments: readonly string[]): unknown {
   let current: unknown = root;
   for (const seg of segments) {
     if (!isSafePropertySegment(seg)) {
@@ -109,11 +109,7 @@ function parsePillToken(rawToken: string): ParsedPillExpression | null {
   return null;
 }
 
-function resolveFromSourceRecord(
-  sourceRecord: unknown,
-  portId: string,
-  fieldPath: string,
-): unknown {
+function resolveFromSourceRecord(sourceRecord: unknown, portId: string, fieldPath: string): unknown {
   if (sourceRecord === null || sourceRecord === undefined || typeof sourceRecord !== "object") {
     return undefined;
   }
@@ -154,39 +150,23 @@ function resolveFromSourceRecord(
   }
 
   const combined = [portId, ...segments];
-  const fromOutput = Object.hasOwn(rec, "output")
-    ? traverseSafePropertyPath(rec.output, combined)
-    : undefined;
+  const fromOutput = Object.hasOwn(rec, "output") ? traverseSafePropertyPath(rec.output, combined) : undefined;
   if (fromOutput !== undefined) return fromOutput;
 
-  const fromOut = Object.hasOwn(rec, "out")
-    ? traverseSafePropertyPath(rec.out, combined)
-    : undefined;
+  const fromOut = Object.hasOwn(rec, "out") ? traverseSafePropertyPath(rec.out, combined) : undefined;
   if (fromOut !== undefined) return fromOut;
 
   return traverseSafePropertyPath(rec, combined);
 }
 
-function resolveParsedPill(
-  parsed: ParsedPillExpression,
-  stepOutputsByNodeId: Readonly<Record<string, unknown>>,
-  triggerOutput?: unknown,
-): unknown {
-  if (
-    (parsed.nodeId && hasForbiddenSegment(parsed.nodeId)) ||
-    hasForbiddenSegment(parsed.portId) ||
-    hasForbiddenSegment(parsed.fieldPath)
-  ) {
+function resolveParsedPill(parsed: ParsedPillExpression, stepOutputsByNodeId: Readonly<Record<string, unknown>>, triggerOutput?: unknown): unknown {
+  if ((parsed.nodeId && hasForbiddenSegment(parsed.nodeId)) || hasForbiddenSegment(parsed.portId) || hasForbiddenSegment(parsed.fieldPath)) {
     return undefined;
   }
 
   if (parsed.sourceKind === "trigger") {
     const trigCandidate =
-      triggerOutput !== undefined
-        ? triggerOutput
-        : Object.hasOwn(stepOutputsByNodeId, "trigger")
-          ? stepOutputsByNodeId["trigger"]
-          : undefined;
+      triggerOutput !== undefined ? triggerOutput : Object.hasOwn(stepOutputsByNodeId, "trigger") ? stepOutputsByNodeId["trigger"] : undefined;
     return resolveFromSourceRecord(trigCandidate, parsed.portId, parsed.fieldPath);
   }
 
@@ -209,11 +189,7 @@ const ANY_PILL_PATTERN = /\{\{\s*([^{}]+?)\s*\}\}/g;
  * - Multi-pill or embedded string `"Invoice {{steps.node_1.output.id}}"` interpolates each pill as a string.
  * - Non-step placeholders (e.g. `"{{value}}"` for `core.format_template`) are left untouched.
  */
-export function resolveStepExpressions(
-  value: unknown,
-  stepOutputsByNodeId: Readonly<Record<string, unknown>>,
-  triggerOutput?: unknown,
-): unknown {
+export function resolveStepExpressions(value: unknown, stepOutputsByNodeId: Readonly<Record<string, unknown>>, triggerOutput?: unknown): unknown {
   if (typeof value === "string") {
     const singleMatch = SINGLE_PILL_PATTERN.exec(value);
     if (singleMatch) {
@@ -254,9 +230,7 @@ export function resolveStepExpressions(
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) =>
-      resolveStepExpressions(item, stepOutputsByNodeId, triggerOutput),
-    );
+    return value.map((item) => resolveStepExpressions(item, stepOutputsByNodeId, triggerOutput));
   }
 
   if (typeof value === "object" && value !== null) {
@@ -320,9 +294,7 @@ export function extractTemplatePlaceholders(template: string): string[] {
  */
 export function validateStepExpression(
   input: string,
-  ancestorNodeOutputs: Readonly<
-    Record<string, ReadonlyArray<string> | Readonly<Record<string, unknown>>>
-  >,
+  ancestorNodeOutputs: Readonly<Record<string, ReadonlyArray<string> | Readonly<Record<string, unknown>>>>,
 ): StepExpressionValidationResult {
   const errors: string[] = [];
   if (typeof input !== "string" || (!input.includes("{{") && !input.includes("}}"))) {
@@ -353,9 +325,7 @@ export function validateStepExpression(
     if (!parsed) {
       // Check if it looks like a malformed steps.* expression
       if (rawInner.startsWith("steps") || rawInner.includes("steps.")) {
-        errors.push(
-          `Invalid pill syntax '{{${rawInner}}}'. Expected {{steps.<nodeId>.output.<fieldPath>}}.`,
-        );
+        errors.push(`Invalid pill syntax '{{${rawInner}}}'. Expected {{steps.<nodeId>.output.<fieldPath>}}.`);
       }
       continue;
     }
@@ -368,36 +338,20 @@ export function validateStepExpression(
       }
 
       if (!parsed.fieldPath) {
-        errors.push(
-          `Missing output field path in '{{${rawInner}}}'. Expected {{steps.${nodeId}.output.<field>}}.`,
-        );
+        errors.push(`Missing output field path in '{{${rawInner}}}'. Expected {{steps.${nodeId}.output.<field>}}.`);
         continue;
       }
 
       const rootField = parsed.fieldPath.split(".")[0]!;
       const schemaEntry = ancestorNodeOutputs[nodeId];
       if (Array.isArray(schemaEntry)) {
-        if (
-          schemaEntry.length > 0 &&
-          !schemaEntry.includes("*") &&
-          !schemaEntry.includes(parsed.fieldPath) &&
-          !schemaEntry.includes(rootField)
-        ) {
-          errors.push(
-            `Field '${parsed.fieldPath}' does not exist on upstream node '${nodeId}'.`,
-          );
+        if (schemaEntry.length > 0 && !schemaEntry.includes("*") && !schemaEntry.includes(parsed.fieldPath) && !schemaEntry.includes(rootField)) {
+          errors.push(`Field '${parsed.fieldPath}' does not exist on upstream node '${nodeId}'.`);
         }
       } else if (typeof schemaEntry === "object" && schemaEntry !== null) {
         const keys = Object.keys(schemaEntry);
-        if (
-          keys.length > 0 &&
-          !Object.hasOwn(schemaEntry, "*") &&
-          !Object.hasOwn(schemaEntry, parsed.fieldPath) &&
-          !Object.hasOwn(schemaEntry, rootField)
-        ) {
-          errors.push(
-            `Field '${parsed.fieldPath}' does not exist on upstream node '${nodeId}'.`,
-          );
+        if (keys.length > 0 && !Object.hasOwn(schemaEntry, "*") && !Object.hasOwn(schemaEntry, parsed.fieldPath) && !Object.hasOwn(schemaEntry, rootField)) {
+          errors.push(`Field '${parsed.fieldPath}' does not exist on upstream node '${nodeId}'.`);
         }
       }
     }

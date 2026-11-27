@@ -14,9 +14,7 @@ export interface App {
 export async function resetAndMigrate(db: D1Like, sql: Record<string, string>): Promise<void> {
   for (let pass = 0; pass < 3; pass += 1) {
     const tables = await db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE '%_fts_%'",
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE '%_fts_%'")
       .all<{ name: string }>();
     if (tables.results.length === 0) break;
     for (const row of [...tables.results].reverse()) {

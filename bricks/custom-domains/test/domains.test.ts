@@ -4,11 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_custom_domains.sql?raw";
-import {
-  CustomDomainService,
-  isValidHostname,
-  createCustomDomainRoutes,
-} from "../src/index.ts";
+import { CustomDomainService, isValidHostname, createCustomDomainRoutes } from "../src/index.ts";
 import type { CustomDomainEnv } from "../src/middleware.ts";
 
 const db = env.DB as D1Like;
@@ -104,7 +100,7 @@ describe("Custom Domain Service Core", () => {
       service.addDomain({
         workspaceId: WS_BETA,
         hostname: "unique.saas.io",
-      })
+      }),
     ).rejects.toThrow("already registered");
   });
 
@@ -161,7 +157,7 @@ describe("Custom Domain REST API Endpoints", () => {
           verificationType: "cname",
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(addRes.status).toBe(201);
     const dom = (await addRes.json()) as any;
@@ -169,11 +165,7 @@ describe("Custom Domain REST API Endpoints", () => {
     expect(dom.is_primary).toBe(true);
 
     // 2. List domains
-    const listRes = await app.request(
-      "http://localhost/domains",
-      { method: "GET" },
-      { DB: db }
-    );
+    const listRes = await app.request("http://localhost/domains", { method: "GET" }, { DB: db });
     expect(listRes.status).toBe(200);
     const listJson = (await listRes.json()) as any;
     expect(listJson.domains).toHaveLength(1);
@@ -186,28 +178,20 @@ describe("Custom Domain REST API Endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(verifyRes.status).toBe(200);
     const verifyJson = (await verifyRes.json()) as any;
     expect(verifyJson.ssl_status).toBe("active");
 
     // 4. Resolve domain
-    const resolveRes = await app.request(
-      "http://localhost/domains/resolve/dashboard.bigcorp.com",
-      { method: "GET" },
-      { DB: db }
-    );
+    const resolveRes = await app.request("http://localhost/domains/resolve/dashboard.bigcorp.com", { method: "GET" }, { DB: db });
     expect(resolveRes.status).toBe(200);
     const resolveJson = (await resolveRes.json()) as any;
     expect(resolveJson.workspaceId).toBe(WS_ALPHA);
 
     // 5. Delete domain
-    const delRes = await app.request(
-      `http://localhost/domains/${dom.id}`,
-      { method: "DELETE" },
-      { DB: db }
-    );
+    const delRes = await app.request(`http://localhost/domains/${dom.id}`, { method: "DELETE" }, { DB: db });
     expect(delRes.status).toBe(200);
   });
 
@@ -221,15 +205,11 @@ describe("Custom Domain REST API Endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hostname: "invalid:format:hostname" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(badReq.status).toBe(400);
 
-    const notFound = await app.request(
-      "http://localhost/domains/resolve/unknown.domain.net",
-      { method: "GET" },
-      { DB: db }
-    );
+    const notFound = await app.request("http://localhost/domains/resolve/unknown.domain.net", { method: "GET" }, { DB: db });
     expect(notFound.status).toBe(404);
   });
 });

@@ -45,12 +45,7 @@ import {
   toAssemblerBlueprint,
   toSdkEntity,
 } from "@poc/blueprint";
-import type {
-  ProposalActor,
-  ProposalRecord,
-  ProposalSelectionEvaluation,
-  ProposalStatus,
-} from "@poc/blueprint";
+import type { ProposalActor, ProposalRecord, ProposalSelectionEvaluation, ProposalStatus } from "@poc/blueprint";
 import {
   ALL_TOOLS,
   PROTOCOL_VERSION,
@@ -95,21 +90,8 @@ import {
   resolveStudioAuthSession,
   resolveStudioCaller,
 } from "./auth.ts";
-import type {
-  StudioAuditLogInput,
-  StudioAuthSession,
-  StudioAuthUser,
-  StudioCaller,
-  StudioMcpScope,
-  StudioOrgRole,
-  StudioOrgRoleInput,
-} from "./auth.ts";
-import {
-  BlueprintDO,
-  STUDIO_API_MIGRATION_SQL,
-  ensureStudioD1Schema,
-  generateBatchSummary,
-} from "./blueprint-do.ts";
+import type { StudioAuditLogInput, StudioAuthSession, StudioAuthUser, StudioCaller, StudioMcpScope, StudioOrgRole, StudioOrgRoleInput } from "./auth.ts";
+import { BlueprintDO, STUDIO_API_MIGRATION_SQL, ensureStudioD1Schema, generateBatchSummary } from "./blueprint-do.ts";
 import type {
   AcceptProposalInput,
   ApplyBatchOutcome,
@@ -130,12 +112,7 @@ import type {
   StudioApiEnv,
 } from "./blueprint-do.ts";
 
-import {
-  computeSecretKeyHint,
-  decryptSecretValue,
-  deriveAesGcmVaultKey,
-  encryptSecretValue,
-} from "./secrets-vault.ts";
+import { computeSecretKeyHint, decryptSecretValue, deriveAesGcmVaultKey, encryptSecretValue } from "./secrets-vault.ts";
 import type { SealedSecretRecord } from "./secrets-vault.ts";
 import { realUploadCompatibilityFlags, storeGeneratedSecrets } from "./generated-secrets.ts";
 import {
@@ -183,12 +160,7 @@ import type {
   TokenResolutionContext,
   TokenResolver,
 } from "./security/token-vault.ts";
-import {
-  STARTER_TEMPLATES,
-  getStarterTemplate,
-  instantiateStarterTemplateForProject,
-  listStarterTemplates,
-} from "./templates.ts";
+import { STARTER_TEMPLATES, getStarterTemplate, instantiateStarterTemplateForProject, listStarterTemplates } from "./templates.ts";
 import type { StarterTemplateDescriptor, StarterTemplateId } from "./templates.ts";
 import {
   BETA_PARTNER_TYPES,
@@ -272,11 +244,7 @@ export {
   StudioDeployClientConfigError,
 };
 export type { StudioDeployClientEnv, StudioDeployOptions };
-import {
-  handleDataBrowserRequest,
-  isImmutableLedgerTable,
-  workspaceHasBrowsableData,
-} from "../../../packages/deploy/src/worker/data-browser.ts";
+import { handleDataBrowserRequest, isImmutableLedgerTable, workspaceHasBrowsableData } from "../../../packages/deploy/src/worker/data-browser.ts";
 import type {
   BlueprintDriftReport,
   CloudflareTokenTemplateMetadata,
@@ -385,22 +353,14 @@ export function studioTelemetryScope(project: string, workspaceId?: string | nul
  * has no root secret (never BETTER_AUTH_SECRET or another fallback). Studio signs and verifies everything for a project
  * with that project's derived secret only: the root secret itself never goes on the wire or into a worker's env.
  */
-async function studioProjectSecret(
-  env: { PX_TELEMETRY_SECRET?: string },
-  project: string,
-  purpose: ProjectSecretPurpose,
-): Promise<string | null> {
+async function studioProjectSecret(env: { PX_TELEMETRY_SECRET?: string }, project: string, purpose: ProjectSecretPurpose): Promise<string | null> {
   const root = env.PX_TELEMETRY_SECRET;
   if (typeof root !== "string" || root.trim().length === 0) return null;
   return deriveProjectSecret(root, project, purpose);
 }
 
 /** As studioProjectSecret, but a missing root secret fails the request (the in-process run paths). */
-async function requireProjectSecret(
-  env: { PX_TELEMETRY_SECRET?: string },
-  project: string,
-  purpose: ProjectSecretPurpose,
-): Promise<string> {
+async function requireProjectSecret(env: { PX_TELEMETRY_SECRET?: string }, project: string, purpose: ProjectSecretPurpose): Promise<string> {
   return deriveProjectSecret(requireTelemetrySecret(env), project, purpose);
 }
 
@@ -570,8 +530,7 @@ const productionStudioRuntimeExecutors: Executors = buildExecutorsFromCatalog(ca
  */
 export function studioExecutorsFor(injected: Executors | undefined, env: { PX_ENVIRONMENT?: string }): Executors {
   const environment = env.PX_ENVIRONMENT;
-  const executors =
-    injected ?? (isProductionEnvironment(environment) ? productionStudioRuntimeExecutors : defaultStudioRuntimeExecutors);
+  const executors = injected ?? (isProductionEnvironment(environment) ? productionStudioRuntimeExecutors : defaultStudioRuntimeExecutors);
   assertNoPlaceholderExecutors(executors, environment);
   return executors;
 }
@@ -868,9 +827,7 @@ const UpsertSecretBodySchema = z.strictObject({
 const UpsertConnectionBodySchema = z.object({
   ref: z.string().min(1).max(128),
   app: z.string().min(1).max(120),
-  authType: z
-    .enum(["oauth2", "apiKey", "bearer", "basic", "webhookSecret", "api-key", "webhook-secret"])
-    .default("apiKey"),
+  authType: z.enum(["oauth2", "apiKey", "bearer", "basic", "webhookSecret", "api-key", "webhook-secret"]).default("apiKey"),
   label: z.string().min(1).max(120).optional(),
   envScope: z.string().min(1).max(60).default("preview"),
   workspaceId: z.string().min(1).max(120).default("default"),
@@ -911,10 +868,7 @@ function generateRandomBase64Url(byteLength = 32): string {
 }
 
 async function computePkceS256Challenge(verifier: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(verifier),
-  );
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
   return toBase64Url(new Uint8Array(digest));
 }
 
@@ -940,8 +894,7 @@ function getIntegrationOAuthConfig(appSlug: string): {
     | undefined;
   const oauth2 = pack?.manifest?.auth?.oauth2;
   return {
-    authorizationUrl:
-      oauth2?.authorizationUrl ?? `https://oauth.${appSlug}.example.com/authorize`,
+    authorizationUrl: oauth2?.authorizationUrl ?? `https://oauth.${appSlug}.example.com/authorize`,
     tokenUrl: oauth2?.tokenUrl ?? `https://oauth.${appSlug}.example.com/token`,
     defaultScopes: oauth2?.scopes ?? [],
   };
@@ -1108,11 +1061,7 @@ export async function pruneExpiredSandboxes(
   };
 }
 
-async function loadProjectSandboxSummary(
-  db: D1Like,
-  project: string,
-  nowMs: number = Date.now(),
-): Promise<StudioSandboxSummary | null> {
+async function loadProjectSandboxSummary(db: D1Like, project: string, nowMs: number = Date.now()): Promise<StudioSandboxSummary | null> {
   await ensureStudioD1Schema(db);
   const row = await db
     .prepare(
@@ -1152,10 +1101,7 @@ async function loadProjectSandboxSummary(
 
   const liveRecord = studioSandboxPlatform.getSandbox(row.sandbox_id);
   if (liveRecord?.worker) {
-    dailyRequestsUsed = Math.max(
-      dailyRequestsUsed,
-      studioSandboxPlatform.getDailyRequestCount(row.sandbox_id, nowMs),
-    );
+    dailyRequestsUsed = Math.max(dailyRequestsUsed, studioSandboxPlatform.getDailyRequestCount(row.sandbox_id, nowMs));
   }
   if (liveRecord?.d1) {
     const stats = await liveRecord.d1.d1Binding.getStorageStats();
@@ -1165,12 +1111,8 @@ async function loadProjectSandboxSummary(
 
   const expMs = Date.parse(row.expires_at);
   const diffMs = Number.isFinite(expMs) ? expMs - nowMs : 0;
-  const remainingDays = Math.max(
-    0,
-    Math.min(7, Math.ceil(diffMs / (24 * 60 * 60 * 1000))),
-  );
-  const isExpired =
-    row.status === "expired" || (Number.isFinite(expMs) && expMs <= nowMs);
+  const remainingDays = Math.max(0, Math.min(7, Math.ceil(diffMs / (24 * 60 * 60 * 1000))));
+  const isExpired = row.status === "expired" || (Number.isFinite(expMs) && expMs <= nowMs);
 
   return {
     sandboxId: row.sandbox_id,
@@ -1211,14 +1153,10 @@ export function getProjectAssembleCount(project: string, revision?: number): num
  * Test-only reset. `createSandboxD1` lets a test stand a real D1 binding in for each sandbox database (the default is
  * the platform's lightweight in-memory D1).
  */
-export function resetStudioDeployTestState(options?: {
-  createSandboxD1?: (sandboxId: string, dbName: string) => D1Like;
-}): void {
+export function resetStudioDeployTestState(options?: { createSandboxD1?: (sandboxId: string, dbName: string) => D1Like }): void {
   resetStudioFakeControlPlanes();
   studioProjectAssembleCounts.clear();
-  studioSandboxPlatform = new SandboxDispatchPlatform(
-    options?.createSandboxD1 ? { createD1: options.createSandboxD1 } : undefined,
-  );
+  studioSandboxPlatform = new SandboxDispatchPlatform(options?.createSandboxD1 ? { createD1: options.createSandboxD1 } : undefined);
 }
 
 function getBlueprintStub(env: StudioApiEnv, project: string): DurableObjectStub {
@@ -1235,29 +1173,19 @@ function resolveEffectiveAuthor(caller: StudioCaller): AuthorAttribution {
 }
 
 /** AD-V8 / AD-S10: true when the project has a live production deployment, so a direct edit would reach production. */
-async function projectHasLiveProduction(
-  env: StudioApiEnv,
-  orgId: string,
-  project: string,
-): Promise<boolean> {
+async function projectHasLiveProduction(env: StudioApiEnv, orgId: string, project: string): Promise<boolean> {
   const environments = await listProjectDeployEnvironments(env.STUDIO_DB, {
     orgId,
     projectId: project,
   });
-  return environments.some(
-    (e) => e.envName === "production" && e.deployedRev !== null && e.deployedRev !== undefined,
-  );
+  return environments.some((e) => e.envName === "production" && e.deployedRev !== null && e.deployedRev !== undefined);
 }
 
 /**
  * AD-V8: what a revert would change, for the reviewer: the semantic diff from the current revision to the target, by
  * name (bricks, entities, workflows, secret refs added, removed or changed).
  */
-async function revertApprovalSummary(
-  env: StudioApiEnv,
-  project: string,
-  targetRevision: number,
-): Promise<Record<string, unknown>> {
+async function revertApprovalSummary(env: StudioApiEnv, project: string, targetRevision: number): Promise<Record<string, unknown>> {
   const client = createDurableObjectBlueprintClient(env.BLUEPRINT_DO);
   const current = await client.getProject(project);
   const target = await client.getProject(project, targetRevision);
@@ -1305,10 +1233,7 @@ async function gateDestructiveAction(
  * AD-V8: approvals consumed by the request now running. The approval is consumed before the action (so it can never be
  * used twice); if the action then fails, `settleApprovalLease` gives it back so the same bound retry can run.
  */
-const approvalLeases = new WeakMap<
-  Request,
-  { orgId: string; projectId: string; approvalId: string; consumedAt: string; caller: StudioCaller }
->();
+const approvalLeases = new WeakMap<Request, { orgId: string; projectId: string; approvalId: string; consumedAt: string; caller: StudioCaller }>();
 
 /** True when a gated action's answer is a failure: an error status, `ok: false`, or a failed deployment. */
 async function actionFailed(res: Response): Promise<boolean> {
@@ -1346,11 +1271,7 @@ const APPROVAL_GATED_ROUTES = [
   "/api/projects/:project/sandbox/promote-to-byoc",
 ] as const;
 
-function createOrgScopedBlueprintClient(
-  env: StudioApiEnv,
-  orgId: string,
-  role: StudioOrgRole,
-): BlueprintClient {
+function createOrgScopedBlueprintClient(env: StudioApiEnv, orgId: string, role: StudioOrgRole): BlueprintClient {
   const baseClient = createDurableObjectBlueprintClient(env.BLUEPRINT_DO);
   return {
     getProject: (project, revision) => baseClient.getProject(project, revision),
@@ -1446,19 +1367,13 @@ class ConnectionRefConflictError extends Error {
 
 async function assertConnectionRefFree(envDb: D1Like, ref: string, project: string): Promise<void> {
   await ensureConnectionsTable(envDb);
-  const row = await envDb
-    .prepare("SELECT project_id FROM px_connections WHERE ref = ? LIMIT 1")
-    .bind(ref)
-    .first<{ project_id: string }>();
+  const row = await envDb.prepare("SELECT project_id FROM px_connections WHERE ref = ? LIMIT 1").bind(ref).first<{ project_id: string }>();
   if (row && row.project_id !== project) throw new ConnectionRefConflictError(ref);
 }
 
 /** After the guarded upsert: the row for `ref` must now be this project's, else another project took it in between. */
 async function assertConnectionRefOwned(envDb: D1Like, ref: string, project: string): Promise<void> {
-  const row = await envDb
-    .prepare("SELECT project_id FROM px_connections WHERE ref = ? LIMIT 1")
-    .bind(ref)
-    .first<{ project_id: string }>();
+  const row = await envDb.prepare("SELECT project_id FROM px_connections WHERE ref = ? LIMIT 1").bind(ref).first<{ project_id: string }>();
   if (!row || row.project_id !== project) throw new ConnectionRefConflictError(ref);
 }
 
@@ -1508,7 +1423,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const strip = (value: unknown): unknown => {
       if (Array.isArray(value)) return value.map(strip);
       if (value && typeof value === "object") {
-        return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([k]) => k !== "secretHashes").map(([k, v]) => [k, strip(v)]));
+        return Object.fromEntries(
+          Object.entries(value as Record<string, unknown>)
+            .filter(([k]) => k !== "secretHashes")
+            .map(([k, v]) => [k, strip(v)]),
+        );
       }
       // MCP answers carry tool results as JSON text
       if (typeof value === "string" && value.includes("secretHashes") && value.trimStart().startsWith("{")) {
@@ -1577,10 +1496,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     try {
       message = (await c.req.raw.json()) as Record<string, unknown>;
     } catch {
-      return Response.json(
-        { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Invalid JSON" } },
-        { status: 400 },
-      );
+      return Response.json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Invalid JSON" } }, { status: 400 });
     }
 
     const id = (message.id as string | number | null) ?? null;
@@ -1590,10 +1506,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     if (typeof method === "string" && method.startsWith("notifications/") && !("id" in message)) {
       return new Response(null, { status: 202 });
     }
-    const params =
-      typeof message.params === "object" && message.params !== null
-        ? (message.params as Record<string, unknown>)
-        : {};
+    const params = typeof message.params === "object" && message.params !== null ? (message.params as Record<string, unknown>) : {};
 
     if (method === "initialize") {
       return Response.json({
@@ -1623,9 +1536,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       const caller = resolved.caller;
       const name = typeof params.name === "string" ? params.name : "";
       let rawArgs =
-        typeof params.arguments === "object" &&
-        params.arguments !== null &&
-        !Array.isArray(params.arguments)
+        typeof params.arguments === "object" && params.arguments !== null && !Array.isArray(params.arguments)
           ? (params.arguments as Record<string, unknown>)
           : {};
       // Story 0.15: an MCP token's tool project defaults to the token's project, so a call without `project` still
@@ -1634,11 +1545,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         rawArgs = { ...rawArgs, project: caller.projectId };
       }
       const targetProject: string | undefined =
-        typeof rawArgs.project === "string"
-          ? rawArgs.project
-          : caller.kind === "mcp_token"
-            ? caller.projectId
-            : undefined;
+        typeof rawArgs.project === "string" ? rawArgs.project : caller.kind === "mcp_token" ? caller.projectId : undefined;
 
       if (name === "get_history") {
         if (!targetProject) {
@@ -1651,12 +1558,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             },
           });
         }
-        const authz = await authorizeProjectAccess(
-          c.env.STUDIO_DB,
-          caller,
-          targetProject,
-          "read",
-        );
+        const authz = await authorizeProjectAccess(c.env.STUDIO_DB, caller, targetProject, "read");
         if (!authz.ok) {
           return Response.json(
             {
@@ -1668,10 +1570,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           );
         }
         const stub = getBlueprintStub(c.env, targetProject);
-        const revRes = await stub.fetch(
-          `http://blueprint-do/revisions?project=${encodeURIComponent(targetProject)}`,
-          { method: "GET" },
-        );
+        const revRes = await stub.fetch(`http://blueprint-do/revisions?project=${encodeURIComponent(targetProject)}`, { method: "GET" });
         const revBody = await revRes.text();
         return Response.json({
           jsonrpc: "2.0",
@@ -1681,14 +1580,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           },
         });
       }
-      const isRevertAlias =
-        name === "apply_ops" &&
-        ("revertTo" in rawArgs || "targetRevision" in rawArgs) &&
-        !("ops" in rawArgs);
+      const isRevertAlias = name === "apply_ops" && ("revertTo" in rawArgs || "targetRevision" in rawArgs) && !("ops" in rawArgs);
       const tool = isRevertAlias
         ? revertToRevisionTool
-        : (ALL_TOOLS.find((t) => t.name === name) ??
-          (name === "revert_to_revision" ? revertToRevisionTool : undefined));
+        : (ALL_TOOLS.find((t) => t.name === name) ?? (name === "revert_to_revision" ? revertToRevisionTool : undefined));
 
       if (!tool) {
         return Response.json({
@@ -1726,12 +1621,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       };
 
       const mode: "read" | "mutate" = tool.readOnly ? "read" : "mutate";
-      const requiredScope: StudioMcpScope =
-        name === "deploy_apply"
-          ? "deploy"
-          : name === "request_connection"
-            ? "connect"
-            : "edit";
+      const requiredScope: StudioMcpScope = name === "deploy_apply" ? "deploy" : name === "request_connection" ? "connect" : "edit";
 
       if (targetProject === undefined && mode === "mutate") {
         return Response.json({
@@ -1749,14 +1639,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       let authzOrgId: string | null = null;
       let authzRole: StudioOrgRole | null = null;
       if (targetProject !== undefined) {
-        const authz = await authorizeProjectAccess(
-          c.env.STUDIO_DB,
-          caller,
-          targetProject,
-          mode,
-          undefined,
-          requiredScope,
-        );
+        const authz = await authorizeProjectAccess(c.env.STUDIO_DB, caller, targetProject, mode, undefined, requiredScope);
 
         if (!authz.ok) {
           if (mode === "mutate") {
@@ -1811,12 +1694,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       let mcpRevertLease: { orgId: string; projectId: string; approvalId: string; consumedAt: string } | null = null;
       // AD-V8: an MCP token's revert (revert_to_revision or the apply_ops `revertTo` alias) needs a Studio approval.
       // The tool applies the revert through the blueprint client, so the gate runs here, keyed on the verified caller.
-      if (
-        tool === revertToRevisionTool &&
-        caller.kind === "mcp_token" &&
-        targetProject !== undefined &&
-        authzOrgId !== null
-      ) {
+      if (tool === revertToRevisionTool && caller.kind === "mcp_token" && targetProject !== undefined && authzOrgId !== null) {
         const revertArgs = checked.value as unknown as { targetRevision: number; approvalId?: string };
         const gate = await requireApproval(
           c.env.STUDIO_DB,
@@ -1877,8 +1755,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             reviewRequired: caller.kind !== "session",
             ...(authzOrgId !== null
               ? {
-                  hasLiveProduction: (project: string) =>
-                    projectHasLiveProduction(c.env, authzOrgId as string, project),
+                  hasLiveProduction: (project: string) => projectHasLiveProduction(c.env, authzOrgId as string, project),
                 }
               : {}),
           },
@@ -1947,10 +1824,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
   const mcpMethodNotAllowed = async (c: { req: { raw: Request }; env: StudioApiEnv }) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
     if (!resolved.ok) {
-      return new Response(
-        JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32600, message: resolved.error.message, data: resolved.error } }),
-        { status: 401, headers: { "content-type": "application/json", "www-authenticate": 'Bearer realm="mcp"' } },
-      );
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32600, message: resolved.error.message, data: resolved.error } }), {
+        status: 401,
+        headers: { "content-type": "application/json", "www-authenticate": 'Bearer realm="mcp"' },
+      });
     }
     return new Response(null, { status: 405, headers: { allow: "POST" } });
   };
@@ -2012,9 +1889,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     // Story 16: an MCP token sees only the one project it is bound to; a client-sent org is ignored.
     if (resolved.caller.kind === "mcp_token") {
       const row = await db
-        .prepare(
-          "SELECT project_id, org_id, current_revision, semantic_hash, updated_at FROM projects WHERE project_id = ? AND org_id = ? LIMIT 1",
-        )
+        .prepare("SELECT project_id, org_id, current_revision, semantic_hash, updated_at FROM projects WHERE project_id = ? AND org_id = ? LIMIT 1")
         .bind(resolved.caller.projectId, resolved.caller.orgId)
         .first<ProjectListRow>();
       return c.json({ projects: toPayload(row ? [row] : []) }, 200);
@@ -2029,16 +1904,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         .first<{ role: StudioOrgRole }>();
 
       if (!memberRow) {
-        return c.json(
-          { error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } },
-          403,
-        );
+        return c.json({ error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } }, 403);
       }
 
       const result = await db
-        .prepare(
-          "SELECT project_id, org_id, current_revision, semantic_hash, updated_at FROM projects WHERE org_id = ? ORDER BY project_id ASC",
-        )
+        .prepare("SELECT project_id, org_id, current_revision, semantic_hash, updated_at FROM projects WHERE org_id = ? ORDER BY project_id ASC")
         .bind(requestedOrgId)
         .all<ProjectListRow>();
       return c.json({ projects: toPayload(result.results ?? []) }, 200);
@@ -2076,9 +1946,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       // Story 16: a client-sent org only selects among the caller's own orgs (else 403); with none, the caller's only
       // or personal org.
       const selected =
-        typeof rawBody.orgId === "string" && rawBody.orgId.trim()
-          ? rawBody.orgId.trim()
-          : (c.req.query("orgId") ?? c.req.header("x-org-id") ?? undefined);
+        typeof rawBody.orgId === "string" && rawBody.orgId.trim() ? rawBody.orgId.trim() : (c.req.query("orgId") ?? c.req.header("x-org-id") ?? undefined);
       const chosen = await chooseSessionCreateOrg(db, resolved.caller.userId, selected);
       if (!chosen.ok) {
         return c.json({ error: chosen.error }, chosen.status);
@@ -2090,14 +1958,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     forwardHeaders.set("content-type", "application/json");
     forwardHeaders.delete("x-org-id");
     forwardHeaders.delete("content-length");
-    const forwardReq = new Request(
-      new URL(`/api/orgs/${encodeURIComponent(targetOrgId)}/projects`, c.req.url).toString(),
-      {
-        method: "POST",
-        headers: forwardHeaders,
-        body: JSON.stringify(rawBody),
-      },
-    );
+    const forwardReq = new Request(new URL(`/api/orgs/${encodeURIComponent(targetOrgId)}/projects`, c.req.url).toString(), {
+      method: "POST",
+      headers: forwardHeaders,
+      body: JSON.stringify(rawBody),
+    });
     return app.fetch(forwardReq, c.env);
   });
 
@@ -2120,13 +1985,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -2154,27 +2013,19 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         needs: Array<{ code: string; id: string; message: string; suggestedFix?: string }>;
         checks?: Record<string, boolean>;
       };
-      if (
-        readinessObj.needs.some(
-          (n) => n.code === "UNBOUND_CONNECTION" || n.code === "UNBOUND_BRICK_SECRET",
-        )
-      ) {
+      if (readinessObj.needs.some((n) => n.code === "UNBOUND_CONNECTION" || n.code === "UNBOUND_BRICK_SECRET")) {
         const db = c.env.STUDIO_DB;
         await ensureStudioD1Schema(db);
         const boundRefs = new Set<string>();
         const vaultRows = await db
-          .prepare(
-            "SELECT ref FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'",
-          )
+          .prepare("SELECT ref FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'")
           .bind(project)
           .all<{ ref: string }>();
         for (const r of vaultRows.results ?? []) {
           boundRefs.add(r.ref);
         }
         const connRows = await db
-          .prepare(
-            "SELECT ref FROM studio_connections_metadata WHERE project_id = ? AND status = 'connected'",
-          )
+          .prepare("SELECT ref FROM studio_connections_metadata WHERE project_id = ? AND status = 'connected'")
           .bind(project)
           .all<{ ref: string }>();
         for (const r of connRows.results ?? []) {
@@ -2239,13 +2090,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -2287,13 +2132,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -2327,13 +2166,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -2381,13 +2214,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "mutate", c.req.header("x-org-id"));
     if (!authz.ok) {
       await recordStudioAuditLog(c.env.STUDIO_DB, {
         orgId: authz.orgId,
@@ -2450,8 +2277,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
               code: "INVALID_REQUEST",
               path: issue.path.join(".") || "body",
               message: issue.message,
-              suggestedFix:
-                "Provide { targetRevision: <number>, baseRevision?: <number>, author?: { type, id } }",
+              suggestedFix: "Provide { targetRevision: <number>, baseRevision?: <number>, author?: { type, id } }",
             })),
           },
         },
@@ -2482,9 +2308,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       orgId: authz.orgId,
       callerRole: authz.role,
       targetRevision: parsedBody.data.targetRevision,
-      ...(parsedBody.data.baseRevision !== undefined
-        ? { baseRevision: parsedBody.data.baseRevision }
-        : {}),
+      ...(parsedBody.data.baseRevision !== undefined ? { baseRevision: parsedBody.data.baseRevision } : {}),
       author: effectiveAuthor,
     };
 
@@ -2504,12 +2328,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       actorType: effectiveAuthor.type,
       actorId: effectiveAuthor.id,
       action: "project.revert",
-      status:
-        response.status === 200
-          ? "succeeded"
-          : response.status === 409
-            ? "conflict"
-            : "validation_failed",
+      status: response.status === 200 ? "succeeded" : response.status === 409 ? "conflict" : "validation_failed",
       details: {
         httpStatus: response.status,
         targetRevision: parsedBody.data.targetRevision,
@@ -2538,13 +2357,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -2588,13 +2401,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "mutate", c.req.header("x-org-id"));
     if (!authz.ok) {
       await recordStudioAuditLog(c.env.STUDIO_DB, {
         orgId: authz.orgId,
@@ -2639,10 +2446,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     // Accept either { bundle, author?, mode? } or a direct saas.blueprint.json object
-    const normalizedInput =
-      typeof rawJson === "object" && rawJson !== null && "bundle" in rawJson
-        ? rawJson
-        : { bundle: rawJson };
+    const normalizedInput = typeof rawJson === "object" && rawJson !== null && "bundle" in rawJson ? rawJson : { bundle: rawJson };
 
     const parsedBody = ImportBodySchema.safeParse(normalizedInput);
     if (!parsedBody.success || parsedBody.data.bundle === undefined) {
@@ -2665,16 +2469,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
                     code: "INVALID_REQUEST",
                     path: "bundle",
                     message: "bundle is required",
-                    suggestedFix:
-                      "Provide { bundle: <saas.blueprint.json>, author?: { type, id }, mode?: 'create' | 'replace' }",
+                    suggestedFix: "Provide { bundle: <saas.blueprint.json>, author?: { type, id }, mode?: 'create' | 'replace' }",
                   },
                 ]
               : parsedBody.error.issues.map((issue) => ({
                   code: "INVALID_REQUEST",
                   path: issue.path.join(".") || "body",
                   message: issue.message,
-                  suggestedFix:
-                    "Provide { bundle: <saas.blueprint.json>, author?: { type, id }, mode?: 'create' | 'replace' }",
+                  suggestedFix: "Provide { bundle: <saas.blueprint.json>, author?: { type, id }, mode?: 'create' | 'replace' }",
                 })),
           },
         },
@@ -2703,9 +2505,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
               mode: parsedBody.data.mode ?? "create",
               fromRevision: currentSnapshot?.revision ?? 0,
               importedSemanticHash: parsedBundle.semanticHash,
-              diff: summarizeSemanticDiff(
-                computeSemanticDiff(currentSnapshot?.state ?? createEmptyBlueprint(project), parsedBundle.state),
-              ),
+              diff: summarizeSemanticDiff(computeSemanticDiff(currentSnapshot?.state ?? createEmptyBlueprint(project), parsedBundle.state)),
             },
           },
           parsedBody.data.approvalId,
@@ -2737,22 +2537,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const resultBody = (await response.json()) as Record<string, unknown>;
     if (response.status === 200) {
       const bundleRec =
-        typeof parsedBody.data.bundle === "object" && parsedBody.data.bundle !== null
-          ? (parsedBody.data.bundle as Record<string, unknown>)
-          : {};
-      const bundleMeta =
-        typeof bundleRec.metadata === "object" && bundleRec.metadata !== null
-          ? (bundleRec.metadata as Record<string, unknown>)
-          : {};
+        typeof parsedBody.data.bundle === "object" && parsedBody.data.bundle !== null ? (parsedBody.data.bundle as Record<string, unknown>) : {};
+      const bundleMeta = typeof bundleRec.metadata === "object" && bundleRec.metadata !== null ? (bundleRec.metadata as Record<string, unknown>) : {};
       const sourceStr = typeof bundleMeta.source === "string" ? bundleMeta.source : "";
-      const explicitTemplate = parsedBody.data.templateId
-        ? getStarterTemplate(parsedBody.data.templateId)
-        : undefined;
+      const explicitTemplate = parsedBody.data.templateId ? getStarterTemplate(parsedBody.data.templateId) : undefined;
       const matchedTemplate =
         explicitTemplate ??
-        getStarterTemplate(
-          sourceStr.startsWith("presets/") ? sourceStr.slice("presets/".length) : sourceStr,
-        ) ??
+        getStarterTemplate(sourceStr.startsWith("presets/") ? sourceStr.slice("presets/".length) : sourceStr) ??
         (typeof bundleRec.project === "string" ? getStarterTemplate(bundleRec.project) : undefined);
       await recordStudioOnboardingEvent(c.env.STUDIO_DB, {
         orgId: authz.orgId,
@@ -2775,12 +2566,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       actorType: effectiveAuthor.type,
       actorId: effectiveAuthor.id,
       action: "project.import",
-      status:
-        response.status === 200
-          ? "succeeded"
-          : response.status === 409
-            ? "conflict"
-            : "validation_failed",
+      status: response.status === 200 ? "succeeded" : response.status === 409 ? "conflict" : "validation_failed",
       details: {
         httpStatus: response.status,
         revision: (resultBody.revision as number | undefined) ?? null,
@@ -2808,13 +2594,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -2850,13 +2630,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -2931,13 +2705,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "mutate", c.req.header("x-org-id"));
     if (!authz.ok) {
       await recordStudioAuditLog(c.env.STUDIO_DB, {
         orgId: authz.orgId,
@@ -3012,17 +2780,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     // AD-V8: an MCP token's edit is a proposal unless it asks to apply, and it may apply only preview-safe ops. The
     // decision keys on the verified caller kind; a Studio session user applies as before.
     const isAgentCaller = resolved.caller.kind === "mcp_token";
-    const effectiveMode: "apply" | "propose" =
-      parsedBody.data.mode ?? (isAgentCaller ? "propose" : "apply");
+    const effectiveMode: "apply" | "propose" = parsedBody.data.mode ?? (isAgentCaller ? "propose" : "apply");
     if (isAgentCaller && effectiveMode === "apply") {
       // The current blueprint: a `set_metadata` with replace drops its pinned catalogVersion (a brick upgrade), and an
       // edit inside a workflow that holds a money node is a money change.
-      const currentState =
-        (await createDurableObjectBlueprintClient(c.env.BLUEPRINT_DO).getProject(project))?.state ?? null;
+      const currentState = (await createDurableObjectBlueprintClient(c.env.BLUEPRINT_DO).getProject(project))?.state ?? null;
       const risk = classifyApplyRisk(
-        parsedBody.data.ops.filter(
-          (op): op is Record<string, unknown> => typeof op === "object" && op !== null,
-        ),
+        parsedBody.data.ops.filter((op): op is Record<string, unknown> => typeof op === "object" && op !== null),
         {
           liveProduction: await projectHasLiveProduction(c.env, authz.orgId, project),
           currentCatalogVersion: currentState?.metadata?.catalogVersion ?? null,
@@ -3051,15 +2815,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       project,
       orgId: authz.orgId,
       callerRole: authz.role,
-      ...(parsedBody.data.baseRevision !== undefined
-        ? { baseRevision: parsedBody.data.baseRevision }
-        : {}),
+      ...(parsedBody.data.baseRevision !== undefined ? { baseRevision: parsedBody.data.baseRevision } : {}),
       author: effectiveAuthor,
       ...(parsedBody.data.summary !== undefined ? { summary: parsedBody.data.summary } : {}),
       ...(parsedBody.data.mode !== undefined || isAgentCaller ? { mode: effectiveMode } : {}),
-      ...(parsedBody.data.proposalId !== undefined
-        ? { proposalId: parsedBody.data.proposalId }
-        : {}),
+      ...(parsedBody.data.proposalId !== undefined ? { proposalId: parsedBody.data.proposalId } : {}),
       ops: parsedBody.data.ops,
     };
 
@@ -3091,22 +2851,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       projectId: project,
       actorType: effectiveAuthor.type,
       actorId: effectiveAuthor.id,
-      action:
-        effectiveMode === "propose"
-          ? "project.proposal.create"
-          : "project.ops",
-      status:
-        response.status === 200
-          ? "succeeded"
-          : response.status === 409
-            ? "conflict"
-            : "validation_failed",
+      action: effectiveMode === "propose" ? "project.proposal.create" : "project.ops",
+      status: response.status === 200 ? "succeeded" : response.status === 409 ? "conflict" : "validation_failed",
       details: {
         httpStatus: response.status,
         revision: (resultBody.revision as number | undefined) ?? null,
-        ...(resultBody.proposalId
-          ? { proposalId: resultBody.proposalId as string }
-          : {}),
+        ...(resultBody.proposalId ? { proposalId: resultBody.proposalId as string } : {}),
         ...(effectiveAuthor.client ? { client: effectiveAuthor.client } : {}),
       },
     });
@@ -3132,13 +2882,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -3186,13 +2930,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "mutate", c.req.header("x-org-id"));
     if (!authz.ok) {
       await recordStudioAuditLog(c.env.STUDIO_DB, {
         orgId: authz.orgId,
@@ -3251,14 +2989,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       project,
       orgId: authz.orgId,
       callerRole: authz.role,
-      ...(parsedBody.data.baseRevision !== undefined
-        ? { baseRevision: parsedBody.data.baseRevision }
-        : {}),
+      ...(parsedBody.data.baseRevision !== undefined ? { baseRevision: parsedBody.data.baseRevision } : {}),
       author: effectiveAuthor,
       ...(parsedBody.data.summary !== undefined ? { summary: parsedBody.data.summary } : {}),
-      ...(parsedBody.data.proposalId !== undefined
-        ? { proposalId: parsedBody.data.proposalId }
-        : {}),
+      ...(parsedBody.data.proposalId !== undefined ? { proposalId: parsedBody.data.proposalId } : {}),
       ops: parsedBody.data.ops,
       mode: "propose",
     };
@@ -3279,12 +3013,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       actorType: effectiveAuthor.type,
       actorId: effectiveAuthor.id,
       action: "project.proposal.create",
-      status:
-        response.status === 200
-          ? "succeeded"
-          : response.status === 409
-            ? "conflict"
-            : "validation_failed",
+      status: response.status === 200 ? "succeeded" : response.status === 409 ? "conflict" : "validation_failed",
       details: {
         httpStatus: response.status,
         proposalId: (resultBody.proposalId as string | undefined) ?? null,
@@ -3330,13 +3059,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json(notReviewer, 403);
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "mutate", c.req.header("x-org-id"));
     if (!authz.ok) {
       await recordStudioAuditLog(c.env.STUDIO_DB, {
         orgId: authz.orgId,
@@ -3417,16 +3140,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       projectId: project,
       actorType: effectiveReviewer.type,
       actorId: effectiveReviewer.id,
-      action:
-        proposalObj?.status === "partially_accepted"
-          ? "project.proposal.partially_accept"
-          : "project.proposal.accept",
-      status:
-        response.status === 200
-          ? "succeeded"
-          : response.status === 409
-            ? "conflict"
-            : "validation_failed",
+      action: proposalObj?.status === "partially_accepted" ? "project.proposal.partially_accept" : "project.proposal.accept",
+      status: response.status === 200 ? "succeeded" : response.status === 409 ? "conflict" : "validation_failed",
       details: {
         httpStatus: response.status,
         proposalId,
@@ -3474,13 +3189,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json(notReviewer, 403);
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "mutate", c.req.header("x-org-id"));
     if (!authz.ok) {
       await recordStudioAuditLog(c.env.STUDIO_DB, {
         orgId: authz.orgId,
@@ -3581,35 +3290,21 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
     const project = c.req.param("project");
     if (!PROJECT_SLUG_PATTERN.test(project)) {
-      return c.json(
-        { error: { code: "INVALID_PROJECT_SLUG", message: `Invalid project slug "${project}"` } },
-        400,
-      );
+      return c.json({ error: { code: "INVALID_PROJECT_SLUG", message: `Invalid project slug "${project}"` } }, 400);
     }
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
     const statusParam = c.req.query("status");
-    const allowedStatuses: readonly ApprovalStatus[] = [
-      "pending",
-      "approved",
-      "rejected",
-      "consumed",
-      "expired",
-    ];
+    const allowedStatuses: readonly ApprovalStatus[] = ["pending", "approved", "rejected", "consumed", "expired"];
     const status = allowedStatuses.find((s) => s === statusParam);
     const approvals = await listApprovalRequests(c.env.STUDIO_DB, authz.orgId, project, status);
     return c.json({ project, approvals }, 200);
   });
 
-  const handleApprovalDecision = (decision: "approved" | "rejected") =>
+  const handleApprovalDecision =
+    (decision: "approved" | "rejected") =>
     async (c: { req: { raw: Request; param(name: string): string; header(name: string): string | undefined }; env: StudioApiEnv }) => {
       const auditAction = decision === "approved" ? "project.approval.approve" : "project.approval.reject";
       const resolved = await resolveStudioCaller(c.env, c.req.raw);
@@ -3619,10 +3314,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       const project = c.req.param("project");
       const approvalId = c.req.param("approvalId");
       if (!PROJECT_SLUG_PATTERN.test(project)) {
-        return Response.json(
-          { error: { code: "INVALID_PROJECT_SLUG", message: `Invalid project slug "${project}"` } },
-          { status: 400 },
-        );
+        return Response.json({ error: { code: "INVALID_PROJECT_SLUG", message: `Invalid project slug "${project}"` } }, { status: 400 });
       }
       const caller = resolved.caller;
       const notReviewer = sessionReviewerRefusal(caller);
@@ -3640,13 +3332,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         }
         return Response.json(notReviewer, { status: 403 });
       }
-      const authz = await authorizeProjectAccess(
-        c.env.STUDIO_DB,
-        caller,
-        project,
-        "mutate",
-        c.req.header("x-org-id"),
-      );
+      const authz = await authorizeProjectAccess(c.env.STUDIO_DB, caller, project, "mutate", c.req.header("x-org-id"));
       if (!authz.ok) {
         await recordStudioAuditLog(c.env.STUDIO_DB, {
           orgId: authz.orgId,
@@ -3660,10 +3346,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         return Response.json({ error: authz.error }, { status: authz.status });
       }
       if (!canMutateProject(authz.role)) {
-        return Response.json(
-          { error: { code: "FORBIDDEN_ROLE", message: "Caller lacks mutate permission for project" } },
-          { status: 403 },
-        );
+        return Response.json({ error: { code: "FORBIDDEN_ROLE", message: "Caller lacks mutate permission for project" } }, { status: 403 });
       }
       const decided = await decideApprovalRequest(c.env.STUDIO_DB, {
         orgId: authz.orgId,
@@ -3681,9 +3364,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         status: decided.ok ? "succeeded" : "refused",
         details: {
           approvalId,
-          ...(decided.ok
-            ? { gatedAction: decided.approval.action, env: decided.approval.env }
-            : { code: decided.body.error.code }),
+          ...(decided.ok ? { gatedAction: decided.approval.action, env: decided.approval.env } : { code: decided.body.error.code }),
         },
       });
       if (!decided.ok) {
@@ -3717,29 +3398,16 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
 
     const authorFilter = (c.req.query("author") ?? "all").trim();
     const typeFilter = (c.req.query("type") ?? "all").trim().toLowerCase();
-    const windowFilter = (
-      c.req.query("window") ??
-      c.req.query("since") ??
-      "all"
-    ).trim();
+    const windowFilter = (c.req.query("window") ?? c.req.query("since") ?? "all").trim();
     const limitRaw = c.req.query("limit");
-    const limit =
-      limitRaw !== undefined && Number.isFinite(Number(limitRaw))
-        ? Math.max(1, Math.min(500, Math.floor(Number(limitRaw))))
-        : 100;
+    const limit = limitRaw !== undefined && Number.isFinite(Number(limitRaw)) ? Math.max(1, Math.min(500, Math.floor(Number(limitRaw)))) : 100;
 
     const normalizeIso = (raw: string | null | undefined): string => {
       if (!raw) return new Date(0).toISOString();
@@ -3765,33 +3433,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       // Ignore if table not populated
     }
 
-    const formatActivityActor = (input: {
-      type: "human" | "agent";
-      id: string;
-      client?: string;
-      onBehalfOf?: string;
-    }) => {
+    const formatActivityActor = (input: { type: "human" | "agent"; id: string; client?: string; onBehalfOf?: string }) => {
       const rawId = input.id.trim();
-      const isAgent =
-        input.type === "agent" ||
-        rawId.startsWith("agent:") ||
-        rawId.startsWith("mcp_") ||
-        tokenClientsById.has(rawId);
+      const isAgent = input.type === "agent" || rawId.startsWith("agent:") || rawId.startsWith("mcp_") || tokenClientsById.has(rawId);
       const effectiveType: "human" | "agent" = isAgent ? "agent" : "human";
       const displayId =
-        effectiveType === "agent"
-          ? rawId.startsWith("agent:")
-            ? rawId
-            : `agent:${rawId}`
-          : rawId.startsWith("user:")
-            ? rawId
-            : `user:${rawId}`;
+        effectiveType === "agent" ? (rawId.startsWith("agent:") ? rawId : `agent:${rawId}`) : rawId.startsWith("user:") ? rawId : `user:${rawId}`;
       const inferredClient =
-        input.client ??
-        tokenClientsById.get(rawId) ??
-        (effectiveType === "agent" && rawId.startsWith("agent:")
-          ? rawId.slice("agent:".length)
-          : undefined);
+        input.client ?? tokenClientsById.get(rawId) ?? (effectiveType === "agent" && rawId.startsWith("agent:") ? rawId.slice("agent:".length) : undefined);
       return {
         type: effectiveType,
         id: rawId,
@@ -3827,10 +3476,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const stub = getBlueprintStub(c.env, project);
 
     // 1. Committed Revisions
-    const revRes = await stub.fetch(
-      `http://blueprint-do/revisions?project=${encodeURIComponent(project)}&limit=200`,
-      { method: "GET" },
-    );
+    const revRes = await stub.fetch(`http://blueprint-do/revisions?project=${encodeURIComponent(project)}&limit=200`, { method: "GET" });
     if (revRes.ok) {
       const revData = (await revRes.json()) as RevisionHistoryPayload;
       for (const rev of revData.revisions ?? []) {
@@ -3859,10 +3505,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     // 2. Proposals (created + reviewed)
-    const propRes = await stub.fetch(
-      `http://blueprint-do/proposals?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
+    const propRes = await stub.fetch(`http://blueprint-do/proposals?project=${encodeURIComponent(project)}`, { method: "GET" });
     if (propRes.ok) {
       const propData = (await propRes.json()) as {
         proposals?: ProposalRecord[];
@@ -3889,9 +3532,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         });
 
         if (prop.status !== "pending" && prop.reviewedAt) {
-          const reviewedActor = formatActivityActor(
-            prop.reviewedBy ?? { type: "human", id: "user:reviewer" },
-          );
+          const reviewedActor = formatActivityActor(prop.reviewedBy ?? { type: "human", id: "user:reviewer" });
           events.push({
             id: `prop_reviewed_${prop.proposalId}`,
             type: "proposal",
@@ -3941,10 +3582,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         created_at: string;
       }>();
 
-    const runActorByRunId = new Map<
-      string,
-      ReturnType<typeof formatActivityActor>
-    >();
+    const runActorByRunId = new Map<string, ReturnType<typeof formatActivityActor>>();
     const seenBuildRevisions = new Set<number>();
     const seenDeployIds = new Set<string>();
 
@@ -3968,8 +3606,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       }
 
       if (row.action === "project.build" && row.status === "succeeded") {
-        const revNum =
-          typeof details.revision === "number" ? details.revision : null;
+        const revNum = typeof details.revision === "number" ? details.revision : null;
         if (revNum !== null) {
           seenBuildRevisions.add(revNum);
         }
@@ -3984,17 +3621,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           summary: `Built project${revNum !== null ? ` at r${revNum}` : ""} (${String(details.buildHash ?? "").slice(0, 12)})`,
           details,
         });
-      } else if (
-        row.action.startsWith("secret.") ||
-        row.action.startsWith("connection.") ||
-        row.action.startsWith("token.")
-      ) {
-        const refLabel =
-          typeof details.ref === "string"
-            ? details.ref
-            : typeof details.tokenRef === "string"
-              ? details.tokenRef
-              : "";
+      } else if (row.action.startsWith("secret.") || row.action.startsWith("connection.") || row.action.startsWith("token.")) {
+        const refLabel = typeof details.ref === "string" ? details.ref : typeof details.tokenRef === "string" ? details.tokenRef : "";
         events.push({
           id: `conn_${row.id}`,
           type: "connection",
@@ -4013,17 +3641,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         row.action === "environment.promote" ||
         row.action === "environment.rollback"
       ) {
-        const deployId =
-          typeof details.deployId === "string" ? details.deployId : row.id;
+        const deployId = typeof details.deployId === "string" ? details.deployId : row.id;
         seenDeployIds.add(deployId);
-        const envName =
-          typeof details.env === "string"
-            ? details.env
-            : typeof details.envName === "string"
-              ? details.envName
-              : "preview";
-        const revNum =
-          typeof details.revision === "number" ? details.revision : null;
+        const envName = typeof details.env === "string" ? details.env : typeof details.envName === "string" ? details.envName : "preview";
+        const revNum = typeof details.revision === "number" ? details.revision : null;
         events.push({
           id: `deploy_${deployId}`,
           type: "deploy",
@@ -4102,12 +3723,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     for (const d of deployRows.results ?? []) {
       if (seenDeployIds.has(d.deploy_id)) continue;
       const actor = formatActivityActor({
-        type:
-          d.actor_id.startsWith("agent:") ||
-          d.actor_id.startsWith("mcp_") ||
-          tokenClientsById.has(d.actor_id)
-            ? "agent"
-            : "human",
+        type: d.actor_id.startsWith("agent:") || d.actor_id.startsWith("mcp_") || tokenClientsById.has(d.actor_id) ? "agent" : "human",
         id: d.actor_id,
       });
       events.push({
@@ -4206,9 +3822,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           return ev.actor.type === "agent";
         }
         const matchId =
-          ev.actor.id.toLowerCase() === lower ||
-          ev.actor.displayId.toLowerCase() === lower ||
-          (ev.actor.client && ev.actor.client.toLowerCase() === lower);
+          ev.actor.id.toLowerCase() === lower || ev.actor.displayId.toLowerCase() === lower || (ev.actor.client && ev.actor.client.toLowerCase() === lower);
         return Boolean(matchId);
       }
       return true;
@@ -4257,13 +3871,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "mutate", c.req.header("x-org-id"));
     if (!authz.ok) {
       await recordStudioAuditLog(c.env.STUDIO_DB, {
         orgId: authz.orgId,
@@ -4278,15 +3886,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const stub = getBlueprintStub(c.env, project);
-    const stateRes = await stub.fetch(
-      `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
     const current = (await stateRes.json()) as ProjectStatePayload;
 
-    const buildBlockingNeeds = current.readiness.needs.filter(
-      (n) => n.code !== "UNBOUND_BRICK_SECRET" && n.code !== "UNBOUND_CONNECTION",
-    );
+    const buildBlockingNeeds = current.readiness.needs.filter((n) => n.code !== "UNBOUND_BRICK_SECRET" && n.code !== "UNBOUND_CONNECTION");
 
     if (current.revision === 0 || buildBlockingNeeds.length > 0) {
       await recordStudioAuditLog(c.env.STUDIO_DB, {
@@ -4339,10 +3942,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const buildHash = await computeBuildHash(assembled.files);
     const fileCount = Object.keys(assembled.files).length;
-    const byteCount = Object.values(assembled.files).reduce(
-      (sum, text) => sum + new TextEncoder().encode(text).length,
-      0,
-    );
+    const byteCount = Object.values(assembled.files).reduce((sum, text) => sum + new TextEncoder().encode(text).length, 0);
 
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
@@ -4358,15 +3958,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
            files_json = excluded.files_json,
            created_at = excluded.created_at`,
       )
-      .bind(
-        project,
-        current.revision,
-        buildHash,
-        current.semanticHash,
-        fileCount,
-        byteCount,
-        JSON.stringify(assembled.files),
-      )
+      .bind(project, current.revision, buildHash, current.semanticHash, fileCount, byteCount, JSON.stringify(assembled.files))
       .run();
 
     await recordStudioAuditLog(db, {
@@ -4411,13 +4003,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -4525,13 +4111,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -4540,10 +4120,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     await ensureStudioD1Schema(db);
 
     const stub = getBlueprintStub(c.env, project);
-    const stateRes = await stub.fetch(
-      `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
     const current = (await stateRes.json()) as ProjectStatePayload;
     const secretRefs = current.state?.secretRefs ?? [];
 
@@ -4682,10 +4259,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const secrets: Array<Record<string, unknown>> = rows.map((row) => {
       seenRefs.add(row.ref);
       const livePx = livePxByRef.get(row.ref);
-      const effectiveStatus =
-        livePx?.status === "expired" || livePx?.status === "revoked" || livePx?.status === "error"
-          ? livePx.status
-          : row.status;
+      const effectiveStatus = livePx?.status === "expired" || livePx?.status === "revoked" || livePx?.status === "error" ? livePx.status : row.status;
       return {
         id: row.id,
         ref: row.ref,
@@ -4726,13 +4300,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         appOrBrick: meta.app,
         envScope: meta.env_scope,
         keyHint: livePx?.key_hint ?? meta.key_hint,
-        status: (rawStatus === "connected" ? "valid" : rawStatus) as
-          | "valid"
-          | "connected"
-          | "expired"
-          | "revoked"
-          | "error"
-          | "missing",
+        status: (rawStatus === "connected" ? "valid" : rawStatus) as "valid" | "connected" | "expired" | "revoked" | "error" | "missing",
         connectionStatus: rawStatus,
         expiresAt: livePx?.expires_at ?? meta.expires_at ?? null,
         lastCheckedAt: livePx?.last_checked_at ?? meta.last_checked_at ?? null,
@@ -4748,8 +4316,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         secrets.push({
           id: `missing:${project}:${ref}`,
           ref,
-          kind:
-            firstTarget?.targetKind === "brick" ? "brick_secret" : "api_key",
+          kind: firstTarget?.targetKind === "brick" ? "brick_secret" : "api_key",
           label: firstTarget?.secretName ?? ref,
           appOrBrick: firstTarget?.targetId ?? "unbound",
           envScope: "all",
@@ -4867,8 +4434,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         {
           error: {
             code: "FORBIDDEN_AGENT_SECRET_ACCESS",
-            message:
-              "MCP agent tokens are forbidden from writing or rotating secret values. Use the human Studio Connections Center.",
+            message: "MCP agent tokens are forbidden from writing or rotating secret values. Use the human Studio Connections Center.",
           },
         },
         403,
@@ -4932,9 +4498,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         {
           error: {
             code: "INVALID_SECRET_REF",
-            message:
-              refCheck.reason ??
-              `Secret ref "${parsedBody.data.ref}" must start with sec_ and match ^sec_[a-z0-9_]{3,60}$`,
+            message: refCheck.reason ?? `Secret ref "${parsedBody.data.ref}" must start with sec_ and match ^sec_[a-z0-9_]{3,60}$`,
           },
         },
         422,
@@ -4942,28 +4506,18 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const activeSandboxForSecret = await db
-      .prepare(
-        "SELECT sandbox_id FROM studio_sandboxes WHERE project_id = ? AND status = 'active' LIMIT 1",
-      )
+      .prepare("SELECT sandbox_id FROM studio_sandboxes WHERE project_id = ? AND status = 'active' LIMIT 1")
       .bind(project)
       .first<{ sandbox_id: string }>();
 
-    if (
-      activeSandboxForSecret ||
-      parsedBody.data.envScope === "sandbox"
-    ) {
-      const livePaymentCheck = isLivePaymentCredential(
-        `${parsedBody.data.ref}:${parsedBody.data.label}:${parsedBody.data.appOrBrick}`,
-        parsedBody.data.value,
-      );
+    if (activeSandboxForSecret || parsedBody.data.envScope === "sandbox") {
+      const livePaymentCheck = isLivePaymentCredential(`${parsedBody.data.ref}:${parsedBody.data.label}:${parsedBody.data.appOrBrick}`, parsedBody.data.value);
       if (livePaymentCheck.blocked) {
         return c.json(
           {
             error: {
               code: "SANDBOX_LIVE_PAYMENTS_BLOCKED",
-              message:
-                livePaymentCheck.reason ??
-                "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
+              message: livePaymentCheck.reason ?? "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
             },
           },
           403,
@@ -5013,8 +4567,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     // Also seal into Case A px_connections (environment D1) and record non-secret metadata in studio_connections_metadata
     const envDb = c.env.DB ?? db;
-    const authType =
-      parsedBody.data.kind === "webhook_secret" ? "webhook-secret" : "api-key";
+    const authType = parsedBody.data.kind === "webhook_secret" ? "webhook-secret" : "api-key";
     await assertConnectionRefFree(envDb, parsedBody.data.ref, project);
     await upsertSealedConnection(
       envDb,
@@ -5192,13 +4745,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "mutate", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -5219,24 +4766,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       .bind(ref, project)
       .first<{ ref: string }>();
     if (!heldVault && !heldMeta && !heldLive) {
-      return c.json(
-        { error: { code: "SECRET_NOT_FOUND", message: `Secret "${ref}" not found in this project` } },
-        404,
-      );
+      return c.json({ error: { code: "SECRET_NOT_FOUND", message: `Secret "${ref}" not found in this project` } }, 404);
     }
 
-    await db
-      .prepare("DELETE FROM studio_secret_vault WHERE project_id = ? AND ref = ?")
-      .bind(project, ref)
-      .run();
-    await db
-      .prepare("DELETE FROM studio_connections_metadata WHERE project_id = ? AND ref = ?")
-      .bind(project, ref)
-      .run();
-    await envDbForDelete
-      .prepare("DELETE FROM px_connections WHERE ref = ? AND project_id = ?")
-      .bind(ref, project)
-      .run();
+    await db.prepare("DELETE FROM studio_secret_vault WHERE project_id = ? AND ref = ?").bind(project, ref).run();
+    await db.prepare("DELETE FROM studio_connections_metadata WHERE project_id = ? AND ref = ?").bind(project, ref).run();
+    await envDbForDelete.prepare("DELETE FROM px_connections WHERE ref = ? AND project_id = ?").bind(ref, project).run();
 
     await recordStudioAuditLog(db, {
       orgId: authz.orgId,
@@ -5251,14 +4786,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     let unbindResponsePayload: Record<string, unknown> | null = null;
     if (c.req.query("unbind") === "true") {
       const stub = getBlueprintStub(c.env, project);
-      const stateRes = await stub.fetch(
-        `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-        { method: "GET" },
-      );
+      const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
       const current = (await stateRes.json()) as ProjectStatePayload;
-      const matchingRefs = (current.state?.secretRefs ?? []).filter(
-        (sr) => sr.ref === ref,
-      );
+      const matchingRefs = (current.state?.secretRefs ?? []).filter((sr) => sr.ref === ref);
       if (matchingRefs.length > 0) {
         const ops = matchingRefs.map((sr, idx) => ({
           opId: `unbind-sec-${ref}-${idx}-${Date.now()}`,
@@ -5326,8 +4856,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         {
           error: {
             code: "FORBIDDEN_AGENT_SECRET_ACCESS",
-            message:
-              "MCP agents are forbidden from initiating OAuth2 flows directly. Use request_connection to ask the user to authorize in Studio.",
+            message: "MCP agents are forbidden from initiating OAuth2 flows directly. Use request_connection to ask the user to authorize in Studio.",
           },
         },
         403,
@@ -5347,10 +4876,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const appSlug = (c.req.param("app") ?? "").trim().toLowerCase();
-    const project =
-      (c.req.param("project") ??
-        c.req.query("project") ??
-        (typeof rawBody.project === "string" ? rawBody.project : "default")).trim();
+    const project = (c.req.param("project") ?? c.req.query("project") ?? (typeof rawBody.project === "string" ? rawBody.project : "default")).trim();
     if (!PROJECT_SLUG_PATTERN.test(project)) {
       return c.json(
         {
@@ -5368,18 +4894,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       resolved.caller,
       project,
       "mutate",
-      (typeof rawBody.orgId === "string" ? rawBody.orgId : undefined) ??
-        c.req.query("orgId") ??
-        c.req.header("x-org-id"),
+      (typeof rawBody.orgId === "string" ? rawBody.orgId : undefined) ?? c.req.query("orgId") ?? c.req.header("x-org-id"),
     );
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
 
     const oauthCfg = getIntegrationOAuthConfig(appSlug);
-    const requestedScopesRaw =
-      c.req.query("scopes") ??
-      (Array.isArray(rawBody.scopes) ? (rawBody.scopes as string[]).join(",") : undefined);
+    const requestedScopesRaw = c.req.query("scopes") ?? (Array.isArray(rawBody.scopes) ? (rawBody.scopes as string[]).join(",") : undefined);
     const scopes = requestedScopesRaw
       ? requestedScopesRaw
           .split(/[,\s]+/)
@@ -5388,24 +4910,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       : oauthCfg.defaultScopes;
 
     const rawRef =
-      c.req.query("ref") ??
-      (typeof rawBody.ref === "string" && rawBody.ref.trim()
-        ? rawBody.ref.trim()
-        : `sec_${appSlug.replace(/[^a-z0-9_]/g, "_")}_oauth`);
-    const label =
-      c.req.query("label") ??
-      (typeof rawBody.label === "string" && rawBody.label.trim()
-        ? rawBody.label.trim()
-        : `${appSlug} OAuth2 Connection`);
-    const envScope =
-      c.req.query("env") ??
-      (typeof rawBody.envScope === "string" && rawBody.envScope.trim()
-        ? rawBody.envScope.trim()
-        : "preview");
+      c.req.query("ref") ?? (typeof rawBody.ref === "string" && rawBody.ref.trim() ? rawBody.ref.trim() : `sec_${appSlug.replace(/[^a-z0-9_]/g, "_")}_oauth`);
+    const label = c.req.query("label") ?? (typeof rawBody.label === "string" && rawBody.label.trim() ? rawBody.label.trim() : `${appSlug} OAuth2 Connection`);
+    const envScope = c.req.query("env") ?? (typeof rawBody.envScope === "string" && rawBody.envScope.trim() ? rawBody.envScope.trim() : "preview");
     // Story 1.17: trimmed; `default` (the project-shared bucket) or one of the project's own preview workspaces.
     const connectionWorkspace = await resolveConnectionWorkspace({
       studioDb: db,
-      projectDataDb: ((await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null),
+      projectDataDb: (await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null,
       project,
       requested: c.req.query("workspaceId") ?? rawBody.workspaceId,
     });
@@ -5499,9 +5010,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const isAgentCaller =
-      Boolean(c.req.header("x-mcp-client-name")) ||
-      Boolean(c.req.header("x-mcp-client-id"));
+    const isAgentCaller = Boolean(c.req.header("x-mcp-client-name")) || Boolean(c.req.header("x-mcp-client-id"));
     if (isAgentCaller) {
       return c.json(
         {
@@ -5527,14 +5036,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const appSlug = (c.req.param("app") ?? "").trim().toLowerCase();
-    const stateParam = (
-      c.req.query("state") ??
-      (typeof rawBody.state === "string" ? rawBody.state : "")
-    ).trim();
-    const codeParam = (
-      c.req.query("code") ??
-      (typeof rawBody.code === "string" ? rawBody.code : "")
-    ).trim();
+    const stateParam = (c.req.query("state") ?? (typeof rawBody.state === "string" ? rawBody.state : "")).trim();
+    const codeParam = (c.req.query("code") ?? (typeof rawBody.code === "string" ? rawBody.code : "")).trim();
 
     if (!stateParam || !codeParam) {
       return c.json(
@@ -5587,10 +5090,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     // Consume single-use state immediately
-    await db
-      .prepare("DELETE FROM studio_oauth_states WHERE state = ?")
-      .bind(stateParam)
-      .run();
+    await db.prepare("DELETE FROM studio_oauth_states WHERE state = ?").bind(stateParam).run();
 
     const expMs = Date.parse(stateRow.expires_at);
     if (Number.isFinite(expMs) && expMs < Date.now()) {
@@ -5650,23 +5150,15 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const accessToken =
-      typeof tokenPayload.access_token === "string"
-        ? tokenPayload.access_token
-        : typeof tokenPayload.accessToken === "string"
-          ? tokenPayload.accessToken
-          : "";
+      typeof tokenPayload.access_token === "string" ? tokenPayload.access_token : typeof tokenPayload.accessToken === "string" ? tokenPayload.accessToken : "";
     const refreshToken =
       typeof tokenPayload.refresh_token === "string"
         ? tokenPayload.refresh_token
         : typeof tokenPayload.refreshToken === "string"
           ? tokenPayload.refreshToken
           : undefined;
-    const expiresInSec =
-      typeof tokenPayload.expires_in === "number" && Number.isFinite(tokenPayload.expires_in)
-        ? tokenPayload.expires_in
-        : 3600;
-    const tokenType =
-      typeof tokenPayload.token_type === "string" ? tokenPayload.token_type : "Bearer";
+    const expiresInSec = typeof tokenPayload.expires_in === "number" && Number.isFinite(tokenPayload.expires_in) ? tokenPayload.expires_in : 3600;
+    const tokenType = typeof tokenPayload.token_type === "string" ? tokenPayload.token_type : "Bearer";
 
     if (!accessToken) {
       return c.json(
@@ -5697,8 +5189,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const nowMs = Date.now();
     const nowIso = new Date(nowMs).toISOString();
     const expiresAtIso = new Date(nowMs + expiresInSec * 1000).toISOString();
-    const connKeySecret =
-      c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
+    const connKeySecret = c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
     const envDb = c.env.DB ?? db;
 
     await assertConnectionRefFree(envDb, stateRow.ref, stateRow.project_id);
@@ -5836,22 +5327,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
 
     const stub = getBlueprintStub(c.env, project);
-    const stateRes = await stub.fetch(
-      `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
     const current = (await stateRes.json()) as ProjectStatePayload;
     const secretRefs = current.state?.secretRefs ?? [];
 
@@ -6083,8 +5565,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         {
           error: {
             code: "FORBIDDEN_AGENT_SECRET_ACCESS",
-            message:
-              "MCP agent tokens are forbidden from writing or rotating connection credentials. Use request_connection instead.",
+            message: "MCP agent tokens are forbidden from writing or rotating connection credentials. Use request_connection instead.",
           },
         },
         403,
@@ -6137,7 +5618,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     // Story 1.17: the stored workspace is trimmed and must be `default` or one of the project's own preview workspaces.
     const connectionWorkspace = await resolveConnectionWorkspace({
       studioDb: db,
-      projectDataDb: ((await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null),
+      projectDataDb: (await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null,
       project,
       requested: data.workspaceId,
     });
@@ -6152,26 +5633,19 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           : { apiKey: rawValue, token: rawValue };
 
     const activeSandboxForConn = await db
-      .prepare(
-        "SELECT sandbox_id FROM studio_sandboxes WHERE project_id = ? AND status = 'active' LIMIT 1",
-      )
+      .prepare("SELECT sandbox_id FROM studio_sandboxes WHERE project_id = ? AND status = 'active' LIMIT 1")
       .bind(project)
       .first<{ sandbox_id: string }>();
 
     if (activeSandboxForConn || data.envScope === "sandbox") {
       const checkPayloadStr = `${rawValue} ${JSON.stringify(credentialsPayload)}`;
-      const livePaymentCheck = isLivePaymentCredential(
-        `${data.ref}:${data.app}:${data.label ?? ""}`,
-        checkPayloadStr,
-      );
+      const livePaymentCheck = isLivePaymentCredential(`${data.ref}:${data.app}:${data.label ?? ""}`, checkPayloadStr);
       if (livePaymentCheck.blocked) {
         return c.json(
           {
             error: {
               code: "SANDBOX_LIVE_PAYMENTS_BLOCKED",
-              message:
-                livePaymentCheck.reason ??
-                "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
+              message: livePaymentCheck.reason ?? "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
             },
           },
           403,
@@ -6180,8 +5654,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const nowIso = new Date().toISOString();
-    const connKeySecret =
-      c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
+    const connKeySecret = c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
     const envDb = c.env.DB ?? db;
     const label = data.label ?? `${data.app} (${data.authType})`;
 
@@ -6355,13 +5828,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "mutate", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -6369,9 +5836,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const envDb = c.env.DB ?? db;
     await ensureConnectionsTable(envDb);
     const pxRow = await envDb
-      .prepare(
-        "SELECT ref, app, auth_type, ciphertext_b64, iv_b64, status, expires_at FROM px_connections WHERE ref = ? AND project_id = ? LIMIT 1",
-      )
+      .prepare("SELECT ref, app, auth_type, ciphertext_b64, iv_b64, status, expires_at FROM px_connections WHERE ref = ? AND project_id = ? LIMIT 1")
       .bind(ref, project)
       .first<{
         ref: string;
@@ -6396,17 +5861,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const nowIso = new Date().toISOString();
-    const connKeySecret =
-      c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
-    let status: "connected" | "expired" | "revoked" | "error" =
-      pxRow.status === "revoked" ? "revoked" : "connected";
+    const connKeySecret = c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
+    let status: "connected" | "expired" | "revoked" | "error" = pxRow.status === "revoked" ? "revoked" : "connected";
 
     try {
-      await unsealConnectionCredentials(
-        pxRow.ciphertext_b64,
-        pxRow.iv_b64,
-        connKeySecret,
-      );
+      await unsealConnectionCredentials(pxRow.ciphertext_b64, pxRow.iv_b64, connKeySecret);
       if (pxRow.expires_at) {
         const expMs = Date.parse(pxRow.expires_at);
         if (Number.isFinite(expMs) && expMs <= Date.now()) {
@@ -6418,15 +5877,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     await envDb
-      .prepare(
-        "UPDATE px_connections SET status = ?, last_checked_at = ?, updated_at = ? WHERE ref = ? AND project_id = ?",
-      )
+      .prepare("UPDATE px_connections SET status = ?, last_checked_at = ?, updated_at = ? WHERE ref = ? AND project_id = ?")
       .bind(status, nowIso, nowIso, ref, project)
       .run();
     await db
-      .prepare(
-        "UPDATE studio_connections_metadata SET status = ?, last_checked_at = ?, updated_at = ? WHERE project_id = ? AND ref = ?",
-      )
+      .prepare("UPDATE studio_connections_metadata SET status = ?, last_checked_at = ?, updated_at = ? WHERE project_id = ? AND ref = ?")
       .bind(status, nowIso, nowIso, project, ref)
       .run();
 
@@ -6469,13 +5924,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "mutate", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -6493,9 +5942,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const envDb = c.env.DB ?? db;
     await ensureConnectionsTable(envDb);
     const existing = await envDb
-      .prepare(
-        "SELECT ref, app, auth_type, label, scopes_json, workspace_id, env_name FROM px_connections WHERE ref = ? AND project_id = ? LIMIT 1",
-      )
+      .prepare("SELECT ref, app, auth_type, label, scopes_json, workspace_id, env_name FROM px_connections WHERE ref = ? AND project_id = ? LIMIT 1")
       .bind(ref, project)
       .first<{
         ref: string;
@@ -6509,30 +5956,17 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     // Story 16: a ref held by another project is not this project's connection to update.
     if (!existing) {
-      const foreign = await envDb
-        .prepare("SELECT project_id FROM px_connections WHERE ref = ? LIMIT 1")
-        .bind(ref)
-        .first<{ project_id: string }>();
+      const foreign = await envDb.prepare("SELECT project_id FROM px_connections WHERE ref = ? LIMIT 1").bind(ref).first<{ project_id: string }>();
       if (foreign) {
-        return c.json(
-          { error: { code: "CONNECTION_NOT_FOUND", message: `Connection "${ref}" not found` } },
-          404,
-        );
+        return c.json({ error: { code: "CONNECTION_NOT_FOUND", message: `Connection "${ref}" not found` } }, 404);
       }
     }
 
-    const appSlug =
-      (typeof rawBody.app === "string" && rawBody.app.trim()
-        ? rawBody.app.trim()
-        : existing?.app) ?? "custom";
-    const authType =
-      (typeof rawBody.authType === "string" && rawBody.authType.trim()
-        ? rawBody.authType.trim()
-        : existing?.auth_type) ?? "oauth2";
+    const appSlug = (typeof rawBody.app === "string" && rawBody.app.trim() ? rawBody.app.trim() : existing?.app) ?? "custom";
+    const authType = (typeof rawBody.authType === "string" && rawBody.authType.trim() ? rawBody.authType.trim() : existing?.auth_type) ?? "oauth2";
 
     const nowIso = new Date().toISOString();
-    const connKeySecret =
-      c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
+    const connKeySecret = c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
 
     if (typeof rawBody.value === "string" || typeof rawBody.credentials === "object") {
       const valStr = typeof rawBody.value === "string" ? rawBody.value : "";
@@ -6546,12 +5980,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
                 expiresAt: new Date(Date.now() + 3600_000).toISOString(),
               }
             : { apiKey: valStr, token: valStr };
-      const expiresAt =
-        typeof creds.expiresAt === "string"
-          ? creds.expiresAt
-          : authType === "oauth2"
-            ? new Date(Date.now() + 3600_000).toISOString()
-            : null;
+      const expiresAt = typeof creds.expiresAt === "string" ? creds.expiresAt : authType === "oauth2" ? new Date(Date.now() + 3600_000).toISOString() : null;
       let scopes: string[] = [];
       try {
         const parsed = JSON.parse(existing?.scopes_json ?? "[]");
@@ -6586,9 +6015,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         .bind(expiresAt, nowIso, sealedMeta.keyHint, nowIso, project, ref)
         .run();
       await db
-        .prepare(
-          "UPDATE studio_secret_vault SET status = 'valid', key_hint = ?, updated_at = ? WHERE project_id = ? AND ref = ?",
-        )
+        .prepare("UPDATE studio_secret_vault SET status = 'valid', key_hint = ?, updated_at = ? WHERE project_id = ? AND ref = ?")
         .bind(sealedMeta.keyHint, nowIso, project, ref)
         .run();
       await recordStudioAuditLog(db, {
@@ -6720,13 +6147,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "mutate",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "mutate", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -6734,32 +6155,17 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const envDb = c.env.DB ?? db;
     await ensureConnectionsTable(envDb);
     // Story 16: only this project's own connection can be deleted; a ref that is not this project's is 404.
-    const ownLive = await envDb
-      .prepare("SELECT ref FROM px_connections WHERE ref = ? AND project_id = ? LIMIT 1")
-      .bind(ref, project)
-      .first<{ ref: string }>();
+    const ownLive = await envDb.prepare("SELECT ref FROM px_connections WHERE ref = ? AND project_id = ? LIMIT 1").bind(ref, project).first<{ ref: string }>();
     const ownMeta = await db
       .prepare("SELECT ref FROM studio_connections_metadata WHERE project_id = ? AND ref = ? LIMIT 1")
       .bind(project, ref)
       .first<{ ref: string }>();
     if (!ownLive && !ownMeta) {
-      return c.json(
-        { error: { code: "CONNECTION_NOT_FOUND", message: `Connection "${ref}" not found` } },
-        404,
-      );
+      return c.json({ error: { code: "CONNECTION_NOT_FOUND", message: `Connection "${ref}" not found` } }, 404);
     }
-    await envDb
-      .prepare("DELETE FROM px_connections WHERE ref = ? AND project_id = ?")
-      .bind(ref, project)
-      .run();
-    await db
-      .prepare("DELETE FROM studio_connections_metadata WHERE project_id = ? AND ref = ?")
-      .bind(project, ref)
-      .run();
-    await db
-      .prepare("DELETE FROM studio_secret_vault WHERE project_id = ? AND ref = ?")
-      .bind(project, ref)
-      .run();
+    await envDb.prepare("DELETE FROM px_connections WHERE ref = ? AND project_id = ?").bind(ref, project).run();
+    await db.prepare("DELETE FROM studio_connections_metadata WHERE project_id = ? AND ref = ?").bind(project, ref).run();
+    await db.prepare("DELETE FROM studio_secret_vault WHERE project_id = ? AND ref = ?").bind(project, ref).run();
 
     await recordStudioAuditLog(db, {
       orgId: authz.orgId,
@@ -6849,9 +6255,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const appSlug = parsedBody.data.app.trim().toLowerCase();
-    const suggestedRef =
-      parsedBody.data.suggestedRef ??
-      `sec_${appSlug.replace(/[^a-z0-9_]/g, "_")}_conn`;
+    const suggestedRef = parsedBody.data.suggestedRef ?? `sec_${appSlug.replace(/[^a-z0-9_]/g, "_")}_conn`;
     const requestId = `connreq_${project}_${appSlug}_${Date.now()}`;
     const connectUrl = `https://studio.projectx.local/projects/${encodeURIComponent(project)}/connections/new?app=${encodeURIComponent(appSlug)}&ref=${encodeURIComponent(suggestedRef)}`;
     const nowIso = new Date().toISOString();
@@ -6933,11 +6337,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     if (!telemetrySecret) return signingSecretNotConfigured();
     const rawBody = await c.req.raw.text();
 
-    const validSig = await verifyTelemetryWebhook(
-      rawBody,
-      signatureHeader,
-      telemetrySecret,
-    );
+    const validSig = await verifyTelemetryWebhook(rawBody, signatureHeader, telemetrySecret);
     if (!validSig) {
       return c.json(
         {
@@ -6968,9 +6368,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     // The signed payload must name the project of this URL (story 1.4): a payload signed for another project, or for
     // none, is refused before anything is written, so it cannot land in this project's telemetry.
     const signedProject =
-      parsedJson !== null && typeof parsedJson === "object" && !Array.isArray(parsedJson)
-        ? (parsedJson as { project?: unknown }).project
-        : undefined;
+      parsedJson !== null && typeof parsedJson === "object" && !Array.isArray(parsedJson) ? (parsedJson as { project?: unknown }).project : undefined;
     if (signedProject !== project) {
       return c.json(
         {
@@ -7036,19 +6434,16 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const stub = getBlueprintStub(c.env, project);
-    const doRes = await stub.fetch(
-      `http://blueprint-do/telemetry?project=${encodeURIComponent(project)}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          project,
-          run: payload.run,
-          events: persistedEvents,
-          logs: persistedLogs,
-        }),
-      },
-    );
+    const doRes = await stub.fetch(`http://blueprint-do/telemetry?project=${encodeURIComponent(project)}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        project,
+        run: payload.run,
+        events: persistedEvents,
+        logs: persistedLogs,
+      }),
+    });
     const doBody = (await doRes.json()) as {
       broadcastedCount?: number;
       frames?: unknown[];
@@ -7088,13 +6483,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -7217,24 +6606,17 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const targetEnv = body.env === "production" ? "production" : "preview";
     const target =
       (await db
-        .prepare(
-          "SELECT worker_url FROM project_deployments WHERE project_id = ?1 AND org_id = ?2 AND env_name = ?3 ORDER BY created_at DESC LIMIT 1",
-        )
+        .prepare("SELECT worker_url FROM project_deployments WHERE project_id = ?1 AND org_id = ?2 AND env_name = ?3 ORDER BY created_at DESC LIMIT 1")
         .bind(project, authz.orgId, targetEnv)
         .first<{ worker_url: string }>()
         .catch(() => null)) ??
       (await db
-        .prepare(
-          "SELECT worker_url FROM deployments WHERE project_id = ?1 AND org_id = ?2 AND env_name = ?3 ORDER BY created_at DESC LIMIT 1",
-        )
+        .prepare("SELECT worker_url FROM deployments WHERE project_id = ?1 AND org_id = ?2 AND env_name = ?3 ORDER BY created_at DESC LIMIT 1")
         .bind(project, authz.orgId, targetEnv)
         .first<{ worker_url: string }>()
         .catch(() => null));
     if (!target?.worker_url) {
-      return c.json(
-        { error: { code: "NO_TARGET", message: `Project "${project}" has no deployed ${targetEnv} target to reconcile from.` } },
-        409,
-      );
+      return c.json({ error: { code: "NO_TARGET", message: `Project "${project}" has no deployed ${targetEnv} target to reconcile from.` } }, 409);
     }
     const workerUrl = target.worker_url;
 
@@ -7292,18 +6674,15 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     if (reconcileRefused) return reconcileRefused;
 
     const stub = getBlueprintStub(c.env, project);
-    await stub.fetch(
-      `http://blueprint-do/telemetry?project=${encodeURIComponent(project)}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          project,
-          ...(pulledRuns[0] ? { run: pulledRuns[0] } : {}),
-          events: persistedEvents,
-        }),
-      },
-    );
+    await stub.fetch(`http://blueprint-do/telemetry?project=${encodeURIComponent(project)}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        project,
+        ...(pulledRuns[0] ? { run: pulledRuns[0] } : {}),
+        events: persistedEvents,
+      }),
+    });
 
     return c.json(
       {
@@ -7317,761 +6696,634 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     );
   });
 
-  app.post(
-    "/api/projects/:project/workflows/:workflowId/nodes/:nodeId/test-step",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+  app.post("/api/projects/:project/workflows/:workflowId/nodes/:nodeId/test-step", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
 
-      const project = c.req.param("project") ?? "";
-      const workflowId = c.req.param("workflowId") ?? "";
-      const nodeId = c.req.param("nodeId");
+    const project = c.req.param("project") ?? "";
+    const workflowId = c.req.param("workflowId") ?? "";
+    const nodeId = c.req.param("nodeId");
 
-      if (!PROJECT_SLUG_PATTERN.test(project)) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_PROJECT_SLUG",
-              message: `Invalid project slug "${project}"`,
-            },
-          },
-          400,
-        );
-      }
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      let rawBody: Record<string, unknown> = {};
-      try {
-        const parsed = await c.req.json();
-        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-          rawBody = parsed as Record<string, unknown>;
-        }
-      } catch {
-        rawBody = {};
-      }
-
-      const targetEnv =
-        typeof rawBody.env === "string"
-          ? rawBody.env
-          : (c.req.query("env") ?? c.req.header("x-px-env") ?? "preview");
-
-      if (targetEnv === "production") {
-        return c.json(
-          {
-            error: {
-              code: "REHEARSAL_FORBIDDEN_IN_PRODUCTION",
-              message:
-                "Test step rehearsal targets the preview environment only and is forbidden against production.",
-            },
-          },
-          403,
-        );
-      }
-
-      const requestedOrgId =
-        typeof rawBody.orgId === "string"
-          ? rawBody.orgId
-          : (c.req.query("orgId") ?? c.req.header("x-org-id"));
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "mutate",
-        requestedOrgId,
-      );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
-
-      const stub = getBlueprintStub(c.env, project);
-      const stateRes = await stub.fetch(
-        `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-        { method: "GET" },
-      );
-      const projectState = (await stateRes.json()) as ProjectStatePayload;
-
-      const workflow = (projectState.state?.workflows ?? []).find(
-        (wf) => wf.id === workflowId,
-      );
-      const bpNode = (workflow?.nodes ?? []).find((n) => n.id === nodeId);
-
-      const nodeType =
-        typeof rawBody.nodeType === "string" && rawBody.nodeType.length > 0
-          ? rawBody.nodeType
-          : bpNode?.type;
-
-      if (!nodeType) {
-        return c.json(
-          {
-            error: {
-              code: "NODE_NOT_FOUND",
-              message: `Node "${nodeId}" not found in workflow "${workflowId}"`,
-            },
-          },
-          404,
-        );
-      }
-
-      const mergedConfig: Record<string, unknown> = {
-        ...bpNode?.data,
-        ...(typeof rawBody.config === "object" &&
-        rawBody.config !== null &&
-        !Array.isArray(rawBody.config)
-          ? (rawBody.config as Record<string, unknown>)
-          : {}),
-      };
-
-      // Load and unseal project secrets for preview execution while tracking them for strict redaction
-      const vaultRows = await db
-        .prepare(
-          "SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'",
-        )
-        .bind(project)
-        .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
-
-      const vaultKeySecret = c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
-      const unsealedByRef = new Map<string, string>();
-      const secretValues = new Set<string>();
-
-      for (const row of vaultRows.results ?? []) {
-        try {
-          const plaintext = await decryptSecretValue(
-            row.ciphertext_b64,
-            row.iv_b64,
-            vaultKeySecret,
-          );
-          unsealedByRef.set(row.ref, plaintext);
-          if (plaintext.trim().length >= 3) {
-            secretValues.add(plaintext);
-          }
-        } catch {
-          // Ignore unseal failures for unrelated keys
-        }
-      }
-
-      if (Array.isArray(rawBody.secretValues)) {
-        for (const sv of rawBody.secretValues) {
-          if (typeof sv === "string" && sv.trim().length >= 3) {
-            secretValues.add(sv);
-          }
-        }
-      }
-
-      const connKeySecret =
-        c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
-      const envDbForRehearse = c.env.DB ?? db;
-      await ensureConnectionsTable(envDbForRehearse);
-      const pxConnRows = await envDbForRehearse
-        .prepare(
-          "SELECT ref, ciphertext_b64, iv_b64 FROM px_connections WHERE project_id = ?",
-        )
-        .bind(project)
-        .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
-      for (const pxRow of pxConnRows.results ?? []) {
-        try {
-          const creds = await unsealConnectionCredentials(
-            pxRow.ciphertext_b64,
-            pxRow.iv_b64,
-            connKeySecret,
-          );
-          for (const val of Object.values(creds)) {
-            if (typeof val === "string" && val.trim().length >= 3) {
-              secretValues.add(val);
-            }
-          }
-        } catch {
-          // Ignore unseal failures
-        }
-      }
-
-      // Story 17: brick executors write the app's tables; never into STUDIO_DB.
-      const rehearseDataDb = await resolveRunDataDb(
-        c.env,
-        db,
-        project,
-        authz.orgId,
-        targetEnv === "production" ? "production" : "preview",
-      );
-      if (!rehearseDataDb) {
-        return projectDataStoreNotConfigured(project, targetEnv === "production" ? "production" : "preview");
-      }
-      // Story 1.17: the workspace is one of the project's own preview workspaces, checked before anything is signed.
-      const rehearsalWorkspace = await resolveProjectPreviewWorkspace({
-        studioDb: db,
-        projectDataDb: ((await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null),
-        project,
-        requested: rawBody.workspaceId,
-      });
-      if (!rehearsalWorkspace.ok) return rehearsalWorkspace.response;
-      // Without Studio's root secret nothing can be signed: 503, as the other signing routes answer.
-      if (!(await studioProjectSecret(c.env, project, "control-plane"))) return signingSecretNotConfigured();
-      const rehearsalEnv: Record<string, unknown> = {
-        DB: rehearseDataDb,
-        PX_ENV: targetEnv,
-        ...(connKeySecret ? { PX_CONN_KEY: connKeySecret } : {}),
-        ...(c.env.__OAUTH_FETCHER ? { __OAUTH_FETCHER: c.env.__OAUTH_FETCHER } : {}),
-      };
-      if (typeof rawBody.secrets === "object" && rawBody.secrets !== null) {
-        for (const [k, v] of Object.entries(rawBody.secrets as Record<string, unknown>)) {
-          if (typeof v === "string") {
-            rehearsalEnv[k] = v;
-            if (v.trim().length >= 3) {
-              secretValues.add(v);
-            }
-          }
-        }
-      }
-      for (const [ref, plaintext] of unsealedByRef.entries()) {
-        rehearsalEnv[ref] = plaintext;
-      }
-      for (const binding of projectState.state?.secretRefs ?? []) {
-        const val = unsealedByRef.get(binding.ref);
-        if (val !== undefined) {
-          rehearsalEnv[binding.secretName] = val;
-        }
-      }
-      // Story 1.17: the project's own bindings, as its deployed worker holds them (derived secrets only, never the root),
-      // applied last so nothing the client sends replaces them.
-      Object.assign(rehearsalEnv, await projectWorkerSecretBindings(c.env, project));
-
-      const connections =
-        typeof rawBody.connections === "object" &&
-        rawBody.connections !== null &&
-        !Array.isArray(rawBody.connections)
-          ? (rawBody.connections as Record<string, Record<string, unknown>>)
-          : undefined;
-
-      const workflowPins: Record<string, PinnedNodeOutput> =
-        projectState.pinnedOutputs?.[workflowId] ?? {};
-
-      // Determine default input from pinned upstream output first, falling back to upstream node's last recorded output
-      let effectiveInput: unknown = rawBody.input;
-      if (effectiveInput === undefined && workflow) {
-        const incomingEdge = (workflow.edges ?? []).find((e) => e.target === nodeId);
-        if (incomingEdge) {
-          const pinnedUpstream = workflowPins[incomingEdge.source];
-          if (pinnedUpstream !== undefined) {
-            effectiveInput = pinnedUpstream.output;
-          } else {
-            await ensureTelemetryTables(db);
-            const lastUpstreamRow = await db
-              .prepare(
-                "SELECT output_preview FROM px_step_events WHERE project_id = ? AND workflow_id = ? AND node_id = ? AND status = 'succeeded' ORDER BY seq DESC LIMIT 1",
-              )
-              .bind(project, workflowId, incomingEdge.source)
-              .first<{ output_preview: string }>();
-            if (lastUpstreamRow?.output_preview) {
-              try {
-                effectiveInput = JSON.parse(lastUpstreamRow.output_preview);
-              } catch {
-                effectiveInput = {};
-              }
-            }
-          }
-        }
-      }
-
-      const mergedUpstreamSteps: Record<string, Record<string, unknown>> = {};
-      for (const [pinnedNodeId, pinRec] of Object.entries(workflowPins)) {
-        mergedUpstreamSteps[pinnedNodeId] = normalizeNodePortOutput(
-          pinRec.output,
-        );
-      }
-      if (
-        typeof rawBody.upstreamSteps === "object" &&
-        rawBody.upstreamSteps !== null &&
-        !Array.isArray(rawBody.upstreamSteps)
-      ) {
-        for (const [stepId, stepVal] of Object.entries(
-          rawBody.upstreamSteps as Record<string, unknown>,
-        )) {
-          mergedUpstreamSteps[stepId] = normalizeNodePortOutput(stepVal);
-        }
-      }
-
-      const rehearsalPayload = {
-        workflowId,
-        revision: projectState.revision,
-        nodeId,
-        nodeType,
-        config: mergedConfig,
-        input: effectiveInput ?? {},
-        workspaceId: rehearsalWorkspace.workspaceId,
-        ...(Object.keys(mergedUpstreamSteps).length > 0
-          ? { upstreamSteps: mergedUpstreamSteps }
-          : {}),
-      };
-
-      // Story 1.17: signed with the project's derived control-plane secret over method, path, time and body, with a
-      // fresh one-time requestId.
-      const telemetrySecret = await requireProjectSecret(c.env, project, "control-plane");
-      const previewReq = await signedExecutingRequest("/__px/rehearse", rehearsalPayload, telemetrySecret);
-
-      let runtimeExecutors: Executors;
-      try {
-        runtimeExecutors = studioExecutorsFor(appOptions.executors, c.env);
-      } catch (error) {
-        return c.json(executorsNotConfiguredBody(error), 503);
-      }
-      const previewRes = await handleStepRehearsalRequest(previewReq, {
-        registry: runtimeRegistry,
-        executors: runtimeExecutors,
-        db,
-        telemetryProjectId: project,
-        env: rehearsalEnv,
-        ...(connections ? { connections } : {}),
-        pxEnv: targetEnv,
-        telemetrySecret,
-        secretValues,
-      });
-
-      if (!previewRes) {
-        return c.json(
-          {
-            error: {
-              code: "REHEARSAL_DISPATCH_FAILED",
-              message: "Preview rehearsal handler did not match /__px/rehearse",
-            },
-          },
-          500,
-        );
-      }
-
-      const resultBody = (await previewRes.json()) as StepRehearsalResult;
-      if (previewRes.status !== 200) {
-        return c.json(resultBody, previewRes.status as 400 | 401 | 403 | 422);
-      }
-
-      // Broadcast rehearsal telemetry event to BlueprintDO so connected Studio sessions also see the rehearsal event
-      const projectScope = { projectId: project };
-      const stepEvents = await listStepEventsForRun(db, resultBody.runId, projectScope);
-      const runRecord = (await listRunRecords(db, projectScope, { workflowId, limit: 5 })).find(
-        (r) => r.runId === resultBody.runId,
-      );
-      await stub.fetch(
-        `http://blueprint-do/telemetry?project=${encodeURIComponent(project)}`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            project,
-            ...(runRecord ? { run: runRecord } : {}),
-            events: stepEvents,
-          }),
-        },
-      );
-
-      await recordStudioOnboardingEvent(db, {
-        orgId: authz.orgId,
-        projectId: project,
-        actorId: resolved.caller.author.id,
-        step: "first_test_step_run",
-        metadata: {
-          runId: resultBody.runId,
-          workflowId,
-          nodeId,
-          status: resultBody.status,
-        },
-        onlyOncePerProject: true,
-      });
-
-      await recordStudioAuditLog(db, {
-        orgId: authz.orgId,
-        projectId: project,
-        actorType: resolved.caller.author.type,
-        actorId: resolved.caller.author.id,
-        action: "workflow.run",
-        status: String(resultBody.status) === "failed" ? "failed" : "succeeded",
-        details: {
-          runId: resultBody.runId,
-          workflowId,
-          nodeId,
-          rehearsal: true,
-          ...(resolved.caller.author.client
-            ? { client: resolved.caller.author.client }
-            : {}),
-        },
-      });
-
-      return c.json(resultBody, 200);
-    },
-  );
-
-  const handleExecuteWorkflowRun = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
-
-      const project = c.req.param("project") ?? "";
-      const workflowId = c.req.param("workflowId") ?? "";
-
-      if (!PROJECT_SLUG_PATTERN.test(project)) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_PROJECT_SLUG",
-              message: `Invalid project slug "${project}"`,
-            },
-          },
-          400,
-        );
-      }
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      let rawBody: Record<string, unknown> = {};
-      try {
-        const parsed = await c.req.json();
-        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-          rawBody = parsed as Record<string, unknown>;
-        }
-      } catch {
-        rawBody = {};
-      }
-
-      const requestedOrgId =
-        typeof rawBody.orgId === "string"
-          ? rawBody.orgId
-          : (c.req.query("orgId") ?? c.req.header("x-org-id"));
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "mutate",
-        requestedOrgId,
-      );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
-
-      const targetEnv =
-        typeof rawBody.env === "string" &&
-        (rawBody.env === "preview" || rawBody.env === "production")
-          ? rawBody.env
-          : "preview";
-
-      const stub = getBlueprintStub(c.env, project);
-      const stateRes = await stub.fetch(
-        `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-        { method: "GET" },
-      );
-      const projectState = (await stateRes.json()) as ProjectStatePayload;
-
-      let workflow = (projectState.state?.workflows ?? []).find(
-        (wf) => wf.id === workflowId,
-      );
-
-      if (rawBody.useDeployedGraph === true) {
-        const envRow = await db
-          .prepare(
-            "SELECT deployed_state_json FROM project_environments WHERE project_id = ? AND env_name = ? LIMIT 1",
-          )
-          .bind(project, targetEnv)
-          .first<{ deployed_state_json: string | null }>();
-        if (envRow?.deployed_state_json) {
-          try {
-            const parsedDeployed = JSON.parse(envRow.deployed_state_json) as {
-              graphs?: Record<string, string>;
-            };
-            const deployedGraphJson = parsedDeployed.graphs?.[workflowId];
-            if (deployedGraphJson) {
-              workflow = JSON.parse(deployedGraphJson) as typeof workflow;
-            }
-          } catch {
-            // Fall back to current draft workflow
-          }
-        }
-      }
-
-      if (!workflow) {
-        return c.json(
-          {
-            error: {
-              code: "WORKFLOW_NOT_FOUND",
-              message: `Workflow "${workflowId}" not found in project "${project}"`,
-            },
-          },
-          404,
-        );
-      }
-
-      // Unseal project secrets for runtime execution while tracking all secret values for telemetry redaction
-      const vaultRows = await db
-        .prepare(
-          "SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'",
-        )
-        .bind(project)
-        .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
-
-      const vaultKeySecret = c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
-      const unsealedByRef = new Map<string, string>();
-      const secretValues = new Set<string>();
-
-      for (const row of vaultRows.results ?? []) {
-        try {
-          const plaintext = await decryptSecretValue(
-            row.ciphertext_b64,
-            row.iv_b64,
-            vaultKeySecret,
-          );
-          unsealedByRef.set(row.ref, plaintext);
-          if (plaintext.trim().length >= 3) {
-            secretValues.add(plaintext);
-          }
-        } catch {
-          // Ignore unseal failures for unrelated keys
-        }
-      }
-
-      if (Array.isArray(rawBody.secretValues)) {
-        for (const sv of rawBody.secretValues) {
-          if (typeof sv === "string" && sv.trim().length >= 3) {
-            secretValues.add(sv);
-          }
-        }
-      }
-
-      const connKeySecret =
-        c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
-      const envDbForRun = c.env.DB ?? db;
-      await ensureConnectionsTable(envDbForRun);
-      const pxConnRows = await envDbForRun
-        .prepare(
-          "SELECT ref, ciphertext_b64, iv_b64 FROM px_connections WHERE project_id = ?",
-        )
-        .bind(project)
-        .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
-      for (const pxRow of pxConnRows.results ?? []) {
-        try {
-          const creds = await unsealConnectionCredentials(
-            pxRow.ciphertext_b64,
-            pxRow.iv_b64,
-            connKeySecret,
-          );
-          for (const val of Object.values(creds)) {
-            if (typeof val === "string" && val.trim().length >= 3) {
-              secretValues.add(val);
-            }
-          }
-        } catch {
-          // Ignore unseal failures
-        }
-      }
-
-      // Story 17: brick executors write the app's tables; never into STUDIO_DB.
-      const runDataDb = await resolveRunDataDb(c.env, db, project, authz.orgId, targetEnv);
-      if (!runDataDb) {
-        return projectDataStoreNotConfigured(project, targetEnv);
-      }
-      // Story 1.17: the workspace is one of the project's own preview workspaces, checked before anything is signed.
-      const runWorkspace = await resolveProjectPreviewWorkspace({
-        studioDb: db,
-        projectDataDb: ((await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null),
-        project,
-        requested: rawBody.workspaceId,
-      });
-      if (!runWorkspace.ok) return runWorkspace.response;
-      // Without Studio's root secret nothing can be signed: 503, as the other signing routes answer.
-      if (!(await studioProjectSecret(c.env, project, "control-plane"))) return signingSecretNotConfigured();
-      const runEnv: Record<string, unknown> = {
-        DB: runDataDb,
-        PX_ENV: targetEnv,
-        ...(connKeySecret ? { PX_CONN_KEY: connKeySecret } : {}),
-        ...(c.env.__OAUTH_FETCHER ? { __OAUTH_FETCHER: c.env.__OAUTH_FETCHER } : {}),
-      };
-      if (typeof rawBody.secrets === "object" && rawBody.secrets !== null) {
-        for (const [k, v] of Object.entries(rawBody.secrets as Record<string, unknown>)) {
-          if (typeof v === "string") {
-            runEnv[k] = v;
-            if (v.trim().length >= 3) {
-              secretValues.add(v);
-            }
-          }
-        }
-      }
-      for (const [ref, plaintext] of unsealedByRef.entries()) {
-        runEnv[ref] = plaintext;
-      }
-      for (const binding of projectState.state?.secretRefs ?? []) {
-        const val = unsealedByRef.get(binding.ref);
-        if (val !== undefined) {
-          runEnv[binding.secretName] = val;
-        }
-      }
-      // Story 1.17: the project's own bindings (derived secrets only, never the root), applied last.
-      Object.assign(runEnv, await projectWorkerSecretBindings(c.env, project));
-
-      const connections =
-        typeof rawBody.connections === "object" &&
-        rawBody.connections !== null &&
-        !Array.isArray(rawBody.connections)
-          ? (rawBody.connections as Record<string, Record<string, unknown>>)
-          : undefined;
-
-      const triggerPayload =
-        rawBody.triggerPayload !== undefined
-          ? rawBody.triggerPayload
-          : (rawBody.payload ?? {});
-
-      const runId =
-        typeof rawBody.runId === "string" && rawBody.runId.trim().length > 0
-          ? rawBody.runId.trim()
-          : `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-      const usePinnedOutputs =
-        targetEnv !== "production" &&
-        (rawBody.usePinnedOutputs === true || rawBody.usePinnedData === true);
-      const pinnedOutputsMap: Record<string, unknown> = {};
-      if (usePinnedOutputs) {
-        const storedPins = projectState.pinnedOutputs?.[workflowId] ?? {};
-        for (const [pNodeId, pinRec] of Object.entries(storedPins)) {
-          pinnedOutputsMap[pNodeId] = (pinRec as { output?: unknown }).output;
-        }
-        if (
-          typeof rawBody.pinnedOutputs === "object" &&
-          rawBody.pinnedOutputs !== null &&
-          !Array.isArray(rawBody.pinnedOutputs)
-        ) {
-          for (const [pNodeId, pVal] of Object.entries(
-            rawBody.pinnedOutputs as Record<string, unknown>,
-          )) {
-            pinnedOutputsMap[pNodeId] = pVal;
-          }
-        }
-      }
-
-      const runRequestPayload = {
-        runId,
-        project,
-        workflowId,
-        revision: projectState.revision,
-        triggerType:
-          typeof rawBody.triggerType === "string" ? rawBody.triggerType : "manual",
-        triggerPayload,
-        workspaceId: runWorkspace.workspaceId,
-        ...(usePinnedOutputs
-          ? { usePinnedOutputs: true, pinnedOutputs: pinnedOutputsMap }
-          : {}),
-        graph: {
-          nodes: (workflow.nodes ?? []).map((n) => ({
-            id: n.id,
-            type: n.type,
-            data: (n.data as Record<string, unknown> | undefined) ?? {},
-          })),
-          edges: (workflow.edges ?? []).map((e) => ({
-            id: e.id,
-            source: e.source,
-            target: e.target,
-            ...(e.sourceHandle ? { sourceHandle: e.sourceHandle } : {}),
-            ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
-          })),
-        },
-      };
-
-      // Story 1.17: signed with the project's derived control-plane secret, with a fresh one-time requestId.
-      const telemetrySecret = await requireProjectSecret(c.env, project, "control-plane");
-      const workerReq = await signedExecutingRequest("/__px/runs", runRequestPayload, telemetrySecret);
-
-      const webhookUrl = `http://localhost/api/projects/${encodeURIComponent(
-        project,
-      )}/telemetry/webhook`;
-
-      let runtimeExecutors: Executors;
-      try {
-        runtimeExecutors = studioExecutorsFor(appOptions.executors, c.env);
-      } catch (error) {
-        return c.json(executorsNotConfiguredBody(error), 503);
-      }
-      const workerRes = await handleWorkflowRunRequest(workerReq, {
-        registry: runtimeRegistry,
-        executors: runtimeExecutors,
-        db,
-        telemetryProjectId: project,
-        env: runEnv,
-        ...(connections ? { connections } : {}),
-        pxEnv: targetEnv,
-        telemetrySecret,
-        telemetryWebhookUrl: webhookUrl,
-        telemetryWebhookSecret: await requireProjectSecret(c.env, project, "telemetry-webhook"),
-        telemetryWebhookFetcher: async (input, init) =>
-          app.fetch(new Request(input, init), c.env),
-        secretValues,
-      });
-
-      if (!workerRes) {
-        return c.json(
-          {
-            error: {
-              code: "WORKFLOW_RUN_DISPATCH_FAILED",
-              message: "Worker run handler did not match /__px/runs",
-            },
-          },
-          500,
-        );
-      }
-
-      const resultBody = (await workerRes.json()) as WorkflowRunResponse;
-      if (workerRes.status !== 200) {
-        return c.json(resultBody, workerRes.status as 400 | 401 | 403 | 422);
-      }
-
-      await recordStudioOnboardingEvent(db, {
-        orgId: authz.orgId,
-        projectId: project,
-        actorId: resolved.caller.author.id,
-        step: "first_test_step_run",
-        metadata: {
-          runId: resultBody.runId,
-          workflowId,
-          revision: projectState.revision,
-          env: targetEnv,
-        },
-        onlyOncePerProject: true,
-      });
-
-      await recordStudioAuditLog(db, {
-        orgId: authz.orgId,
-        projectId: project,
-        actorType: resolved.caller.author.type,
-        actorId: resolved.caller.author.id,
-        action: "workflow.run",
-        status: String(resultBody.status) === "failed" ? "failed" : "succeeded",
-        details: {
-          runId: resultBody.runId,
-          workflowId,
-          revision: projectState.revision,
-          env: targetEnv,
-          ...(resolved.caller.author.client
-            ? { client: resolved.caller.author.client }
-            : {}),
-        },
-      });
-
+    if (!PROJECT_SLUG_PATTERN.test(project)) {
       return c.json(
         {
-          ...resultBody,
-          env: targetEnv,
+          error: {
+            code: "INVALID_PROJECT_SLUG",
+            message: `Invalid project slug "${project}"`,
+          },
         },
-        200,
+        400,
       );
+    }
+
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
+
+    let rawBody: Record<string, unknown> = {};
+    try {
+      const parsed = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        rawBody = parsed as Record<string, unknown>;
+      }
+    } catch {
+      rawBody = {};
+    }
+
+    const targetEnv = typeof rawBody.env === "string" ? rawBody.env : (c.req.query("env") ?? c.req.header("x-px-env") ?? "preview");
+
+    if (targetEnv === "production") {
+      return c.json(
+        {
+          error: {
+            code: "REHEARSAL_FORBIDDEN_IN_PRODUCTION",
+            message: "Test step rehearsal targets the preview environment only and is forbidden against production.",
+          },
+        },
+        403,
+      );
+    }
+
+    const requestedOrgId = typeof rawBody.orgId === "string" ? rawBody.orgId : (c.req.query("orgId") ?? c.req.header("x-org-id"));
+
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "mutate", requestedOrgId);
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
+
+    const stub = getBlueprintStub(c.env, project);
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
+    const projectState = (await stateRes.json()) as ProjectStatePayload;
+
+    const workflow = (projectState.state?.workflows ?? []).find((wf) => wf.id === workflowId);
+    const bpNode = (workflow?.nodes ?? []).find((n) => n.id === nodeId);
+
+    const nodeType = typeof rawBody.nodeType === "string" && rawBody.nodeType.length > 0 ? rawBody.nodeType : bpNode?.type;
+
+    if (!nodeType) {
+      return c.json(
+        {
+          error: {
+            code: "NODE_NOT_FOUND",
+            message: `Node "${nodeId}" not found in workflow "${workflowId}"`,
+          },
+        },
+        404,
+      );
+    }
+
+    const mergedConfig: Record<string, unknown> = {
+      ...bpNode?.data,
+      ...(typeof rawBody.config === "object" && rawBody.config !== null && !Array.isArray(rawBody.config) ? (rawBody.config as Record<string, unknown>) : {}),
+    };
+
+    // Load and unseal project secrets for preview execution while tracking them for strict redaction
+    const vaultRows = await db
+      .prepare("SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'")
+      .bind(project)
+      .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
+
+    const vaultKeySecret = c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
+    const unsealedByRef = new Map<string, string>();
+    const secretValues = new Set<string>();
+
+    for (const row of vaultRows.results ?? []) {
+      try {
+        const plaintext = await decryptSecretValue(row.ciphertext_b64, row.iv_b64, vaultKeySecret);
+        unsealedByRef.set(row.ref, plaintext);
+        if (plaintext.trim().length >= 3) {
+          secretValues.add(plaintext);
+        }
+      } catch {
+        // Ignore unseal failures for unrelated keys
+      }
+    }
+
+    if (Array.isArray(rawBody.secretValues)) {
+      for (const sv of rawBody.secretValues) {
+        if (typeof sv === "string" && sv.trim().length >= 3) {
+          secretValues.add(sv);
+        }
+      }
+    }
+
+    const connKeySecret = c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
+    const envDbForRehearse = c.env.DB ?? db;
+    await ensureConnectionsTable(envDbForRehearse);
+    const pxConnRows = await envDbForRehearse
+      .prepare("SELECT ref, ciphertext_b64, iv_b64 FROM px_connections WHERE project_id = ?")
+      .bind(project)
+      .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
+    for (const pxRow of pxConnRows.results ?? []) {
+      try {
+        const creds = await unsealConnectionCredentials(pxRow.ciphertext_b64, pxRow.iv_b64, connKeySecret);
+        for (const val of Object.values(creds)) {
+          if (typeof val === "string" && val.trim().length >= 3) {
+            secretValues.add(val);
+          }
+        }
+      } catch {
+        // Ignore unseal failures
+      }
+    }
+
+    // Story 17: brick executors write the app's tables; never into STUDIO_DB.
+    const rehearseDataDb = await resolveRunDataDb(c.env, db, project, authz.orgId, targetEnv === "production" ? "production" : "preview");
+    if (!rehearseDataDb) {
+      return projectDataStoreNotConfigured(project, targetEnv === "production" ? "production" : "preview");
+    }
+    // Story 1.17: the workspace is one of the project's own preview workspaces, checked before anything is signed.
+    const rehearsalWorkspace = await resolveProjectPreviewWorkspace({
+      studioDb: db,
+      projectDataDb: (await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null,
+      project,
+      requested: rawBody.workspaceId,
+    });
+    if (!rehearsalWorkspace.ok) return rehearsalWorkspace.response;
+    // Without Studio's root secret nothing can be signed: 503, as the other signing routes answer.
+    if (!(await studioProjectSecret(c.env, project, "control-plane"))) return signingSecretNotConfigured();
+    const rehearsalEnv: Record<string, unknown> = {
+      DB: rehearseDataDb,
+      PX_ENV: targetEnv,
+      ...(connKeySecret ? { PX_CONN_KEY: connKeySecret } : {}),
+      ...(c.env.__OAUTH_FETCHER ? { __OAUTH_FETCHER: c.env.__OAUTH_FETCHER } : {}),
+    };
+    if (typeof rawBody.secrets === "object" && rawBody.secrets !== null) {
+      for (const [k, v] of Object.entries(rawBody.secrets as Record<string, unknown>)) {
+        if (typeof v === "string") {
+          rehearsalEnv[k] = v;
+          if (v.trim().length >= 3) {
+            secretValues.add(v);
+          }
+        }
+      }
+    }
+    for (const [ref, plaintext] of unsealedByRef.entries()) {
+      rehearsalEnv[ref] = plaintext;
+    }
+    for (const binding of projectState.state?.secretRefs ?? []) {
+      const val = unsealedByRef.get(binding.ref);
+      if (val !== undefined) {
+        rehearsalEnv[binding.secretName] = val;
+      }
+    }
+    // Story 1.17: the project's own bindings, as its deployed worker holds them (derived secrets only, never the root),
+    // applied last so nothing the client sends replaces them.
+    Object.assign(rehearsalEnv, await projectWorkerSecretBindings(c.env, project));
+
+    const connections =
+      typeof rawBody.connections === "object" && rawBody.connections !== null && !Array.isArray(rawBody.connections)
+        ? (rawBody.connections as Record<string, Record<string, unknown>>)
+        : undefined;
+
+    const workflowPins: Record<string, PinnedNodeOutput> = projectState.pinnedOutputs?.[workflowId] ?? {};
+
+    // Determine default input from pinned upstream output first, falling back to upstream node's last recorded output
+    let effectiveInput: unknown = rawBody.input;
+    if (effectiveInput === undefined && workflow) {
+      const incomingEdge = (workflow.edges ?? []).find((e) => e.target === nodeId);
+      if (incomingEdge) {
+        const pinnedUpstream = workflowPins[incomingEdge.source];
+        if (pinnedUpstream !== undefined) {
+          effectiveInput = pinnedUpstream.output;
+        } else {
+          await ensureTelemetryTables(db);
+          const lastUpstreamRow = await db
+            .prepare(
+              "SELECT output_preview FROM px_step_events WHERE project_id = ? AND workflow_id = ? AND node_id = ? AND status = 'succeeded' ORDER BY seq DESC LIMIT 1",
+            )
+            .bind(project, workflowId, incomingEdge.source)
+            .first<{ output_preview: string }>();
+          if (lastUpstreamRow?.output_preview) {
+            try {
+              effectiveInput = JSON.parse(lastUpstreamRow.output_preview);
+            } catch {
+              effectiveInput = {};
+            }
+          }
+        }
+      }
+    }
+
+    const mergedUpstreamSteps: Record<string, Record<string, unknown>> = {};
+    for (const [pinnedNodeId, pinRec] of Object.entries(workflowPins)) {
+      mergedUpstreamSteps[pinnedNodeId] = normalizeNodePortOutput(pinRec.output);
+    }
+    if (typeof rawBody.upstreamSteps === "object" && rawBody.upstreamSteps !== null && !Array.isArray(rawBody.upstreamSteps)) {
+      for (const [stepId, stepVal] of Object.entries(rawBody.upstreamSteps as Record<string, unknown>)) {
+        mergedUpstreamSteps[stepId] = normalizeNodePortOutput(stepVal);
+      }
+    }
+
+    const rehearsalPayload = {
+      workflowId,
+      revision: projectState.revision,
+      nodeId,
+      nodeType,
+      config: mergedConfig,
+      input: effectiveInput ?? {},
+      workspaceId: rehearsalWorkspace.workspaceId,
+      ...(Object.keys(mergedUpstreamSteps).length > 0 ? { upstreamSteps: mergedUpstreamSteps } : {}),
+    };
+
+    // Story 1.17: signed with the project's derived control-plane secret over method, path, time and body, with a
+    // fresh one-time requestId.
+    const telemetrySecret = await requireProjectSecret(c.env, project, "control-plane");
+    const previewReq = await signedExecutingRequest("/__px/rehearse", rehearsalPayload, telemetrySecret);
+
+    let runtimeExecutors: Executors;
+    try {
+      runtimeExecutors = studioExecutorsFor(appOptions.executors, c.env);
+    } catch (error) {
+      return c.json(executorsNotConfiguredBody(error), 503);
+    }
+    const previewRes = await handleStepRehearsalRequest(previewReq, {
+      registry: runtimeRegistry,
+      executors: runtimeExecutors,
+      db,
+      telemetryProjectId: project,
+      env: rehearsalEnv,
+      ...(connections ? { connections } : {}),
+      pxEnv: targetEnv,
+      telemetrySecret,
+      secretValues,
+    });
+
+    if (!previewRes) {
+      return c.json(
+        {
+          error: {
+            code: "REHEARSAL_DISPATCH_FAILED",
+            message: "Preview rehearsal handler did not match /__px/rehearse",
+          },
+        },
+        500,
+      );
+    }
+
+    const resultBody = (await previewRes.json()) as StepRehearsalResult;
+    if (previewRes.status !== 200) {
+      return c.json(resultBody, previewRes.status as 400 | 401 | 403 | 422);
+    }
+
+    // Broadcast rehearsal telemetry event to BlueprintDO so connected Studio sessions also see the rehearsal event
+    const projectScope = { projectId: project };
+    const stepEvents = await listStepEventsForRun(db, resultBody.runId, projectScope);
+    const runRecord = (await listRunRecords(db, projectScope, { workflowId, limit: 5 })).find((r) => r.runId === resultBody.runId);
+    await stub.fetch(`http://blueprint-do/telemetry?project=${encodeURIComponent(project)}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        project,
+        ...(runRecord ? { run: runRecord } : {}),
+        events: stepEvents,
+      }),
+    });
+
+    await recordStudioOnboardingEvent(db, {
+      orgId: authz.orgId,
+      projectId: project,
+      actorId: resolved.caller.author.id,
+      step: "first_test_step_run",
+      metadata: {
+        runId: resultBody.runId,
+        workflowId,
+        nodeId,
+        status: resultBody.status,
+      },
+      onlyOncePerProject: true,
+    });
+
+    await recordStudioAuditLog(db, {
+      orgId: authz.orgId,
+      projectId: project,
+      actorType: resolved.caller.author.type,
+      actorId: resolved.caller.author.id,
+      action: "workflow.run",
+      status: String(resultBody.status) === "failed" ? "failed" : "succeeded",
+      details: {
+        runId: resultBody.runId,
+        workflowId,
+        nodeId,
+        rehearsal: true,
+        ...(resolved.caller.author.client ? { client: resolved.caller.author.client } : {}),
+      },
+    });
+
+    return c.json(resultBody, 200);
+  });
+
+  const handleExecuteWorkflowRun = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
+
+    const project = c.req.param("project") ?? "";
+    const workflowId = c.req.param("workflowId") ?? "";
+
+    if (!PROJECT_SLUG_PATTERN.test(project)) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_PROJECT_SLUG",
+            message: `Invalid project slug "${project}"`,
+          },
+        },
+        400,
+      );
+    }
+
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
+
+    let rawBody: Record<string, unknown> = {};
+    try {
+      const parsed = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        rawBody = parsed as Record<string, unknown>;
+      }
+    } catch {
+      rawBody = {};
+    }
+
+    const requestedOrgId = typeof rawBody.orgId === "string" ? rawBody.orgId : (c.req.query("orgId") ?? c.req.header("x-org-id"));
+
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "mutate", requestedOrgId);
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
+
+    const targetEnv = typeof rawBody.env === "string" && (rawBody.env === "preview" || rawBody.env === "production") ? rawBody.env : "preview";
+
+    const stub = getBlueprintStub(c.env, project);
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
+    const projectState = (await stateRes.json()) as ProjectStatePayload;
+
+    let workflow = (projectState.state?.workflows ?? []).find((wf) => wf.id === workflowId);
+
+    if (rawBody.useDeployedGraph === true) {
+      const envRow = await db
+        .prepare("SELECT deployed_state_json FROM project_environments WHERE project_id = ? AND env_name = ? LIMIT 1")
+        .bind(project, targetEnv)
+        .first<{ deployed_state_json: string | null }>();
+      if (envRow?.deployed_state_json) {
+        try {
+          const parsedDeployed = JSON.parse(envRow.deployed_state_json) as {
+            graphs?: Record<string, string>;
+          };
+          const deployedGraphJson = parsedDeployed.graphs?.[workflowId];
+          if (deployedGraphJson) {
+            workflow = JSON.parse(deployedGraphJson) as typeof workflow;
+          }
+        } catch {
+          // Fall back to current draft workflow
+        }
+      }
+    }
+
+    if (!workflow) {
+      return c.json(
+        {
+          error: {
+            code: "WORKFLOW_NOT_FOUND",
+            message: `Workflow "${workflowId}" not found in project "${project}"`,
+          },
+        },
+        404,
+      );
+    }
+
+    // Unseal project secrets for runtime execution while tracking all secret values for telemetry redaction
+    const vaultRows = await db
+      .prepare("SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'")
+      .bind(project)
+      .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
+
+    const vaultKeySecret = c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
+    const unsealedByRef = new Map<string, string>();
+    const secretValues = new Set<string>();
+
+    for (const row of vaultRows.results ?? []) {
+      try {
+        const plaintext = await decryptSecretValue(row.ciphertext_b64, row.iv_b64, vaultKeySecret);
+        unsealedByRef.set(row.ref, plaintext);
+        if (plaintext.trim().length >= 3) {
+          secretValues.add(plaintext);
+        }
+      } catch {
+        // Ignore unseal failures for unrelated keys
+      }
+    }
+
+    if (Array.isArray(rawBody.secretValues)) {
+      for (const sv of rawBody.secretValues) {
+        if (typeof sv === "string" && sv.trim().length >= 3) {
+          secretValues.add(sv);
+        }
+      }
+    }
+
+    const connKeySecret = c.env.PX_CONN_KEY ?? c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
+    const envDbForRun = c.env.DB ?? db;
+    await ensureConnectionsTable(envDbForRun);
+    const pxConnRows = await envDbForRun
+      .prepare("SELECT ref, ciphertext_b64, iv_b64 FROM px_connections WHERE project_id = ?")
+      .bind(project)
+      .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
+    for (const pxRow of pxConnRows.results ?? []) {
+      try {
+        const creds = await unsealConnectionCredentials(pxRow.ciphertext_b64, pxRow.iv_b64, connKeySecret);
+        for (const val of Object.values(creds)) {
+          if (typeof val === "string" && val.trim().length >= 3) {
+            secretValues.add(val);
+          }
+        }
+      } catch {
+        // Ignore unseal failures
+      }
+    }
+
+    // Story 17: brick executors write the app's tables; never into STUDIO_DB.
+    const runDataDb = await resolveRunDataDb(c.env, db, project, authz.orgId, targetEnv);
+    if (!runDataDb) {
+      return projectDataStoreNotConfigured(project, targetEnv);
+    }
+    // Story 1.17: the workspace is one of the project's own preview workspaces, checked before anything is signed.
+    const runWorkspace = await resolveProjectPreviewWorkspace({
+      studioDb: db,
+      projectDataDb: (await resolveProjectDataStore(db, project, authz.orgId, "preview"))?.d1 ?? null,
+      project,
+      requested: rawBody.workspaceId,
+    });
+    if (!runWorkspace.ok) return runWorkspace.response;
+    // Without Studio's root secret nothing can be signed: 503, as the other signing routes answer.
+    if (!(await studioProjectSecret(c.env, project, "control-plane"))) return signingSecretNotConfigured();
+    const runEnv: Record<string, unknown> = {
+      DB: runDataDb,
+      PX_ENV: targetEnv,
+      ...(connKeySecret ? { PX_CONN_KEY: connKeySecret } : {}),
+      ...(c.env.__OAUTH_FETCHER ? { __OAUTH_FETCHER: c.env.__OAUTH_FETCHER } : {}),
+    };
+    if (typeof rawBody.secrets === "object" && rawBody.secrets !== null) {
+      for (const [k, v] of Object.entries(rawBody.secrets as Record<string, unknown>)) {
+        if (typeof v === "string") {
+          runEnv[k] = v;
+          if (v.trim().length >= 3) {
+            secretValues.add(v);
+          }
+        }
+      }
+    }
+    for (const [ref, plaintext] of unsealedByRef.entries()) {
+      runEnv[ref] = plaintext;
+    }
+    for (const binding of projectState.state?.secretRefs ?? []) {
+      const val = unsealedByRef.get(binding.ref);
+      if (val !== undefined) {
+        runEnv[binding.secretName] = val;
+      }
+    }
+    // Story 1.17: the project's own bindings (derived secrets only, never the root), applied last.
+    Object.assign(runEnv, await projectWorkerSecretBindings(c.env, project));
+
+    const connections =
+      typeof rawBody.connections === "object" && rawBody.connections !== null && !Array.isArray(rawBody.connections)
+        ? (rawBody.connections as Record<string, Record<string, unknown>>)
+        : undefined;
+
+    const triggerPayload = rawBody.triggerPayload !== undefined ? rawBody.triggerPayload : (rawBody.payload ?? {});
+
+    const runId =
+      typeof rawBody.runId === "string" && rawBody.runId.trim().length > 0
+        ? rawBody.runId.trim()
+        : `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const usePinnedOutputs = targetEnv !== "production" && (rawBody.usePinnedOutputs === true || rawBody.usePinnedData === true);
+    const pinnedOutputsMap: Record<string, unknown> = {};
+    if (usePinnedOutputs) {
+      const storedPins = projectState.pinnedOutputs?.[workflowId] ?? {};
+      for (const [pNodeId, pinRec] of Object.entries(storedPins)) {
+        pinnedOutputsMap[pNodeId] = (pinRec as { output?: unknown }).output;
+      }
+      if (typeof rawBody.pinnedOutputs === "object" && rawBody.pinnedOutputs !== null && !Array.isArray(rawBody.pinnedOutputs)) {
+        for (const [pNodeId, pVal] of Object.entries(rawBody.pinnedOutputs as Record<string, unknown>)) {
+          pinnedOutputsMap[pNodeId] = pVal;
+        }
+      }
+    }
+
+    const runRequestPayload = {
+      runId,
+      project,
+      workflowId,
+      revision: projectState.revision,
+      triggerType: typeof rawBody.triggerType === "string" ? rawBody.triggerType : "manual",
+      triggerPayload,
+      workspaceId: runWorkspace.workspaceId,
+      ...(usePinnedOutputs ? { usePinnedOutputs: true, pinnedOutputs: pinnedOutputsMap } : {}),
+      graph: {
+        nodes: (workflow.nodes ?? []).map((n) => ({
+          id: n.id,
+          type: n.type,
+          data: (n.data as Record<string, unknown> | undefined) ?? {},
+        })),
+        edges: (workflow.edges ?? []).map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          ...(e.sourceHandle ? { sourceHandle: e.sourceHandle } : {}),
+          ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
+        })),
+      },
+    };
+
+    // Story 1.17: signed with the project's derived control-plane secret, with a fresh one-time requestId.
+    const telemetrySecret = await requireProjectSecret(c.env, project, "control-plane");
+    const workerReq = await signedExecutingRequest("/__px/runs", runRequestPayload, telemetrySecret);
+
+    const webhookUrl = `http://localhost/api/projects/${encodeURIComponent(project)}/telemetry/webhook`;
+
+    let runtimeExecutors: Executors;
+    try {
+      runtimeExecutors = studioExecutorsFor(appOptions.executors, c.env);
+    } catch (error) {
+      return c.json(executorsNotConfiguredBody(error), 503);
+    }
+    const workerRes = await handleWorkflowRunRequest(workerReq, {
+      registry: runtimeRegistry,
+      executors: runtimeExecutors,
+      db,
+      telemetryProjectId: project,
+      env: runEnv,
+      ...(connections ? { connections } : {}),
+      pxEnv: targetEnv,
+      telemetrySecret,
+      telemetryWebhookUrl: webhookUrl,
+      telemetryWebhookSecret: await requireProjectSecret(c.env, project, "telemetry-webhook"),
+      telemetryWebhookFetcher: async (input, init) => app.fetch(new Request(input, init), c.env),
+      secretValues,
+    });
+
+    if (!workerRes) {
+      return c.json(
+        {
+          error: {
+            code: "WORKFLOW_RUN_DISPATCH_FAILED",
+            message: "Worker run handler did not match /__px/runs",
+          },
+        },
+        500,
+      );
+    }
+
+    const resultBody = (await workerRes.json()) as WorkflowRunResponse;
+    if (workerRes.status !== 200) {
+      return c.json(resultBody, workerRes.status as 400 | 401 | 403 | 422);
+    }
+
+    await recordStudioOnboardingEvent(db, {
+      orgId: authz.orgId,
+      projectId: project,
+      actorId: resolved.caller.author.id,
+      step: "first_test_step_run",
+      metadata: {
+        runId: resultBody.runId,
+        workflowId,
+        revision: projectState.revision,
+        env: targetEnv,
+      },
+      onlyOncePerProject: true,
+    });
+
+    await recordStudioAuditLog(db, {
+      orgId: authz.orgId,
+      projectId: project,
+      actorType: resolved.caller.author.type,
+      actorId: resolved.caller.author.id,
+      action: "workflow.run",
+      status: String(resultBody.status) === "failed" ? "failed" : "succeeded",
+      details: {
+        runId: resultBody.runId,
+        workflowId,
+        revision: projectState.revision,
+        env: targetEnv,
+        ...(resolved.caller.author.client ? { client: resolved.caller.author.client } : {}),
+      },
+    });
+
+    return c.json(
+      {
+        ...resultBody,
+        env: targetEnv,
+      },
+      200,
+    );
   };
 
-  app.post(
-    "/api/projects/:project/workflows/:workflowId/runs",
-    handleExecuteWorkflowRun,
-  );
-  app.post(
-    "/api/projects/:project/workflows/:workflowId/run",
-    handleExecuteWorkflowRun,
-  );
+  app.post("/api/projects/:project/workflows/:workflowId/runs", handleExecuteWorkflowRun);
+  app.post("/api/projects/:project/workflows/:workflowId/run", handleExecuteWorkflowRun);
 
   app.get("/api/projects/:project/runs", async (c) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
@@ -8095,13 +7347,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -8109,16 +7355,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const envParam = c.req.query("env") === "production" ? "production" : "preview";
     const workflowId = c.req.query("workflowId") ?? undefined;
     const status = c.req.query("status") ?? undefined;
-    const trigger =
-      c.req.query("trigger") ?? c.req.query("triggerType") ?? undefined;
+    const trigger = c.req.query("trigger") ?? c.req.query("triggerType") ?? undefined;
     const from = c.req.query("from") ?? undefined;
     const to = c.req.query("to") ?? undefined;
     const cursor = c.req.query("cursor") ?? undefined;
     const limitRaw = c.req.query("limit");
-    const limit =
-      limitRaw !== undefined && Number.isFinite(Number(limitRaw))
-        ? Math.max(1, Math.min(200, Math.floor(Number(limitRaw))))
-        : 50;
+    const limit = limitRaw !== undefined && Number.isFinite(Number(limitRaw)) ? Math.max(1, Math.min(200, Math.floor(Number(limitRaw)))) : 50;
 
     const page = await queryRunHistory(db, studioTelemetryScope(project, c.req.query("workspaceId")), {
       ...(workflowId ? { workflowId } : {}),
@@ -8179,22 +7421,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       resolved.caller,
       project,
       "mutate",
-      typeof rawBody.orgId === "string"
-        ? rawBody.orgId
-        : (c.req.query("orgId") ?? c.req.header("x-org-id")),
+      typeof rawBody.orgId === "string" ? rawBody.orgId : (c.req.query("orgId") ?? c.req.header("x-org-id")),
     );
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
 
-    const retentionDays =
-      rawBody.retentionDays !== undefined
-        ? (rawBody.retentionDays as number | string)
-        : (c.req.query("retentionDays") ?? undefined);
-    const nowParam =
-      typeof rawBody.now === "string" || typeof rawBody.now === "number"
-        ? rawBody.now
-        : undefined;
+    const retentionDays = rawBody.retentionDays !== undefined ? (rawBody.retentionDays as number | string) : (c.req.query("retentionDays") ?? undefined);
+    const nowParam = typeof rawBody.now === "string" || typeof rawBody.now === "number" ? rawBody.now : undefined;
 
     // Story 16: px_runs has no project or org column, so this prune deletes expired runs of every org. Only a platform
     // operator may run it; a project's own builders and MCP tokens are refused.
@@ -8241,13 +7475,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -8260,10 +7488,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const stub = getBlueprintStub(c.env, project);
     if (!run || stepEvents.length === 0) {
-      const doTelRes = await stub.fetch(
-        `http://blueprint-do/telemetry?project=${encodeURIComponent(project)}&runId=${encodeURIComponent(runId)}`,
-        { method: "GET" },
-      );
+      const doTelRes = await stub.fetch(`http://blueprint-do/telemetry?project=${encodeURIComponent(project)}&runId=${encodeURIComponent(runId)}`, {
+        method: "GET",
+      });
       if (doTelRes.ok) {
         const doTel = (await doTelRes.json()) as {
           runs?: RunRecord[];
@@ -8290,40 +7517,26 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const currentStateRes = await stub.fetch(
-      `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
+    const currentStateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
     const currentStatePayload = (await currentStateRes.json()) as ProjectStatePayload;
     const currentRevision = currentStatePayload.revision;
 
     let historicalStatePayload: ProjectStatePayload = currentStatePayload;
     if (run.revision !== currentRevision) {
-      const histRes = await stub.fetch(
-        `http://blueprint-do/state?project=${encodeURIComponent(project)}&revision=${run.revision}`,
-        { method: "GET" },
-      );
+      const histRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}&revision=${run.revision}`, { method: "GET" });
       if (histRes.ok) {
         historicalStatePayload = (await histRes.json()) as ProjectStatePayload;
       }
     }
 
     const historicalWorkflow =
-      (historicalStatePayload.state?.workflows ?? []).find(
-        (w) => w.id === run!.workflowId,
-      ) ??
-      (currentStatePayload.state?.workflows ?? []).find(
-        (w) => w.id === run!.workflowId,
-      ) ??
+      (historicalStatePayload.state?.workflows ?? []).find((w) => w.id === run!.workflowId) ??
+      (currentStatePayload.state?.workflows ?? []).find((w) => w.id === run!.workflowId) ??
       null;
 
-    const failedNodeId =
-      stepEvents.find((ev) => ev.status === "failed")?.nodeId ?? null;
+    const failedNodeId = stepEvents.find((ev) => ev.status === "failed")?.nodeId ?? null;
 
-    const resolvedByRunId =
-      run.status === "failed"
-        ? await findResolvingRetryRunId(db, run.runId, projectScope)
-        : null;
+    const resolvedByRunId = run.status === "failed" ? await findResolvingRetryRunId(db, run.runId, projectScope) : null;
 
     return c.json(
       {
@@ -8346,218 +7559,175 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     );
   });
 
-  app.get(
-    "/api/projects/:project/workflows/:workflowId/pins",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+  app.get("/api/projects/:project/workflows/:workflowId/pins", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
 
-      const project = c.req.param("project") ?? "";
-      const workflowId = c.req.param("workflowId") ?? "";
-      if (!PROJECT_SLUG_PATTERN.test(project)) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_PROJECT_SLUG",
-              message: `Invalid project slug "${project}"`,
-            },
+    const project = c.req.param("project") ?? "";
+    const workflowId = c.req.param("workflowId") ?? "";
+    if (!PROJECT_SLUG_PATTERN.test(project)) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_PROJECT_SLUG",
+            message: `Invalid project slug "${project}"`,
           },
-          400,
-        );
-      }
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "read",
-        c.req.query("orgId") ?? c.req.header("x-org-id"),
+        },
+        400,
       );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
+    }
 
-      const stub = getBlueprintStub(c.env, project);
-      const pinsRes = await stub.fetch(
-        `http://blueprint-do/pins?project=${encodeURIComponent(
-          project,
-        )}&workflowId=${encodeURIComponent(workflowId)}`,
-        { method: "GET" },
-      );
-      const body = (await pinsRes.json()) as {
-        project: string;
-        workflowId: string;
-        pinnedOutputs: Record<string, PinnedNodeOutput>;
-      };
-      return c.json(body, 200);
-    },
-  );
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
 
-  app.put(
-    "/api/projects/:project/workflows/:workflowId/nodes/:nodeId/pin",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
 
-      const project = c.req.param("project") ?? "";
-      const workflowId = c.req.param("workflowId") ?? "";
-      const nodeId = c.req.param("nodeId");
-      if (!PROJECT_SLUG_PATTERN.test(project)) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_PROJECT_SLUG",
-              message: `Invalid project slug "${project}"`,
-            },
+    const stub = getBlueprintStub(c.env, project);
+    const pinsRes = await stub.fetch(`http://blueprint-do/pins?project=${encodeURIComponent(project)}&workflowId=${encodeURIComponent(workflowId)}`, {
+      method: "GET",
+    });
+    const body = (await pinsRes.json()) as {
+      project: string;
+      workflowId: string;
+      pinnedOutputs: Record<string, PinnedNodeOutput>;
+    };
+    return c.json(body, 200);
+  });
+
+  app.put("/api/projects/:project/workflows/:workflowId/nodes/:nodeId/pin", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
+
+    const project = c.req.param("project") ?? "";
+    const workflowId = c.req.param("workflowId") ?? "";
+    const nodeId = c.req.param("nodeId");
+    if (!PROJECT_SLUG_PATTERN.test(project)) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_PROJECT_SLUG",
+            message: `Invalid project slug "${project}"`,
           },
-          400,
-        );
+        },
+        400,
+      );
+    }
+
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
+
+    let rawBody: Record<string, unknown> = {};
+    try {
+      const parsed = await c.req.json();
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        rawBody = parsed as Record<string, unknown>;
       }
+    } catch {
+      rawBody = {};
+    }
 
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
+    const authz = await authorizeProjectAccess(
+      db,
+      resolved.caller,
+      project,
+      "mutate",
+      typeof rawBody.orgId === "string" ? rawBody.orgId : (c.req.query("orgId") ?? c.req.header("x-org-id")),
+    );
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
 
-      let rawBody: Record<string, unknown> = {};
+    // Unseal project secrets so pinned payloads are strictly redacted before storage (AC 1)
+    const vaultRows = await db
+      .prepare("SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'")
+      .bind(project)
+      .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
+
+    const vaultKeySecret = c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
+    const secretValues = new Set<string>();
+    for (const row of vaultRows.results ?? []) {
       try {
-        const parsed = await c.req.json();
-        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-          rawBody = parsed as Record<string, unknown>;
+        const plaintext = await decryptSecretValue(row.ciphertext_b64, row.iv_b64, vaultKeySecret);
+        if (plaintext.trim().length >= 3) {
+          secretValues.add(plaintext);
         }
       } catch {
-        rawBody = {};
+        // Ignore unseal failures
       }
+    }
+    if (Array.isArray(rawBody.secretValues)) {
+      for (const sv of rawBody.secretValues) {
+        if (typeof sv === "string" && sv.trim().length >= 3) {
+          secretValues.add(sv);
+        }
+      }
+    }
 
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
+    const rawOutput = rawBody.output !== undefined ? rawBody.output : rawBody;
+    const redactedOutput = redactTelemetryPayload(rawOutput, {
+      secretValues,
+    });
+
+    const stub = getBlueprintStub(c.env, project);
+    const putRes = await stub.fetch(`http://blueprint-do/pins?project=${encodeURIComponent(project)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
         project,
-        "mutate",
-        typeof rawBody.orgId === "string"
-          ? rawBody.orgId
-          : (c.req.query("orgId") ?? c.req.header("x-org-id")),
-      );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
+        workflowId,
+        nodeId,
+        output: redactedOutput,
+        sourceRunId: typeof rawBody.sourceRunId === "string" ? rawBody.sourceRunId : null,
+      }),
+    });
+    const putBody = (await putRes.json()) as Record<string, unknown>;
+    return c.json(putBody, 200);
+  });
 
-      // Unseal project secrets so pinned payloads are strictly redacted before storage (AC 1)
-      const vaultRows = await db
-        .prepare(
-          "SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'",
-        )
-        .bind(project)
-        .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
+  app.delete("/api/projects/:project/workflows/:workflowId/nodes/:nodeId/pin", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
 
-      const vaultKeySecret = c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
-      const secretValues = new Set<string>();
-      for (const row of vaultRows.results ?? []) {
-        try {
-          const plaintext = await decryptSecretValue(
-            row.ciphertext_b64,
-            row.iv_b64,
-            vaultKeySecret,
-          );
-          if (plaintext.trim().length >= 3) {
-            secretValues.add(plaintext);
-          }
-        } catch {
-          // Ignore unseal failures
-        }
-      }
-      if (Array.isArray(rawBody.secretValues)) {
-        for (const sv of rawBody.secretValues) {
-          if (typeof sv === "string" && sv.trim().length >= 3) {
-            secretValues.add(sv);
-          }
-        }
-      }
-
-      const rawOutput =
-        rawBody.output !== undefined ? rawBody.output : rawBody;
-      const redactedOutput = redactTelemetryPayload(rawOutput, {
-        secretValues,
-      });
-
-      const stub = getBlueprintStub(c.env, project);
-      const putRes = await stub.fetch(
-        `http://blueprint-do/pins?project=${encodeURIComponent(project)}`,
+    const project = c.req.param("project") ?? "";
+    const workflowId = c.req.param("workflowId") ?? "";
+    const nodeId = c.req.param("nodeId");
+    if (!PROJECT_SLUG_PATTERN.test(project)) {
+      return c.json(
         {
-          method: "PUT",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            project,
-            workflowId,
-            nodeId,
-            output: redactedOutput,
-            sourceRunId:
-              typeof rawBody.sourceRunId === "string"
-                ? rawBody.sourceRunId
-                : null,
-          }),
-        },
-      );
-      const putBody = (await putRes.json()) as Record<string, unknown>;
-      return c.json(putBody, 200);
-    },
-  );
-
-  app.delete(
-    "/api/projects/:project/workflows/:workflowId/nodes/:nodeId/pin",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
-
-      const project = c.req.param("project") ?? "";
-      const workflowId = c.req.param("workflowId") ?? "";
-      const nodeId = c.req.param("nodeId");
-      if (!PROJECT_SLUG_PATTERN.test(project)) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_PROJECT_SLUG",
-              message: `Invalid project slug "${project}"`,
-            },
+          error: {
+            code: "INVALID_PROJECT_SLUG",
+            message: `Invalid project slug "${project}"`,
           },
-          400,
-        );
-      }
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "mutate",
-        c.req.query("orgId") ?? c.req.header("x-org-id"),
+        },
+        400,
       );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
+    }
 
-      const stub = getBlueprintStub(c.env, project);
-      const delRes = await stub.fetch(
-        `http://blueprint-do/pins?project=${encodeURIComponent(
-          project,
-        )}&workflowId=${encodeURIComponent(
-          workflowId,
-        )}&nodeId=${encodeURIComponent(nodeId)}`,
-        { method: "DELETE" },
-      );
-      const delBody = (await delRes.json()) as Record<string, unknown>;
-      return c.json(delBody, 200);
-    },
-  );
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
+
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "mutate", c.req.query("orgId") ?? c.req.header("x-org-id"));
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
+
+    const stub = getBlueprintStub(c.env, project);
+    const delRes = await stub.fetch(
+      `http://blueprint-do/pins?project=${encodeURIComponent(project)}&workflowId=${encodeURIComponent(workflowId)}&nodeId=${encodeURIComponent(nodeId)}`,
+      { method: "DELETE" },
+    );
+    const delBody = (await delRes.json()) as Record<string, unknown>;
+    return c.json(delBody, 200);
+  });
 
   app.post("/api/projects/:project/runs/:runId/rerun", async (c) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
@@ -8597,9 +7767,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       resolved.caller,
       project,
       "mutate",
-      typeof rawBody.orgId === "string"
-        ? rawBody.orgId
-        : (c.req.query("orgId") ?? c.req.header("x-org-id")),
+      typeof rawBody.orgId === "string" ? rawBody.orgId : (c.req.query("orgId") ?? c.req.header("x-org-id")),
     );
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
@@ -8612,20 +7780,16 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const stub = getBlueprintStub(c.env, project);
     if (!sourceRun || sourceStepEvents.length === 0) {
-      const doTelRes = await stub.fetch(
-        `http://blueprint-do/telemetry?project=${encodeURIComponent(
-          project,
-        )}&runId=${encodeURIComponent(sourceRunId)}`,
-        { method: "GET" },
-      );
+      const doTelRes = await stub.fetch(`http://blueprint-do/telemetry?project=${encodeURIComponent(project)}&runId=${encodeURIComponent(sourceRunId)}`, {
+        method: "GET",
+      });
       if (doTelRes.ok) {
         const doTel = (await doTelRes.json()) as {
           runs?: RunRecord[];
           events?: StepEvent[];
         };
         if (!sourceRun) {
-          sourceRun =
-            (doTel.runs ?? []).find((r) => r.runId === sourceRunId) ?? null;
+          sourceRun = (doTel.runs ?? []).find((r) => r.runId === sourceRunId) ?? null;
         }
         if (sourceStepEvents.length === 0 && Array.isArray(doTel.events)) {
           sourceStepEvents = doTel.events;
@@ -8646,18 +7810,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const failedStep = sourceStepEvents.find((ev) => ev.status === "failed");
-    const fromNodeId =
-      typeof rawBody.fromNodeId === "string" && rawBody.fromNodeId.trim()
-        ? rawBody.fromNodeId.trim()
-        : (failedStep?.nodeId ?? "");
+    const fromNodeId = typeof rawBody.fromNodeId === "string" && rawBody.fromNodeId.trim() ? rawBody.fromNodeId.trim() : (failedStep?.nodeId ?? "");
 
     if (!fromNodeId) {
       return c.json(
         {
           error: {
             code: "MISSING_FROM_NODE_ID",
-            message:
-              'Provide { fromNodeId: "<nodeId>" } to specify the starting node for partial re-run.',
+            message: 'Provide { fromNodeId: "<nodeId>" } to specify the starting node for partial re-run.',
           },
         },
         422,
@@ -8665,33 +7825,20 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const useCurrentDraftRev = rawBody.useCurrentDraftRev !== false;
-    const currentStateRes = await stub.fetch(
-      `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
-    const currentStatePayload =
-      (await currentStateRes.json()) as ProjectStatePayload;
+    const currentStateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
+    const currentStatePayload = (await currentStateRes.json()) as ProjectStatePayload;
 
     let targetStatePayload: ProjectStatePayload = currentStatePayload;
     if (!useCurrentDraftRev && sourceRun.revision !== currentStatePayload.revision) {
-      const histRes = await stub.fetch(
-        `http://blueprint-do/state?project=${encodeURIComponent(
-          project,
-        )}&revision=${sourceRun.revision}`,
-        { method: "GET" },
-      );
+      const histRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}&revision=${sourceRun.revision}`, { method: "GET" });
       if (histRes.ok) {
         targetStatePayload = (await histRes.json()) as ProjectStatePayload;
       }
     }
 
     const workflow =
-      (targetStatePayload.state?.workflows ?? []).find(
-        (w) => w.id === sourceRun!.workflowId,
-      ) ??
-      (currentStatePayload.state?.workflows ?? []).find(
-        (w) => w.id === sourceRun!.workflowId,
-      );
+      (targetStatePayload.state?.workflows ?? []).find((w) => w.id === sourceRun!.workflowId) ??
+      (currentStatePayload.state?.workflows ?? []).find((w) => w.id === sourceRun!.workflowId);
 
     if (!workflow) {
       return c.json(
@@ -8706,9 +7853,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const vaultRows = await db
-      .prepare(
-        "SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'",
-      )
+      .prepare("SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'")
       .bind(project)
       .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
 
@@ -8718,11 +7863,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     for (const row of vaultRows.results ?? []) {
       try {
-        const plaintext = await decryptSecretValue(
-          row.ciphertext_b64,
-          row.iv_b64,
-          vaultKeySecret,
-        );
+        const plaintext = await decryptSecretValue(row.ciphertext_b64, row.iv_b64, vaultKeySecret);
         unsealedByRef.set(row.ref, plaintext);
         if (plaintext.trim().length >= 3) {
           secretValues.add(plaintext);
@@ -8732,11 +7873,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       }
     }
 
-    const targetEnv =
-      typeof rawBody.env === "string" &&
-      (rawBody.env === "preview" || rawBody.env === "production")
-        ? rawBody.env
-        : "preview";
+    const targetEnv = typeof rawBody.env === "string" && (rawBody.env === "preview" || rawBody.env === "production") ? rawBody.env : "preview";
 
     // Story 17: brick executors write the app's tables; never into STUDIO_DB.
     const rerunDataDb = await resolveRunDataDb(c.env, db, project, authz.orgId, targetEnv);
@@ -8801,9 +7938,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const telemetrySecret = await requireProjectSecret(c.env, project, "control-plane");
     const workerReq = await signedExecutingRequest("/__px/runs/rerun", rerunPayload, telemetrySecret);
 
-    const webhookUrl = `http://localhost/api/projects/${encodeURIComponent(
-      project,
-    )}/telemetry/webhook`;
+    const webhookUrl = `http://localhost/api/projects/${encodeURIComponent(project)}/telemetry/webhook`;
 
     let runtimeExecutors: Executors;
     try {
@@ -8820,9 +7955,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       pxEnv: targetEnv,
       telemetrySecret,
       telemetryWebhookUrl: webhookUrl,
-        telemetryWebhookSecret: await requireProjectSecret(c.env, project, "telemetry-webhook"),
-      telemetryWebhookFetcher: async (input, init) =>
-        app.fetch(new Request(input, init), c.env),
+      telemetryWebhookSecret: await requireProjectSecret(c.env, project, "telemetry-webhook"),
+      telemetryWebhookFetcher: async (input, init) => app.fetch(new Request(input, init), c.env),
       secretValues,
     });
 
@@ -8868,10 +8002,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     orgId: string,
     mode: "read" | "connect",
     options: { allowMcpToken?: boolean } = {},
-  ): Promise<
-    | { ok: true; role: StudioOrgRole }
-    | { ok: false; status: 403; error: { code: string; message: string } }
-  > {
+  ): Promise<{ ok: true; role: StudioOrgRole } | { ok: false; status: 403; error: { code: string; message: string } }> {
     // Story 16: org-level routes (cloudflare-tokens, onboarding, environments overview) are for signed-in people; an MCP
     // token is bound to one project.
     if (caller.kind === "mcp_token" && !options.allowMcpToken) {
@@ -8889,14 +8020,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const memberRow = await db
-      .prepare(
-        "SELECT role FROM studio_org_members WHERE org_id = ? AND user_id = ? LIMIT 1",
-      )
+      .prepare("SELECT role FROM studio_org_members WHERE org_id = ? AND user_id = ? LIMIT 1")
       .bind(orgId, caller.userId)
       .first<{ role: StudioOrgRole }>();
 
-    const role =
-      memberRow?.role ?? (caller.kind === "mcp_token" ? caller.orgRole : null);
+    const role = memberRow?.role ?? (caller.kind === "mcp_token" ? caller.orgRole : null);
 
     if (!role) {
       return {
@@ -8911,9 +8039,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     if (mode === "read") {
       if (caller.kind === "mcp_token") {
-        const hasReadOrConnect =
-          caller.scopes.includes("read") ||
-          caller.scopes.includes("connect");
+        const hasReadOrConnect = caller.scopes.includes("read") || caller.scopes.includes("connect");
         if (!hasReadOrConnect) {
           return {
             ok: false,
@@ -8928,8 +8054,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return { ok: true, role };
     }
 
-    const isEditorOrHigher =
-      role === "owner" || role === "admin" || role === "builder";
+    const isEditorOrHigher = role === "owner" || role === "admin" || role === "builder";
     if (!isEditorOrHigher) {
       return {
         ok: false,
@@ -8942,8 +8067,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     if (caller.kind === "mcp_token") {
-      const hasConnectScope =
-        caller.scopes.includes("connect");
+      const hasConnectScope = caller.scopes.includes("connect");
       if (!hasConnectScope) {
         return {
           ok: false,
@@ -8969,12 +8093,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "connect",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "connect");
     if (!authz.ok) {
       await recordStudioAuditLog(db, {
         orgId,
@@ -8987,9 +8106,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json({ error: authz.error }, authz.status);
     }
 
-    const parsed = CreateCloudflareTokenBodySchema.safeParse(
-      await c.req.json().catch(() => null),
-    );
+    const parsed = CreateCloudflareTokenBodySchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) {
       return c.json(
         {
@@ -9060,12 +8177,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "read",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "read");
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -9085,12 +8197,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "read",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "read");
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -9110,12 +8217,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "connect",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "connect");
     if (!authz.ok) {
       await recordStudioAuditLog(db, {
         orgId,
@@ -9194,12 +8296,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "read",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "read");
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -9209,14 +8306,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
   });
 
   const FunnelEventBodySchema = z.object({
-    step: z.enum([
-      "wizard_opened",
-      "template_link_clicked",
-      "token_submitted",
-      "verification_failed",
-      "verification_succeeded",
-      "token_disconnected",
-    ]),
+    step: z.enum(["wizard_opened", "template_link_clicked", "token_submitted", "verification_failed", "verification_succeeded", "token_disconnected"]),
     projectId: z.string().min(1).max(128).optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   });
@@ -9231,19 +8321,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "read",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "read");
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
 
-    const parsed = FunnelEventBodySchema.safeParse(
-      await c.req.json().catch(() => null),
-    );
+    const parsed = FunnelEventBodySchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) {
       return c.json(
         {
@@ -9277,12 +8360,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "read",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "read");
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -9318,19 +8396,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "read",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "read");
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
 
-    const parsed = StudioOnboardingEventBodySchema.safeParse(
-      await c.req.json().catch(() => null),
-    );
+    const parsed = StudioOnboardingEventBodySchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) {
       return c.json(
         {
@@ -9366,12 +8437,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "read",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "read");
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -9396,9 +8462,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const parsed = StudioOnboardingEventBodySchema.safeParse(
-      await c.req.json().catch(() => null),
-    );
+    const parsed = StudioOnboardingEventBodySchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) {
       return c.json(
         {
@@ -9437,18 +8501,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     // A named project must belong to that org (or have no row yet); an event is never filed against another org's project.
     const eventProjectId = parsed.data.projectId ?? parsed.data.project ?? null;
     if (eventProjectId) {
-      const projectRow = await db
-        .prepare("SELECT org_id FROM projects WHERE project_id = ? LIMIT 1")
-        .bind(eventProjectId)
-        .first<{ org_id: string }>();
-      if (
-        (projectRow && projectRow.org_id !== orgId) ||
-        (resolved.caller.kind === "mcp_token" && eventProjectId !== resolved.caller.projectId)
-      ) {
-        return c.json(
-          { error: { code: "FORBIDDEN_PROJECT", message: "Project belongs to another organization or token" } },
-          403,
-        );
+      const projectRow = await db.prepare("SELECT org_id FROM projects WHERE project_id = ? LIMIT 1").bind(eventProjectId).first<{ org_id: string }>();
+      if ((projectRow && projectRow.org_id !== orgId) || (resolved.caller.kind === "mcp_token" && eventProjectId !== resolved.caller.projectId)) {
+        return c.json({ error: { code: "FORBIDDEN_PROJECT", message: "Project belongs to another organization or token" } }, 403);
       }
     }
 
@@ -9597,8 +8652,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         {
           error: {
             code: "HUMAN_CONSENT_REQUIRED",
-            message:
-              "Connecting a Cloudflare deploy target requires interactive human consent in ProjectX Studio.",
+            message: "Connecting a Cloudflare deploy target requires interactive human consent in ProjectX Studio.",
             studioUrl: "/?nav=connections&wizard=connect-cloudflare",
           },
         },
@@ -9606,12 +8660,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "connect",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "connect");
     if (!authz.ok) {
       await recordStudioAuditLog(db, {
         orgId,
@@ -9624,9 +8673,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return c.json({ error: authz.error }, authz.status);
     }
 
-    const parsed = VerifyAndSaveBodySchema.safeParse(
-      await c.req.json().catch(() => null),
-    );
+    const parsed = VerifyAndSaveBodySchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) {
       return c.json(
         {
@@ -9639,13 +8686,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const plaintextToken = (
-      parsed.data.token ??
-      parsed.data.apiToken ??
-      ""
-    ).trim();
-    const requestedProject =
-      parsed.data.projectId?.trim() || parsed.data.project?.trim() || null;
+    const plaintextToken = (parsed.data.token ?? parsed.data.apiToken ?? "").trim();
+    const requestedProject = parsed.data.projectId?.trim() || parsed.data.project?.trim() || null;
 
     await recordOnboardingFunnelEvent(db, {
       orgId,
@@ -9657,11 +8699,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       },
     });
 
-    const verified = await verifyDeployTokenForRoute(
-      c.env,
-      plaintextToken,
-      parsed.data.accountId,
-    );
+    const verified = await verifyDeployTokenForRoute(c.env, plaintextToken, parsed.data.accountId);
     if (!verified.ok) return verified.response;
     const verification = verified.report;
 
@@ -9711,10 +8749,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       }).catch(() => {});
     }
 
-    const resolvedAccountName =
-      parsed.data.accountName?.trim() ||
-      verification.accountName ||
-      "Cloudflare Account";
+    const resolvedAccountName = parsed.data.accountName?.trim() || verification.accountName || "Cloudflare Account";
 
     const metadata = await sealDeployToken(
       db,
@@ -9723,9 +8758,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         accountId: verification.accountId,
         accountName: resolvedAccountName,
         plaintextToken,
-        scopes: verification.permissions
-          .filter((p) => p.granted)
-          .map((p) => p.label),
+        scopes: verification.permissions.filter((p) => p.granted).map((p) => p.label),
         createdBy: resolved.caller.author.id,
       },
       c.env,
@@ -9808,12 +8841,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "connect",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "connect");
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -9850,15 +8878,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     // simulatedStatus is a test hook understood only by the fake client; the real client always checks the stored token.
-    const simulatedStatus =
-      studioDeployClientMode(c.env) === "fake" ? body.simulatedStatus : undefined;
+    const simulatedStatus = studioDeployClientMode(c.env) === "fake" ? body.simulatedStatus : undefined;
     let tokenToVerify: string;
     if (simulatedStatus === "expired") {
       tokenToVerify = "cf_expired_token";
-    } else if (
-      simulatedStatus === "revoked" ||
-      simulatedStatus === "disabled"
-    ) {
+    } else if (simulatedStatus === "revoked" || simulatedStatus === "disabled") {
       tokenToVerify = "cf_revoked_token";
     } else if (body.token && body.token.trim().length > 0) {
       tokenToVerify = body.token.trim();
@@ -9875,11 +8899,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const recheckVerified = await verifyDeployTokenForRoute(
-      c.env,
-      tokenToVerify,
-      existingMeta.accountId,
-    );
+    const recheckVerified = await verifyDeployTokenForRoute(c.env, tokenToVerify, existingMeta.accountId);
     if (!recheckVerified.ok) return recheckVerified.response;
     const verification = recheckVerified.report;
 
@@ -9887,19 +8907,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     if (!verification.ok) {
       if (verification.status === "expired") {
         nextStatus = "expired";
-      } else if (
-        verification.status === "disabled" ||
-        verification.status === "invalid"
-      ) {
+      } else if (verification.status === "disabled" || verification.status === "invalid") {
         nextStatus = "revoked";
       }
     }
 
-    const updatedMeta = await markDeployTokenVerificationStatus(
-      db,
-      tokenRef,
-      nextStatus,
-    );
+    const updatedMeta = await markDeployTokenVerificationStatus(db, tokenRef, nextStatus);
 
     return c.json(
       {
@@ -9921,12 +8934,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeOrgTokenCustody(
-      db,
-      resolved.caller,
-      orgId,
-      "read",
-    );
+    const authz = await authorizeOrgTokenCustody(db, resolved.caller, orgId, "read");
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -9950,18 +8958,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     );
   });
 
-  async function computeCurrentBlueprintArtifactHashes(
-    db: D1Like,
-    project: string,
-    current: ProjectStatePayload,
-  ): Promise<CurrentBlueprintHashes> {
+  async function computeCurrentBlueprintArtifactHashes(db: D1Like, project: string, current: ProjectStatePayload): Promise<CurrentBlueprintHashes> {
     if (current.revision === 0) {
       const codeHash = computeBlueprintCodeHash(current.state);
       const graphHash = computeBlueprintGraphHash(current.state);
-      const buildHash = computeBlueprintBuildHash(
-        current.state,
-        current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION,
-      );
+      const buildHash = computeBlueprintBuildHash(current.state, current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION);
       return {
         currentRev: 0,
         buildHash,
@@ -9995,8 +8996,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const assembled = assemble(toAssemblerBlueprint(current.state), catalog);
     if (assembled.ok) {
-      const catalogVersion =
-        current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION;
+      const catalogVersion = current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION;
       const hashes = await computeArtifactHashes(assembled.files, {
         catalogVersion,
       });
@@ -10010,10 +9010,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const codeHash = computeBlueprintCodeHash(current.state);
     const graphHash = computeBlueprintGraphHash(current.state);
-    const buildHash = computeBlueprintBuildHash(
-      current.state,
-      current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION,
-    );
+    const buildHash = computeBlueprintBuildHash(current.state, current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION);
     return {
       currentRev: current.revision,
       buildHash,
@@ -10022,11 +9019,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     };
   }
 
-  async function loadEnvironmentDeploymentHistory(
-    db: D1Like,
-    project: string,
-    envName: DeployEnvName,
-  ) {
+  async function loadEnvironmentDeploymentHistory(db: D1Like, project: string, envName: DeployEnvName) {
     const depRows = await db
       .prepare(
         `SELECT deploy_id, project_id, org_id, env_name, revision, build_hash, code_hash, graph_hash,
@@ -10095,10 +9088,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         // Ignore invalid state_json
       }
 
-      const rollbackFromDeploymentId =
-        d.rollback_from_deploy_id ??
-        parsedState.rollbackFromDeploymentId ??
-        null;
+      const rollbackFromDeploymentId = d.rollback_from_deploy_id ?? parsedState.rollbackFromDeploymentId ?? null;
 
       deployments.push({
         deployId: d.deploy_id,
@@ -10137,10 +9127,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     env: StudioApiEnv,
     token: string,
     accountId: string | undefined,
-  ): Promise<
-    | { ok: true; report: Awaited<ReturnType<typeof verifyCloudflareToken>> }
-    | { ok: false; response: Response }
-  > {
+  ): Promise<{ ok: true; report: Awaited<ReturnType<typeof verifyCloudflareToken>> } | { ok: false; response: Response }> {
     let client: CloudflareApiClient;
     try {
       client = getStudioVerificationClient(env, appOptions.deploy);
@@ -10196,28 +9183,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     currentHashes: CurrentBlueprintHashes,
     env: StudioApiEnv,
   ) {
-    const deployedState: PersistedDeployedState =
-      (envRecord.deployedState as PersistedDeployedState | null) ?? {};
-    const deployments = await loadEnvironmentDeploymentHistory(
-      db,
-      project,
-      envRecord.envName,
-    );
+    const deployedState: PersistedDeployedState = (envRecord.deployedState as PersistedDeployedState | null) ?? {};
+    const deployments = await loadEnvironmentDeploymentHistory(db, project, envRecord.envName);
     const latestDeployment = deployments[0] ?? null;
-    const tokenMeta = await getDeployTokenMetadata(
-      db,
-      envRecord.target.tokenRef,
-      envRecord.orgId,
-    );
-    const controlPlane =
-      tokenMeta && tokenMeta.status === "active"
-        ? getStudioControlPlane(envRecord.target.accountId, env, appOptions.deploy)
-        : undefined;
+    const tokenMeta = await getDeployTokenMetadata(db, envRecord.target.tokenRef, envRecord.orgId);
+    const controlPlane = tokenMeta && tokenMeta.status === "active" ? getStudioControlPlane(envRecord.target.accountId, env, appOptions.deploy) : undefined;
     // The real client needs the decrypted token to read the account; the fake finds its own registered one.
-    const driftTokenResolver =
-      controlPlane && !asFakeControlPlane(controlPlane)
-        ? createStudioTokenResolver(db, env)
-        : undefined;
+    const driftTokenResolver = controlPlane && !asFakeControlPlane(controlPlane) ? createStudioTokenResolver(db, env) : undefined;
 
     const expectedDeployment = {
       project,
@@ -10252,14 +9224,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     return {
       ...envRecord,
       currentRev: currentHashes.currentRev,
-      deployedAt:
-        deployedState.deployedAt ?? latestDeployment?.createdAt ?? null,
-      deployedBy:
-        deployedState.deployedBy ?? latestDeployment?.actorId ?? null,
-      rollbackFromDeploymentId:
-        deployedState.rollbackFromDeploymentId ??
-        latestDeployment?.rollbackFromDeploymentId ??
-        null,
+      deployedAt: deployedState.deployedAt ?? latestDeployment?.createdAt ?? null,
+      deployedBy: deployedState.deployedBy ?? latestDeployment?.actorId ?? null,
+      rollbackFromDeploymentId: deployedState.rollbackFromDeploymentId ?? latestDeployment?.rollbackFromDeploymentId ?? null,
       driftReport,
       drift,
       deployments,
@@ -10276,13 +9243,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -10305,28 +9266,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const stub = getBlueprintStub(c.env, project);
-    const stateRes = await stub.fetch(
-      `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
     const current = (await stateRes.json()) as ProjectStatePayload;
-    const currentHashes = await computeCurrentBlueprintArtifactHashes(
-      db,
-      project,
-      current,
-    );
+    const currentHashes = await computeCurrentBlueprintArtifactHashes(db, project, current);
 
     const enrichedEnvironments = [];
     for (const envRec of environments) {
-      enrichedEnvironments.push(
-        await enrichEnvironmentWithDriftAndHistory(
-          db,
-          project,
-          envRec,
-          currentHashes,
-          c.env,
-        ),
-      );
+      enrichedEnvironments.push(await enrichEnvironmentWithDriftAndHistory(db, project, envRec, currentHashes, c.env));
     }
 
     const sandbox = await loadProjectSandboxSummary(db, project);
@@ -10536,11 +9482,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       };
     }
 
-    const tokenMeta = await getDeployTokenMetadata(
-      db,
-      envRecord.target.tokenRef,
-      orgId,
-    );
+    const tokenMeta = await getDeployTokenMetadata(db, envRecord.target.tokenRef, orgId);
     if (!tokenMeta || tokenMeta.status !== "active") {
       return {
         ok: false,
@@ -10553,14 +9495,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const stub = getBlueprintStub(env, project);
-    const stateRes = await stub.fetch(
-      `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
     const current = (await stateRes.json()) as ProjectStatePayload;
 
-    const deployedState: PersistedDeployedState =
-      (envRecord.deployedState as PersistedDeployedState | null) ?? {};
+    const deployedState: PersistedDeployedState = (envRecord.deployedState as PersistedDeployedState | null) ?? {};
 
     // Check content-addressed builds cache first so promoting or re-planning never re-runs assemble()
     const cachedRow = params.preferredBuildHash
@@ -10629,29 +9567,20 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         const revKey = `${project}:r${current.revision}`;
         const nextRevCount = (studioProjectAssembleCounts.get(revKey) ?? 0) + 1;
         studioProjectAssembleCounts.set(revKey, nextRevCount);
-        studioProjectAssembleCounts.set(
-          project,
-          (studioProjectAssembleCounts.get(project) ?? 0) + 1,
-        );
+        studioProjectAssembleCounts.set(project, (studioProjectAssembleCounts.get(project) ?? 0) + 1);
         assembleCount = nextRevCount;
 
-        const catalogVersion =
-          current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION;
+        const catalogVersion = current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION;
         const hashes = await computeArtifactHashes(assembled.files, {
           catalogVersion,
         });
         buildHash = hashes.buildHash;
         codeHash = hashes.codeHash;
         graphHash = hashes.graphHash;
-        bundleCode =
-          assembled.files["src/index.ts"] ??
-          "export default { fetch() { return new Response('ok'); } };";
+        bundleCode = assembled.files["src/index.ts"] ?? "export default { fetch() { return new Response('ok'); } };";
 
         const fileCount = Object.keys(assembled.files).length;
-        const byteCount = Object.values(assembled.files).reduce(
-          (sum, text) => sum + new TextEncoder().encode(text).length,
-          0,
-        );
+        const byteCount = Object.values(assembled.files).reduce((sum, text) => sum + new TextEncoder().encode(text).length, 0);
         await db
           .prepare(
             `INSERT INTO studio_builds (project_id, revision, build_hash, semantic_hash, file_count, byte_count, files_json, created_at)
@@ -10664,15 +9593,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
                files_json = excluded.files_json,
                created_at = excluded.created_at`,
           )
-          .bind(
-            project,
-            current.revision,
-            buildHash,
-            current.semanticHash,
-            fileCount,
-            byteCount,
-            JSON.stringify(assembled.files),
-          )
+          .bind(project, current.revision, buildHash, current.semanticHash, fileCount, byteCount, JSON.stringify(assembled.files))
           .run();
 
         await db
@@ -10752,12 +9673,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
               sql: dropColSql,
               sha256: await sha256Hex(dropColSql),
             });
-          } else if (
-            prevField.type === "text" &&
-            (currField.type === "number" || currField.type === "boolean")
-          ) {
-            const targetSqlType =
-              currField.type === "boolean" ? "BOOLEAN" : "INTEGER";
+          } else if (prevField.type === "text" && (currField.type === "number" || currField.type === "boolean")) {
+            const targetSqlType = currField.type === "boolean" ? "BOOLEAN" : "INTEGER";
             const narrowSql = `ALTER TABLE ${currEnt.name} ALTER COLUMN ${currField.name} TYPE ${targetSqlType};`;
             const migName = `9003_narrow_column__${currEnt.name}_${currField.name}.sql`;
             evolutionMigrations.push({
@@ -10812,23 +9729,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
              SET deployed_state_json = ?, updated_at = ?
              WHERE project_id = ? AND env_name = ?`,
           )
-          .bind(
-            JSON.stringify(nextDeployedState),
-            new Date().toISOString(),
-            project,
-            envName,
-          )
+          .bind(JSON.stringify(nextDeployedState), new Date().toISOString(), project, envName)
           .run();
       }
     }
 
     // Deduplicate all migrations by name while preserving order
     const migrationMap = new Map<string, ProvisionerMigrationItem>();
-    for (const m of [
-      ...assembledMigrations,
-      ...evolutionMigrations,
-      ...pendingCustomMigrations,
-    ]) {
+    for (const m of [...assembledMigrations, ...evolutionMigrations, ...pendingCustomMigrations]) {
       migrationMap.set(m.name, m);
     }
     const allMigrations = [...migrationMap.values()];
@@ -10856,10 +9764,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         if (!seenSecrets.has(secName)) {
           seenSecrets.add(secName);
           const boundRef = (current.state.secretRefs ?? []).find(
-            (sr) =>
-              sr.targetKind === "brick" &&
-              sr.targetId === brickEntry.id &&
-              sr.secretName === secName,
+            (sr) => sr.targetKind === "brick" && sr.targetId === brickEntry.id && sr.secretName === secName,
           );
           secretRequirements.push({
             name: secName,
@@ -10950,21 +9855,16 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       }
     }
 
-    const readinessIssues = (current.readiness?.needs ?? []).filter(
-      (n) => n.code !== "UNBOUND_BRICK_SECRET" && n.code !== "UNBOUND_CONNECTION",
-    );
+    const readinessIssues = (current.readiness?.needs ?? []).filter((n) => n.code !== "UNBOUND_BRICK_SECRET" && n.code !== "UNBOUND_CONNECTION");
 
-    const previouslyAppliedSql = Object.values(
-      deployedState.appliedMigrationSql ?? {},
-    );
+    const previouslyAppliedSql = Object.values(deployedState.appliedMigrationSql ?? {});
 
     const envState: DeployPlanEnvironmentState = {
       deployedRev: envRecord.deployedRev,
       currentBuildHash: envRecord.buildHash,
       currentCodeHash: envRecord.codeHash,
       currentGraphHash: envRecord.graphHash,
-      databaseExists:
-        envRecord.deployedRev !== null && envRecord.deployedRev !== undefined,
+      databaseExists: envRecord.deployedRev !== null && envRecord.deployedRev !== undefined,
       appliedMigrations: deployedState.appliedMigrations ?? [],
       existingQueues: deployedState.queues ?? [],
       currentCrons: deployedState.cronTriggers ?? [],
@@ -11079,15 +9979,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
     const root = env.PX_TELEMETRY_SECRET;
     if (typeof root !== "string" || root.trim().length < 16) {
-      throw new StudioDeployRefusal(
-        "NO_ROOT_SECRET",
-        "PX_TELEMETRY_SECRET is not set: the deployed Worker's per-project secrets are derived from it.",
-        500,
-      );
+      throw new StudioDeployRefusal("NO_ROOT_SECRET", "PX_TELEMETRY_SECRET is not set: the deployed Worker's per-project secrets are derived from it.", 500);
     }
-    const buildRow = await params.env.STUDIO_DB.prepare(
-      "SELECT files_json FROM builds WHERE build_hash = ? AND project_id = ? LIMIT 1",
-    )
+    const buildRow = await params.env.STUDIO_DB.prepare("SELECT files_json FROM builds WHERE build_hash = ? AND project_id = ? LIMIT 1")
       .bind(params.buildHash, project)
       .first<{ files_json: string }>();
     const files = buildRow ? (JSON.parse(buildRow.files_json) as Record<string, string>) : null;
@@ -11171,9 +10065,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const sleep = appOptions.deploy?.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     // A new workers.dev address can take a while to answer: up to ~120 s for a first deploy, ~20 s for a redeploy, with
     // backoff (1 s, 2 s, 4 s, 8 s, then 10 s). The budget counts the waits themselves, so an injected sleep keeps it exact.
-    const budgetMs = firstDeploy
-      ? (appOptions.deploy?.smokeTimeoutMs?.firstDeploy ?? 120_000)
-      : (appOptions.deploy?.smokeTimeoutMs?.redeploy ?? 20_000);
+    const budgetMs = firstDeploy ? (appOptions.deploy?.smokeTimeoutMs?.firstDeploy ?? 120_000) : (appOptions.deploy?.smokeTimeoutMs?.redeploy ?? 20_000);
     // The budget bounds wall time as well: each attempt is cut off by AbortSignal.timeout, and what counts is the larger of
     // the time waited between attempts and the wall-clock time since the first one.
     const started = Date.now();
@@ -11183,7 +10075,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     for (let attempt = 1; ; attempt += 1) {
       const attemptMs = Math.max(1_000, Math.min(10_000, budgetMs - spent()));
       try {
-        const res = await workerFetch(new Request(`${url.replace(/\/+$/, "")}/healthz`, { headers: { [KEY_HEADER]: accessKey }, redirect: "manual", signal: AbortSignal.timeout(attemptMs) }));
+        const res = await workerFetch(
+          new Request(`${url.replace(/\/+$/, "")}/healthz`, {
+            headers: { [KEY_HEADER]: accessKey },
+            redirect: "manual",
+            signal: AbortSignal.timeout(attemptMs),
+          }),
+        );
         if (res.ok) return { status: res.status, attempts: attempt };
         last = `HTTP ${res.status}`;
       } catch (error) {
@@ -11195,7 +10093,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       waited += wait;
     }
     waited = spent();
-    throw new StudioDeployRefusal("SMOKE_CHECK_FAILED", `The deployed Worker did not answer ${url}/healthz with its access key within ${Math.round(waited / 1000)} s: ${last}`, 502);
+    throw new StudioDeployRefusal(
+      "SMOKE_CHECK_FAILED",
+      `The deployed Worker did not answer ${url}/healthz with its access key within ${Math.round(waited / 1000)} s: ${last}`,
+      502,
+    );
   }
 
   /**
@@ -11232,7 +10134,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       const put = await controlPlane.putScriptSecret(target.accountId, token, scriptName, name, value);
       putVersionIds.push(put.versionId);
       secretsChanged = true;
-      actions.push({ kind: "secret", name, action: previousHashes[name] || liveSecrets.has(name) ? "update" : "create", summary: `Bound secret ${name} on ${scriptName}` });
+      actions.push({
+        kind: "secret",
+        name,
+        action: previousHashes[name] || liveSecrets.has(name) ? "update" : "create",
+        summary: `Bound secret ${name} on ${scriptName}`,
+      });
     }
     for (const name of Object.keys(previousHashes)) {
       if (mode === "rollback") break; // only a deploy, which knows every secret the blueprint binds, removes one
@@ -11288,7 +10195,18 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
    */
   async function failRealDeploy(
     error: unknown,
-    p: { db: D1Like; orgId: string; project: string; envName: string; deployId: string; caller: StudioCaller; controlPlane: CloudflareApiClient | null; steps: Array<{ stepName: string; action: string; resourceName: string }>; hideValues?: string[]; action?: string },
+    p: {
+      db: D1Like;
+      orgId: string;
+      project: string;
+      envName: string;
+      deployId: string;
+      caller: StudioCaller;
+      controlPlane: CloudflareApiClient | null;
+      steps: Array<{ stepName: string; action: string; resourceName: string }>;
+      hideValues?: string[];
+      action?: string;
+    },
   ): Promise<never> {
     const httpCalls = (p.controlPlane as Partial<HttpCloudflareApiClient> | null)?.httpCalls ?? [];
     const hide = createRedactor((p.hideValues ?? []).filter((v) => typeof v === "string"));
@@ -11298,7 +10216,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     let refusal: StudioDeployRefusal;
     if (error instanceof StudioDeployRefusal) refusal = new StudioDeployRefusal(error.code, error.message, error.status, { ...error.detail, partial });
     else if (message.startsWith("NO_WORKERS_DEV_SUBDOMAIN")) refusal = new StudioDeployRefusal("NO_WORKERS_DEV_SUBDOMAIN", message, 422, { partial });
-    else if (error instanceof CloudflareApiError) refusal = new StudioDeployRefusal("CLOUDFLARE_ERROR", message, 502, { cloudflare: { status: error.status, codes: error.codes, details: error.details }, partial });
+    else if (error instanceof CloudflareApiError)
+      refusal = new StudioDeployRefusal("CLOUDFLARE_ERROR", message, 502, {
+        cloudflare: { status: error.status, codes: error.codes, details: error.details },
+        partial,
+      });
     else if (error instanceof CloudflareNetworkError) refusal = new StudioDeployRefusal("CLOUDFLARE_UNREACHABLE", message, 502, { partial });
     else if (error instanceof CloudflareMalformedError) refusal = new StudioDeployRefusal("CLOUDFLARE_ERROR", message, 502, { partial });
     else if (error instanceof RequestGuardError) refusal = new StudioDeployRefusal("GUARD_REFUSED", message, 403, { partial });
@@ -11325,10 +10247,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     orgId: string;
     envName: DeployEnvName;
     caller: StudioCaller;
-    ctx: Extract<
-      Awaited<ReturnType<typeof buildEnvironmentPlanContext>>,
-      { ok: true }
-    >;
+    ctx: Extract<Awaited<ReturnType<typeof buildEnvironmentPlanContext>>, { ok: true }>;
     actionOverride?: "apply" | "promote";
     promotedFromEnv?: DeployEnvName;
     reusedCachedBuild?: boolean;
@@ -11375,21 +10294,22 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const existingDeployedRev = ctx.envRecord.deployedRev;
     // Real client: what is deployed is read from the account (the Worker's annotated code hash, the database's own state and
     // migrations, the queues and Workflows Cloudflare lists), so "no changes" holds in the account, not just in Studio's memory.
-    const envState: DeployPlanEnvironmentState = realUpload ? { deployedRev: existingDeployedRev } : {
-      deployedRev: existingDeployedRev,
-      currentBuildHash: ctx.envRecord.buildHash,
-      currentCodeHash: ctx.envRecord.codeHash,
-      currentGraphHash: ctx.envRecord.graphHash,
-      databaseExists:
-        existingDeployedRev !== null && existingDeployedRev !== undefined,
-      appliedMigrations: ctx.deployedState.appliedMigrations ?? [],
-      existingQueues: ctx.deployedState.queues ?? [],
-      currentCrons: ctx.deployedState.cronTriggers ?? [],
-      existingWorkflows: (ctx.deployedState.workflows ?? []).map((w) => ({
-        workflowName: w.name,
-        className: w.className,
-      })),
-    };
+    const envState: DeployPlanEnvironmentState = realUpload
+      ? { deployedRev: existingDeployedRev }
+      : {
+          deployedRev: existingDeployedRev,
+          currentBuildHash: ctx.envRecord.buildHash,
+          currentCodeHash: ctx.envRecord.codeHash,
+          currentGraphHash: ctx.envRecord.graphHash,
+          databaseExists: existingDeployedRev !== null && existingDeployedRev !== undefined,
+          appliedMigrations: ctx.deployedState.appliedMigrations ?? [],
+          existingQueues: ctx.deployedState.queues ?? [],
+          currentCrons: ctx.deployedState.cronTriggers ?? [],
+          existingWorkflows: (ctx.deployedState.workflows ?? []).map((w) => ({
+            workflowName: w.name,
+            className: w.className,
+          })),
+        };
 
     if (envName === "preview") {
       await recordStudioOnboardingEvent(db, {
@@ -11409,64 +10329,64 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const doneSteps: Array<{ stepName: string; action: string; resourceName: string }> = [];
     let realSecretHashes: Record<string, string> | undefined;
     let realStudioVersionIds: string[] | undefined;
-    const runApply = () => provisioner.apply({
-      target: ctx.envRecord.target,
-      project,
-      actor: caller.author.id,
-      deployId,
-      buildHash: ctx.buildHash,
-      // Real client: the hash of the Worker actually uploaded, so a change in the gate or runtime layer redeploys.
-      codeHash: realUpload?.bundleSha ?? ctx.codeHash,
-      graphHash: ctx.graphHash,
-      bundle: {
-        code: realUpload?.bundleCode ?? ctx.bundleCode,
-        sha256: realUpload?.bundleSha ?? ctx.codeHash,
-      },
-      migrations: ctx.allMigrations,
-      queues: ctx.queues,
-      cronTriggers: ctx.cronTriggers,
-      workflows: deployWorkflows,
-      graphs: ctx.graphs,
-      schedules: ctx.cronTriggers,
-      // Real client: secrets are synced after the upload by completeRealDeploy (changed values put, removed ones deleted).
-      secrets: realUpload ? {} : ctx.configuredSecretValues,
-      ...(realUpload ? { workerBindings: realUpload.workerBindings, trustedVersionIds: (ctx.deployedState as PersistedDeployedState).studioVersionIds ?? [] } : {}),
-      ...(realUpload && realUpload.compatibilityFlags.length > 0 ? { compatibilityFlags: realUpload.compatibilityFlags } : {}),
-      envState,
-      _actionOverride: params.actionOverride ?? "apply",
-      // The bookmark is kept before any migration runs, so a deploy that fails after migrating still leaves a restore point.
-      onPreMigrationBookmark: async ({ databaseId, bookmark }) =>
-        recordRestorePoint(db, { project, envName, deployId, databaseId, bookmark }),
-      onStep: async (step) => {
-        doneSteps.push({ stepName: step.stepName, action: step.action, resourceName: step.resourceName });
-        const stepId = `dstep_${generateUuidV7()}`;
-        await db
-          .prepare(
-            `INSERT INTO deployment_steps (
+    const runApply = () =>
+      provisioner.apply({
+        target: ctx.envRecord.target,
+        project,
+        actor: caller.author.id,
+        deployId,
+        buildHash: ctx.buildHash,
+        // Real client: the hash of the Worker actually uploaded, so a change in the gate or runtime layer redeploys.
+        codeHash: realUpload?.bundleSha ?? ctx.codeHash,
+        graphHash: ctx.graphHash,
+        bundle: {
+          code: realUpload?.bundleCode ?? ctx.bundleCode,
+          sha256: realUpload?.bundleSha ?? ctx.codeHash,
+        },
+        migrations: ctx.allMigrations,
+        queues: ctx.queues,
+        cronTriggers: ctx.cronTriggers,
+        workflows: deployWorkflows,
+        graphs: ctx.graphs,
+        schedules: ctx.cronTriggers,
+        // Real client: secrets are synced after the upload by completeRealDeploy (changed values put, removed ones deleted).
+        secrets: realUpload ? {} : ctx.configuredSecretValues,
+        ...(realUpload
+          ? { workerBindings: realUpload.workerBindings, trustedVersionIds: (ctx.deployedState as PersistedDeployedState).studioVersionIds ?? [] }
+          : {}),
+        ...(realUpload && realUpload.compatibilityFlags.length > 0 ? { compatibilityFlags: realUpload.compatibilityFlags } : {}),
+        envState,
+        _actionOverride: params.actionOverride ?? "apply",
+        // The bookmark is kept before any migration runs, so a deploy that fails after migrating still leaves a restore point.
+        onPreMigrationBookmark: async ({ databaseId, bookmark }) => recordRestorePoint(db, { project, envName, deployId, databaseId, bookmark }),
+        onStep: async (step) => {
+          doneSteps.push({ stepName: step.stepName, action: step.action, resourceName: step.resourceName });
+          const stepId = `dstep_${generateUuidV7()}`;
+          await db
+            .prepare(
+              `INSERT INTO deployment_steps (
                step_id, deploy_id, project_id, env_name, step_order, step_name,
                resource_kind, resource_name, action, status, summary, created_at
              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          )
-          .bind(
-            stepId,
-            deployId,
-            project,
-            envName,
-            step.stepOrder,
-            step.stepName,
-            step.resourceKind,
-            step.resourceName,
-            step.action,
-            step.status,
-            step.summary,
-            step.timestamp,
-          )
-          .run();
+            )
+            .bind(
+              stepId,
+              deployId,
+              project,
+              envName,
+              step.stepOrder,
+              step.stepName,
+              step.resourceKind,
+              step.resourceName,
+              step.action,
+              step.status,
+              step.summary,
+              step.timestamp,
+            )
+            .run();
 
-        await stub
-          .fetch(
-            `http://blueprint-do/deploy-broadcast?project=${encodeURIComponent(project)}`,
-            {
+          await stub
+            .fetch(`http://blueprint-do/deploy-broadcast?project=${encodeURIComponent(project)}`, {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({
@@ -11480,11 +10400,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
                 action: ctx.plan.action,
                 step,
               }),
-            },
-          )
-          .catch(() => {});
-      },
-    } as Parameters<typeof provisioner.apply>[0]);
+            })
+            .catch(() => {});
+        },
+      } as Parameters<typeof provisioner.apply>[0]);
 
     let applyResult: Awaited<ReturnType<typeof runApply>>;
     if (!realUpload) {
@@ -11507,16 +10426,21 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         realSecretHashes = completed.secretHashes;
         realStudioVersionIds = completed.studioVersionIds;
       } catch (error) {
-        return failRealDeploy(error, { db, orgId, project, envName, deployId, caller, controlPlane, steps: doneSteps, hideValues: [env.PX_TELEMETRY_SECRET ?? "", ...Object.values(realUpload.secrets)] });
+        return failRealDeploy(error, {
+          db,
+          orgId,
+          project,
+          envName,
+          deployId,
+          caller,
+          controlPlane,
+          steps: doneSteps,
+          hideValues: [env.PX_TELEMETRY_SECRET ?? "", ...Object.values(realUpload.secrets)],
+        });
       }
     }
 
-    const mergedAppliedMigrations = Array.from(
-      new Set([
-        ...(ctx.deployedState.appliedMigrations ?? []),
-        ...ctx.allMigrations.map((m) => m.name),
-      ]),
-    );
+    const mergedAppliedMigrations = Array.from(new Set([...(ctx.deployedState.appliedMigrations ?? []), ...ctx.allMigrations.map((m) => m.name)]));
     const mergedAppliedMigrationSql: Record<string, string> = {
       ...ctx.deployedState.appliedMigrationSql,
     };
@@ -11524,13 +10448,11 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       mergedAppliedMigrationSql[m.name] = m.sql;
     }
 
-    const reusedCachedBuild =
-      params.reusedCachedBuild ?? ctx.reusedCachedBuild;
+    const reusedCachedBuild = params.reusedCachedBuild ?? ctx.reusedCachedBuild;
     const statusMessage =
       applyResult.action === "noop" || applyResult.noChanges
         ? "No changes"
-        : applyResult.liveWithoutRedeploy ||
-            applyResult.action === "hot_apply_graphs"
+        : applyResult.liveWithoutRedeploy || applyResult.action === "hot_apply_graphs"
           ? "Live without redeploy"
           : params.promotedFromEnv
             ? `Promoted from ${params.promotedFromEnv}`
@@ -11577,22 +10499,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         : {}),
     };
 
-    const resourceNames = deriveEnvironmentResourceNames(
-      project,
-      ctx.envRecord.target,
-    );
+    const resourceNames = deriveEnvironmentResourceNames(project, ctx.envRecord.target);
     // The fake also remembers the applied migration names; the real account keeps them in the database's own table.
-    fakeControlPlane?.recordEnvironmentMetadata(
-      ctx.envRecord.target.accountId,
-      resourceNames.scriptName,
-      resourceNames.databaseName,
-      {
-        buildHash: ctx.buildHash,
-        codeHash: ctx.codeHash,
-        graphHash: ctx.graphHash,
-        appliedMigrations: mergedAppliedMigrations,
-      },
-    );
+    fakeControlPlane?.recordEnvironmentMetadata(ctx.envRecord.target.accountId, resourceNames.scriptName, resourceNames.databaseName, {
+      buildHash: ctx.buildHash,
+      codeHash: ctx.codeHash,
+      graphHash: ctx.graphHash,
+      appliedMigrations: mergedAppliedMigrations,
+    });
 
     const nowIso = new Date().toISOString();
     await db
@@ -11607,16 +10521,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
              updated_at = ?
          WHERE project_id = ? AND env_name = ?`,
       )
-      .bind(
-        ctx.current.revision,
-        ctx.buildHash,
-        ctx.codeHash,
-        ctx.graphHash,
-        JSON.stringify(nextDeployedState),
-        nowIso,
-        project,
-        envName,
-      )
+      .bind(ctx.current.revision, ctx.buildHash, ctx.codeHash, ctx.graphHash, JSON.stringify(nextDeployedState), nowIso, project, envName)
       .run();
 
     await db
@@ -11676,29 +10581,26 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       .run();
 
     await stub
-      .fetch(
-        `http://blueprint-do/deploy-broadcast?project=${encodeURIComponent(project)}`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            event: "completed",
-            deployId,
-            envName,
-            revision: ctx.current.revision,
-            buildHash: ctx.buildHash,
-            codeHash: ctx.codeHash,
-            graphHash: ctx.graphHash,
-            action: applyResult.action,
-            status: "succeeded",
-            statusMessage,
-            reusedCachedBuild,
-            liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
-            noChanges: applyResult.noChanges,
-            steps: applyResult.steps,
-          }),
-        },
-      )
+      .fetch(`http://blueprint-do/deploy-broadcast?project=${encodeURIComponent(project)}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          event: "completed",
+          deployId,
+          envName,
+          revision: ctx.current.revision,
+          buildHash: ctx.buildHash,
+          codeHash: ctx.codeHash,
+          graphHash: ctx.graphHash,
+          action: applyResult.action,
+          status: "succeeded",
+          statusMessage,
+          reusedCachedBuild,
+          liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
+          noChanges: applyResult.noChanges,
+          steps: applyResult.steps,
+        }),
+      })
       .catch(() => {});
 
     if (envName === "preview") {
@@ -11753,10 +10655,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       projectId: project,
       actorType: caller.author.type,
       actorId: caller.author.id,
-      action:
-        params.actionOverride === "promote"
-          ? "environment.promote"
-          : "environment.deploy",
+      action: params.actionOverride === "promote" ? "environment.promote" : "environment.deploy",
       status: "succeeded",
       targetRef: `${project}:${envName}`,
       details: {
@@ -11777,8 +10676,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       orgId,
       projectId: project,
     });
-    const updatedEnvRecord =
-      updatedEnvs.find((e) => e.envName === envName) ?? ctx.envRecord;
+    const updatedEnvRecord = updatedEnvs.find((e) => e.envName === envName) ?? ctx.envRecord;
     const enrichedEnvRecord = await enrichEnvironmentWithDriftAndHistory(
       db,
       project,
@@ -11812,9 +10710,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       scriptUploadCount: controlPlane.scriptUploadCount ?? 0,
       appliedActions: applyResult.appliedActions,
       steps: applyResult.steps,
-      ...(params.promotedFromEnv
-        ? { promotedFromEnv: params.promotedFromEnv }
-        : {}),
+      ...(params.promotedFromEnv ? { promotedFromEnv: params.promotedFromEnv } : {}),
       deployment: {
         ...applyResult,
         statusMessage,
@@ -11889,9 +10785,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         details: {
           envName,
           code: ctx.error.code,
-          ...(resolved.caller.author.client
-            ? { client: resolved.caller.author.client }
-            : {}),
+          ...(resolved.caller.author.client ? { client: resolved.caller.author.client } : {}),
         },
       });
       return c.json({ error: ctx.error }, ctx.status);
@@ -11990,9 +10884,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         details: {
           envName,
           code: ctx.error.code,
-          ...(resolved.caller.author.client
-            ? { client: resolved.caller.author.client }
-            : {}),
+          ...(resolved.caller.author.client ? { client: resolved.caller.author.client } : {}),
         },
       });
       return c.json({ error: ctx.error }, ctx.status);
@@ -12029,13 +10921,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     if (ctx.plan.d1.destructiveWarnings.length > 0) {
-      const requiredMigrationNames = Array.from(
-        new Set(ctx.plan.d1.destructiveWarnings.map((w) => w.migrationName)),
-      );
+      const requiredMigrationNames = Array.from(new Set(ctx.plan.d1.destructiveWarnings.map((w) => w.migrationName)));
       const confirmedSet = new Set(bodyData?.confirmedMigrationNames ?? []);
-      const allConfirmed =
-        bodyData?.confirmDestructive === true &&
-        requiredMigrationNames.every((name) => confirmedSet.has(name));
+      const allConfirmed = bodyData?.confirmDestructive === true && requiredMigrationNames.every((name) => confirmedSet.has(name));
 
       if (!allConfirmed) {
         await recordStudioAuditLog(db, {
@@ -12077,7 +10965,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       destructiveNames: ctx.plan.d1.destructiveWarnings.map((w) => w.migrationName),
     });
     // Story 1.19: platform-made secrets this preview deploy would generate (names only) are part of what is approved.
-    const generateSecrets = ctx.plan.secrets.filter((s) => s.status === "will_generate").map((s) => s.name).sort();
+    const generateSecrets = ctx.plan.secrets
+      .filter((s) => s.status === "will_generate")
+      .map((s) => s.name)
+      .sort();
     const deployGate = await gateDestructiveAction(
       c,
       resolved.caller,
@@ -12182,7 +11073,15 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
   > {
     const db = p.env.STUDIO_DB;
     if (p.envName !== "preview") {
-      return { ok: false, status: 422, error: { code: "MISSING_REQUIRED_SECRETS", message: `Production never generates secrets: ${p.secrets.map((s) => s.name).join(", ")}`, remediation: "Bind a value in Studio (Connections/secrets) or promote from preview." } };
+      return {
+        ok: false,
+        status: 422,
+        error: {
+          code: "MISSING_REQUIRED_SECRETS",
+          message: `Production never generates secrets: ${p.secrets.map((s) => s.name).join(", ")}`,
+          remediation: "Bind a value in Studio (Connections/secrets) or promote from preview.",
+        },
+      };
     }
     await appOptions.deploy?.beforeGeneratedSecretBind?.({ project: p.project, envName: p.envName });
     const stored = await storeGeneratedSecrets({
@@ -12202,7 +11101,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         callerRole: p.role,
         author: p.caller.author,
         summary: `Studio: bind generated secret${stored.length > 1 ? "s" : ""} ${stored.map((s) => s.name).join(", ")} (approved preview deploy)`,
-        ops: stored.map((s, i) => ({ opId: `bind-generated-${s.ref}-${Date.now()}-${i}`, type: "bind_secret_ref", targetKind: "brick", targetId: s.brick, secretName: s.name, ref: s.ref })),
+        ops: stored.map((s, i) => ({
+          opId: `bind-generated-${s.ref}-${Date.now()}-${i}`,
+          type: "bind_secret_ref",
+          targetKind: "brick",
+          targetId: s.brick,
+          secretName: s.name,
+          ref: s.ref,
+        })),
       }),
     });
     await recordStudioAuditLog(db, {
@@ -12216,15 +11122,32 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       details: { envName: p.envName, secrets: stored.map((s) => ({ name: s.name, ref: s.ref, brick: s.brick, created: s.created })) },
     });
     if (doRes.status !== 200) {
-      return { ok: false, status: 500, error: { code: "GENERATED_SECRET_BIND_FAILED", message: `The generated secret${stored.length > 1 ? "s" : ""} ${stored.map((s) => s.name).join(", ")} could not be bound (HTTP ${doRes.status}); nothing was deployed. Retry the deploy.` } };
+      return {
+        ok: false,
+        status: 500,
+        error: {
+          code: "GENERATED_SECRET_BIND_FAILED",
+          message: `The generated secret${stored.length > 1 ? "s" : ""} ${stored.map((s) => s.name).join(", ")} could not be bound (HTTP ${doRes.status}); nothing was deployed. Retry the deploy.`,
+        },
+      };
     }
-    const ctx = await buildEnvironmentPlanContext({ env: p.env, project: p.project, orgId: p.orgId, envName: p.envName, customMigrationsInput: p.customMigs, persistCustomMigrations: false });
+    const ctx = await buildEnvironmentPlanContext({
+      env: p.env,
+      project: p.project,
+      orgId: p.orgId,
+      envName: p.envName,
+      customMigrationsInput: p.customMigs,
+      persistCustomMigrations: false,
+    });
     if (!ctx.ok) return { ok: false, status: 422, error: ctx.error };
     // Only the bind may have changed the blueprint: any other op that landed after the approval is not deployed under it. The
     // blueprint, less the refs just bound, must hash as the approved one did (the assembled code carries the refs, so the
     // build and code hashes themselves move with the bind).
     const bound = new Set(stored.map((b) => `${b.brick}|${b.name}|${b.ref}`));
-    const withoutBound = { ...ctx.current.state, secretRefs: (ctx.current.state.secretRefs ?? []).filter((r) => !(r.targetKind === "brick" && bound.has(`${r.targetId}|${r.secretName}|${r.ref}`))) };
+    const withoutBound = {
+      ...ctx.current.state,
+      secretRefs: (ctx.current.state.secretRefs ?? []).filter((r) => !(r.targetKind === "brick" && bound.has(`${r.targetId}|${r.secretName}|${r.ref}`))),
+    };
     if (
       ctx.current.revision !== p.approved.revision + 1 ||
       computeBlueprintCodeHash(withoutBound) !== computeBlueprintCodeHash(p.approved.state) ||
@@ -12331,17 +11254,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         details: {
           envName,
           code: ctx.error.code,
-          ...(resolved.caller.author.client
-            ? { client: resolved.caller.author.client }
-            : {}),
+          ...(resolved.caller.author.client ? { client: resolved.caller.author.client } : {}),
         },
       });
       return c.json({ error: ctx.error }, ctx.status);
     }
 
     const assembleCountAfter = getProjectAssembleCount(project);
-    const reusedCachedBuild =
-      ctx.reusedCachedBuild || assembleCountAfter === assembleCountBefore;
+    const reusedCachedBuild = ctx.reusedCachedBuild || assembleCountAfter === assembleCountBefore;
 
     if (ctx.plan.blockers.length > 0) {
       const primaryBlocker = ctx.plan.blockers[0]!;
@@ -12374,13 +11294,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     if (ctx.plan.d1.destructiveWarnings.length > 0) {
-      const requiredMigrationNames = Array.from(
-        new Set(ctx.plan.d1.destructiveWarnings.map((w) => w.migrationName)),
-      );
+      const requiredMigrationNames = Array.from(new Set(ctx.plan.d1.destructiveWarnings.map((w) => w.migrationName)));
       const confirmedSet = new Set(bodyData?.confirmedMigrationNames ?? []);
-      const allConfirmed =
-        bodyData?.confirmDestructive === true &&
-        requiredMigrationNames.every((name) => confirmedSet.has(name));
+      const allConfirmed = bodyData?.confirmDestructive === true && requiredMigrationNames.every((name) => confirmedSet.has(name));
 
       if (!allConfirmed) {
         return c.json(
@@ -12460,60 +11376,47 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     return c.json(result, 200);
   });
 
-  app.get(
-    "/api/projects/:project/environments/:envName/deployments",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+  app.get("/api/projects/:project/environments/:envName/deployments", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
 
-      const project = c.req.param("project");
-      const envNameParam = c.req.param("envName");
-      const parsedEnvName = DeployEnvNameSchema.safeParse(envNameParam);
-      if (!parsedEnvName.success) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_ENVIRONMENT_NAME",
-              message: `Environment "${envNameParam}" must be "preview" or "production"`,
-            },
-          },
-          400,
-        );
-      }
-      const envName = parsedEnvName.data;
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "read",
-        c.req.query("orgId") ?? c.req.header("x-org-id"),
-      );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
-
-      const deployments = await loadEnvironmentDeploymentHistory(
-        db,
-        project,
-        envName,
-      );
-
+    const project = c.req.param("project");
+    const envNameParam = c.req.param("envName");
+    const parsedEnvName = DeployEnvNameSchema.safeParse(envNameParam);
+    if (!parsedEnvName.success) {
       return c.json(
         {
-          project,
-          envName,
-          deployments,
+          error: {
+            code: "INVALID_ENVIRONMENT_NAME",
+            message: `Environment "${envNameParam}" must be "preview" or "production"`,
+          },
         },
-        200,
+        400,
       );
-    },
-  );
+    }
+    const envName = parsedEnvName.data;
+
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
+
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
+
+    const deployments = await loadEnvironmentDeploymentHistory(db, project, envName);
+
+    return c.json(
+      {
+        project,
+        envName,
+        deployments,
+      },
+      200,
+    );
+  });
 
   // --- Epic 9 (CP9): Hosted Sandbox Target, 7-Day TTL Reaper, and Move to BYOC Promotion ---
 
@@ -12535,10 +11438,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const rawBody = (await c.req.json().catch(() => ({}))) as {
       now?: string | number;
     };
-    const nowInput =
-      rawBody.now !== undefined
-        ? rawBody.now
-        : (c.req.query("now") ?? undefined);
+    const nowInput = rawBody.now !== undefined ? rawBody.now : (c.req.query("now") ?? undefined);
 
     const result = await pruneExpiredSandboxes(db, nowInput !== undefined ? { now: nowInput } : {});
 
@@ -12567,22 +11467,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
 
     const nowQuery = c.req.query("now");
-    const nowMs =
-      nowQuery && Number.isFinite(Date.parse(nowQuery))
-        ? Date.parse(nowQuery)
-        : Date.now();
+    const nowMs = nowQuery && Number.isFinite(Date.parse(nowQuery)) ? Date.parse(nowQuery) : Date.now();
     const sandbox = await loadProjectSandboxSummary(db, project, nowMs);
 
     return c.json(
@@ -12664,8 +11555,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const nowMs =
       typeof bodyData?.now === "number"
         ? bodyData.now
-        : typeof bodyData?.now === "string" &&
-            Number.isFinite(Date.parse(bodyData.now))
+        : typeof bodyData?.now === "string" && Number.isFinite(Date.parse(bodyData.now))
           ? Date.parse(bodyData.now)
           : Date.now();
     const nowIso = new Date(nowMs).toISOString();
@@ -12698,9 +11588,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           {
             error: {
               code: "SANDBOX_LIVE_PAYMENTS_BLOCKED",
-              message:
-                check.reason ??
-                "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
+              message: check.reason ?? "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
             },
           },
           403,
@@ -12710,23 +11598,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     for (const row of vaultRows.results ?? []) {
       try {
-        const plain = await decryptSecretValue(
-          row.ciphertext_b64,
-          row.iv_b64,
-          vaultKeySecret,
-        );
-        const check = isLivePaymentCredential(
-          `${row.ref}:${row.label}:${row.app_or_brick}`,
-          plain,
-        );
+        const plain = await decryptSecretValue(row.ciphertext_b64, row.iv_b64, vaultKeySecret);
+        const check = isLivePaymentCredential(`${row.ref}:${row.label}:${row.app_or_brick}`, plain);
         if (check.blocked) {
           return c.json(
             {
               error: {
                 code: "SANDBOX_LIVE_PAYMENTS_BLOCKED",
-                message:
-                  check.reason ??
-                  "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
+                message: check.reason ?? "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
               },
             },
             403,
@@ -12739,10 +11618,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const stub = getBlueprintStub(c.env, project);
-    const stateRes = await stub.fetch(
-      `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
     const current = (await stateRes.json()) as ProjectStatePayload;
 
     // Check content-addressed builds cache first
@@ -12795,29 +11671,20 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         const revKey = `${project}:r${current.revision}`;
         const nextRevCount = (studioProjectAssembleCounts.get(revKey) ?? 0) + 1;
         studioProjectAssembleCounts.set(revKey, nextRevCount);
-        studioProjectAssembleCounts.set(
-          project,
-          (studioProjectAssembleCounts.get(project) ?? 0) + 1,
-        );
+        studioProjectAssembleCounts.set(project, (studioProjectAssembleCounts.get(project) ?? 0) + 1);
         assembleCount = nextRevCount;
 
-        const catalogVersion =
-          current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION;
+        const catalogVersion = current.state.metadata?.catalogVersion ?? DEFAULT_CATALOG_VERSION;
         const hashes = await computeArtifactHashes(assembled.files, {
           catalogVersion,
         });
         buildHash = hashes.buildHash;
         codeHash = hashes.codeHash;
         graphHash = hashes.graphHash;
-        bundleCode =
-          assembled.files["src/index.ts"] ??
-          "export default { fetch() { return new Response('ok'); } };";
+        bundleCode = assembled.files["src/index.ts"] ?? "export default { fetch() { return new Response('ok'); } };";
 
         const fileCount = Object.keys(assembled.files).length;
-        const byteCount = Object.values(assembled.files).reduce(
-          (sum, text) => sum + new TextEncoder().encode(text).length,
-          0,
-        );
+        const byteCount = Object.values(assembled.files).reduce((sum, text) => sum + new TextEncoder().encode(text).length, 0);
         await db
           .prepare(
             `INSERT INTO studio_builds (project_id, revision, build_hash, semantic_hash, file_count, byte_count, files_json, created_at)
@@ -12830,15 +11697,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
                files_json = excluded.files_json,
                created_at = excluded.created_at`,
           )
-          .bind(
-            project,
-            current.revision,
-            buildHash,
-            current.semanticHash,
-            fileCount,
-            byteCount,
-            JSON.stringify(assembled.files),
-          )
+          .bind(project, current.revision, buildHash, current.semanticHash, fileCount, byteCount, JSON.stringify(assembled.files))
           .run();
 
         await db
@@ -12907,10 +11766,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       .replace(/[^a-z0-9-]/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 28);
-    const sandboxId =
-      bodyData?.sandboxId ??
-      existingActiveSandbox?.sandbox_id ??
-      `sbx-${sanitizedProjectSlug || "project"}`;
+    const sandboxId = bodyData?.sandboxId ?? existingActiveSandbox?.sandbox_id ?? `sbx-${sanitizedProjectSlug || "project"}`;
     // Story 16: a sandbox id held by another project is never reused (or overwritten) for this one.
     const sandboxOwner = await db
       .prepare("SELECT project_id FROM studio_sandboxes WHERE sandbox_id = ? LIMIT 1")
@@ -12927,14 +11783,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         409,
       );
     }
-    const dispatchNamespace =
-      bodyData?.dispatchNamespace ??
-      existingActiveSandbox?.dispatch_namespace ??
-      "px-sandboxes";
+    const dispatchNamespace = bodyData?.dispatchNamespace ?? existingActiveSandbox?.dispatch_namespace ?? "px-sandboxes";
     const createdAt = existingActiveSandbox?.created_at ?? nowIso;
-    const expiresAt =
-      bodyData?.expiresAt ??
-      new Date(nowMs + SANDBOX_TTL_MS).toISOString();
+    const expiresAt = bodyData?.expiresAt ?? new Date(nowMs + SANDBOX_TTL_MS).toISOString();
 
     const workflows: Array<{ name: string; className: string }> = [];
     const graphs: Record<string, string> = {};
@@ -13027,7 +11878,6 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       onlyOncePerProject: true,
     });
 
-
     const deployId = `sbxdep_${generateUuidV7(nowMs)}`;
     const applyResult = await sandboxDriver.apply(
       {
@@ -13054,10 +11904,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     // Story 17: the project's schema is applied to the sandbox D1 only, never to STUDIO_DB.
     const liveProvisionedSandbox = studioSandboxPlatform.getSandbox(sandboxId);
     if (liveProvisionedSandbox?.d1) {
-      await applyProjectEnvironmentDataSchema(
-        liveProvisionedSandbox.d1.rawD1,
-        await describeProjectEnvironmentData(c.env, project),
-      );
+      await applyProjectEnvironmentDataSchema(liveProvisionedSandbox.d1.rawD1, await describeProjectEnvironmentData(c.env, project));
     }
 
     await db
@@ -13080,19 +11927,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
            destroyed_at = NULL
          WHERE studio_sandboxes.project_id = excluded.project_id`,
       )
-      .bind(
-        sandboxId,
-        project,
-        authz.orgId,
-        dispatchNamespace,
-        buildHash,
-        codeHash,
-        graphHash,
-        current.revision,
-        applyResult.url,
-        createdAt,
-        expiresAt,
-      )
+      .bind(sandboxId, project, authz.orgId, dispatchNamespace, buildHash, codeHash, graphHash, current.revision, applyResult.url, createdAt, expiresAt)
       .run();
 
     await recordStudioOnboardingEvent(db, {
@@ -13242,17 +12077,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     // Story 17: copying sample rows read unfiltered rows into STUDIO_DB; the option is gone, and asking for it fails
     // loudly rather than being silently ignored.
-    if (
-      rawBody !== null &&
-      typeof rawBody === "object" &&
-      Object.prototype.hasOwnProperty.call(rawBody, "copySampleData")
-    ) {
+    if (rawBody !== null && typeof rawBody === "object" && Object.prototype.hasOwnProperty.call(rawBody, "copySampleData")) {
       return c.json(
         {
           error: {
             code: "COPY_SAMPLE_DATA_REMOVED",
-            message:
-              "copySampleData is no longer supported: sandbox rows are not copied when promoting to your Cloudflare account.",
+            message: "copySampleData is no longer supported: sandbox rows are not copied when promoting to your Cloudflare account.",
           },
         },
         400,
@@ -13275,14 +12105,9 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     // Step 1: If a plaintext Cloudflare API token was supplied inline, verify it (sealed after the approval gate below)
     const inlineToken = (bodyData?.token ?? bodyData?.apiToken ?? "").trim();
-    let inlineVerification: Extract<Awaited<ReturnType<typeof verifyDeployTokenForRoute>>, { ok: true }>["report"] | null =
-      null;
+    let inlineVerification: Extract<Awaited<ReturnType<typeof verifyDeployTokenForRoute>>, { ok: true }>["report"] | null = null;
     if (inlineToken) {
-      const inlineVerified = await verifyDeployTokenForRoute(
-        c.env,
-        inlineToken,
-        bodyData?.accountId,
-      );
+      const inlineVerified = await verifyDeployTokenForRoute(c.env, inlineToken, bodyData?.accountId);
       if (!inlineVerified.ok) return inlineVerified.response;
       const verification = inlineVerified.report;
       inlineVerification = verification;
@@ -13308,18 +12133,15 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         );
       }
     }
-    const existingByocToken =
-      !inlineToken && bodyData?.tokenRef
-        ? await getDeployTokenMetadata(db, bodyData.tokenRef, authz.orgId)
-        : null;
+    const existingByocToken = !inlineToken && bodyData?.tokenRef ? await getDeployTokenMetadata(db, bodyData.tokenRef, authz.orgId) : null;
 
     // AD-V8: an MCP token's promotion to a Cloudflare account needs a Studio approval bound to the revision, the
     // destination account, the token that would be used (its ref, or a sha256 of an inline token, never the token), the
     // sandbox build and whether production is deployed too. It runs after the validations above and right before the
     // token is sealed and the deploy starts; a later failure gives the approval back.
-    const currentPreviewTarget = (
-      await listProjectDeployEnvironments(db, { orgId: authz.orgId, projectId: project })
-    ).find((e) => e.envName === "preview")?.target;
+    const currentPreviewTarget = (await listProjectDeployEnvironments(db, { orgId: authz.orgId, projectId: project })).find(
+      (e) => e.envName === "preview",
+    )?.target;
     const byocDestination = inlineVerification
       ? { accountId: inlineVerification.accountId ?? "", token: `inline-sha256:${await sha256Hex(inlineToken)}` }
       : existingByocToken && existingByocToken.status === "active"
@@ -13359,10 +12181,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     if (inlineToken && inlineVerification && inlineVerification.accountId) {
       const verification = inlineVerification;
-      const resolvedAccountName =
-        bodyData?.accountName?.trim() ||
-        verification.accountName ||
-        "Cloudflare Account";
+      const resolvedAccountName = bodyData?.accountName?.trim() || verification.accountName || "Cloudflare Account";
 
       const sealedMeta = await sealDeployToken(
         db,
@@ -13371,9 +12190,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           accountId: inlineVerification.accountId,
           accountName: resolvedAccountName,
           plaintextToken: inlineToken,
-          scopes: verification.permissions
-            .filter((p) => p.granted)
-            .map((p) => p.label),
+          scopes: verification.permissions.filter((p) => p.granted).map((p) => p.label),
           createdBy: resolved.caller.author.id,
         },
         c.env,
@@ -13417,8 +12234,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const assembleCountAfter = getProjectAssembleCount(project);
     const assembleCalledDuringPromote = assembleCountAfter > assembleCountBefore;
-    const reusedCachedBuild =
-      ctx.reusedCachedBuild || !assembleCalledDuringPromote;
+    const reusedCachedBuild = ctx.reusedCachedBuild || !assembleCalledDuringPromote;
 
     // Step 3: Deploy the exact same build artifact to ByocCloudflareTarget (preview, and optionally production)
     const byocPreviewResult = await executeEnvironmentDeployment({
@@ -13432,9 +12248,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       reusedCachedBuild,
     });
 
-    let byocProductionResult: Awaited<
-      ReturnType<typeof executeEnvironmentDeployment>
-    > | null = null;
+    let byocProductionResult: Awaited<ReturnType<typeof executeEnvironmentDeployment>> | null = null;
     if (bodyData?.deployProduction) {
       const prodCtx = await buildEnvironmentPlanContext({
         env: c.env,
@@ -13492,8 +12306,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         sandboxId: sandboxSummary.sandboxId,
         sandboxBuildHash: sandboxSummary.buildHash,
         byocBuildHash: byocPreviewResult.buildHash,
-        buildHashMatched:
-          byocPreviewResult.buildHash === sandboxSummary.buildHash,
+        buildHashMatched: byocPreviewResult.buildHash === sandboxSummary.buildHash,
         reusedCachedBuild,
         assembleCalledDuringPromote,
         sandboxDestroyed: true,
@@ -13517,17 +12330,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         buildHash: byocPreviewResult.buildHash,
         codeHash: byocPreviewResult.codeHash,
         graphHash: byocPreviewResult.graphHash,
-        buildHashMatched:
-          byocPreviewResult.buildHash === sandboxSummary.buildHash,
+        buildHashMatched: byocPreviewResult.buildHash === sandboxSummary.buildHash,
         reusedCachedBuild,
         assembleCalledDuringPromote,
         sandboxDestroyed: true,
         oldSandboxDestroyed: true,
         byocDeployment: byocPreviewResult,
         byocDeploy: byocPreviewResult.deployment,
-        ...(byocProductionResult
-          ? { byocProductionDeployment: byocProductionResult }
-          : {}),
+        ...(byocProductionResult ? { byocProductionDeployment: byocProductionResult } : {}),
         previewEnvironment: byocPreviewResult.environment,
         environment: byocPreviewResult.environment,
         environments: updatedEnvironments,
@@ -13551,163 +12361,122 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     })
     .optional();
 
-  app.post(
-    "/api/projects/:project/environments/:envName/check-drift",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+  app.post("/api/projects/:project/environments/:envName/check-drift", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
 
-      const project = c.req.param("project");
-      const envNameParam = c.req.param("envName");
-      const parsedEnvName = DeployEnvNameSchema.safeParse(envNameParam);
-      if (!parsedEnvName.success) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_ENVIRONMENT_NAME",
-              message: `Environment "${envNameParam}" must be "preview" or "production"`,
-            },
-          },
-          400,
-        );
-      }
-      const envName = parsedEnvName.data;
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      const rawBody = await c.req.json().catch(() => undefined);
-      const parsedBody = CheckDriftBodySchema.safeParse(rawBody);
-      const bodyData = parsedBody.success ? parsedBody.data : undefined;
-
-      // Story 16: a drift check reads, but one that simulates an out-of-band change writes to the target, so it needs
-      // a builder-or-higher role (a viewer gets 403).
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        bodyData?.simulateOutOfBand ? "mutate" : "read",
-        bodyData?.orgId ?? c.req.query("orgId") ?? c.req.header("x-org-id"),
-      );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
-
-      const environments = await listProjectDeployEnvironments(db, {
-        orgId: authz.orgId,
-        projectId: project,
-      });
-      const envRecord =
-        environments.find((e) => e.envName === envName) ?? null;
-      if (!envRecord) {
-        return c.json(
-          {
-            error: {
-              code: "DEPLOY_TARGET_NOT_CONNECTED",
-              message: `No Cloudflare deploy target is connected for project "${project}" (${envName}).`,
-            },
-          },
-          422,
-        );
-      }
-
-      const tokenMeta = await getDeployTokenMetadata(
-        db,
-        envRecord.target.tokenRef,
-        authz.orgId,
-      );
-      if (!tokenMeta || tokenMeta.status !== "active") {
-        return c.json(
-          {
-            error: {
-              code: "TOKEN_REVOKED",
-              message: `Cloudflare deploy token "${envRecord.target.tokenRef}" is ${tokenMeta?.status ?? "missing"} — Reconnect in Studio.`,
-            },
-          },
-          422,
-        );
-      }
-
-      const controlPlane = asFakeControlPlane(
-        getStudioControlPlane(envRecord.target.accountId, c.env, appOptions.deploy),
-      );
-      const resourceNames = deriveEnvironmentResourceNames(
-        project,
-        envRecord.target,
-      );
-
-      // simulateOutOfBand is a test hook of the fake; against a real account it is ignored (drift is read, never made).
-      if (bodyData?.simulateOutOfBand && controlPlane) {
-        const sim = bodyData.simulateOutOfBand;
-        if (sim.workerHash || sim.deleteWorker) {
-          controlPlane.mutateWorkerOutOfBand(
-            envRecord.target.accountId,
-            resourceNames.scriptName,
-            {
-              sha256: sim.workerHash,
-              deleteScript: sim.deleteWorker,
-            },
-          );
-        }
-        if (sim.appliedMigrations !== undefined) {
-          controlPlane.mutateDatabaseOutOfBand(
-            envRecord.target.accountId,
-            resourceNames.databaseName,
-            {
-              appliedMigrations: sim.appliedMigrations,
-            },
-          );
-        }
-        if (sim.deleteQueue) {
-          controlPlane.deleteQueueOutOfBand(
-            envRecord.target.accountId,
-            sim.deleteQueue,
-          );
-        }
-        if (sim.cronTriggers !== undefined) {
-          controlPlane.mutateCronTriggersOutOfBand(
-            envRecord.target.accountId,
-            resourceNames.scriptName,
-            sim.cronTriggers,
-          );
-        }
-      }
-
-      const stub = getBlueprintStub(c.env, project);
-      const stateRes = await stub.fetch(
-        `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-        { method: "GET" },
-      );
-      const current = (await stateRes.json()) as ProjectStatePayload;
-      const currentHashes = await computeCurrentBlueprintArtifactHashes(
-        db,
-        project,
-        current,
-      );
-
-      const enriched = await enrichEnvironmentWithDriftAndHistory(
-        db,
-        project,
-        envRecord,
-        currentHashes,
-        c.env,
-      );
-
+    const project = c.req.param("project");
+    const envNameParam = c.req.param("envName");
+    const parsedEnvName = DeployEnvNameSchema.safeParse(envNameParam);
+    if (!parsedEnvName.success) {
       return c.json(
         {
-          ok: true,
-          project,
-          orgId: authz.orgId,
-          envName,
-          driftReport: enriched.driftReport,
-          environment: enriched,
+          error: {
+            code: "INVALID_ENVIRONMENT_NAME",
+            message: `Environment "${envNameParam}" must be "preview" or "production"`,
+          },
         },
-        200,
+        400,
       );
-    },
-  );
+    }
+    const envName = parsedEnvName.data;
+
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
+
+    const rawBody = await c.req.json().catch(() => undefined);
+    const parsedBody = CheckDriftBodySchema.safeParse(rawBody);
+    const bodyData = parsedBody.success ? parsedBody.data : undefined;
+
+    // Story 16: a drift check reads, but one that simulates an out-of-band change writes to the target, so it needs
+    // a builder-or-higher role (a viewer gets 403).
+    const authz = await authorizeProjectAccess(
+      db,
+      resolved.caller,
+      project,
+      bodyData?.simulateOutOfBand ? "mutate" : "read",
+      bodyData?.orgId ?? c.req.query("orgId") ?? c.req.header("x-org-id"),
+    );
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
+
+    const environments = await listProjectDeployEnvironments(db, {
+      orgId: authz.orgId,
+      projectId: project,
+    });
+    const envRecord = environments.find((e) => e.envName === envName) ?? null;
+    if (!envRecord) {
+      return c.json(
+        {
+          error: {
+            code: "DEPLOY_TARGET_NOT_CONNECTED",
+            message: `No Cloudflare deploy target is connected for project "${project}" (${envName}).`,
+          },
+        },
+        422,
+      );
+    }
+
+    const tokenMeta = await getDeployTokenMetadata(db, envRecord.target.tokenRef, authz.orgId);
+    if (!tokenMeta || tokenMeta.status !== "active") {
+      return c.json(
+        {
+          error: {
+            code: "TOKEN_REVOKED",
+            message: `Cloudflare deploy token "${envRecord.target.tokenRef}" is ${tokenMeta?.status ?? "missing"} — Reconnect in Studio.`,
+          },
+        },
+        422,
+      );
+    }
+
+    const controlPlane = asFakeControlPlane(getStudioControlPlane(envRecord.target.accountId, c.env, appOptions.deploy));
+    const resourceNames = deriveEnvironmentResourceNames(project, envRecord.target);
+
+    // simulateOutOfBand is a test hook of the fake; against a real account it is ignored (drift is read, never made).
+    if (bodyData?.simulateOutOfBand && controlPlane) {
+      const sim = bodyData.simulateOutOfBand;
+      if (sim.workerHash || sim.deleteWorker) {
+        controlPlane.mutateWorkerOutOfBand(envRecord.target.accountId, resourceNames.scriptName, {
+          sha256: sim.workerHash,
+          deleteScript: sim.deleteWorker,
+        });
+      }
+      if (sim.appliedMigrations !== undefined) {
+        controlPlane.mutateDatabaseOutOfBand(envRecord.target.accountId, resourceNames.databaseName, {
+          appliedMigrations: sim.appliedMigrations,
+        });
+      }
+      if (sim.deleteQueue) {
+        controlPlane.deleteQueueOutOfBand(envRecord.target.accountId, sim.deleteQueue);
+      }
+      if (sim.cronTriggers !== undefined) {
+        controlPlane.mutateCronTriggersOutOfBand(envRecord.target.accountId, resourceNames.scriptName, sim.cronTriggers);
+      }
+    }
+
+    const stub = getBlueprintStub(c.env, project);
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
+    const current = (await stateRes.json()) as ProjectStatePayload;
+    const currentHashes = await computeCurrentBlueprintArtifactHashes(db, project, current);
+
+    const enriched = await enrichEnvironmentWithDriftAndHistory(db, project, envRecord, currentHashes, c.env);
+
+    return c.json(
+      {
+        ok: true,
+        project,
+        orgId: authz.orgId,
+        envName,
+        driftReport: enriched.driftReport,
+        environment: enriched,
+      },
+      200,
+    );
+  });
 
   const RollbackEnvironmentBodySchema = z.object({
     targetDeploymentId: z.string().min(1),
@@ -13774,261 +12543,300 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     return row ? { deploymentId: row.deploy_id, createdAt: row.created_at, bookmark: row.bookmark, databaseId: row.database_id } : null;
   }
 
-  app.post(
-    "/api/projects/:project/environments/:envName/rollback",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+  app.post("/api/projects/:project/environments/:envName/rollback", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
 
-      const project = c.req.param("project");
-      const envNameParam = c.req.param("envName");
-      const parsedEnvName = DeployEnvNameSchema.safeParse(envNameParam);
-      if (!parsedEnvName.success) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_ENVIRONMENT_NAME",
-              message: `Environment "${envNameParam}" must be "preview" or "production"`,
-            },
+    const project = c.req.param("project");
+    const envNameParam = c.req.param("envName");
+    const parsedEnvName = DeployEnvNameSchema.safeParse(envNameParam);
+    if (!parsedEnvName.success) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_ENVIRONMENT_NAME",
+            message: `Environment "${envNameParam}" must be "preview" or "production"`,
           },
-          400,
-        );
-      }
-      const envName = parsedEnvName.data;
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      const rawBody = await c.req.json().catch(() => null);
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "mutate",
-        (rawBody && typeof rawBody === "object" && typeof (rawBody as { orgId?: unknown }).orgId === "string"
-          ? (rawBody as { orgId: string }).orgId
-          : undefined) ?? c.req.query("orgId") ?? c.req.header("x-org-id"),
-        "deploy",
+        },
+        400,
       );
-      if (!authz.ok) {
-        await recordStudioAuditLog(db, {
-          orgId: authz.orgId,
-          projectId: project,
-          actorType: resolved.caller.author.type,
-          actorId: resolved.caller.author.id,
-          action: "environment.rollback",
-          status: "forbidden",
-          targetRef: `${project}:${envName}`,
-          details: { envName, code: authz.error.code, role: authz.role },
-          request: c.req.raw,
-        });
-        return c.json({ error: authz.error }, authz.status);
-      }
+    }
+    const envName = parsedEnvName.data;
 
-      const parsedBody = RollbackEnvironmentBodySchema.safeParse(rawBody);
-      if (!parsedBody.success) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_ROLLBACK_BODY",
-              message: "targetDeploymentId is required",
-              issues: parsedBody.error.issues,
-            },
-          },
-          400,
-        );
-      }
-      const bodyData = parsedBody.data;
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
 
-      const environments = await listProjectDeployEnvironments(db, {
+    const rawBody = await c.req.json().catch(() => null);
+    const authz = await authorizeProjectAccess(
+      db,
+      resolved.caller,
+      project,
+      "mutate",
+      (rawBody && typeof rawBody === "object" && typeof (rawBody as { orgId?: unknown }).orgId === "string"
+        ? (rawBody as { orgId: string }).orgId
+        : undefined) ??
+        c.req.query("orgId") ??
+        c.req.header("x-org-id"),
+      "deploy",
+    );
+    if (!authz.ok) {
+      await recordStudioAuditLog(db, {
         orgId: authz.orgId,
         projectId: project,
+        actorType: resolved.caller.author.type,
+        actorId: resolved.caller.author.id,
+        action: "environment.rollback",
+        status: "forbidden",
+        targetRef: `${project}:${envName}`,
+        details: { envName, code: authz.error.code, role: authz.role },
+        request: c.req.raw,
       });
-      const envRecord =
-        environments.find((e) => e.envName === envName) ?? null;
-      if (!envRecord) {
-        return c.json(
-          {
-            error: {
-              code: "DEPLOY_TARGET_NOT_CONNECTED",
-              message: `No Cloudflare deploy target is connected for project "${project}" (${envName}).`,
-            },
-          },
-          422,
-        );
-      }
+      return c.json({ error: authz.error }, authz.status);
+    }
 
-      const tokenMeta = await getDeployTokenMetadata(
-        db,
-        envRecord.target.tokenRef,
-        authz.orgId,
+    const parsedBody = RollbackEnvironmentBodySchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_ROLLBACK_BODY",
+            message: "targetDeploymentId is required",
+            issues: parsedBody.error.issues,
+          },
+        },
+        400,
       );
-      if (!tokenMeta || tokenMeta.status !== "active") {
-        return c.json(
-          {
-            error: {
-              code: "TOKEN_REVOKED",
-              message: `Cloudflare deploy token "${envRecord.target.tokenRef}" is ${tokenMeta?.status ?? "missing"} — Reconnect in Studio.`,
-            },
-          },
-          422,
-        );
-      }
+    }
+    const bodyData = parsedBody.data;
 
-      const targetRow = await db
-        .prepare(
-          `SELECT deploy_id, project_id, org_id, env_name, revision, build_hash, code_hash, graph_hash,
+    const environments = await listProjectDeployEnvironments(db, {
+      orgId: authz.orgId,
+      projectId: project,
+    });
+    const envRecord = environments.find((e) => e.envName === envName) ?? null;
+    if (!envRecord) {
+      return c.json(
+        {
+          error: {
+            code: "DEPLOY_TARGET_NOT_CONNECTED",
+            message: `No Cloudflare deploy target is connected for project "${project}" (${envName}).`,
+          },
+        },
+        422,
+      );
+    }
+
+    const tokenMeta = await getDeployTokenMetadata(db, envRecord.target.tokenRef, authz.orgId);
+    if (!tokenMeta || tokenMeta.status !== "active") {
+      return c.json(
+        {
+          error: {
+            code: "TOKEN_REVOKED",
+            message: `Cloudflare deploy token "${envRecord.target.tokenRef}" is ${tokenMeta?.status ?? "missing"} — Reconnect in Studio.`,
+          },
+        },
+        422,
+      );
+    }
+
+    const targetRow = await db
+      .prepare(
+        `SELECT deploy_id, project_id, org_id, env_name, revision, build_hash, code_hash, graph_hash,
                   action, status, worker_url, version_id, database_id, actor_id, state_json, created_at
            FROM deployments
            WHERE deploy_id = ? AND project_id = ?
            LIMIT 1`,
-        )
-        .bind(bodyData.targetDeploymentId, project)
-        .first<{
-          deploy_id: string;
-          project_id: string;
-          org_id: string;
-          env_name: string;
-          revision: number;
-          build_hash: string;
-          code_hash: string;
-          graph_hash: string;
-          action: string;
-          status: string;
-          worker_url: string;
-          version_id: string;
-          database_id: string;
-          actor_id: string;
-          state_json: string;
-          created_at: string;
-        }>();
+      )
+      .bind(bodyData.targetDeploymentId, project)
+      .first<{
+        deploy_id: string;
+        project_id: string;
+        org_id: string;
+        env_name: string;
+        revision: number;
+        build_hash: string;
+        code_hash: string;
+        graph_hash: string;
+        action: string;
+        status: string;
+        worker_url: string;
+        version_id: string;
+        database_id: string;
+        actor_id: string;
+        state_json: string;
+        created_at: string;
+      }>();
 
-      if (!targetRow) {
-        return c.json(
-          {
-            error: {
-              code: "DEPLOYMENT_NOT_FOUND",
-              message: `Historical deployment "${bodyData.targetDeploymentId}" was not found for project "${project}"`,
-            },
+    if (!targetRow) {
+      return c.json(
+        {
+          error: {
+            code: "DEPLOYMENT_NOT_FOUND",
+            message: `Historical deployment "${bodyData.targetDeploymentId}" was not found for project "${project}"`,
           },
-          404,
-        );
-      }
+        },
+        404,
+      );
+    }
 
-      const currentDeployRow = await db
-        .prepare(
-          `SELECT deploy_id, revision, build_hash, code_hash, graph_hash, state_json, created_at
+    const currentDeployRow = await db
+      .prepare(
+        `SELECT deploy_id, revision, build_hash, code_hash, graph_hash, state_json, created_at
            FROM deployments
            WHERE project_id = ? AND env_name = ?
            ORDER BY created_at DESC, rowid DESC
            LIMIT 1`,
-        )
-        .bind(project, envName)
-        .first<{
-          deploy_id: string;
-          revision: number;
-          build_hash: string;
-          code_hash: string;
-          graph_hash: string;
-          state_json: string;
-          created_at: string;
-        }>();
+      )
+      .bind(project, envName)
+      .first<{
+        deploy_id: string;
+        revision: number;
+        build_hash: string;
+        code_hash: string;
+        graph_hash: string;
+        state_json: string;
+        created_at: string;
+      }>();
 
-      const currentDeployedState: PersistedDeployedState =
-        (envRecord.deployedState as PersistedDeployedState | null) ?? {};
-      let targetState: PersistedDeployedState = {};
-      try {
-        targetState = JSON.parse(targetRow.state_json) as PersistedDeployedState;
-      } catch {
-        targetState = {};
-      }
+    const currentDeployedState: PersistedDeployedState = (envRecord.deployedState as PersistedDeployedState | null) ?? {};
+    let targetState: PersistedDeployedState = {};
+    try {
+      targetState = JSON.parse(targetRow.state_json) as PersistedDeployedState;
+    } catch {
+      targetState = {};
+    }
 
-      // Resolve cached build artifact by build_hash without ever running assemble()
-      const cachedBuild = await db
-        .prepare(
-          `SELECT build_hash, code_hash, graph_hash, bundle_code, files_json, assemble_count
+    // Resolve cached build artifact by build_hash without ever running assemble()
+    const cachedBuild = await db
+      .prepare(
+        `SELECT build_hash, code_hash, graph_hash, bundle_code, files_json, assemble_count
            FROM builds
            WHERE build_hash = ? AND project_id = ?
            LIMIT 1`,
-        )
-        .bind(targetRow.build_hash, project)
-        .first<{
-          build_hash: string;
-          code_hash: string;
-          graph_hash: string;
-          bundle_code: string;
-          files_json: string;
-          assemble_count: number;
-        }>();
+      )
+      .bind(targetRow.build_hash, project)
+      .first<{
+        build_hash: string;
+        code_hash: string;
+        graph_hash: string;
+        bundle_code: string;
+        files_json: string;
+        assemble_count: number;
+      }>();
 
-      // Story 16: never deploy a placeholder bundle in place of the target build. If this project holds no cached build
-      // for the target hash, the rollback is refused rather than reported as a success.
-      if (!cachedBuild) {
-        return c.json(
-          {
-            error: {
-              code: "BUILD_NOT_FOUND",
-              message: `The build ${targetRow.build_hash} of deployment ${targetRow.deploy_id} is not cached for project "${project}"; rebuild and deploy instead of rolling back.`,
-            },
+    // Story 16: never deploy a placeholder bundle in place of the target build. If this project holds no cached build
+    // for the target hash, the rollback is refused rather than reported as a success.
+    if (!cachedBuild) {
+      return c.json(
+        {
+          error: {
+            code: "BUILD_NOT_FOUND",
+            message: `The build ${targetRow.build_hash} of deployment ${targetRow.deploy_id} is not cached for project "${project}"; rebuild and deploy instead of rolling back.`,
           },
-          409,
-        );
-      }
-      const bundleCode = cachedBuild.bundle_code;
-
-      const currentSnapshot: RollbackPlanSnapshot = {
-        deployId: currentDeployRow?.deploy_id ?? "current",
-        revision: envRecord.deployedRev ?? Number(currentDeployRow?.revision ?? 0),
-        buildHash: envRecord.buildHash ?? currentDeployRow?.build_hash ?? "",
-        codeHash: envRecord.codeHash ?? currentDeployRow?.code_hash ?? "",
-        graphHash: envRecord.graphHash ?? currentDeployRow?.graph_hash ?? "",
-        appliedMigrations: currentDeployedState.appliedMigrations ?? [],
-        appliedMigrationSql: currentDeployedState.appliedMigrationSql ?? {},
-        entities: currentDeployedState.entities ?? [],
-        queues: currentDeployedState.queues ?? [],
-        cronTriggers: currentDeployedState.cronTriggers ?? [],
-        workflows: (currentDeployedState.workflows ?? []).map((w) => ({
-          workflowName: w.name,
-          className: w.className,
-        })),
-        graphs: currentDeployedState.graphs ?? {},
-      };
-
-      const targetSnapshot: RollbackPlanSnapshot = {
-        deployId: targetRow.deploy_id,
-        revision: Number(targetRow.revision),
-        buildHash: targetRow.build_hash,
-        codeHash: targetRow.code_hash,
-        graphHash: targetRow.graph_hash,
-        appliedMigrations: targetState.appliedMigrations ?? [],
-        appliedMigrationSql: targetState.appliedMigrationSql ?? {},
-        entities: targetState.entities ?? [],
-        queues: targetState.queues ?? [],
-        cronTriggers: targetState.cronTriggers ?? [],
-        workflows: (targetState.workflows ?? []).map((w) => ({
-          workflowName: w.name,
-          className: w.className,
-        })),
-        graphs: targetState.graphs ?? {},
-      };
-
-      const rollbackPlan = computeRollbackPlan(
-        envRecord.target,
-        currentSnapshot,
-        targetSnapshot,
+        },
+        409,
       );
+    }
+    const bundleCode = cachedBuild.bundle_code;
 
-      const rollbackFromDeploymentId = currentDeployRow?.deploy_id ?? null;
+    const currentSnapshot: RollbackPlanSnapshot = {
+      deployId: currentDeployRow?.deploy_id ?? "current",
+      revision: envRecord.deployedRev ?? Number(currentDeployRow?.revision ?? 0),
+      buildHash: envRecord.buildHash ?? currentDeployRow?.build_hash ?? "",
+      codeHash: envRecord.codeHash ?? currentDeployRow?.code_hash ?? "",
+      graphHash: envRecord.graphHash ?? currentDeployRow?.graph_hash ?? "",
+      appliedMigrations: currentDeployedState.appliedMigrations ?? [],
+      appliedMigrationSql: currentDeployedState.appliedMigrationSql ?? {},
+      entities: currentDeployedState.entities ?? [],
+      queues: currentDeployedState.queues ?? [],
+      cronTriggers: currentDeployedState.cronTriggers ?? [],
+      workflows: (currentDeployedState.workflows ?? []).map((w) => ({
+        workflowName: w.name,
+        className: w.className,
+      })),
+      graphs: currentDeployedState.graphs ?? {},
+    };
 
-      // Data restore is opt-in. Without a bookmark taken after the target deployment there is nothing to restore to, and
-      // nothing is changed.
-      const restoreData = bodyData.restoreData === true;
-      const restorePoint = restoreData
-        ? await findRestorePoint(db, project, envName, targetRow)
-        : null;
-      if (restoreData && !restorePoint) {
+    const targetSnapshot: RollbackPlanSnapshot = {
+      deployId: targetRow.deploy_id,
+      revision: Number(targetRow.revision),
+      buildHash: targetRow.build_hash,
+      codeHash: targetRow.code_hash,
+      graphHash: targetRow.graph_hash,
+      appliedMigrations: targetState.appliedMigrations ?? [],
+      appliedMigrationSql: targetState.appliedMigrationSql ?? {},
+      entities: targetState.entities ?? [],
+      queues: targetState.queues ?? [],
+      cronTriggers: targetState.cronTriggers ?? [],
+      workflows: (targetState.workflows ?? []).map((w) => ({
+        workflowName: w.name,
+        className: w.className,
+      })),
+      graphs: targetState.graphs ?? {},
+    };
+
+    const rollbackPlan = computeRollbackPlan(envRecord.target, currentSnapshot, targetSnapshot);
+
+    const rollbackFromDeploymentId = currentDeployRow?.deploy_id ?? null;
+
+    // Data restore is opt-in. Without a bookmark taken after the target deployment there is nothing to restore to, and
+    // nothing is changed.
+    const restoreData = bodyData.restoreData === true;
+    const restorePoint = restoreData ? await findRestorePoint(db, project, envName, targetRow) : null;
+    if (restoreData && !restorePoint) {
+      await recordStudioAuditLog(db, {
+        orgId: authz.orgId,
+        projectId: project,
+        actorType: resolved.caller.author.type,
+        actorId: resolved.caller.author.id,
+        action: "environment.rollback",
+        status: "validation_failed",
+        targetRef: `${project}:${envName}`,
+        details: { envName, targetDeploymentId: targetRow.deploy_id, restoreData: true, code: "NO_RESTORE_POINT" },
+      });
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: "NO_RESTORE_POINT",
+            message: `No D1 restore point exists after deployment ${targetRow.deploy_id}: no later deployment of ${envName} applied a migration to an existing database. Nothing was changed; roll back without restoreData to revert the code only.`,
+          },
+        },
+        409,
+      );
+    }
+
+    if (bodyData.dryRun === true) {
+      return c.json(
+        {
+          ok: true,
+          dryRun: true,
+          project,
+          orgId: authz.orgId,
+          envName,
+          targetDeploymentId: targetRow.deploy_id,
+          rollbackFromDeploymentId,
+          currentRevision: currentSnapshot.revision,
+          targetRevision: targetSnapshot.revision,
+          reusedCachedBuild: true,
+          assembleCount: getProjectAssembleCount(project),
+          plan: rollbackPlan,
+          ...(restorePoint ? { restoreData: { fromDeploymentId: restorePoint.deploymentId, takenAt: restorePoint.createdAt } } : {}),
+        },
+        200,
+      );
+    }
+
+    if (rollbackPlan.d1.destructiveWarnings.length > 0) {
+      const requiredMigrationNames = Array.from(new Set(rollbackPlan.d1.destructiveWarnings.map((w) => w.migrationName)));
+      const confirmedList = bodyData.confirmedMigrationNames;
+      const confirmedSet = new Set(confirmedList ?? []);
+      const namesConfirmed = !confirmedList || confirmedList.length === 0 || requiredMigrationNames.every((name) => confirmedSet.has(name));
+      const allConfirmed = bodyData.confirmDestructive === true && namesConfirmed;
+
+      if (!allConfirmed) {
         await recordStudioAuditLog(db, {
           orgId: authz.orgId,
           projectId: project,
@@ -14036,178 +12844,110 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           actorId: resolved.caller.author.id,
           action: "environment.rollback",
           status: "validation_failed",
-          targetRef: `${project}:${envName}`,
-          details: { envName, targetDeploymentId: targetRow.deploy_id, restoreData: true, code: "NO_RESTORE_POINT" },
+          details: {
+            envName,
+            targetDeploymentId: targetRow.deploy_id,
+            code: "DESTRUCTIVE_MIGRATION_CONFIRMATION_REQUIRED",
+            requiredMigrationNames,
+          },
         });
         return c.json(
           {
             ok: false,
             error: {
-              code: "NO_RESTORE_POINT",
-              message: `No D1 restore point exists after deployment ${targetRow.deploy_id}: no later deployment of ${envName} applied a migration to an existing database. Nothing was changed; roll back without restoreData to revert the code only.`,
-            },
-          },
-          409,
-        );
-      }
-
-      if (bodyData.dryRun === true) {
-        return c.json(
-          {
-            ok: true,
-            dryRun: true,
-            project,
-            orgId: authz.orgId,
-            envName,
-            targetDeploymentId: targetRow.deploy_id,
-            rollbackFromDeploymentId,
-            currentRevision: currentSnapshot.revision,
-            targetRevision: targetSnapshot.revision,
-            reusedCachedBuild: true,
-            assembleCount: getProjectAssembleCount(project),
-            plan: rollbackPlan,
-            ...(restorePoint
-              ? { restoreData: { fromDeploymentId: restorePoint.deploymentId, takenAt: restorePoint.createdAt } }
-              : {}),
-          },
-          200,
-        );
-      }
-
-      if (rollbackPlan.d1.destructiveWarnings.length > 0) {
-        const requiredMigrationNames = Array.from(
-          new Set(
-            rollbackPlan.d1.destructiveWarnings.map((w) => w.migrationName),
-          ),
-        );
-        const confirmedList = bodyData.confirmedMigrationNames;
-        const confirmedSet = new Set(confirmedList ?? []);
-        const namesConfirmed =
-          !confirmedList ||
-          confirmedList.length === 0 ||
-          requiredMigrationNames.every((name) => confirmedSet.has(name));
-        const allConfirmed =
-          bodyData.confirmDestructive === true && namesConfirmed;
-
-        if (!allConfirmed) {
-          await recordStudioAuditLog(db, {
-            orgId: authz.orgId,
-            projectId: project,
-            actorType: resolved.caller.author.type,
-            actorId: resolved.caller.author.id,
-            action: "environment.rollback",
-            status: "validation_failed",
-            details: {
-              envName,
-              targetDeploymentId: targetRow.deploy_id,
               code: "DESTRUCTIVE_MIGRATION_CONFIRMATION_REQUIRED",
+              message:
+                "Rolling back to this deployment requires destructive schema downgrade or rolling past applied D1 migrations. Pass confirmDestructive: true to proceed.",
+              destructiveWarnings: rollbackPlan.d1.destructiveWarnings,
               requiredMigrationNames,
             },
-          });
-          return c.json(
-            {
-              ok: false,
-              error: {
-                code: "DESTRUCTIVE_MIGRATION_CONFIRMATION_REQUIRED",
-                message:
-                  "Rolling back to this deployment requires destructive schema downgrade or rolling past applied D1 migrations. Pass confirmDestructive: true to proceed.",
-                destructiveWarnings: rollbackPlan.d1.destructiveWarnings,
-                requiredMigrationNames,
-              },
-              plan: rollbackPlan,
-            },
-            422,
-          );
-        }
+            plan: rollbackPlan,
+          },
+          422,
+        );
       }
+    }
 
-      // AD-V8: an MCP token's rollback needs a Studio approval bound to this environment, the target deployment and
-      // the deployment live now (a newer deploy since approval makes it stale).
-      const rollbackGate = await gateDestructiveAction(
-        c,
-        resolved.caller,
-        {
-          orgId: authz.orgId,
-          projectId: project,
-          action: "rollback",
-          env: envName,
-          target: targetRow.deploy_id,
-          blueprintRev: Number(currentSnapshot.revision ?? 0),
-          // The deployment live now, the destructive downgrade warnings and the agent's confirmations are what is
-          // approved: a newer deploy, other warnings or other confirmations make the approval stale.
-          planFingerprint: await sha256Hex(
-            JSON.stringify({
-              from: rollbackFromDeploymentId ?? "none",
-              destructiveWarnings: rollbackPlan.d1.destructiveWarnings,
-              confirmDestructive: bodyData.confirmDestructive === true,
-              confirmedMigrationNames: [...(bodyData.confirmedMigrationNames ?? [])].sort(),
-              // A data restore is another plan: an approval for the code rollback alone does not cover it.
-              ...(restorePoint ? { restoreData: true, restorePointDeploymentId: restorePoint.deploymentId } : {}),
-            }),
-          ),
-          summary: {
-            ...(restorePoint ? { restoreData: true, restorePointDeploymentId: restorePoint.deploymentId } : {}),
+    // AD-V8: an MCP token's rollback needs a Studio approval bound to this environment, the target deployment and
+    // the deployment live now (a newer deploy since approval makes it stale).
+    const rollbackGate = await gateDestructiveAction(
+      c,
+      resolved.caller,
+      {
+        orgId: authz.orgId,
+        projectId: project,
+        action: "rollback",
+        env: envName,
+        target: targetRow.deploy_id,
+        blueprintRev: Number(currentSnapshot.revision ?? 0),
+        // The deployment live now, the destructive downgrade warnings and the agent's confirmations are what is
+        // approved: a newer deploy, other warnings or other confirmations make the approval stale.
+        planFingerprint: await sha256Hex(
+          JSON.stringify({
+            from: rollbackFromDeploymentId ?? "none",
             destructiveWarnings: rollbackPlan.d1.destructiveWarnings,
             confirmDestructive: bodyData.confirmDestructive === true,
-            confirmedMigrationNames: bodyData.confirmedMigrationNames ?? [],
-            targetDeploymentId: targetRow.deploy_id,
-            rollbackFromDeploymentId,
-            currentRevision: currentSnapshot.revision,
-            targetRevision: targetSnapshot.revision,
-            from: currentDeployRow
-              ? { deploymentId: currentDeployRow.deploy_id, codeHash: currentDeployRow.code_hash, buildHash: currentDeployRow.build_hash }
-              : null,
-            to: { deploymentId: targetRow.deploy_id, codeHash: targetRow.code_hash, buildHash: targetRow.build_hash },
-          },
+            confirmedMigrationNames: [...(bodyData.confirmedMigrationNames ?? [])].sort(),
+            // A data restore is another plan: an approval for the code rollback alone does not cover it.
+            ...(restorePoint ? { restoreData: true, restorePointDeploymentId: restorePoint.deploymentId } : {}),
+          }),
+        ),
+        summary: {
+          ...(restorePoint ? { restoreData: true, restorePointDeploymentId: restorePoint.deploymentId } : {}),
+          destructiveWarnings: rollbackPlan.d1.destructiveWarnings,
+          confirmDestructive: bodyData.confirmDestructive === true,
+          confirmedMigrationNames: bodyData.confirmedMigrationNames ?? [],
+          targetDeploymentId: targetRow.deploy_id,
+          rollbackFromDeploymentId,
+          currentRevision: currentSnapshot.revision,
+          targetRevision: targetSnapshot.revision,
+          from: currentDeployRow
+            ? { deploymentId: currentDeployRow.deploy_id, codeHash: currentDeployRow.code_hash, buildHash: currentDeployRow.build_hash }
+            : null,
+          to: { deploymentId: targetRow.deploy_id, codeHash: targetRow.code_hash, buildHash: targetRow.build_hash },
         },
-        bodyData.approvalId,
-      );
-      if (rollbackGate) return rollbackGate;
+      },
+      bodyData.approvalId,
+    );
+    if (rollbackGate) return rollbackGate;
 
-      const deployId = `dep_${generateUuidV7()}`;
-      const controlPlane = getStudioControlPlane(envRecord.target.accountId, c.env, appOptions.deploy);
-      const fakeControlPlane = asFakeControlPlane(controlPlane);
-      const tokenResolver = createStudioTokenResolver(db, c.env);
-      const stub = getBlueprintStub(c.env, project);
-      const resourceNames = deriveEnvironmentResourceNames(
-        project,
-        envRecord.target,
-      );
+    const deployId = `dep_${generateUuidV7()}`;
+    const controlPlane = getStudioControlPlane(envRecord.target.accountId, c.env, appOptions.deploy);
+    const fakeControlPlane = asFakeControlPlane(controlPlane);
+    const tokenResolver = createStudioTokenResolver(db, c.env);
+    const stub = getBlueprintStub(c.env, project);
+    const resourceNames = deriveEnvironmentResourceNames(project, envRecord.target);
 
-      const provisioner = createByocProvisioner({
-        apiClient: controlPlane,
-        resolveToken: async (tokenRef, context) => {
-          const plainToken = await tokenResolver(tokenRef, context);
-          fakeControlPlane?.registerToken({
-            token: plainToken,
-            accountId: envRecord.target.accountId,
-            accountName: envRecord.accountName,
-          });
-          return plainToken;
-        },
-      });
-
-      // Real path: every failure (bundling, reading, uploading, the secret sync, the smoke check) is a structured answer
-      // with the audit row, through failRealDeploy, as for a deploy.
-      const rollbackSteps: Array<{ stepName: string; action: string; resourceName: string }> = [];
-      let rollbackUpload: Awaited<ReturnType<typeof prepareRealWorkerUpload>> | null = null;
-      let applyResult!: Awaited<ReturnType<typeof provisioner.apply>>;
-      let rollbackSecretHashes: Record<string, string> | undefined;
-      let rollbackStudioVersionIds: string[] | undefined;
-      // restoreData: the code is rolled back first; D1 is restored only after that succeeded.
-      let dataRestore: { bookmark: string; previousBookmark: string; databaseId: string; fromDeploymentId: string } | null = null;
-      const rollbackToken = async (action: string) => {
-        const plainToken = await tokenResolver(envRecord.target.tokenRef, { actor: resolved.caller.author.id, deployId, action });
-        fakeControlPlane?.registerToken({ token: plainToken, accountId: envRecord.target.accountId, accountName: envRecord.accountName });
+    const provisioner = createByocProvisioner({
+      apiClient: controlPlane,
+      resolveToken: async (tokenRef, context) => {
+        const plainToken = await tokenResolver(tokenRef, context);
+        fakeControlPlane?.registerToken({
+          token: plainToken,
+          accountId: envRecord.target.accountId,
+          accountName: envRecord.accountName,
+        });
         return plainToken;
-      };
-      try {
+      },
+    });
+
+    // Real path: every failure (bundling, reading, uploading, the secret sync, the smoke check) is a structured answer
+    // with the audit row, through failRealDeploy, as for a deploy.
+    const rollbackSteps: Array<{ stepName: string; action: string; resourceName: string }> = [];
+    let rollbackUpload: Awaited<ReturnType<typeof prepareRealWorkerUpload>> | null = null;
+    let applyResult!: Awaited<ReturnType<typeof provisioner.apply>>;
+    let rollbackSecretHashes: Record<string, string> | undefined;
+    let rollbackStudioVersionIds: string[] | undefined;
+    // restoreData: the code is rolled back first; D1 is restored only after that succeeded.
+    let dataRestore: { bookmark: string; previousBookmark: string; databaseId: string; fromDeploymentId: string } | null = null;
+    const rollbackToken = async (action: string) => {
+      const plainToken = await tokenResolver(envRecord.target.tokenRef, { actor: resolved.caller.author.id, deployId, action });
+      fakeControlPlane?.registerToken({ token: plainToken, accountId: envRecord.target.accountId, accountName: envRecord.accountName });
+      return plainToken;
+    };
+    try {
       const liveWorker = fakeControlPlane
-        ? await fakeControlPlane.getWorkerScript(
-            envRecord.target.accountId,
-            "",
-            resourceNames.scriptName,
-          )
+        ? await fakeControlPlane.getWorkerScript(envRecord.target.accountId, "", resourceNames.scriptName)
         : await controlPlane.getScript(
             envRecord.target.accountId,
             await tokenResolver(envRecord.target.tokenRef, {
@@ -14232,8 +12972,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             configuredSecretValues: await stillValidVaultRefs(db, project, currentDeployedState.secretRefs ?? {}),
           });
       const targetCodeHash = rollbackUpload?.bundleSha ?? targetRow.code_hash;
-      const effectiveCurrentCodeHash =
-        liveWorker?.sha256 || (fakeControlPlane ? envRecord.codeHash : null) || null;
+      const effectiveCurrentCodeHash = liveWorker?.sha256 || (fakeControlPlane ? envRecord.codeHash : null) || null;
 
       const appliedRollback = await provisioner.apply({
         target: envRecord.target,
@@ -14258,27 +12997,23 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         ...(rollbackUpload ? { workerBindings: rollbackUpload.workerBindings, trustedVersionIds: currentDeployedState.studioVersionIds ?? [] } : {}),
         ...(rollbackUpload && rollbackUpload.compatibilityFlags.length > 0 ? { compatibilityFlags: rollbackUpload.compatibilityFlags } : {}),
         // Real path: what is deployed is read from the account, as for a deploy.
-        envState: rollbackUpload ? { deployedRev: envRecord.deployedRev } : {
-          deployedRev: envRecord.deployedRev,
-          currentBuildHash:
-            effectiveCurrentCodeHash === targetCodeHash &&
-            envRecord.graphHash === targetRow.graph_hash
-              ? "force_restore_rollback"
-              : envRecord.buildHash,
-          currentCodeHash: effectiveCurrentCodeHash,
-          currentGraphHash:
-            effectiveCurrentCodeHash === targetCodeHash
-              ? "force_graph_restore"
-              : envRecord.graphHash,
-          databaseExists: true,
-          appliedMigrations: targetState.appliedMigrations ?? [],
-          existingQueues: currentDeployedState.queues ?? [],
-          currentCrons: currentDeployedState.cronTriggers ?? [],
-          existingWorkflows: (currentDeployedState.workflows ?? []).map((w) => ({
-            workflowName: w.name,
-            className: w.className,
-          })),
-        },
+        envState: rollbackUpload
+          ? { deployedRev: envRecord.deployedRev }
+          : {
+              deployedRev: envRecord.deployedRev,
+              currentBuildHash:
+                effectiveCurrentCodeHash === targetCodeHash && envRecord.graphHash === targetRow.graph_hash ? "force_restore_rollback" : envRecord.buildHash,
+              currentCodeHash: effectiveCurrentCodeHash,
+              currentGraphHash: effectiveCurrentCodeHash === targetCodeHash ? "force_graph_restore" : envRecord.graphHash,
+              databaseExists: true,
+              appliedMigrations: targetState.appliedMigrations ?? [],
+              existingQueues: currentDeployedState.queues ?? [],
+              currentCrons: currentDeployedState.cronTriggers ?? [],
+              existingWorkflows: (currentDeployedState.workflows ?? []).map((w) => ({
+                workflowName: w.name,
+                className: w.className,
+              })),
+            },
         onStep: async (step) => {
           rollbackSteps.push({ stepName: step.stepName, action: step.action, resourceName: step.resourceName });
           const stepId = `dstep_${generateUuidV7()}`;
@@ -14327,92 +13062,88 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       } else {
         applyResult = appliedRollback;
       }
+    } catch (error) {
+      if (fakeControlPlane) throw error;
+      return failRealDeploy(error, {
+        db,
+        orgId: authz.orgId,
+        project,
+        envName,
+        deployId,
+        caller: resolved.caller,
+        controlPlane,
+        steps: rollbackSteps,
+        hideValues: [c.env.PX_TELEMETRY_SECRET ?? "", ...Object.values(rollbackUpload?.secrets ?? {})],
+        action: "environment.rollback",
+      });
+    }
+
+    // The code is rolled back; now the data. A failed restore leaves D1 as it was and is reported as such below.
+    let restoreFailure: string | null = null;
+    if (restorePoint) {
+      try {
+        const restored = await controlPlane.restoreD1(
+          envRecord.target.accountId,
+          await rollbackToken("restore_d1"),
+          restorePoint.databaseId,
+          restorePoint.bookmark,
+        );
+        dataRestore = {
+          bookmark: restorePoint.bookmark,
+          previousBookmark: restored.previous_bookmark,
+          databaseId: restorePoint.databaseId,
+          fromDeploymentId: restorePoint.deploymentId,
+        };
       } catch (error) {
-        if (fakeControlPlane) throw error;
-        return failRealDeploy(error, {
-          db,
-          orgId: authz.orgId,
-          project,
-          envName,
-          deployId,
-          caller: resolved.caller,
-          controlPlane,
-          steps: rollbackSteps,
-          hideValues: [c.env.PX_TELEMETRY_SECRET ?? "", ...Object.values(rollbackUpload?.secrets ?? {})],
-          action: "environment.rollback",
-        });
+        restoreFailure = createRedactor([c.env.PX_TELEMETRY_SECRET ?? ""].filter((v) => v.length > 0))(error instanceof Error ? error.message : String(error));
       }
+    }
 
-      // The code is rolled back; now the data. A failed restore leaves D1 as it was and is reported as such below.
-      let restoreFailure: string | null = null;
-      if (restorePoint) {
-        try {
-          const restored = await controlPlane.restoreD1(
-            envRecord.target.accountId,
-            await rollbackToken("restore_d1"),
-            restorePoint.databaseId,
-            restorePoint.bookmark,
-          );
-          dataRestore = { bookmark: restorePoint.bookmark, previousBookmark: restored.previous_bookmark, databaseId: restorePoint.databaseId, fromDeploymentId: restorePoint.deploymentId };
-        } catch (error) {
-          restoreFailure = createRedactor([c.env.PX_TELEMETRY_SECRET ?? ""].filter((v) => v.length > 0))(error instanceof Error ? error.message : String(error));
-        }
-      }
+    // Ensure the fake's metadata matches the restored target revision state (the real account was written by apply)
+    fakeControlPlane?.recordEnvironmentMetadata(envRecord.target.accountId, resourceNames.scriptName, resourceNames.databaseName, {
+      buildHash: targetRow.build_hash,
+      codeHash: targetRow.code_hash,
+      graphHash: targetRow.graph_hash,
+      graphs: targetState.graphs ?? {},
+      schedules: targetState.cronTriggers ?? [],
+      appliedMigrations: targetState.appliedMigrations ?? [],
+    });
+    fakeControlPlane?.mutateCronTriggersOutOfBand(envRecord.target.accountId, resourceNames.scriptName, targetState.cronTriggers ?? []);
 
-      // Ensure the fake's metadata matches the restored target revision state (the real account was written by apply)
-      fakeControlPlane?.recordEnvironmentMetadata(
-        envRecord.target.accountId,
-        resourceNames.scriptName,
-        resourceNames.databaseName,
-        {
-          buildHash: targetRow.build_hash,
-          codeHash: targetRow.code_hash,
-          graphHash: targetRow.graph_hash,
-          graphs: targetState.graphs ?? {},
-          schedules: targetState.cronTriggers ?? [],
-          appliedMigrations: targetState.appliedMigrations ?? [],
-        },
-      );
-      fakeControlPlane?.mutateCronTriggersOutOfBand(
-        envRecord.target.accountId,
-        resourceNames.scriptName,
-        targetState.cronTriggers ?? [],
-      );
+    const nowIso = new Date().toISOString();
+    const targetRevision = Number(targetRow.revision);
+    const statusMessage = `Rolled back to r${targetRevision}`;
 
-      const nowIso = new Date().toISOString();
-      const targetRevision = Number(targetRow.revision);
-      const statusMessage = `Rolled back to r${targetRevision}`;
+    const nextDeployedState: PersistedDeployedState = {
+      appliedMigrations: targetState.appliedMigrations ?? [],
+      appliedMigrationSql: targetState.appliedMigrationSql ?? {},
+      queues: targetState.queues ?? [],
+      cronTriggers: targetState.cronTriggers ?? [],
+      workflows: targetState.workflows ?? [],
+      graphs: targetState.graphs ?? {},
+      entities: targetState.entities ?? [],
+      pendingCustomMigrations: [],
+      workerUrl: applyResult.url,
+      versionId: applyResult.versionId,
+      databaseId: applyResult.databaseId,
+      deployedAt: nowIso,
+      deployedBy: resolved.caller.author.id,
+      rollbackFromDeploymentId,
+      lastAction: "rollback",
+      liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
+      // the real path's bookkeeping is carried through a rollback: the secrets it bound, and the bundle it uploaded
+      ...(rollbackSecretHashes ? { secretHashes: rollbackSecretHashes } : {}),
+      ...(rollbackStudioVersionIds ? { studioVersionIds: rollbackStudioVersionIds } : {}),
+      // the bindings did not change: the refs the Worker's brick secrets come from are carried forward
+      ...(currentDeployedState.secretRefs ? { secretRefs: currentDeployedState.secretRefs } : {}),
+      ...(rollbackUpload ? { liveCodeHash: rollbackUpload.bundleSha } : {}),
+      noChanges: false,
+      reusedCachedBuild: true,
+    };
 
-      const nextDeployedState: PersistedDeployedState = {
-        appliedMigrations: targetState.appliedMigrations ?? [],
-        appliedMigrationSql: targetState.appliedMigrationSql ?? {},
-        queues: targetState.queues ?? [],
-        cronTriggers: targetState.cronTriggers ?? [],
-        workflows: targetState.workflows ?? [],
-        graphs: targetState.graphs ?? {},
-        entities: targetState.entities ?? [],
-        pendingCustomMigrations: [],
-        workerUrl: applyResult.url,
-        versionId: applyResult.versionId,
-        databaseId: applyResult.databaseId,
-        deployedAt: nowIso,
-        deployedBy: resolved.caller.author.id,
-        rollbackFromDeploymentId,
-        lastAction: "rollback",
-        liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
-        // the real path's bookkeeping is carried through a rollback: the secrets it bound, and the bundle it uploaded
-        ...(rollbackSecretHashes ? { secretHashes: rollbackSecretHashes } : {}),
-        ...(rollbackStudioVersionIds ? { studioVersionIds: rollbackStudioVersionIds } : {}),
-        // the bindings did not change: the refs the Worker's brick secrets come from are carried forward
-        ...(currentDeployedState.secretRefs ? { secretRefs: currentDeployedState.secretRefs } : {}),
-        ...(rollbackUpload ? { liveCodeHash: rollbackUpload.bundleSha } : {}),
-        noChanges: false,
-        reusedCachedBuild: true,
-      };
-
-      await db
-        .prepare(
-          `UPDATE project_environments
+    await db
+      .prepare(
+        `UPDATE project_environments
            SET deployed_rev = ?,
                build_hash = ?,
                code_hash = ?,
@@ -14421,237 +13152,207 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
                status = 'deployed',
                updated_at = ?
            WHERE project_id = ? AND env_name = ?`,
-        )
-        .bind(
-          targetRevision,
-          targetRow.build_hash,
-          targetRow.code_hash,
-          targetRow.graph_hash,
-          JSON.stringify(nextDeployedState),
-          nowIso,
-          project,
-          envName,
-        )
-        .run();
+      )
+      .bind(targetRevision, targetRow.build_hash, targetRow.code_hash, targetRow.graph_hash, JSON.stringify(nextDeployedState), nowIso, project, envName)
+      .run();
 
-      await db
-        .prepare(
-          `INSERT INTO project_deployments (
+    await db
+      .prepare(
+        `INSERT INTO project_deployments (
              deploy_id, project_id, org_id, env_name, revision, build_hash, code_hash, graph_hash,
              action, worker_url, version_id, database_id, actor_id, state_json, created_at
            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'rollback', ?, ?, ?, ?, ?, ?)`,
-        )
-        .bind(
-          deployId,
-          project,
-          authz.orgId,
-          envName,
-          targetRevision,
-          targetRow.build_hash,
-          targetRow.code_hash,
-          targetRow.graph_hash,
-          applyResult.url,
-          applyResult.versionId,
-          applyResult.databaseId,
-          resolved.caller.author.id,
-          JSON.stringify(nextDeployedState),
-          nowIso,
-        )
-        .run();
+      )
+      .bind(
+        deployId,
+        project,
+        authz.orgId,
+        envName,
+        targetRevision,
+        targetRow.build_hash,
+        targetRow.code_hash,
+        targetRow.graph_hash,
+        applyResult.url,
+        applyResult.versionId,
+        applyResult.databaseId,
+        resolved.caller.author.id,
+        JSON.stringify(nextDeployedState),
+        nowIso,
+      )
+      .run();
 
-      await db
-        .prepare(
-          `INSERT INTO deployments (
+    await db
+      .prepare(
+        `INSERT INTO deployments (
              deploy_id, project_id, org_id, env_name, revision, build_hash, code_hash, graph_hash,
              action, status, reused_cached_build, live_without_redeploy, no_changes, rollback_from_deploy_id,
              worker_url, version_id, database_id, actor_id, state_json, created_at
            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'rollback', 'succeeded', 1, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .bind(
-          deployId,
-          project,
-          authz.orgId,
-          envName,
-          targetRevision,
-          targetRow.build_hash,
-          targetRow.code_hash,
-          targetRow.graph_hash,
-          applyResult.liveWithoutRedeploy ? 1 : 0,
-          rollbackFromDeploymentId,
-          applyResult.url,
-          applyResult.versionId,
-          applyResult.databaseId,
-          resolved.caller.author.id,
-          JSON.stringify(nextDeployedState),
-          nowIso,
-        )
-        .run();
+      )
+      .bind(
+        deployId,
+        project,
+        authz.orgId,
+        envName,
+        targetRevision,
+        targetRow.build_hash,
+        targetRow.code_hash,
+        targetRow.graph_hash,
+        applyResult.liveWithoutRedeploy ? 1 : 0,
+        rollbackFromDeploymentId,
+        applyResult.url,
+        applyResult.versionId,
+        applyResult.databaseId,
+        resolved.caller.author.id,
+        JSON.stringify(nextDeployedState),
+        nowIso,
+      )
+      .run();
 
-      await stub
-        .fetch(
-          `http://blueprint-do/deploy-broadcast?project=${encodeURIComponent(project)}`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              event: "completed",
-              deployId,
-              rollbackFromDeploymentId,
-              targetDeploymentId: targetRow.deploy_id,
-              envName,
-              revision: targetRevision,
-              buildHash: targetRow.build_hash,
-              codeHash: targetRow.code_hash,
-              graphHash: targetRow.graph_hash,
-              action: "rollback",
-              status: "succeeded",
-              statusMessage,
-              reusedCachedBuild: true,
-              liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
-              steps: applyResult.steps,
-            }),
-          },
-        )
-        .catch(() => {});
-
-      await recordStudioAuditLog(db, {
-        orgId: authz.orgId,
-        projectId: project,
-        actorType: resolved.caller.author.type,
-        actorId: resolved.caller.author.id,
-        action: "environment.rollback",
-        status: "succeeded",
-        details: {
+    await stub
+      .fetch(`http://blueprint-do/deploy-broadcast?project=${encodeURIComponent(project)}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          event: "completed",
           deployId,
           rollbackFromDeploymentId,
           targetDeploymentId: targetRow.deploy_id,
-          envName,
-          revision: targetRevision,
-          buildHash: targetRow.build_hash,
-          reusedCachedBuild: true,
-          ...(dataRestore
-            ? {
-                restoreData: true,
-                restorePointDeploymentId: dataRestore.fromDeploymentId,
-                bookmark: dataRestore.bookmark,
-                previous_bookmark: dataRestore.previousBookmark,
-              }
-            : {}),
-          ...(restoreFailure && restorePoint
-            ? { restoreData: true, dataRestored: false, restorePointDeploymentId: restorePoint.deploymentId }
-            : {}),
-        },
-      });
-
-      if (restoreFailure && restorePoint) {
-        await recordStudioAuditLog(db, {
-          orgId: authz.orgId,
-          projectId: project,
-          actorType: resolved.caller.author.type,
-          actorId: resolved.caller.author.id,
-          action: "environment.rollback.restore_data",
-          status: "failed",
-          targetRef: `${project}:${envName}`,
-          details: {
-            deployId,
-            targetDeploymentId: targetRow.deploy_id,
-            restorePointDeploymentId: restorePoint.deploymentId,
-            bookmark: restorePoint.bookmark,
-            codeRolledBack: true,
-            dataRestored: false,
-            message: restoreFailure,
-          },
-        });
-        return c.json(
-          {
-            ok: false,
-            error: {
-              code: "DATA_RESTORE_FAILED",
-              message: `The code was rolled back to r${targetRevision} (deployment ${deployId}), but the data was not restored: ${restoreFailure}. D1 is as it was before the rollback; retry with restoreData to restore it.`,
-              codeRolledBack: true,
-              dataRestored: false,
-              deployId,
-              restorePointDeploymentId: restorePoint.deploymentId,
-            },
-          },
-          502,
-        );
-      }
-
-      const updatedEnvs = await listProjectDeployEnvironments(db, {
-        orgId: authz.orgId,
-        projectId: project,
-      });
-      const updatedEnvRecord =
-        updatedEnvs.find((e) => e.envName === envName) ?? envRecord;
-
-      const stateRes = await stub.fetch(
-        `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-        { method: "GET" },
-      );
-      const current = (await stateRes.json()) as ProjectStatePayload;
-      const currentHashes = await computeCurrentBlueprintArtifactHashes(
-        db,
-        project,
-        current,
-      );
-      const enrichedEnv = await enrichEnvironmentWithDriftAndHistory(
-        db,
-        project,
-        updatedEnvRecord,
-        currentHashes,
-        c.env,
-      );
-
-      return c.json(
-        {
-          ok: true,
-          deployId,
-          rollbackFromDeploymentId,
-          targetDeploymentId: targetRow.deploy_id,
-          project,
-          orgId: authz.orgId,
           envName,
           revision: targetRevision,
           buildHash: targetRow.build_hash,
           codeHash: targetRow.code_hash,
           graphHash: targetRow.graph_hash,
           action: "rollback",
+          status: "succeeded",
           statusMessage,
           reusedCachedBuild: true,
-          assembleCount: getProjectAssembleCount(project),
           liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
           steps: applyResult.steps,
-          plan: rollbackPlan,
-          // restoreData: D1 is back at the bookmark; previous_bookmark restores the data as it was just before (the undo token).
-          ...(dataRestore
-            ? {
-                restoreData: {
-                  restored: true,
-                  fromDeploymentId: dataRestore.fromDeploymentId,
-                  bookmark: dataRestore.bookmark,
-                },
-                previous_bookmark: dataRestore.previousBookmark,
-              }
-            : {}),
-          deployment:
-            enrichedEnv.deployments.find((d) => d.deployId === deployId) ?? {
-              deployId,
-              rollbackFromDeploymentId,
-              revision: targetRevision,
-              buildHash: targetRow.build_hash,
-              codeHash: targetRow.code_hash,
-              graphHash: targetRow.graph_hash,
-              action: "rollback",
-              status: "succeeded",
-              reusedCachedBuild: true,
-            },
-          environment: enrichedEnv,
+        }),
+      })
+      .catch(() => {});
+
+    await recordStudioAuditLog(db, {
+      orgId: authz.orgId,
+      projectId: project,
+      actorType: resolved.caller.author.type,
+      actorId: resolved.caller.author.id,
+      action: "environment.rollback",
+      status: "succeeded",
+      details: {
+        deployId,
+        rollbackFromDeploymentId,
+        targetDeploymentId: targetRow.deploy_id,
+        envName,
+        revision: targetRevision,
+        buildHash: targetRow.build_hash,
+        reusedCachedBuild: true,
+        ...(dataRestore
+          ? {
+              restoreData: true,
+              restorePointDeploymentId: dataRestore.fromDeploymentId,
+              bookmark: dataRestore.bookmark,
+              previous_bookmark: dataRestore.previousBookmark,
+            }
+          : {}),
+        ...(restoreFailure && restorePoint ? { restoreData: true, dataRestored: false, restorePointDeploymentId: restorePoint.deploymentId } : {}),
+      },
+    });
+
+    if (restoreFailure && restorePoint) {
+      await recordStudioAuditLog(db, {
+        orgId: authz.orgId,
+        projectId: project,
+        actorType: resolved.caller.author.type,
+        actorId: resolved.caller.author.id,
+        action: "environment.rollback.restore_data",
+        status: "failed",
+        targetRef: `${project}:${envName}`,
+        details: {
+          deployId,
+          targetDeploymentId: targetRow.deploy_id,
+          restorePointDeploymentId: restorePoint.deploymentId,
+          bookmark: restorePoint.bookmark,
+          codeRolledBack: true,
+          dataRestored: false,
+          message: restoreFailure,
         },
-        200,
+      });
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: "DATA_RESTORE_FAILED",
+            message: `The code was rolled back to r${targetRevision} (deployment ${deployId}), but the data was not restored: ${restoreFailure}. D1 is as it was before the rollback; retry with restoreData to restore it.`,
+            codeRolledBack: true,
+            dataRestored: false,
+            deployId,
+            restorePointDeploymentId: restorePoint.deploymentId,
+          },
+        },
+        502,
       );
-    },
-  );
+    }
+
+    const updatedEnvs = await listProjectDeployEnvironments(db, {
+      orgId: authz.orgId,
+      projectId: project,
+    });
+    const updatedEnvRecord = updatedEnvs.find((e) => e.envName === envName) ?? envRecord;
+
+    const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
+    const current = (await stateRes.json()) as ProjectStatePayload;
+    const currentHashes = await computeCurrentBlueprintArtifactHashes(db, project, current);
+    const enrichedEnv = await enrichEnvironmentWithDriftAndHistory(db, project, updatedEnvRecord, currentHashes, c.env);
+
+    return c.json(
+      {
+        ok: true,
+        deployId,
+        rollbackFromDeploymentId,
+        targetDeploymentId: targetRow.deploy_id,
+        project,
+        orgId: authz.orgId,
+        envName,
+        revision: targetRevision,
+        buildHash: targetRow.build_hash,
+        codeHash: targetRow.code_hash,
+        graphHash: targetRow.graph_hash,
+        action: "rollback",
+        statusMessage,
+        reusedCachedBuild: true,
+        assembleCount: getProjectAssembleCount(project),
+        liveWithoutRedeploy: applyResult.liveWithoutRedeploy,
+        steps: applyResult.steps,
+        plan: rollbackPlan,
+        // restoreData: D1 is back at the bookmark; previous_bookmark restores the data as it was just before (the undo token).
+        ...(dataRestore
+          ? {
+              restoreData: {
+                restored: true,
+                fromDeploymentId: dataRestore.fromDeploymentId,
+                bookmark: dataRestore.bookmark,
+              },
+              previous_bookmark: dataRestore.previousBookmark,
+            }
+          : {}),
+        deployment: enrichedEnv.deployments.find((d) => d.deployId === deployId) ?? {
+          deployId,
+          rollbackFromDeploymentId,
+          revision: targetRevision,
+          buildHash: targetRow.build_hash,
+          codeHash: targetRow.code_hash,
+          graphHash: targetRow.graph_hash,
+          action: "rollback",
+          status: "succeeded",
+          reusedCachedBuild: true,
+        },
+        environment: enrichedEnv,
+      },
+      200,
+    );
+  });
 
   // ============================================================================
   // CP6 Story 6.1 — Workspace-Scoped Data Browser & Preview Audited Writes
@@ -14667,10 +13368,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     schemaSql: string[];
   }
 
-  async function describeProjectEnvironmentData(
-    env: StudioApiEnv,
-    project: string,
-  ): Promise<ProjectEnvironmentDataDescription> {
+  async function describeProjectEnvironmentData(env: StudioApiEnv, project: string): Promise<ProjectEnvironmentDataDescription> {
     const declaredEntities: string[] = [];
     const entityTables = new Set<string>();
     const schemaSql: string[] = [];
@@ -14691,10 +13389,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     try {
       const stub = getBlueprintStub(env, project);
-      const stateRes = await stub.fetch(
-        `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-        { method: "GET" },
-      );
+      const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
       if (stateRes.ok) {
         const current = (await stateRes.json()) as ProjectStatePayload;
         const bpEntities = current.state?.entities ?? [];
@@ -14704,9 +13399,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           }
         }
 
-        const reserved = new Set(
-          Object.values(catalog.bricks).flatMap((b) => b.manifest.routePrefixes),
-        );
+        const reserved = new Set(Object.values(catalog.bricks).flatMap((b) => b.manifest.routePrefixes));
         // The blueprint's declarations go through toSdkEntity first, so blueprint-only types (string, integer, json,
         // datetime) and relations are read the way the assembler reads them. One that does not parse is left out on
         // its own instead of taking every other entity's table with it.
@@ -14725,12 +13418,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         if (parsedEnts.ok) {
           for (const ent of parsedEnts.entities) {
             entityTables.add(entityTableName(ent));
-            schemaSql.push(
-              entityDdl(ent).replace(
-                /CREATE TABLE\s+(?!IF\s+NOT\s+EXISTS)/gi,
-                "CREATE TABLE IF NOT EXISTS ",
-              ),
-            );
+            schemaSql.push(entityDdl(ent).replace(/CREATE TABLE\s+(?!IF\s+NOT\s+EXISTS)/gi, "CREATE TABLE IF NOT EXISTS "));
           }
         }
 
@@ -14748,9 +13436,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
             }
           }
           for (const node of brickEntry.manifest.nodes ?? []) {
-            const maybeSecretFields = (
-              node as { secretFields?: string[] }
-            ).secretFields;
+            const maybeSecretFields = (node as { secretFields?: string[] }).secretFields;
             for (const secField of maybeSecretFields ?? []) {
               secretColumns.add(secField);
             }
@@ -14762,10 +13448,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
                 sqlText
                   .replace(/CREATE TABLE\s+(?!IF\s+NOT\s+EXISTS)/gi, "CREATE TABLE IF NOT EXISTS ")
                   .replace(/CREATE INDEX\s+(?!IF\s+NOT\s+EXISTS)/gi, "CREATE INDEX IF NOT EXISTS ")
-                  .replace(
-                    /CREATE UNIQUE INDEX\s+(?!IF\s+NOT\s+EXISTS)/gi,
-                    "CREATE UNIQUE INDEX IF NOT EXISTS ",
-                  ),
+                  .replace(/CREATE UNIQUE INDEX\s+(?!IF\s+NOT\s+EXISTS)/gi, "CREATE UNIQUE INDEX IF NOT EXISTS "),
               );
             }
           }
@@ -14784,10 +13467,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
   }
 
   /** Runs the project's schema against the project's own data store. Never called with STUDIO_DB. */
-  async function applyProjectEnvironmentDataSchema(
-    targetDataDb: D1Like,
-    description: ProjectEnvironmentDataDescription,
-  ): Promise<void> {
+  async function applyProjectEnvironmentDataSchema(targetDataDb: D1Like, description: ProjectEnvironmentDataDescription): Promise<void> {
     for (const sqlText of description.schemaSql) {
       await applyMigration(targetDataDb, sqlText).catch(() => {});
     }
@@ -14805,9 +13485,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
   ): Promise<{ sandboxId: string; d1: D1Like; rawD1: D1Like } | null> {
     if (envName !== "preview") return null;
     const activeSbx = await db
-      .prepare(
-        "SELECT sandbox_id FROM studio_sandboxes WHERE project_id = ? AND org_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
-      )
+      .prepare("SELECT sandbox_id FROM studio_sandboxes WHERE project_id = ? AND org_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1")
       .bind(project, orgId)
       .first<{ sandbox_id: string }>()
       .catch(() => null);
@@ -14825,13 +13503,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
    * The database a workflow run's brick executors write to: the bound app DB when the host provides one, otherwise the
    * project's own data store (with its schema applied). Never STUDIO_DB; null means answer 503 NOT_CONFIGURED.
    */
-  async function resolveRunDataDb(
-    env: StudioApiEnv,
-    db: D1Like,
-    project: string,
-    orgId: string,
-    envName: DeployEnvName,
-  ): Promise<D1Like | null> {
+  async function resolveRunDataDb(env: StudioApiEnv, db: D1Like, project: string, orgId: string, envName: DeployEnvName): Promise<D1Like | null> {
     if (env.DB) return env.DB as D1Like;
     const store = await resolveProjectDataStore(db, project, orgId, envName);
     if (!store) return null;
@@ -14872,12 +13544,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       return signingSecretNotConfigured();
     }
     // Story 17: the data browser reads the project's own data store and never falls back to STUDIO_DB.
-    const dataStore = await resolveProjectDataStore(
-      params.db,
-      params.project,
-      params.orgId,
-      params.envName,
-    );
+    const dataStore = await resolveProjectDataStore(params.db, params.project, params.orgId, params.envName);
     if (!dataStore) {
       return projectDataStoreNotConfigured(params.project, params.envName);
     }
@@ -14913,10 +13580,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       );
     }
 
-    const isMutation =
-      params.method === "POST" ||
-      params.method === "PATCH" ||
-      params.method === "DELETE";
+    const isMutation = params.method === "POST" || params.method === "PATCH" || params.method === "DELETE";
 
     if (isMutation && (workerRes.status === 200 || workerRes.status === 201)) {
       const payload = (await workerRes.json()) as {
@@ -14988,158 +13652,131 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     return workerRes;
   }
 
-  app.get(
-    "/api/projects/:project/environments/:envName/data/workspaces",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+  app.get("/api/projects/:project/environments/:envName/data/workspaces", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
 
-      const project = c.req.param("project");
-      const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
-      if (!parsedEnvName.success) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_ENVIRONMENT_NAME",
-              message: "Environment must be 'preview' or 'production'.",
-            },
+    const project = c.req.param("project");
+    const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
+    if (!parsedEnvName.success) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_ENVIRONMENT_NAME",
+            message: "Environment must be 'preview' or 'production'.",
           },
-          400,
-        );
-      }
-      const envName = parsedEnvName.data;
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "read",
-        c.req.query("orgId") ?? c.req.header("x-org-id"),
+        },
+        400,
       );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
+    }
+    const envName = parsedEnvName.data;
 
-      return forwardToWorkerDataBrowser({
-        env: c.env,
-        db,
-        project,
-        orgId: authz.orgId,
-        envName,
-        actor: resolved.caller.author.id,
-        method: "GET",
-        workerPathAndQuery: "/__px/data/workspaces",
-      });
-    },
-  );
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
 
-  app.get(
-    "/api/projects/:project/environments/:envName/data/tables",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
 
-      const project = c.req.param("project");
-      const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
-      if (!parsedEnvName.success) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_ENVIRONMENT_NAME",
-              message: "Environment must be 'preview' or 'production'.",
-            },
+    return forwardToWorkerDataBrowser({
+      env: c.env,
+      db,
+      project,
+      orgId: authz.orgId,
+      envName,
+      actor: resolved.caller.author.id,
+      method: "GET",
+      workerPathAndQuery: "/__px/data/workspaces",
+    });
+  });
+
+  app.get("/api/projects/:project/environments/:envName/data/tables", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
+
+    const project = c.req.param("project");
+    const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
+    if (!parsedEnvName.success) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_ENVIRONMENT_NAME",
+            message: "Environment must be 'preview' or 'production'.",
           },
-          400,
-        );
-      }
-      const envName = parsedEnvName.data;
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "read",
-        c.req.query("orgId") ?? c.req.header("x-org-id"),
+        },
+        400,
       );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
+    }
+    const envName = parsedEnvName.data;
 
-      const reqUrl = new URL(c.req.url);
-      return forwardToWorkerDataBrowser({
-        env: c.env,
-        db,
-        project,
-        orgId: authz.orgId,
-        envName,
-        actor: resolved.caller.author.id,
-        method: "GET",
-        workerPathAndQuery: `/__px/data/tables${reqUrl.search}`,
-      });
-    },
-  );
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
 
-  app.get(
-    "/api/projects/:project/environments/:envName/data/tables/:tableName/rows",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
 
-      const project = c.req.param("project");
-      const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
-      if (!parsedEnvName.success) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_ENVIRONMENT_NAME",
-              message: "Environment must be 'preview' or 'production'.",
-            },
+    const reqUrl = new URL(c.req.url);
+    return forwardToWorkerDataBrowser({
+      env: c.env,
+      db,
+      project,
+      orgId: authz.orgId,
+      envName,
+      actor: resolved.caller.author.id,
+      method: "GET",
+      workerPathAndQuery: `/__px/data/tables${reqUrl.search}`,
+    });
+  });
+
+  app.get("/api/projects/:project/environments/:envName/data/tables/:tableName/rows", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
+
+    const project = c.req.param("project");
+    const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
+    if (!parsedEnvName.success) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_ENVIRONMENT_NAME",
+            message: "Environment must be 'preview' or 'production'.",
           },
-          400,
-        );
-      }
-      const envName = parsedEnvName.data;
-      const tableName = c.req.param("tableName");
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "read",
-        c.req.query("orgId") ?? c.req.header("x-org-id"),
+        },
+        400,
       );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
+    }
+    const envName = parsedEnvName.data;
+    const tableName = c.req.param("tableName");
 
-      const reqUrl = new URL(c.req.url);
-      return forwardToWorkerDataBrowser({
-        env: c.env,
-        db,
-        project,
-        orgId: authz.orgId,
-        envName,
-        actor: resolved.caller.author.id,
-        method: "GET",
-        workerPathAndQuery: `/__px/data/tables/${encodeURIComponent(tableName)}/rows${reqUrl.search}`,
-      });
-    },
-  );
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
+
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
+
+    const reqUrl = new URL(c.req.url);
+    return forwardToWorkerDataBrowser({
+      env: c.env,
+      db,
+      project,
+      orgId: authz.orgId,
+      envName,
+      actor: resolved.caller.author.id,
+      method: "GET",
+      workerPathAndQuery: `/__px/data/tables/${encodeURIComponent(tableName)}/rows${reqUrl.search}`,
+    });
+  });
 
   const handleStudioDataBrowserWrite = async (c: {
     env: StudioApiEnv;
@@ -15190,13 +13827,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       // Ignore JSON parse errors here; Worker handler validates JSON body
     }
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "mutate",
-      parsedOrgId ?? c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "mutate", parsedOrgId ?? c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -15207,8 +13838,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         {
           error: {
             code: "LEDGER_IMMUTABLE_READ_ONLY",
-            message:
-              "Wallet and usage ledger tables are immutable and cannot be modified from the Data Browser in any environment.",
+            message: "Wallet and usage ledger tables are immutable and cannot be modified from the Data Browser in any environment.",
           },
         },
         403,
@@ -15221,8 +13851,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         {
           error: {
             code: "PRODUCTION_DATA_WRITE_FORBIDDEN",
-            message:
-              "Data Browser writes are strictly forbidden in the production environment.",
+            message: "Data Browser writes are strictly forbidden in the production environment.",
           },
         },
         403,
@@ -15244,38 +13873,15 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     });
   };
 
-  app.post(
-    "/api/projects/:project/environments/:envName/data/tables/:tableName/rows",
-    handleStudioDataBrowserWrite,
-  );
-  app.patch(
-    "/api/projects/:project/environments/:envName/data/tables/:tableName/rows",
-    handleStudioDataBrowserWrite,
-  );
-  app.patch(
-    "/api/projects/:project/environments/:envName/data/tables/:tableName/rows/:rowId",
-    handleStudioDataBrowserWrite,
-  );
-  app.put(
-    "/api/projects/:project/environments/:envName/data/tables/:tableName/rows",
-    handleStudioDataBrowserWrite,
-  );
-  app.put(
-    "/api/projects/:project/environments/:envName/data/tables/:tableName/rows/:rowId",
-    handleStudioDataBrowserWrite,
-  );
-  app.delete(
-    "/api/projects/:project/environments/:envName/data/tables/:tableName/rows",
-    handleStudioDataBrowserWrite,
-  );
-  app.delete(
-    "/api/projects/:project/environments/:envName/data/tables/:tableName/rows/:rowId",
-    handleStudioDataBrowserWrite,
-  );
+  app.post("/api/projects/:project/environments/:envName/data/tables/:tableName/rows", handleStudioDataBrowserWrite);
+  app.patch("/api/projects/:project/environments/:envName/data/tables/:tableName/rows", handleStudioDataBrowserWrite);
+  app.patch("/api/projects/:project/environments/:envName/data/tables/:tableName/rows/:rowId", handleStudioDataBrowserWrite);
+  app.put("/api/projects/:project/environments/:envName/data/tables/:tableName/rows", handleStudioDataBrowserWrite);
+  app.put("/api/projects/:project/environments/:envName/data/tables/:tableName/rows/:rowId", handleStudioDataBrowserWrite);
+  app.delete("/api/projects/:project/environments/:envName/data/tables/:tableName/rows", handleStudioDataBrowserWrite);
+  app.delete("/api/projects/:project/environments/:envName/data/tables/:tableName/rows/:rowId", handleStudioDataBrowserWrite);
 
-  const handleStudioLedgerRead = async (
-    c: import("hono").Context<{ Bindings: StudioApiEnv }>,
-  ) => {
+  const handleStudioLedgerRead = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
     if (!resolved.ok) {
       return c.json({ error: resolved.error }, 401);
@@ -15299,13 +13905,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -15323,9 +13923,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     });
   };
 
-  const handleStudioLedgerWriteRefusal = async (
-    c: import("hono").Context<{ Bindings: StudioApiEnv }>,
-  ) => {
+  const handleStudioLedgerWriteRefusal = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
     if (!resolved.ok) {
       return c.json({ error: resolved.error }, 401);
@@ -15334,18 +13932,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       {
         error: {
           code: "LEDGER_IMMUTABLE_READ_ONLY",
-          message:
-            "Wallet and usage ledger tables are immutable and cannot be modified from the Data Browser in any environment.",
+          message: "Wallet and usage ledger tables are immutable and cannot be modified from the Data Browser in any environment.",
         },
       },
       403,
     );
   };
 
-  for (const ledgerRoutePath of [
-    "/api/projects/:project/environments/:envName/ledger",
-    "/api/projects/:project/environments/:envName/data/ledger",
-  ] as const) {
+  for (const ledgerRoutePath of ["/api/projects/:project/environments/:envName/ledger", "/api/projects/:project/environments/:envName/data/ledger"] as const) {
     app.get(ledgerRoutePath, handleStudioLedgerRead);
     app.post(ledgerRoutePath, handleStudioLedgerWriteRefusal);
     app.patch(ledgerRoutePath, handleStudioLedgerWriteRefusal);
@@ -15353,255 +13947,222 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     app.delete(ledgerRoutePath, handleStudioLedgerWriteRefusal);
   }
 
-  app.get(
-    "/api/projects/:project/environments/:envName/data/audit-log",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+  app.get("/api/projects/:project/environments/:envName/data/audit-log", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
 
-      const project = c.req.param("project");
-      const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
-      if (!parsedEnvName.success) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_ENVIRONMENT_NAME",
-              message: "Environment must be 'preview' or 'production'.",
-            },
+    const project = c.req.param("project");
+    const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
+    if (!parsedEnvName.success) {
+      return c.json(
+        {
+          error: {
+            code: "INVALID_ENVIRONMENT_NAME",
+            message: "Environment must be 'preview' or 'production'.",
           },
-          400,
-        );
-      }
-      const envName = parsedEnvName.data;
-
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "read",
-        c.req.query("orgId") ?? c.req.header("x-org-id"),
+        },
+        400,
       );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
+    }
+    const envName = parsedEnvName.data;
 
-      const workspaceId = c.req.query("workspaceId")?.trim();
-      const tableName = c.req.query("tableName")?.trim();
-      const limitRaw = Number(c.req.query("limit") ?? "100");
-      const limit = Number.isFinite(limitRaw)
-        ? Math.max(1, Math.min(200, Math.trunc(limitRaw)))
-        : 100;
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
 
-      const whereClauses = ["project_id = ?1", "env_name = ?2"];
-      const bindVals: unknown[] = [project, envName];
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
 
-      if (workspaceId) {
-        bindVals.push(workspaceId);
-        whereClauses.push(`workspace_id = ?${bindVals.length}`);
-      }
-      if (tableName) {
-        bindVals.push(tableName);
-        whereClauses.push(`table_name = ?${bindVals.length}`);
-      }
-      bindVals.push(limit);
+    const workspaceId = c.req.query("workspaceId")?.trim();
+    const tableName = c.req.query("tableName")?.trim();
+    const limitRaw = Number(c.req.query("limit") ?? "100");
+    const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(200, Math.trunc(limitRaw))) : 100;
 
-      const rowsRes = await db
-        .prepare(
-          `SELECT audit_id, org_id, project_id, env_name, workspace_id, table_name, row_id,
+    const whereClauses = ["project_id = ?1", "env_name = ?2"];
+    const bindVals: unknown[] = [project, envName];
+
+    if (workspaceId) {
+      bindVals.push(workspaceId);
+      whereClauses.push(`workspace_id = ?${bindVals.length}`);
+    }
+    if (tableName) {
+      bindVals.push(tableName);
+      whereClauses.push(`table_name = ?${bindVals.length}`);
+    }
+    bindVals.push(limit);
+
+    const rowsRes = await db
+      .prepare(
+        `SELECT audit_id, org_id, project_id, env_name, workspace_id, table_name, row_id,
                   operation, actor, before_snapshot, after_snapshot, created_at
            FROM data_browser_audit_log
            WHERE ${whereClauses.join(" AND ")}
            ORDER BY created_at DESC, audit_id DESC
            LIMIT ?${bindVals.length}`,
-        )
-        .bind(...bindVals)
-        .all<{
-          audit_id: string;
-          org_id: string;
-          project_id: string;
-          env_name: string;
-          workspace_id: string;
-          table_name: string;
-          row_id: string;
-          operation: "insert" | "update" | "delete";
-          actor: string;
-          before_snapshot: string | null;
-          after_snapshot: string | null;
-          created_at: string;
-        }>();
+      )
+      .bind(...bindVals)
+      .all<{
+        audit_id: string;
+        org_id: string;
+        project_id: string;
+        env_name: string;
+        workspace_id: string;
+        table_name: string;
+        row_id: string;
+        operation: "insert" | "update" | "delete";
+        actor: string;
+        before_snapshot: string | null;
+        after_snapshot: string | null;
+        created_at: string;
+      }>();
 
-      const entries = (rowsRes.results ?? []).map((r) => ({
-        auditId: r.audit_id,
-        orgId: r.org_id,
-        projectId: r.project_id,
-        envName: r.env_name,
-        workspaceId: r.workspace_id,
-        tableName: r.table_name,
-        rowId: r.row_id,
-        operation: r.operation,
-        actor: r.actor,
-        beforeSnapshot: r.before_snapshot
-          ? (JSON.parse(r.before_snapshot) as Record<string, unknown>)
-          : null,
-        afterSnapshot: r.after_snapshot
-          ? (JSON.parse(r.after_snapshot) as Record<string, unknown>)
-          : null,
-        createdAt: r.created_at,
-      }));
+    const entries = (rowsRes.results ?? []).map((r) => ({
+      auditId: r.audit_id,
+      orgId: r.org_id,
+      projectId: r.project_id,
+      envName: r.env_name,
+      workspaceId: r.workspace_id,
+      tableName: r.table_name,
+      rowId: r.row_id,
+      operation: r.operation,
+      actor: r.actor,
+      beforeSnapshot: r.before_snapshot ? (JSON.parse(r.before_snapshot) as Record<string, unknown>) : null,
+      afterSnapshot: r.after_snapshot ? (JSON.parse(r.after_snapshot) as Record<string, unknown>) : null,
+      createdAt: r.created_at,
+    }));
 
+    return c.json(
+      {
+        ok: true,
+        project,
+        orgId: authz.orgId,
+        envName,
+        entries,
+      },
+      200,
+    );
+  });
+
+  app.post("/api/projects/:project/environments/:envName/data/seed", async (c) => {
+    const resolved = await resolveStudioCaller(c.env, c.req.raw);
+    if (!resolved.ok) {
+      return c.json({ error: resolved.error }, 401);
+    }
+
+    const project = c.req.param("project");
+    const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
+    if (!parsedEnvName.success) {
       return c.json(
         {
-          ok: true,
-          project,
-          orgId: authz.orgId,
-          envName,
-          entries,
+          error: {
+            code: "INVALID_ENVIRONMENT_NAME",
+            message: "Environment must be 'preview' or 'production'.",
+          },
         },
-        200,
+        400,
       );
-    },
-  );
+    }
 
-  app.post(
-    "/api/projects/:project/environments/:envName/data/seed",
-    async (c) => {
-      const resolved = await resolveStudioCaller(c.env, c.req.raw);
-      if (!resolved.ok) {
-        return c.json({ error: resolved.error }, 401);
-      }
+    const db = c.env.STUDIO_DB;
+    await ensureStudioD1Schema(db);
 
-      const project = c.req.param("project");
-      const parsedEnvName = DeployEnvNameSchema.safeParse(c.req.param("envName"));
-      if (!parsedEnvName.success) {
-        return c.json(
-          {
-            error: {
-              code: "INVALID_ENVIRONMENT_NAME",
-              message: "Environment must be 'preview' or 'production'.",
-            },
-          },
-          400,
-        );
-      }
+    const body = (await c.req.json().catch(() => ({}))) as {
+      orgId?: string;
+      ddl?: string[];
+      tables?: Record<string, Array<Record<string, unknown>>>;
+      rows?: Array<{ table: string; values: Record<string, unknown> }>;
+    };
 
-      const db = c.env.STUDIO_DB;
-      await ensureStudioD1Schema(db);
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "mutate", body.orgId ?? c.req.query("orgId") ?? c.req.header("x-org-id"));
+    if (!authz.ok) {
+      return c.json({ error: authz.error }, authz.status);
+    }
 
-      const body = (await c.req.json().catch(() => ({}))) as {
-        orgId?: string;
-        ddl?: string[];
-        tables?: Record<string, Array<Record<string, unknown>>>;
-        rows?: Array<{ table: string; values: Record<string, unknown> }>;
-      };
-
-      const authz = await authorizeProjectAccess(
-        db,
-        resolved.caller,
-        project,
-        "mutate",
-        body.orgId ?? c.req.query("orgId") ?? c.req.header("x-org-id"),
-      );
-      if (!authz.ok) {
-        return c.json({ error: authz.error }, authz.status);
-      }
-
-      // Story 16 guards stay: raw DDL is refused and rows may only go into this project's own blueprint entity tables.
-      // Story 17: the rows are written to the project's own data store (the active sandbox D1 for preview), never
-      // to STUDIO_DB; with no data store the seed answers 503 NOT_CONFIGURED and writes nothing.
-      if (Array.isArray(body.ddl) && body.ddl.length > 0) {
-        return c.json(
-          {
-            error: {
-              code: "SEED_DDL_REFUSED",
-              message: "Raw DDL is not accepted; declare entities in the blueprint and seed their tables",
-            },
-          },
-          400,
-        );
-      }
-
-      const description = await describeProjectEnvironmentData(c.env, project);
-      const entityTables = description.entityTables;
-
-      const mergedTables: Record<string, Array<Record<string, unknown>>> = {
-        ...body.tables,
-      };
-      if (Array.isArray(body.rows)) {
-        for (const item of body.rows) {
-          if (item && typeof item.table === "string" && item.values && typeof item.values === "object") {
-            const list = mergedTables[item.table] ?? [];
-            list.push(item.values);
-            mergedTables[item.table] = list;
-          }
-        }
-      }
-
-      const refusedTables = Object.keys(mergedTables).filter((t) => !entityTables.has(t));
-      if (refusedTables.length > 0) {
-        return c.json(
-          {
-            error: {
-              code: "SEED_TABLE_FORBIDDEN",
-              message: `Only this project's blueprint entity tables can be seeded; refused: ${refusedTables.join(", ")}`,
-              refusedTables,
-            },
-          },
-          403,
-        );
-      }
-
-      const dataStore = await resolveProjectDataStore(db, project, authz.orgId, parsedEnvName.data);
-      if (!dataStore) {
-        return projectDataStoreNotConfigured(project, parsedEnvName.data);
-      }
-      await applyProjectEnvironmentDataSchema(dataStore.rawD1, description);
-
-      let insertedCount = 0;
-      for (const [tableName, rows] of Object.entries(mergedTables)) {
-        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tableName) || !Array.isArray(rows)) {
-          continue;
-        }
-        for (const rawRow of rows) {
-          const row: Record<string, unknown> = rawRow;
-          const cols = Object.keys(row).filter((k) =>
-            /^[A-Za-z_][A-Za-z0-9_]*$/.test(k),
-          );
-          if (cols.length === 0) continue;
-          const quotedCols = cols.map((col) => `"${col}"`).join(", ");
-          const placeholders = cols.map((_, idx) => `?${idx + 1}`).join(", ");
-          const vals = cols.map((col) => {
-            const v = row[col];
-            if (typeof v === "boolean") return v ? 1 : 0;
-            if (v !== null && typeof v === "object") return JSON.stringify(v);
-            return v ?? null;
-          });
-          await dataStore.d1
-            .prepare(
-              `INSERT OR REPLACE INTO "${tableName}" (${quotedCols}) VALUES (${placeholders})`,
-            )
-            .bind(...vals)
-            .run();
-          insertedCount += 1;
-        }
-      }
-
+    // Story 16 guards stay: raw DDL is refused and rows may only go into this project's own blueprint entity tables.
+    // Story 17: the rows are written to the project's own data store (the active sandbox D1 for preview), never
+    // to STUDIO_DB; with no data store the seed answers 503 NOT_CONFIGURED and writes nothing.
+    if (Array.isArray(body.ddl) && body.ddl.length > 0) {
       return c.json(
-        { ok: true, project, insertedCount, dataStore: { kind: "sandbox", sandboxId: dataStore.sandboxId } },
-        200,
+        {
+          error: {
+            code: "SEED_DDL_REFUSED",
+            message: "Raw DDL is not accepted; declare entities in the blueprint and seed their tables",
+          },
+        },
+        400,
       );
-    },
-  );
+    }
+
+    const description = await describeProjectEnvironmentData(c.env, project);
+    const entityTables = description.entityTables;
+
+    const mergedTables: Record<string, Array<Record<string, unknown>>> = {
+      ...body.tables,
+    };
+    if (Array.isArray(body.rows)) {
+      for (const item of body.rows) {
+        if (item && typeof item.table === "string" && item.values && typeof item.values === "object") {
+          const list = mergedTables[item.table] ?? [];
+          list.push(item.values);
+          mergedTables[item.table] = list;
+        }
+      }
+    }
+
+    const refusedTables = Object.keys(mergedTables).filter((t) => !entityTables.has(t));
+    if (refusedTables.length > 0) {
+      return c.json(
+        {
+          error: {
+            code: "SEED_TABLE_FORBIDDEN",
+            message: `Only this project's blueprint entity tables can be seeded; refused: ${refusedTables.join(", ")}`,
+            refusedTables,
+          },
+        },
+        403,
+      );
+    }
+
+    const dataStore = await resolveProjectDataStore(db, project, authz.orgId, parsedEnvName.data);
+    if (!dataStore) {
+      return projectDataStoreNotConfigured(project, parsedEnvName.data);
+    }
+    await applyProjectEnvironmentDataSchema(dataStore.rawD1, description);
+
+    let insertedCount = 0;
+    for (const [tableName, rows] of Object.entries(mergedTables)) {
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tableName) || !Array.isArray(rows)) {
+        continue;
+      }
+      for (const rawRow of rows) {
+        const row: Record<string, unknown> = rawRow;
+        const cols = Object.keys(row).filter((k) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(k));
+        if (cols.length === 0) continue;
+        const quotedCols = cols.map((col) => `"${col}"`).join(", ");
+        const placeholders = cols.map((_, idx) => `?${idx + 1}`).join(", ");
+        const vals = cols.map((col) => {
+          const v = row[col];
+          if (typeof v === "boolean") return v ? 1 : 0;
+          if (v !== null && typeof v === "object") return JSON.stringify(v);
+          return v ?? null;
+        });
+        await dataStore.d1
+          .prepare(`INSERT OR REPLACE INTO "${tableName}" (${quotedCols}) VALUES (${placeholders})`)
+          .bind(...vals)
+          .run();
+        insertedCount += 1;
+      }
+    }
+
+    return c.json({ ok: true, project, insertedCount, dataStore: { kind: "sandbox", sandboxId: dataStore.sandboxId } }, 200);
+  });
 
   // --- Story 6.3: Structured Logs & Errors Panel Routes ---
 
-  const handleStudioLogsRead = async (
-    c: import("hono").Context<{ Bindings: StudioApiEnv }>,
-  ) => {
+  const handleStudioLogsRead = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
     if (!resolved.ok) {
       return c.json({ error: resolved.error }, 401);
@@ -15637,13 +14198,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -15689,9 +14244,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     );
   };
 
-  const handleStudioLogsIngest = async (
-    c: import("hono").Context<{ Bindings: StudioApiEnv }>,
-  ) => {
+  const handleStudioLogsIngest = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
     if (!resolved.ok) {
       return c.json({ error: resolved.error }, 401);
@@ -15734,9 +14287,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       resolved.caller,
       project,
       "mutate",
-      (typeof rawBody.orgId === "string" ? rawBody.orgId : undefined) ??
-        c.req.query("orgId") ??
-        c.req.header("x-org-id"),
+      (typeof rawBody.orgId === "string" ? rawBody.orgId : undefined) ?? c.req.query("orgId") ?? c.req.header("x-org-id"),
     );
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
@@ -15752,19 +14303,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const vaultRows = await db
-      .prepare(
-        "SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'",
-      )
+      .prepare("SELECT ref, ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND status = 'valid'")
       .bind(project)
       .all<{ ref: string; ciphertext_b64: string; iv_b64: string }>();
     const vaultKeySecret = c.env.PX_VAULT_KEY ?? c.env.BETTER_AUTH_SECRET;
     for (const row of vaultRows.results ?? []) {
       try {
-        const plain = await decryptSecretValue(
-          row.ciphertext_b64,
-          row.iv_b64,
-          vaultKeySecret,
-        );
+        const plain = await decryptSecretValue(row.ciphertext_b64, row.iv_b64, vaultKeySecret);
         if (plain.trim().length >= 3) {
           secretValues.add(plain);
         }
@@ -15791,10 +14336,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         !(typeof item.workspaceId === "string" && item.workspaceId.trim()),
     );
     if (unnamed) {
-      return c.json(
-        { error: { code: "WORKSPACE_ID_REQUIRED", message: "Every log entry must name its workspaceId; nothing was written." } },
-        400,
-      );
+      return c.json({ error: { code: "WORKSPACE_ID_REQUIRED", message: "Every log entry must name its workspaceId; nothing was written." } }, 400);
     }
 
     for (const item of rawEntries) {
@@ -15816,39 +14358,26 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
         brickId: typeof item.brickId === "string" ? item.brickId : null,
         workspaceId: typeof item.workspaceId === "string" ? item.workspaceId : null,
         requestId: typeof item.requestId === "string" ? item.requestId : null,
-        fields:
-          typeof item.fields === "object" &&
-          item.fields !== null &&
-          !Array.isArray(item.fields)
-            ? (item.fields as Record<string, unknown>)
-            : {},
+        fields: typeof item.fields === "object" && item.fields !== null && !Array.isArray(item.fields) ? (item.fields as Record<string, unknown>) : {},
         errorStack: typeof item.errorStack === "string" ? item.errorStack : null,
         envName,
       };
 
-      const persisted = await insertStructuredLog(
-        db,
-        entryInput,
-        { secretValues },
-        { projectId: project },
-      );
+      const persisted = await insertStructuredLog(db, entryInput, { secretValues }, { projectId: project });
       insertedEntries.push(persisted);
     }
 
     let broadcastedCount = 0;
     if (insertedEntries.length > 0) {
       const stub = getBlueprintStub(c.env, project);
-      const doRes = await stub.fetch(
-        `http://blueprint-do/log-broadcast?project=${encodeURIComponent(project)}`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            envName,
-            entries: insertedEntries,
-          }),
-        },
-      );
+      const doRes = await stub.fetch(`http://blueprint-do/log-broadcast?project=${encodeURIComponent(project)}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          envName,
+          entries: insertedEntries,
+        }),
+      });
       if (doRes.ok) {
         const doBody = (await doRes.json()) as { broadcastedCount?: number };
         broadcastedCount = doBody.broadcastedCount ?? 0;
@@ -15868,22 +14397,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     );
   };
 
-  for (const logsRoutePath of [
-    "/api/projects/:project/environments/:envName/logs",
-    "/api/projects/:project/environments/:envName/data/logs",
-  ] as const) {
+  for (const logsRoutePath of ["/api/projects/:project/environments/:envName/logs", "/api/projects/:project/environments/:envName/data/logs"] as const) {
     app.get(logsRoutePath, handleStudioLogsRead);
     app.post(logsRoutePath, handleStudioLogsIngest);
   }
 
-  const cloudflareAnalyticsSnapshotsByEnv = new Map<
-    string,
-    CloudflareAnalyticsSnapshot
-  >();
+  const cloudflareAnalyticsSnapshotsByEnv = new Map<string, CloudflareAnalyticsSnapshot>();
 
-  const handleStudioHealthRead = async (
-    c: import("hono").Context<{ Bindings: StudioApiEnv }>,
-  ) => {
+  const handleStudioHealthRead = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
     if (!resolved.ok) {
       return c.json({ error: resolved.error }, 401);
@@ -15934,13 +14455,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -15951,9 +14466,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const nowQuery = c.req.query("now") ?? undefined;
-    const workerUrl = new URL(
-      `http://env.worker.internal/__px/metrics?window=${encodeURIComponent(window)}&env=${encodeURIComponent(envName)}`,
-    );
+    const workerUrl = new URL(`http://env.worker.internal/__px/metrics?window=${encodeURIComponent(window)}&env=${encodeURIComponent(envName)}`);
     const healthWorkspace = c.req.query("workspaceId")?.trim();
     if (healthWorkspace && healthWorkspace !== "all") {
       workerUrl.searchParams.set("workspaceId", healthWorkspace);
@@ -15994,10 +14507,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       cloudflareAnalyticsSnapshotsByEnv.get(`${project}::${envName}::${window}`) ??
       cloudflareAnalyticsSnapshotsByEnv.get(`${project}::${envName}::all`) ??
       null;
-    const reconciled = reconcileCloudflareAnalyticsWithD1Metrics(
-      d1Summary,
-      cfSnapshot,
-    );
+    const reconciled = reconcileCloudflareAnalyticsWithD1Metrics(d1Summary, cfSnapshot);
 
     return c.json(
       {
@@ -16009,9 +14519,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     );
   };
 
-  const handleStudioHealthSeed = async (
-    c: import("hono").Context<{ Bindings: StudioApiEnv }>,
-  ) => {
+  const handleStudioHealthSeed = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
     if (!resolved.ok) {
       return c.json({ error: resolved.error }, 401);
@@ -16047,19 +14555,14 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const rawBody = (await c.req.json().catch(() => ({}))) as Record<
-      string,
-      unknown
-    >;
+    const rawBody = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
 
     const authz = await authorizeProjectAccess(
       db,
       resolved.caller,
       project,
       "mutate",
-      (typeof rawBody.orgId === "string" ? rawBody.orgId : undefined) ??
-        c.req.query("orgId") ??
-        c.req.header("x-org-id"),
+      (typeof rawBody.orgId === "string" ? rawBody.orgId : undefined) ?? c.req.query("orgId") ?? c.req.header("x-org-id"),
     );
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
@@ -16067,8 +14570,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     // Story 1.4: seeded health data belongs to this project and to one of its own workspaces, which the caller must
     // name (body.workspaceId); every seeded row is written under it and stamped with the project.
-    const seedWorkspace =
-      typeof rawBody.workspaceId === "string" && rawBody.workspaceId.trim() ? rawBody.workspaceId.trim() : "";
+    const seedWorkspace = typeof rawBody.workspaceId === "string" && rawBody.workspaceId.trim() ? rawBody.workspaceId.trim() : "";
     const stamp = { projectId: project };
 
     if (rawBody.reset === true) {
@@ -16080,12 +14582,8 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       }
       await ensureTelemetryTables(db);
       await db.batch([
-        db
-          .prepare("DELETE FROM px_http_rollups WHERE env_name = ?1 AND project_id = ?2")
-          .bind(envName, project),
-        db
-          .prepare("DELETE FROM px_queue_metrics WHERE env_name = ?1 AND project_id = ?2")
-          .bind(envName, project),
+        db.prepare("DELETE FROM px_http_rollups WHERE env_name = ?1 AND project_id = ?2").bind(envName, project),
+        db.prepare("DELETE FROM px_queue_metrics WHERE env_name = ?1 AND project_id = ?2").bind(envName, project),
       ]);
       cloudflareAnalyticsSnapshotsByEnv.delete(`${project}::${envName}::1h`);
       cloudflareAnalyticsSnapshotsByEnv.delete(`${project}::${envName}::24h`);
@@ -16117,111 +14615,85 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     const seedRefused = await refusedWriteAs409(async () => {
-    if (Array.isArray(rawBody.samples)) {
-      const samples: HttpRequestSampleInput[] = (
-        rawBody.samples as Array<Record<string, unknown>>
-      ).map((s) => ({
-        ts:
-          typeof s.ts === "string" || typeof s.ts === "number"
-            ? s.ts
-            : new Date().toISOString(),
-        routePrefix: typeof s.routePrefix === "string" ? s.routePrefix : "/",
-        brickId: typeof s.brickId === "string" ? s.brickId : "runtime",
-        status: typeof s.status === "number" ? s.status : 200,
-        latencyMs: typeof s.latencyMs === "number" ? s.latencyMs : 10,
-        d1Queries: typeof s.d1Queries === "number" ? s.d1Queries : 0,
-        d1LatencyMs: typeof s.d1LatencyMs === "number" ? s.d1LatencyMs : undefined,
-        d1Errors: typeof s.d1Errors === "number" ? s.d1Errors : 0,
-        envName,
-        workspaceId:
-          seedWorkspace,
-      }));
-      await recordHttpRequestSamples(db, samples, stamp);
-    }
-
-    if (Array.isArray(rawBody.rollups)) {
-      for (const r of rawBody.rollups as Array<HttpRollupInput>) {
-        await upsertHttpRollup(
-          db,
-          {
-            ...r,
-            workspaceId:
-              seedWorkspace,
-            envName,
-          },
-          stamp,
-        );
+      if (Array.isArray(rawBody.samples)) {
+        const samples: HttpRequestSampleInput[] = (rawBody.samples as Array<Record<string, unknown>>).map((s) => ({
+          ts: typeof s.ts === "string" || typeof s.ts === "number" ? s.ts : new Date().toISOString(),
+          routePrefix: typeof s.routePrefix === "string" ? s.routePrefix : "/",
+          brickId: typeof s.brickId === "string" ? s.brickId : "runtime",
+          status: typeof s.status === "number" ? s.status : 200,
+          latencyMs: typeof s.latencyMs === "number" ? s.latencyMs : 10,
+          d1Queries: typeof s.d1Queries === "number" ? s.d1Queries : 0,
+          d1LatencyMs: typeof s.d1LatencyMs === "number" ? s.d1LatencyMs : undefined,
+          d1Errors: typeof s.d1Errors === "number" ? s.d1Errors : 0,
+          envName,
+          workspaceId: seedWorkspace,
+        }));
+        await recordHttpRequestSamples(db, samples, stamp);
       }
-    }
 
-    if (Array.isArray(rawBody.queues)) {
-      for (const q of rawBody.queues as Array<QueueMetricInput>) {
-        await upsertQueueMetrics(
-          db,
-          {
-            ...q,
-            workspaceId:
-              seedWorkspace,
-            envName,
-          },
-          stamp,
-        );
+      if (Array.isArray(rawBody.rollups)) {
+        for (const r of rawBody.rollups as Array<HttpRollupInput>) {
+          await upsertHttpRollup(
+            db,
+            {
+              ...r,
+              workspaceId: seedWorkspace,
+              envName,
+            },
+            stamp,
+          );
+        }
       }
-    }
 
-    if (Array.isArray(rawBody.runs)) {
-      for (const run of rawBody.runs as Array<RunRecord>) {
-        await upsertRunRecord(
-          db,
-          {
-            ...run,
-            workspaceId:
-              seedWorkspace,
-          },
-          stamp,
-        );
+      if (Array.isArray(rawBody.queues)) {
+        for (const q of rawBody.queues as Array<QueueMetricInput>) {
+          await upsertQueueMetrics(
+            db,
+            {
+              ...q,
+              workspaceId: seedWorkspace,
+              envName,
+            },
+            stamp,
+          );
+        }
       }
-    }
+
+      if (Array.isArray(rawBody.runs)) {
+        for (const run of rawBody.runs as Array<RunRecord>) {
+          await upsertRunRecord(
+            db,
+            {
+              ...run,
+              workspaceId: seedWorkspace,
+            },
+            stamp,
+          );
+        }
+      }
     });
     if (seedRefused) return seedRefused;
 
-    if (
-      typeof rawBody.cloudflareAnalytics === "object" &&
-      rawBody.cloudflareAnalytics !== null
-    ) {
-      const targetWindow =
-        typeof rawBody.window === "string" &&
-        HealthWindowSchema.safeParse(rawBody.window).success
-          ? rawBody.window
-          : "all";
-      cloudflareAnalyticsSnapshotsByEnv.set(
-        `${project}::${envName}::${targetWindow}`,
-        rawBody.cloudflareAnalytics as CloudflareAnalyticsSnapshot,
-      );
+    if (typeof rawBody.cloudflareAnalytics === "object" && rawBody.cloudflareAnalytics !== null) {
+      const targetWindow = typeof rawBody.window === "string" && HealthWindowSchema.safeParse(rawBody.window).success ? rawBody.window : "all";
+      cloudflareAnalyticsSnapshotsByEnv.set(`${project}::${envName}::${targetWindow}`, rawBody.cloudflareAnalytics as CloudflareAnalyticsSnapshot);
     }
 
-    const summary = await queryEnvironmentMetrics(db, { projectId: project }, {
-      env: envName,
-      window:
-        typeof rawBody.window === "string" &&
-        HealthWindowSchema.safeParse(rawBody.window).success
-          ? (rawBody.window as HealthWindow)
-          : "1h",
-      ...(typeof rawBody.now === "string" || typeof rawBody.now === "number"
-        ? { now: rawBody.now }
-        : {}),
-    });
+    const summary = await queryEnvironmentMetrics(
+      db,
+      { projectId: project },
+      {
+        env: envName,
+        window: typeof rawBody.window === "string" && HealthWindowSchema.safeParse(rawBody.window).success ? (rawBody.window as HealthWindow) : "1h",
+        ...(typeof rawBody.now === "string" || typeof rawBody.now === "number" ? { now: rawBody.now } : {}),
+      },
+    );
 
     const cfSnapshot =
-      cloudflareAnalyticsSnapshotsByEnv.get(
-        `${project}::${envName}::${summary.window}`,
-      ) ??
+      cloudflareAnalyticsSnapshotsByEnv.get(`${project}::${envName}::${summary.window}`) ??
       cloudflareAnalyticsSnapshotsByEnv.get(`${project}::${envName}::all`) ??
       null;
-    const reconciled = reconcileCloudflareAnalyticsWithD1Metrics(
-      summary,
-      cfSnapshot,
-    );
+    const reconciled = reconcileCloudflareAnalyticsWithD1Metrics(summary, cfSnapshot);
 
     return c.json(
       {
@@ -16262,13 +14734,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     }
 
     await ensureStudioD1Schema(c.env.STUDIO_DB);
-    const authz = await authorizeProjectAccess(
-      c.env.STUDIO_DB,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(c.env.STUDIO_DB, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -16290,10 +14756,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
           400,
         );
       }
-      const revRes = await stub.fetch(
-        `http://blueprint-do/revisions/${parsedRev}?project=${encodeURIComponent(project)}`,
-        { method: "GET" },
-      );
+      const revRes = await stub.fetch(`http://blueprint-do/revisions/${parsedRev}?project=${encodeURIComponent(project)}`, { method: "GET" });
       if (revRes.status !== 200) {
         const errBody = await revRes.json().catch(() => ({
           error: { code: "REVISION_NOT_FOUND", message: `Revision ${parsedRev} not found` },
@@ -16303,17 +14766,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       const revData = (await revRes.json()) as { state?: ProjectStatePayload["state"] };
       targetState = revData.state;
     } else {
-      const stateRes = await stub.fetch(
-        `http://blueprint-do/state?project=${encodeURIComponent(project)}`,
-        { method: "GET" },
-      );
+      const stateRes = await stub.fetch(`http://blueprint-do/state?project=${encodeURIComponent(project)}`, { method: "GET" });
       const current = (await stateRes.json()) as ProjectStatePayload;
       targetState = current.state;
     }
 
-    const blueprintInput = targetState
-      ? toAssemblerBlueprint(targetState)
-      : { project, identity: "stub", bricks: [], entities: [], workflows: [] };
+    const blueprintInput = targetState ? toAssemblerBlueprint(targetState) : { project, identity: "stub", bricks: [], entities: [], workflows: [] };
 
     const assembled = assemble(blueprintInput, catalog);
     const specJson =
@@ -16346,9 +14804,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
   // --- Project Audit Logs & Configurable Data/Log Retention + Redaction Settings (Story 8.2) ---
 
-  const handleGetProjectAuditLogs = async (
-    c: import("hono").Context<{ Bindings: StudioApiEnv }>,
-  ) => {
+  const handleGetProjectAuditLogs = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
     if (!resolved.ok) {
       return c.json({ error: resolved.error }, 401);
@@ -16370,13 +14826,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
@@ -16428,12 +14878,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     updated_at: string;
   }
 
-  const loadProjectRetentionSettingsPayload = async (
-    db: D1Like,
-    project: string,
-    orgId: string,
-    requestedEnv?: "default" | "preview" | "production",
-  ) => {
+  const loadProjectRetentionSettingsPayload = async (db: D1Like, project: string, orgId: string, requestedEnv?: "default" | "preview" | "production") => {
     const rowsRes = await db
       .prepare(
         `SELECT project_id, org_id, env_name, run_retention_days, telemetry_retention_days,
@@ -16475,19 +14920,10 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     };
 
     const defaultCfg = parseRow(byEnv.get("default"), "default");
-    const previewCfg = byEnv.has("preview")
-      ? parseRow(byEnv.get("preview"), "preview")
-      : { ...defaultCfg, envName: "preview" };
-    const productionCfg = byEnv.has("production")
-      ? parseRow(byEnv.get("production"), "production")
-      : { ...defaultCfg, envName: "production" };
+    const previewCfg = byEnv.has("preview") ? parseRow(byEnv.get("preview"), "preview") : { ...defaultCfg, envName: "preview" };
+    const productionCfg = byEnv.has("production") ? parseRow(byEnv.get("production"), "production") : { ...defaultCfg, envName: "production" };
 
-    const active =
-      requestedEnv === "preview"
-        ? previewCfg
-        : requestedEnv === "production"
-          ? productionCfg
-          : defaultCfg;
+    const active = requestedEnv === "preview" ? previewCfg : requestedEnv === "production" ? productionCfg : defaultCfg;
 
     return {
       ok: true as const,
@@ -16523,35 +14959,19 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
     const db = c.env.STUDIO_DB;
     await ensureStudioD1Schema(db);
 
-    const authz = await authorizeProjectAccess(
-      db,
-      resolved.caller,
-      project,
-      "read",
-      c.req.query("orgId") ?? c.req.header("x-org-id"),
-    );
+    const authz = await authorizeProjectAccess(db, resolved.caller, project, "read", c.req.query("orgId") ?? c.req.header("x-org-id"));
     if (!authz.ok) {
       return c.json({ error: authz.error }, authz.status);
     }
 
     const envQuery = c.req.query("env") ?? c.req.query("envName");
-    const requestedEnv =
-      envQuery === "preview" || envQuery === "production" || envQuery === "default"
-        ? envQuery
-        : undefined;
+    const requestedEnv = envQuery === "preview" || envQuery === "production" || envQuery === "default" ? envQuery : undefined;
 
-    const payload = await loadProjectRetentionSettingsPayload(
-      db,
-      project,
-      authz.orgId,
-      requestedEnv,
-    );
+    const payload = await loadProjectRetentionSettingsPayload(db, project, authz.orgId, requestedEnv);
     return c.json(payload, 200);
   });
 
-  const handleUpdateProjectRetentionSettings = async (
-    c: import("hono").Context<{ Bindings: StudioApiEnv }>,
-  ) => {
+  const handleUpdateProjectRetentionSettings = async (c: import("hono").Context<{ Bindings: StudioApiEnv }>) => {
     const resolved = await resolveStudioCaller(c.env, c.req.raw);
     if (!resolved.ok) {
       return c.json({ error: resolved.error }, 401);
@@ -16581,9 +15001,7 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       resolved.caller,
       project,
       "mutate",
-      (parsedBody.success ? parsedBody.data.orgId : undefined) ??
-        c.req.query("orgId") ??
-        c.req.header("x-org-id"),
+      (parsedBody.success ? parsedBody.data.orgId : undefined) ?? c.req.query("orgId") ?? c.req.header("x-org-id"),
       "edit",
     );
     if (!authz.ok) {
@@ -16616,25 +15034,13 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
 
     const data = parsedBody.data;
     const envName = data.envName ?? "default";
-    const currentPayload = await loadProjectRetentionSettingsPayload(
-      db,
-      project,
-      authz.orgId,
-      envName,
-    );
+    const currentPayload = await loadProjectRetentionSettingsPayload(db, project, authz.orgId, envName);
 
-    const runRetentionDays =
-      data.runRetentionDays ?? currentPayload.runRetentionDays ?? 14;
-    const telemetryRetentionDays =
-      data.telemetryRetentionDays ?? currentPayload.telemetryRetentionDays ?? 7;
-    const captureStepIoInProd =
-      data.captureStepIoInProd ?? currentPayload.captureStepIoInProd ?? true;
+    const runRetentionDays = data.runRetentionDays ?? currentPayload.runRetentionDays ?? 14;
+    const telemetryRetentionDays = data.telemetryRetentionDays ?? currentPayload.telemetryRetentionDays ?? 7;
+    const captureStepIoInProd = data.captureStepIoInProd ?? currentPayload.captureStepIoInProd ?? true;
     const additionalRedactKeys = Array.from(
-      new Set(
-        (data.additionalRedactKeys ?? currentPayload.additionalRedactKeys ?? [])
-          .map((k) => k.trim())
-          .filter(Boolean),
-      ),
+      new Set((data.additionalRedactKeys ?? currentPayload.additionalRedactKeys ?? []).map((k) => k.trim()).filter(Boolean)),
     );
     const nowIso = new Date().toISOString();
 
@@ -16684,23 +15090,12 @@ export function createStudioApiApp(appOptions: StudioApiAppOptions = {}) {
       request: c.req.raw,
     });
 
-    const updatedPayload = await loadProjectRetentionSettingsPayload(
-      db,
-      project,
-      authz.orgId,
-      envName,
-    );
+    const updatedPayload = await loadProjectRetentionSettingsPayload(db, project, authz.orgId, envName);
     return c.json(updatedPayload, 200);
   };
 
-  app.put(
-    "/api/projects/:project/settings/retention",
-    handleUpdateProjectRetentionSettings,
-  );
-  app.patch(
-    "/api/projects/:project/settings/retention",
-    handleUpdateProjectRetentionSettings,
-  );
+  app.put("/api/projects/:project/settings/retention", handleUpdateProjectRetentionSettings);
+  app.patch("/api/projects/:project/settings/retention", handleUpdateProjectRetentionSettings);
 
   return app;
 }

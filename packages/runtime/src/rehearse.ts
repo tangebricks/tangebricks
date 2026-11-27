@@ -1,11 +1,5 @@
 import { z } from "zod";
-import type {
-  ConnectionLookupSelector,
-  D1Like,
-  ExecutionContext,
-  Executors,
-  Registry,
-} from "@poc/sdk";
+import type { ConnectionLookupSelector, D1Like, ExecutionContext, Executors, Registry } from "@poc/sdk";
 import {
   StepEventSchema,
   collectSecretKeyedValues,
@@ -22,17 +16,8 @@ import {
 import type { RunRecord, StepEvent } from "@poc/telemetry";
 import { resolveCaseAConnection } from "./connections.ts";
 import { resolveStepExpressions } from "./expressions.ts";
-import {
-  collectConnectionSecretValues,
-  collectConnectionsMapSecrets,
-  getRegisteredTokenUrlsByApp,
-} from "./integration-executor.ts";
-import {
-  RunRefusedError,
-  RuntimeGraphWorkflow,
-  computeStrictUpstreamAncestors,
-  isTenantWorkspaceId,
-} from "./run.ts";
+import { collectConnectionSecretValues, collectConnectionsMapSecrets, getRegisteredTokenUrlsByApp } from "./integration-executor.ts";
+import { RunRefusedError, RuntimeGraphWorkflow, computeStrictUpstreamAncestors, isTenantWorkspaceId } from "./run.ts";
 import type { TelemetryRunOptions } from "./run.ts";
 
 export const StepRehearsalRequestSchema = z.object({
@@ -46,9 +31,7 @@ export const StepRehearsalRequestSchema = z.object({
   input: z.unknown().default({}),
   /** The workspace the signer verified for this request. Required: there is no default workspace. */
   workspaceId: z.string().min(1).max(200),
-  upstreamSteps: z
-    .record(z.string(), z.record(z.string(), z.unknown()))
-    .optional(),
+  upstreamSteps: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
 });
 export type StepRehearsalInput = z.input<typeof StepRehearsalRequestSchema>;
 export type StepRehearsalRequest = z.infer<typeof StepRehearsalRequestSchema>;
@@ -123,44 +106,31 @@ function isD1Like(candidate: unknown): candidate is D1Like {
 
 function generateRehearsalRunId(): string {
   const uuid =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   return `rehearsal:${uuid}`;
 }
 
-function buildStructuredRehearsalError(
-  nodeId: string,
-  nodeType: string,
-  redactedMessage: string,
-  redactedStack: string,
-): StructuredRehearsalError {
+function buildStructuredRehearsalError(nodeId: string, nodeType: string, redactedMessage: string, redactedStack: string): StructuredRehearsalError {
   const whatHappened = `Step "${nodeId}" (${nodeType}) failed during rehearsal.`;
   const why = redactedMessage;
-  let whatToDo =
-    "Inspect the node configuration in the Params tab and verify the JSON test input structure before retrying.";
+  let whatToDo = "Inspect the node configuration in the Params tab and verify the JSON test input structure before retrying.";
   let field: string | null = null;
 
   if (/secret\s+"([^"]+)"/i.test(redactedMessage)) {
     const match = redactedMessage.match(/secret\s+"([^"]+)"/i);
     field = match?.[1] ?? null;
-    whatToDo =
-      "Bind or configure the required secret in the Connections & Secrets drawer, then re-run Test Step.";
+    whatToDo = "Bind or configure the required secret in the Connections & Secrets drawer, then re-run Test Step.";
   } else if (/insufficient balance/i.test(redactedMessage)) {
     field = "amount";
-    whatToDo =
-      'Increase the input "balance" value or lower the configured "amount" setting in the Params tab.';
+    whatToDo = 'Increase the input "balance" value or lower the configured "amount" setting in the Params tab.';
   } else if (/division by zero/i.test(redactedMessage)) {
     field = "b";
-    whatToDo =
-      'Provide a non-zero divisor ("b") in the Params tab or test input payload.';
+    whatToDo = 'Provide a non-zero divisor ("b") in the Params tab or test input payload.';
   } else if (/invalid ISO timestamp/i.test(redactedMessage)) {
     field = "iso";
-    whatToDo =
-      'Provide a valid ISO-8601 timestamp string (e.g. "2026-10-01T00:00:00.000Z") in the "iso" field.';
+    whatToDo = 'Provide a valid ISO-8601 timestamp string (e.g. "2026-10-01T00:00:00.000Z") in the "iso" field.';
   } else if (/no executor registered/i.test(redactedMessage)) {
-    whatToDo =
-      "Verify that the node type belongs to an enabled catalog brick or core node pack.";
+    whatToDo = "Verify that the node type belongs to an enabled catalog brick or core node pack.";
   }
 
   return {
@@ -173,10 +143,7 @@ function buildStructuredRehearsalError(
   };
 }
 
-function normalizeRehearsalInputs(
-  rawInput: unknown,
-  declaredInputPortIds: ReadonlySet<string>,
-): { inputs: Record<string, unknown>; payload: unknown } {
+function normalizeRehearsalInputs(rawInput: unknown, declaredInputPortIds: ReadonlySet<string>): { inputs: Record<string, unknown>; payload: unknown } {
   if (declaredInputPortIds.size === 0) {
     // Trigger node: receives rawInput as payload
     const unwrapped =
@@ -190,30 +157,18 @@ function normalizeRehearsalInputs(
     return { inputs: {}, payload: unwrapped };
   }
 
-  if (
-    typeof rawInput === "object" &&
-    rawInput !== null &&
-    !Array.isArray(rawInput)
-  ) {
+  if (typeof rawInput === "object" && rawInput !== null && !Array.isArray(rawInput)) {
     const rec = rawInput as Record<string, unknown>;
     const keys = Object.keys(rec);
     // If caller explicitly passed port-keyed object like { in: ... } or { a: ..., b: ... }
-    if (
-      keys.length > 0 &&
-      keys.every((k) => declaredInputPortIds.has(k))
-    ) {
+    if (keys.length > 0 && keys.every((k) => declaredInputPortIds.has(k))) {
       return {
         inputs: rec,
         payload: rec.in ?? rawInput,
       };
     }
     // If upstream output shape `{ out: ... }` was passed directly, unwrap `.out` into `in`
-    if (
-      keys.length === 1 &&
-      keys[0] === "out" &&
-      declaredInputPortIds.has("in") &&
-      !declaredInputPortIds.has("out")
-    ) {
+    if (keys.length === 1 && keys[0] === "out" && declaredInputPortIds.has("in") && !declaredInputPortIds.has("out")) {
       return {
         inputs: { in: rec.out },
         payload: rec.out,
@@ -227,17 +182,10 @@ function normalizeRehearsalInputs(
   };
 }
 
-export async function rehearseStep(
-  rawRequest: StepRehearsalInput,
-  options: RehearseStepOptions,
-): Promise<StepRehearsalResult> {
-  const pxEnv =
-    options.pxEnv ??
-    (typeof options.env?.PX_ENV === "string" ? options.env.PX_ENV : "preview");
+export async function rehearseStep(rawRequest: StepRehearsalInput, options: RehearseStepOptions): Promise<StepRehearsalResult> {
+  const pxEnv = options.pxEnv ?? (typeof options.env?.PX_ENV === "string" ? options.env.PX_ENV : "preview");
   if (pxEnv === "production") {
-    throw new Error(
-      "REHEARSAL_FORBIDDEN_IN_PRODUCTION: Test Step rehearsal is restricted to preview deployments.",
-    );
+    throw new Error("REHEARSAL_FORBIDDEN_IN_PRODUCTION: Test Step rehearsal is restricted to preview deployments.");
   }
 
   const request = StepRehearsalRequestSchema.parse(rawRequest);
@@ -245,14 +193,10 @@ export async function rehearseStep(
     throw new RunRefusedError("NO_WORKSPACE", "the rehearsal names no usable workspace, so nothing was run");
   }
   const runId = options.runId ?? generateRehearsalRunId();
-  const db =
-    options.db ??
-    (isD1Like(options.env?.DB) ? (options.env.DB as D1Like) : undefined);
+  const db = options.db ?? (isD1Like(options.env?.DB) ? (options.env.DB as D1Like) : undefined);
 
   const manifest = options.registry.get(request.nodeType);
-  const executor =
-    options.executors.get(request.nodeType) ??
-    (manifest?.executor ? options.executors.get(manifest.executor) : undefined);
+  const executor = options.executors.get(request.nodeType) ?? (manifest?.executor ? options.executors.get(manifest.executor) : undefined);
 
   const trackedSecrets = new Set<string>();
   const secretFieldNames = new Set<string>();
@@ -295,19 +239,10 @@ export async function rehearseStep(
     collectSecretKeyedValues(request.upstreamSteps, trackedSecrets, secretFieldNames);
   }
 
-  const declaredPortIds = new Set(
-    (manifest?.inputs ?? [{ id: "in", dataType: "any" }]).map((p) => p.id),
-  );
-  const { inputs, payload } = normalizeRehearsalInputs(
-    request.input,
-    declaredPortIds,
-  );
+  const declaredPortIds = new Set((manifest?.inputs ?? [{ id: "in", dataType: "any" }]).map((p) => p.id));
+  const { inputs, payload } = normalizeRehearsalInputs(request.input, declaredPortIds);
 
-  const resolvedData = resolveStepExpressions(
-    request.config,
-    request.upstreamSteps ?? {},
-    payload,
-  ) as Record<string, unknown>;
+  const resolvedData = resolveStepExpressions(request.config, request.upstreamSteps ?? {}, payload) as Record<string, unknown>;
 
   const startedAt = new Date().toISOString();
   const startMs = Date.now();
@@ -328,9 +263,7 @@ export async function rehearseStep(
       }
       const value = options.env?.[name];
       if (typeof value !== "string") {
-        throw new Error(
-          `secret "${name}" is declared by ${request.nodeType} but was not provided`,
-        );
+        throw new Error(`secret "${name}" is declared by ${request.nodeType} but was not provided`);
       }
       if (value.trim().length >= 3) {
         trackedSecrets.add(value);
@@ -345,9 +278,7 @@ export async function rehearseStep(
       }
       const value = options.env?.[name];
       if (value === undefined || value === null) {
-        throw new Error(
-          `binding "${name}" is declared by ${request.nodeType} but was not provided`,
-        );
+        throw new Error(`binding "${name}" is declared by ${request.nodeType} but was not provided`);
       }
       return value as T;
     };
@@ -366,56 +297,36 @@ export async function rehearseStep(
         : typeof options.fetcher === "function"
           ? options.fetcher
           : typeof options.env?.__OAUTH_FETCHER === "function"
-            ? (options.env.__OAUTH_FETCHER as (
-                input: string | URL | Request,
-                init?: RequestInit,
-              ) => Promise<Response>)
+            ? (options.env.__OAUTH_FETCHER as (input: string | URL | Request, init?: RequestInit) => Promise<Response>)
             : undefined;
 
-    const connection = <T = Record<string, unknown>>(
-      nameOrSelector: string | ConnectionLookupSelector,
-    ): T | Promise<T> => {
+    const connection = <T = Record<string, unknown>>(nameOrSelector: string | ConnectionLookupSelector): T | Promise<T> => {
       const connectionDb =
-        (typeof options.env?.DB === "object" &&
-        options.env.DB !== null &&
-        "prepare" in options.env.DB
-          ? (options.env.DB as D1Like)
-          : undefined) ?? db;
+        (typeof options.env?.DB === "object" && options.env.DB !== null && "prepare" in options.env.DB ? (options.env.DB as D1Like) : undefined) ?? db;
       if (typeof nameOrSelector === "string") {
-        const candidate =
-          options.connections?.[nameOrSelector] ?? options.env?.[nameOrSelector];
+        const candidate = options.connections?.[nameOrSelector] ?? options.env?.[nameOrSelector];
         if (candidate !== undefined && candidate !== null && typeof candidate === "object") {
-          collectConnectionSecretValues(
-            candidate as Record<string, unknown>,
-            trackedSecrets,
-          );
+          collectConnectionSecretValues(candidate as Record<string, unknown>, trackedSecrets);
           return candidate as T;
         }
       } else if (options.connections) {
         // The request's workspace only: a selector's own workspaceId is never used.
         const wsId = request.workspaceId;
         const keysToTry = [
-          ...(nameOrSelector.scope === "workspace" && nameOrSelector.app
-            ? [`workspace:${wsId}:${nameOrSelector.app}`, `workspace:${nameOrSelector.app}`]
-            : []),
+          ...(nameOrSelector.scope === "workspace" && nameOrSelector.app ? [`workspace:${wsId}:${nameOrSelector.app}`, `workspace:${nameOrSelector.app}`] : []),
           ...(nameOrSelector.ref ? [nameOrSelector.ref, `project:${nameOrSelector.ref}`] : []),
           ...(nameOrSelector.app ? [nameOrSelector.app] : []),
         ];
         for (const k of keysToTry) {
           const candidate = options.connections[k];
           if (candidate !== undefined && candidate !== null && typeof candidate === "object") {
-            collectConnectionSecretValues(
-              candidate as Record<string, unknown>,
-              trackedSecrets,
-            );
+            collectConnectionSecretValues(candidate as Record<string, unknown>, trackedSecrets);
             return candidate as T;
           }
         }
       }
       if (connectionDb) {
-        const inferredApp = request.nodeType.startsWith("int:")
-          ? request.nodeType.slice("int:".length).split(".")[0]
-          : undefined;
+        const inferredApp = request.nodeType.startsWith("int:") ? request.nodeType.slice("int:".length).split(".")[0] : undefined;
         return resolveCaseAConnection(nameOrSelector, {
           db: connectionDb,
           connKey,
@@ -433,10 +344,7 @@ export async function rehearseStep(
           nodeId: request.nodeId,
         }) as Promise<T>;
       }
-      const label =
-        typeof nameOrSelector === "string"
-          ? nameOrSelector
-          : (nameOrSelector.ref ?? nameOrSelector.app ?? "unknown");
+      const label = typeof nameOrSelector === "string" ? nameOrSelector : (nameOrSelector.ref ?? nameOrSelector.app ?? "unknown");
       throw new Error(`connection "${label}" was not provided`);
     };
 
@@ -471,15 +379,9 @@ export async function rehearseStep(
       secretFieldNames,
     };
 
-    const inputPreview = truncateTelemetryPreview(
-      { inputs, data: resolvedData },
-      redactOpts,
-    );
+    const inputPreview = truncateTelemetryPreview({ inputs, data: resolvedData }, redactOpts);
     const outputPreview = truncateTelemetryPreview(rawOutput, redactOpts);
-    const redactedOutput = redactTelemetryPayload(
-      rawOutput,
-      redactOpts,
-    ) as Record<string, unknown>;
+    const redactedOutput = redactTelemetryPayload(rawOutput, redactOpts) as Record<string, unknown>;
 
     if (db) {
       const runRecord: RunRecord = {
@@ -536,15 +438,11 @@ export async function rehearseStep(
       secretFieldNames,
     };
     const rawMsg = err instanceof Error ? err.message : String(err);
-    const rawStack =
-      err instanceof Error ? (err.stack ?? `${err.name}: ${err.message}`) : String(err);
+    const rawStack = err instanceof Error ? (err.stack ?? `${err.name}: ${err.message}`) : String(err);
     const redactedMsg = redactTelemetryString(rawMsg, redactOpts);
     const redactedStack = redactTelemetryString(rawStack, redactOpts);
 
-    const inputPreview = truncateTelemetryPreview(
-      { inputs, data: resolvedData },
-      redactOpts,
-    );
+    const inputPreview = truncateTelemetryPreview({ inputs, data: resolvedData }, redactOpts);
     const outputPreview = "{}";
 
     if (db) {
@@ -582,12 +480,7 @@ export async function rehearseStep(
       await insertStepEvent(db, stepEvent, { projectId: options.telemetryProjectId });
     }
 
-    const structuredError = buildStructuredRehearsalError(
-      request.nodeId,
-      request.nodeType,
-      redactedMsg,
-      redactedStack,
-    );
+    const structuredError = buildStructuredRehearsalError(request.nodeId, request.nodeType, redactedMsg, redactedStack);
 
     return {
       ok: false,
@@ -643,22 +536,16 @@ export async function handleStepRehearsalRequest(
   if (url.pathname !== "/__px/rehearse") return null;
 
   if (request.method !== "POST") {
-    return Response.json(
-      { error: { code: "METHOD_NOT_ALLOWED", message: "Expected POST /__px/rehearse" } },
-      { status: 405 },
-    );
+    return Response.json({ error: { code: "METHOD_NOT_ALLOWED", message: "Expected POST /__px/rehearse" } }, { status: 405 });
   }
 
-  const pxEnv =
-    options.pxEnv ??
-    (typeof options.env?.PX_ENV === "string" ? options.env.PX_ENV : "preview");
+  const pxEnv = options.pxEnv ?? (typeof options.env?.PX_ENV === "string" ? options.env.PX_ENV : "preview");
   if (pxEnv === "production") {
     return Response.json(
       {
         error: {
           code: "REHEARSAL_FORBIDDEN_IN_PRODUCTION",
-          message:
-            "Test Step rehearsal is only permitted against preview environments, never production.",
+          message: "Test Step rehearsal is only permitted against preview environments, never production.",
         },
       },
       { status: 403 },
@@ -770,21 +657,14 @@ export interface WorkflowRunResponse {
   retryOfRunId?: string | null;
 }
 
-export async function executeWorkflowRun(
-  rawInput: WorkflowRunInput,
-  options: ExecuteWorkflowRunOptions,
-): Promise<WorkflowRunResponse> {
+export async function executeWorkflowRun(rawInput: WorkflowRunInput, options: ExecuteWorkflowRunOptions): Promise<WorkflowRunResponse> {
   const request = WorkflowRunRequestSchema.parse(rawInput);
   const registry = options.registry;
   const executors = options.executors;
 
-  const db =
-    options.db ??
-    (isD1Like(options.env?.DB) ? (options.env!.DB as D1Like) : undefined);
+  const db = options.db ?? (isD1Like(options.env?.DB) ? (options.env!.DB as D1Like) : undefined);
 
-  const runId =
-    request.runId ??
-    `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const runId = request.runId ?? `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   const trackedSecrets = new Set<string>();
   const secretFieldNames = new Set<string>();
@@ -834,8 +714,7 @@ export async function executeWorkflowRun(
     collectSecretKeyedValues(request.seededOutputs, trackedSecrets, secretFieldNames);
   }
 
-  const effectivePinnedOutputs =
-    request.usePinnedOutputs !== false ? request.pinnedOutputs : undefined;
+  const effectivePinnedOutputs = request.usePinnedOutputs !== false ? request.pinnedOutputs : undefined;
 
   const wf = new RuntimeGraphWorkflow(registry, executors);
   const runResult = await wf.start({
@@ -846,9 +725,7 @@ export async function executeWorkflowRun(
     connections: options.connections,
     ...(effectivePinnedOutputs ? { pinnedOutputs: effectivePinnedOutputs } : {}),
     ...(request.seededOutputs ? { seededOutputs: request.seededOutputs } : {}),
-    ...(request.reusedNodeIds
-      ? { reusedNodeIds: new Set(request.reusedNodeIds) }
-      : {}),
+    ...(request.reusedNodeIds ? { reusedNodeIds: new Set(request.reusedNodeIds) } : {}),
     ...(request.fromNodeId ? { fromNodeId: request.fromNodeId } : {}),
     telemetry: {
       db,
@@ -874,10 +751,7 @@ export async function executeWorkflowRun(
     secretFieldNames,
   };
 
-  const redactedOutputs = redactTelemetryPayload(
-    runResult.outputs,
-    redactOpts,
-  ) as Record<string, Record<string, unknown>>;
+  const redactedOutputs = redactTelemetryPayload(runResult.outputs, redactOpts) as Record<string, Record<string, unknown>>;
 
   const redactedFailed: Record<string, string> = {};
   for (const [k, v] of Object.entries(runResult.failed)) {
@@ -913,10 +787,7 @@ export async function handleWorkflowRunRequest(
   if (url.pathname !== "/__px/runs") return null;
 
   if (request.method !== "POST") {
-    return Response.json(
-      { error: { code: "METHOD_NOT_ALLOWED", message: "Expected POST /__px/runs" } },
-      { status: 405 },
-    );
+    return Response.json({ error: { code: "METHOD_NOT_ALLOWED", message: "Expected POST /__px/runs" } }, { status: 405 });
   }
 
   // Story 1.17: the control-plane signature (domain, method, path, time, body) and a one-time requestId, recorded
@@ -972,11 +843,7 @@ export class UpstreamOutputUnavailableError extends Error {
   readonly nodeId: string;
   readonly reason: "missing_succeeded_output" | "output_truncated_16kb";
 
-  constructor(
-    nodeId: string,
-    reason: "missing_succeeded_output" | "output_truncated_16kb",
-    message: string,
-  ) {
+  constructor(nodeId: string, reason: "missing_succeeded_output" | "output_truncated_16kb", message: string) {
     super(message);
     this.name = "UpstreamOutputUnavailableError";
     this.nodeId = nodeId;
@@ -984,28 +851,16 @@ export class UpstreamOutputUnavailableError extends Error {
   }
 }
 
-export async function executeWorkflowRerun(
-  rawInput: WorkflowRerunInput,
-  options: ExecuteWorkflowRunOptions,
-): Promise<WorkflowRunResponse> {
+export async function executeWorkflowRerun(rawInput: WorkflowRerunInput, options: ExecuteWorkflowRunOptions): Promise<WorkflowRunResponse> {
   const request = WorkflowRerunRequestSchema.parse(rawInput);
-  const db =
-    options.db ??
-    (isD1Like(options.env?.DB) ? (options.env!.DB as D1Like) : undefined);
+  const db = options.db ?? (isD1Like(options.env?.DB) ? (options.env!.DB as D1Like) : undefined);
 
-  const nodeExists = request.graph.nodes.some(
-    (n) => n.id === request.fromNodeId,
-  );
+  const nodeExists = request.graph.nodes.some((n) => n.id === request.fromNodeId);
   if (!nodeExists) {
-    throw new Error(
-      `NODE_NOT_FOUND: Target node "${request.fromNodeId}" does not exist in workflow "${request.workflowId}".`,
-    );
+    throw new Error(`NODE_NOT_FOUND: Target node "${request.fromNodeId}" does not exist in workflow "${request.workflowId}".`);
   }
 
-  const strictAncestors = computeStrictUpstreamAncestors(
-    request.graph,
-    request.fromNodeId,
-  );
+  const strictAncestors = computeStrictUpstreamAncestors(request.graph, request.fromNodeId);
 
   let recordedEvents: StepEvent[] = [];
   if (db) {
@@ -1033,9 +888,7 @@ export async function executeWorkflowRerun(
     if (Object.hasOwn(seededOutputs, ancestorId)) {
       continue;
     }
-    const succeededEvents = recordedEvents.filter(
-      (ev) => ev.nodeId === ancestorId && ev.status === "succeeded",
-    );
+    const succeededEvents = recordedEvents.filter((ev) => ev.nodeId === ancestorId && ev.status === "succeeded");
     const latestSucceeded = succeededEvents[succeededEvents.length - 1];
     if (!latestSucceeded) {
       throw new UpstreamOutputUnavailableError(

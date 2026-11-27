@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_admin_console.sql?raw";
-import {
-  AdminConsoleService,
-  createAdminRoutes,
-} from "../src/index.ts";
+import { AdminConsoleService, createAdminRoutes } from "../src/index.ts";
 import type { AdminEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -60,20 +57,13 @@ describe("Admin Console Service Core", () => {
     await service.addSuperAdmin("usr_support", "support@platform.app", "support_agent");
 
     // Support agent can suspend tenant
-    const suspended = await service.setTenantStatus(
-      "usr_support",
-      WS_ALPHA,
-      "suspended",
-      "Billing delinquency on invoice #901"
-    );
+    const suspended = await service.setTenantStatus("usr_support", WS_ALPHA, "suspended", "Billing delinquency on invoice #901");
     expect(suspended.status).toBe("suspended");
     expect(suspended.reason).toBe("Billing delinquency on invoice #901");
     expect(suspended.updated_by).toBe("usr_support");
 
     // Support agent cannot change custom limits (needs super_admin)
-    await expect(
-      service.setTenantCustomLimits("usr_support", WS_ALPHA, { seatCount: 500 })
-    ).rejects.toThrow("Super-admin privilege required");
+    await expect(service.setTenantCustomLimits("usr_support", WS_ALPHA, { seatCount: 500 })).rejects.toThrow("Super-admin privilege required");
 
     // Super admin can set custom enterprise limits
     const limits = await service.setTenantCustomLimits("usr_super", WS_ALPHA, {
@@ -97,7 +87,7 @@ describe("Admin Console Service Core", () => {
         impersonatedUserId: "usr_customer_42",
         workspaceId: WS_ALPHA,
         reason: "sh", // too short
-      })
+      }),
     ).rejects.toThrow("at least 5 characters");
 
     // 2. Start session
@@ -163,7 +153,7 @@ describe("Admin Console REST API", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "suspended", reason: "Hostile action" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(deniedRes.status).toBe(403);
 
@@ -176,7 +166,7 @@ describe("Admin Console REST API", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "suspended", reason: "Valid maintenance" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(allowedRes.status).toBe(200);
     const updated = (await allowedRes.json()) as any;
@@ -201,7 +191,7 @@ describe("Admin Console REST API", () => {
           reason: "Support investigation requested by customer",
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(startRes.status).toBe(201);
     const session = (await startRes.json()) as any;
@@ -215,7 +205,7 @@ describe("Admin Console REST API", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionToken: session.session_token }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(verifyRes.status).toBe(200);
     const verified = (await verifyRes.json()) as any;
@@ -230,7 +220,7 @@ describe("Admin Console REST API", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionToken: session.session_token }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(endRes.status).toBe(200);
   });
@@ -247,7 +237,7 @@ describe("Admin Console REST API", () => {
         headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
         body: JSON.stringify({ impersonatedUserId: "usr_client_99", workspaceId: WS_BETA, reason: "Support investigation requested" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(foreign.status).toBe(403);
     expect(await service.listImpersonationSessions("usr_support_hero", { workspaceId: WS_BETA })).toHaveLength(0);
@@ -260,12 +250,16 @@ describe("Admin Console REST API", () => {
         headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
         body: JSON.stringify({ impersonatedUserId: "usr_client_99", reason: "Support investigation requested" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(own.status).toBe(201);
     expect(await service.listImpersonationSessions("usr_support_hero", { workspaceId: WS_ALPHA })).toHaveLength(1);
 
-    const listForeign = await app.request(`http://localhost/admin/impersonations?workspaceId=${WS_BETA}`, { headers: { "x-workspace-id": WS_ALPHA } }, { DB: db });
+    const listForeign = await app.request(
+      `http://localhost/admin/impersonations?workspaceId=${WS_BETA}`,
+      { headers: { "x-workspace-id": WS_ALPHA } },
+      { DB: db },
+    );
     expect(listForeign.status).toBe(403);
     const listOwn = await app.request("http://localhost/admin/impersonations", { headers: { "x-workspace-id": WS_ALPHA } }, { DB: db });
     expect(listOwn.status).toBe(200);
@@ -284,7 +278,10 @@ describe("Admin Console REST API", () => {
     }
 
     it("OPERATOR_WRITE: a user listed in PX_PLATFORM_OPERATORS creates a super-admin (201)", async () => {
-      const res = await createApp("usr_operator").request("http://localhost/admin/super-admins", body("usr_new"), { DB: db, PX_PLATFORM_OPERATORS: "usr_operator" });
+      const res = await createApp("usr_operator").request("http://localhost/admin/super-admins", body("usr_new"), {
+        DB: db,
+        PX_PLATFORM_OPERATORS: "usr_operator",
+      });
       expect(res.status).toBe(201);
       expect(await new AdminConsoleService(db).verifyAdminAccess("usr_new", "super_admin")).toBe(true);
     });

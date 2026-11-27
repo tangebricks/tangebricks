@@ -51,12 +51,21 @@ export class PlanService {
    * Story 1.20: grants the current period's plan credits for the workspace's subscription, if any are due. Never fails
    * the caller: a grant that cannot be made is logged and retried by the next read or the schedule sweep.
    */
-  private async grantCurrentPeriod(sub: { workspace_id: string; plan_id: string; status: string; created_at: string; plan?: PlanRecord | null; credits_granted_period?: number | null }): Promise<void> {
+  private async grantCurrentPeriod(sub: {
+    workspace_id: string;
+    plan_id: string;
+    status: string;
+    created_at: string;
+    plan?: PlanRecord | null;
+    credits_granted_period?: number | null;
+  }): Promise<void> {
     if (!this.credits.charger || !this.credits.planCredits) return;
     try {
       await grantPlanCredits(this.db, this.credits, { ...sub, billing_interval: sub.plan?.billing_interval ?? null }, Date.now());
     } catch (error) {
-      console.error(JSON.stringify({ brick: "subscription-plans", event: "plan_credit_grant_error", message: error instanceof Error ? error.message : String(error) }));
+      console.error(
+        JSON.stringify({ brick: "subscription-plans", event: "plan_credit_grant_error", message: error instanceof Error ? error.message : String(error) }),
+      );
     }
   }
 
@@ -68,13 +77,15 @@ export class PlanService {
     name: string,
     priceCents: number,
     billingInterval: "month" | "year" | "one_time",
-    features: PlanFeatures = {}
+    features: PlanFeatures = {},
   ): Promise<PlanRecord> {
     const planId = id.trim().toLowerCase();
     const planName = name.trim();
     const featuresJson = JSON.stringify(features);
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO sub_plans (id, name, price_cents, billing_interval, features_json)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET
@@ -82,7 +93,10 @@ export class PlanService {
         price_cents = excluded.price_cents,
         billing_interval = excluded.billing_interval,
         features_json = excluded.features_json
-    `).bind(planId, planName, priceCents, billingInterval, featuresJson).run();
+    `,
+      )
+      .bind(planId, planName, priceCents, billingInterval, featuresJson)
+      .run();
 
     return {
       id: planId,
@@ -106,9 +120,9 @@ export class PlanService {
       features_json: string;
       created_at: string;
     }
-    const rows = (await this.db.prepare(
-      "SELECT id, name, price_cents, billing_interval, features_json, created_at FROM sub_plans ORDER BY price_cents ASC"
-    ).all<Row>()).results;
+    const rows = (
+      await this.db.prepare("SELECT id, name, price_cents, billing_interval, features_json, created_at FROM sub_plans ORDER BY price_cents ASC").all<Row>()
+    ).results;
 
     return rows.map((r) => ({
       id: r.id,
@@ -132,9 +146,10 @@ export class PlanService {
       features_json: string;
       created_at: string;
     }
-    const row = await this.db.prepare(
-      "SELECT id, name, price_cents, billing_interval, features_json, created_at FROM sub_plans WHERE id = ?"
-    ).bind(planId.toLowerCase()).first<Row>();
+    const row = await this.db
+      .prepare("SELECT id, name, price_cents, billing_interval, features_json, created_at FROM sub_plans WHERE id = ?")
+      .bind(planId.toLowerCase())
+      .first<Row>();
 
     if (!row) return null;
     return {
@@ -192,9 +207,7 @@ export class PlanService {
     return (await this.paidSubscription(workspaceId)) !== null;
   }
 
-  private async paidSubscription(
-    workspaceId: string,
-  ): Promise<{ plan_id: string; price_cents: number } | null> {
+  private async paidSubscription(workspaceId: string): Promise<{ plan_id: string; price_cents: number } | null> {
     const sub = await scoped(this.db, workspaceId).first<{
       plan_id: string;
       status: string;

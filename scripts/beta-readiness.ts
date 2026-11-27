@@ -19,15 +19,8 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 import type { D1Like, D1Result, D1Statement } from "../packages/sdk/src/index.ts";
-import {
-  DEFAULT_COHORT_1_PARTNERS,
-  computeCohortBetaMetrics,
-  provisionBetaCohortPartners,
-} from "../apps/studio-api/src/beta-readiness.ts";
-import type {
-  BetaReadinessReport,
-  CohortPartnerSeedInput,
-} from "../apps/studio-api/src/beta-readiness.ts";
+import { DEFAULT_COHORT_1_PARTNERS, computeCohortBetaMetrics, provisionBetaCohortPartners } from "../apps/studio-api/src/beta-readiness.ts";
+import type { BetaReadinessReport, CohortPartnerSeedInput } from "../apps/studio-api/src/beta-readiness.ts";
 
 export function createInMemorySqliteD1(): D1Like {
   const sqlite = new DatabaseSync(":memory:");
@@ -122,10 +115,7 @@ export function formatBetaReadinessSummary(report: BetaReadinessReport): string 
         (p.ttfdMinutes !== null ? p.ttfdMinutes.toFixed(1) : "N/A").padStart(9),
         (p.connectCfVerified ? "yes" : "no").padStart(11),
         String(p.deployedIntegrationWorkflows).padStart(9),
-        (p.meanTimeToLocateFailingNodeSec !== null
-          ? `${p.meanTimeToLocateFailingNodeSec}s`
-          : "N/A"
-        ).padStart(10),
+        (p.meanTimeToLocateFailingNodeSec !== null ? `${p.meanTimeToLocateFailingNodeSec}s` : "N/A").padStart(10),
         String(p.weeklyActiveSessionsW4).padStart(11),
       ].join(" | "),
     );
@@ -143,9 +133,7 @@ export async function runBetaReadiness(options: BetaReadinessOptions = {}): Prom
   const cohortPath = options.cohortPath ?? null;
 
   if (!simulate && !cohortPath) {
-    console.error(
-      "BETA_READINESS_NO_REAL_COHORT: Real partner cohort export required via --cohort <path> (or use --simulate for testing).",
-    );
+    console.error("BETA_READINESS_NO_REAL_COHORT: Real partner cohort export required via --cohort <path> (or use --simulate for testing).");
     process.exit(1);
   }
 
@@ -177,11 +165,7 @@ export async function runBetaReadiness(options: BetaReadinessOptions = {}): Prom
     let rawList: unknown[] = [];
     if (Array.isArray(parsedData)) {
       rawList = parsedData;
-    } else if (
-      parsedData &&
-      typeof parsedData === "object" &&
-      Array.isArray((parsedData as { partners: unknown[] }).partners)
-    ) {
+    } else if (parsedData && typeof parsedData === "object" && Array.isArray((parsedData as { partners: unknown[] }).partners)) {
       const obj = parsedData as { cohortId?: string; partners: unknown[] };
       rawList = obj.partners;
       if (obj.cohortId) cohortId = obj.cohortId;
@@ -190,15 +174,9 @@ export async function runBetaReadiness(options: BetaReadinessOptions = {}): Prom
       process.exit(1);
     }
 
-    const seededOrgIds = new Set(
-      DEFAULT_COHORT_1_PARTNERS.map((p) => p.orgId).filter(Boolean),
-    );
-    const seededSlugs = new Set(
-      DEFAULT_COHORT_1_PARTNERS.map((p) => p.orgSlug).filter(Boolean),
-    );
-    const seededEmails = new Set(
-      DEFAULT_COHORT_1_PARTNERS.map((p) => p.ownerEmail).filter(Boolean),
-    );
+    const seededOrgIds = new Set(DEFAULT_COHORT_1_PARTNERS.map((p) => p.orgId).filter(Boolean));
+    const seededSlugs = new Set(DEFAULT_COHORT_1_PARTNERS.map((p) => p.orgSlug).filter(Boolean));
+    const seededEmails = new Set(DEFAULT_COHORT_1_PARTNERS.map((p) => p.ownerEmail).filter(Boolean));
 
     const hasSeeded = rawList.some((item: any) => {
       if (!item || typeof item !== "object") return false;
@@ -210,9 +188,7 @@ export async function runBetaReadiness(options: BetaReadinessOptions = {}): Prom
     });
 
     if (hasSeeded) {
-      console.error(
-        "BETA_READINESS_SEEDED_INPUT: Cohort export contains seeded/default partner IDs from DEFAULT_COHORT_1_PARTNERS.",
-      );
+      console.error("BETA_READINESS_SEEDED_INPUT: Cohort export contains seeded/default partner IDs from DEFAULT_COHORT_1_PARTNERS.");
       process.exit(1);
     }
 
@@ -235,15 +211,10 @@ export async function runBetaReadiness(options: BetaReadinessOptions = {}): Prom
   console.log(formatBetaReadinessSummary(report));
 
   const scorecardPath = resolve(evidenceDir, "n8n-parity-scorecard.json");
-  const scorecardSummary = existsSync(scorecardPath)
-    ? (JSON.parse(readFileSync(scorecardPath, "utf8")) as Record<string, unknown>)
-    : null;
+  const scorecardSummary = existsSync(scorecardPath) ? (JSON.parse(readFileSync(scorecardPath, "utf8")) as Record<string, unknown>) : null;
 
   const prov = stampEvidence("scripts/beta-readiness.ts", inputKind);
-  const outPath =
-    inputKind === "simulated"
-      ? resolve(evidenceDir, "simulated", "cp8-beta-readiness.json")
-      : resolve(evidenceDir, "cp8-beta-readiness.json");
+  const outPath = inputKind === "simulated" ? resolve(evidenceDir, "simulated", "cp8-beta-readiness.json") : resolve(evidenceDir, "cp8-beta-readiness.json");
 
   const artifact = {
     ...report,
@@ -276,10 +247,7 @@ async function main(): Promise<void> {
   await runBetaReadiness({ cohortPath, simulate });
 }
 
-const isMain =
-  process.argv[1] &&
-  resolve(process.argv[1]).toLowerCase() ===
-    resolve(fileURLToPath(import.meta.url)).toLowerCase();
+const isMain = process.argv[1] && resolve(process.argv[1]).toLowerCase() === resolve(fileURLToPath(import.meta.url)).toLowerCase();
 
 if (isMain) {
   main().catch((err) => {

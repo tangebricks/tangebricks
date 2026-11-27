@@ -2,11 +2,7 @@ import { describe, expect, it } from "vitest";
 import { IntegrationManifestSchema } from "@poc/assembler";
 import type { IntegrationManifestFile } from "@poc/assembler";
 import type { ExecutionContext } from "@poc/sdk";
-import {
-  callOperation,
-  createIntegrationOperationExecutor,
-  IntegrationCallError,
-} from "../src/index.ts";
+import { callOperation, createIntegrationOperationExecutor, IntegrationCallError } from "../src/index.ts";
 import type { CallOperationOptions, IntegrationFetcher } from "../src/index.ts";
 import callOperationSource from "../src/call-operation.ts?raw";
 
@@ -55,9 +51,7 @@ const stripeManifest: IntegrationManifestFile = IntegrationManifestSchema.parse(
       summary: "Retrieve a customer object",
       method: "GET",
       path: "/v1/customers/{id}",
-      params: [
-        { name: "id", in: "path", dataType: "string", required: true },
-      ],
+      params: [{ name: "id", in: "path", dataType: "string", required: true }],
       sideEffects: "read",
     },
   ],
@@ -178,10 +172,15 @@ describe("UC3.1 — Standalone callOperation() with node executor wrapper", () =
     };
 
     await expect(
-      callOperation(blockingManifest, "unsupportedOp", {}, {
-        connection: { accessToken: "sk_test_canary" },
-        fetcher,
-      }),
+      callOperation(
+        blockingManifest,
+        "unsupportedOp",
+        {},
+        {
+          connection: { accessToken: "sk_test_canary" },
+          fetcher,
+        },
+      ),
     ).rejects.toThrow(/INTEGRATION_UNSUPPORTED_FEATURE/);
 
     expect(fetchCalled).toBe(false);
@@ -191,10 +190,15 @@ describe("UC3.1 — Standalone callOperation() with node executor wrapper", () =
     const fetcher: IntegrationFetcher = async () => new Response("{}", { status: 200 });
 
     await expect(
-      callOperation(stripeManifest, "unknownOp", {}, {
-        connection: { accessToken: "sk_test_canary" },
-        fetcher,
-      }),
+      callOperation(
+        stripeManifest,
+        "unknownOp",
+        {},
+        {
+          connection: { accessToken: "sk_test_canary" },
+          fetcher,
+        },
+      ),
     ).rejects.toThrow(/INTEGRATION_OPERATION_NOT_FOUND/);
   });
 
@@ -257,10 +261,15 @@ describe("UC3.1 — Standalone callOperation() with node executor wrapper", () =
     const fetcher: IntegrationFetcher = async () => new Response("{}", { status: 200 });
 
     try {
-      await callOperation(stripeManifest, "unknownOp", {}, {
-        connection: { accessToken: "sk_test_canary" },
-        fetcher,
-      });
+      await callOperation(
+        stripeManifest,
+        "unknownOp",
+        {},
+        {
+          connection: { accessToken: "sk_test_canary" },
+          fetcher,
+        },
+      );
       expect.unreachable("should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(Error);

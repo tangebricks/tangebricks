@@ -42,7 +42,11 @@ export interface StudioDeployOptions {
    * /__px routes around the project; see @poc/deploy bundleWorker). Bundling needs esbuild, so it runs where Studio runs in
    * Node (the live proof script). Without it the HTTP path refuses to deploy rather than upload unbundled TypeScript.
    */
-  bundle?: (input: { project: string; envName: string; files: Record<string, string> }) => Promise<{ code: string; sha256?: string; compatibilityFlags?: string[] }>;
+  bundle?: (input: {
+    project: string;
+    envName: string;
+    files: Record<string, string>;
+  }) => Promise<{ code: string; sha256?: string; compatibilityFlags?: string[] }>;
   /** Test seam (story 1.19): runs after a deploy's approval gate, before Studio binds the secrets it generated. */
   beforeGeneratedSecretBind?: (input: { project: string; envName: string }) => Promise<void>;
 }
@@ -87,7 +91,8 @@ const fakeControlPlanes = new Map<string, MockCloudflareControlPlane>();
  * as getStudioControlPlane: outside PX_DEPLOY_CLIENT=fake with PX_ENVIRONMENT test/development it throws.
  */
 export function getStudioFakeControlPlane(accountId: string, env: StudioDeployClientEnv | undefined): MockCloudflareControlPlane {
-  if (studioDeployClientMode(env) !== "fake") throw new StudioDeployClientConfigError("the fake control plane is for tests only (PX_DEPLOY_CLIENT=fake with PX_ENVIRONMENT test or development)");
+  if (studioDeployClientMode(env) !== "fake")
+    throw new StudioDeployClientConfigError("the fake control plane is for tests only (PX_DEPLOY_CLIENT=fake with PX_ENVIRONMENT test or development)");
   const key = accountId.toLowerCase();
   let cp = fakeControlPlanes.get(key);
   if (!cp) {
@@ -112,11 +117,7 @@ function httpControlPlane(deps: StudioDeployOptions | undefined): HttpCloudflare
 }
 
 /** The control plane Studio's deploy routes use for an account: the HTTP client, or the fake in an explicit test mode. */
-export function getStudioControlPlane(
-  accountId: string,
-  env?: StudioDeployClientEnv,
-  deps?: StudioDeployOptions,
-): CloudflareApiClient {
+export function getStudioControlPlane(accountId: string, env?: StudioDeployClientEnv, deps?: StudioDeployOptions): CloudflareApiClient {
   if (studioDeployClientMode(env) === "fake") return getStudioFakeControlPlane(accountId, env);
   return httpControlPlane(deps);
 }

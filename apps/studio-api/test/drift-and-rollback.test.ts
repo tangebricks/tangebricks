@@ -5,13 +5,7 @@ import type { D1Like } from "@poc/sdk";
 import studioAuthOrgsSql from "../migrations/0001_studio_auth_orgs.sql?raw";
 import studioSecretVaultSql from "../migrations/0002_studio_secret_vault.sql?raw";
 import cp5DeployTokensSql from "../migrations/0003_cp5_deploy_tokens.sql?raw";
-import {
-  app as studioApp,
-  ensureStudioD1Schema,
-  getProjectAssembleCount,
-  getStudioFakeControlPlane,
-  resetStudioDeployTestState,
-} from "../src/index.ts";
+import { app as studioApp, ensureStudioD1Schema, getProjectAssembleCount, getStudioFakeControlPlane, resetStudioDeployTestState } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 
 const rawEnv = env as unknown as StudioApiEnv;
@@ -36,10 +30,7 @@ interface CallOptions {
 
 let orgId = "";
 
-async function callStudio(
-  path: string,
-  options: CallOptions = {},
-): Promise<Response> {
+async function callStudio(path: string, options: CallOptions = {}): Promise<Response> {
   const headers = new Headers(options.headers);
   if (options.token) headers.set("authorization", `Bearer ${options.token}`);
   if (orgId && !headers.has("x-org-id")) headers.set("x-org-id", orgId);
@@ -208,11 +199,7 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     });
     expect(opsRes.status).toBe(200);
 
-    for (const secName of [
-      "BETTER_AUTH_SECRET",
-      "GITHUB_CLIENT_ID",
-      "GITHUB_CLIENT_SECRET",
-    ]) {
+    for (const secName of ["BETTER_AUTH_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) {
       const secretRes = await callStudio(`/api/projects/${project}/secrets`, {
         token: ownerSessionToken,
         headers: { "x-org-id": orgId },
@@ -235,16 +222,13 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
   }
 
   async function connectCloudflareForOrg(project: string) {
-    const res = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        token: ownerSessionToken,
-        body: {
-          token: VALID_CF_TOKEN,
-          projectId: project,
-        },
+    const res = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      token: ownerSessionToken,
+      body: {
+        token: VALID_CF_TOKEN,
+        projectId: project,
       },
-    );
+    });
     expect(res.status).toBe(201);
     return (await res.json()) as {
       ok: true;
@@ -259,13 +243,10 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     await connectCloudflareForOrg(project);
 
     // Deploy r1 (v1) to preview
-    const depV1Res = await callStudio(
-      `/api/projects/${project}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        body: {},
-      },
-    );
+    const depV1Res = await callStudio(`/api/projects/${project}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      body: {},
+    });
     expect(depV1Res.status).toBe(200);
     const depV1 = (await depV1Res.json()) as {
       deployId: string;
@@ -332,17 +313,14 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     expect(opsR2.status).toBe(200);
 
     // Check drift and simulate an out-of-band Worker script hash change
-    const checkDriftRes = await callStudio(
-      `/api/projects/${project}/environments/preview/check-drift`,
-      {
-        token: ownerSessionToken,
-        body: {
-          simulateOutOfBand: {
-            workerHash: "tampered_cloudflare_script_hash",
-          },
+    const checkDriftRes = await callStudio(`/api/projects/${project}/environments/preview/check-drift`, {
+      token: ownerSessionToken,
+      body: {
+        simulateOutOfBand: {
+          workerHash: "tampered_cloudflare_script_hash",
         },
       },
-    );
+    });
     expect(checkDriftRes.status).toBe(200);
     const checkDriftBody = (await checkDriftRes.json()) as {
       ok: boolean;
@@ -366,12 +344,8 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     expect(checkDriftBody.driftReport.inSync).toBe(false);
     expect(checkDriftBody.driftReport.blueprintDrift.hasCodeDrift).toBe(false);
     expect(checkDriftBody.driftReport.blueprintDrift.hasGraphDrift).toBe(true);
-    expect(checkDriftBody.driftReport.blueprintDrift.deployedRev).toBe(
-      depV1.revision,
-    );
-    expect(checkDriftBody.driftReport.blueprintDrift.currentRev).toBe(
-      depV1.revision + 1,
-    );
+    expect(checkDriftBody.driftReport.blueprintDrift.deployedRev).toBe(depV1.revision);
+    expect(checkDriftBody.driftReport.blueprintDrift.currentRev).toBe(depV1.revision + 1);
     expect(checkDriftBody.driftReport.outOfBandDrift).toEqual([
       expect.objectContaining({
         resource: "worker",
@@ -387,13 +361,10 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     const conn = await connectCloudflareForOrg(project);
 
     // Deploy r1 (v1) to preview
-    const depV1Res = await callStudio(
-      `/api/projects/${project}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        body: {},
-      },
-    );
+    const depV1Res = await callStudio(`/api/projects/${project}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      body: {},
+    });
     expect(depV1Res.status).toBe(200);
     const depV1 = (await depV1Res.json()) as {
       deployId: string;
@@ -416,9 +387,7 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
             entity: {
               name: "invoices",
               workspaceScoped: true,
-              fields: [
-                { name: "amount", type: "text", required: true },
-              ],
+              fields: [{ name: "amount", type: "text", required: true }],
             },
           },
           {
@@ -434,20 +403,17 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     expect(opsR2.status).toBe(200);
 
     // Deploy r2 (v2) to preview with a custom D1 migration
-    const depV2Res = await callStudio(
-      `/api/projects/${project}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        body: {
-          migrations: [
-            {
-              name: "0002_create_invoices.sql",
-              sql: "CREATE TABLE invoices (id TEXT PRIMARY KEY, amount REAL);",
-            },
-          ],
-        },
+    const depV2Res = await callStudio(`/api/projects/${project}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      body: {
+        migrations: [
+          {
+            name: "0002_create_invoices.sql",
+            sql: "CREATE TABLE invoices (id TEXT PRIMARY KEY, amount REAL);",
+          },
+        ],
       },
-    );
+    });
     expect(depV2Res.status).toBe(200);
     const depV2 = (await depV2Res.json()) as {
       deployId: string;
@@ -460,15 +426,12 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     const assembleCountBeforeRollback = getProjectAssembleCount(project);
 
     // Attempt rollback from v2 -> v1 without confirmDestructive: should be blocked (422)
-    const blockedRes = await callStudio(
-      `/api/projects/${project}/environments/preview/rollback`,
-      {
-        token: ownerSessionToken,
-        body: {
-          targetDeploymentId: depV1.deployId,
-        },
+    const blockedRes = await callStudio(`/api/projects/${project}/environments/preview/rollback`, {
+      token: ownerSessionToken,
+      body: {
+        targetDeploymentId: depV1.deployId,
       },
-    );
+    });
     expect(blockedRes.status).toBe(422);
     const blockedBody = (await blockedRes.json()) as {
       ok: false;
@@ -477,24 +440,17 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
         destructiveWarnings: Array<{ migrationName: string; kind: string }>;
       };
     };
-    expect(blockedBody.error.code).toBe(
-      "DESTRUCTIVE_MIGRATION_CONFIRMATION_REQUIRED",
-    );
-    expect(blockedBody.error.destructiveWarnings.length).toBeGreaterThanOrEqual(
-      1,
-    );
+    expect(blockedBody.error.code).toBe("DESTRUCTIVE_MIGRATION_CONFIRMATION_REQUIRED");
+    expect(blockedBody.error.destructiveWarnings.length).toBeGreaterThanOrEqual(1);
 
     // Confirm rollback from v2 -> v1 with confirmDestructive: true
-    const rollbackRes = await callStudio(
-      `/api/projects/${project}/environments/preview/rollback`,
-      {
-        token: ownerSessionToken,
-        body: {
-          targetDeploymentId: depV1.deployId,
-          confirmDestructive: true,
-        },
+    const rollbackRes = await callStudio(`/api/projects/${project}/environments/preview/rollback`, {
+      token: ownerSessionToken,
+      body: {
+        targetDeploymentId: depV1.deployId,
+        confirmDestructive: true,
       },
-    );
+    });
     expect(rollbackRes.status).toBe(200);
     const rollbackBody = (await rollbackRes.json()) as {
       ok: true;
@@ -540,20 +496,11 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
 
     // Verify D1 workflows & worker hash in MockCloudflareControlPlane were restored to v1
     const cp = getStudioFakeControlPlane(conn.accountId, TEST_ENV);
-    const dbMeta = cp.inspectDatabase(
-      conn.accountId,
-      `px-${project}-preview`,
-    )!;
+    const dbMeta = cp.inspectDatabase(conn.accountId, `px-${project}-preview`)!;
     const wfOrdersEntry = dbMeta.graphs.wf_orders!;
-    const wfOrdersGraph =
-      typeof wfOrdersEntry === "string"
-        ? wfOrdersEntry
-        : wfOrdersEntry.graph;
+    const wfOrdersGraph = typeof wfOrdersEntry === "string" ? wfOrdersEntry : wfOrdersEntry.graph;
     expect(wfOrdersGraph).toContain('"amount":15');
-    const workerMeta = cp.inspectWorker(
-      conn.accountId,
-      `px-${project}-preview`,
-    )!;
+    const workerMeta = cp.inspectWorker(conn.accountId, `px-${project}-preview`)!;
     expect(workerMeta.sha256).toBe(depV1.codeHash);
   });
 
@@ -582,16 +529,20 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     const depV2 = (await depV2Res.json()) as { deployId: string };
     // data written after the migration (a customer workspace's own row, which a code rollback keeps)
     const cp = getStudioFakeControlPlane(conn.accountId, TEST_ENV);
-    await cp.putStoredGraph(conn.accountId, cp.findActiveTokenForAccount(conn.accountId)!, cp.inspectDatabase(conn.accountId, `px-${project}-preview`)!.uuid, "ws_customer", "written_after_v2", "{}");
+    await cp.putStoredGraph(
+      conn.accountId,
+      cp.findActiveTokenForAccount(conn.accountId)!,
+      cp.inspectDatabase(conn.accountId, `px-${project}-preview`)!.uuid,
+      "ws_customer",
+      "written_after_v2",
+      "{}",
+    );
     expect(Object.keys(cp.inspectDatabase(conn.accountId, `px-${project}-preview`)!.graphs)).toContain("ws_customer:written_after_v2");
     return { conn, depV1, depV2 };
   }
 
   async function deploymentState(deployId: string): Promise<Record<string, unknown>> {
-    const row = await studioDb
-      .prepare("SELECT state_json FROM deployments WHERE deploy_id = ?")
-      .bind(deployId)
-      .first<{ state_json: string }>();
+    const row = await studioDb.prepare("SELECT state_json FROM deployments WHERE deploy_id = ?").bind(deployId).first<{ state_json: string }>();
     return JSON.parse(row!.state_json) as Record<string, unknown>;
   }
 
@@ -659,10 +610,7 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     });
     expect(refused.status).toBe(409);
     expect(((await refused.json()) as { error: { code: string } }).error.code).toBe("NO_RESTORE_POINT");
-    const countRow = await studioDb
-      .prepare("SELECT COUNT(*) AS n FROM deployments WHERE project_id = ?")
-      .bind(project)
-      .first<{ n: number }>();
+    const countRow = await studioDb.prepare("SELECT COUNT(*) AS n FROM deployments WHERE project_id = ?").bind(project).first<{ n: number }>();
     expect(Number(countRow!.n)).toBe(2);
 
     // code only: unchanged behaviour, D1 keeps the migration, no undo token
@@ -716,15 +664,19 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
     expect(failed.status).not.toBe(200);
     expect(cp.inspectDatabase(conn.accountId, dbName)!.appliedMigrations.map((m) => m.name)).toContain("0002_create_invoices.sql");
     // the failed deploy recorded no deployment, but its restore point is kept
-    const points = await studioDb
-      .prepare("SELECT deploy_id FROM deploy_restore_points WHERE project_id = ?")
-      .bind(project)
-      .all<{ deploy_id: string }>();
+    const points = await studioDb.prepare("SELECT deploy_id FROM deploy_restore_points WHERE project_id = ?").bind(project).all<{ deploy_id: string }>();
     expect(points.results).toHaveLength(1);
     const failedDeployId = points.results![0]!.deploy_id;
     expect(failedDeployId).not.toBe(depV1.deployId);
 
-    await cp.putStoredGraph(conn.accountId, cp.findActiveTokenForAccount(conn.accountId)!, cp.inspectDatabase(conn.accountId, dbName)!.uuid, "ws_customer", "written_after_failed", "{}");
+    await cp.putStoredGraph(
+      conn.accountId,
+      cp.findActiveTokenForAccount(conn.accountId)!,
+      cp.inspectDatabase(conn.accountId, dbName)!.uuid,
+      "ws_customer",
+      "written_after_failed",
+      "{}",
+    );
     const res = await callStudio(`/api/projects/${project}/environments/preview/rollback`, {
       token: ownerSessionToken,
       body: { targetDeploymentId: depV1.deployId, confirmDestructive: true, restoreData: true },
@@ -755,7 +707,10 @@ describe("Story 5.5 — Studio API Drift Detection & One-Click Rollback", () => 
       delete patched.restoreD1;
     }
     expect(res.status).toBe(502);
-    const body = (await res.json()) as { ok: boolean; error: { code: string; codeRolledBack: boolean; dataRestored: boolean; message: string; deployId: string } };
+    const body = (await res.json()) as {
+      ok: boolean;
+      error: { code: string; codeRolledBack: boolean; dataRestored: boolean; message: string; deployId: string };
+    };
     expect(body.ok).toBe(false);
     expect(body.error).toMatchObject({ code: "DATA_RESTORE_FAILED", codeRolledBack: true, dataRestored: false });
     expect(body.error.message).toMatch(/code was rolled back.*data was not restored/);

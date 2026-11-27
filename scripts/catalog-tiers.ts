@@ -4,12 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { IntegrationManifestSchema, ManifestSchema } from "../packages/assembler/src/schemas.ts";
 import type { BrickMaturity } from "../packages/assembler/src/schemas.ts";
-import {
-  checkAllBricks,
-  checkIntegrationConformance,
-  formatViolationLine,
-  loadTierEvidenceMap,
-} from "./check-manifests.ts";
+import { checkAllBricks, checkIntegrationConformance, formatViolationLine, loadTierEvidenceMap } from "./check-manifests.ts";
 import { deriveTier, loadTierPolicy } from "./lib/derive-tier.ts";
 import { getEvidenceDir, getGitSha, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 
@@ -58,11 +53,7 @@ export function loadIntegrationTiers(rootDir = ROOT): BrickTierRow[] {
     .sort();
 
   const tierEvidenceMap = loadTierEvidenceMap(rootDir);
-  const policy = loadTierPolicy(
-    existsSync(join(rootDir, "scripts", "tier-policy.json"))
-      ? join(rootDir, "scripts", "tier-policy.json")
-      : undefined,
-  );
+  const policy = loadTierPolicy(existsSync(join(rootDir, "scripts", "tier-policy.json")) ? join(rootDir, "scripts", "tier-policy.json") : undefined);
   const headSha = getGitSha(rootDir);
   const now = new Date().toISOString();
 
@@ -76,9 +67,7 @@ export function loadIntegrationTiers(rootDir = ROOT): BrickTierRow[] {
   for (const app of apps) {
     const integrationDir = join(integrationsDir, app);
     const manifestPath = join(integrationDir, "integration.json");
-    const manifest = IntegrationManifestSchema.parse(
-      JSON.parse(readFileSync(manifestPath, "utf8")),
-    );
+    const manifest = IntegrationManifestSchema.parse(JSON.parse(readFileSync(manifestPath, "utf8")));
 
     const canaryPath = join(evidenceDir, "live-canary", `${manifest.app}.json`);
     let liveCanary: any = null;
@@ -94,10 +83,7 @@ export function loadIntegrationTiers(rootDir = ROOT): BrickTierRow[] {
       try {
         const report = JSON.parse(readFileSync(reportPath, "utf8"));
         const lossEntries = (report.entries ?? []).filter(
-          (e: any) =>
-            e.status === "approximated" ||
-            e.status === "unsupported" ||
-            (typeof e.code === "string" && e.code.endsWith("_LOSS")),
+          (e: any) => e.status === "approximated" || e.status === "unsupported" || (typeof e.code === "string" && e.code.endsWith("_LOSS")),
         );
         const curationPath = existsSync(join(integrationDir, "curation.config.json"))
           ? join(integrationDir, "curation.config.json")
@@ -122,9 +108,7 @@ export function loadIntegrationTiers(rootDir = ROOT): BrickTierRow[] {
             } catch {}
           }
           unackCount = lossEntries.filter(
-            (e: any) =>
-              !acks.has(`${e.op ?? "<doc>"}:${e.code}`) &&
-              !acks.has(`${e.op ?? "<doc>"}:${e.code}:${e.pointer ?? ""}`),
+            (e: any) => !acks.has(`${e.op ?? "<doc>"}:${e.code}`) && !acks.has(`${e.op ?? "<doc>"}:${e.code}:${e.pointer ?? ""}`),
           ).length;
         }
         fidelityReport = {
@@ -170,11 +154,7 @@ export function loadBrickTiers(rootDir = ROOT): BrickTierRow[] {
     .sort();
 
   const tierEvidenceMap = loadTierEvidenceMap(rootDir);
-  const policy = loadTierPolicy(
-    existsSync(join(rootDir, "scripts", "tier-policy.json"))
-      ? join(rootDir, "scripts", "tier-policy.json")
-      : undefined,
-  );
+  const policy = loadTierPolicy(existsSync(join(rootDir, "scripts", "tier-policy.json")) ? join(rootDir, "scripts", "tier-policy.json") : undefined);
   const headSha = getGitSha(rootDir);
   const now = new Date().toISOString();
 
@@ -232,14 +212,7 @@ export function verifyPresetTiers(rows: BrickTierRow[], rootDir = ROOT): Record<
 }
 
 export function printTierTable(rows: BrickTierRow[]): void {
-  const header = [
-    "id".padEnd(22),
-    "declared".padEnd(12),
-    "derived".padEnd(12),
-    "blockers".padEnd(32),
-    "behaviourTest".padEnd(48),
-    "reason",
-  ].join(" | ");
+  const header = ["id".padEnd(22), "declared".padEnd(12), "derived".padEnd(12), "blockers".padEnd(32), "behaviourTest".padEnd(48), "reason"].join(" | ");
   console.log(header);
   console.log("-".repeat(150));
   for (const row of rows) {
@@ -276,9 +249,7 @@ async function main(): Promise<void> {
 
   const testFiles = [
     ...new Set([
-      ...rawBrickRows
-        .filter((r) => (r.declaredTier === "production" || r.declaredTier === "beta") && r.behaviourTest !== null)
-        .map((r) => r.behaviourTest!),
+      ...rawBrickRows.filter((r) => (r.declaredTier === "production" || r.declaredTier === "beta") && r.behaviourTest !== null).map((r) => r.behaviourTest!),
       ...rawIntegrationRows
         .filter((r) => (r.declaredTier === "production" || r.declaredTier === "beta") && r.behaviourTest !== null)
         .map((r) => r.behaviourTest!),
@@ -290,15 +261,7 @@ async function main(): Promise<void> {
     const vitestCli = join(ROOT, "node_modules", "vitest", "vitest.mjs");
     const run = spawnSync(
       process.execPath,
-      [
-        vitestCli,
-        "run",
-        "-c",
-        "vitest.workers.config.ts",
-        "--reporter=default",
-        "--reporter=./reporters/evidence-reporter.ts",
-        ...testFiles,
-      ],
+      [vitestCli, "run", "-c", "vitest.workers.config.ts", "--reporter=default", "--reporter=./reporters/evidence-reporter.ts", ...testFiles],
       { cwd: ROOT, stdio: "inherit" },
     );
     if (run.status !== 0) {

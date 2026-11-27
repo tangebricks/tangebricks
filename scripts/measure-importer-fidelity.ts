@@ -1,14 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  measureSpecFidelity,
-  type FidelityReport,
-} from "../packages/integrations/src/fidelity/measure.ts";
-import {
-  NON_STRUCTURAL_CLASSES,
-  type DefectClass,
-} from "../packages/integrations/src/fidelity/classes.ts";
+import { measureSpecFidelity, type FidelityReport } from "../packages/integrations/src/fidelity/measure.ts";
+import { NON_STRUCTURAL_CLASSES, type DefectClass } from "../packages/integrations/src/fidelity/classes.ts";
 import {
   analyzeSpec,
   escapeJsonPointer,
@@ -21,11 +15,7 @@ import {
 import { FIDELITY_CODES } from "../packages/assembler/src/integration-fidelity-codes.ts";
 import { callOperation } from "../packages/runtime/src/call-operation.ts";
 import type { IntegrationManifestFile } from "../packages/assembler/src/schemas.ts";
-import {
-  getEvidenceDir,
-  stampEvidence,
-  writeEvidence,
-} from "./lib/evidence-stamp.ts";
+import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "..");
@@ -82,7 +72,9 @@ function parseArgs(): CliArgs {
     } else if (args[i] === "--spec" && typeof args[i + 1] === "string") {
       specFilter = args[++i]!;
     } else if (args[i] === "--ops" && typeof args[i + 1] === "string") {
-      opsFilter = args[++i]!.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
+      opsFilter = args[++i]!.split(/[,\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
     } else if (args[i] === "--verbose") {
       verbose = true;
     }
@@ -113,12 +105,7 @@ const CORPUS_SPECS: SpecDefinition[] = [
   {
     id: "google",
     format: "google-discovery",
-    files: [
-      "google-calendar.json",
-      "google-gmail.json",
-      "google-drive.json",
-      "google-sheets.json",
-    ],
+    files: ["google-calendar.json", "google-gmail.json", "google-drive.json", "google-sheets.json"],
   },
 ];
 
@@ -199,14 +186,12 @@ async function measureAllSpecs(cacheDir: string, filter?: string | null, allFiel
     }
 
     const rep = results[def.id]!;
-    const defectPct = rep.extractedOps > 0
-      ? ((rep.opsWithStructuralDefect / rep.extractedOps) * 100).toFixed(1)
-      : "0.0";
+    const defectPct = rep.extractedOps > 0 ? ((rep.opsWithStructuralDefect / rep.extractedOps) * 100).toFixed(1) : "0.0";
 
     console.log(
       `  ops: ${rep.specOps} spec, ${rep.extractedOps} extracted, ${rep.importableOps} importable | ` +
-      `defective: ${rep.opsWithStructuralDefect} (${defectPct}%) | ` +
-      `classes: ${Object.keys(rep.classes).length}`
+        `defective: ${rep.opsWithStructuralDefect} (${defectPct}%) | ` +
+        `classes: ${Object.keys(rep.classes).length}`,
     );
   }
 
@@ -221,10 +206,7 @@ interface RegressionItem {
   diff: string;
 }
 
-function compareAgainstBaseline(
-  measured: Record<string, FidelityReport>,
-  baselineData: Record<string, any>
-): RegressionItem[] {
+function compareAgainstBaseline(measured: Record<string, FidelityReport>, baselineData: Record<string, any>): RegressionItem[] {
   const regressions: RegressionItem[] = [];
   const baselineSpecs = baselineData.specs ?? baselineData;
 
@@ -258,10 +240,7 @@ function compareAgainstBaseline(
     }
 
     // 3. each defect class count must not increase
-    const allClassKeys = new Set([
-      ...Object.keys(current.classes || {}),
-      ...Object.keys(base.classes || {}),
-    ]);
+    const allClassKeys = new Set([...Object.keys(current.classes || {}), ...Object.keys(base.classes || {})]);
 
     for (const key of allClassKeys) {
       const curCount = (current.classes as Record<string, number>)[key] ?? 0;
@@ -311,33 +290,21 @@ function matchesOp(entryOp: string | null, key: string): boolean {
   );
 }
 
-function hasMatchingReportEntry(
-  entries: readonly { code: string; pointer: string; op: string | null }[],
-  expectedCode: string,
-  opKey: string,
-): boolean {
+function hasMatchingReportEntry(entries: readonly { code: string; pointer: string; op: string | null }[], expectedCode: string, opKey: string): boolean {
   const matchesCode = (entryCode: string) => {
     if (entryCode === expectedCode) return true;
     if (expectedCode === "PARAM_ENUM_DROPPED" && entryCode === "PARAM_DEFAULT_DROPPED") return true;
     if (expectedCode === "BODY_FIELD_CAPPED" && entryCode === FIDELITY_CODES.BODY_REQUIRED_FIELD_CAPPED.code) return true;
     if (
-      (expectedCode === "HEADER_NAME_ALTERED" ||
-        expectedCode === "PATH_QUERY_NAME_ALTERED" ||
-        expectedCode === "BODY_FIELD_NAME_ALTERED") &&
+      (expectedCode === "HEADER_NAME_ALTERED" || expectedCode === "PATH_QUERY_NAME_ALTERED" || expectedCode === "BODY_FIELD_NAME_ALTERED") &&
       entryCode === "IDENTIFIER_NORMALIZED"
     ) {
       return true;
     }
-    if (
-      expectedCode === "CONTENT_TYPE_UNSUPPORTED" &&
-      (entryCode === "CONTENT_TYPE_MAPPED" || entryCode === "CONTENT_TYPE_UNSUPPORTED")
-    ) {
+    if (expectedCode === "CONTENT_TYPE_UNSUPPORTED" && (entryCode === "CONTENT_TYPE_MAPPED" || entryCode === "CONTENT_TYPE_UNSUPPORTED")) {
       return true;
     }
-    if (
-      expectedCode === "MEDIA_UPLOAD_UNSUPPORTED" &&
-      (entryCode === "MEDIA_UPLOAD_VARIANT" || entryCode === "MEDIA_UPLOAD_UNSUPPORTED")
-    ) {
+    if (expectedCode === "MEDIA_UPLOAD_UNSUPPORTED" && (entryCode === "MEDIA_UPLOAD_VARIANT" || entryCode === "MEDIA_UPLOAD_UNSUPPORTED")) {
       return true;
     }
     if (
@@ -349,18 +316,13 @@ function hasMatchingReportEntry(
     }
     if (
       expectedCode === "SUCCESS_ENVELOPE_UNCHECKED" &&
-      (entryCode === "SUCCESS_ENVELOPE_UNCHECKED" ||
-        entryCode === "OVERLAY_ADDED" ||
-        entryCode === "OVERLAY_OVERRIDE")
+      (entryCode === "SUCCESS_ENVELOPE_UNCHECKED" || entryCode === "OVERLAY_ADDED" || entryCode === "OVERLAY_OVERRIDE")
     ) {
       return true;
     }
     if (
       expectedCode === "PAGINATION_UNMODELLED" &&
-      (entryCode === "PAGINATION_UNMODELLED" ||
-        entryCode === "PAGINATION_MAPPED" ||
-        entryCode === "OVERLAY_ADDED" ||
-        entryCode === "OVERLAY_OVERRIDE")
+      (entryCode === "PAGINATION_UNMODELLED" || entryCode === "PAGINATION_MAPPED" || entryCode === "OVERLAY_ADDED" || entryCode === "OVERLAY_OVERRIDE")
     ) {
       return true;
     }
@@ -368,10 +330,7 @@ function hasMatchingReportEntry(
     if (expectedCode === "BASEURL_CURATED" && entryCode === "BASEURL_CURATED") return true;
     if (
       expectedCode === "SECURITY_OAUTH_OR_NONHEADER" &&
-      (entryCode === "AUTH_SCHEME" ||
-        entryCode === "AUTH_SCHEME_UNSUPPORTED" ||
-        entryCode === "AUTH_MAPPED" ||
-        entryCode === "AUTH_FROM_CURATION")
+      (entryCode === "AUTH_SCHEME" || entryCode === "AUTH_SCHEME_UNSUPPORTED" || entryCode === "AUTH_MAPPED" || entryCode === "AUTH_FROM_CURATION")
     ) {
       return true;
     }
@@ -383,13 +342,7 @@ function hasMatchingReportEntry(
   }
 
   if (expectedCode === "SUCCESS_ENVELOPE_UNCHECKED") {
-    if (
-      entries.some(
-        (e) =>
-          e.pointer === "curation:#/errorWhen" ||
-          e.pointer === "curation:#/successWhen",
-      )
-    ) {
+    if (entries.some((e) => e.pointer === "curation:#/errorWhen" || e.pointer === "curation:#/successWhen")) {
       return true;
     }
   }
@@ -397,19 +350,9 @@ function hasMatchingReportEntry(
   if (opKey.includes(" ")) {
     const [method, path] = opKey.split(" ");
     const prefix = `#/paths/${escapeJsonPointer(path!)}/${method!.toLowerCase()}`;
-    return entries.some(
-      (e) =>
-        matchesCode(e.code) &&
-        (e.pointer.startsWith(prefix) ||
-          e.pointer === "#/security" ||
-          matchesOp(e.op, opKey)),
-    );
+    return entries.some((e) => matchesCode(e.code) && (e.pointer.startsWith(prefix) || e.pointer === "#/security" || matchesOp(e.op, opKey)));
   }
-  return entries.some(
-    (e) =>
-      matchesCode(e.code) &&
-      (matchesOp(e.op, opKey) || e.pointer.includes(escapeJsonPointer(opKey))),
-  );
+  return entries.some((e) => matchesCode(e.code) && (matchesOp(e.op, opKey) || e.pointer.includes(escapeJsonPointer(opKey))));
 }
 
 interface ReportAwareClassSummary {
@@ -420,13 +363,7 @@ interface ReportAwareClassSummary {
   silent: number;
 }
 
-function runReportAwareFidelity(
-  cacheDir: string,
-  measured: Record<string, FidelityReport>,
-  filter?: string | null,
-  strict = false,
-  runtimeGate = false,
-) {
+function runReportAwareFidelity(cacheDir: string, measured: Record<string, FidelityReport>, filter?: string | null, strict = false, runtimeGate = false) {
   const classMapPath = resolve(__dirname, "fidelity/class-map.json");
   const classMap: Record<string, string> = JSON.parse(readFileSync(classMapPath, "utf8"));
 
@@ -525,15 +462,9 @@ function runReportAwareFidelity(
     }
 
     console.log(`\nReport-aware breakdown for ${def.id} (total ops: ${importReport.entries.length} entries):`);
-    console.table(
-      perSpecTable.filter((row) => row.flagged > 0 || row.reported > 0).slice(0, 15),
-    );
-    const unackLosses = importReport.entries.filter(
-      (e) => e.status === "approximated" || e.status === "unsupported",
-    );
-    console.log(
-      `Strict unacknowledged loss count for ${def.id}: ${unackLosses.length} entries (reported approximated+unsupported)`,
-    );
+    console.table(perSpecTable.filter((row) => row.flagged > 0 || row.reported > 0).slice(0, 15));
+    const unackLosses = importReport.entries.filter((e) => e.status === "approximated" || e.status === "unsupported");
+    console.log(`Strict unacknowledged loss count for ${def.id}: ${unackLosses.length} entries (reported approximated+unsupported)`);
 
     const blockingEntries = importReport.entries.filter((e) => e.blocking);
     for (const entry of blockingEntries) {
@@ -586,9 +517,7 @@ function runReportAwareFidelity(
       totalFlaggedStructural += stats.flagged;
     }
   }
-  console.log(
-    `\nTotal Structural Defect Classes: flagged=${totalFlaggedStructural}, silent=${totalSilentStructural}`,
-  );
+  console.log(`\nTotal Structural Defect Classes: flagged=${totalFlaggedStructural}, silent=${totalSilentStructural}`);
 
   console.log("\n=======================================================");
   console.log("5 PACKS CURATION OVERLAYS (UC2.5):");
@@ -606,9 +535,7 @@ function runReportAwareFidelity(
     const discoveryPath = join(appDir, "discovery.json");
     const openApiPath = join(appDir, "openapi.json");
     const specPath = existsSync(discoveryPath) ? discoveryPath : openApiPath;
-    const format = existsSync(discoveryPath)
-      ? "google-discovery"
-      : (curation.format ?? "openapi3");
+    const format = existsSync(discoveryPath) ? "google-discovery" : (curation.format ?? "openapi3");
     const specText = readFileSync(specPath, "utf8");
 
     const result = importIntegrationSpec({
@@ -618,17 +545,13 @@ function runReportAwareFidelity(
       mode: "lenient",
     });
 
-    const overlayCount = result.report.entries.filter(
-      (e) => e.code === "OVERLAY_ADDED" || e.code === "OVERLAY_OVERRIDE",
-    ).length;
+    const overlayCount = result.report.entries.filter((e) => e.code === "OVERLAY_ADDED" || e.code === "OVERLAY_OVERRIDE").length;
 
     totalPackOverlays += overlayCount;
     console.log(`  ${app}: ${overlayCount} overlays reported, 0 silent`);
   }
 
-  console.log(
-    `Total pack overlays across 5 packs: ${totalPackOverlays} reported, 0 silent (silent overlays reduced from 7 to 0)`,
-  );
+  console.log(`Total pack overlays across 5 packs: ${totalPackOverlays} reported, 0 silent (silent overlays reduced from 7 to 0)`);
 
   if (runtimeGate) {
     console.log("\n=======================================================");
@@ -640,18 +563,14 @@ function runReportAwareFidelity(
     }
     const baselineExecutable = corpusOpsWithBlockingEntry.size;
     const gatedExecutable = 0;
-    console.log(
-      `\nTotal distinct corpus operations carrying a blocking entry (UC2.2 baseline executable): ${baselineExecutable}`,
-    );
+    console.log(`\nTotal distinct corpus operations carrying a blocking entry (UC2.2 baseline executable): ${baselineExecutable}`);
     console.log(`With runtime refusal gate enabled (INTEGRATION_UNSUPPORTED_FEATURE):`);
     console.log(`  Corpus operations carrying a blocking entry that would still execute: ${gatedExecutable}`);
     console.log(`  (Reduced from ${baselineExecutable} to 0)`);
   }
 
   if (strict) {
-    console.error(
-      "\nStrict mode check: Exiting non-zero because un-curated corpus specs contain unacknowledged losses.",
-    );
+    console.error("\nStrict mode check: Exiting non-zero because un-curated corpus specs contain unacknowledged losses.");
     process.exitCode = 1;
   }
 }
@@ -719,9 +638,7 @@ function runYamlRoundtrip(cacheDir: string) {
     );
   }
 
-  console.log(
-    `\nYAML roundtrip across all ${docs.length} corpus documents completed with total diff count: ${totalDiffCount}`,
-  );
+  console.log(`\nYAML roundtrip across all ${docs.length} corpus documents completed with total diff count: ${totalDiffCount}`);
   if (totalDiffCount > 0) {
     throw new Error(`YAML roundtrip failed: total report diff count is ${totalDiffCount} (expected 0)`);
   }
@@ -781,11 +698,7 @@ async function runReplayFidelity(cacheDir: string, filter?: string | null, opsFi
             targetOp = target.slice(idx + 1);
           }
           if (targetSpec && targetSpec !== def.id) return false;
-          return (
-            targetOp === opId ||
-            matchesOp(targetOp, opId) ||
-            (curatedName && (targetOp === curatedName || matchesOp(targetOp, curatedName)))
-          );
+          return targetOp === opId || matchesOp(targetOp, opId) || (curatedName && (targetOp === curatedName || matchesOp(targetOp, curatedName)));
         });
 
         if (!matches) continue;
@@ -793,9 +706,7 @@ async function runReplayFidelity(cacheDir: string, filter?: string | null, opsFi
 
       specOpsCount++;
       totalCorpusOps++;
-      const isBlocking = report.entries.some(
-        (e) => (matchesOp(e.op, opId) || e.op === null || e.op === "*") && e.blocking,
-      );
+      const isBlocking = report.entries.some((e) => (matchesOp(e.op, opId) || e.op === null || e.op === "*") && e.blocking);
 
       const singleOpManifest: IntegrationManifestFile = {
         manifestVersion: 2,
@@ -1016,14 +927,10 @@ function runPacksFidelity(cacheDir: string) {
         if (!fixtureHasResponseLoss) {
           // Hidden by trimmed fixture: class pack_upstream_only_loss
           const isAck = acknowledgements.some(
-            (ack) =>
-              (ack.op === "*" || ack.op === packOp || ack.op === upstreamOp) &&
-              (ack.code === "*" || ack.code === loss.code),
+            (ack) => (ack.op === "*" || ack.op === packOp || ack.op === upstreamOp) && (ack.code === "*" || ack.code === loss.code),
           );
           if (!isAck) {
-            console.error(
-              `  [pack_upstream_only_loss] Unacknowledged upstream loss for ${packName}.${packOp} (${upstreamOp}): ${loss.code}`,
-            );
+            console.error(`  [pack_upstream_only_loss] Unacknowledged upstream loss for ${packName}.${packOp} (${upstreamOp}): ${loss.code}`);
             unacknowledgedUpstreamOnlyLosses++;
           }
         }

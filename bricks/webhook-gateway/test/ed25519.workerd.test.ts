@@ -6,24 +6,14 @@ import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_webhook_gateway.sql?raw";
 import { createWebhookRoutes, WebhookService } from "../src/index.ts";
 import type { WebhookEnv, WebhookRouteOptions } from "../src/routes.ts";
-import {
-  verifyWithScheme,
-  type WebhookSignatureScheme,
-} from "../src/signature-scheme.ts";
+import { verifyWithScheme, type WebhookSignatureScheme } from "../src/signature-scheme.ts";
 import discordVector from "./fixtures/webhook-vectors/discord.json";
 
 const db = env.DB as D1Like;
 const WS_ED25519 = "ws_ed25519_test";
 
 async function resetDb(): Promise<void> {
-  for (const table of [
-    "px_webhook_deliveries",
-    "wh_subscriptions",
-    "px_connections",
-    "wh_deliveries",
-    "wh_endpoints",
-    "px_logs",
-  ]) {
+  for (const table of ["px_webhook_deliveries", "wh_subscriptions", "px_connections", "wh_deliveries", "wh_endpoints", "px_logs"]) {
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   }
   await applyMigration(db, migration);
@@ -40,16 +30,14 @@ describe("UC4.2 — Real Ed25519 verification via WebCrypto", () => {
   const rfc8032Test1 = {
     publicKeyHex: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
     message: "",
-    signatureHex:
-      "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b",
+    signatureHex: "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b",
   };
 
   // RFC 8032 §7.1 TEST 2: 1-byte message 'r' (0x72)
   const rfc8032Test2 = {
     publicKeyHex: "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c",
     message: "r",
-    signatureHex:
-      "92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00",
+    signatureHex: "92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00",
   };
 
   describe("AC1: RFC 8032 TEST 1 and TEST 2 known-answer vectors", () => {
@@ -141,9 +129,7 @@ describe("UC4.2 — Real Ed25519 verification via WebCrypto", () => {
       expect(resBadTs).toEqual({ ok: false, reason: "WEBHOOK_SIGNATURE_MISMATCH" });
 
       // 3. Flipped bit in signature hex (change last char from 'f' to 'e')
-      const tamperedSig =
-        discordVector.signature.slice(0, -1) +
-        (discordVector.signature.endsWith("f") ? "e" : "f");
+      const tamperedSig = discordVector.signature.slice(0, -1) + (discordVector.signature.endsWith("f") ? "e" : "f");
       const resBadSig = await verifyWithScheme(
         discordScheme,
         {
@@ -359,13 +345,7 @@ describe("UC4.2 — Real Ed25519 verification via WebCrypto", () => {
       // 2. HMAC signature (simulating attacker attempting HMAC forgery or old broken behavior)
       // Attempting HMAC-SHA256 over rawBody using public key as secret
       const enc = new TextEncoder();
-      const hmacKey = await crypto.subtle.importKey(
-        "raw",
-        enc.encode(discordVector.publicKey),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"],
-      );
+      const hmacKey = await crypto.subtle.importKey("raw", enc.encode(discordVector.publicKey), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
       const hmacSig = await crypto.subtle.sign("HMAC", hmacKey, enc.encode(discordVector.rawBody));
       const hmacHex = Array.from(new Uint8Array(hmacSig))
         .map((b) => b.toString(16).padStart(2, "0"))
@@ -387,9 +367,7 @@ describe("UC4.2 — Real Ed25519 verification via WebCrypto", () => {
       expect(resHmac.status).toBe(401);
       const jsonHmac = (await resHmac.json()) as { error: string };
       // 32-byte HMAC hex is 64 hex chars, but Ed25519 signature must be 64 bytes (128 hex chars)
-      expect(["WEBHOOK_SIGNATURE_MALFORMED", "WEBHOOK_SIGNATURE_MISMATCH"]).toContain(
-        jsonHmac.error,
-      );
+      expect(["WEBHOOK_SIGNATURE_MALFORMED", "WEBHOOK_SIGNATURE_MISMATCH"]).toContain(jsonHmac.error);
     });
   });
 });

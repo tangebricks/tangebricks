@@ -209,8 +209,7 @@ export class IdentityFederationService {
    * Retrieves an SSO connection by ID.
    */
   async getConnection(connectionId: string): Promise<SsoConnection | null> {
-    const row = await global(this.db, "sso_connections", "resolve SSO connection by connection id")
-      .first<RawConnRow>("id = ?", [connectionId]);
+    const row = await global(this.db, "sso_connections", "resolve SSO connection by connection id").first<RawConnRow>("id = ?", [connectionId]);
 
     if (!row) return null;
     return this.parseConn(row);
@@ -221,12 +220,9 @@ export class IdentityFederationService {
    */
   async getConnectionByDomain(emailOrDomain: string): Promise<SsoConnection | null> {
     // split("@") on a string that contains "@" always yields a second element.
-    const domain = emailOrDomain.includes("@")
-      ? (emailOrDomain.split("@")[1] ?? "").toLowerCase().trim()
-      : emailOrDomain.toLowerCase().trim();
+    const domain = emailOrDomain.includes("@") ? (emailOrDomain.split("@")[1] ?? "").toLowerCase().trim() : emailOrDomain.toLowerCase().trim();
 
-    const row = await global(this.db, "sso_connections", "discover SSO connection by email domain")
-      .first<RawConnRow>("domain = ? AND is_active = 1", [domain]);
+    const row = await global(this.db, "sso_connections", "discover SSO connection by email domain").first<RawConnRow>("domain = ? AND is_active = 1", [domain]);
 
     if (!row) return null;
     return this.parseConn(row);
@@ -265,13 +261,7 @@ export class IdentityFederationService {
   /**
    * Creates and stores an SSO authorization request for PKCE and nonce validation.
    */
-  async createAuthRequest(input: {
-    domain: string;
-    redirectUri: string;
-    state?: string;
-    nonce?: string;
-    codeVerifier?: string;
-  }): Promise<{
+  async createAuthRequest(input: { domain: string; redirectUri: string; state?: string; nonce?: string; codeVerifier?: string }): Promise<{
     authorizeUrl: string;
     state: string;
     nonce: string;
@@ -304,14 +294,7 @@ export class IdentityFederationService {
       created_at: nowIso,
     });
 
-    const authorizeUrl = this.buildAuthorizeUrl(
-      conn,
-      input.redirectUri,
-      state,
-      "openid profile email",
-      nonce,
-      codeChallenge,
-    );
+    const authorizeUrl = this.buildAuthorizeUrl(conn, input.redirectUri, state, "openid profile email", nonce, codeChallenge);
 
     return {
       authorizeUrl,
@@ -330,16 +313,14 @@ export class IdentityFederationService {
     request: SsoAuthRequest | null;
     expired: boolean;
   }> {
-    const row = await global(this.db, "sso_auth_requests", "lookup SSO auth request by state")
-      .first<SsoAuthRequest>("state = ?", [state]);
+    const row = await global(this.db, "sso_auth_requests", "lookup SSO auth request by state").first<SsoAuthRequest>("state = ?", [state]);
 
     if (!row) {
       return { request: null, expired: false };
     }
 
     // Single-use: delete immediately
-    await global(this.db, "sso_auth_requests", "consume one-time SSO auth request")
-      .delete("state = ?", [state]);
+    await global(this.db, "sso_auth_requests", "consume one-time SSO auth request").delete("state = ?", [state]);
 
     const isExpired = Date.now() > row.expires_at;
     return { request: row, expired: isExpired };
@@ -380,24 +361,17 @@ export class IdentityFederationService {
     // Resolve client_secret (prefer sealed in px_connections if available, otherwise connection secret)
     let clientSecret: string | null = null;
     try {
-      const connRow = await scoped(this.db, conn.workspace_id).first<{ client_secret: string | null }>(
-        "sso_connections",
-        "id = ?",
-        [conn.id],
-      );
+      const connRow = await scoped(this.db, conn.workspace_id).first<{ client_secret: string | null }>("sso_connections", "id = ?", [conn.id]);
       clientSecret = connRow?.client_secret ?? null;
     } catch {}
 
     // Hardened egress fetch to token_endpoint (UC1.3)
     const tokenUrlStr = conn.token_endpoint || `${conn.issuer_url}/token`;
     const tokenUrl = new URL(tokenUrlStr);
-    const hardenedFetch = createHardenedFetch(
-      this.customFetch,
-      {
-        allowedHosts: [tokenUrl.hostname],
-        resolveHost: async () => ["93.184.216.34"],
-      },
-    );
+    const hardenedFetch = createHardenedFetch(this.customFetch, {
+      allowedHosts: [tokenUrl.hostname],
+      resolveHost: async () => ["93.184.216.34"],
+    });
 
     const bodyParams = new URLSearchParams({
       grant_type: "authorization_code",
@@ -418,7 +392,7 @@ export class IdentityFederationService {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         body: bodyParams.toString(),
       });
@@ -465,13 +439,7 @@ export class IdentityFederationService {
     const displayName = (claims.name as string) || (claims.displayName as string) || null;
 
     // Link federated identity
-    const identity = await this.linkFederatedIdentity(
-      conn.id,
-      conn.workspace_id,
-      sub,
-      email,
-      displayName ?? undefined,
-    );
+    const identity = await this.linkFederatedIdentity(conn.id, conn.workspace_id, sub, email, displayName ?? undefined);
 
     // Create session through user-identity provider
     let session: { id: string; userId: string; token?: string; expiresAt?: string };
@@ -514,18 +482,17 @@ export class IdentityFederationService {
     externalSubjectId: string,
     emailRaw: string,
     displayName?: string,
-    userId?: string
+    userId?: string,
   ): Promise<FederatedIdentity> {
     const id = `fid_${crypto.randomUUID().replace(/-/g, "")}`;
     const email = emailRaw.toLowerCase().trim();
     const now = new Date().toISOString();
     const generatedUserId = `usr_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
 
-    const existing = await scoped(this.db, workspaceId).first<RawFidRow>(
-      "sso_federated_identities",
-      "connection_id = ? AND external_subject_id = ?",
-      [connectionId, externalSubjectId],
-    );
+    const existing = await scoped(this.db, workspaceId).first<RawFidRow>("sso_federated_identities", "connection_id = ? AND external_subject_id = ?", [
+      connectionId,
+      externalSubjectId,
+    ]);
 
     if (existing) {
       await scoped(this.db, workspaceId).update(
@@ -552,11 +519,10 @@ export class IdentityFederationService {
       });
     }
 
-    const row = await scoped(this.db, workspaceId).first<RawFidRow>(
-      "sso_federated_identities",
-      "connection_id = ? AND external_subject_id = ?",
-      [connectionId, externalSubjectId],
-    );
+    const row = await scoped(this.db, workspaceId).first<RawFidRow>("sso_federated_identities", "connection_id = ? AND external_subject_id = ?", [
+      connectionId,
+      externalSubjectId,
+    ]);
 
     if (!row) throw new Error("Failed to retrieve linked federated identity");
     return row;
@@ -568,7 +534,7 @@ export class IdentityFederationService {
   async scimSyncUser(
     connectionId: string,
     scimToken: string,
-    scimUser: { id: string; userName: string; displayName?: string }
+    scimUser: { id: string; userName: string; displayName?: string },
   ): Promise<{ ok: boolean; identity?: FederatedIdentity; error?: string; code?: "WORKSPACE_SUSPENDED" | "WORKSPACE_STATE_UNAVAILABLE" }> {
     const conn = await this.getConnection(connectionId);
     if (!conn) return { ok: false, error: "Connection not found" };
@@ -580,20 +546,13 @@ export class IdentityFederationService {
     // suspended (or missing) workspace is refused; when the workspace table cannot be read it fails closed.
     let workspace: { suspended: number } | null;
     try {
-      workspace = await global(this.db, "mw_workspaces", "SCIM sync refuses a suspended workspace")
-        .first<{ suspended: number }>("id = ?", [conn.workspace_id]);
+      workspace = await global(this.db, "mw_workspaces", "SCIM sync refuses a suspended workspace").first<{ suspended: number }>("id = ?", [conn.workspace_id]);
     } catch {
       return { ok: false, code: "WORKSPACE_STATE_UNAVAILABLE", error: "Workspace state unavailable" };
     }
     if (!workspace || workspace.suspended) return { ok: false, code: "WORKSPACE_SUSPENDED", error: "Workspace suspended" };
 
-    const fid = await this.linkFederatedIdentity(
-      conn.id,
-      conn.workspace_id,
-      scimUser.id,
-      scimUser.userName,
-      scimUser.displayName
-    );
+    const fid = await this.linkFederatedIdentity(conn.id, conn.workspace_id, scimUser.id, scimUser.userName, scimUser.displayName);
 
     return { ok: true, identity: fid };
   }

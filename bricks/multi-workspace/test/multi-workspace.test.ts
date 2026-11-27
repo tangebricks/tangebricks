@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_multi_workspace.sql?raw";
-import {
-  createWorkspaceRoutes,
-  type WorkspaceEnv,
-} from "../src/index.ts";
+import { createWorkspaceRoutes, type WorkspaceEnv } from "../src/index.ts";
 
 const db = env.DB as D1Like;
 
@@ -38,20 +35,26 @@ function createTestApp() {
 
 describe("Multi-Workspace Brick Behaviour Suite", () => {
   it("creates workspace and assigns owner role", async () => {
-    await db.prepare(`
+    await db
+      .prepare(
+        `
       INSERT INTO mw_workspaces (id, name, owner_id) VALUES ('ws_alpha', 'Alpha Inc', 'usr_alice')
-    `).run();
+    `,
+      )
+      .run();
 
-    await db.prepare(`
+    await db
+      .prepare(
+        `
       INSERT INTO mw_members (workspace_id, user_id, role) VALUES ('ws_alpha', 'usr_alice', 'owner')
-    `).run();
+    `,
+      )
+      .run();
 
     const ws = await db.prepare("SELECT * FROM mw_workspaces WHERE id = 'ws_alpha'").first<any>();
     expect(ws.name).toBe("Alpha Inc");
 
-    const member = await db.prepare(
-      "SELECT * FROM mw_members WHERE workspace_id = 'ws_alpha' AND user_id = 'usr_alice'"
-    ).first<any>();
+    const member = await db.prepare("SELECT * FROM mw_members WHERE workspace_id = 'ws_alpha' AND user_id = 'usr_alice'").first<any>();
     expect(member.role).toBe("owner");
   });
 
@@ -69,7 +72,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         },
         body: JSON.stringify({ name: "Bob Enterprises" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(createRes.status).toBe(201);
     const createBody = (await createRes.json()) as any;
@@ -85,7 +88,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "GET",
         headers: { "x-test-user": "usr_bob" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as any;
@@ -104,7 +107,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "Rogue Corp" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(unauthPost.status).toBe(401);
   });
@@ -123,7 +126,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "GET",
         headers: { "x-test-user": "usr_alice" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(ownerRes.status).toBe(200);
     const ownerBody = (await ownerRes.json()) as any;
@@ -136,7 +139,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "GET",
         headers: { "x-test-user": "usr_bob" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(nonMemberRes.status).toBe(404);
     const nonMemberBody = (await nonMemberRes.json()) as any;
@@ -149,7 +152,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "GET",
         headers: { "x-test-user": "usr_bob" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(missingRes.status).toBe(404);
   });
@@ -169,7 +172,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "GET",
         headers: { "x-test-user": "usr_bob" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(beforeRes.status).toBe(200);
 
@@ -180,14 +183,12 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "DELETE",
         headers: { "x-test-user": "usr_alice" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(removeRes.status).toBe(200);
 
     // Verify DB row was removed
-    const memberRow = await db
-      .prepare("SELECT * FROM mw_members WHERE workspace_id = 'ws_team' AND user_id = 'usr_bob'")
-      .first();
+    const memberRow = await db.prepare("SELECT * FROM mw_members WHERE workspace_id = 'ws_team' AND user_id = 'usr_bob'").first();
     expect(memberRow).toBeNull();
 
     // 3. Bob's access is immediately revoked on subsequent request -> 404
@@ -197,7 +198,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "GET",
         headers: { "x-test-user": "usr_bob" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(afterRes.status).toBe(404);
 
@@ -208,7 +209,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "GET",
         headers: { "x-test-user": "usr_bob" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as any;
@@ -244,7 +245,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "DELETE",
         headers: { "x-test-user": "usr_bob" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect([403, 404]).toContain(bobDelRes.status);
 
@@ -259,7 +260,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "DELETE",
         headers: { "x-test-user": "usr_alice" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(aliceDelRes.status).toBe(200);
 
@@ -268,9 +269,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
     expect(wsGone).toBeNull();
 
     // 4. Members are cleanly cascaded (no orphaned membership records)
-    const membersGone = await db
-      .prepare("SELECT count(*) as cnt FROM mw_members WHERE workspace_id = 'ws_del'")
-      .first<{ cnt: number }>();
+    const membersGone = await db.prepare("SELECT count(*) as cnt FROM mw_members WHERE workspace_id = 'ws_del'").first<{ cnt: number }>();
     expect(membersGone?.cnt).toBe(0);
 
     // 5. Subsequent access returns 404 for everyone
@@ -280,7 +279,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "GET",
         headers: { "x-test-user": "usr_alice" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(aliceGetRes.status).toBe(404);
   });
@@ -302,7 +301,7 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         },
         body: JSON.stringify({ role: "member" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(inviteRes.status).toBe(201);
     const inviteBody = (await inviteRes.json()) as any;
@@ -316,16 +315,14 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "POST",
         headers: { "x-test-user": "usr_charlie" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(acceptRes1.status).toBe(200);
     const acceptBody1 = (await acceptRes1.json()) as any;
     expect(acceptBody1.workspaceId).toBe("ws_inv");
 
     // Charlie is now recorded as a member
-    const charlieMember = await db
-      .prepare("SELECT * FROM mw_members WHERE workspace_id = 'ws_inv' AND user_id = 'usr_charlie'")
-      .first<any>();
+    const charlieMember = await db.prepare("SELECT * FROM mw_members WHERE workspace_id = 'ws_inv' AND user_id = 'usr_charlie'").first<any>();
     expect(charlieMember).not.toBeNull();
     expect(charlieMember.role).toBe("member");
 
@@ -336,14 +333,12 @@ describe("Multi-Workspace Brick Behaviour Suite", () => {
         method: "POST",
         headers: { "x-test-user": "usr_eve" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect([400, 404, 409]).toContain(acceptRes2.status);
 
     // Eve was NOT added to workspace
-    const eveMember = await db
-      .prepare("SELECT * FROM mw_members WHERE workspace_id = 'ws_inv' AND user_id = 'usr_eve'")
-      .first();
+    const eveMember = await db.prepare("SELECT * FROM mw_members WHERE workspace_id = 'ws_inv' AND user_id = 'usr_eve'").first();
     expect(eveMember).toBeNull();
   });
 });
@@ -367,8 +362,14 @@ describe("story 1.10: invites, suspension and the workspace delete hook", () => 
       { DB: db },
     );
   async function seedWorkspace(id: string, suspended = false): Promise<void> {
-    await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id, suspended) VALUES (?, ?, 'usr_owner', ?)").bind(id, id, suspended ? 1 : 0).run();
-    await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, 'usr_owner', 'owner'), (?, 'usr_admin', 'admin'), (?, 'usr_member', 'member')").bind(id, id, id).run();
+    await db
+      .prepare("INSERT INTO mw_workspaces (id, name, owner_id, suspended) VALUES (?, ?, 'usr_owner', ?)")
+      .bind(id, id, suspended ? 1 : 0)
+      .run();
+    await db
+      .prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, 'usr_owner', 'owner'), (?, 'usr_admin', 'admin'), (?, 'usr_member', 'member')")
+      .bind(id, id, id)
+      .run();
   }
 
   it("an inviter may only invite at or below their own role", async () => {
@@ -435,7 +436,10 @@ describe("story 1.10: invites, suspension and the workspace delete hook", () => 
     expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_a'").first<{ n: number }>()).toEqual({ n: 3 });
     expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_workspaces WHERE id = 'ws_a'").first<{ n: number }>()).toEqual({ n: 1 });
     // The fence stays up: the workspace is suspended for the delete, so other writes are refused meanwhile.
-    expect(await db.prepare("SELECT suspended, suspended_reason FROM mw_workspaces WHERE id = 'ws_a'").first()).toEqual({ suspended: 1, suspended_reason: "deleting" });
+    expect(await db.prepare("SELECT suspended, suspended_reason FROM mw_workspaces WHERE id = 'ws_a'").first()).toEqual({
+      suspended: 1,
+      suspended_reason: "deleting",
+    });
     expect((await send(app, "POST", "/workspaces/ws_a/invites", "usr_owner", { role: "member" })).status).toBe(403);
 
     // The retry runs the hook statements and then removes the workspace; B is untouched.
@@ -449,7 +453,11 @@ describe("story 1.10: invites, suspension and the workspace delete hook", () => 
   it("story 2.6: a suspension that lands between the delete's check and its fence is kept, and the delete is refused", async () => {
     await seedWorkspace("ws_race");
     let ran = false;
-    const app = appWith({ workspaceDataPurge: async () => { ran = true; } });
+    const app = appWith({
+      workspaceDataPurge: async () => {
+        ran = true;
+      },
+    });
     // A database whose fence statement first lets an operator suspension land (the race), then runs as usual.
     const racing = {
       prepare(sql: string) {
@@ -469,11 +477,18 @@ describe("story 1.10: invites, suspension and the workspace delete hook", () => 
       batch: (s: never) => db.batch(s),
       exec: (q: string) => db.exec(q),
     };
-    const res = await app.request("http://localhost/workspaces/ws_race", { method: "DELETE", headers: { "x-test-user": "usr_owner" } }, { DB: racing as never });
+    const res = await app.request(
+      "http://localhost/workspaces/ws_race",
+      { method: "DELETE", headers: { "x-test-user": "usr_owner" } },
+      { DB: racing as never },
+    );
     expect(res.status).toBe(403);
     expect(((await res.json()) as { code?: string }).code).toBe("WORKSPACE_SUSPENDED");
     expect(ran).toBe(false);
-    expect(await db.prepare("SELECT suspended, suspended_reason FROM mw_workspaces WHERE id = 'ws_race'").first()).toEqual({ suspended: 1, suspended_reason: "operator" });
+    expect(await db.prepare("SELECT suspended, suspended_reason FROM mw_workspaces WHERE id = 'ws_race'").first()).toEqual({
+      suspended: 1,
+      suspended_reason: "operator",
+    });
     expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_race'").first<{ n: number }>()).toEqual({ n: 3 });
     // An unsuspended workspace is still deleted as before.
     await seedWorkspace("ws_plain");
@@ -482,7 +497,11 @@ describe("story 1.10: invites, suspension and the workspace delete hook", () => 
 
   it("an id that is not one plain segment is refused with 400 before anything runs", async () => {
     let ran = false;
-    const app = appWith({ workspaceDataPurge: async () => { ran = true; } });
+    const app = appWith({
+      workspaceDataPurge: async () => {
+        ran = true;
+      },
+    });
     for (const id of ["a%2Fb", "a..b%2F", "x".repeat(65)]) {
       expect((await send(app, "DELETE", `/workspaces/${id}`, "usr_owner")).status, id).toBe(400);
     }
@@ -498,7 +517,9 @@ describe("story 1.10: invites, suspension and the workspace delete hook", () => 
       send(app, "POST", `/workspaces/invites/${token}/accept`, "usr_y"),
     ]);
     expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
-    expect(await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_race' AND user_id IN ('usr_x', 'usr_y')").first<{ n: number }>()).toEqual({ n: 1 });
+    expect(
+      await db.prepare("SELECT COUNT(*) AS n FROM mw_members WHERE workspace_id = 'ws_race' AND user_id IN ('usr_x', 'usr_y')").first<{ n: number }>(),
+    ).toEqual({ n: 1 });
   });
 
   it("an existing member cannot accept an invite: 409 ALREADY_MEMBER, role unchanged, invite still open", async () => {
@@ -529,7 +550,8 @@ describe("story 1.10: invites, suspension and the workspace delete hook", () => 
     await seedWorkspace("ws_rm");
     await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES ('ws_rm', 'usr_admin2', 'admin'), ('ws_rm', 'usr_member2', 'member')").run();
     const remove = (caller: string, target: string) => send(app, "DELETE", `/workspaces/ws_rm/members/${target}`, caller);
-    const role = async (user: string) => (await db.prepare("SELECT role FROM mw_members WHERE workspace_id = 'ws_rm' AND user_id = ?").bind(user).first<{ role: string }>())?.role;
+    const role = async (user: string) =>
+      (await db.prepare("SELECT role FROM mw_members WHERE workspace_id = 'ws_rm' AND user_id = ?").bind(user).first<{ role: string }>())?.role;
 
     expect((await remove("usr_admin", "usr_owner")).status).toBe(403);
     expect((await remove("usr_admin", "usr_admin2")).status).toBe(403);

@@ -45,7 +45,11 @@ patch(net, ["connect", "createConnection"], "net");
 net.Socket.prototype.connect = refuse("net.Socket.connect");
 patch(tls, ["connect"], "tls");
 patch(dns, ["lookup", "lookupService", "resolve", "resolve4", "resolve6", "resolveAny", "resolveMx", "resolveTxt", "resolveSrv", "reverse"], "dns");
-patch(dns.promises, ["lookup", "lookupService", "resolve", "resolve4", "resolve6", "resolveAny", "resolveMx", "resolveTxt", "resolveSrv", "reverse"], "dns.promises");
+patch(
+  dns.promises,
+  ["lookup", "lookupService", "resolve", "resolve4", "resolve6", "resolveAny", "resolveMx", "resolveTxt", "resolveSrv", "reverse"],
+  "dns.promises",
+);
 patch(http, ["request", "get"], "http");
 patch(https, ["request", "get"], "https");
 patch(http2, ["connect"], "http2");

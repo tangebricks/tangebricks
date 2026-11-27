@@ -41,12 +41,7 @@ describe("LLM Gateway & Prompt Router Core Logic", () => {
     const primary = new MockLlmAdapter("primary");
     const service = new LlmGatewayService(db, [primary], "primary", { billing: "none", models: "gpt-4o-mini:1:2,gpt-4o:5:15" });
 
-    const tmplRes = await service.createTemplate(
-      WS_A,
-      "Summary Template",
-      "Summarize the following document: {{doc}}",
-      "gpt-4o"
-    );
+    const tmplRes = await service.createTemplate(WS_A, "Summary Template", "Summarize the following document: {{doc}}", "gpt-4o");
     expect(tmplRes.ok).toBe(true);
     if (!tmplRes.ok) return;
 
@@ -150,7 +145,7 @@ describe("AI Route Handlers (/api/ai/*)", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: "Hello AI Assistant" }),
       }),
-      { DB: db }
+      { DB: db },
     );
 
     expect(res.status).toBe(200);
@@ -159,10 +154,7 @@ describe("AI Route Handlers (/api/ai/*)", () => {
     expect(json.result.promptTokens).toBeGreaterThan(0);
 
     // Check usage via GET /api/ai/usage
-    const usageRes = await app.fetch(
-      new Request("http://localhost/api/ai/usage"),
-      { DB: db }
-    );
+    const usageRes = await app.fetch(new Request("http://localhost/api/ai/usage"), { DB: db });
     expect(usageRes.status).toBe(200);
     const usageJson = (await usageRes.json()) as { usage: { requestCount: number; totalPromptTokens: number } };
     expect(usageJson.usage.requestCount).toBe(1);
@@ -229,7 +221,11 @@ describe("the test-only mock is refused in production (story 0.9)", () => {
     });
     app.route("/api", createAiRoutes({ adapters: [new MockLlmAdapter("mock_router")], provider: "mock_router", billing: "none" }));
     const req = () =>
-      new Request("http://localhost/api/ai/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: "Hello" }) });
+      new Request("http://localhost/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "Hello" }),
+      });
     const prod = await app.fetch(req(), { DB: db, PX_ENVIRONMENT: "production" });
     expect(prod.status).toBe(503);
     expect(((await prod.json()) as { code: string }).code).toBe("NOT_CONFIGURED");

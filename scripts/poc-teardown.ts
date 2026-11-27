@@ -6,7 +6,16 @@
 //
 // Without --yes it only prints what it would remove.
 import { join, resolve } from "node:path";
-import { CredentialsError, createClient, fileStore, findUnledgered, isCloudflareError, loadCredentials, openLedger, teardown } from "../packages/deploy/src/provisioner/index.ts";
+import {
+  CredentialsError,
+  createClient,
+  fileStore,
+  findUnledgered,
+  isCloudflareError,
+  loadCredentials,
+  openLedger,
+  teardown,
+} from "../packages/deploy/src/provisioner/index.ts";
 
 let credentials;
 try {
@@ -33,13 +42,19 @@ const ledger = openLedger(store, () => {
   throw new Error("unreachable: the ledger exists");
 });
 const live = ledger.entries().filter((e) => e.status !== "removed");
-console.log(live.length === 0 ? "the ledger lists nothing that is still in the account" : `the ledger lists: ${live.map((e) => `${e.kind} ${e.name}`).join(", ")}`);
+console.log(
+  live.length === 0 ? "the ledger lists nothing that is still in the account" : `the ledger lists: ${live.map((e) => `${e.kind} ${e.name}`).join(", ")}`,
+);
 
 const client = createClient({ credentials, fetch: (request) => fetch(request) });
 try {
   if (!process.argv.includes("--yes")) {
     const stray = await findUnledgered(client, ledger);
-    console.log(stray.length === 0 ? "no other resource carries the proof's prefix" : `other resources carry the proof's prefix and would be left alone: ${stray.map((s) => `${s.kind} ${s.name}`).join(", ")}`);
+    console.log(
+      stray.length === 0
+        ? "no other resource carries the proof's prefix"
+        : `other resources carry the proof's prefix and would be left alone: ${stray.map((s) => `${s.kind} ${s.name}`).join(", ")}`,
+    );
     console.log("nothing was removed (add --yes to remove what the ledger lists)");
     process.exit(0);
   }

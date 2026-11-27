@@ -59,7 +59,8 @@ function summaryLines(approval: ApprovalRequestRecord): string[] {
   const s = approval.summary;
   const lines: string[] = [];
   if (typeof s.planAction === "string") lines.push(`plan: ${s.planAction}`);
-  if (typeof s.revision === "number") lines.push(`blueprint r${s.revision}${typeof s.deployedRev === "number" ? ` (live: r${s.deployedRev})` : " (nothing live yet)"}`);
+  if (typeof s.revision === "number")
+    lines.push(`blueprint r${s.revision}${typeof s.deployedRev === "number" ? ` (live: r${s.deployedRev})` : " (nothing live yet)"}`);
   if (Array.isArray(s.migrations) && s.migrations.length > 0) {
     for (const m of s.migrations as Array<{ name: string; sha256: string; bytes: number; destructive: boolean }>) {
       lines.push(`migration ${m.name}: ${m.bytes} B sql ${short(m.sha256)}${m.destructive ? " DESTRUCTIVE" : ""}`);
@@ -133,7 +134,10 @@ export function PendingApprovals() {
                 {ACTION_LABELS[approval.action] ?? approval.action}
                 {approval.env ? ` → ${approval.env}` : ""}
               </span>
-              <span data-testid="approval-requested-by" className="px-2 py-0.5 rounded bg-violet-500/20 border border-violet-400/50 text-violet-200 font-mono text-[11px]">
+              <span
+                data-testid="approval-requested-by"
+                className="px-2 py-0.5 rounded bg-violet-500/20 border border-violet-400/50 text-violet-200 font-mono text-[11px]"
+              >
                 agent: {approval.requestedBy.clientName ?? approval.requestedBy.tokenId}
               </span>
               <span className="font-mono text-[11px] text-text-muted">{age(approval.createdAt, now)}</span>

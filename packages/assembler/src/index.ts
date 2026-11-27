@@ -106,17 +106,8 @@ export {
   sha256Sync,
 } from "./hash.ts";
 export type { ArtifactHashes, CompositeBuildHashInput } from "./hash.ts";
-export {
-  handleTail,
-  renderTailWorker,
-  renderTailWrangler,
-  shouldAlert,
-} from "./tail-worker.ts";
+export { handleTail, renderTailWorker, renderTailWrangler, shouldAlert } from "./tail-worker.ts";
 export type { TailTraceItem } from "./tail-worker.ts";
 
 export { FIDELITY_CODES } from "./integration-fidelity-codes.ts";
-export type {
-  FidelityCodeInfo,
-  FidelityCodeName,
-  FidelityCodeStatus,
-} from "./integration-fidelity-codes.ts";
+export type { FidelityCodeInfo, FidelityCodeName, FidelityCodeStatus } from "./integration-fidelity-codes.ts";

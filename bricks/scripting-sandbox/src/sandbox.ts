@@ -66,11 +66,7 @@ export function validateScriptSource(code: string): { valid: boolean; error?: st
  * Isolated script execution runner.
  * Delegates to the provided or default ScriptIsolate.
  */
-export async function executeSandboxed(
-  sourceCode: string,
-  payload: Record<string, unknown>,
-  isolate?: ScriptIsolate,
-): Promise<ExecutionResult> {
+export async function executeSandboxed(sourceCode: string, payload: Record<string, unknown>, isolate?: ScriptIsolate): Promise<ExecutionResult> {
   const runner = isolate ?? createScriptIsolate(null);
   return runner.run(sourceCode, payload, {
     cpuMs: 2000,
@@ -158,7 +154,7 @@ export class ScriptingSandboxService {
   async updateScript(
     workspaceId: string,
     scriptId: string,
-    updates: { name?: string; description?: string; sourceCode?: string; isEnabled?: boolean }
+    updates: { name?: string; description?: string; sourceCode?: string; isEnabled?: boolean },
   ): Promise<ScriptRecord | null> {
     const existing = await this.getScript(workspaceId, scriptId);
     if (!existing) return null;
@@ -174,7 +170,7 @@ export class ScriptingSandboxService {
 
     const name = updates.name?.trim() || existing.name;
     const desc = updates.description !== undefined ? updates.description?.trim() || null : existing.description;
-    const isEnabled = updates.isEnabled !== undefined ? (updates.isEnabled ? 1 : 0) : (existing.is_enabled ? 1 : 0);
+    const isEnabled = updates.isEnabled !== undefined ? (updates.isEnabled ? 1 : 0) : existing.is_enabled ? 1 : 0;
     const now = new Date().toISOString();
 
     await scoped(this.db, workspaceId).update(
@@ -187,7 +183,7 @@ export class ScriptingSandboxService {
         updated_at: now,
       },
       "id = ?",
-      [scriptId]
+      [scriptId],
     );
 
     return this.getScript(workspaceId, scriptId);
@@ -196,11 +192,7 @@ export class ScriptingSandboxService {
   /**
    * Executes a script and records execution metrics & audit trail.
    */
-  async executeScript(
-    workspaceId: string,
-    scriptId: string,
-    payload: Record<string, unknown>
-  ): Promise<ExecutionRecord> {
+  async executeScript(workspaceId: string, scriptId: string, payload: Record<string, unknown>): Promise<ExecutionRecord> {
     const script = await this.getScript(workspaceId, scriptId);
     if (!script) {
       throw new Error(`Script ${scriptId} not found`);
@@ -308,11 +300,7 @@ export class ScriptingSandboxService {
    * Deletes a script.
    */
   async deleteScript(workspaceId: string, scriptId: string): Promise<boolean> {
-    const res = await scoped(this.db, workspaceId).delete(
-      "scr_scripts",
-      "id = ?",
-      [scriptId]
-    );
+    const res = await scoped(this.db, workspaceId).delete("scr_scripts", "id = ?", [scriptId]);
 
     return res.meta.changes > 0;
   }

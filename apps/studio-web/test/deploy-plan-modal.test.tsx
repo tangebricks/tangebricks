@@ -28,12 +28,7 @@ describe("Story 5.3 — Pre-deploy Plan & Diff Modal, Stub-Identity Blocker & De
     let deployed = false;
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
 
       if (url.includes("/secrets") && init?.method === "POST") {
         secretAdded = true;
@@ -80,9 +75,7 @@ describe("Story 5.3 — Pre-deploy Plan & Diff Modal, Stub-Identity Blocker & De
               pendingMigrationSql: {},
               destructiveWarnings: [],
             },
-            queues: [
-              { queueName: "px-acme-saas-preview-events", action: "unchanged" },
-            ],
+            queues: [{ queueName: "px-acme-saas-preview-events", action: "unchanged" }],
             cronTriggers: {
               currentCrons: ["0 * * * *"],
               nextCrons: ["0 * * * *"],
@@ -124,8 +117,7 @@ describe("Story 5.3 — Pre-deploy Plan & Diff Modal, Stub-Identity Blocker & De
             createDatabase: false,
             pendingMigrations: ["9002_drop_column__invoices_legacy_note.sql"],
             pendingMigrationSql: {
-              "9002_drop_column__invoices_legacy_note.sql":
-                "ALTER TABLE invoices DROP COLUMN legacy_note;",
+              "9002_drop_column__invoices_legacy_note.sql": "ALTER TABLE invoices DROP COLUMN legacy_note;",
             },
             destructiveWarnings: [
               {
@@ -134,14 +126,11 @@ describe("Story 5.3 — Pre-deploy Plan & Diff Modal, Stub-Identity Blocker & De
                 kind: "drop_column",
                 affectedTable: "invoices",
                 affectedColumn: "legacy_note",
-                message:
-                  'Drops column "legacy_note" from table "invoices", permanently deleting its data.',
+                message: 'Drops column "legacy_note" from table "invoices", permanently deleting its data.',
               },
             ],
           },
-          queues: [
-            { queueName: "px-acme-saas-preview-events", action: "create" },
-          ],
+          queues: [{ queueName: "px-acme-saas-preview-events", action: "create" }],
           cronTriggers: {
             currentCrons: [],
             nextCrons: ["0 * * * *"],
@@ -192,8 +181,7 @@ describe("Story 5.3 — Pre-deploy Plan & Diff Modal, Stub-Identity Blocker & De
             createDatabase: true,
             pendingMigrations: ["0001_init.sql"],
             pendingMigrationSql: {
-              "0001_init.sql":
-                "CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY);",
+              "0001_init.sql": "CREATE TABLE IF NOT EXISTS invoices (id TEXT PRIMARY KEY);",
             },
             destructiveWarnings: [],
           },
@@ -211,10 +199,8 @@ describe("Story 5.3 — Pre-deploy Plan & Diff Modal, Stub-Identity Blocker & De
             : [
                 {
                   code: "PRODUCTION_IDENTITY_STUB_FORBIDDEN",
-                  message:
-                    'Production deployments cannot use stub identity (identity: "stub").',
-                  remediation:
-                    'Switch blueprint identity from "stub" to "core-auth" (Better Auth).',
+                  message: 'Production deployments cannot use stub identity (identity: "stub").',
+                  remediation: 'Switch blueprint identity from "stub" to "core-auth" (Better Auth).',
                 },
               ],
         };
@@ -267,68 +253,47 @@ describe("Story 5.3 — Pre-deploy Plan & Diff Modal, Stub-Identity Blocker & De
     });
 
     // Verify SQL preview toggle on pending migration
-    const sqlToggle = screen.getByTestId(
-      "deploy-plan-migration-sql-toggle-9002_drop_column__invoices_legacy_note.sql",
-    );
+    const sqlToggle = screen.getByTestId("deploy-plan-migration-sql-toggle-9002_drop_column__invoices_legacy_note.sql");
     fireEvent.click(sqlToggle);
-    expect(
-      screen.getByTestId(
-        "deploy-plan-migration-sql-9002_drop_column__invoices_legacy_note.sql",
-      ).textContent,
-    ).toContain("ALTER TABLE invoices DROP COLUMN legacy_note;");
+    expect(screen.getByTestId("deploy-plan-migration-sql-9002_drop_column__invoices_legacy_note.sql").textContent).toContain(
+      "ALTER TABLE invoices DROP COLUMN legacy_note;",
+    );
 
     // 2. Confirm & Deploy button is disabled while secret is missing and destructive migration is unconfirmed
-    const confirmBtn = screen.getByTestId(
-      "confirm-and-deploy-button",
-    ) as HTMLButtonElement;
+    const confirmBtn = screen.getByTestId("confirm-and-deploy-button") as HTMLButtonElement;
     expect(confirmBtn.disabled).toBe(true);
 
     // Add missing STRIPE_SECRET_KEY inline
-    const secretInput = screen.getByTestId(
-      "inline-secret-input-STRIPE_SECRET_KEY",
-    );
+    const secretInput = screen.getByTestId("inline-secret-input-STRIPE_SECRET_KEY");
     fireEvent.change(secretInput, {
       target: { value: "sk_test_inline_secret_999" },
     });
-    fireEvent.click(
-      screen.getByTestId("inline-secret-save-STRIPE_SECRET_KEY"),
-    );
+    fireEvent.click(screen.getByTestId("inline-secret-save-STRIPE_SECRET_KEY"));
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("preflight-secret-row-STRIPE_SECRET_KEY").textContent,
-      ).toContain("present ✓");
+      expect(screen.getByTestId("preflight-secret-row-STRIPE_SECRET_KEY").textContent).toContain("present ✓");
     });
 
     // 3. Destructive Migration Guard is visible; Confirm & Deploy stays disabled until checkbox is checked
     expect(screen.getByTestId("destructive-migration-guard")).toBeTruthy();
     expect(confirmBtn.disabled).toBe(true);
 
-    const confirmCheckbox = screen.getByTestId(
-      "destructive-migration-confirm-checkbox",
-    );
+    const confirmCheckbox = screen.getByTestId("destructive-migration-confirm-checkbox");
     fireEvent.click(confirmCheckbox);
     expect(confirmBtn.disabled).toBe(false);
 
     // 4. Execute deploy on preview -> after deploy, plan refreshes to noop banner
     fireEvent.click(confirmBtn);
     await waitFor(() => {
-      expect(screen.getByTestId("deploy-plan-noop-banner").textContent).toContain(
-        "No changes — environment is already at revision r4 (build sha256_build)",
-      );
+      expect(screen.getByTestId("deploy-plan-noop-banner").textContent).toContain("No changes — environment is already at revision r4 (build sha256_build)");
     });
 
     // 5. Switch to production tab -> verify PRODUCTION_IDENTITY_STUB_FORBIDDEN blocker banner
     fireEvent.click(screen.getByTestId("deploy-plan-env-tab-production"));
     await waitFor(() => {
-      expect(
-        screen.getByTestId("deploy-plan-stub-identity-blocker"),
-      ).toBeTruthy();
+      expect(screen.getByTestId("deploy-plan-stub-identity-blocker")).toBeTruthy();
     });
-    expect(
-      (screen.getByTestId("confirm-and-deploy-button") as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    expect((screen.getByTestId("confirm-and-deploy-button") as HTMLButtonElement).disabled).toBe(true);
 
     // Click Switch to Better Auth (core-auth) -> blocker clears
     fireEvent.click(screen.getByTestId("switch-to-core-auth-button"));
@@ -337,9 +302,7 @@ describe("Story 5.3 — Pre-deploy Plan & Diff Modal, Stub-Identity Blocker & De
     async function dbWaitForSwitch() {
       fireEvent.click(screen.getByTestId("refresh-deploy-plan-button"));
       await waitFor(() => {
-        expect(
-          screen.queryByTestId("deploy-plan-stub-identity-blocker"),
-        ).toBeNull();
+        expect(screen.queryByTestId("deploy-plan-stub-identity-blocker")).toBeNull();
       });
     }
   });

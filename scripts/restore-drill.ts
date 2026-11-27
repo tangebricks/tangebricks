@@ -3,18 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
-import {
-  createClient,
-  loadCredentials,
-} from "../packages/deploy/src/provisioner/index.ts";
+import { createClient, loadCredentials } from "../packages/deploy/src/provisioner/index.ts";
 import type { Client } from "../packages/deploy/src/provisioner/index.ts";
 import { createFakeCloudflare } from "../packages/deploy/test/support/fake-cloudflare.ts";
-import {
-  getEvidenceDir,
-  getGitSha,
-  stampEvidence,
-  writeEvidence,
-} from "./lib/evidence-stamp.ts";
+import { getEvidenceDir, getGitSha, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 
 export interface RestoreDrillStep {
   name: string;
@@ -89,9 +81,7 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
   // Database name generation and AC2 enforcement
   const dbName = options.dbName ?? `px-drill-${randomBytes(4).toString("hex")}`;
   if (!dbName.startsWith("px-drill-")) {
-    throw new Error(
-      `AC2 violation: database name '${dbName}' must start with 'px-drill-'; refusing to touch database.`,
-    );
+    throw new Error(`AC2 violation: database name '${dbName}' must start with 'px-drill-'; refusing to touch database.`);
   }
 
   // Resolve client
@@ -219,16 +209,12 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
 
     // Step 7: Verify A is present and B is absent
     await recordStep("verifyA", async () => {
-      const [res] = await client!.queryDatabase(databaseId!, [
-        { sql: "SELECT id, batch, value FROM px_canary ORDER BY id;" },
-      ]);
+      const [res] = await client!.queryDatabase(databaseId!, [{ sql: "SELECT id, batch, value FROM px_canary ORDER BY id;" }]);
       const rows = (res?.results ?? []) as Array<{ id: string; batch: string; value: string }>;
       const hasA = rows.some((r) => r.id === "canary_a_1" && r.value === "original_data");
       const hasB = rows.some((r) => r.id === "canary_b_1");
       if (!hasA || hasB || rows.length !== 1) {
-        throw new Error(
-          `Verification after restore A failed: expected only row A, got rows: ${JSON.stringify(rows)}`,
-        );
+        throw new Error(`Verification after restore A failed: expected only row A, got rows: ${JSON.stringify(rows)}`);
       }
     });
     log("[drill] Verification A passed: row A is present, row B is absent");
@@ -241,16 +227,12 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
 
     // Step 9: Verify B is back
     await recordStep("verifyB", async () => {
-      const [res] = await client!.queryDatabase(databaseId!, [
-        { sql: "SELECT id, batch, value FROM px_canary ORDER BY id;" },
-      ]);
+      const [res] = await client!.queryDatabase(databaseId!, [{ sql: "SELECT id, batch, value FROM px_canary ORDER BY id;" }]);
       const rows = (res?.results ?? []) as Array<{ id: string; batch: string; value: string }>;
       const hasA = rows.some((r) => r.id === "canary_a_1");
       const hasB = rows.some((r) => r.id === "canary_b_1" && r.value === "mutated_data");
       if (!hasA || !hasB || rows.length !== 2) {
-        throw new Error(
-          `Verification after restore B failed: expected rows A and B, got rows: ${JSON.stringify(rows)}`,
-        );
+        throw new Error(`Verification after restore B failed: expected rows A and B, got rows: ${JSON.stringify(rows)}`);
       }
     });
     log("[drill] Verification B passed: both rows A and B are present");
@@ -296,10 +278,7 @@ export async function runRestoreDrill(options: RestoreDrillOptions = {}): Promis
   };
 
   // Write evidence if live mode or explicitly requested
-  const shouldWriteEvidence =
-    options.writeEvidenceFile !== undefined
-      ? options.writeEvidenceFile
-      : mode === "live";
+  const shouldWriteEvidence = options.writeEvidenceFile !== undefined ? options.writeEvidenceFile : mode === "live";
 
   if (shouldWriteEvidence) {
     // Scratch runs have their own file: evidence/deployed/restore-drill-result.json is the target-mode (staging) evidence only.
@@ -416,11 +395,12 @@ function quoteIdent(name: string): string {
 /** Every table except Cloudflare's (_cf_*), SQLite's (sqlite_*) and the drill's canary, with its row count. */
 async function fingerprintDatabase(client: Client, databaseId: string): Promise<Record<string, number>> {
   const [res] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name" }]);
-  const names = (res?.results ?? [])
-    .map((r) => String(r.name))
-    .filter((n) => !n.startsWith("_cf_") && !n.startsWith("sqlite_") && n !== CANARY_TABLE);
+  const names = (res?.results ?? []).map((r) => String(r.name)).filter((n) => !n.startsWith("_cf_") && !n.startsWith("sqlite_") && n !== CANARY_TABLE);
   if (names.length === 0) return {};
-  const counts = await client.queryDatabase(databaseId, names.map((n) => ({ sql: `SELECT COUNT(*) AS n FROM ${quoteIdent(n)}` })));
+  const counts = await client.queryDatabase(
+    databaseId,
+    names.map((n) => ({ sql: `SELECT COUNT(*) AS n FROM ${quoteIdent(n)}` })),
+  );
   const out: Record<string, number> = {};
   names.forEach((n, i) => {
     out[n] = Number(counts[i]?.results?.[0]?.n ?? NaN);
@@ -520,7 +500,10 @@ export async function runTargetRestoreDrill(options: TargetRestoreDrillOptions):
       canaryCreated = true;
       await c.queryDatabase(databaseId, [
         { sql: `CREATE TABLE ${CANARY_TABLE} (id TEXT PRIMARY KEY, value TEXT NOT NULL, created_at TEXT NOT NULL)` },
-        ...CANARY_ROWS.map((r) => ({ sql: `INSERT INTO ${CANARY_TABLE} (id, value, created_at) VALUES (?, ?, ?)`, params: [r.id, r.value, new Date().toISOString()] })),
+        ...CANARY_ROWS.map((r) => ({
+          sql: `INSERT INTO ${CANARY_TABLE} (id, value, created_at) VALUES (?, ?, ?)`,
+          params: [r.id, r.value, new Date().toISOString()],
+        })),
       ]);
     });
     log("[drill] Created and seeded the canary table");
@@ -607,7 +590,13 @@ export async function runTargetRestoreDrill(options: TargetRestoreDrillOptions):
       verification: result.verification,
       success: result.success,
     };
-    assertRedacted(JSON.stringify(evidenceData), [databaseId, databaseId.replace(/-/g, ""), bookmark ?? "", credentials?.accountId ?? "", credentials?.token ?? ""]);
+    assertRedacted(JSON.stringify(evidenceData), [
+      databaseId,
+      databaseId.replace(/-/g, ""),
+      bookmark ?? "",
+      credentials?.accountId ?? "",
+      credentials?.token ?? "",
+    ]);
     writeEvidence(outPath, evidenceData, stampEvidence("scripts/restore-drill.ts", "measured"));
     log(`[drill] Wrote evidence to ${outPath}; record it with pnpm evidence:record-live`);
   }

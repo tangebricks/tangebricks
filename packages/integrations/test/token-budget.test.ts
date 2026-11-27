@@ -2,18 +2,16 @@ import { env } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
 import { catalog } from "@poc/assembler/catalog";
 import { createMcpApp, createStaticTokenVerifier } from "@poc/mcp-server";
-import {
-  countBudgetTokens,
-  runMcpTokenBudgetSuite,
-} from "../../mcp-server/src/token-budget.ts";
+import { countBudgetTokens, runMcpTokenBudgetSuite } from "../../mcp-server/src/token-budget.ts";
 import mcpMigrationSql from "../../mcp-server/migrations/0001_mcp_server.sql?raw";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { measureIntegrationTokenMetrics } from "../src/index.ts";
 
 // Story 7.4: Session A's denominator, measured by the global setup (test/support/h9-emitted-source.ts).
-const H9_EMITTED_SOURCE_TOKENS = (Object.values(import.meta.glob("../../../out/h9-emitted-source.json", { eager: true, import: "default" }))[0] as { tokens: number }).tokens;
-
+const H9_EMITTED_SOURCE_TOKENS = (
+  Object.values(import.meta.glob("../../../out/h9-emitted-source.json", { eager: true, import: "default" }))[0] as { tokens: number }
+).tokens;
 
 const MCP_TOKEN = "pack-v1-budget-token-0123456789";
 
@@ -23,9 +21,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Token Budget Compliance (AC
   const app = createMcpApp({
     catalog,
     callsPerMinute: 10_000,
-    verifyToken: createStaticTokenVerifier([
-      { token: MCP_TOKEN, userId: "user:pack-v1", projectId: "pack-v1-budget", scopes: ["read"] },
-    ]),
+    verifyToken: createStaticTokenVerifier([{ token: MCP_TOKEN, userId: "user:pack-v1", projectId: "pack-v1-budget", scopes: ["read"] }]),
   });
 
   beforeAll(async () => {
@@ -75,14 +71,8 @@ describe("Story 10.4 — Curated Integration Pack v1 Token Budget Compliance (AC
 
       // 1. Per-app compact summary <= 600 tokens
       const metrics = measureIntegrationTokenMetrics(entry.manifest);
-      expect(
-        metrics.compactSummaryTokens,
-        `${appName} compact summary (${metrics.compactSummaryTokens} tokens) must be <= 600`,
-      ).toBeLessThanOrEqual(600);
-      expect(
-        metrics.maxSearchPageTokens,
-        `${appName} search page (${metrics.maxSearchPageTokens} tokens) must be <= 400`,
-      ).toBeLessThanOrEqual(400);
+      expect(metrics.compactSummaryTokens, `${appName} compact summary (${metrics.compactSummaryTokens} tokens) must be <= 600`).toBeLessThanOrEqual(600);
+      expect(metrics.maxSearchPageTokens, `${appName} search page (${metrics.maxSearchPageTokens} tokens) must be <= 400`).toBeLessThanOrEqual(400);
       expect(
         metrics.maxOperationDetailTokens,
         `${appName} max operation detail (${metrics.maxOperationDetailTokens} tokens) must be <= 250`,
@@ -93,10 +83,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Token Budget Compliance (AC
         const nodeType = `int:${appName}.${op.operationId}`;
         const detail = await callMcpTool("get_node", { type: nodeType });
         expect(detail.isError, `get_node(${nodeType}) should succeed`).toBe(false);
-        expect(
-          detail.tokens,
-          `get_node(${nodeType}) used ${detail.tokens} tokens (limit <= 250)`,
-        ).toBeLessThanOrEqual(250);
+        expect(detail.tokens, `get_node(${nodeType}) used ${detail.tokens} tokens (limit <= 250)`).toBeLessThanOrEqual(250);
       }
 
       // 3. Paged search_nodes filtered by app <= 400 tokens
@@ -108,10 +95,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Token Budget Compliance (AC
           ...(cursor ? { cursor } : {}),
         });
         expect(page.isError).toBe(false);
-        expect(
-          page.tokens,
-          `search_nodes(app=${appName}) page used ${page.tokens} tokens (limit <= 400)`,
-        ).toBeLessThanOrEqual(400);
+        expect(page.tokens, `search_nodes(app=${appName}) page used ${page.tokens} tokens (limit <= 400)`).toBeLessThanOrEqual(400);
         const parsed = page.json() as { nextCursor?: string | null };
         cursor = parsed.nextCursor ?? undefined;
       } while (cursor);

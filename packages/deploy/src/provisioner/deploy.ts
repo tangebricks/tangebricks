@@ -218,7 +218,9 @@ export async function readAccountState(client: Client, names: ResourceNames): Pr
   const databaseId = databases[0]?.uuid ?? null;
   let appliedMigrations: string[] = [];
   if (databaseId) {
-    const [tables] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", params: [MIGRATIONS_TABLE] }]);
+    const [tables] = await client.queryDatabase(databaseId, [
+      { sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", params: [MIGRATIONS_TABLE] },
+    ]);
     if (tables!.results.length > 0) {
       const [rows] = await client.queryDatabase(databaseId, [{ sql: `SELECT name FROM ${MIGRATIONS_TABLE} ORDER BY name` }]);
       appliedMigrations = rows!.results.map((r) => String(r.name));
@@ -226,11 +228,18 @@ export async function readAccountState(client: Client, names: ResourceNames): Pr
   }
   const versions = await client.listVersions(names.script);
   const address = versions === null ? null : await client.getScriptSubdomain(names.script);
-  return { databaseId, appliedMigrations, latestVersionId: versions?.[0]?.id ?? null, versionCount: versions?.length ?? 0, addressEnabled: address === null ? null : address.enabled };
+  return {
+    databaseId,
+    appliedMigrations,
+    latestVersionId: versions?.[0]?.id ?? null,
+    versionCount: versions?.length ?? 0,
+    addressEnabled: address === null ? null : address.enabled,
+  };
 }
 
 /** True for a call that could have changed the account: anything but a GET, except a D1 query that only reads. */
-export const isWriteCall = (call: CallRecord): boolean => call.method !== "GET" && !(call.method === "POST" && call.sqlKind === "select" && /\/d1\/database\/[^/]+\/query$/.test(call.path));
+export const isWriteCall = (call: CallRecord): boolean =>
+  call.method !== "GET" && !(call.method === "POST" && call.sqlKind === "select" && /\/d1\/database\/[^/]+\/query$/.test(call.path));
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -241,7 +250,8 @@ export function uploadMetadata(input: DeployInput, databaseId: string, withWorkf
   ];
   if (input.environment) bindings.push({ type: "plain_text", name: "PX_ENVIRONMENT", text: input.environment });
   bindings.push(...telemetryWebhookBindings(input.telemetryWebhook));
-  if (withWorkflow && input.workflow) bindings.push({ type: "workflow", name: input.workflow.binding, workflow_name: input.names.workflow, class_name: input.workflow.className });
+  if (withWorkflow && input.workflow)
+    bindings.push({ type: "workflow", name: input.workflow.binding, workflow_name: input.names.workflow, class_name: input.workflow.className });
   if (input.scriptIsolation) {
     if (input.scriptIsolation.type === "worker_loader") {
       bindings.push({ type: "worker_loader", name: input.scriptIsolation.binding });
@@ -276,11 +286,7 @@ export function uploadMetadata(input: DeployInput, databaseId: string, withWorkf
   };
 }
 
-function versionMatchesTarget(
-  v: { id: string; metadata?: Record<string, unknown> },
-  fingerprint: string,
-  expectedAnnotation: string,
-): boolean {
+function versionMatchesTarget(v: { id: string; metadata?: Record<string, unknown> }, fingerprint: string, expectedAnnotation: string): boolean {
   const meta = v.metadata as { annotations?: Record<string, string> } | undefined;
   const annotations = meta?.annotations;
   if (!annotations) return false;
@@ -308,7 +314,10 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
 
   // The address needs the account's workers.dev name. The owner chooses it once; this tool does not create it.
   const subdomain = await client.getAccountSubdomain();
-  if (subdomain === null) throw new DeployError("this account has no workers.dev name yet; register one in the Cloudflare dashboard (Workers & Pages > Overview > your subdomain: choose a name and save) and run again. This tool does not create one for you.");
+  if (subdomain === null)
+    throw new DeployError(
+      "this account has no workers.dev name yet; register one in the Cloudflare dashboard (Workers & Pages > Overview > your subdomain: choose a name and save) and run again. This tool does not create one for you.",
+    );
 
   if (input.lock) {
     const plan = await planDeploy({ ...input, lock: input.lock });
@@ -322,7 +331,9 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
   let preAppliedNames = new Set<string>();
   if (found.length === 1) {
     const dbId = found[0]!.uuid;
-    const [tables] = await client.queryDatabase(dbId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", params: [MIGRATIONS_TABLE] }]);
+    const [tables] = await client.queryDatabase(dbId, [
+      { sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", params: [MIGRATIONS_TABLE] },
+    ]);
     if (tables?.results.some((r) => String(r.name) === MIGRATIONS_TABLE)) {
       const [recorded] = await client.queryDatabase(dbId, [{ sql: `SELECT name FROM ${MIGRATIONS_TABLE}` }]);
       preAppliedNames = new Set(recorded!.results.map((r) => String(r.name)));
@@ -331,8 +342,7 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
 
   const preAppliedKeys = new Set([...preAppliedNames].map(migrationKey));
   const pendingPrecheck = input.migrations.filter((m) => !preAppliedKeys.has(migrationKey(m.name)));
-  const allowDestructive = input.allowDestructive === true ||
-    ledger.entries().some((e) => e.kind === "allow_destructive" || e.name === "allow_destructive");
+  const allowDestructive = input.allowDestructive === true || ledger.entries().some((e) => e.kind === "allow_destructive" || e.name === "allow_destructive");
 
   for (const migration of pendingPrecheck) {
     const lintResult = lintMigration(migration.name, migration.sql);
@@ -344,13 +354,13 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
         const expands = lintResult.header.expands;
         if (!expands || !preAppliedNames.has(expands)) {
           throw new DeployError(
-            `MIGRATION_DESTRUCTIVE_BLOCKED: contract migration "${migration.name}" requires expand migration "${expands ?? "none"}" to be already applied in target database, but "${expands ?? "none"}" was not found in applied migrations`
+            `MIGRATION_DESTRUCTIVE_BLOCKED: contract migration "${migration.name}" requires expand migration "${expands ?? "none"}" to be already applied in target database, but "${expands ?? "none"}" was not found in applied migrations`,
           );
         }
       } else {
         const messages = lintResult.findings.map((f) => f.message).join("; ");
         throw new DeployError(
-          `MIGRATION_DESTRUCTIVE_BLOCKED: migration "${migration.name}" is destructive and blocked without expand/contract header or allowDestructive flag: ${messages}`
+          `MIGRATION_DESTRUCTIVE_BLOCKED: migration "${migration.name}" is destructive and blocked without expand/contract header or allowDestructive flag: ${messages}`,
         );
       }
     }
@@ -380,12 +390,18 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
   }
 
   // 2. the bookkeeping tables, only if missing
-  const [tables] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?)", params: [MIGRATIONS_TABLE, DEPLOY_TABLE] }]);
+  const [tables] = await client.queryDatabase(databaseId, [
+    { sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?)", params: [MIGRATIONS_TABLE, DEPLOY_TABLE] },
+  ]);
   const have = new Set(tables!.results.map((r) => String(r.name)));
   if (!have.has(MIGRATIONS_TABLE) || !have.has(DEPLOY_TABLE)) {
     const statements: Array<{ sql: string }> = [];
-    if (!have.has(MIGRATIONS_TABLE)) statements.push({ sql: `CREATE TABLE ${MIGRATIONS_TABLE} (name TEXT PRIMARY KEY, sha256 TEXT NOT NULL, applied_at TEXT NOT NULL)` });
-    if (!have.has(DEPLOY_TABLE)) statements.push({ sql: `CREATE TABLE ${DEPLOY_TABLE} (id INTEGER PRIMARY KEY CHECK (id = 1), upload_sha256 TEXT NOT NULL, version_id TEXT NOT NULL, deployed_at TEXT NOT NULL, last_good_version_id TEXT)` });
+    if (!have.has(MIGRATIONS_TABLE))
+      statements.push({ sql: `CREATE TABLE ${MIGRATIONS_TABLE} (name TEXT PRIMARY KEY, sha256 TEXT NOT NULL, applied_at TEXT NOT NULL)` });
+    if (!have.has(DEPLOY_TABLE))
+      statements.push({
+        sql: `CREATE TABLE ${DEPLOY_TABLE} (id INTEGER PRIMARY KEY CHECK (id = 1), upload_sha256 TEXT NOT NULL, version_id TEXT NOT NULL, deployed_at TEXT NOT NULL, last_good_version_id TEXT)`,
+      });
     await client.queryDatabase(databaseId, statements);
     changes.push({ kind: "bookkeeping_created", what: "created the tool's two bookkeeping tables in the project database" });
   }
@@ -400,7 +416,10 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
     const hash = sha256(migration.sql);
     const before = applied.get(migrationKey(migration.name));
     if (before === hash) continue;
-    if (before !== undefined) throw new DeployError(`migration ${migration.name} was applied with different contents; a migration is never run twice, so add a new one instead of editing it`);
+    if (before !== undefined)
+      throw new DeployError(
+        `migration ${migration.name} was applied with different contents; a migration is never run twice, so add a new one instead of editing it`,
+      );
     pending.push(migration);
   }
 
@@ -411,7 +430,8 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
   if (isExistingDatabase) {
     const [deployRowBefore] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1` }]);
     fromVersionId = (deployRowBefore?.results[0] as { version_id?: string; last_good_version_id?: string } | undefined)?.version_id ?? null;
-    previousLastGood = (deployRowBefore?.results[0] as { version_id?: string; last_good_version_id?: string } | undefined)?.last_good_version_id ?? fromVersionId;
+    previousLastGood =
+      (deployRowBefore?.results[0] as { version_id?: string; last_good_version_id?: string } | undefined)?.last_good_version_id ?? fromVersionId;
 
     if (pending.length > 0) {
       const bookmark = await client.getD1Bookmark(databaseId);
@@ -449,7 +469,9 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
     for (const migration of pending) {
       const hash = sha256(migration.sql);
       const statements = splitStatements(migration.sql).map((sql) => ({ sql }));
-      statements.push({ sql: `INSERT INTO ${MIGRATIONS_TABLE} (name, sha256, applied_at) VALUES ('${migration.name.replace(/'/g, "''")}', '${hash}', '${nowIso()}')` });
+      statements.push({
+        sql: `INSERT INTO ${MIGRATIONS_TABLE} (name, sha256, applied_at) VALUES ('${migration.name.replace(/'/g, "''")}', '${hash}', '${nowIso()}')`,
+      });
       await client.queryDatabase(databaseId, statements);
       applied.set(migrationKey(migration.name), hash);
       changes.push({ kind: "migration_applied", what: `applied migration ${migration.name}` });
@@ -460,13 +482,17 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
   const fingerprint = fingerprintOf(input, databaseId);
   const versionsBefore = await client.listVersions(names.script);
   const isInitialDeploy = versionsBefore === null || versionsBefore.length === 0;
-  const [deployRow] = await client.queryDatabase(databaseId, [{ sql: `SELECT upload_sha256, version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1` }]);
+  const [deployRow] = await client.queryDatabase(databaseId, [
+    { sql: `SELECT upload_sha256, version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1` },
+  ]);
   const last = deployRow!.results[0] as { upload_sha256?: string; version_id?: string; last_good_version_id?: string } | undefined;
   const upToDate = !isInitialDeploy && last?.upload_sha256 === fingerprint && last?.version_id === versionsBefore[0]!.id;
 
   if (!upToDate) {
     if (input.gradual && input.workflow) {
-      throw new DeployError("Gradual deployment percentage split is not supported for projects with Workflow bindings (graphs-enabled). Deploy at 100% or remove workflow bindings.");
+      throw new DeployError(
+        "Gradual deployment percentage split is not supported for projects with Workflow bindings (graphs-enabled). Deploy at 100% or remove workflow bindings.",
+      );
     }
 
     if (!deployHistoryId && isExistingDatabase) {
@@ -487,9 +513,7 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
 
     if (input.observability?.alerts || input.observability?.tailBundle) {
       const tailScriptName = `${names.script}-tail`;
-      const tailCode =
-        input.observability.tailBundle?.code ??
-        `export default { async tail(events, env) {} };`;
+      const tailCode = input.observability.tailBundle?.code ?? `export default { async tail(events, env) {} };`;
       if (!ledger.has("worker_script", tailScriptName)) {
         ledger.planned("worker_script", tailScriptName);
       }
@@ -542,21 +566,17 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
     } else {
       const existingDeployments = await client.listDeployments(names.script);
       const activeDeployment = existingDeployments?.[0];
-      const deployedVersionIds = new Set(
-        existingDeployments?.flatMap((d) => d.versions.map((v) => v.versionId)) ?? [],
-      );
+      const deployedVersionIds = new Set(existingDeployments?.flatMap((d) => d.versions.map((v) => v.versionId)) ?? []);
 
       const expectedAnnotation = `projectx-poc ${input.bundle.sha256}`;
 
       // Check if the current 100% active deployment in Cloudflare already matches our target
       // Only reconcile if the active version was NOT already recorded in DEPLOY_TABLE as the previous deploy (i.e. a crashed deploy of the new target)
       const activeMatchingVersion = activeDeployment?.versions?.find(
-        (v) => v.percentage === 100 &&
+        (v) =>
+          v.percentage === 100 &&
           (!last?.version_id || v.versionId !== last.version_id) &&
-          versionsBefore?.some(
-            (vb) => vb.id === v.versionId &&
-              versionMatchesTarget(vb, fingerprint, expectedAnnotation),
-          ),
+          versionsBefore?.some((vb) => vb.id === v.versionId && versionMatchesTarget(vb, fingerprint, expectedAnnotation)),
       );
 
       let isAlreadyActiveAt100 = false;
@@ -583,7 +603,10 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
           } catch (uploadErr) {
             if (deployHistoryId) {
               await client.queryDatabase(databaseId, [
-                { sql: `UPDATE ${DEPLOY_HISTORY_TABLE} SET to_version_id = NULL, last_good_version_id = ?, status = 'upload_failed' WHERE id = ?`, params: [previousLastGood, deployHistoryId] },
+                {
+                  sql: `UPDATE ${DEPLOY_HISTORY_TABLE} SET to_version_id = NULL, last_good_version_id = ?, status = 'upload_failed' WHERE id = ?`,
+                  params: [previousLastGood, deployHistoryId],
+                },
               ]);
             }
             throw uploadErr;
@@ -599,7 +622,10 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
         } catch (smokeErr) {
           if (deployHistoryId) {
             await client.queryDatabase(databaseId, [
-              { sql: `UPDATE ${DEPLOY_HISTORY_TABLE} SET to_version_id = ?, last_good_version_id = ?, status = 'smoke_failed' WHERE id = ?`, params: [newVersionId, previousLastGood, deployHistoryId] },
+              {
+                sql: `UPDATE ${DEPLOY_HISTORY_TABLE} SET to_version_id = ?, last_good_version_id = ?, status = 'smoke_failed' WHERE id = ?`,
+                params: [newVersionId, previousLastGood, deployHistoryId],
+              },
             ]);
           }
           throw smokeErr;
@@ -607,7 +633,11 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
 
         // Shift traffic via createDeployment
         if (input.gradual) {
-          const raw = Array.isArray(input.gradual) ? input.gradual : String(input.gradual).split(",").map((s) => Number(s.trim()));
+          const raw = Array.isArray(input.gradual)
+            ? input.gradual
+            : String(input.gradual)
+                .split(",")
+                .map((s) => Number(s.trim()));
           const steps = raw.filter((n) => Number.isFinite(n) && n > 0 && n <= 100);
           for (const pct of steps) {
             await client.createDeployment(names.script, [
@@ -622,7 +652,14 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
           await client.createDeployment(names.script, [{ versionId: newVersionId, percentage: 100 }]);
         }
       }
-      changes.push({ kind: "script_uploaded", what: orphanVersion ? `adopted existing version ${newVersionId} of Worker ${names.script}` : (isAlreadyActiveAt100 ? `reconciled deployed version ${newVersionId} of Worker ${names.script}` : `uploaded a new version of Worker ${names.script}`) });
+      changes.push({
+        kind: "script_uploaded",
+        what: orphanVersion
+          ? `adopted existing version ${newVersionId} of Worker ${names.script}`
+          : isAlreadyActiveAt100
+            ? `reconciled deployed version ${newVersionId} of Worker ${names.script}`
+            : `uploaded a new version of Worker ${names.script}`,
+      });
     }
 
     // 4b. the Workflow the binding names: re-register after the shift
@@ -647,7 +684,10 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
     ]);
     if (deployHistoryId) {
       await client.queryDatabase(databaseId, [
-        { sql: `UPDATE ${DEPLOY_HISTORY_TABLE} SET to_version_id = ?, last_good_version_id = ?, status = 'success' WHERE id = ?`, params: [newVersionId, newVersionId, deployHistoryId] },
+        {
+          sql: `UPDATE ${DEPLOY_HISTORY_TABLE} SET to_version_id = ?, last_good_version_id = ?, status = 'success' WHERE id = ?`,
+          params: [newVersionId, newVersionId, deployHistoryId],
+        },
       ]);
     }
   } else {
@@ -666,7 +706,10 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
     if (deployHistoryId) {
       const currentVersionId = last?.version_id ?? fromVersionId;
       await client.queryDatabase(databaseId, [
-        { sql: `UPDATE ${DEPLOY_HISTORY_TABLE} SET to_version_id = ?, last_good_version_id = ?, status = 'success' WHERE id = ?`, params: [currentVersionId, currentVersionId, deployHistoryId] },
+        {
+          sql: `UPDATE ${DEPLOY_HISTORY_TABLE} SET to_version_id = ?, last_good_version_id = ?, status = 'success' WHERE id = ?`,
+          params: [currentVersionId, currentVersionId, deployHistoryId],
+        },
       ]);
     }
   }
@@ -680,10 +723,18 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
     changes.push({ kind: "address_enabled", what: `switched on https://${names.script}.${subdomain}.workers.dev` });
   }
 
-  return { changes, url: `https://${names.script}.${subdomain}.workers.dev`, databaseId, uploadFingerprint: fingerprint, ...(startupTimeMs !== undefined ? { startupTimeMs } : {}), state: await readAccountState(client, names) };
+  return {
+    changes,
+    url: `https://${names.script}.${subdomain}.workers.dev`,
+    databaseId,
+    uploadFingerprint: fingerprint,
+    ...(startupTimeMs !== undefined ? { startupTimeMs } : {}),
+    state: await readAccountState(client, names),
+  };
 }
 
-const HISTORY_COLUMNS = "id TEXT PRIMARY KEY, started_at TEXT NOT NULL, bookmark TEXT NOT NULL, from_version_id TEXT, to_version_id TEXT, last_good_version_id TEXT, status TEXT NOT NULL";
+const HISTORY_COLUMNS =
+  "id TEXT PRIMARY KEY, started_at TEXT NOT NULL, bookmark TEXT NOT NULL, from_version_id TEXT, to_version_id TEXT, last_good_version_id TEXT, status TEXT NOT NULL";
 
 /** Records the lock this deploy put live in the history table (adding the column to an older table), so planDeploy can diff against it. */
 async function storeLock(client: Client, databaseId: string, lock: ProjectLock, historyId: string | null, nowIso: () => string): Promise<void> {
@@ -697,7 +748,12 @@ async function storeLock(client: Client, databaseId: string, lock: ProjectLock, 
     await client.queryDatabase(databaseId, [{ sql: `UPDATE ${DEPLOY_HISTORY_TABLE} SET lock_json = ? WHERE id = ?`, params: [text, historyId] }]);
     return;
   }
-  const [stored] = await client.queryDatabase(databaseId, [{ sql: `SELECT lock_json FROM ${DEPLOY_HISTORY_TABLE} WHERE status = 'success' AND to_version_id = ? AND lock_json IS NOT NULL ORDER BY started_at DESC LIMIT 1`, params: [versionId] }]);
+  const [stored] = await client.queryDatabase(databaseId, [
+    {
+      sql: `SELECT lock_json FROM ${DEPLOY_HISTORY_TABLE} WHERE status = 'success' AND to_version_id = ? AND lock_json IS NOT NULL ORDER BY started_at DESC LIMIT 1`,
+      params: [versionId],
+    },
+  ]);
   if (stored?.results[0] && String(stored.results[0].lock_json) === text) return;
   await client.queryDatabase(databaseId, [
     {
@@ -715,13 +771,15 @@ async function storeLock(client: Client, databaseId: string, lock: ProjectLock, 
  */
 async function uploadWithDiagnosis(input: DeployInput, databaseId: string, fingerprint?: string): Promise<{ startupTimeMs?: number }> {
   const { client, names } = input;
-  const send = (name: string, withWorkflow: boolean) => client.uploadScript(name, { mainModule: MAIN_MODULE, code: input.bundle.code, metadata: uploadMetadata(input, databaseId, withWorkflow, fingerprint) });
+  const send = (name: string, withWorkflow: boolean) =>
+    client.uploadScript(name, { mainModule: MAIN_MODULE, code: input.bundle.code, metadata: uploadMetadata(input, databaseId, withWorkflow, fingerprint) });
   try {
     return await send(names.script, true);
   } catch (error) {
     if (!isCloudflareError(error)) throw error;
     if (!input.workflow) throw new UploadFailed("not_the_workflow_binding", `the upload was refused and carried no Workflow binding: ${error.message}`, error);
-    if (!(error instanceof CloudflareApiError)) throw new UploadFailed("not_a_refusal", `the upload with the Workflow binding failed without a refusal from Cloudflare: ${error.message}`, error);
+    if (!(error instanceof CloudflareApiError))
+      throw new UploadFailed("not_a_refusal", `the upload with the Workflow binding failed without a refusal from Cloudflare: ${error.message}`, error);
 
     const controlName = `${names.script}-ctl`;
     input.ledger.planned("worker_script", controlName);
@@ -740,8 +798,19 @@ async function uploadWithDiagnosis(input: DeployInput, databaseId: string, finge
       }
       input.ledger.removed("worker_script", controlName);
     }
-    if (control.accepted) throw new UploadFailed("platform_refusal", `Cloudflare accepted the script without the Workflow binding and refused it with: ${error.message}`, error, control);
-    throw new UploadFailed("not_the_workflow_binding", `the upload was refused with and without the Workflow binding, so the binding is not the cause: ${error.message}`, error, control);
+    if (control.accepted)
+      throw new UploadFailed(
+        "platform_refusal",
+        `Cloudflare accepted the script without the Workflow binding and refused it with: ${error.message}`,
+        error,
+        control,
+      );
+    throw new UploadFailed(
+      "not_the_workflow_binding",
+      `the upload was refused with and without the Workflow binding, so the binding is not the cause: ${error.message}`,
+      error,
+      control,
+    );
   }
 }
 
@@ -757,8 +826,10 @@ async function uploadVersionWithDiagnosis(input: DeployInput, databaseId: string
     return await send(names.script, Boolean(input.workflow));
   } catch (error) {
     if (!isCloudflareError(error)) throw error;
-    if (!input.workflow) throw new UploadFailed("not_the_workflow_binding", `the version upload was refused and carried no Workflow binding: ${error.message}`, error);
-    if (!(error instanceof CloudflareApiError)) throw new UploadFailed("not_a_refusal", `the version upload with the Workflow binding failed without a refusal from Cloudflare: ${error.message}`, error);
+    if (!input.workflow)
+      throw new UploadFailed("not_the_workflow_binding", `the version upload was refused and carried no Workflow binding: ${error.message}`, error);
+    if (!(error instanceof CloudflareApiError))
+      throw new UploadFailed("not_a_refusal", `the version upload with the Workflow binding failed without a refusal from Cloudflare: ${error.message}`, error);
 
     const controlName = `${names.script}-ctl`;
     input.ledger.planned("worker_script", controlName);
@@ -777,8 +848,19 @@ async function uploadVersionWithDiagnosis(input: DeployInput, databaseId: string
       }
       input.ledger.removed("worker_script", controlName);
     }
-    if (control.accepted) throw new UploadFailed("platform_refusal", `Cloudflare accepted the version without the Workflow binding and refused it with: ${error.message}`, error, control);
-    throw new UploadFailed("not_the_workflow_binding", `the version upload was refused with and without the Workflow binding, so the binding is not the cause: ${error.message}`, error, control);
+    if (control.accepted)
+      throw new UploadFailed(
+        "platform_refusal",
+        `Cloudflare accepted the version without the Workflow binding and refused it with: ${error.message}`,
+        error,
+        control,
+      );
+    throw new UploadFailed(
+      "not_the_workflow_binding",
+      `the version upload was refused with and without the Workflow binding, so the binding is not the cause: ${error.message}`,
+      error,
+      control,
+    );
   }
 }
 
@@ -843,13 +925,13 @@ export async function rollback(input: RollbackInput): Promise<RollbackResult> {
   }
 
   // 2. Read deploy and history tables
-  const [deployRow] = await client.queryDatabase(databaseId, [
-    { sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1` },
-  ]);
+  const [deployRow] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1` }]);
   const currentVersionId = (deployRow?.results[0] as { version_id?: string; last_good_version_id?: string } | undefined)?.version_id ?? null;
 
   const [historyRows] = await client.queryDatabase(databaseId, [
-    { sql: `SELECT id, started_at, bookmark, from_version_id, to_version_id, last_good_version_id, status FROM ${DEPLOY_HISTORY_TABLE} ORDER BY started_at DESC` },
+    {
+      sql: `SELECT id, started_at, bookmark, from_version_id, to_version_id, last_good_version_id, status FROM ${DEPLOY_HISTORY_TABLE} ORDER BY started_at DESC`,
+    },
   ]);
   const history = (historyRows?.results ?? []) as Array<{
     id: string;
@@ -890,15 +972,7 @@ export async function rollback(input: RollbackInput): Promise<RollbackResult> {
     },
     {
       sql: `INSERT INTO ${DEPLOY_HISTORY_TABLE} (id, started_at, bookmark, from_version_id, to_version_id, last_good_version_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      params: [
-        `rollback_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`,
-        nowIso(),
-        "",
-        currentVersionId,
-        targetVersionId,
-        targetVersionId,
-        "rollback",
-      ],
+      params: [`rollback_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`, nowIso(), "", currentVersionId, targetVersionId, targetVersionId, "rollback"],
     },
   ]);
 

@@ -70,13 +70,7 @@ export function createPlanRoutes(options: PlanRouteOptions = {}): Hono<PlanEnv> 
     }
 
     const service = planService(c.env.DB);
-    const plan = await service.createPlan(
-      parsed.data.id,
-      parsed.data.name,
-      parsed.data.priceCents,
-      parsed.data.billingInterval,
-      parsed.data.features
-    );
+    const plan = await service.createPlan(parsed.data.id, parsed.data.name, parsed.data.priceCents, parsed.data.billingInterval, parsed.data.features);
 
     return c.json({ plan }, 201);
   });

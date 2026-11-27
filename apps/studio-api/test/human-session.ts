@@ -31,9 +31,7 @@ export async function signInTestHuman(
   );
   expect(res.status).toBe(201);
   const body = (await res.json()) as { token: string; user: { id: string } };
-  await env.STUDIO_DB.prepare(
-    "INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)",
-  )
+  await env.STUDIO_DB.prepare("INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)")
     .bind(orgId, body.user.id, role, new Date().toISOString())
     .run();
   if (project) {
@@ -70,14 +68,7 @@ export async function defaultOwnerSessionHeaders(env: StudioApiEnv): Promise<Rec
     `INSERT INTO "session" ("id", "expiresAt", "token", "createdAt", "updatedAt", "ipAddress", "userAgent", "userId")
      VALUES (?, ?, ?, ?, ?, NULL, NULL, ?)`,
   )
-    .bind(
-      `sess_${crypto.randomUUID()}`,
-      new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString(),
-      token,
-      now.toISOString(),
-      now.toISOString(),
-      userId,
-    )
+    .bind(`sess_${crypto.randomUUID()}`, new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString(), token, now.toISOString(), now.toISOString(), userId)
     .run();
   const headers = { authorization: `Bearer ${token}` };
   ownerSessions.set(env as object, headers);
@@ -88,12 +79,7 @@ export async function defaultOwnerSessionHeaders(env: StudioApiEnv): Promise<Rec
  * AD-V8: the human review step. Accepts a pending proposal as the default test owner in Studio and returns the commit
  * (the agent stays the author, on behalf of the owner, as before the gate).
  */
-export async function acceptProposalAsOwner(
-  env: StudioApiEnv,
-  project: string,
-  proposalId: string,
-  opIds?: string[],
-): Promise<Response> {
+export async function acceptProposalAsOwner(env: StudioApiEnv, project: string, proposalId: string, opIds?: string[]): Promise<Response> {
   const headers = await defaultOwnerSessionHeaders(env);
   return studioApp.request(
     `/api/projects/${encodeURIComponent(project)}/proposals/${encodeURIComponent(proposalId)}/accept`,
@@ -122,12 +108,7 @@ export async function approveAsOwner(env: StudioApiEnv, project: string, approva
  * or live production), it is sent again as a proposal and the default owner accepts it in Studio, as a reviewer would.
  * A body that names `mode` is sent as written.
  */
-export async function postOpsWithReview(
-  env: StudioApiEnv,
-  project: string,
-  headers: Record<string, string>,
-  body: Record<string, unknown>,
-): Promise<Response> {
+export async function postOpsWithReview(env: StudioApiEnv, project: string, headers: Record<string, string>, body: Record<string, unknown>): Promise<Response> {
   const send = (payload: Record<string, unknown>) =>
     studioApp.request(
       `/api/projects/${encodeURIComponent(project)}/ops`,
@@ -137,7 +118,10 @@ export async function postOpsWithReview(
   if (body.mode !== undefined) return send(body);
   const direct = await send({ ...body, mode: "apply" });
   if (direct.status !== 403) return direct;
-  const refusal = (await direct.clone().json().catch(() => ({}))) as { error?: { code?: string } };
+  const refusal = (await direct
+    .clone()
+    .json()
+    .catch(() => ({}))) as { error?: { code?: string } };
   if (refusal.error?.code !== "PROPOSAL_REQUIRED") return direct;
   const proposed = await send({ ...body, mode: "propose" });
   if (proposed.status !== 200) return proposed;
@@ -152,14 +136,13 @@ export async function postOpsWithReview(
  * MCP token. `send` is called without an approval first; on 403 APPROVAL_REQUIRED the default owner approves the request
  * in Studio and `send` is called again with the approval id. Any other answer is returned as it is.
  */
-export async function sendWithOwnerApproval(
-  env: StudioApiEnv,
-  project: string,
-  send: (approvalId?: string) => Promise<Response>,
-): Promise<Response> {
+export async function sendWithOwnerApproval(env: StudioApiEnv, project: string, send: (approvalId?: string) => Promise<Response>): Promise<Response> {
   const first = await send();
   if (first.status !== 403) return first;
-  const refusal = (await first.clone().json().catch(() => ({}))) as { error?: { code?: string; approvalId?: string } };
+  const refusal = (await first
+    .clone()
+    .json()
+    .catch(() => ({}))) as { error?: { code?: string; approvalId?: string } };
   if (refusal.error?.code !== "APPROVAL_REQUIRED" || !refusal.error.approvalId) return first;
   const approved = await approveAsOwner(env, project, refusal.error.approvalId);
   if (approved.status !== 200) return approved;

@@ -4,23 +4,13 @@ import { catalog } from "@poc/assembler/catalog";
 import type { ProposalRecord } from "@poc/blueprint";
 import { createMcpApp } from "@poc/mcp-server";
 import { testToken, testTokenId, testTokenVerifier } from "../../../packages/mcp-server/test/support/test-verifier.ts";
-import {
-  defaultOwnerSessionHeaders,
-  isApprovalGatedPath,
-  sendWithOwnerApproval,
-  signInTestHuman,
-  withApprovalId,
-} from "./human-session.ts";
+import { defaultOwnerSessionHeaders, isApprovalGatedPath, sendWithOwnerApproval, signInTestHuman, withApprovalId } from "./human-session.ts";
 import type { BlueprintDoNamespaceLike } from "@poc/mcp-server";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import mcpMigrationSql from "../../../packages/mcp-server/migrations/0001_mcp_server.sql?raw";
 import { app as studioApp } from "../src/index.ts";
-import type {
-  ActivityFeedPayload,
-  ProjectStatePayload,
-  StudioApiEnv,
-} from "../src/index.ts";
+import type { ActivityFeedPayload, ProjectStatePayload, StudioApiEnv } from "../src/index.ts";
 import { ensureTestAuthForPath } from "./project-token.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
@@ -31,16 +21,10 @@ const mcpDo = (env as unknown as { BLUEPRINT_DO: BlueprintDoNamespaceLike }).BLU
 // names, and the author comes from that token, not from x-mcp-client headers.
 const mcpApp = createMcpApp({ catalog, callsPerMinute: 10_000, verifyToken: testTokenVerifier });
 
-async function studioReq(
-  path: string,
-  init: RequestInit = {},
-  targetEnv: StudioApiEnv = studioEnv,
-): Promise<Response> {
+async function studioReq(path: string, init: RequestInit = {}, targetEnv: StudioApiEnv = studioEnv): Promise<Response> {
   // AD-V8: accepting or rejecting a proposal is a Studio reviewer's action, so the default owner's session does it.
   const reviewing = /\/proposals\/[^/]+\/(accept|reject)$/.test(path);
-  const { headers: authHeaders } = reviewing
-    ? { headers: await defaultOwnerSessionHeaders(targetEnv) }
-    : await ensureTestAuthForPath(targetEnv, path);
+  const { headers: authHeaders } = reviewing ? { headers: await defaultOwnerSessionHeaders(targetEnv) } : await ensureTestAuthForPath(targetEnv, path);
   const headers = new Headers(init.headers);
   for (const [k, v] of Object.entries(authHeaders)) {
     if (!headers.has(k)) headers.set(k, v);
@@ -62,11 +46,7 @@ async function studioReq(
 }
 
 let rpcId = 1;
-async function callMcpTool(
-  name: string,
-  args: Record<string, unknown>,
-  clientHeaders: { clientId?: string; clientName?: string } = {},
-) {
+async function callMcpTool(name: string, args: Record<string, unknown>, clientHeaders: { clientId?: string; clientName?: string } = {}) {
   const response = await mcpApp.fetch(
     new Request("http://localhost/mcp", {
       method: "POST",
@@ -100,15 +80,10 @@ async function callMcpTool(
 }
 
 async function openProjectWebSocket(project: string) {
-  const stub = studioEnv.BLUEPRINT_DO.get(
-    studioEnv.BLUEPRINT_DO.idFromName(project),
-  );
-  const wsRes = await stub.fetch(
-    `https://blueprint.internal/ws?project=${encodeURIComponent(project)}`,
-    {
-      headers: { Upgrade: "websocket" },
-    },
-  );
+  const stub = studioEnv.BLUEPRINT_DO.get(studioEnv.BLUEPRINT_DO.idFromName(project));
+  const wsRes = await stub.fetch(`https://blueprint.internal/ws?project=${encodeURIComponent(project)}`, {
+    headers: { Upgrade: "websocket" },
+  });
   expect(wsRes.status).toBe(101);
   const ws = wsRes.webSocket!;
   ws.accept();
@@ -261,14 +236,10 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     });
 
     // Verify WebSocket received `{ type: "proposal", action: "created", project, proposal }`
-    const createdFrame = messages.find(
-      (m) => m.type === "proposal" && m.action === "created",
-    );
+    const createdFrame = messages.find((m) => m.type === "proposal" && m.action === "created");
     expect(createdFrame).toBeDefined();
     expect(createdFrame?.project).toBe(project);
-    expect((createdFrame?.proposal as ProposalRecord | undefined)?.proposalId).toBe(
-      proposeData.proposalId,
-    );
+    expect((createdFrame?.proposal as ProposalRecord | undefined)?.proposalId).toBe(proposeData.proposalId);
 
     // Verify mainline project state via GET /api/projects/:project is still at r1 and unchanged
     const stateWhilePendingRes = await studioReq(`/api/projects/${project}`);
@@ -276,11 +247,7 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     const stateWhilePending = (await stateWhilePendingRes.json()) as ProjectStatePayload;
     expect(stateWhilePending.revision).toBe(1);
     const wfWhilePending = stateWhilePending.state.workflows.find((w) => w.id === "wf-main")!;
-    expect(wfWhilePending.nodes.map((n) => n.id)).toEqual([
-      "n_legacy",
-      "n_transform",
-      "n_trigger",
-    ]);
+    expect(wfWhilePending.nodes.map((n) => n.id)).toEqual(["n_legacy", "n_transform", "n_trigger"]);
 
     // Verify GET /api/projects/:project/proposals lists the pending proposal
     const listRes = await studioReq(`/api/projects/${project}/proposals?status=pending`);
@@ -294,16 +261,13 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
 
     // 2. AC 2 Guard: Attempting to accept per-op while deselecting `p1-add-node` and keeping `p1-add-edge`
     // must fail with 422 VALIDATION_FAILED before commit without mutating mainline rev or proposal status
-    const invalidPartialRes = await studioReq(
-      `/api/projects/${project}/proposals/${proposeData.proposalId}/accept`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          opIds: ["p1-update-node", "p1-remove-node", "p1-add-edge"],
-        }),
-      },
-    );
+    const invalidPartialRes = await studioReq(`/api/projects/${project}/proposals/${proposeData.proposalId}/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        opIds: ["p1-update-node", "p1-remove-node", "p1-add-edge"],
+      }),
+    });
     expect(invalidPartialRes.status).toBe(422);
     const invalidPartialErr = (await invalidPartialRes.json()) as {
       error: { code: string; issues: Array<{ code: string; message: string }> };
@@ -312,27 +276,22 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     expect(invalidPartialErr.error.issues[0]?.code).toBe("MISSING_EDGE_ENDPOINT");
 
     // Confirm mainline rev is STILL 1 and proposal is STILL pending after failed partial accept
-    const stateAfterFailedPartial = (await (
-      await studioReq(`/api/projects/${project}`)
-    ).json()) as ProjectStatePayload;
+    const stateAfterFailedPartial = (await (await studioReq(`/api/projects/${project}`)).json()) as ProjectStatePayload;
     expect(stateAfterFailedPartial.revision).toBe(1);
-    const proposalsAfterFailedPartial = (await (
-      await studioReq(`/api/projects/${project}/proposals?status=pending`)
-    ).json()) as { proposals: ProposalRecord[] };
+    const proposalsAfterFailedPartial = (await (await studioReq(`/api/projects/${project}/proposals?status=pending`)).json()) as {
+      proposals: ProposalRecord[];
+    };
     expect(proposalsAfterFailedPartial.proposals).toHaveLength(1);
     expect(proposalsAfterFailedPartial.proposals[0]?.status).toBe("pending");
 
     // 3. AC 2 Accept Per-Op: Accept 3 of 4 ops (keep n_legacy by deselecting p1-remove-node)
-    const validPartialRes = await studioReq(
-      `/api/projects/${project}/proposals/${proposeData.proposalId}/accept`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          opIds: ["p1-add-node", "p1-update-node", "p1-add-edge"],
-        }),
-      },
-    );
+    const validPartialRes = await studioReq(`/api/projects/${project}/proposals/${proposeData.proposalId}/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        opIds: ["p1-add-node", "p1-update-node", "p1-add-edge"],
+      }),
+    });
     expect(validPartialRes.status).toBe(200);
     const validPartialBody = (await validPartialRes.json()) as {
       proposal: ProposalRecord;
@@ -342,31 +301,17 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     expect(validPartialBody.revision).toBe(2);
     expect(validPartialBody.proposal.status).toBe("partially_accepted");
     expect(validPartialBody.proposal.acceptedRev).toBe(2);
-    expect(validPartialBody.proposal.acceptedOpIds).toEqual([
-      "p1-add-node",
-      "p1-update-node",
-      "p1-add-edge",
-    ]);
+    expect(validPartialBody.proposal.acceptedOpIds).toEqual(["p1-add-node", "p1-update-node", "p1-add-edge"]);
 
     const wfAtR2 = validPartialBody.state.workflows.find((w) => w.id === "wf-main")!;
-    expect(wfAtR2.nodes.map((n) => n.id)).toEqual([
-      "n_added",
-      "n_legacy",
-      "n_transform",
-      "n_trigger",
-    ]);
+    expect(wfAtR2.nodes.map((n) => n.id)).toEqual(["n_added", "n_legacy", "n_transform", "n_trigger"]);
     expect(wfAtR2.nodes.find((n) => n.id === "n_transform")?.data).toEqual({
       path: "invoice.normalized",
     });
 
     // Verify WebSocket received `{ type: "proposal", action: "partially_accepted" }`
     expect(
-      messages.some(
-        (m) =>
-          m.type === "proposal" &&
-          m.action === "partially_accepted" &&
-          (m.proposal as ProposalRecord).proposalId === proposeData.proposalId,
-      ),
+      messages.some((m) => m.type === "proposal" && m.action === "partially_accepted" && (m.proposal as ProposalRecord).proposalId === proposeData.proposalId),
     ).toBe(true);
 
     // 4. Create a second proposal via HTTP POST /api/projects/:project/proposals and test Accept All
@@ -395,14 +340,11 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     };
     expect(prop2Body.revision).toBe(2); // Still r2 while pending
 
-    const acceptAllRes = await studioReq(
-      `/api/projects/${project}/proposals/${prop2Body.proposalId}/accept`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      },
-    );
+    const acceptAllRes = await studioReq(`/api/projects/${project}/proposals/${prop2Body.proposalId}/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
     expect(acceptAllRes.status).toBe(200);
     const acceptAllBody = (await acceptAllRes.json()) as {
       proposal: ProposalRecord;
@@ -412,11 +354,7 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     expect(acceptAllBody.revision).toBe(3);
     expect(acceptAllBody.proposal.status).toBe("accepted");
     expect(acceptAllBody.proposal.acceptedRev).toBe(3);
-    expect(
-      acceptAllBody.state.workflows
-        .find((w) => w.id === "wf-main")!
-        .nodes.map((n) => n.id),
-    ).toEqual(["n_added", "n_transform", "n_trigger"]);
+    expect(acceptAllBody.state.workflows.find((w) => w.id === "wf-main")!.nodes.map((n) => n.id)).toEqual(["n_added", "n_transform", "n_trigger"]);
 
     // 5. Create a third proposal and Reject it -> mainline rev remains r3
     const prop3Res = await studioReq(`/api/projects/${project}/proposals`, {
@@ -439,14 +377,11 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     expect(prop3Res.status).toBe(200);
     const prop3Body = (await prop3Res.json()) as { proposalId: string };
 
-    const rejectRes = await studioReq(
-      `/api/projects/${project}/proposals/${prop3Body.proposalId}/reject`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reason: "Wallet brick not needed in this sprint" }),
-      },
-    );
+    const rejectRes = await studioReq(`/api/projects/${project}/proposals/${prop3Body.proposalId}/reject`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Wallet brick not needed in this sprint" }),
+    });
     expect(rejectRes.status).toBe(200);
     const rejectBody = (await rejectRes.json()) as {
       proposal: ProposalRecord;
@@ -454,18 +389,11 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     };
     expect(rejectBody.revision).toBe(3);
     expect(rejectBody.proposal.status).toBe("rejected");
-    expect(rejectBody.proposal.rejectionReason).toBe(
-      "Wallet brick not needed in this sprint",
-    );
+    expect(rejectBody.proposal.rejectionReason).toBe("Wallet brick not needed in this sprint");
 
-    expect(
-      messages.some(
-        (m) =>
-          m.type === "proposal" &&
-          m.action === "rejected" &&
-          (m.proposal as ProposalRecord).proposalId === prop3Body.proposalId,
-      ),
-    ).toBe(true);
+    expect(messages.some((m) => m.type === "proposal" && m.action === "rejected" && (m.proposal as ProposalRecord).proposalId === prop3Body.proposalId)).toBe(
+      true,
+    );
 
     ws.close();
   });
@@ -531,14 +459,11 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     expect(propRes.isError).toBe(false);
     const { proposalId } = propRes.json<{ proposalId: string }>();
 
-    const acceptRes = await studioReq(
-      `/api/projects/${project}/proposals/${proposalId}/accept`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      },
-    );
+    const acceptRes = await studioReq(`/api/projects/${project}/proposals/${proposalId}/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
     expect(acceptRes.status).toBe(200);
 
     // 3. Build project
@@ -550,14 +475,11 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     expect(buildRes.status).toBe(200);
 
     // 4. Deploy to preview (records environment.deploy event in activity feed)
-    const deployRes = await studioReq(
-      `/api/projects/${project}/environments/preview/deploy`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      },
-    );
+    const deployRes = await studioReq(`/api/projects/${project}/environments/preview/deploy`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
     expect([200, 422]).toContain(deployRes.status);
 
     // 5. Record a connection status change via /api/projects/:project/secrets
@@ -612,9 +534,7 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     // Verify exact actor attribution (`user:<id>` vs `agent:<id>` with client name)
     const agentEvents = feed.events.filter((e) => e.actor.type === "agent");
     expect(agentEvents.length).toBeGreaterThan(0);
-    expect(
-      agentEvents.some((e) => e.actor.displayId === `agent:${testTokenId(project, "claude-code")}`),
-    ).toBe(true);
+    expect(agentEvents.some((e) => e.actor.displayId === `agent:${testTokenId(project, "claude-code")}`)).toBe(true);
     expect(agentEvents.some((e) => e.actor.client === "claude-code")).toBe(true);
 
     const humanEvents = feed.events.filter((e) => e.actor.type === "human");
@@ -623,45 +543,31 @@ describe("Story 7.2 — Draft Branch / Proposal Mode, Per-Op Review & Unified Ac
     expect(humanEvents.some((e) => e.actor.displayId === `user:${alice.userId}`)).toBe(true);
 
     // Filter by author=humans
-    const humansOnlyRes = await studioReq(
-      `/api/projects/${project}/activity?author=humans`,
-    );
+    const humansOnlyRes = await studioReq(`/api/projects/${project}/activity?author=humans`);
     const humansOnlyFeed = (await humansOnlyRes.json()) as ActivityFeedPayload;
     expect(humansOnlyFeed.events.length).toBeGreaterThan(0);
     expect(humansOnlyFeed.events.every((e) => e.actor.type === "human")).toBe(true);
 
     // Filter by author=agents
-    const agentsOnlyRes = await studioReq(
-      `/api/projects/${project}/activity?author=agents`,
-    );
+    const agentsOnlyRes = await studioReq(`/api/projects/${project}/activity?author=agents`);
     const agentsOnlyFeed = (await agentsOnlyRes.json()) as ActivityFeedPayload;
     expect(agentsOnlyFeed.events.length).toBeGreaterThan(0);
     expect(agentsOnlyFeed.events.every((e) => e.actor.type === "agent")).toBe(true);
 
     // Filter by specific agent client (`claude-code`)
-    const clientOnlyRes = await studioReq(
-      `/api/projects/${project}/activity?author=claude-code`,
-    );
+    const clientOnlyRes = await studioReq(`/api/projects/${project}/activity?author=claude-code`);
     const clientOnlyFeed = (await clientOnlyRes.json()) as ActivityFeedPayload;
     expect(clientOnlyFeed.events.length).toBeGreaterThan(0);
-    expect(
-      clientOnlyFeed.events.every(
-        (e) => e.actor.client === "claude-code" || e.actor.id === "claude-code",
-      ),
-    ).toBe(true);
+    expect(clientOnlyFeed.events.every((e) => e.actor.client === "claude-code" || e.actor.id === "claude-code")).toBe(true);
 
     // Filter by event type (`proposal`)
-    const proposalTypeRes = await studioReq(
-      `/api/projects/${project}/activity?type=proposal`,
-    );
+    const proposalTypeRes = await studioReq(`/api/projects/${project}/activity?type=proposal`);
     const proposalTypeFeed = (await proposalTypeRes.json()) as ActivityFeedPayload;
     expect(proposalTypeFeed.events.length).toBeGreaterThanOrEqual(2); // created + accepted
     expect(proposalTypeFeed.events.every((e) => e.type === "proposal")).toBe(true);
 
     // Filter by time window (`1h`)
-    const windowRes = await studioReq(
-      `/api/projects/${project}/activity?window=1h`,
-    );
+    const windowRes = await studioReq(`/api/projects/${project}/activity?window=1h`);
     const windowFeed = (await windowRes.json()) as ActivityFeedPayload;
     expect(windowFeed.events.length).toBe(feed.events.length);
   });

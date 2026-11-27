@@ -28,11 +28,7 @@ export async function seedRowsDirectly(
         return v ?? null;
       });
       await db
-        .prepare(
-          `INSERT OR REPLACE INTO "${tableName}" (${cols.map((c) => `"${c}"`).join(", ")}) VALUES (${cols
-            .map((_, i) => `?${i + 1}`)
-            .join(", ")})`,
-        )
+        .prepare(`INSERT OR REPLACE INTO "${tableName}" (${cols.map((c) => `"${c}"`).join(", ")}) VALUES (${cols.map((_, i) => `?${i + 1}`).join(", ")})`)
         .bind(...vals)
         .run();
       inserted += 1;

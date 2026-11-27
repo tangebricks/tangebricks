@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_audit_trail.sql?raw";
-import {
-  AuditTrailService,
-  createAuditRoutes,
-} from "../src/index.ts";
+import { AuditTrailService, createAuditRoutes } from "../src/index.ts";
 import type { AuditEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -108,7 +105,7 @@ describe("Audit Trail Ledger Core Logic", () => {
 
     expect(lines[0]).toContain("id,timestamp,actor_id,actor_type");
     expect(lines[1]).toContain('"policy.changed"');
-    expect(lines[1]).toContain('Strict MFA');
+    expect(lines[1]).toContain("Strict MFA");
   });
 
   it("strictly isolates audit logs between workspaces", async () => {
@@ -146,22 +143,26 @@ describe("Audit Trail HTTP API", () => {
     app.route("/api", createAuditRoutes());
 
     // 1. POST /audit/events
-    const createRes = await app.request("/api/audit/events", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "cf-connecting-ip": "203.0.113.195",
-        "user-agent": "AuditAgent/1.0",
-        "x-workspace-id": WS_ALPHA,
+    const createRes = await app.request(
+      "/api/audit/events",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "cf-connecting-ip": "203.0.113.195",
+          "user-agent": "AuditAgent/1.0",
+          "x-workspace-id": WS_ALPHA,
+        },
+        body: JSON.stringify({
+          actorId: "usr_sec_admin",
+          action: "ip_allowlist.updated",
+          targetType: "firewall",
+          targetId: "fw_rule_1",
+          metadata: { allowedSubnets: ["10.0.0.0/8"] },
+        }),
       },
-      body: JSON.stringify({
-        actorId: "usr_sec_admin",
-        action: "ip_allowlist.updated",
-        targetType: "firewall",
-        targetId: "fw_rule_1",
-        metadata: { allowedSubnets: ["10.0.0.0/8"] },
-      }),
-    }, { DB: db });
+      { DB: db },
+    );
     expect(createRes.status).toBe(201);
 
     // 2. GET /audit/events
@@ -188,18 +189,22 @@ describe("Audit Trail HTTP API", () => {
     });
     app.use("/api/*", stubWorkspaceContext);
     app.route("/api", createAuditRoutes());
-    const res = await app.request("/api/audit/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA, "x-test-user": "usr_carol", "x-test-role": "member" },
-      body: JSON.stringify({
-        actorId: "usr_ceo",
-        actorType: "support_impersonator",
-        actorEmail: "ceo@example.com",
-        action: "billing.changed",
-        targetType: "plan",
-        targetId: "p1",
-      }),
-    }, { DB: db });
+    const res = await app.request(
+      "/api/audit/events",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA, "x-test-user": "usr_carol", "x-test-role": "member" },
+        body: JSON.stringify({
+          actorId: "usr_ceo",
+          actorType: "support_impersonator",
+          actorEmail: "ceo@example.com",
+          action: "billing.changed",
+          targetType: "plan",
+          targetId: "p1",
+        }),
+      },
+      { DB: db },
+    );
     expect(res.status).toBe(201);
     const events = await new AuditTrailService(db).list(WS_ALPHA, { action: "billing.changed" });
     expect(events).toHaveLength(1);

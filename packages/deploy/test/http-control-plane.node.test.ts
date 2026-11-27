@@ -79,9 +79,19 @@ describe("request budget (1,200 per five minutes per account, kept below at 1,10
 
   test("a 429 is still retried after Retry-After, with the budget in place", async () => {
     const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT });
-    fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/workers/scripts"), times: 1, respond: { status: 429, body: { success: false, errors: [{ code: 971, message: "rate limited" }] }, headers: { "retry-after": "2" } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/workers/scripts"),
+      times: 1,
+      respond: { status: 429, body: { success: false, errors: [{ code: 971, message: "rate limited" }] }, headers: { "retry-after": "2" } },
+    });
     const clock = freeClock();
-    const client = createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, now: clock.now, sleep: clock.sleep, budget: createRequestBudget({ now: clock.now, sleep: clock.sleep }) });
+    const client = createClient({
+      credentials: { token: TOKEN, accountId: ACCOUNT },
+      fetch: fake.fetch,
+      now: clock.now,
+      sleep: clock.sleep,
+      budget: createRequestBudget({ now: clock.now, sleep: clock.sleep }),
+    });
     expect(await client.listScripts()).toEqual([]);
     expect(client.calls.map((c) => c.status)).toEqual([429, 200]);
     expect(clock.sleeps).toContain(2_000);
@@ -107,12 +117,21 @@ describe("verifyCloudflareToken with the real client asks Cloudflare", () => {
 
   test("a token that cannot read its own policies is checked with harmless reads, and a refused read names the permission", async () => {
     const { fake, cp } = setup({ tokenGroups: null });
-    fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/queues"), respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: "Authentication error" }] } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/queues"),
+      respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: "Authentication error" }] } },
+    });
     const report = await verifyCloudflareToken(TOKEN, ACCOUNT, { client: cp });
     expect(report.ok).toBe(false);
     expect(report.missingPermissionLabels).toEqual(["Queues: Edit"]);
     const reads = fake.requests.filter((r) => r.method === "GET").map((r) => r.path);
-    expect(reads).toEqual(expect.arrayContaining(["/client/v4/accounts/{account}/workers/scripts", "/client/v4/accounts/{account}/d1/database", "/client/v4/accounts/{account}/queues"]));
+    expect(reads).toEqual(
+      expect.arrayContaining([
+        "/client/v4/accounts/{account}/workers/scripts",
+        "/client/v4/accounts/{account}/d1/database",
+        "/client/v4/accounts/{account}/queues",
+      ]),
+    );
     expect(fake.requests.every((r) => r.method === "GET")).toBe(true); // verification never writes
   });
 
@@ -132,7 +151,10 @@ describe("verifyCloudflareToken with the real client asks Cloudflare", () => {
     const { fake, cp } = setup();
     const report = await verifyCloudflareToken("cf_scoped_valid_token_story53_least_privilege", ACCOUNT, { client: cp });
     expect(report).toMatchObject({ ok: false, status: "invalid" });
-    expect(fake.requests.filter((r) => r.path.endsWith("/tokens/verify")).map((r) => r.path)).toEqual(["/client/v4/accounts/{account}/tokens/verify", "/client/v4/user/tokens/verify"]);
+    expect(fake.requests.filter((r) => r.path.endsWith("/tokens/verify")).map((r) => r.path)).toEqual([
+      "/client/v4/accounts/{account}/tokens/verify",
+      "/client/v4/user/tokens/verify",
+    ]);
   });
 
   test("a legacy Global API Key is refused without being sent anywhere", async () => {
@@ -149,7 +171,8 @@ describe("verifyCloudflareToken with the real client asks Cloudflare", () => {
 
 describe("account tokens and user tokens: both verify endpoints", () => {
   const verifyPaths = (fake: ReturnType<typeof createFakeCloudflare>) => fake.requests.filter((r) => r.path.endsWith("/tokens/verify")).map((r) => r.path);
-  const rest = (fake: ReturnType<typeof createFakeCloudflare>) => createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, sleep: async () => {} });
+  const rest = (fake: ReturnType<typeof createFakeCloudflare>) =>
+    createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, sleep: async () => {} });
 
   test("an account token is verified at the account endpoint alone, and its permissions come from its own policies", async () => {
     const { fake, cp } = setup({ tokenKind: "account" });
@@ -171,13 +194,23 @@ describe("account tokens and user tokens: both verify endpoints", () => {
     // a user token's policies are not read at /accounts/{id}/tokens/{id}: the capability reads decide
     expect(fake.requests.some((r) => /\/tokens\/fake-(user-)?token-id$/.test(r.path))).toBe(false);
     const reads = fake.requests.map((r) => r.path);
-    expect(reads).toEqual(expect.arrayContaining(["/client/v4/accounts/{account}", "/client/v4/accounts/{account}/workers/scripts", "/client/v4/accounts/{account}/d1/database", "/client/v4/accounts/{account}/queues"]));
+    expect(reads).toEqual(
+      expect.arrayContaining([
+        "/client/v4/accounts/{account}",
+        "/client/v4/accounts/{account}/workers/scripts",
+        "/client/v4/accounts/{account}/d1/database",
+        "/client/v4/accounts/{account}/queues",
+      ]),
+    );
     expect(fake.requests.every((r) => r.method === "GET")).toBe(true);
   });
 
   test("a user token missing a capability is refused, naming it", async () => {
     const { fake, cp } = setup({ tokenKind: "user" });
-    fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/d1/database"), respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: "Authentication error" }] } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/d1/database"),
+      respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: "Authentication error" }] } },
+    });
     const report = await verifyCloudflareToken(TOKEN, ACCOUNT, { client: cp });
     expect(report.ok).toBe(false);
     expect(report.missingPermissionLabels).toEqual(["D1: Edit"]);
@@ -189,7 +222,11 @@ describe("account tokens and user tokens: both verify endpoints", () => {
     const report = await verifyCloudflareToken("cfut_not_a_token_cloudflare_knows_000000000000000", ACCOUNT, { client: cp });
     expect(report).toMatchObject({ ok: false, status: "invalid" });
     expect(verifyPaths(fake)).toEqual(["/client/v4/accounts/{account}/tokens/verify", "/client/v4/user/tokens/verify"]);
-    const other = createClient({ credentials: { token: "cfut_not_a_token_cloudflare_knows_000000000000000", accountId: ACCOUNT }, fetch: fake.fetch, sleep: async () => {} });
+    const other = createClient({
+      credentials: { token: "cfut_not_a_token_cloudflare_knows_000000000000000", accountId: ACCOUNT },
+      fetch: fake.fetch,
+      sleep: async () => {},
+    });
     await expect(other.verifyToken()).rejects.toThrow(/Invalid API Token|HTTP 401/);
   });
 
@@ -203,7 +240,10 @@ describe("account tokens and user tokens: both verify endpoints", () => {
 
   test("a revoked user token: the user endpoint answers with an error, and the token is refused", async () => {
     const { fake, cp } = setup({ tokenKind: "user" });
-    fake.fail({ when: (m, p) => m === "GET" && p === "/client/v4/user/tokens/verify", respond: { status: 401, body: { success: false, errors: [{ code: 1000, message: "Invalid API Token" }] } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p === "/client/v4/user/tokens/verify",
+      respond: { status: 401, body: { success: false, errors: [{ code: 1000, message: "Invalid API Token" }] } },
+    });
     const report = await verifyCloudflareToken(TOKEN, ACCOUNT, { client: cp });
     expect(report).toMatchObject({ ok: false, status: "invalid" });
   });
@@ -253,7 +293,16 @@ describe("Studio's provisioner on the real client (createByocProvisioner + creat
     const { cp } = setup();
     await apply(cp, "v1");
     const before = cp.httpCalls.length;
-    const again = await apply(cp, "v1", { envState: { deployedRev: 1, currentBuildHash: "build_v1", currentCodeHash: "code_v1", currentGraphHash: "graph_1", databaseExists: true, appliedMigrations: ["0001_init.sql"] } });
+    const again = await apply(cp, "v1", {
+      envState: {
+        deployedRev: 1,
+        currentBuildHash: "build_v1",
+        currentCodeHash: "code_v1",
+        currentGraphHash: "graph_1",
+        databaseExists: true,
+        appliedMigrations: ["0001_init.sql"],
+      },
+    });
     expect(again.action).toBe("noop");
     expect(again.appliedActions).toEqual([]);
     expect(again.mutatingCallCount).toBe(0);
@@ -263,7 +312,16 @@ describe("Studio's provisioner on the real client (createByocProvisioner + creat
   test("a code change re-uploads, keeps the secret, and does not re-run the migration", async () => {
     const { fake, cp } = setup();
     await apply(cp, "v1");
-    const result = await apply(cp, "v2", { envState: { deployedRev: 1, currentBuildHash: "build_v1", currentCodeHash: "code_v1", currentGraphHash: "graph_1", databaseExists: true, appliedMigrations: ["0001_init.sql"] } });
+    const result = await apply(cp, "v2", {
+      envState: {
+        deployedRev: 1,
+        currentBuildHash: "build_v1",
+        currentCodeHash: "code_v1",
+        currentGraphHash: "graph_1",
+        databaseExists: true,
+        appliedMigrations: ["0001_init.sql"],
+      },
+    });
     expect(result.action).toBe("update");
     expect(result.rebuiltWorker).toBe(true);
     expect(cp.scriptUploadCount).toBe(2);
@@ -308,7 +366,15 @@ describe("the smoke check sends the access key the gate requires", () => {
     const client = createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, alsoHide: [ACCESS_KEY] });
     const ledger = openLedger(memoryStore(), () => "0a1b2c3d");
     const names = resourceNames("0a1b2c3d");
-    const input = (code: string): DeployInput => ({ client, ledger, names, accessKey: ACCESS_KEY, bundle: { code, sha256: code.length.toString(16).padStart(64, "0") }, migrations: [], compatibilityDate: "2026-10-01" });
+    const input = (code: string): DeployInput => ({
+      client,
+      ledger,
+      names,
+      accessKey: ACCESS_KEY,
+      bundle: { code, sha256: code.length.toString(16).padStart(64, "0") },
+      migrations: [],
+      compatibilityDate: "2026-10-01",
+    });
     await deploy(input("export default { fetch() { return new Response('one'); } };"));
     const second = await deploy(input("export default { fetch() { return new Response('two!'); } };"));
     expect(second.changes.map((c) => c.kind)).toContain("script_uploaded");

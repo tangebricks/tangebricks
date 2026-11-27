@@ -97,25 +97,19 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
     orgId = orgData.id;
   });
 
-  async function seedProjectAndConnectCloudflare(
-    projectId: string,
-    identity: "stub" | "core-auth" = "stub",
-  ) {
+  async function seedProjectAndConnectCloudflare(projectId: string, identity: "stub" | "core-auth" = "stub") {
     await callStudio(`/api/orgs/${orgId}/projects`, {
       token: ownerSessionToken,
       body: { project: projectId },
     });
 
-    const connectRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        token: ownerSessionToken,
-        body: {
-          token: VALID_CF_TOKEN,
-          projectId,
-        },
+    const connectRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      token: ownerSessionToken,
+      body: {
+        token: VALID_CF_TOKEN,
+        projectId,
       },
-    );
+    });
     expect(connectRes.status).toBe(201);
 
     const opsRes = await callStudio(`/api/projects/${projectId}/ops`, {
@@ -145,11 +139,7 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
     });
     expect(opsRes.status).toBe(200);
 
-    for (const secName of [
-      "BETTER_AUTH_SECRET",
-      "GITHUB_CLIENT_ID",
-      "GITHUB_CLIENT_SECRET",
-    ]) {
+    for (const secName of ["BETTER_AUTH_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) {
       const secretRes = await callStudio(`/api/projects/${projectId}/secrets`, {
         token: ownerSessionToken,
         headers: { "x-org-id": orgId },
@@ -176,14 +166,11 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
     await seedProjectAndConnectCloudflare(projectId, "stub");
 
     // 1. First-time plan on preview -> action === "create"
-    const plan1Res = await callStudio(
-      `/api/projects/${projectId}/environments/preview/plan`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const plan1Res = await callStudio(`/api/projects/${projectId}/environments/preview/plan`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(plan1Res.status).toBe(200);
     const plan1 = (await plan1Res.json()) as {
       action: string;
@@ -208,14 +195,11 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
     expect(plan1.blockers).toEqual([]);
 
     // 2. Execute deploy on preview
-    const deploy1Res = await callStudio(
-      `/api/projects/${projectId}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const deploy1Res = await callStudio(`/api/projects/${projectId}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(deploy1Res.status).toBe(200);
     const deploy1Body = (await deploy1Res.json()) as {
       ok: boolean;
@@ -226,14 +210,11 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
     expect(deploy1Body.environment.buildHash).toBe(plan1.worker.nextBuildHash);
 
     // 3. Repeat plan on preview -> action === "noop"
-    const planNoopRes = await callStudio(
-      `/api/projects/${projectId}/environments/preview/plan`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const planNoopRes = await callStudio(`/api/projects/${projectId}/environments/preview/plan`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(planNoopRes.status).toBe(200);
     const planNoop = (await planNoopRes.json()) as {
       action: string;
@@ -270,14 +251,11 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
     });
     expect(addBrickRes.status).toBe(200);
 
-    const planUpdateRes = await callStudio(
-      `/api/projects/${projectId}/environments/preview/plan`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const planUpdateRes = await callStudio(`/api/projects/${projectId}/environments/preview/plan`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(planUpdateRes.status).toBe(200);
     const planUpdate = (await planUpdateRes.json()) as {
       action: string;
@@ -292,51 +270,37 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
     expect(planUpdate.worker.changed).toBe(true);
     expect(planUpdate.worker.currentBuildHash).toBe(plan1.worker.nextBuildHash);
     expect(planUpdate.d1.createDatabase).toBe(false);
-    expect(
-      planUpdate.d1.pendingMigrations.some((m) => m.includes("credit-wallet")),
-    ).toBe(true);
+    expect(planUpdate.d1.pendingMigrations.some((m) => m.includes("credit-wallet"))).toBe(true);
   });
 
   it("unconditionally blocks identity: 'stub' on production with PRODUCTION_IDENTITY_STUB_FORBIDDEN in both /plan and /deploy (D8, AD-S12)", async () => {
     const projectId = "plan-diff-prod-stub";
     await seedProjectAndConnectCloudflare(projectId, "stub");
 
-    const prodPlanRes = await callStudio(
-      `/api/projects/${projectId}/environments/production/plan`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const prodPlanRes = await callStudio(`/api/projects/${projectId}/environments/production/plan`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(prodPlanRes.status).toBe(200);
     const prodPlan = (await prodPlanRes.json()) as {
       blockers: Array<{ code: string; message: string; remediation: string }>;
     };
-    expect(
-      prodPlan.blockers.some(
-        (b) => b.code === "PRODUCTION_IDENTITY_STUB_FORBIDDEN",
-      ),
-    ).toBe(true);
+    expect(prodPlan.blockers.some((b) => b.code === "PRODUCTION_IDENTITY_STUB_FORBIDDEN")).toBe(true);
 
     // Attempting to deploy to production while identity === "stub" returns HTTP 422
-    const prodDeployRes = await callStudio(
-      `/api/projects/${projectId}/environments/production/deploy`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const prodDeployRes = await callStudio(`/api/projects/${projectId}/environments/production/deploy`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(prodDeployRes.status).toBe(422);
     const prodDeployErr = (await prodDeployRes.json()) as {
       ok: boolean;
       error: { code: string };
     };
     expect(prodDeployErr.ok).toBe(false);
-    expect(prodDeployErr.error.code).toBe(
-      "PRODUCTION_IDENTITY_STUB_FORBIDDEN",
-    );
+    expect(prodDeployErr.error.code).toBe("PRODUCTION_IDENTITY_STUB_FORBIDDEN");
   });
 
   it("flags destructive SQL migrations, blocks deploy without confirmDestructive: true (HTTP 422), and succeeds when confirmed", async () => {
@@ -344,14 +308,11 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
     await seedProjectAndConnectCloudflare(projectId, "core-auth");
 
     // Deploy initial schema to preview
-    const firstDeployRes = await callStudio(
-      `/api/projects/${projectId}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const firstDeployRes = await callStudio(`/api/projects/${projectId}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(firstDeployRes.status).toBe(200);
 
     // Drop column `legacy_note` and narrow `amount` from text -> number on `invoices` entity
@@ -376,14 +337,11 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
     expect(mutateEntityRes.status).toBe(200);
 
     // Plan on preview now includes destructiveWarnings for drop_column and type_narrowing
-    const destructivePlanRes = await callStudio(
-      `/api/projects/${projectId}/environments/preview/plan`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const destructivePlanRes = await callStudio(`/api/projects/${projectId}/environments/preview/plan`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(destructivePlanRes.status).toBe(200);
     const destructivePlan = (await destructivePlanRes.json()) as {
       d1: {
@@ -395,35 +353,20 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
         }>;
       };
     };
+    expect(destructivePlan.d1.destructiveWarnings.length).toBeGreaterThanOrEqual(2);
     expect(
-      destructivePlan.d1.destructiveWarnings.length,
-    ).toBeGreaterThanOrEqual(2);
-    expect(
-      destructivePlan.d1.destructiveWarnings.some(
-        (w) =>
-          w.kind === "drop_column" &&
-          w.affectedTable === "invoices" &&
-          w.affectedColumn === "legacy_note",
-      ),
+      destructivePlan.d1.destructiveWarnings.some((w) => w.kind === "drop_column" && w.affectedTable === "invoices" && w.affectedColumn === "legacy_note"),
     ).toBe(true);
     expect(
-      destructivePlan.d1.destructiveWarnings.some(
-        (w) =>
-          w.kind === "type_narrowing" &&
-          w.affectedTable === "invoices" &&
-          w.affectedColumn === "amount",
-      ),
+      destructivePlan.d1.destructiveWarnings.some((w) => w.kind === "type_narrowing" && w.affectedTable === "invoices" && w.affectedColumn === "amount"),
     ).toBe(true);
 
     // Deploy without confirmDestructive: true -> HTTP 422 DESTRUCTIVE_MIGRATION_CONFIRMATION_REQUIRED
-    const unconfirmedDeployRes = await callStudio(
-      `/api/projects/${projectId}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const unconfirmedDeployRes = await callStudio(`/api/projects/${projectId}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(unconfirmedDeployRes.status).toBe(422);
     const unconfirmedBody = (await unconfirmedDeployRes.json()) as {
       ok: boolean;
@@ -433,22 +376,17 @@ describe("Story 5.3 — Pre-deploy Plan & Diff, Destructive-Migration Guard, and
       };
     };
     expect(unconfirmedBody.ok).toBe(false);
-    expect(unconfirmedBody.error.code).toBe(
-      "DESTRUCTIVE_MIGRATION_CONFIRMATION_REQUIRED",
-    );
+    expect(unconfirmedBody.error.code).toBe("DESTRUCTIVE_MIGRATION_CONFIRMATION_REQUIRED");
 
     // Deploy with confirmDestructive: true and matching confirmedMigrationNames -> HTTP 200
-    const confirmedDeployRes = await callStudio(
-      `/api/projects/${projectId}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {
-          confirmDestructive: true,
-          confirmedMigrationNames: unconfirmedBody.error.requiredMigrationNames,
-        },
+    const confirmedDeployRes = await callStudio(`/api/projects/${projectId}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {
+        confirmDestructive: true,
+        confirmedMigrationNames: unconfirmedBody.error.requiredMigrationNames,
       },
-    );
+    });
     expect(confirmedDeployRes.status).toBe(200);
     const confirmedBody = (await confirmedDeployRes.json()) as { ok: boolean };
     expect(confirmedBody.ok).toBe(true);

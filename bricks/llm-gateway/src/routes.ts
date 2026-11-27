@@ -157,13 +157,7 @@ export function createAiRoutes(options: AiRouteOptions = {}): Hono<AiEnv> {
     }
 
     const service = serviceFor(c.env.DB, pxEnvironment(c.env));
-    const result = await service.createTemplate(
-      workspace.id,
-      parsed.data.name,
-      parsed.data.templateText,
-      parsed.data.defaultModel,
-      parsed.data.temperature
-    );
+    const result = await service.createTemplate(workspace.id, parsed.data.name, parsed.data.templateText, parsed.data.defaultModel, parsed.data.temperature);
 
     if (!result.ok) {
       return c.json({ error: result.error, ...(result.errorCode ? { code: result.errorCode } : {}) }, result.code as 400 | 500);

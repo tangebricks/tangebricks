@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_webhook_gateway.sql?raw";
-import {
-  createWebhookRoutes,
-  WebhookService,
-} from "../src/index.ts";
+import { createWebhookRoutes, WebhookService } from "../src/index.ts";
 import type { WebhookEnv, WebhookRouteOptions } from "../src/routes.ts";
 import type { WebhookGatewayAdapter } from "../src/gateway.ts";
 
@@ -15,14 +12,7 @@ const db = env.DB as D1Like;
 const WS_A = "ws_wh_verifier_none";
 
 async function resetDb(): Promise<void> {
-  for (const table of [
-    "px_webhook_deliveries",
-    "wh_subscriptions",
-    "px_connections",
-    "wh_deliveries",
-    "wh_endpoints",
-    "px_logs",
-  ]) {
+  for (const table of ["px_webhook_deliveries", "wh_subscriptions", "px_connections", "wh_deliveries", "wh_endpoints", "px_logs"]) {
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   }
   await applyMigration(db, migration);

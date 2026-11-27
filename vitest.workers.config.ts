@@ -13,9 +13,7 @@ const brickAliases = readdirSync(here("./bricks"))
 
 export default defineConfig({
   resolve: {
-    alias: [
-      ...brickAliases,
-    ],
+    alias: [...brickAliases],
   },
   plugins: [
     cloudflareTest({

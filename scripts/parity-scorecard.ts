@@ -50,7 +50,10 @@ interface VitestJsonReport {
 }
 
 function stripBackticks(value: string): string {
-  return value.trim().replace(/^`+|`+$/g, "").trim();
+  return value
+    .trim()
+    .replace(/^`+|`+$/g, "")
+    .trim();
 }
 
 export function parseMarkdownTableSection(markdown: string, headingText: string): string[][] {
@@ -88,12 +91,7 @@ export function parseMarkdownTableSection(markdown: string, headingText: string)
   return rows;
 }
 
-function runVitestAndCollectResults(
-  cwdDir: string,
-  files: string[],
-  configPath: string | null,
-  tempOutputFile: string,
-): VitestTestResultFile[] {
+function runVitestAndCollectResults(cwdDir: string, files: string[], configPath: string | null, tempOutputFile: string): VitestTestResultFile[] {
   if (files.length === 0) return [];
   if (existsSync(tempOutputFile)) {
     rmSync(tempOutputFile, { force: true });
@@ -137,26 +135,16 @@ function main(): void {
   }
 
   const markdown = readFileSync(scorecardPath, "utf8");
-  const canonicalRawRows = parseMarkdownTableSection(
-    markdown,
-    "CP8 Canonical 12-Row Parity Scorecard",
-  );
-  const oosRawRows = parseMarkdownTableSection(
-    markdown,
-    "Explicit Out-of-Scope Rows",
-  );
+  const canonicalRawRows = parseMarkdownTableSection(markdown, "CP8 Canonical 12-Row Parity Scorecard");
+  const oosRawRows = parseMarkdownTableSection(markdown, "Explicit Out-of-Scope Rows");
 
   if (canonicalRawRows.length !== 12) {
-    console.error(
-      `[parity-scorecard] FAIL: Expected exactly 12 canonical in-scope rows, found ${canonicalRawRows.length}`,
-    );
+    console.error(`[parity-scorecard] FAIL: Expected exactly 12 canonical in-scope rows, found ${canonicalRawRows.length}`);
     process.exit(1);
   }
 
   if (oosRawRows.length < 4) {
-    console.error(
-      `[parity-scorecard] FAIL: Expected at least 4 Explicit Out-of-Scope rows, found ${oosRawRows.length}`,
-    );
+    console.error(`[parity-scorecard] FAIL: Expected at least 4 Explicit Out-of-Scope rows, found ${oosRawRows.length}`);
     process.exit(1);
   }
 
@@ -169,9 +157,7 @@ function main(): void {
 
   for (const oos of outOfScopeRows) {
     if (oos.decision !== "out-of-scope") {
-      console.error(
-        `[parity-scorecard] FAIL: Out-of-scope row ${oos.id} has invalid decision "${oos.decision}"`,
-      );
+      console.error(`[parity-scorecard] FAIL: Out-of-scope row ${oos.id} has invalid decision "${oos.decision}"`);
       process.exit(1);
     }
   }
@@ -214,12 +200,7 @@ function main(): void {
     "vitest.config.ts",
     tmpWebReport,
   );
-  const workerResults = runVitestAndCollectResults(
-    rootDir,
-    workerFiles,
-    null,
-    tmpWorkerReport,
-  );
+  const workerResults = runVitestAndCollectResults(rootDir, workerFiles, null, tmpWorkerReport);
 
   const allTestFileResults = [...webResults, ...workerResults];
 
@@ -227,9 +208,7 @@ function main(): void {
     if (row.failureReason) continue;
 
     const normalizedTarget = row.testFile.replace(/\\/g, "/");
-    const matchingFileResult = allTestFileResults.find((tr) =>
-      tr.name.replace(/\\/g, "/").endsWith(normalizedTarget),
-    );
+    const matchingFileResult = allTestFileResults.find((tr) => tr.name.replace(/\\/g, "/").endsWith(normalizedTarget));
 
     if (!matchingFileResult) {
       row.status = "failed";

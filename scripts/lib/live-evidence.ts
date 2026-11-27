@@ -188,9 +188,7 @@ export function checkLiveIntegrity(root: string): string[] {
         `LIVE_TAMPER: ${rel} changed (sha256 ${hash.slice(0, 12)}... != recorded ${entry.sha256.slice(0, 12)}...) but its run timestamp ${ts} is unchanged: a stored live result was edited without a re-run`,
       );
     } else {
-      errors.push(
-        `LIVE_UNRECORDED_RUN: ${rel} has a new run (${ts}, recorded ${entry.runTimestamp}); record it with pnpm evidence:record-live`,
-      );
+      errors.push(`LIVE_UNRECORDED_RUN: ${rel} has a new run (${ts}, recorded ${entry.runTimestamp}); record it with pnpm evidence:record-live`);
     }
   }
   const present = new Set(files);

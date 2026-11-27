@@ -135,21 +135,17 @@ export class OAuthServerService {
     const urisJson = JSON.stringify(input.redirectUris);
     const scopesJson = JSON.stringify(input.allowedScopes);
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO oauth_clients (
         client_id, workspace_id, client_name, client_secret_hash,
         redirect_uris_json, allowed_scopes_json, is_confidential, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      clientId,
-      input.workspaceId,
-      input.clientName.trim(),
-      secretHash,
-      urisJson,
-      scopesJson,
-      isConfidential ? 1 : 0,
-      now
-    ).run();
+    `,
+      )
+      .bind(clientId, input.workspaceId, input.clientName.trim(), secretHash, urisJson, scopesJson, isConfidential ? 1 : 0, now)
+      .run();
 
     return {
       client: {
@@ -169,9 +165,7 @@ export class OAuthServerService {
    * Retrieves a client by ID.
    */
   async getClient(clientId: string): Promise<OAuthClient | null> {
-    const row = await this.db.prepare(
-      "SELECT * FROM oauth_clients WHERE client_id = ?"
-    ).bind(clientId).first<RawClientRow>();
+    const row = await this.db.prepare("SELECT * FROM oauth_clients WHERE client_id = ?").bind(clientId).first<RawClientRow>();
 
     if (!row) return null;
 
@@ -190,9 +184,7 @@ export class OAuthServerService {
    * Verifies client authentication credentials.
    */
   private async authenticateClient(clientId: string, clientSecret?: string): Promise<RawClientRow> {
-    const client = await this.db.prepare(
-      "SELECT * FROM oauth_clients WHERE client_id = ?"
-    ).bind(clientId).first<RawClientRow>();
+    const client = await this.db.prepare("SELECT * FROM oauth_clients WHERE client_id = ?").bind(clientId).first<RawClientRow>();
 
     if (!client) {
       throw new Error("invalid_client: Client does not exist");
@@ -243,24 +235,29 @@ export class OAuthServerService {
     const now = new Date().toISOString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO oauth_auth_codes (
         code, client_id, user_id, workspace_id, redirect_uri,
         scopes_json, code_challenge, code_challenge_method,
         expires_at, used_at, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
-    `).bind(
-      code,
-      input.clientId,
-      input.userId,
-      input.workspaceId,
-      input.redirectUri,
-      JSON.stringify(input.scopes),
-      input.codeChallenge || null,
-      input.codeChallengeMethod || null,
-      expiresAt,
-      now
-    ).run();
+    `,
+      )
+      .bind(
+        code,
+        input.clientId,
+        input.userId,
+        input.workspaceId,
+        input.redirectUri,
+        JSON.stringify(input.scopes),
+        input.codeChallenge || null,
+        input.codeChallengeMethod || null,
+        expiresAt,
+        now,
+      )
+      .run();
 
     return { code, redirectUri: input.redirectUri };
   }
@@ -277,9 +274,10 @@ export class OAuthServerService {
   }): Promise<TokenResponse> {
     const client = await this.authenticateClient(input.clientId, input.clientSecret);
 
-    const codeRow = await this.db.prepare(
-      "SELECT * FROM oauth_auth_codes WHERE code = ? AND client_id = ?"
-    ).bind(input.code, input.clientId).first<RawCodeRow>();
+    const codeRow = await this.db
+      .prepare("SELECT * FROM oauth_auth_codes WHERE code = ? AND client_id = ?")
+      .bind(input.code, input.clientId)
+      .first<RawCodeRow>();
 
     if (!codeRow) {
       throw new Error("invalid_grant: Invalid authorization code");
@@ -316,9 +314,7 @@ export class OAuthServerService {
     }
 
     // Mark code as used
-    await this.db.prepare(
-      "UPDATE oauth_auth_codes SET used_at = ? WHERE code = ?"
-    ).bind(Date.now(), input.code).run();
+    await this.db.prepare("UPDATE oauth_auth_codes SET used_at = ? WHERE code = ?").bind(Date.now(), input.code).run();
 
     // Generate tokens
     const accessToken = `at_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -327,23 +323,18 @@ export class OAuthServerService {
     const accessExp = Date.now() + 3600 * 1000; // 1 hour
     const refreshExp = Date.now() + 30 * 86400 * 1000; // 30 days
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO oauth_tokens (
         access_token, refresh_token, client_id, user_id, workspace_id,
         scopes_json, token_type, access_token_expires_at, refresh_token_expires_at,
         revoked_at, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, 'Bearer', ?, ?, NULL, ?)
-    `).bind(
-      accessToken,
-      refreshToken,
-      client.client_id,
-      codeRow.user_id,
-      codeRow.workspace_id,
-      codeRow.scopes_json,
-      accessExp,
-      refreshExp,
-      now
-    ).run();
+    `,
+      )
+      .bind(accessToken, refreshToken, client.client_id, codeRow.user_id, codeRow.workspace_id, codeRow.scopes_json, accessExp, refreshExp, now)
+      .run();
 
     const scopes: string[] = JSON.parse(codeRow.scopes_json || "[]");
 
@@ -359,16 +350,13 @@ export class OAuthServerService {
   /**
    * Refreshes an access token using a refresh token.
    */
-  async refreshAccessToken(input: {
-    clientId: string;
-    clientSecret?: string;
-    refreshToken: string;
-  }): Promise<TokenResponse> {
+  async refreshAccessToken(input: { clientId: string; clientSecret?: string; refreshToken: string }): Promise<TokenResponse> {
     const client = await this.authenticateClient(input.clientId, input.clientSecret);
 
-    const tokenRow = await this.db.prepare(
-      "SELECT * FROM oauth_tokens WHERE refresh_token = ? AND client_id = ?"
-    ).bind(input.refreshToken, input.clientId).first<RawTokenRow>();
+    const tokenRow = await this.db
+      .prepare("SELECT * FROM oauth_tokens WHERE refresh_token = ? AND client_id = ?")
+      .bind(input.refreshToken, input.clientId)
+      .first<RawTokenRow>();
 
     if (!tokenRow) {
       throw new Error("invalid_grant: Invalid refresh token");
@@ -383,9 +371,7 @@ export class OAuthServerService {
     }
 
     // Revoke old refresh token (refresh token rotation)
-    await this.db.prepare(
-      "UPDATE oauth_tokens SET revoked_at = ? WHERE refresh_token = ?"
-    ).bind(Date.now(), input.refreshToken).run();
+    await this.db.prepare("UPDATE oauth_tokens SET revoked_at = ? WHERE refresh_token = ?").bind(Date.now(), input.refreshToken).run();
 
     // Issue new pair
     const newAccessToken = `at_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -394,23 +380,18 @@ export class OAuthServerService {
     const accessExp = Date.now() + 3600 * 1000;
     const refreshExp = Date.now() + 30 * 86400 * 1000;
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO oauth_tokens (
         access_token, refresh_token, client_id, user_id, workspace_id,
         scopes_json, token_type, access_token_expires_at, refresh_token_expires_at,
         revoked_at, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, 'Bearer', ?, ?, NULL, ?)
-    `).bind(
-      newAccessToken,
-      newRefreshToken,
-      client.client_id,
-      tokenRow.user_id,
-      tokenRow.workspace_id,
-      tokenRow.scopes_json,
-      accessExp,
-      refreshExp,
-      now
-    ).run();
+    `,
+      )
+      .bind(newAccessToken, newRefreshToken, client.client_id, tokenRow.user_id, tokenRow.workspace_id, tokenRow.scopes_json, accessExp, refreshExp, now)
+      .run();
 
     const scopes: string[] = JSON.parse(tokenRow.scopes_json || "[]");
 
@@ -426,11 +407,7 @@ export class OAuthServerService {
   /**
    * Client credentials grant (machine-to-machine, no user context).
    */
-  async exchangeClientCredentials(input: {
-    clientId: string;
-    clientSecret?: string;
-    scopes?: string[];
-  }): Promise<TokenResponse> {
+  async exchangeClientCredentials(input: { clientId: string; clientSecret?: string; scopes?: string[] }): Promise<TokenResponse> {
     const client = await this.authenticateClient(input.clientId, input.clientSecret);
 
     const allowedScopes: string[] = JSON.parse(client.allowed_scopes_json || "[]");
@@ -447,21 +424,18 @@ export class OAuthServerService {
     const accessExp = Date.now() + 7200 * 1000; // 2 hours
     const refreshExp = Date.now(); // No refresh token for client credentials
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO oauth_tokens (
         access_token, refresh_token, client_id, user_id, workspace_id,
         scopes_json, token_type, access_token_expires_at, refresh_token_expires_at,
         revoked_at, created_at
       ) VALUES (?, NULL, ?, NULL, ?, ?, 'Bearer', ?, ?, NULL, ?)
-    `).bind(
-      accessToken,
-      client.client_id,
-      client.workspace_id,
-      JSON.stringify(requestedScopes),
-      accessExp,
-      refreshExp,
-      now
-    ).run();
+    `,
+      )
+      .bind(accessToken, client.client_id, client.workspace_id, JSON.stringify(requestedScopes), accessExp, refreshExp, now)
+      .run();
 
     return {
       access_token: accessToken,
@@ -475,9 +449,7 @@ export class OAuthServerService {
    * Introspects an active access token (RFC 7662).
    */
   async introspectToken(token: string): Promise<IntrospectionResult> {
-    const row = await this.db.prepare(
-      "SELECT * FROM oauth_tokens WHERE access_token = ?"
-    ).bind(token).first<RawTokenRow>();
+    const row = await this.db.prepare("SELECT * FROM oauth_tokens WHERE access_token = ?").bind(token).first<RawTokenRow>();
 
     if (!row || row.revoked_at !== null || Date.now() > row.access_token_expires_at) {
       return { active: false };
@@ -500,11 +472,16 @@ export class OAuthServerService {
    */
   async revokeToken(token: string): Promise<boolean> {
     const now = Date.now();
-    const res = await this.db.prepare(`
+    const res = await this.db
+      .prepare(
+        `
       UPDATE oauth_tokens
       SET revoked_at = ?
       WHERE access_token = ? OR refresh_token = ?
-    `).bind(now, token, token).run();
+    `,
+      )
+      .bind(now, token, token)
+      .run();
 
     return res.meta.changes > 0;
   }
@@ -513,9 +490,8 @@ export class OAuthServerService {
    * Lists clients in a workspace.
    */
   async listClients(workspaceId: string): Promise<OAuthClient[]> {
-    const rows = (await this.db.prepare(
-      "SELECT * FROM oauth_clients WHERE workspace_id = ? ORDER BY created_at DESC"
-    ).bind(workspaceId).all<RawClientRow>()).results;
+    const rows = (await this.db.prepare("SELECT * FROM oauth_clients WHERE workspace_id = ? ORDER BY created_at DESC").bind(workspaceId).all<RawClientRow>())
+      .results;
 
     return rows.map((r) => ({
       client_id: r.client_id,

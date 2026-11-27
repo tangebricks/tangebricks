@@ -27,7 +27,12 @@ async function api(method: string, path: string, opts: { user?: string; ws?: str
 const balanceMilli = async (ws: string) =>
   (await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind(ws).first<{ balance_milli: number }>())?.balance_milli ?? 0;
 const ledger = async (ws: string) =>
-  (await db.prepare("SELECT idempotency_key, amount_milli FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid").bind(ws).all<{ idempotency_key: string; amount_milli: number }>()).results;
+  (
+    await db
+      .prepare("SELECT idempotency_key, amount_milli FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid")
+      .bind(ws)
+      .all<{ idempotency_key: string; amount_milli: number }>()
+  ).results;
 
 async function workspaceOf(user: string): Promise<string> {
   const created = await api("POST", "/api/workspaces", { user, body: { name: `${user}'s` } });
@@ -39,7 +44,9 @@ describe("plan credits in an assembled app (story 1.20)", () => {
   test("the app is wired: the charger in the route and the per-minute schedule", async () => {
     expect(app, "out/plan-credits/src/index.ts was not assembled").toBeDefined();
     expect(typeof app!.scheduled).toBe("function");
-    const entry = Object.values(import.meta.glob("../../../out/plan-credits/src/index.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>)[0]!;
+    const entry = Object.values(
+      import.meta.glob("../../../out/plan-credits/src/index.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>,
+    )[0]!;
     expect(entry).toContain('createPlanRoutes({ defaultTier: "free", planCredits: "free:100,pro:1000", creditPeriod: "month", charger: walletCharger })');
     expect(entry).toContain('options: { planCredits: "free:100,pro:1000", creditPeriod: "month", charger: walletCharger } });');
   });
@@ -74,7 +81,10 @@ describe("plan credits in an assembled app (story 1.20)", () => {
     // The lazy path renews too: a subscription that started over a month ago gains one more period on its next read.
     const wsC = await workspaceOf("carol");
     await api("GET", "/api/subscriptions/current", { user: "carol", ws: wsC });
-    await db.prepare("UPDATE sub_subscriptions SET created_at = ? WHERE workspace_id = ?").bind(new Date(Date.now() - 35 * DAY).toISOString(), wsC).run();
+    await db
+      .prepare("UPDATE sub_subscriptions SET created_at = ? WHERE workspace_id = ?")
+      .bind(new Date(Date.now() - 35 * DAY).toISOString(), wsC)
+      .run();
     await Promise.all([1, 2, 3].map(() => api("GET", "/api/subscriptions/current", { user: "carol", ws: wsC })));
     await app!.scheduled({ scheduledTime: Date.now(), cron: "* * * * *" }, env);
     expect(await balanceMilli(wsC)).toBe(200_000);
@@ -86,7 +96,10 @@ describe("plan credits in an assembled app (story 1.20)", () => {
     await api("GET", "/api/subscriptions/current", { user: "alice", ws: wsA });
     expect((await api("POST", "/api/subscriptions/cancel", { user: "alice", ws: wsA, body: { immediately: true } })).status).toBe(200);
     await app!.scheduled({ scheduledTime: Date.now() + 35 * DAY, cron: "* * * * *" }, env);
-    await db.prepare("UPDATE sub_subscriptions SET created_at = ? WHERE workspace_id = ?").bind(new Date(Date.now() - 35 * DAY).toISOString(), wsA).run();
+    await db
+      .prepare("UPDATE sub_subscriptions SET created_at = ? WHERE workspace_id = ?")
+      .bind(new Date(Date.now() - 35 * DAY).toISOString(), wsA)
+      .run();
     await api("GET", "/api/subscriptions/current", { user: "alice", ws: wsA });
     expect(await balanceMilli(wsA)).toBe(100_000);
   });
@@ -113,7 +126,9 @@ describe("plan credits in an assembled app (story 1.20)", () => {
     expect((await api("POST", `/api/subscriptions/change${query}`, { user: "alice", ws: wsA, body: { planId: "free", ...smuggled } })).status).toBe(200);
     expect((await api("GET", `/api/plans${query}`, { user: "alice", ws: wsB })).status).toBe(200); // the global catalog, no workspace
     // Two workspace headers, a header naming B with an A body, and no header at all.
-    expect((await api("GET", "/api/subscriptions/current", { user: "alice", headers: { "x-workspace-id": `${wsA},${wsB}` } })).status).toBeGreaterThanOrEqual(400);
+    expect((await api("GET", "/api/subscriptions/current", { user: "alice", headers: { "x-workspace-id": `${wsA},${wsB}` } })).status).toBeGreaterThanOrEqual(
+      400,
+    );
     expect((await api("GET", `/api/subscriptions/current${query}`, { user: "alice" })).status).toBeGreaterThanOrEqual(400);
     await app!.scheduled({ scheduledTime: Date.now(), cron: "* * * * *" }, env);
 
@@ -142,4 +157,3 @@ describe("plan credits in an assembled app (story 1.20)", () => {
     expect(await ledger(wsA)).toEqual([{ idempotency_key: "plan-credits:free:0", amount_milli: 100_000 }]);
   });
 });
-

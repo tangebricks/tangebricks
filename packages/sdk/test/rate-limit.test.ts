@@ -20,7 +20,15 @@ beforeEach(async () => {
 
 type Env = { DB?: D1Like; PX_RATE_LIMITS?: string };
 
-function appWith(rule: RateLimitRule, opts: { now?: () => number; sweepProbability?: number; route?: string; workspace?: (c: { req: { header(n: string): string | undefined } }) => string | undefined } = {}) {
+function appWith(
+  rule: RateLimitRule,
+  opts: {
+    now?: () => number;
+    sweepProbability?: number;
+    route?: string;
+    workspace?: (c: { req: { header(n: string): string | undefined } }) => string | undefined;
+  } = {},
+) {
   const app = new Hono<{ Bindings: Env; Variables: { workspace?: { id: string } } }>();
   if (opts.workspace) {
     app.use("*", async (c, next) => {
@@ -37,7 +45,13 @@ function appWith(rule: RateLimitRule, opts: { now?: () => number; sweepProbabili
   return app;
 }
 
-function post(app: { request(input: string, init?: RequestInit, env?: Env): Response | Promise<Response> }, path: string, body: unknown, headers: Record<string, string> = {}, e: Env = { DB: db }) {
+function post(
+  app: { request(input: string, init?: RequestInit, env?: Env): Response | Promise<Response> },
+  path: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+  e: Env = { DB: db },
+) {
   return app.request(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) }, e);
 }
 
@@ -111,10 +125,7 @@ describe("@poc/sdk rateLimit (story 0.21)", () => {
   });
 
   test("workspace keys use the verified workspace and fall back to the IP without one", async () => {
-    const app = appWith(
-      { bucket: "t-ws", limit: 1, windowSeconds: 60, key: "workspace" },
-      { workspace: (c) => c.req.header("x-ws") },
-    );
+    const app = appWith({ bucket: "t-ws", limit: 1, windowSeconds: 60, key: "workspace" }, { workspace: (c) => c.req.header("x-ws") });
     expect((await post(app, "/login", {}, { "x-ws": "ws_a", "cf-connecting-ip": "198.51.100.1" })).status).toBe(200);
     expect((await post(app, "/login", {}, { "x-ws": "ws_a", "cf-connecting-ip": "198.51.100.2" })).status).toBe(429);
     expect((await post(app, "/login", {}, { "x-ws": "ws_b", "cf-connecting-ip": "198.51.100.1" })).status).toBe(200);
@@ -204,7 +215,11 @@ describe("@poc/sdk rateLimit (story 0.21)", () => {
     const nowSec = Math.floor(now / 1000);
     const seed = async () => {
       await db.prepare("DELETE FROM px_rate_limits").run();
-      for (const [key, start] of [["once-a:x", nowSec - 86_400 * 3], ["once-b:y", nowSec - 86_401], ["recent:z", nowSec - 3600]] as const) {
+      for (const [key, start] of [
+        ["once-a:x", nowSec - 86_400 * 3],
+        ["once-b:y", nowSec - 86_401],
+        ["recent:z", nowSec - 3600],
+      ] as const) {
         await db.prepare("INSERT INTO px_rate_limits (key, window_start, count) VALUES (?, ?, 1)").bind(key, start).run();
       }
     };

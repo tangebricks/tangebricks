@@ -50,9 +50,7 @@ export async function handleTail(
   };
 
   // Story 1.17: alerts are signed with the alert secret only; the control-plane secret is never a fallback.
-  const signingSecret =
-    (env.PX_ALERT_SIGNING_SECRET as string | undefined) ??
-    (env.PX_ALERT_SECRET as string | undefined);
+  const signingSecret = (env.PX_ALERT_SIGNING_SECRET as string | undefined) ?? (env.PX_ALERT_SECRET as string | undefined);
 
   if (signingSecret && typeof signingSecret === "string") {
     headers[TELEMETRY_SIGNATURE_HEADER] = await signTelemetryPayload(bodyText, signingSecret);

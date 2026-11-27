@@ -11,15 +11,7 @@ import {
   semanticHash,
   summarizeProposalOps,
 } from "@poc/blueprint";
-import type {
-  BlueprintState,
-  BlueprintValidationError,
-  Op,
-  ProposalRecord,
-  ProposalStatus,
-  ReadinessResult,
-  SemanticDiff,
-} from "@poc/blueprint";
+import type { BlueprintState, BlueprintValidationError, Op, ProposalRecord, ProposalStatus, ReadinessResult, SemanticDiff } from "@poc/blueprint";
 import type { D1Like } from "@poc/sdk";
 
 export type SettingValue = number | string | boolean;
@@ -129,33 +121,14 @@ export interface BlueprintClient {
     mode?: "apply" | "propose";
     proposalId?: string;
   }): Promise<BlueprintApplyResult>;
-  revertToRevision(input: {
-    project: string;
-    targetRevision: number;
-    baseRevision?: number;
-    author: BlueprintAuthor;
-  }): Promise<BlueprintApplyResult>;
-  seedProject?(
-    project: string,
-    state: BlueprintState,
-    revision?: number,
-  ): Promise<{ revision: number; semanticHash: string }>;
+  revertToRevision(input: { project: string; targetRevision: number; baseRevision?: number; author: BlueprintAuthor }): Promise<BlueprintApplyResult>;
+  seedProject?(project: string, state: BlueprintState, revision?: number): Promise<{ revision: number; semanticHash: string }>;
   /** AD-V8: a project's proposals, newest first, optionally only those with `status`. */
   listProposals?(project: string, status?: ProposalStatus): Promise<ProposalRecord[]>;
   getProposal?(project: string, proposalId: string): Promise<ProposalRecord | null>;
   /** Commits a pending proposal (all ops, or only `opIds`) as one revision. A human reviewer's action, never a tool's. */
-  acceptProposal?(input: {
-    project: string;
-    proposalId: string;
-    opIds?: string[];
-    reviewer: BlueprintAuthor;
-  }): Promise<ProposalReviewResult>;
-  rejectProposal?(input: {
-    project: string;
-    proposalId: string;
-    reason?: string;
-    reviewer: BlueprintAuthor;
-  }): Promise<ProposalReviewResult>;
+  acceptProposal?(input: { project: string; proposalId: string; opIds?: string[]; reviewer: BlueprintAuthor }): Promise<ProposalReviewResult>;
+  rejectProposal?(input: { project: string; proposalId: string; reason?: string; reviewer: BlueprintAuthor }): Promise<ProposalReviewResult>;
 }
 
 async function proposalReviewFromResponse(res: Response): Promise<ProposalReviewResult> {
@@ -186,9 +159,7 @@ export interface BlueprintDoNamespaceLike {
 /** The most projects an in-memory adapter will hold, so a caller with the token cannot fill memory. */
 export const MAX_PROJECTS = 1000;
 
-export function createDurableObjectBlueprintClient(
-  namespace: BlueprintDoNamespaceLike,
-): BlueprintClient {
+export function createDurableObjectBlueprintClient(namespace: BlueprintDoNamespaceLike): BlueprintClient {
   return {
     async getProject(project: string, revision?: number): Promise<BlueprintProjectSnapshot | null> {
       const stub = namespace.get(namespace.idFromName(project));
@@ -361,14 +332,8 @@ export interface InMemoryClientSources {
   nowIso?: () => string;
 }
 
-export function createInMemoryBlueprintClient(
-  catalog: Catalog,
-  maxProjects = MAX_PROJECTS,
-  sources: InMemoryClientSources = {},
-): BlueprintClient {
-  const newProposalId =
-    sources.newProposalId ??
-    (() => `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
+export function createInMemoryBlueprintClient(catalog: Catalog, maxProjects = MAX_PROJECTS, sources: InMemoryClientSources = {}): BlueprintClient {
+  const newProposalId = sources.newProposalId ?? (() => `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
   const nowIso = sources.nowIso ?? (() => new Date().toISOString());
   const projects = new Map<string, InMemoryProjectRecord>();
   // AD-V8: proposals are stored like the DO's `proposals` table, keyed by project, in creation order.
@@ -523,9 +488,7 @@ export function createInMemoryBlueprintClient(
       }
 
       const incomingOpIds = input.ops.map((raw) =>
-        raw && typeof raw === "object" && typeof (raw as { opId?: unknown }).opId === "string"
-          ? (raw as { opId: string }).opId.trim()
-          : "",
+        raw && typeof raw === "object" && typeof (raw as { opId?: unknown }).opId === "string" ? (raw as { opId: string }).opId.trim() : "",
       );
 
       if (existingRec && incomingOpIds.every((id) => id.length > 0)) {
@@ -565,9 +528,7 @@ export function createInMemoryBlueprintClient(
       }
 
       const currentRevision = existingRec ? existingRec.currentRevision : 0;
-      const currentState = existingRec
-        ? existingRec.currentState
-        : createEmptyBlueprint(input.project);
+      const currentState = existingRec ? existingRec.currentState : createEmptyBlueprint(input.project);
 
       if (input.baseRevision !== undefined && input.baseRevision > currentRevision) {
         return {
@@ -615,13 +576,9 @@ export function createInMemoryBlueprintClient(
         const baseState =
           input.baseRevision === 0
             ? createEmptyBlueprint(input.project)
-            : (existingRec.revisions.get(input.baseRevision)?.state ??
-              createEmptyBlueprint(input.project));
+            : (existingRec.revisions.get(input.baseRevision)?.state ?? createEmptyBlueprint(input.project));
 
-        const touchedTargets = new Map<
-          string,
-          { revision: number; author: BlueprintAuthor; opId: string }
-        >();
+        const touchedTargets = new Map<string, { revision: number; author: BlueprintAuthor; opId: string }>();
         const interveningOps: unknown[] = [];
 
         for (let r = input.baseRevision + 1; r <= currentRevision; r += 1) {
@@ -716,9 +673,7 @@ export function createInMemoryBlueprintClient(
       const summary = input.summary?.trim() || summarizeProposalOps(parsedIncomingOps);
 
       if (input.mode === "propose") {
-        const proposalId =
-          input.proposalId?.trim() ||
-          newProposalId();
+        const proposalId = input.proposalId?.trim() || newProposalId();
         const diff = computeSemanticDiff(currentState, nextState);
         const proposedReadiness = computeReadiness(nextState, catalog);
         const proposal: ProposalRecord = {
@@ -804,9 +759,7 @@ export function createInMemoryBlueprintClient(
     async revertToRevision(input): Promise<BlueprintApplyResult> {
       const existingRec = projects.get(input.project);
       const currentRevision = existingRec ? existingRec.currentRevision : 0;
-      const currentState = existingRec
-        ? existingRec.currentState
-        : createEmptyBlueprint(input.project);
+      const currentState = existingRec ? existingRec.currentState : createEmptyBlueprint(input.project);
 
       if (input.baseRevision !== undefined && input.baseRevision !== currentRevision) {
         return {
@@ -824,12 +777,7 @@ export function createInMemoryBlueprintClient(
         };
       }
 
-      if (
-        !Number.isInteger(input.targetRevision) ||
-        input.targetRevision < 0 ||
-        input.targetRevision >= currentRevision ||
-        !existingRec
-      ) {
+      if (!Number.isInteger(input.targetRevision) || input.targetRevision < 0 || input.targetRevision >= currentRevision || !existingRec) {
         return {
           ok: false,
           status: 422,
@@ -874,9 +822,7 @@ export function createInMemoryBlueprintClient(
     async listProposals(project, status) {
       const byId = proposals.get(project);
       if (!byId) return [];
-      return [...byId.values()]
-        .filter((p) => status === undefined || p.status === status)
-        .reverse();
+      return [...byId.values()].filter((p) => status === undefined || p.status === status).reverse();
     },
 
     async getProposal(project, proposalId) {
@@ -918,10 +864,7 @@ export function createInMemoryBlueprintClient(
           status: committed.status,
           error: {
             code: committed.error.code,
-            message:
-              committed.status === 409
-                ? committed.error.message
-                : (committed.error.issues[0]?.message ?? "The proposal failed validation"),
+            message: committed.status === 409 ? committed.error.message : (committed.error.issues[0]?.message ?? "The proposal failed validation"),
             ...(committed.error.issues ? { issues: committed.error.issues } : {}),
           },
         };
@@ -1001,10 +944,7 @@ export function createInMemoryBlueprintClient(
   };
 }
 
-export function resolveBlueprintClient(
-  env: { BLUEPRINT_DO?: BlueprintDoNamespaceLike } | undefined,
-  fallback: BlueprintClient,
-): BlueprintClient {
+export function resolveBlueprintClient(env: { BLUEPRINT_DO?: BlueprintDoNamespaceLike } | undefined, fallback: BlueprintClient): BlueprintClient {
   if (env?.BLUEPRINT_DO && typeof env.BLUEPRINT_DO.idFromName === "function") {
     return createDurableObjectBlueprintClient(env.BLUEPRINT_DO);
   }
@@ -1048,8 +988,7 @@ export function pinBlueprintClient(base: BlueprintClient, project: string | null
   }
   if (base.getProposal) {
     const get = base.getProposal.bind(base);
-    pinned.getProposal = async (candidate, proposalId) =>
-      allowed(candidate) ? get(candidate, proposalId) : null;
+    pinned.getProposal = async (candidate, proposalId) => (allowed(candidate) ? get(candidate, proposalId) : null);
   }
   if (base.acceptProposal) {
     const accept = base.acceptProposal.bind(base);
@@ -1088,28 +1027,19 @@ export async function projectHash(files: Record<string, string>): Promise<string
 }
 
 /** Replaces the project's stored files with these, in one batch: a reader never sees half of one build and half of another. */
-export async function storeBuild(
-  db: D1Like,
-  project: string,
-  files: Record<string, string>,
-): Promise<BuildSummary> {
+export async function storeBuild(db: D1Like, project: string, files: Record<string, string>): Promise<BuildSummary> {
   // mcp_files and mcp_builds are keyed by project, and every statement below binds it (story 16): a build without the
   // authorised project would land in a shared bucket, so it is refused.
   if (typeof project !== "string" || project.trim().length === 0) {
     throw new Error("storeBuild requires the authorised project");
   }
   const hashes = await hashFiles(files);
-  const bytes = Object.values(files).reduce(
-    (sum, text) => sum + new TextEncoder().encode(text).length,
-    0,
-  );
+  const bytes = Object.values(files).reduce((sum, text) => sum + new TextEncoder().encode(text).length, 0);
   const hash = await projectHash(files);
   await db.batch([
     db.prepare("DELETE FROM mcp_files WHERE project = ?").bind(project),
     ...Object.entries(files).map(([path, content]) =>
-      db
-        .prepare("INSERT INTO mcp_files (project, path, content, sha256) VALUES (?, ?, ?, ?)")
-        .bind(project, path, content, hashes[path]),
+      db.prepare("INSERT INTO mcp_files (project, path, content, sha256) VALUES (?, ?, ?, ?)").bind(project, path, content, hashes[path]),
     ),
     db
       .prepare(
@@ -1125,21 +1055,11 @@ export async function storeBuild(
  * Counts one tool call in this minute's window and says whether it is within `limit`. A shared counter in the database,
  * so the limit holds across every instance of the Worker and not just one. Old windows are dropped as it goes.
  */
-export async function withinRateLimit(
-  db: D1Like,
-  limit: number,
-  now = Date.now(),
-): Promise<boolean> {
+export async function withinRateLimit(db: D1Like, limit: number, now = Date.now()): Promise<boolean> {
   const window = new Date(Math.floor(now / 60_000) * 60_000).toISOString();
   const [, counted] = await db.batch([
-    db
-      .prepare("DELETE FROM mcp_rate WHERE window < ?")
-      .bind(new Date(now - 3_600_000).toISOString()),
-    db
-      .prepare(
-        "INSERT INTO mcp_rate (window, calls) VALUES (?, 1) ON CONFLICT(window) DO UPDATE SET calls = calls + 1 RETURNING calls",
-      )
-      .bind(window),
+    db.prepare("DELETE FROM mcp_rate WHERE window < ?").bind(new Date(now - 3_600_000).toISOString()),
+    db.prepare("INSERT INTO mcp_rate (window, calls) VALUES (?, 1) ON CONFLICT(window) DO UPDATE SET calls = calls + 1 RETURNING calls").bind(window),
   ]);
   const calls = (counted!.results[0] as { calls?: number } | undefined)?.calls ?? 1;
   return calls <= limit;

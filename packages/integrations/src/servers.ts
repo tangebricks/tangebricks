@@ -3,11 +3,7 @@ import { escapeJsonPointer } from "./report.ts";
 import type { ReportCollector } from "./report.ts";
 import { isPlainObject, sanitizeOperationId } from "./util.ts";
 import type { ImportSpecFormat } from "./types.ts";
-export type DetectedSpecVersion =
-  | "openapi3.0"
-  | "openapi3.1"
-  | "swagger2"
-  | "google-discovery";
+export type DetectedSpecVersion = "openapi3.0" | "openapi3.1" | "swagger2" | "google-discovery";
 
 export function detectSpecVersion(spec: unknown): DetectedSpecVersion {
   if (Array.isArray(spec)) {
@@ -24,18 +20,10 @@ export function detectSpecVersion(spec: unknown): DetectedSpecVersion {
       return "openapi3.0";
     }
   }
-  if (
-    spec.swagger === "2.0" ||
-    (typeof spec.swagger === "string" && spec.swagger.startsWith("2."))
-  ) {
+  if (spec.swagger === "2.0" || (typeof spec.swagger === "string" && spec.swagger.startsWith("2."))) {
     return "swagger2";
   }
-  if (
-    spec.kind === "discovery#restDescription" ||
-    spec.discoveryVersion === "v1" ||
-    Array.isArray(spec.apis) ||
-    (spec.protocol === "rest" && spec.rootUrl)
-  ) {
+  if (spec.kind === "discovery#restDescription" || spec.discoveryVersion === "v1" || Array.isArray(spec.apis) || (spec.protocol === "rest" && spec.rootUrl)) {
     return "google-discovery";
   }
   throw new Error("OPENAPI_IMPORT_FORMAT_MISMATCH: Unable to detect spec dialect");
@@ -51,10 +39,7 @@ export function normalizeUrlForCompare(raw: string): string {
   }
 }
 
-export function expandServerVariables(
-  serverUrl: string,
-  variables: Record<string, any> | undefined,
-): { expandedUrl: string; wasExpanded: boolean } {
+export function expandServerVariables(serverUrl: string, variables: Record<string, any> | undefined): { expandedUrl: string; wasExpanded: boolean } {
   let wasExpanded = false;
   const expandedUrl = serverUrl.replace(/\{([A-Za-z0-9_-]+)\}/g, (match, varName) => {
     if (variables && variables[varName] && variables[varName].default !== undefined) {
@@ -91,11 +76,7 @@ export function diffServers(options: ServerDiffOptions): void {
   const collectedServers: RawServerInfo[] = [];
 
   if (detected === "google-discovery") {
-    const docs = Array.isArray(spec)
-      ? spec
-      : Array.isArray((spec as any).apis)
-        ? ((spec as any).apis as unknown[])
-        : [spec];
+    const docs = Array.isArray(spec) ? spec : Array.isArray((spec as any).apis) ? ((spec as any).apis as unknown[]) : [spec];
 
     for (let idx = 0; idx < docs.length; idx++) {
       const doc = docs[idx] as Record<string, unknown>;
@@ -306,8 +287,3 @@ export function diffServers(options: ServerDiffOptions): void {
     }
   }
 }
-
-
-
-
-

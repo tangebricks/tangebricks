@@ -4,12 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_scripting_sandbox.sql?raw";
-import {
-  ScriptingSandboxService,
-  validateScriptSource,
-  executeSandboxed,
-  createScriptingRoutes,
-} from "../src/index.ts";
+import { ScriptingSandboxService, validateScriptSource, executeSandboxed, createScriptingRoutes } from "../src/index.ts";
 import type { ScriptEnv } from "../src/middleware.ts";
 import type { ScriptIsolate } from "../src/isolate.ts";
 import type { ExecutionResult } from "../src/sandbox.ts";
@@ -40,19 +35,9 @@ const testIsolate: ScriptIsolate = {
           return main(payload);
         }
         return null;
-        `
+        `,
       );
-      const output = runner(
-        cloned,
-        Math,
-        JSON,
-        Date,
-        Number,
-        String,
-        Boolean,
-        Array,
-        Object
-      );
+      const output = runner(cloned, Math, JSON, Date, Number, String, Boolean, Array, Object);
       return {
         status: "success",
         durationMs: Math.max(1, Date.now() - startTime),
@@ -81,10 +66,7 @@ const testLoader = {
         });
       }
       if (payload?.title) {
-        return new Response(
-          JSON.stringify({ slug: payload.title.toLowerCase().replace(/\s+/g, "-") }),
-          { headers: { "content-type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ slug: payload.title.toLowerCase().replace(/\s+/g, "-") }), { headers: { "content-type": "application/json" } });
       }
       return new Response(JSON.stringify(null), {
         headers: { "content-type": "application/json" },
@@ -146,7 +128,7 @@ describe("Scripting Sandbox Security & Validator", () => {
           { price: 25, qty: 1 },
         ],
       },
-      testIsolate
+      testIsolate,
     );
 
     expect(res.status).toBe("success");
@@ -226,9 +208,7 @@ describe("Scripting Sandbox Core Service", () => {
 
     // Disable script and verify execution failure
     await service.updateScript(WS_ALPHA, script.id, { isEnabled: false });
-    await expect(
-      service.executeScript(WS_ALPHA, script.id, { total: 100 })
-    ).rejects.toThrow("disabled");
+    await expect(service.executeScript(WS_ALPHA, script.id, { total: 100 })).rejects.toThrow("disabled");
   });
 
   it("enforces multi-tenant workspace isolation and cascade deletion", async () => {
@@ -248,9 +228,7 @@ describe("Scripting Sandbox Core Service", () => {
     const crossGet = await service.getScript(WS_BETA, script.id);
     expect(crossGet).toBeNull();
 
-    await expect(
-      service.executeScript(WS_BETA, script.id, {})
-    ).rejects.toThrow("not found");
+    await expect(service.executeScript(WS_BETA, script.id, {})).rejects.toThrow("not found");
 
     // Deletion
     const deleted = await service.deleteScript(WS_ALPHA, script.id);
@@ -283,7 +261,7 @@ describe("Scripting Sandbox REST API", () => {
           payload: { text: "hello edge" },
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(testRes.status).toBe(200);
     const testJson = (await testRes.json()) as any;
@@ -322,7 +300,7 @@ describe("Scripting Sandbox REST API", () => {
           payload: { text: "hello edge" },
         }),
       },
-      { DB: db, SCRIPT_LOADER: testLoader }
+      { DB: db, SCRIPT_LOADER: testLoader },
     );
     expect(testRes.status).toBe(200);
     const testJson = (await testRes.json()) as any;
@@ -341,7 +319,7 @@ describe("Scripting Sandbox REST API", () => {
           sourceCode: "function main(p) { return { slug: p.title.toLowerCase().replace(/\\s+/g, '-') }; }",
         }),
       },
-      { DB: db, SCRIPT_LOADER: testLoader }
+      { DB: db, SCRIPT_LOADER: testLoader },
     );
     expect(createRes.status).toBe(201);
     const script = (await createRes.json()) as any;
@@ -356,28 +334,20 @@ describe("Scripting Sandbox REST API", () => {
           payload: { title: "Next Generation Edge Architecture" },
         }),
       },
-      { DB: db, SCRIPT_LOADER: testLoader }
+      { DB: db, SCRIPT_LOADER: testLoader },
     );
     expect(runRes.status).toBe(200);
     const runJson = (await runRes.json()) as any;
     expect(runJson.output_payload.slug).toBe("next-generation-edge-architecture");
 
     // 4. Get execution logs
-    const logsRes = await app.request(
-      `http://localhost/scripts/${script.id}/executions`,
-      { method: "GET" },
-      { DB: db, SCRIPT_LOADER: testLoader }
-    );
+    const logsRes = await app.request(`http://localhost/scripts/${script.id}/executions`, { method: "GET" }, { DB: db, SCRIPT_LOADER: testLoader });
     expect(logsRes.status).toBe(200);
     const logsJson = (await logsRes.json()) as any;
     expect(logsJson.executions).toHaveLength(1);
 
     // 5. Delete script
-    const delRes = await app.request(
-      `http://localhost/scripts/${script.id}`,
-      { method: "DELETE" },
-      { DB: db, SCRIPT_LOADER: testLoader }
-    );
+    const delRes = await app.request(`http://localhost/scripts/${script.id}`, { method: "DELETE" }, { DB: db, SCRIPT_LOADER: testLoader });
     expect(delRes.status).toBe(200);
   });
 
@@ -395,7 +365,7 @@ describe("Scripting Sandbox REST API", () => {
           sourceCode: "var x = 1;",
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(badRes.status).toBe(400);
   });

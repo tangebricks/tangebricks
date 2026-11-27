@@ -1,10 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  IntegrationManifestSchema,
-  assemble,
-  projectIntegrationToNodes,
-} from "@poc/assembler";
+import { IntegrationManifestSchema, assemble, projectIntegrationToNodes } from "@poc/assembler";
 import type { Catalog, IntegrationManifestFile } from "@poc/assembler";
 import { catalog as baseCatalog } from "@poc/assembler/catalog";
 import { applyOps, createEmptyBlueprint, toAssemblerBlueprint } from "@poc/blueprint";
@@ -34,10 +30,7 @@ const ALL_CANARY_VALUES = Object.values(CANARIES);
 
 function assertZeroCanaries(haystack: string, contextLabel: string): void {
   for (const canary of ALL_CANARY_VALUES) {
-    expect(
-      haystack.includes(canary),
-      `Expected 0 occurrences of canary "${canary}" in ${contextLabel}`,
-    ).toBe(false);
+    expect(haystack.includes(canary), `Expected 0 occurrences of canary "${canary}" in ${contextLabel}`).toBe(false);
   }
 }
 
@@ -314,17 +307,7 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
           id, project_id, env_name, ref, app, auth_type, label, scopes_json, key_hint, status, created_by
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'connected', 'usr_1')`,
       )
-      .bind(
-        "meta_slack",
-        "proj-canary",
-        "preview",
-        "sec_slack_canary",
-        "slack",
-        "oauth2",
-        "Slack OAuth",
-        JSON.stringify(["chat:write"]),
-        sealedOAuth.keyHint,
-      )
+      .bind("meta_slack", "proj-canary", "preview", "sec_slack_canary", "slack", "oauth2", "Slack OAuth", JSON.stringify(["chat:write"]), sealedOAuth.keyHint)
       .run();
 
     const sealedApiKey = await sealConnectionCredentials(
@@ -342,16 +325,7 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
           ciphertext_b64, iv_b64, key_hint, status, updated_at
         ) VALUES (?, ?, ?, 'default', ?, ?, '[]', ?, ?, ?, 'connected', datetime('now'))`,
       )
-      .bind(
-        "sec_resend_canary",
-        "proj-canary",
-        "preview",
-        "resend",
-        "api_key",
-        sealedApiKey.ciphertextB64,
-        sealedApiKey.ivB64,
-        sealedApiKey.keyHint,
-      )
+      .bind("sec_resend_canary", "proj-canary", "preview", "resend", "api_key", sealedApiKey.ciphertextB64, sealedApiKey.ivB64, sealedApiKey.keyHint)
       .run();
     await db
       .prepare(
@@ -359,16 +333,7 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
           id, project_id, env_name, ref, app, auth_type, label, scopes_json, key_hint, status, created_by
         ) VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, 'connected', 'usr_1')`,
       )
-      .bind(
-        "meta_resend",
-        "proj-canary",
-        "preview",
-        "sec_resend_canary",
-        "resend",
-        "api_key",
-        "Resend Key",
-        sealedApiKey.keyHint,
-      )
+      .bind("meta_resend", "proj-canary", "preview", "sec_resend_canary", "resend", "api_key", "Resend Key", sealedApiKey.keyHint)
       .run();
 
     const sealedWebhook = await sealConnectionCredentials(
@@ -414,16 +379,7 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
           ciphertext_b64, iv_b64, key_hint, status, updated_at
         ) VALUES (?, ?, ?, 'default', ?, ?, '[]', ?, ?, ?, 'connected', datetime('now'))`,
       )
-      .bind(
-        "sec_cashfree_canary",
-        "proj-canary",
-        "preview",
-        "cashfree",
-        "headers",
-        sealedCashfree.ciphertextB64,
-        sealedCashfree.ivB64,
-        sealedCashfree.keyHint,
-      )
+      .bind("sec_cashfree_canary", "proj-canary", "preview", "cashfree", "headers", sealedCashfree.ciphertextB64, sealedCashfree.ivB64, sealedCashfree.keyHint)
       .run();
     await db
       .prepare(
@@ -431,16 +387,7 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
           id, project_id, env_name, ref, app, auth_type, label, scopes_json, key_hint, status, created_by
         ) VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, 'connected', 'usr_1')`,
       )
-      .bind(
-        "meta_cashfree",
-        "proj-canary",
-        "preview",
-        "sec_cashfree_canary",
-        "cashfree",
-        "headers",
-        "Cashfree Headers",
-        sealedCashfree.keyHint,
-      )
+      .bind("meta_cashfree", "proj-canary", "preview", "sec_cashfree_canary", "cashfree", "headers", "Cashfree Headers", sealedCashfree.keyHint)
       .run();
 
     // 2. Build blueprint & ops log and assemble worker code
@@ -656,7 +603,8 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
       },
       registry,
       executors,
-      { workspaceId: "ws_canary",
+      {
+        workspaceId: "ws_canary",
         payload: {
           channel: "#alerts",
           text: "Hello world",
@@ -689,7 +637,8 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
 
     // Also run rehearseStep on the failing node and record a log event attempting to log canary values
     const rehearseRes = await rehearseStep(
-      { workspaceId: "ws_canary",
+      {
+        workspaceId: "ws_canary",
         nodeId: "resend_fail",
         nodeType: "int:resend.send_email",
         config: {
@@ -751,9 +700,7 @@ describe("Story 10.2 — Canary Secret Scan Across Blueprints, Generated Code, D
     const mcpApp = createMcpApp({
       catalog: testCatalog,
       callsPerMinute: 1000,
-      verifyToken: createStaticTokenVerifier([
-        { token: mcpToken, userId: "user:canary", projectId: "proj-canary", scopes: ["read", "edit", "connect"] },
-      ]),
+      verifyToken: createStaticTokenVerifier([{ token: mcpToken, userId: "user:canary", projectId: "proj-canary", scopes: ["read", "edit", "connect"] }]),
     });
     const callTool = async (name: string, args: Record<string, unknown>) => {
       const res = await mcpApp.fetch(

@@ -140,11 +140,7 @@ export class JobQueueService {
    * and advancing visibility timeout.
    * Atomic single-statement update with RETURNING over candidate subquery.
    */
-  async dequeueBatch(
-    queueName = "default",
-    limit = 10,
-    visibilityTimeoutSeconds = 60
-  ): Promise<Job[]> {
+  async dequeueBatch(queueName = "default", limit = 10, visibilityTimeoutSeconds = 60): Promise<Job[]> {
     const q = queueName.trim().toLowerCase();
     const nowIso = new Date().toISOString();
     const queueTable = global(this.db, "job_queues", "queue-worker-dequeue");
@@ -171,12 +167,7 @@ export class JobQueueService {
    * Marks a job as completed and stores execution result.
    * Conditional on status='running' and optional attempt_count lease check.
    */
-  async complete(
-    workspaceId: string,
-    jobId: string,
-    resultOrAttempt?: Record<string, unknown> | number,
-    maybeAttemptCount?: number
-  ): Promise<boolean> {
+  async complete(workspaceId: string, jobId: string, resultOrAttempt?: Record<string, unknown> | number, maybeAttemptCount?: number): Promise<boolean> {
     let result: Record<string, unknown> | undefined;
     let attemptCount: number | undefined;
 
@@ -191,12 +182,8 @@ export class JobQueueService {
     const now = new Date().toISOString();
     const resultJson = result ? JSON.stringify(result) : null;
 
-    const where =
-      attemptCount !== undefined
-        ? "id = ? AND status = 'running' AND attempt_count = ?"
-        : "id = ? AND (status = 'running' OR status = 'queued')";
-    const params =
-      attemptCount !== undefined ? [jobId, attemptCount] : [jobId];
+    const where = attemptCount !== undefined ? "id = ? AND status = 'running' AND attempt_count = ?" : "id = ? AND (status = 'running' OR status = 'queued')";
+    const params = attemptCount !== undefined ? [jobId, attemptCount] : [jobId];
 
     const res = await scoped(this.db, workspaceId).update(
       "job_queues",
@@ -206,7 +193,7 @@ export class JobQueueService {
         completed_at: now,
       },
       where,
-      params
+      params,
     );
 
     return res.meta.changes > 0;
@@ -216,12 +203,7 @@ export class JobQueueService {
    * Reports job failure. Applies exponential backoff or dead-letter queue.
    * Conditional on status='running' and optional attempt_count lease check.
    */
-  async fail(
-    workspaceId: string,
-    jobId: string,
-    errorMessage: string,
-    attemptCount?: number
-  ): Promise<Job | null> {
+  async fail(workspaceId: string, jobId: string, errorMessage: string, attemptCount?: number): Promise<Job | null> {
     const s = scoped(this.db, workspaceId);
     const current = await this.getJob(workspaceId, jobId);
     if (!current) return null;
@@ -235,12 +217,8 @@ export class JobQueueService {
 
     const now = new Date();
     const errorMsg = errorMessage.slice(0, 2048);
-    const where =
-      attemptCount !== undefined
-        ? "id = ? AND status = 'running' AND attempt_count = ?"
-        : "id = ? AND (status = 'running' OR status = 'queued')";
-    const params =
-      attemptCount !== undefined ? [jobId, attemptCount] : [jobId];
+    const where = attemptCount !== undefined ? "id = ? AND status = 'running' AND attempt_count = ?" : "id = ? AND (status = 'running' OR status = 'queued')";
+    const params = attemptCount !== undefined ? [jobId, attemptCount] : [jobId];
 
     if (current.attempt_count >= current.max_retries) {
       // Move to Dead-Letter Queue
@@ -252,7 +230,7 @@ export class JobQueueService {
           completed_at: now.toISOString(),
         },
         where,
-        params
+        params,
       );
 
       if (res.meta.changes === 0) return null;
@@ -276,7 +254,7 @@ export class JobQueueService {
           error_message: errorMsg,
         },
         where,
-        params
+        params,
       );
 
       if (res.meta.changes === 0) return null;
@@ -305,7 +283,7 @@ export class JobQueueService {
         completed_at: null,
       },
       "id = ? AND status = 'dead_letter'",
-      [jobId]
+      [jobId],
     );
 
     return res.meta.changes > 0;
@@ -315,11 +293,7 @@ export class JobQueueService {
    * Retrieves a job by ID scoped to a workspace.
    */
   async getJob(workspaceId: string, jobId: string): Promise<Job | null> {
-    const row = await scoped(this.db, workspaceId).first<RawJobRow>(
-      "job_queues",
-      "id = ?",
-      [jobId]
-    );
+    const row = await scoped(this.db, workspaceId).first<RawJobRow>("job_queues", "id = ?", [jobId]);
 
     if (!row) return null;
     return this.parseRow(row);
@@ -328,10 +302,7 @@ export class JobQueueService {
   /**
    * Lists jobs for a workspace with optional filters.
    */
-  async listJobs(
-    workspaceId: string,
-    options: { queueName?: string; status?: JobStatus; limit?: number } = {}
-  ): Promise<Job[]> {
+  async listJobs(workspaceId: string, options: { queueName?: string; status?: JobStatus; limit?: number } = {}): Promise<Job[]> {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -345,22 +316,14 @@ export class JobQueueService {
     }
 
     const where = conditions.length > 0 ? conditions.join(" AND ") : undefined;
-    const rows = await scoped(this.db, workspaceId).select<RawJobRow>(
-      "job_queues",
-      where,
-      params,
-      {
-        orderBy: "created_at DESC",
-        limit: options.limit || 50,
-      }
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawJobRow>("job_queues", where, params, {
+      orderBy: "created_at DESC",
+      limit: options.limit || 50,
+    });
     return rows.map((r) => this.parseRow(r));
   }
 
-  async list(
-    workspaceId: string,
-    options: { queueName?: string; status?: JobStatus; limit?: number } = {}
-  ): Promise<Job[]> {
+  async list(workspaceId: string, options: { queueName?: string; status?: JobStatus; limit?: number } = {}): Promise<Job[]> {
     return this.listJobs(workspaceId, options);
   }
 
@@ -449,11 +412,10 @@ export async function consumeJobQueueBatch(
         const itemKey = `${runId}:${nodeId}:${chunkIdx}:${itemIndex}`;
 
         // Check if item already exists in job_batch_items (idempotent redelivery safety)
-        const existing = await scoped(db, leased.workspace_id).first<{ id: string; status: string }>(
-          "job_batch_items",
-          "job_id = ? AND item_index = ?",
-          [leased.id, itemIndex],
-        );
+        const existing = await scoped(db, leased.workspace_id).first<{ id: string; status: string }>("job_batch_items", "job_id = ? AND item_index = ?", [
+          leased.id,
+          itemIndex,
+        ]);
 
         if (existing) {
           continue;
@@ -471,12 +433,7 @@ export async function consumeJobQueueBatch(
 
           let callResult: unknown = null;
           if (typeof (env as any).callOperation === "function") {
-            callResult = await (env as any).callOperation(
-              null,
-              targetOperation,
-              item,
-              { idempotencyKey: itemKey },
-            );
+            callResult = await (env as any).callOperation(null, targetOperation, item, { idempotencyKey: itemKey });
           } else {
             callResult = { ok: true, processed: true, idempotencyKey: itemKey };
           }
@@ -515,26 +472,30 @@ export async function consumeJobQueueBatch(
 
       // Check if all chunks for this runId and nodeId are completed
       if (typeof payload.totalChunks === "number") {
-        const allChunksRow = await scoped(db, leased.workspace_id).raw(
-          "SELECT COUNT(*) as finishedCount FROM job_queues WHERE workspace_id = ? AND task_type = 'batch-chunk' AND status IN ('completed', 'failed', 'dead_letter') AND json_extract(payload_json, '$.runId') = ? AND json_extract(payload_json, '$.nodeId') = ?",
-          [leased.workspace_id, runId, nodeId],
-        ).first<{ finishedCount: number }>();
+        const allChunksRow = await scoped(db, leased.workspace_id)
+          .raw(
+            "SELECT COUNT(*) as finishedCount FROM job_queues WHERE workspace_id = ? AND task_type = 'batch-chunk' AND status IN ('completed', 'failed', 'dead_letter') AND json_extract(payload_json, '$.runId') = ? AND json_extract(payload_json, '$.nodeId') = ?",
+            [leased.workspace_id, runId, nodeId],
+          )
+          .first<{ finishedCount: number }>();
 
         if (allChunksRow && allChunksRow.finishedCount >= payload.totalChunks) {
-          const stats = await scoped(db, leased.workspace_id).raw(
-            `SELECT 
+          const stats = await scoped(db, leased.workspace_id)
+            .raw(
+              `SELECT 
                COUNT(*) as total,
                SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) as succeeded,
                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
                SUM(CASE WHEN status = 'dead_letter' THEN 1 ELSE 0 END) as deadLettered
              FROM job_batch_items WHERE workspace_id = ? AND idempotency_key LIKE ?`,
-            [leased.workspace_id, `${runId}:${nodeId}:%`],
-          ).first<{
-            total: number;
-            succeeded: number;
-            failed: number;
-            deadLettered: number;
-          }>();
+              [leased.workspace_id, `${runId}:${nodeId}:%`],
+            )
+            .first<{
+              total: number;
+              succeeded: number;
+              failed: number;
+              deadLettered: number;
+            }>();
 
           const aggregate = {
             total: Number(stats?.total ?? payload.totalItems ?? chunkItems.length),
@@ -554,9 +515,7 @@ export async function consumeJobQueueBatch(
           }
 
           const eventName = `batch:${runId}:${nodeId}`;
-          const workflowObj = (env as Record<string, unknown>)["WORKFLOW"] as
-            | { sendEvent?: (ev: unknown) => Promise<void> }
-            | undefined;
+          const workflowObj = (env as Record<string, unknown>)["WORKFLOW"] as { sendEvent?: (ev: unknown) => Promise<void> } | undefined;
           if (typeof workflowObj?.sendEvent === "function") {
             await workflowObj.sendEvent({ name: eventName, payload: aggregate });
           } else if (typeof (env as any).sendEvent === "function") {
@@ -579,12 +538,7 @@ export async function consumeJobQueueBatch(
             : null;
 
     if (failReason) {
-      const updated = await service.fail(
-        leased.workspace_id,
-        leased.id,
-        failReason,
-        leased.attempt_count
-      );
+      const updated = await service.fail(leased.workspace_id, leased.id, failReason, leased.attempt_count);
       if (updated?.status === "dead_letter") {
         deadLettered.push(leased.id);
         msg.ack?.();
@@ -597,12 +551,7 @@ export async function consumeJobQueueBatch(
         typeof body.result === "object" && body.result !== null
           ? (body.result as Record<string, unknown>)
           : { processed: true, taskType: leased.task_type, workspaceId: leased.workspace_id };
-      await service.complete(
-        leased.workspace_id,
-        leased.id,
-        resultData,
-        leased.attempt_count
-      );
+      await service.complete(leased.workspace_id, leased.id, resultData, leased.attempt_count);
       completed.push(leased.id);
       msg.ack?.();
     }

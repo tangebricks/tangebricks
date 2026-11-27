@@ -172,11 +172,7 @@ export function isExcludedDataBrowserTable(tableName: string): boolean {
   const trimmed = tableName.trim();
   if (!trimmed) return true;
   const lower = trimmed.toLowerCase();
-  if (
-    lower.startsWith("sqlite_") ||
-    lower.startsWith("_cf_") ||
-    lower.startsWith("_px_")
-  ) {
+  if (lower.startsWith("sqlite_") || lower.startsWith("_cf_") || lower.startsWith("_px_")) {
     return true;
   }
   for (const excluded of EXCLUDED_DATA_BROWSER_TABLES) {
@@ -190,16 +186,10 @@ export function isExcludedDataBrowserTable(tableName: string): boolean {
 export function isImmutableLedgerTable(tableName: string): boolean {
   const trimmed = tableName.trim().toLowerCase();
   const normalized = trimmed.startsWith("ent_") ? trimmed.slice(4) : trimmed;
-  return (
-    IMMUTABLE_LEDGER_TABLES.has(trimmed) ||
-    IMMUTABLE_LEDGER_TABLES.has(normalized)
-  );
+  return IMMUTABLE_LEDGER_TABLES.has(trimmed) || IMMUTABLE_LEDGER_TABLES.has(normalized);
 }
 
-export function isSecretColumnName(
-  columnName: string,
-  explicitSecretColumns?: ReadonlySet<string>,
-): boolean {
+export function isSecretColumnName(columnName: string, explicitSecretColumns?: ReadonlySet<string>): boolean {
   const trimmed = columnName.trim();
   if (!trimmed) return true;
   const lower = trimmed.toLowerCase();
@@ -226,8 +216,7 @@ function signedWorkspaceOf(url: URL): string {
   return (url.searchParams.get("workspaceId") ?? url.searchParams.get("workspace_id") ?? "").trim();
 }
 
-const workspaceRequired = (message: string) =>
-  json(400, { error: { code: "WORKSPACE_ID_REQUIRED", message } });
+const workspaceRequired = (message: string) => json(400, { error: { code: "WORKSPACE_ID_REQUIRED", message } });
 
 interface SqliteTableInfoRow {
   cid: number;
@@ -264,20 +253,13 @@ export async function discoverBrowsableTables(
   }
 
   const masterRes = await db
-    .prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC",
-    )
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC")
     .bind()
     .all<{ name: string }>();
 
   const rawTableNames = (masterRes.results ?? [])
     .map((r) => r.name)
-    .filter(
-      (name) =>
-        typeof name === "string" &&
-        SAFE_SQL_IDENTIFIER.test(name) &&
-        !isExcludedDataBrowserTable(name),
-    );
+    .filter((name) => typeof name === "string" && SAFE_SQL_IDENTIFIER.test(name) && !isExcludedDataBrowserTable(name));
 
   // Deduplicate if both `ent_<name>` and `<name>` exist by preferring `ent_<name>` as sqlTable and `<name>` as logical entity name
   const tables: BrowsableTableMetadata[] = [];
@@ -292,26 +274,18 @@ export async function discoverBrowsableTables(
   });
 
   for (const sqlTable of sortedTableNames) {
-    const pragmaRes = await db
-      .prepare(`PRAGMA table_info("${sqlTable}")`)
-      .bind()
-      .all<SqliteTableInfoRow>();
+    const pragmaRes = await db.prepare(`PRAGMA table_info("${sqlTable}")`).bind().all<SqliteTableInfoRow>();
     const rawCols = pragmaRes.results ?? [];
     if (rawCols.length === 0) continue;
 
-    const hasWorkspaceId = rawCols.some(
-      (col) => col.name.toLowerCase() === "workspace_id",
-    );
+    const hasWorkspaceId = rawCols.some((col) => col.name.toLowerCase() === "workspace_id");
     if (!hasWorkspaceId) {
       continue;
     }
 
     const lowerSql = sqlTable.toLowerCase();
-    const isEntity =
-      lowerSql.startsWith("ent_") || declaredEntitySet.has(lowerSql);
-    const logicalName = lowerSql.startsWith("ent_")
-      ? sqlTable.slice(4)
-      : sqlTable;
+    const isEntity = lowerSql.startsWith("ent_") || declaredEntitySet.has(lowerSql);
+    const logicalName = lowerSql.startsWith("ent_") ? sqlTable.slice(4) : sqlTable;
     if (seenLogicalNames.has(logicalName.toLowerCase())) {
       continue;
     }
@@ -319,22 +293,13 @@ export async function discoverBrowsableTables(
 
     const category: "entity" | "brick" = isEntity ? "entity" : "brick";
     const isLedger = isImmutableLedgerTable(sqlTable);
-    const tableReadOnly =
-      pxEnv === "production" || category !== "entity" || isLedger;
+    const tableReadOnly = pxEnv === "production" || category !== "entity" || isLedger;
 
     const visibleColumns: DataBrowserColumnMetadata[] = rawCols
-      .filter(
-        (col) =>
-          SAFE_SQL_IDENTIFIER.test(col.name) &&
-          !isSecretColumnName(col.name, secretColSet),
-      )
+      .filter((col) => SAFE_SQL_IDENTIFIER.test(col.name) && !isSecretColumnName(col.name, secretColSet))
       .map((col) => {
         const isPk = Number(col.pk) > 0 || col.name === "id";
-        const isSystemCol =
-          isPk ||
-          col.name === "workspace_id" ||
-          col.name === "created_at" ||
-          col.name === "updated_at";
+        const isSystemCol = isPk || col.name === "workspace_id" || col.name === "created_at" || col.name === "updated_at";
         return {
           name: col.name,
           type: (col.type || "TEXT").toUpperCase(),
@@ -347,14 +312,9 @@ export async function discoverBrowsableTables(
     if (visibleColumns.length === 0) continue;
 
     let rowCount: number | undefined;
-    if (
-      options.workspaceIdForCount &&
-      options.workspaceIdForCount.trim().length > 0
-    ) {
+    if (options.workspaceIdForCount && options.workspaceIdForCount.trim().length > 0) {
       const countRow = await db
-        .prepare(
-          `SELECT COUNT(*) AS cnt FROM "${sqlTable}" WHERE "workspace_id" = ?1`,
-        )
+        .prepare(`SELECT COUNT(*) AS cnt FROM "${sqlTable}" WHERE "workspace_id" = ?1`)
         .bind(options.workspaceIdForCount.trim())
         .first<{ cnt: number }>();
       rowCount = Number(countRow?.cnt ?? 0);
@@ -385,20 +345,14 @@ export async function workspaceHasBrowsableData(db: D1Like, workspaceId: string)
   if (!ws) return false;
   for (const table of await discoverBrowsableTables(db)) {
     try {
-      const hit = await db
-        .prepare(`SELECT 1 AS hit FROM "${table.tableName}" WHERE "workspace_id" = ?1 LIMIT 1`)
-        .bind(ws)
-        .first<{ hit: number }>();
+      const hit = await db.prepare(`SELECT 1 AS hit FROM "${table.tableName}" WHERE "workspace_id" = ?1 LIMIT 1`).bind(ws).first<{ hit: number }>();
       if (hit) return true;
     } catch {
       // a table that cannot be read names no workspace
     }
   }
   try {
-    const wsTable = await db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'workspaces' LIMIT 1")
-      .bind()
-      .first<{ name: string }>();
+    const wsTable = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'workspaces' LIMIT 1").bind().first<{ name: string }>();
     if (wsTable?.name === "workspaces") {
       const hit = await db.prepare("SELECT 1 AS hit FROM workspaces WHERE id = ?1 LIMIT 1").bind(ws).first<{ hit: number }>();
       if (hit) return true;
@@ -409,10 +363,7 @@ export async function workspaceHasBrowsableData(db: D1Like, workspaceId: string)
   return false;
 }
 
-export async function listBrowsableWorkspaces(
-  db: D1Like,
-  tables?: BrowsableTableMetadata[],
-): Promise<string[]> {
+export async function listBrowsableWorkspaces(db: D1Like, tables?: BrowsableTableMetadata[]): Promise<string[]> {
   const catalogTables = tables ?? (await discoverBrowsableTables(db));
   const workspaceSet = new Set<string>();
 
@@ -436,17 +387,10 @@ export async function listBrowsableWorkspaces(
 
   // Also check if `workspaces` table has an `id` column (from multi-workspace brick)
   try {
-    const wsTableRes = await db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'workspaces' LIMIT 1",
-      )
-      .bind()
-      .first<{ name: string }>();
+    const wsTableRes = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'workspaces' LIMIT 1").bind().first<{ name: string }>();
     if (wsTableRes?.name === "workspaces") {
       const wsIds = await db
-        .prepare(
-          "SELECT DISTINCT id FROM workspaces WHERE id IS NOT NULL AND TRIM(id) != '' ORDER BY id ASC LIMIT 100",
-        )
+        .prepare("SELECT DISTINCT id FROM workspaces WHERE id IS NOT NULL AND TRIM(id) != '' ORDER BY id ASC LIMIT 100")
         .bind()
         .all<{ id: string }>();
       for (const row of wsIds.results ?? []) {
@@ -463,10 +407,7 @@ export async function listBrowsableWorkspaces(
   return [...workspaceSet].sort((a, b) => a.localeCompare(b));
 }
 
-function resolveTargetTable(
-  requestedName: string,
-  tables: BrowsableTableMetadata[],
-): BrowsableTableMetadata | null {
+function resolveTargetTable(requestedName: string, tables: BrowsableTableMetadata[]): BrowsableTableMetadata | null {
   const trimmed = requestedName.trim().toLowerCase();
   if (!trimmed) return null;
   const withoutEnt = trimmed.startsWith("ent_") ? trimmed.slice(4) : trimmed;
@@ -498,17 +439,9 @@ function parseFilterClauses(url: URL): {
     return validOps.has(lower) ? (lower as "eq" | "contains" | "gt" | "lt") : "eq";
   };
 
-  const singleCol =
-    url.searchParams.get("filterCol") ??
-    url.searchParams.get("filterColumn") ??
-    url.searchParams.get("column");
-  const singleOp =
-    url.searchParams.get("filterOp") ??
-    url.searchParams.get("op");
-  const singleVal =
-    url.searchParams.get("filterVal") ??
-    url.searchParams.get("filterValue") ??
-    url.searchParams.get("value");
+  const singleCol = url.searchParams.get("filterCol") ?? url.searchParams.get("filterColumn") ?? url.searchParams.get("column");
+  const singleOp = url.searchParams.get("filterOp") ?? url.searchParams.get("op");
+  const singleVal = url.searchParams.get("filterVal") ?? url.searchParams.get("filterValue") ?? url.searchParams.get("value");
 
   if (singleCol && singleCol.trim() && singleVal !== null && singleVal !== "") {
     clauses.push({
@@ -518,8 +451,7 @@ function parseFilterClauses(url: URL): {
     });
   }
 
-  const rawFilters =
-    url.searchParams.get("filters") ?? url.searchParams.get("filter");
+  const rawFilters = url.searchParams.get("filters") ?? url.searchParams.get("filter");
   if (rawFilters && rawFilters.trim()) {
     const trimmed = rawFilters.trim();
     if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
@@ -529,12 +461,7 @@ function parseFilterClauses(url: URL): {
         for (const item of arr) {
           if (typeof item === "object" && item !== null) {
             const rec = item as Record<string, unknown>;
-            const col =
-              typeof rec.column === "string"
-                ? rec.column
-                : typeof rec.field === "string"
-                  ? rec.field
-                  : "";
+            const col = typeof rec.column === "string" ? rec.column : typeof rec.field === "string" ? rec.field : "";
             const val = rec.value;
             if (col.trim() && val !== undefined && val !== null && String(val) !== "") {
               clauses.push({
@@ -565,31 +492,22 @@ export async function queryWorkspaceLedger(
 ): Promise<DataBrowserLedgerResponse> {
   const pxEnv = options.pxEnv === "production" ? "production" : "preview";
   const rawLimit = Number(options.limit ?? 50);
-  const limit = Number.isFinite(rawLimit)
-    ? Math.max(1, Math.min(100, Math.trunc(rawLimit)))
-    : 50;
+  const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(100, Math.trunc(rawLimit))) : 50;
   const rawCursor = Number(options.cursor ?? 0);
-  const offset =
-    Number.isFinite(rawCursor) && rawCursor >= 0 ? Math.trunc(rawCursor) : 0;
+  const offset = Number.isFinite(rawCursor) && rawCursor >= 0 ? Math.trunc(rawCursor) : 0;
 
   const existingTablesRes = await db
-    .prepare(
-      `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`,
-    )
+    .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
     .all<{ name: string }>()
     .catch(() => ({ results: [] as Array<{ name: string }> }));
-  const existingTableNames = new Set(
-    (existingTablesRes.results ?? []).map((r) => r.name),
-  );
+  const existingTableNames = new Set((existingTablesRes.results ?? []).map((r) => r.name));
 
   // 1. Collect journal entries across credit_ledger and wallet_ledger strictly scoped by WHERE "workspace_id" = ?1
   const allEntries: DataBrowserLedgerEntry[] = [];
 
   if (existingTableNames.has("credit_ledger")) {
     const rowsRes = await db
-      .prepare(
-        `SELECT * FROM "credit_ledger" WHERE "workspace_id" = ?1 ORDER BY "created_at" DESC, rowid DESC`,
-      )
+      .prepare(`SELECT * FROM "credit_ledger" WHERE "workspace_id" = ?1 ORDER BY "created_at" DESC, rowid DESC`)
       .bind(workspaceId)
       .all<Record<string, unknown>>()
       .catch(() => ({ results: [] as Array<Record<string, unknown>> }));
@@ -603,36 +521,18 @@ export async function queryWorkspaceLedger(
           ? Number(row.amount_milli)
           : toMilliOrZero(row.amount ?? row.delta ?? row.delta_credits ?? 0);
       const deltaMilli =
-        rawMilli < 0
-          ? rawMilli
-          : rawType === "deduction" || rawType === "debit" || rawType === "transfer_out"
-            ? -Math.abs(rawMilli)
-            : rawMilli;
+        rawMilli < 0 ? rawMilli : rawType === "deduction" || rawType === "debit" || rawType === "transfer_out" ? -Math.abs(rawMilli) : rawMilli;
       const balanceAfterMilli =
-        row.balance_after_milli !== undefined && row.balance_after_milli !== null
-          ? Number(row.balance_after_milli)
-          : toMilliOrZero(row.balance_after ?? 0);
+        row.balance_after_milli !== undefined && row.balance_after_milli !== null ? Number(row.balance_after_milli) : toMilliOrZero(row.balance_after ?? 0);
       const delta = deltaMilli / 1000;
       const balanceAfter = balanceAfterMilli / 1000;
       const reason = String(row.reason ?? "");
-      const idempotencyKey =
-        typeof row.idempotency_key === "string" && row.idempotency_key.length > 0
-          ? row.idempotency_key
-          : null;
+      const idempotencyKey = typeof row.idempotency_key === "string" && row.idempotency_key.length > 0 ? row.idempotency_key : null;
       const createdAt = String(row.created_at ?? new Date().toISOString());
 
-      let runId: string | null =
-        typeof row.run_id === "string" && row.run_id
-          ? row.run_id
-          : typeof row.runId === "string" && row.runId
-            ? row.runId
-            : null;
+      let runId: string | null = typeof row.run_id === "string" && row.run_id ? row.run_id : typeof row.runId === "string" && row.runId ? row.runId : null;
       let nodeId: string | null =
-        typeof row.node_id === "string" && row.node_id
-          ? row.node_id
-          : typeof row.nodeId === "string" && row.nodeId
-            ? row.nodeId
-            : null;
+        typeof row.node_id === "string" && row.node_id ? row.node_id : typeof row.nodeId === "string" && row.nodeId ? row.nodeId : null;
 
       if ((!runId || !nodeId) && typeof row.metadata === "string" && row.metadata.trim()) {
         try {
@@ -668,9 +568,7 @@ export async function queryWorkspaceLedger(
 
   if (existingTableNames.has("wallet_ledger")) {
     const rowsRes = await db
-      .prepare(
-        `SELECT * FROM "wallet_ledger" WHERE "workspace_id" = ?1 ORDER BY "created_at" DESC, rowid DESC`,
-      )
+      .prepare(`SELECT * FROM "wallet_ledger" WHERE "workspace_id" = ?1 ORDER BY "created_at" DESC, rowid DESC`)
       .bind(workspaceId)
       .all<Record<string, unknown>>()
       .catch(() => ({ results: [] as Array<Record<string, unknown>> }));
@@ -679,34 +577,17 @@ export async function queryWorkspaceLedger(
       const entryId = String(row.entry_id ?? row.id ?? "");
       const rawType = String(row.entry_type ?? row.type ?? "grant").toLowerCase();
       const rawDeltaMilli = toMilliOrZero(row.delta_credits ?? row.delta ?? row.amount ?? 0);
-      const deltaMilli =
-        rawDeltaMilli < 0
-          ? rawDeltaMilli
-          : rawType === "deduction" || rawType === "debit"
-            ? -Math.abs(rawDeltaMilli)
-            : rawDeltaMilli;
+      const deltaMilli = rawDeltaMilli < 0 ? rawDeltaMilli : rawType === "deduction" || rawType === "debit" ? -Math.abs(rawDeltaMilli) : rawDeltaMilli;
       const balanceAfterMilli = toMilliOrZero(row.balance_after ?? 0);
       const delta = deltaMilli / 1000;
       const balanceAfter = balanceAfterMilli / 1000;
       const reason = String(row.reason ?? "");
-      const idempotencyKey =
-        typeof row.idempotency_key === "string" && row.idempotency_key.length > 0
-          ? row.idempotency_key
-          : null;
+      const idempotencyKey = typeof row.idempotency_key === "string" && row.idempotency_key.length > 0 ? row.idempotency_key : null;
       const createdAt = String(row.created_at ?? new Date().toISOString());
 
-      let runId: string | null =
-        typeof row.run_id === "string" && row.run_id
-          ? row.run_id
-          : typeof row.runId === "string" && row.runId
-            ? row.runId
-            : null;
+      let runId: string | null = typeof row.run_id === "string" && row.run_id ? row.run_id : typeof row.runId === "string" && row.runId ? row.runId : null;
       let nodeId: string | null =
-        typeof row.node_id === "string" && row.node_id
-          ? row.node_id
-          : typeof row.nodeId === "string" && row.nodeId
-            ? row.nodeId
-            : null;
+        typeof row.node_id === "string" && row.node_id ? row.node_id : typeof row.nodeId === "string" && row.nodeId ? row.nodeId : null;
 
       if ((!runId || !nodeId) && typeof row.metadata === "string" && row.metadata.trim()) {
         try {
@@ -753,15 +634,12 @@ export async function queryWorkspaceLedger(
 
   if (existingTableNames.has("credit_wallets")) {
     const wRow = await db
-      .prepare(
-        `SELECT * FROM "credit_wallets" WHERE "workspace_id" = ?1 LIMIT 1`,
-      )
+      .prepare(`SELECT * FROM "credit_wallets" WHERE "workspace_id" = ?1 LIMIT 1`)
       .bind(workspaceId)
       .first<Record<string, unknown>>()
       .catch(() => null);
     if (wRow) {
-      walletBalanceMilli =
-        wRow.balance_milli !== undefined && wRow.balance_milli !== null ? Number(wRow.balance_milli) : toMilliOrZero(wRow.balance ?? 0);
+      walletBalanceMilli = wRow.balance_milli !== undefined && wRow.balance_milli !== null ? Number(wRow.balance_milli) : toMilliOrZero(wRow.balance ?? 0);
       if (typeof wRow.updated_at === "string" && wRow.updated_at) {
         walletUpdatedAt = wRow.updated_at;
       } else if (typeof wRow.created_at === "string" && wRow.created_at && allEntries.length === 0) {
@@ -772,9 +650,7 @@ export async function queryWorkspaceLedger(
 
   if (walletBalanceMilli === null && existingTableNames.has("wallet_balances")) {
     const wRow = await db
-      .prepare(
-        `SELECT * FROM "wallet_balances" WHERE "workspace_id" = ?1 LIMIT 1`,
-      )
+      .prepare(`SELECT * FROM "wallet_balances" WHERE "workspace_id" = ?1 LIMIT 1`)
       .bind(workspaceId)
       .first<Record<string, unknown>>()
       .catch(() => null);
@@ -801,9 +677,7 @@ export async function queryWorkspaceLedger(
 
   if (existingTableNames.has("meter_aggregates")) {
     const aggRes = await db
-      .prepare(
-        `SELECT * FROM "meter_aggregates" WHERE "workspace_id" = ?1 ORDER BY "meter_key" ASC, "window_period" DESC`,
-      )
+      .prepare(`SELECT * FROM "meter_aggregates" WHERE "workspace_id" = ?1 ORDER BY "meter_key" ASC, "window_period" DESC`)
       .bind(workspaceId)
       .all<Record<string, unknown>>()
       .catch(() => ({ results: [] as Array<Record<string, unknown>> }));
@@ -842,9 +716,7 @@ export async function queryWorkspaceLedger(
 
   if (existingTableNames.has("usage_rollups")) {
     const rollRes = await db
-      .prepare(
-        `SELECT * FROM "usage_rollups" WHERE "workspace_id" = ?1 ORDER BY "metric_key" ASC`,
-      )
+      .prepare(`SELECT * FROM "usage_rollups" WHERE "workspace_id" = ?1 ORDER BY "metric_key" ASC`)
       .bind(workspaceId)
       .all<Record<string, unknown>>()
       .catch(() => ({ results: [] as Array<Record<string, unknown>> }));
@@ -881,10 +753,7 @@ export async function queryWorkspaceLedger(
   }
 
   const pagedEntries = allEntries.slice(offset, offset + limit);
-  const nextCursor =
-    offset + pagedEntries.length < allEntries.length
-      ? String(offset + limit)
-      : null;
+  const nextCursor = offset + pagedEntries.length < allEntries.length ? String(offset + limit) : null;
 
   return {
     ok: true,
@@ -907,10 +776,7 @@ export async function queryWorkspaceLedger(
   };
 }
 
-export async function handleDataBrowserRequest(
-  request: Request,
-  options: DataBrowserOptions,
-): Promise<Response | null> {
+export async function handleDataBrowserRequest(request: Request, options: DataBrowserOptions): Promise<Response | null> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/__px/data")) {
     return null;
@@ -1012,21 +878,12 @@ export async function handleDataBrowserRequest(
   }
 
   // Route 2b: GET /__px/data/ledger (and reject any write method with 403 LEDGER_IMMUTABLE_READ_ONLY in both preview & production)
-  if (
-    url.pathname === "/__px/data/ledger" ||
-    url.pathname.startsWith("/__px/data/ledger/")
-  ) {
-    if (
-      request.method === "POST" ||
-      request.method === "PATCH" ||
-      request.method === "PUT" ||
-      request.method === "DELETE"
-    ) {
+  if (url.pathname === "/__px/data/ledger" || url.pathname.startsWith("/__px/data/ledger/")) {
+    if (request.method === "POST" || request.method === "PATCH" || request.method === "PUT" || request.method === "DELETE") {
       return json(403, {
         error: {
           code: "LEDGER_IMMUTABLE_READ_ONLY",
-          message:
-            "Wallet and usage ledger tables are immutable and cannot be modified from the Data Browser in any environment.",
+          message: "Wallet and usage ledger tables are immutable and cannot be modified from the Data Browser in any environment.",
         },
       });
     }
@@ -1043,9 +900,7 @@ export async function handleDataBrowserRequest(
     const workspaceId = signedWorkspaceOf(url);
 
     if (!workspaceId) {
-      return workspaceRequired(
-        "Query parameter 'workspaceId' is required to inspect the Wallet & Usage Ledger (WHERE workspace_id = ?1).",
-      );
+      return workspaceRequired("Query parameter 'workspaceId' is required to inspect the Wallet & Usage Ledger (WHERE workspace_id = ?1).");
     }
 
     const cursor = url.searchParams.get("cursor") ?? url.searchParams.get("offset");
@@ -1059,9 +914,7 @@ export async function handleDataBrowserRequest(
   }
 
   // Match /__px/data/tables/:tableName/rows or /__px/data/tables/:tableName/rows/:rowId
-  const rowsMatch = url.pathname.match(
-    /^\/__px\/data\/tables\/([^/]+)\/rows(?:\/([^/]+))?$/,
-  );
+  const rowsMatch = url.pathname.match(/^\/__px\/data\/tables\/([^/]+)\/rows(?:\/([^/]+))?$/);
   if (!rowsMatch) {
     return null;
   }
@@ -1086,21 +939,12 @@ export async function handleDataBrowserRequest(
   const targetTable = resolveTargetTable(requestedTableName, tables);
 
   // Check ledger immutability on write methods even before table existence so wallet/ledger names always return LEDGER_IMMUTABLE_READ_ONLY
-  if (
-    request.method === "POST" ||
-    request.method === "PATCH" ||
-    request.method === "PUT" ||
-    request.method === "DELETE"
-  ) {
-    if (
-      isImmutableLedgerTable(requestedTableName) ||
-      targetTable?.isLedger
-    ) {
+  if (request.method === "POST" || request.method === "PATCH" || request.method === "PUT" || request.method === "DELETE") {
+    if (isImmutableLedgerTable(requestedTableName) || targetTable?.isLedger) {
       return json(403, {
         error: {
           code: "LEDGER_IMMUTABLE_READ_ONLY",
-          message:
-            "Wallet and usage ledger tables are immutable and cannot be modified from the Data Browser in any environment.",
+          message: "Wallet and usage ledger tables are immutable and cannot be modified from the Data Browser in any environment.",
         },
       });
     }
@@ -1109,8 +953,7 @@ export async function handleDataBrowserRequest(
       return json(403, {
         error: {
           code: "PRODUCTION_DATA_WRITE_FORBIDDEN",
-          message:
-            "Data Browser writes are strictly forbidden in the production environment.",
+          message: "Data Browser writes are strictly forbidden in the production environment.",
         },
       });
     }
@@ -1125,12 +968,8 @@ export async function handleDataBrowserRequest(
     });
   }
 
-  const allowlistedColumnMap = new Map(
-    targetTable.columns.map((c) => [c.name.toLowerCase(), c]),
-  );
-  const projectionSql = targetTable.columns
-    .map((c) => `"${c.name}"`)
-    .join(", ");
+  const allowlistedColumnMap = new Map(targetTable.columns.map((c) => [c.name.toLowerCase(), c]));
+  const projectionSql = targetTable.columns.map((c) => `"${c.name}"`).join(", ");
 
   // Route 3: GET /__px/data/tables/:tableName/rows
   if (request.method === "GET") {
@@ -1141,15 +980,10 @@ export async function handleDataBrowserRequest(
     }
 
     const limitRaw = Number(url.searchParams.get("limit") ?? "50");
-    const limit = Number.isFinite(limitRaw)
-      ? Math.max(1, Math.min(100, Math.trunc(limitRaw)))
-      : 50;
+    const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.trunc(limitRaw))) : 50;
 
-    const offsetRaw = Number(
-      url.searchParams.get("offset") ?? url.searchParams.get("cursor") ?? "0",
-    );
-    const offset =
-      Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.trunc(offsetRaw) : 0;
+    const offsetRaw = Number(url.searchParams.get("offset") ?? url.searchParams.get("cursor") ?? "0");
+    const offset = Number.isFinite(offsetRaw) && offsetRaw >= 0 ? Math.trunc(offsetRaw) : 0;
 
     // Parameter ?1 is ALWAYS workspaceId
     const whereParts: string[] = [`"workspace_id" = ?1`];
@@ -1194,24 +1028,9 @@ export async function handleDataBrowserRequest(
       }
     }
 
-    const rawSortCol = (
-      url.searchParams.get("sortCol") ??
-      url.searchParams.get("sortBy") ??
-      url.searchParams.get("sort") ??
-      "id"
-    ).trim();
-    const sortColMeta =
-      allowlistedColumnMap.get(rawSortCol.toLowerCase()) ??
-      allowlistedColumnMap.get("id") ??
-      targetTable.columns[0]!;
-    const rawSortDir = (
-      url.searchParams.get("sortDir") ??
-      url.searchParams.get("sortOrder") ??
-      url.searchParams.get("order") ??
-      "asc"
-    )
-      .trim()
-      .toUpperCase();
+    const rawSortCol = (url.searchParams.get("sortCol") ?? url.searchParams.get("sortBy") ?? url.searchParams.get("sort") ?? "id").trim();
+    const sortColMeta = allowlistedColumnMap.get(rawSortCol.toLowerCase()) ?? allowlistedColumnMap.get("id") ?? targetTable.columns[0]!;
+    const rawSortDir = (url.searchParams.get("sortDir") ?? url.searchParams.get("sortOrder") ?? url.searchParams.get("order") ?? "asc").trim().toUpperCase();
     const sortDir: "ASC" | "DESC" = rawSortDir === "DESC" ? "DESC" : "ASC";
 
     const whereSql = `WHERE ${whereParts.join(" AND ")}`;
@@ -1265,11 +1084,7 @@ export async function handleDataBrowserRequest(
   }
 
   // Route 4: Write operations (POST | PATCH | DELETE) in preview
-  if (
-    request.method !== "POST" &&
-    request.method !== "PATCH" &&
-    request.method !== "DELETE"
-  ) {
+  if (request.method !== "POST" && request.method !== "PATCH" && request.method !== "DELETE") {
     return json(405, {
       error: {
         code: "METHOD_NOT_ALLOWED",
@@ -1325,28 +1140,19 @@ export async function handleDataBrowserRequest(
     return json(422, {
       error: {
         code: "CONFIRM_WRITE_REQUIRED",
-        message:
-          "Preview entity mutations require explicit confirmation (confirmWrite: true).",
+        message: "Preview entity mutations require explicit confirmation (confirmWrite: true).",
       },
     });
   }
 
   const inputRowObject =
-    typeof parsedBody.row === "object" &&
-    parsedBody.row !== null &&
-    !Array.isArray(parsedBody.row)
+    typeof parsedBody.row === "object" && parsedBody.row !== null && !Array.isArray(parsedBody.row)
       ? (parsedBody.row as Record<string, unknown>)
-      : typeof parsedBody.patch === "object" &&
-          parsedBody.patch !== null &&
-          !Array.isArray(parsedBody.patch)
+      : typeof parsedBody.patch === "object" && parsedBody.patch !== null && !Array.isArray(parsedBody.patch)
         ? (parsedBody.patch as Record<string, unknown>)
-        : typeof parsedBody.values === "object" &&
-            parsedBody.values !== null &&
-            !Array.isArray(parsedBody.values)
+        : typeof parsedBody.values === "object" && parsedBody.values !== null && !Array.isArray(parsedBody.values)
           ? (parsedBody.values as Record<string, unknown>)
-          : typeof parsedBody.data === "object" &&
-              parsedBody.data !== null &&
-              !Array.isArray(parsedBody.data)
+          : typeof parsedBody.data === "object" && parsedBody.data !== null && !Array.isArray(parsedBody.data)
             ? (parsedBody.data as Record<string, unknown>)
             : parsedBody;
 
@@ -1367,21 +1173,11 @@ export async function handleDataBrowserRequest(
         const val = inputRowObject[col.name];
         insertCols.push(col.name);
         insertParams.push(
-          typeof val === "boolean"
-            ? val
-              ? 1
-              : 0
-            : val !== undefined && typeof val === "object" && val !== null
-              ? JSON.stringify(val)
-              : (val ?? null),
+          typeof val === "boolean" ? (val ? 1 : 0) : val !== undefined && typeof val === "object" && val !== null ? JSON.stringify(val) : (val ?? null),
         );
       } else if (col.notNull) {
         insertCols.push(col.name);
-        insertParams.push(
-          col.type.includes("INT") || col.type.includes("REAL") || col.type.includes("NUM")
-            ? 0
-            : "",
-        );
+        insertParams.push(col.type.includes("INT") || col.type.includes("REAL") || col.type.includes("NUM") ? 0 : "");
       }
     }
 
@@ -1395,9 +1191,7 @@ export async function handleDataBrowserRequest(
       .run();
 
     const afterSnapshot = await options.db
-      .prepare(
-        `SELECT ${projectionSql} FROM "${targetTable.tableName}" WHERE "workspace_id" = ?1 AND "id" = ?2`,
-      )
+      .prepare(`SELECT ${projectionSql} FROM "${targetTable.tableName}" WHERE "workspace_id" = ?1 AND "id" = ?2`)
       .bind(workspaceId, requestedId)
       .first<Record<string, unknown>>();
 
@@ -1436,9 +1230,7 @@ export async function handleDataBrowserRequest(
 
   // Strictly scope lookup to WHERE "workspace_id" = ?1 AND "id" = ?2
   const beforeSnapshot = await options.db
-    .prepare(
-      `SELECT ${projectionSql} FROM "${targetTable.tableName}" WHERE "workspace_id" = ?1 AND "id" = ?2`,
-    )
+    .prepare(`SELECT ${projectionSql} FROM "${targetTable.tableName}" WHERE "workspace_id" = ?1 AND "id" = ?2`)
     .bind(workspaceId, targetRowId)
     .first<Record<string, unknown>>();
 
@@ -1498,9 +1290,7 @@ export async function handleDataBrowserRequest(
       .run();
 
     const afterSnapshot = await options.db
-      .prepare(
-        `SELECT ${projectionSql} FROM "${targetTable.tableName}" WHERE "workspace_id" = ?1 AND "id" = ?2`,
-      )
+      .prepare(`SELECT ${projectionSql} FROM "${targetTable.tableName}" WHERE "workspace_id" = ?1 AND "id" = ?2`)
       .bind(workspaceId, targetRowId)
       .first<Record<string, unknown>>();
 

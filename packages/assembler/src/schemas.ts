@@ -35,16 +35,7 @@ export const providesItem = z.string().regex(PROVIDES_ITEM);
 export const requiresItem = z.string().regex(REQUIRES_ITEM);
 const mountPath = z.string().regex(MOUNT_PATH);
 
-export const BRICK_CATEGORIES = [
-  "identity",
-  "billing",
-  "data",
-  "automation",
-  "communication",
-  "ai",
-  "developer",
-  "governance",
-] as const;
+export const BRICK_CATEGORIES = ["identity", "billing", "data", "automation", "communication", "ai", "developer", "governance"] as const;
 export const brickCategory = z.enum(BRICK_CATEGORIES);
 export type BrickCategory = z.infer<typeof brickCategory>;
 
@@ -52,16 +43,7 @@ export const BRICK_MATURITIES = ["production", "beta", "experimental"] as const;
 export const brickMaturity = z.enum(BRICK_MATURITIES);
 export type BrickMaturity = z.infer<typeof brickMaturity>;
 
-export const BINDING_TYPES = [
-  "d1",
-  "r2",
-  "kv",
-  "queue",
-  "service",
-  "ai",
-  "vectorize",
-  "durable_object",
-] as const;
+export const BINDING_TYPES = ["d1", "r2", "kv", "queue", "service", "ai", "vectorize", "durable_object"] as const;
 export const bindingType = z.enum(BINDING_TYPES);
 export type BindingType = z.infer<typeof bindingType>;
 
@@ -127,10 +109,30 @@ const JS_RESERVED = new Set(
 );
 /** Names the assembled entry (src/index.ts) binds itself; an imported export with one of these names would clash. */
 const ENTRY_BINDINGS = new Set([
-  "Hono", "app", "entities", "openapiSpec", "exportTenant", "eraseTenant", "purgeWorkspaceData", "stubIdentity",
-  "createHttpGuard", "rateLimit", "tableName", "D1Like", "scheduled", "queue", "suspensionExempt", "BUILD_SHA",
-  "MIGRATIONS", "REQUIRED_BINDINGS", "SUSPENSION_EXEMPT", "WORKSPACE_ID_PATTERN", "WORKSPACE_PURGE_SQL",
-  "WORKSPACE_PURGE_SHELL_SQL", "WORKSPACE_PURGE_BRICK_SQL", "WORKSPACE_PURGE_OBJECTS",
+  "Hono",
+  "app",
+  "entities",
+  "openapiSpec",
+  "exportTenant",
+  "eraseTenant",
+  "purgeWorkspaceData",
+  "stubIdentity",
+  "createHttpGuard",
+  "rateLimit",
+  "tableName",
+  "D1Like",
+  "scheduled",
+  "queue",
+  "suspensionExempt",
+  "BUILD_SHA",
+  "MIGRATIONS",
+  "REQUIRED_BINDINGS",
+  "SUSPENSION_EXEMPT",
+  "WORKSPACE_ID_PATTERN",
+  "WORKSPACE_PURGE_SQL",
+  "WORKSPACE_PURGE_SHELL_SQL",
+  "WORKSPACE_PURGE_BRICK_SQL",
+  "WORKSPACE_PURGE_OBJECTS",
 ]);
 
 /** Why an export name cannot be imported into the assembled entry, or undefined if it can (story 1.13). */
@@ -165,7 +167,10 @@ export const settingDefinition = z.discriminatedUnion("type", [
   }),
   z.strictObject({
     type: z.literal("enum"),
-    values: z.array(z.string().regex(/^[A-Za-z0-9_-]{1,30}$/)).min(1).max(20),
+    values: z
+      .array(z.string().regex(/^[A-Za-z0-9_-]{1,30}$/))
+      .min(1)
+      .max(20),
     default: z.string(),
     since: z.string().regex(EXACT_VERSION).optional(),
     deprecated: settingDeprecated.optional(),
@@ -321,7 +326,15 @@ export const workspaceDataDefinition = z.strictObject({
    * followed by "/", so one workspace's prefix never covers another's. Deleted before the rows.
    */
   objectPrefixes: z
-    .array(z.strictObject({ binding: identifier, prefix: z.string().max(200).regex(/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\/\{workspaceId\}\/(?:[A-Za-z0-9_.-]+\/)*$/) }))
+    .array(
+      z.strictObject({
+        binding: identifier,
+        prefix: z
+          .string()
+          .max(200)
+          .regex(/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\/\{workspaceId\}\/(?:[A-Za-z0-9_.-]+\/)*$/),
+      }),
+    )
     .optional(),
 });
 export type WorkspaceDataDefinition = z.infer<typeof workspaceDataDefinition>;
@@ -332,19 +345,9 @@ export const workerPrivacyDefinition = z.strictObject({
 });
 export type WorkerPrivacyDefinition = z.infer<typeof workerPrivacyDefinition>;
 
-const bindingsDefinition = z.union([
-  z.array(identifier),
-  z.record(identifier, bindingType),
-]);
+const bindingsDefinition = z.union([z.array(identifier), z.record(identifier, bindingType)]);
 
-export const NODE_PORT_DATA_TYPES = [
-  "string",
-  "number",
-  "boolean",
-  "object",
-  "array",
-  "any",
-] as const;
+export const NODE_PORT_DATA_TYPES = ["string", "number", "boolean", "object", "array", "any"] as const;
 export const nodePortDataType = z.enum(NODE_PORT_DATA_TYPES);
 export type NodePortDataType = z.infer<typeof nodePortDataType>;
 
@@ -353,17 +356,16 @@ export const nodePortDefinition = z.strictObject({
   label: z.string().optional(),
   dataType: nodePortDataType,
   required: z.boolean().optional(),
-  enum: z.array(z.union([z.string(), z.number(), z.boolean()])).max(256).optional(),
+  enum: z
+    .array(z.union([z.string(), z.number(), z.boolean()]))
+    .max(256)
+    .optional(),
   default: z.unknown().optional(),
 });
 export type NodePortDefinition = z.infer<typeof nodePortDefinition>;
 
 export const nodeDefinition = z.strictObject({
-  type: z
-    .string()
-    .regex(
-      /^(?:[a-z][a-z0-9-]*\.[a-z][a-z0-9_]*|core\.[a-z][a-z0-9_]*|int:[a-z0-9-]+\.[A-Za-z0-9_]+)$/,
-    ),
+  type: z.string().regex(/^(?:[a-z][a-z0-9-]*\.[a-z][a-z0-9_]*|core\.[a-z][a-z0-9_]*|int:[a-z0-9-]+\.[A-Za-z0-9_]+)$/),
   label: z.string().min(1).max(80),
   summary: z.string().max(140).optional(),
   role: z.enum(["trigger", "action", "logic"]),
@@ -498,25 +500,21 @@ export const IntegrationOperationParamSchema = z.strictObject({
   required: z.boolean().optional(),
   description: z.string().max(200).optional(),
   sensitive: z.boolean().optional(),
-  enum: z.array(z.union([z.string(), z.number(), z.boolean()])).max(256).optional(),
+  enum: z
+    .array(z.union([z.string(), z.number(), z.boolean()]))
+    .max(256)
+    .optional(),
   default: z.unknown().optional(),
   items: z
     .strictObject({
       dataType: nodePortDataType,
-      enum: z.array(z.union([z.string(), z.number(), z.boolean()])).max(256).optional(),
+      enum: z
+        .array(z.union([z.string(), z.number(), z.boolean()]))
+        .max(256)
+        .optional(),
     })
     .optional(),
-  style: z
-    .enum([
-      "form",
-      "simple",
-      "spaceDelimited",
-      "pipeDelimited",
-      "deepObject",
-      "label",
-      "matrix",
-    ])
-    .optional(),
+  style: z.enum(["form", "simple", "spaceDelimited", "pipeDelimited", "deepObject", "label", "matrix"]).optional(),
   explode: z.boolean().optional(),
   allowReserved: z.boolean().optional(),
 });
@@ -541,7 +539,12 @@ export const FieldSchemaZod: z.ZodType<FieldSchema> = z
       required: z.array(z.string().min(1).max(256)).optional(),
       enum: z.array(z.union([z.string(), z.number(), z.boolean()])).optional(),
       default: z.unknown().optional(),
-      properties: z.record(z.string().min(1).max(256), z.lazy(() => FieldSchemaZod)).optional(),
+      properties: z
+        .record(
+          z.string().min(1).max(256),
+          z.lazy(() => FieldSchemaZod),
+        )
+        .optional(),
       items: z.lazy(() => FieldSchemaZod).optional(),
       variants: z.array(z.lazy(() => FieldSchemaZod)).optional(),
       discriminator: z.string().min(1).max(120).optional(),
@@ -597,14 +600,7 @@ export type IntegrationOperationBodyField = z.infer<typeof IntegrationOperationB
 
 const integrationOperationBodyObjectSchema = z.strictObject({
   contentType: z
-    .enum([
-      "application/json",
-      "application/x-www-form-urlencoded",
-      "multipart/form-data",
-      "multipart/related",
-      "application/octet-stream",
-      "text/plain",
-    ])
+    .enum(["application/json", "application/x-www-form-urlencoded", "multipart/form-data", "multipart/related", "application/octet-stream", "text/plain"])
     .optional(),
   fields: z.array(IntegrationOperationBodyFieldSchema).optional(),
   root: z
@@ -624,18 +620,16 @@ const integrationOperationBodyObjectSchema = z.strictObject({
     .optional(),
 });
 
-export const IntegrationOperationBodySchema = integrationOperationBodyObjectSchema.superRefine(
-  (data, ctx) => {
-    const hasFields = Array.isArray(data.fields) && data.fields.length > 0;
-    const hasRoot = Boolean(data.root);
-    if (!((hasFields && !hasRoot) || (!hasFields && hasRoot))) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "IntegrationOperationBody must specify exactly one of non-empty 'fields' or 'root'",
-      });
-    }
-  },
-);
+export const IntegrationOperationBodySchema = integrationOperationBodyObjectSchema.superRefine((data, ctx) => {
+  const hasFields = Array.isArray(data.fields) && data.fields.length > 0;
+  const hasRoot = Boolean(data.root);
+  if (!((hasFields && !hasRoot) || (!hasFields && hasRoot))) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "IntegrationOperationBody must specify exactly one of non-empty 'fields' or 'root'",
+    });
+  }
+});
 export type IntegrationOperationBody = z.infer<typeof IntegrationOperationBodySchema>;
 
 export const IntegrationOperationResponseSchema = z.strictObject({
@@ -643,7 +637,12 @@ export const IntegrationOperationResponseSchema = z.strictObject({
   status: z.number().int().min(100).max(599).optional(),
   contentType: z.string().min(1).max(120).optional(),
   binary: z.boolean().optional(),
-  maxBytes: z.number().int().min(1).max(100 * 1024 * 1024).optional(),
+  maxBytes: z
+    .number()
+    .int()
+    .min(1)
+    .max(100 * 1024 * 1024)
+    .optional(),
   outputs: z.array(nodePortDefinition).optional(),
   errorShape: z
     .strictObject({
@@ -673,12 +672,7 @@ const PredicateDotPathSchema = z.string().min(1).max(120).refine(isValidDotPath,
   message: "Invalid dot path: must contain valid segments and not access __proto__, constructor, or prototype",
 });
 
-const PredicatePrimitiveSchema = z.union([
-  z.string(),
-  z.number(),
-  z.boolean(),
-  z.null(),
-]);
+const PredicatePrimitiveSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 
 const PredicateLeafEqualsSchema = z.strictObject({
   path: PredicateDotPathSchema,
@@ -735,15 +729,7 @@ export const PredicateSchema: z.ZodType<Predicate> = z
   });
 
 export const IntegrationPaginationSchema = z.strictObject({
-  style: z.enum([
-    "cursor",
-    "page",
-    "link",
-    "offset",
-    "bodyNextUrl",
-    "headerToken",
-    "lastItemCursor",
-  ]),
+  style: z.enum(["cursor", "page", "link", "offset", "bodyNextUrl", "headerToken", "lastItemCursor"]),
   paramName: z.string().regex(IDENTIFIER).optional(),
   responsePath: z.string().min(1).max(120),
   nextCursorPath: z.string().min(1).max(120).optional(),
@@ -816,7 +802,12 @@ const integrationOperationObjectSchema = z.strictObject({
   errorMappings: IntegrationErrorMappingsSchema.optional(),
   sideEffects: z.enum(["none", "read", "write"]),
   timeoutMs: z.number().int().min(1000).max(120000).optional(),
-  maxResponseBytes: z.number().int().min(1).max(50 * 1024 * 1024).optional(),
+  maxResponseBytes: z
+    .number()
+    .int()
+    .min(1)
+    .max(50 * 1024 * 1024)
+    .optional(),
 });
 
 export const IntegrationOperationSchema = z.preprocess((val) => {
@@ -941,7 +932,10 @@ export const IntegrationFidelitySchema = z.strictObject({
   unsupported: z
     .array(
       z.strictObject({
-        op: z.string().regex(/^[A-Za-z0-9_]{1,64}$/).nullable(),
+        op: z
+          .string()
+          .regex(/^[A-Za-z0-9_]{1,64}$/)
+          .nullable(),
         code: z.string().regex(/^[A-Z][A-Z0-9_]{2,63}$/),
         pointer: z.string().max(512),
         blocking: z.boolean(),
@@ -1032,12 +1026,7 @@ export const IntegrationManifestSchema = z
     if (m.defaultHeaders) {
       for (const [k, v] of Object.entries(m.defaultHeaders)) {
         const lower = k.toLowerCase();
-        if (
-          lower === "authorization" ||
-          lower === "cookie" ||
-          lower === "host" ||
-          lower === "content-length"
-        ) {
+        if (lower === "authorization" || lower === "cookie" || lower === "host" || lower === "content-length") {
           ctx.addIssue({
             code: "custom",
             path: ["defaultHeaders", k],
@@ -1109,9 +1098,7 @@ export const IntegrationManifestSchema = z
   });
 export type IntegrationManifestFile = z.infer<typeof IntegrationManifestSchema>;
 
-export function projectIntegrationToNodes(
-  manifest: IntegrationManifestFile,
-): ManifestNodeDefinition[] {
+export function projectIntegrationToNodes(manifest: IntegrationManifestFile): ManifestNodeDefinition[] {
   return manifest.operations.map((op) => {
     const inputs: NodePortDefinition[] = [];
     const seenInputIds = new Set<string>();
@@ -1148,12 +1135,7 @@ export function projectIntegrationToNodes(
         inputs.push({
           id: "body",
           label: "Body",
-          dataType:
-            op.body.root.dataType === "array"
-              ? "array"
-              : op.body.root.dataType === "object"
-                ? "object"
-                : "any",
+          dataType: op.body.root.dataType === "array" ? "array" : op.body.root.dataType === "object" ? "object" : "any",
         });
         seenInputIds.add("body");
       }
@@ -1218,9 +1200,7 @@ export function projectIntegrationToNodes(
     }
 
     const summaryText = (op.summary ?? `${manifest.ui.displayName}: ${op.label}`).slice(0, 140);
-    const hasBlockingLoss = (manifest.fidelity?.unsupported ?? []).some(
-      (e) => (e.op === op.operationId || e.op === null || e.op === "*") && e.blocking,
-    );
+    const hasBlockingLoss = (manifest.fidelity?.unsupported ?? []).some((e) => (e.op === op.operationId || e.op === null || e.op === "*") && e.blocking);
 
     return {
       type: `int:${manifest.app}.${op.operationId}`,
@@ -1362,7 +1342,11 @@ export const ManifestSchema = z
       }
       for (const o of m.workspaceData.objectPrefixes ?? []) {
         const type = m.bindings && !Array.isArray(m.bindings) ? m.bindings[o.binding] : undefined;
-        if (type !== "r2") problem(`workspaceData objectPrefixes binding "${o.binding}" must be declared as an R2 binding ("r2") in bindings`, ["workspaceData", "objectPrefixes"]);
+        if (type !== "r2")
+          problem(`workspaceData objectPrefixes binding "${o.binding}" must be declared as an R2 binding ("r2") in bindings`, [
+            "workspaceData",
+            "objectPrefixes",
+          ]);
       }
       const globals = new Set((m.globalTables ?? []).map((g) => g.table));
       for (const entry of m.workspaceData.tables) {
@@ -1396,7 +1380,8 @@ export const ManifestSchema = z
     }
     if (m.worker.approvalGuard) {
       const gate = m.worker.approvalGuard;
-      if (m.settings[gate.setting]?.type !== "boolean") problem(`worker.approvalGuard setting "${gate.setting}" must be a boolean setting of this brick`, ["worker", "approvalGuard", "setting"]);
+      if (m.settings[gate.setting]?.type !== "boolean")
+        problem(`worker.approvalGuard setting "${gate.setting}" must be a boolean setting of this brick`, ["worker", "approvalGuard", "setting"]);
       const clash = entryBindingClash(gate.export);
       if (clash) problem(`worker.approvalGuard "${gate.export}" cannot be imported into the assembled entry: ${clash}`, ["worker", "approvalGuard", "export"]);
     }
@@ -1410,13 +1395,24 @@ export const ManifestSchema = z
         problem(`setting "${name}" since "${sDef.since}" is greater than brick version "${m.version}"`, ["settings", name, "since"]);
       }
       if (sDef.deprecated?.since && compare(sDef.deprecated.since, m.version) > 0) {
-        problem(`setting "${name}" deprecated.since "${sDef.deprecated.since}" is greater than brick version "${m.version}"`, ["settings", name, "deprecated", "since"]);
+        problem(`setting "${name}" deprecated.since "${sDef.deprecated.since}" is greater than brick version "${m.version}"`, [
+          "settings",
+          name,
+          "deprecated",
+          "since",
+        ]);
       }
     }
     const checkOptions = (owner: string, options: Record<string, z.infer<typeof valueExpr>>): void => {
       for (const [name, value] of Object.entries(options)) {
-        if (typeof value === "object" && "$setting" in value && !(value.$setting in m.settings)) problem(`${owner} option ${name} uses unknown setting "${value.$setting}"`);
-        if (typeof value === "object" && ("$capability" in value || "$setting" in value) && typeof value.requiredWhen === "object" && !(value.requiredWhen.setting in m.settings)) {
+        if (typeof value === "object" && "$setting" in value && !(value.$setting in m.settings))
+          problem(`${owner} option ${name} uses unknown setting "${value.$setting}"`);
+        if (
+          typeof value === "object" &&
+          ("$capability" in value || "$setting" in value) &&
+          typeof value.requiredWhen === "object" &&
+          !(value.requiredWhen.setting in m.settings)
+        ) {
           problem(`${owner} option ${name} is required when unknown setting "${value.requiredWhen.setting}" is set`);
         }
       }

@@ -184,7 +184,7 @@ export class LiveChatService {
     conversationId: string,
     sender: { type: SenderType; id: string; name: string },
     bodyRaw: string,
-    attachments: ChatAttachment[] = []
+    attachments: ChatAttachment[] = [],
   ): Promise<ChatMessage> {
     const msgId = `cmsg_${crypto.randomUUID().replace(/-/g, "")}`;
     const body = bodyRaw.trim();
@@ -211,12 +211,7 @@ export class LiveChatService {
       updates.status = "open";
     }
 
-    await scoped(this.db, workspaceId).update(
-      "chat_conversations",
-      updates,
-      "id = ?",
-      [conversationId]
-    );
+    await scoped(this.db, workspaceId).update("chat_conversations", updates, "id = ?", [conversationId]);
 
     return {
       id: msgId,
@@ -234,11 +229,7 @@ export class LiveChatService {
   /**
    * Assigns an agent to a conversation.
    */
-  async assignAgent(
-    workspaceId: string,
-    conversationId: string,
-    agentId: string
-  ): Promise<boolean> {
+  async assignAgent(workspaceId: string, conversationId: string, agentId: string): Promise<boolean> {
     const res = await scoped(this.db, workspaceId).update(
       "chat_conversations",
       {
@@ -246,7 +237,7 @@ export class LiveChatService {
         status: "assigned",
       },
       "id = ?",
-      [conversationId]
+      [conversationId],
     );
 
     return res.meta.changes > 0;
@@ -256,12 +247,7 @@ export class LiveChatService {
    * Resolves a support conversation.
    */
   async resolveConversation(workspaceId: string, conversationId: string): Promise<boolean> {
-    const res = await scoped(this.db, workspaceId).update(
-      "chat_conversations",
-      { status: "resolved" },
-      "id = ?",
-      [conversationId]
-    );
+    const res = await scoped(this.db, workspaceId).update("chat_conversations", { status: "resolved" }, "id = ?", [conversationId]);
 
     return res.meta.changes > 0;
   }
@@ -269,25 +255,13 @@ export class LiveChatService {
   /**
    * Retrieves conversation details with full message history.
    */
-  async getConversation(
-    workspaceId: string,
-    conversationId: string
-  ): Promise<ConversationWithMessages | null> {
+  async getConversation(workspaceId: string, conversationId: string): Promise<ConversationWithMessages | null> {
     const s = scoped(this.db, workspaceId);
-    const conv = await s.first<RawConvRow>(
-      "chat_conversations",
-      "id = ?",
-      [conversationId]
-    );
+    const conv = await s.first<RawConvRow>("chat_conversations", "id = ?", [conversationId]);
 
     if (!conv) return null;
 
-    const msgRows = await s.select<RawMsgRow>(
-      "chat_messages",
-      "conversation_id = ?",
-      [conversationId],
-      { orderBy: "created_at ASC" }
-    );
+    const msgRows = await s.select<RawMsgRow>("chat_messages", "conversation_id = ?", [conversationId], { orderBy: "created_at ASC" });
 
     return {
       ...conv,
@@ -300,7 +274,7 @@ export class LiveChatService {
    */
   async listConversations(
     workspaceId: string,
-    options: { status?: ConversationStatus; agentId?: string; limit?: number; offset?: number } = {}
+    options: { status?: ConversationStatus; agentId?: string; limit?: number; offset?: number } = {},
   ): Promise<Conversation[]> {
     const s = scoped(this.db, workspaceId);
     const whereClauses: string[] = [];
@@ -317,28 +291,18 @@ export class LiveChatService {
     }
 
     const where = whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
-    const rows = await s.select<RawConvRow>(
-      "chat_conversations",
-      where,
-      params,
-      {
-        orderBy: "last_message_at DESC",
-        limit: options.limit || 50,
-        offset: options.offset || 0,
-      }
-    );
+    const rows = await s.select<RawConvRow>("chat_conversations", where, params, {
+      orderBy: "last_message_at DESC",
+      limit: options.limit || 50,
+      offset: options.offset || 0,
+    });
     return rows;
   }
 
   /**
    * Creates a canned reply shortcut.
    */
-  async createCannedReply(
-    workspaceId: string,
-    shortcutRaw: string,
-    titleRaw: string,
-    contentRaw: string
-  ): Promise<CannedReply> {
+  async createCannedReply(workspaceId: string, shortcutRaw: string, titleRaw: string, contentRaw: string): Promise<CannedReply> {
     const id = `can_${crypto.randomUUID().replace(/-/g, "")}`;
     const shortcut = shortcutRaw.trim().toLowerCase();
     const title = titleRaw.trim();
@@ -346,19 +310,10 @@ export class LiveChatService {
     const now = new Date().toISOString();
     const s = scoped(this.db, workspaceId);
 
-    const existing = await s.first<CannedReply>(
-      "chat_canned_replies",
-      "shortcut = ?",
-      [shortcut]
-    );
+    const existing = await s.first<CannedReply>("chat_canned_replies", "shortcut = ?", [shortcut]);
 
     if (existing) {
-      await s.update(
-        "chat_canned_replies",
-        { title, content },
-        "id = ?",
-        [existing.id]
-      );
+      await s.update("chat_canned_replies", { title, content }, "id = ?", [existing.id]);
       return {
         ...existing,
         title,
@@ -389,12 +344,7 @@ export class LiveChatService {
    */
   async listCannedReplies(workspaceId: string): Promise<CannedReply[]> {
     const s = scoped(this.db, workspaceId);
-    const rows = await s.select<CannedReply>(
-      "chat_canned_replies",
-      undefined,
-      [],
-      { orderBy: "shortcut ASC" }
-    );
+    const rows = await s.select<CannedReply>("chat_canned_replies", undefined, [], { orderBy: "shortcut ASC" });
 
     return rows;
   }

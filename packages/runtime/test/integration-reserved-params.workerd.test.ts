@@ -56,7 +56,8 @@ describe("UC1.2 / F-SEC-6: Inputs named url, baseUrl or host are ordinary parame
     },
   };
 
-  const createContext = (inputs: Record<string, unknown>): ExecutionContext => ({ workspaceId: "ws_test",
+  const createContext = (inputs: Record<string, unknown>): ExecutionContext => ({
+    workspaceId: "ws_test",
     nodeId: "test_reserved_params_node",
     runId: "run_reserved_params_test",
     idempotencyKey: "run_reserved_params_test:test_reserved_params_node",
@@ -87,11 +88,7 @@ describe("UC1.2 / F-SEC-6: Inputs named url, baseUrl or host are ordinary parame
       });
     });
 
-    const executor = createIntegrationOperationExecutor(
-      manifest,
-      manifest.operations[0]!,
-      { fetcher, resolveHost: undefined },
-    );
+    const executor = createIntegrationOperationExecutor(manifest, manifest.operations[0]!, { fetcher, resolveHost: undefined });
 
     const inputs = {
       url: "https://customer.example/hook",

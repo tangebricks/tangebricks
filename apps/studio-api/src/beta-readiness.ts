@@ -1,18 +1,10 @@
 import { z } from "zod";
 import type { D1Like } from "@poc/sdk";
 import { ensureStudioD1Schema } from "./blueprint-do.ts";
-import {
-  computeOnboardingFunnelAnalytics,
-  generateUuidV7,
-  recordStudioOnboardingEvent,
-} from "./security/token-vault.ts";
+import { computeOnboardingFunnelAnalytics, generateUuidV7, recordStudioOnboardingEvent } from "./security/token-vault.ts";
 import type { StudioOnboardingStep } from "./security/token-vault.ts";
 
-export const BETA_PARTNER_TYPES = [
-  "agency",
-  "mcp-first-dev",
-  "solo-founder",
-] as const;
+export const BETA_PARTNER_TYPES = ["agency", "mcp-first-dev", "solo-founder"] as const;
 
 export type BetaPartnerType = (typeof BETA_PARTNER_TYPES)[number];
 
@@ -37,9 +29,7 @@ export const CohortPartnerSessionTelemetrySchema = z.object({
   weeklyActiveSessionsW4: z.number().int().min(0).optional(),
 });
 
-export type CohortPartnerSessionTelemetry = z.infer<
-  typeof CohortPartnerSessionTelemetrySchema
->;
+export type CohortPartnerSessionTelemetry = z.infer<typeof CohortPartnerSessionTelemetrySchema>;
 
 export const CohortPartnerSeedInputSchema = z.object({
   orgId: z.string().min(1).max(128).optional(),
@@ -57,9 +47,7 @@ export const CohortPartnerSeedInputSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-export type CohortPartnerSeedInput = z.infer<
-  typeof CohortPartnerSeedInputSchema
->;
+export type CohortPartnerSeedInput = z.infer<typeof CohortPartnerSeedInputSchema>;
 
 export const CohortProvisionRequestSchema = z.object({
   cohortId: z.string().min(1).max(64).optional(),
@@ -67,9 +55,7 @@ export const CohortProvisionRequestSchema = z.object({
   partners: z.array(CohortPartnerSeedInputSchema).min(1).max(20),
 });
 
-export type CohortProvisionRequest = z.infer<
-  typeof CohortProvisionRequestSchema
->;
+export type CohortProvisionRequest = z.infer<typeof CohortProvisionRequestSchema>;
 
 export interface CohortCompositionValidationResult {
   ok: boolean;
@@ -83,9 +69,7 @@ export interface CohortCompositionValidationResult {
   };
 }
 
-export function validateCohort1Composition(
-  partners: ReadonlyArray<{ partnerType: BetaPartnerType }>,
-): CohortCompositionValidationResult {
+export function validateCohort1Composition(partners: ReadonlyArray<{ partnerType: BetaPartnerType }>): CohortCompositionValidationResult {
   let agency = 0;
   let mcpFirstDev = 0;
   let soloFounder = 0;
@@ -343,9 +327,7 @@ export async function provisionBetaCohortPartners(
       status: 422,
       error: {
         code: "INVALID_COHORT_COMPOSITION",
-        message:
-          compositionCheck.message ??
-          "Invalid Cohort-1 partner composition under Owner Decision D1.",
+        message: compositionCheck.message ?? "Invalid Cohort-1 partner composition under Owner Decision D1.",
         counts: compositionCheck.counts,
       },
     };
@@ -353,22 +335,11 @@ export async function provisionBetaCohortPartners(
 
   const cohortId = input.cohortId ?? "cohort-1";
   if (input.resetCohortEvents) {
-    const existingRows = await db
-      .prepare(
-        "SELECT org_id FROM studio_beta_cohort_partners WHERE cohort_id = ?",
-      )
-      .bind(cohortId)
-      .all<{ org_id: string }>();
+    const existingRows = await db.prepare("SELECT org_id FROM studio_beta_cohort_partners WHERE cohort_id = ?").bind(cohortId).all<{ org_id: string }>();
     for (const r of existingRows.results ?? []) {
-      await db
-        .prepare("DELETE FROM studio_onboarding_events WHERE org_id = ?")
-        .bind(r.org_id)
-        .run();
+      await db.prepare("DELETE FROM studio_onboarding_events WHERE org_id = ?").bind(r.org_id).run();
     }
-    await db
-      .prepare("DELETE FROM studio_beta_cohort_partners WHERE cohort_id = ?")
-      .bind(cohortId)
-      .run();
+    await db.prepare("DELETE FROM studio_beta_cohort_partners WHERE cohort_id = ?").bind(cohortId).run();
   }
 
   const nowIso = new Date().toISOString();
@@ -377,8 +348,7 @@ export async function provisionBetaCohortPartners(
   for (let idx = 0; idx < input.partners.length; idx += 1) {
     const p = input.partners[idx]!;
     const orgId = p.orgId ?? `org_${cohortId}_${p.orgSlug.replace(/-/g, "_")}`;
-    const userId =
-      p.ownerUserId ?? `usr_${cohortId}_${p.orgSlug.replace(/-/g, "_")}`;
+    const userId = p.ownerUserId ?? `usr_${cohortId}_${p.orgSlug.replace(/-/g, "_")}`;
     const ownerName = p.ownerName ?? p.ownerEmail.split("@")[0] ?? "Partner Owner";
     const inviteToken = `inv_${cohortId}_${p.partnerType}_${generateUuidV7().slice(0, 12)}`;
     const telemetry = p.sessionTelemetry;
@@ -417,10 +387,8 @@ export async function provisionBetaCohortPartners(
       .bind(orgId, userId, nowIso)
       .run();
 
-    const deployedIntegrationWorkflows =
-      telemetry?.deployedIntegrationWorkflows ?? 0;
-    const meanTimeToLocateFailingNodeSec =
-      telemetry?.meanTimeToLocateFailingNodeSec ?? null;
+    const deployedIntegrationWorkflows = telemetry?.deployedIntegrationWorkflows ?? 0;
+    const meanTimeToLocateFailingNodeSec = telemetry?.meanTimeToLocateFailingNodeSec ?? null;
     const weeklyActiveSessionsW4 = telemetry?.weeklyActiveSessionsW4 ?? 0;
 
     await db
@@ -463,20 +431,11 @@ export async function provisionBetaCohortPartners(
       .run();
 
     if (telemetry) {
-      await db
-        .prepare("DELETE FROM studio_onboarding_events WHERE org_id = ?")
-        .bind(orgId)
-        .run();
+      await db.prepare("DELETE FROM studio_onboarding_events WHERE org_id = ?").bind(orgId).run();
 
-      const partnerStartIso =
-        telemetry.signupAt ??
-        new Date(baseStartMs + idx * 3_600_000).toISOString();
+      const partnerStartIso = telemetry.signupAt ?? new Date(baseStartMs + idx * 3_600_000).toISOString();
 
-      const recordStep = async (
-        step: StudioOnboardingStep,
-        createdAt: string,
-        extraMeta?: Record<string, unknown>,
-      ) => {
+      const recordStep = async (step: StudioOnboardingStep, createdAt: string, extraMeta?: Record<string, unknown>) => {
         await recordStudioOnboardingEvent(db, {
           orgId,
           projectId,
@@ -494,58 +453,32 @@ export async function provisionBetaCohortPartners(
       };
 
       await recordStep("signup_completed", partnerStartIso);
-      await recordStep(
-        "project_created",
-        addMinutesIso(partnerStartIso, 1.0),
-      );
+      await recordStep("project_created", addMinutesIso(partnerStartIso, 1.0));
 
-      const wizardOpenedAt =
-        telemetry.connectCfWizardOpenedAt ??
-        addMinutesIso(partnerStartIso, 3.0);
+      const wizardOpenedAt = telemetry.connectCfWizardOpenedAt ?? addMinutesIso(partnerStartIso, 3.0);
       await recordStep("connect_cf_wizard_opened", wizardOpenedAt);
 
-      const linkClickedAt =
-        telemetry.connectCfTokenLinkClickedAt ??
-        addMinutesIso(wizardOpenedAt, 0.5);
+      const linkClickedAt = telemetry.connectCfTokenLinkClickedAt ?? addMinutesIso(wizardOpenedAt, 0.5);
       await recordStep("connect_cf_token_link_clicked", linkClickedAt);
 
-      const tokenSubmittedAt =
-        telemetry.connectCfTokenSubmittedAt ??
-        addMinutesIso(wizardOpenedAt, 2.5);
+      const tokenSubmittedAt = telemetry.connectCfTokenSubmittedAt ?? addMinutesIso(wizardOpenedAt, 2.5);
       await recordStep("connect_cf_token_submitted", tokenSubmittedAt);
 
-      if (
-        telemetry.connectCfPermissionFailedOnce ||
-        telemetry.connectCfPermissionCheckFailedAt
-      ) {
-        const failedAt =
-          telemetry.connectCfPermissionCheckFailedAt ??
-          addMinutesIso(tokenSubmittedAt, 0.25);
+      if (telemetry.connectCfPermissionFailedOnce || telemetry.connectCfPermissionCheckFailedAt) {
+        const failedAt = telemetry.connectCfPermissionCheckFailedAt ?? addMinutesIso(tokenSubmittedAt, 0.25);
         await recordStep("connect_cf_permission_check_failed", failedAt);
       }
 
       const cfCompleted = telemetry.connectCfCompleted ?? true;
       if (cfCompleted) {
-        const verifiedAt =
-          telemetry.connectCfVerifiedAt ??
-          addMinutesIso(tokenSubmittedAt, 1.0);
+        const verifiedAt = telemetry.connectCfVerifiedAt ?? addMinutesIso(tokenSubmittedAt, 1.0);
         await recordStep("connect_cf_verified", verifiedAt);
 
         const ttfdMinutes = telemetry.ttfdMinutes;
-        if (
-          typeof ttfdMinutes === "number" ||
-          telemetry.firstPreviewDeploySucceededAt
-        ) {
+        if (typeof ttfdMinutes === "number" || telemetry.firstPreviewDeploySucceededAt) {
           const resolvedMinutes = ttfdMinutes ?? 15;
-          const deployStartedAt =
-            telemetry.firstPreviewDeployStartedAt ??
-            addMinutesIso(
-              partnerStartIso,
-              Math.max(4.5, resolvedMinutes - 1.0),
-            );
-          const deploySucceededAt =
-            telemetry.firstPreviewDeploySucceededAt ??
-            addMinutesIso(partnerStartIso, resolvedMinutes);
+          const deployStartedAt = telemetry.firstPreviewDeployStartedAt ?? addMinutesIso(partnerStartIso, Math.max(4.5, resolvedMinutes - 1.0));
+          const deploySucceededAt = telemetry.firstPreviewDeploySucceededAt ?? addMinutesIso(partnerStartIso, resolvedMinutes);
 
           await recordStep("first_preview_deploy_started", deployStartedAt);
           await recordStep("first_preview_deploy_succeeded", deploySucceededAt);
@@ -568,23 +501,14 @@ function computePercentile(sortedAsc: number[], p: number): number | null {
   if (sortedAsc.length === 1) return Number(sortedAsc[0]!.toFixed(2));
   if (p === 0.5) {
     const mid = Math.floor(sortedAsc.length / 2);
-    const val =
-      sortedAsc.length % 2 === 1
-        ? sortedAsc[mid]!
-        : (sortedAsc[mid - 1]! + sortedAsc[mid]!) / 2;
+    const val = sortedAsc.length % 2 === 1 ? sortedAsc[mid]! : (sortedAsc[mid - 1]! + sortedAsc[mid]!) / 2;
     return Number(val.toFixed(2));
   }
-  const idx = Math.min(
-    sortedAsc.length - 1,
-    Math.max(0, Math.ceil(p * sortedAsc.length) - 1),
-  );
+  const idx = Math.min(sortedAsc.length - 1, Math.max(0, Math.ceil(p * sortedAsc.length) - 1));
   return Number(sortedAsc[idx]!.toFixed(2));
 }
 
-export async function computeCohortBetaMetrics(
-  db: D1Like,
-  options?: { cohortId?: string },
-): Promise<BetaReadinessReport> {
+export async function computeCohortBetaMetrics(db: D1Like, options?: { cohortId?: string }): Promise<BetaReadinessReport> {
   await ensureStudioD1Schema(db);
   const cohortId = options?.cohortId ?? "cohort-1";
 
@@ -651,8 +575,7 @@ export async function computeCohortBetaMetrics(
     wizardOpenedCount += orgFunnel.connectCloudflare.wizardOpenedCount;
     tokenLinkClickedCount += orgFunnel.connectCloudflare.tokenLinkClickedCount;
     tokenSubmittedCount += orgFunnel.connectCloudflare.tokenSubmittedCount;
-    permissionCheckFailedCount +=
-      orgFunnel.connectCloudflare.permissionCheckFailedCount;
+    permissionCheckFailedCount += orgFunnel.connectCloudflare.permissionCheckFailedCount;
     verifiedCount += orgFunnel.connectCloudflare.verifiedCount;
 
     const ttfdMinutes = orgFunnel.ttfd.medianTtfdMinutes;
@@ -675,12 +598,10 @@ export async function computeCohortBetaMetrics(
     }
 
     const locateSec =
-      r.mean_time_to_locate_failing_node_sec !== null &&
-      r.mean_time_to_locate_failing_node_sec !== undefined
+      r.mean_time_to_locate_failing_node_sec !== null && r.mean_time_to_locate_failing_node_sec !== undefined
         ? Number(r.mean_time_to_locate_failing_node_sec)
         : null;
-    const locateMin =
-      locateSec !== null ? Number((locateSec / 60).toFixed(2)) : null;
+    const locateMin = locateSec !== null ? Number((locateSec / 60).toFixed(2)) : null;
     const weeklyActiveW4 = Number(r.weekly_active_sessions_w4 ?? 0);
 
     partners.push({
@@ -694,12 +615,9 @@ export async function computeCohortBetaMetrics(
       inviteToken: r.invite_token,
       status: r.status,
       ttfdMinutes,
-      connectCfWizardOpened:
-        orgFunnel.connectCloudflare.wizardOpenedCount > 0,
+      connectCfWizardOpened: orgFunnel.connectCloudflare.wizardOpenedCount > 0,
       connectCfVerified: orgFunnel.connectCloudflare.verifiedCount > 0,
-      deployedIntegrationWorkflows: Number(
-        r.deployed_integration_workflows ?? 0,
-      ),
+      deployedIntegrationWorkflows: Number(r.deployed_integration_workflows ?? 0),
       meanTimeToLocateFailingNodeSec: locateSec,
       meanTimeToLocateFailingNodeMinutes: locateMin,
       weeklyActiveSessionsW4: weeklyActiveW4,
@@ -713,57 +631,30 @@ export async function computeCohortBetaMetrics(
   const totalPartners = partners.length;
   const d1CompositionPassed = agencyCount >= 1 && mcpFirstDevCount >= 1;
 
-  const sortedTtfd = perPartnerMinutes
-    .map((item) => item.minutes)
-    .sort((a, b) => a - b);
+  const sortedTtfd = perPartnerMinutes.map((item) => item.minutes).sort((a, b) => a - b);
   const medianTtfdMinutes = computePercentile(sortedTtfd, 0.5);
   const p90TtfdMinutes = computePercentile(sortedTtfd, 0.9);
-  const ttfdPassed =
-    medianTtfdMinutes !== null && medianTtfdMinutes <= 30;
+  const ttfdPassed = medianTtfdMinutes !== null && medianTtfdMinutes <= 30;
 
-  const rawDropOff =
-    wizardOpenedCount > 0 ? 1 - verifiedCount / wizardOpenedCount : 0;
+  const rawDropOff = wizardOpenedCount > 0 ? 1 - verifiedCount / wizardOpenedCount : 0;
   const dropOffRate = Number(Math.max(0, Math.min(1, rawDropOff)).toFixed(4));
   const dropOffThreshold = 0.25 as const;
   const cp9TriggerFired = dropOffRate > dropOffThreshold;
   const soloFoundersUnlocked = !cp9TriggerFired;
 
-  const partnersWithIntegrationWorkflows = partners.filter(
-    (p) => p.deployedIntegrationWorkflows >= 1,
-  ).length;
-  const totalDeployedIntegrationWorkflows = partners.reduce(
-    (acc, p) => acc + p.deployedIntegrationWorkflows,
-    0,
-  );
+  const partnersWithIntegrationWorkflows = partners.filter((p) => p.deployedIntegrationWorkflows >= 1).length;
+  const totalDeployedIntegrationWorkflows = partners.reduce((acc, p) => acc + p.deployedIntegrationWorkflows, 0);
   const integrationAdoptionPassed = partnersWithIntegrationWorkflows >= 3;
 
-  const locateSamples = partners
-    .map((p) => p.meanTimeToLocateFailingNodeSec)
-    .filter((v): v is number => v !== null && Number.isFinite(v));
-  const meanTimeToLocateSec =
-    locateSamples.length > 0
-      ? Number(
-          (
-            locateSamples.reduce((a, b) => a + b, 0) / locateSamples.length
-          ).toFixed(2),
-        )
-      : null;
-  const meanTimeToLocateMinutes =
-    meanTimeToLocateSec !== null
-      ? Number((meanTimeToLocateSec / 60).toFixed(2))
-      : null;
-  const failingNodeLocalizationPassed =
-    meanTimeToLocateMinutes !== null && meanTimeToLocateMinutes <= 2;
+  const locateSamples = partners.map((p) => p.meanTimeToLocateFailingNodeSec).filter((v): v is number => v !== null && Number.isFinite(v));
+  const meanTimeToLocateSec = locateSamples.length > 0 ? Number((locateSamples.reduce((a, b) => a + b, 0) / locateSamples.length).toFixed(2)) : null;
+  const meanTimeToLocateMinutes = meanTimeToLocateSec !== null ? Number((meanTimeToLocateSec / 60).toFixed(2)) : null;
+  const failingNodeLocalizationPassed = meanTimeToLocateMinutes !== null && meanTimeToLocateMinutes <= 2;
 
   const activePartnersW4 = partners.filter((p) => p.isActiveW4).length;
   const weeklyActiveRetentionPassed = activePartnersW4 >= 3;
 
-  const overallPassed =
-    d1CompositionPassed &&
-    ttfdPassed &&
-    integrationAdoptionPassed &&
-    failingNodeLocalizationPassed &&
-    weeklyActiveRetentionPassed;
+  const overallPassed = d1CompositionPassed && ttfdPassed && integrationAdoptionPassed && failingNodeLocalizationPassed && weeklyActiveRetentionPassed;
 
   return {
     generatedAt: new Date().toISOString(),

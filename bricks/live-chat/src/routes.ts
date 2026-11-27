@@ -22,7 +22,7 @@ const SendMessageSchema = z.object({
       z.object({
         url: z.string().url(),
         name: z.string().min(1).max(255),
-      })
+      }),
     )
     .optional(),
 });
@@ -140,7 +140,7 @@ export function createChatRoutes(): Hono<ChatEnv> {
         name: senderName,
       },
       parsed.data.body,
-      parsed.data.attachments || []
+      parsed.data.attachments || [],
     );
 
     return c.json(msg, 201);
@@ -212,12 +212,7 @@ export function createChatRoutes(): Hono<ChatEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("chatService") || new LiveChatService(c.env.DB);
-    const reply = await service.createCannedReply(
-      workspaceId,
-      parsed.data.shortcut,
-      parsed.data.title,
-      parsed.data.content
-    );
+    const reply = await service.createCannedReply(workspaceId, parsed.data.shortcut, parsed.data.title, parsed.data.content);
 
     return c.json(reply, 201);
   });

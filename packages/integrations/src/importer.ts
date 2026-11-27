@@ -1,10 +1,5 @@
 import { FIDELITY_CODES } from "@poc/assembler";
-import {
-  IntegrationManifestSchema,
-  extractAuthConnectionFields,
-  formatIssues,
-  projectIntegrationToNodes,
-} from "@poc/assembler";
+import { IntegrationManifestSchema, extractAuthConnectionFields, formatIssues, projectIntegrationToNodes } from "@poc/assembler";
 import { computeFidelity, ReportCollector } from "./report.ts";
 import type { ImportReport } from "./report.ts";
 import { parseCurationConfig } from "./curation.ts";
@@ -32,43 +27,26 @@ export interface ImportIntegrationOptions {
  * Converts an OpenAPI 3.x or Google Discovery v1 document + curation config into a validated
  * `IntegrationManifestFile`.
  */
-export function importIntegrationSpec(
-  options: ImportIntegrationOptions,
-): ImportIntegrationResult {
+export function importIntegrationSpec(options: ImportIntegrationOptions): ImportIntegrationResult {
   const mode = options.mode ?? "strict";
   const curation = parseCurationConfig(options.curation);
 
-  const specObj =
-    typeof options.spec === "string" ? parseSpecDocument(options.spec) : options.spec;
+  const specObj = typeof options.spec === "string" ? parseSpecDocument(options.spec) : options.spec;
 
   const detectedVersion = detectSpecVersion(specObj as any);
   const format: ImportSpecFormat =
     options.format ??
     curation.format ??
-    (detectedVersion === "swagger2"
-      ? "swagger2"
-      : isPlainObject(specObj) && "discoveryVersion" in specObj
-        ? "google-discovery"
-        : "openapi3");
+    (detectedVersion === "swagger2" ? "swagger2" : isPlainObject(specObj) && "discoveryVersion" in specObj ? "google-discovery" : "openapi3");
 
   if (format === "google-discovery" && detectedVersion !== "google-discovery") {
-    throw new Error(
-      `OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "google-discovery" but detected "${detectedVersion}"`,
-    );
+    throw new Error(`OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "google-discovery" but detected "${detectedVersion}"`);
   }
-  if (
-    format === "openapi3" &&
-    detectedVersion !== "openapi3.0" &&
-    detectedVersion !== "openapi3.1"
-  ) {
-    throw new Error(
-      `OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "openapi3" but detected "${detectedVersion}"`,
-    );
+  if (format === "openapi3" && detectedVersion !== "openapi3.0" && detectedVersion !== "openapi3.1") {
+    throw new Error(`OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "openapi3" but detected "${detectedVersion}"`);
   }
   if (format === "swagger2" && detectedVersion !== "swagger2") {
-    throw new Error(
-      `OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "swagger2" but detected "${detectedVersion}"`,
-    );
+    throw new Error(`OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "swagger2" but detected "${detectedVersion}"`);
   }
 
   const specHash = computeSpecHash(options.spec as any);
@@ -157,22 +135,12 @@ export function importIntegrationSpec(
     reportCollector.applyPointerMap(pointerMap, translatePointer);
   }
 
-  const report = reportCollector.finish(
-    curation.app,
-    format,
-    specHash,
-    IMPORTER_VERSION,
-    excludedByCuration,
-    targetOpIdSet,
-  );
+  const report = reportCollector.finish(curation.app, format, specHash, IMPORTER_VERSION, excludedByCuration, targetOpIdSet);
 
   applyAcknowledgements(report, curation, mode);
 
   const fidelity = computeFidelity(report);
-  const { schemes: specSchemes, requirements: specRequirements } = extractSpecSecurity(
-    effectiveSpecObj,
-    format,
-  );
+  const { schemes: specSchemes, requirements: specRequirements } = extractSpecSecurity(effectiveSpecObj, format);
 
   const draftManifest = {
     manifestVersion: 2 as const,
@@ -190,9 +158,7 @@ export function importIntegrationSpec(
     baseUrl: curation.baseUrl,
     allowedHosts: curation.allowedHosts,
     operations: mergedOperations,
-    ...(curation.triggers && curation.triggers.length > 0
-      ? { triggers: curation.triggers }
-      : {}),
+    ...(curation.triggers && curation.triggers.length > 0 ? { triggers: curation.triggers } : {}),
     ...(curation.errorWhen ? { errorWhen: curation.errorWhen } : {}),
     ...(curation.successWhen ? { successWhen: curation.successWhen } : {}),
     ...(curation.errorMappings ? { errorMappings: curation.errorMappings } : {}),
@@ -201,9 +167,7 @@ export function importIntegrationSpec(
 
   const parsed = IntegrationManifestSchema.safeParse(draftManifest);
   if (!parsed.success) {
-    throw new Error(
-      `OPENAPI_IMPORT_SCHEMA_INVALID (${curation.app}):\n  ${formatIssues(parsed.error).join("\n  ")}`,
-    );
+    throw new Error(`OPENAPI_IMPORT_SCHEMA_INVALID (${curation.app}):\n  ${formatIssues(parsed.error).join("\n  ")}`);
   }
 
   const manifest = parsed.data;
@@ -239,23 +203,13 @@ export function analyzeSpec(options: {
 
   const detectedVersion = detectSpecVersion(specObj);
   if (options.format === "google-discovery" && detectedVersion !== "google-discovery") {
-    throw new Error(
-      `OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "google-discovery" but detected "${detectedVersion}"`,
-    );
+    throw new Error(`OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "google-discovery" but detected "${detectedVersion}"`);
   }
   if (options.format === "swagger2" && detectedVersion !== "swagger2") {
-    throw new Error(
-      `OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "swagger2" but detected "${detectedVersion}"`,
-    );
+    throw new Error(`OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "swagger2" but detected "${detectedVersion}"`);
   }
-  if (
-    options.format === "openapi3" &&
-    detectedVersion !== "openapi3.0" &&
-    detectedVersion !== "openapi3.1"
-  ) {
-    throw new Error(
-      `OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "openapi3" but detected "${detectedVersion}"`,
-    );
+  if (options.format === "openapi3" && detectedVersion !== "openapi3.0" && detectedVersion !== "openapi3.1") {
+    throw new Error(`OPENAPI_IMPORT_FORMAT_MISMATCH: Expected format "openapi3" but detected "${detectedVersion}"`);
   }
 
   let effectiveSpecObj: any = specObj;
@@ -338,25 +292,9 @@ export function analyzeSpec(options: {
 
 // Stable public surface: every symbol that used to be exported from this file.
 export { computeFidelity, escapeJsonPointer, ReportCollector } from "./report.ts";
-export type {
-  ImportReport,
-  ImportReportElement,
-  ImportReportEntry,
-  ImportReportStatus,
-} from "./report.ts";
-export {
-  CurationAcknowledgeSchema,
-  CurationConfigSchema,
-  CurationOperationOverlaySchema,
-  CurationUpstreamSchema,
-  parseCurationConfig,
-} from "./curation.ts";
-export type {
-  CurationAcknowledge,
-  CurationConfig,
-  CurationOperationOverlay,
-  CurationUpstream,
-} from "./curation.ts";
+export type { ImportReport, ImportReportElement, ImportReportEntry, ImportReportStatus } from "./report.ts";
+export { CurationAcknowledgeSchema, CurationConfigSchema, CurationOperationOverlaySchema, CurationUpstreamSchema, parseCurationConfig } from "./curation.ts";
+export type { CurationAcknowledge, CurationConfig, CurationOperationOverlay, CurationUpstream } from "./curation.ts";
 export { default as YAML } from "yaml";
 export { canonicalJson, computeSpecHash, derefObject, parseSpecDocument, sanitizeOperationId, mapSchemaTypeToPortType } from "./util.ts";
 export type { DerefResult, SchemaTypeMappingResult } from "./util.ts";

@@ -23,17 +23,12 @@ export interface ArmorMiddlewareOptions {
   enforceIpRules?: boolean;
 }
 
-export function trafficArmorMiddleware(
-  options: ArmorMiddlewareOptions = {}
-): MiddlewareHandler<ArmorEnv> {
+export function trafficArmorMiddleware(options: ArmorMiddlewareOptions = {}): MiddlewareHandler<ArmorEnv> {
   return async (c, next) => {
     const service = new TrafficArmorService(c.env.DB);
     c.set("armorService", service);
 
-    const clientIp =
-      c.req.header("cf-connecting-ip") ||
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-      "127.0.0.1";
+    const clientIp = c.req.header("cf-connecting-ip") || c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
     const userAgent = c.req.header("user-agent") || undefined;
     const workspace = c.get("workspace");
     const path = c.req.path;

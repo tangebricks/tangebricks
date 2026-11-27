@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_realtime_presence.sql?raw";
-import {
-  RealtimePresenceService,
-  createPresenceRoutes,
-} from "../src/index.ts";
+import { RealtimePresenceService, createPresenceRoutes } from "../src/index.ts";
 import type { PresenceEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -35,7 +32,7 @@ describe("Realtime Presence & State Sync Core Logic", () => {
       WS_ALPHA,
       "doc_financial_model",
       { userId: "usr_alice", userName: "Alice Smith" },
-      { cursor: { x: 350, y: 120, page: 2 }, status: "online" }
+      { cursor: { x: 350, y: 120, page: 2 }, status: "online" },
     );
 
     expect(p1.user_name).toBe("Alice Smith");
@@ -46,7 +43,7 @@ describe("Realtime Presence & State Sync Core Logic", () => {
       WS_ALPHA,
       "doc_financial_model",
       { userId: "usr_bob", userName: "Bob Jones" },
-      { cursor: { x: 100, y: 50, page: 1 }, status: "online" }
+      { cursor: { x: 100, y: 50, page: 1 }, status: "online" },
     );
 
     const roomPresence = await service.getRoomPresence(WS_ALPHA, "doc_financial_model");
@@ -58,23 +55,13 @@ describe("Realtime Presence & State Sync Core Logic", () => {
   it("filters out expired sessions based on TTL window", async () => {
     const service = new RealtimePresenceService(db);
 
-    await service.heartbeat(
-      WS_ALPHA,
-      "canvas_board",
-      { userId: "usr_active", userName: "Active User" }
-    );
+    await service.heartbeat(WS_ALPHA, "canvas_board", { userId: "usr_active", userName: "Active User" });
 
-    await service.heartbeat(
-      WS_ALPHA,
-      "canvas_board",
-      { userId: "usr_stale", userName: "Stale User" }
-    );
+    await service.heartbeat(WS_ALPHA, "canvas_board", { userId: "usr_stale", userName: "Stale User" });
 
     // Manually age usr_stale's heartbeat to 60 seconds ago
     const staleTime = Date.now() - 60000;
-    await db.prepare(
-      "UPDATE pres_sessions SET last_heartbeat_at = ? WHERE user_id = 'usr_stale'"
-    ).bind(staleTime).run();
+    await db.prepare("UPDATE pres_sessions SET last_heartbeat_at = ? WHERE user_id = 'usr_stale'").bind(staleTime).run();
 
     // Query with 30s TTL
     const presence = await service.getRoomPresence(WS_ALPHA, "canvas_board", 30);
@@ -85,11 +72,7 @@ describe("Realtime Presence & State Sync Core Logic", () => {
   it("handles explicit room departure", async () => {
     const service = new RealtimePresenceService(db);
 
-    await service.heartbeat(
-      WS_ALPHA,
-      "chat_lounge",
-      { userId: "usr_charlie", userName: "Charlie" }
-    );
+    await service.heartbeat(WS_ALPHA, "chat_lounge", { userId: "usr_charlie", userName: "Charlie" });
 
     expect((await service.getRoomPresence(WS_ALPHA, "chat_lounge")).active_count).toBe(1);
 
@@ -121,16 +104,20 @@ describe("Realtime Presence HTTP API", () => {
     app.route("/api", createPresenceRoutes());
 
     // 1. POST /presence/heartbeat
-    const hbRes = await app.request("/api/presence/heartbeat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        roomName: "spreadsheet_q4",
-        userId: "usr_sarah",
-        userName: "Sarah Connor",
-        cursor: { x: 500, y: 300 },
-      }),
-    }, { DB: db });
+    const hbRes = await app.request(
+      "/api/presence/heartbeat",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          roomName: "spreadsheet_q4",
+          userId: "usr_sarah",
+          userName: "Sarah Connor",
+          cursor: { x: 500, y: 300 },
+        }),
+      },
+      { DB: db },
+    );
     expect(hbRes.status).toBe(200);
 
     // 2. GET /presence/rooms/:name
@@ -146,13 +133,17 @@ describe("Realtime Presence HTTP API", () => {
     expect(statusJson.online).toBe(true);
 
     // 4. POST /presence/rooms/:name/leave
-    const leaveRes = await app.request("/api/presence/rooms/spreadsheet_q4/leave", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        userId: "usr_sarah",
-      }),
-    }, { DB: db });
+    const leaveRes = await app.request(
+      "/api/presence/rooms/spreadsheet_q4/leave",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          userId: "usr_sarah",
+        }),
+      },
+      { DB: db },
+    );
     expect(leaveRes.status).toBe(200);
 
     // 5. Verify room count is now 0

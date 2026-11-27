@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_marketplace_splits.sql?raw";
-import {
-  MarketplaceSplitsService,
-  createMarketplaceSplitsRoutes,
-} from "../src/index.ts";
+import { MarketplaceSplitsService, createMarketplaceSplitsRoutes } from "../src/index.ts";
 import type { SplitsEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -109,16 +106,20 @@ describe("Marketplace Splits HTTP API", () => {
     app.route("/api", createMarketplaceSplitsRoutes());
 
     // 1. POST /marketplace/contracts
-    const setRes = await app.request("/api/marketplace/contracts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        vendorId: "creator_bob",
-        platformFeePercent: 20.0,
-        escrowDays: 0,
-        payoutMethod: "wise",
-      }),
-    }, { DB: db });
+    const setRes = await app.request(
+      "/api/marketplace/contracts",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          vendorId: "creator_bob",
+          platformFeePercent: 20.0,
+          escrowDays: 0,
+          payoutMethod: "wise",
+        }),
+      },
+      { DB: db },
+    );
     expect(setRes.status).toBe(201);
 
     // 2. GET /marketplace/contracts/:vendorId
@@ -128,15 +129,19 @@ describe("Marketplace Splits HTTP API", () => {
     expect(getJson.contract.platform_fee_percent).toBe(20.0);
 
     // 3. POST /marketplace/splits
-    const splitRes = await app.request("/api/marketplace/splits", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        vendorId: "creator_bob",
-        orderId: "ord_999",
-        grossAmountCents: 20000,
-      }),
-    }, { DB: db });
+    const splitRes = await app.request(
+      "/api/marketplace/splits",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          vendorId: "creator_bob",
+          orderId: "ord_999",
+          grossAmountCents: 20000,
+        }),
+      },
+      { DB: db },
+    );
     expect(splitRes.status).toBe(201);
     const splitJson = (await splitRes.json()) as { transaction: { vendor_amount_cents: number } };
     expect(splitJson.transaction.vendor_amount_cents).toBe(16000); // 80%
@@ -148,14 +153,18 @@ describe("Marketplace Splits HTTP API", () => {
     expect(balJson.balance.available_cents).toBe(16000);
 
     // 5. POST /marketplace/payouts
-    const payRes = await app.request("/api/marketplace/payouts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        vendorId: "creator_bob",
-        amountCents: 16000,
-      }),
-    }, { DB: db });
+    const payRes = await app.request(
+      "/api/marketplace/payouts",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          vendorId: "creator_bob",
+          amountCents: 16000,
+        }),
+      },
+      { DB: db },
+    );
     expect(payRes.status).toBe(201);
     const payJson = (await payRes.json()) as { payout: { status: string } };
     expect(payJson.payout.status).toBe("paid");

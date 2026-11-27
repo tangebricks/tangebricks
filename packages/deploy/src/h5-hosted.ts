@@ -149,7 +149,8 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
 export const canonicalHosted = (calls: HostedCalls): string => `${JSON.stringify(calls, null, 2)}\n`;
 
 /** What an answer from the Worker's deduct route means: 200 charged, 402 refused for insufficient balance, anything else (or no answer) is not known. */
-export const classifyDeduct = (status: number | null): "accepted" | "refused" | "unknown" => (status === 200 ? "accepted" : status === 402 ? "refused" : "unknown");
+export const classifyDeduct = (status: number | null): "accepted" | "refused" | "unknown" =>
+  status === 200 ? "accepted" : status === 402 ? "refused" : "unknown";
 type Confirmation = { status: string; credited: boolean } | { error: string };
 /** What the two simultaneous confirmations of one order mean: unknown if either ended in an error; accepted if exactly one credited; a violation if both returned and the number credited is not one. */
 export const classifyTopup = (confirmations: Confirmation[]): "accepted" | "unknown" | "violation" => {
@@ -167,7 +168,18 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
   const runsWanted = deps.runs ?? RUNS;
   const bursts = deps.bursts ?? BURSTS;
   const spacing = deps.restSpacingMs ?? REST_SPACING_MS;
-  const facts: HostedFacts = { names: deps.names, url: deps.url, databaseId: deps.databaseId, runsWanted, burstsPerRun: bursts, restSpacingMs: spacing, versions: { before: null, after: null }, deployedVersionFromH10: deps.deployedVersionFromH10 ?? null, runs: [], attempts: [] };
+  const facts: HostedFacts = {
+    names: deps.names,
+    url: deps.url,
+    databaseId: deps.databaseId,
+    runsWanted,
+    burstsPerRun: bursts,
+    restSpacingMs: spacing,
+    versions: { before: null, after: null },
+    deployedVersionFromH10: deps.deployedVersionFromH10 ?? null,
+    runs: [],
+    attempts: [],
+  };
   let stoppedBecause: string | undefined;
   const space = makeSpacer(spacing, deps.clock, deps.sleep);
 
@@ -185,7 +197,13 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
     const event: UrlEvent = { n: urlEvents.length + 1, atMs: Math.round(started), ms: 0, phase, note, method, path, status: null };
     urlEvents.push(event);
     try {
-      const response = await deps.fetchUrl(new Request(`${deps.url}${path}`, { method, headers: { "x-poc-key": deps.accessKey, ...headers, ...(body === undefined ? {} : { "content-type": "application/json" }) }, body: body === undefined ? null : JSON.stringify(body) }));
+      const response = await deps.fetchUrl(
+        new Request(`${deps.url}${path}`, {
+          method,
+          headers: { "x-poc-key": deps.accessKey, ...headers, ...(body === undefined ? {} : { "content-type": "application/json" }) },
+          body: body === undefined ? null : JSON.stringify(body),
+        }),
+      );
       event.status = response.status;
       const text = await response.text();
       let json: Record<string, any> | null = null;
@@ -201,7 +219,17 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
   };
   const finish = (completed: boolean): { calls: HostedCalls; result: HostedResult } => {
     const calls: HostedCalls = { schema: 1, commandStartedAt, clients, urlEvents, facts };
-    return { calls, result: { schema: 1, commandStartedAt, finishedAt: deps.nowIso(), completed, callsSha256: sha256(canonicalHosted(calls)), ...(stoppedBecause ? { stoppedBecause } : {}) } };
+    return {
+      calls,
+      result: {
+        schema: 1,
+        commandStartedAt,
+        finishedAt: deps.nowIso(),
+        completed,
+        callsSha256: sha256(canonicalHosted(calls)),
+        ...(stoppedBecause ? { stoppedBecause } : {}),
+      },
+    };
   };
 
   try {
@@ -236,12 +264,26 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
         const topupOps = report.ops.filter((o) => o.kind === "topup");
         const deductOps = report.ops.filter((o) => o.kind === "deduct");
         const confirmTwice = async (op: (typeof topupOps)[number]) => {
-          const settled = await Promise.all([0, 1].map(() => wallet.confirmOrder(op.orderId!).then((r) => ({ status: String(r.status), credited: r.credited }), (e: unknown) => ({ error: deps.hide(e instanceof Error ? e.message : String(e)).slice(0, 300) }))));
+          const settled = await Promise.all(
+            [0, 1].map(() =>
+              wallet.confirmOrder(op.orderId!).then(
+                (r) => ({ status: String(r.status), credited: r.credited }),
+                (e: unknown) => ({ error: deps.hide(e instanceof Error ? e.message : String(e)).slice(0, 300) }),
+              ),
+            ),
+          );
           report.topups.push({ orderId: op.orderId!, amount: op.amount, result: classifyTopup(settled), confirmations: settled });
         };
         const deduct = async (op: (typeof deductOps)[number]) => {
           try {
-            const r = await toWorker("deduct", `run-${run}`, "POST", "/api/wallet/deduct", { "x-test-user": user, "x-workspace-id": report.workspaceId }, { amount: op.amount, reason: "usage" });
+            const r = await toWorker(
+              "deduct",
+              `run-${run}`,
+              "POST",
+              "/api/wallet/deduct",
+              { "x-test-user": user, "x-workspace-id": report.workspaceId },
+              { amount: op.amount, reason: "usage" },
+            );
             report.deducts.push({ amount: op.amount, result: classifyDeduct(r.status), status: r.status });
           } catch {
             report.deducts.push({ amount: op.amount, result: classifyDeduct(null), status: null });
@@ -262,16 +304,28 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
         const reader = newClient(`reader-run-${run}`);
         const [bal, ledger, orders] = await reader.queryDatabase(deps.databaseId, [
           { sql: "SELECT balance_milli AS balance FROM credit_wallets WHERE workspace_id = ?1", params: [report.workspaceId] },
-          { sql: "SELECT type, amount_milli AS amount, balance_after_milli AS balance_after, metadata, idempotency_key FROM credit_ledger WHERE workspace_id = ?1 ORDER BY rowid", params: [report.workspaceId] },
+          {
+            sql: "SELECT type, amount_milli AS amount, balance_after_milli AS balance_after, metadata, idempotency_key FROM credit_ledger WHERE workspace_id = ?1 ORDER BY rowid",
+            params: [report.workspaceId],
+          },
           { sql: "SELECT order_id, processed FROM credit_orders WHERE workspace_id = ?1", params: [report.workspaceId] },
         ]);
-        report.final = { balance: typeof (bal!.results[0] as { balance?: unknown } | undefined)?.balance === "number" ? ((bal!.results[0] as { balance: number }).balance) : null, ledger: ledger!.results as unknown as LedgerRowFact[], orders: orders!.results as unknown as Array<{ order_id: string; processed: number }> };
+        report.final = {
+          balance:
+            typeof (bal!.results[0] as { balance?: unknown } | undefined)?.balance === "number" ? (bal!.results[0] as { balance: number }).balance : null,
+          ledger: ledger!.results as unknown as LedgerRowFact[],
+          orders: orders!.results as unknown as Array<{ order_id: string; processed: number }>,
+        };
       } catch (error) {
         report.setupError = deps.hide(error instanceof Error ? error.message : String(error)).slice(0, 400);
       }
       const unknown = report.deducts.filter((d) => d.result === "unknown").length + report.topups.filter((t) => t.result === "unknown").length;
       const reasons = report.final ? hostedViolations(report) : ["state not read"];
-      attempt(`run ${run}`, report.final && !report.setupError ? "ok" : "failed", `${report.deducts.length} deductions (${report.deducts.filter((d) => d.result === "accepted").length} accepted, ${report.deducts.filter((d) => d.result === "refused").length} refused), ${report.topups.length} top-ups, ${unknown} unknown, ${reasons.length === 0 ? "clean" : `VIOLATES: ${reasons.join("; ")}`}${report.setupError ? `, ${report.setupError}` : ""}`);
+      attempt(
+        `run ${run}`,
+        report.final && !report.setupError ? "ok" : "failed",
+        `${report.deducts.length} deductions (${report.deducts.filter((d) => d.result === "accepted").length} accepted, ${report.deducts.filter((d) => d.result === "refused").length} refused), ${report.topups.length} top-ups, ${unknown} unknown, ${reasons.length === 0 ? "clean" : `VIOLATES: ${reasons.join("; ")}`}${report.setupError ? `, ${report.setupError}` : ""}`,
+      );
     }
 
     facts.versions.after = (await newClient("bracket-after").listVersions(deps.names.script))?.map((v) => v.id) ?? null;
@@ -293,7 +347,11 @@ export async function runHostedH5(deps: HostedDeps): Promise<{ calls: HostedCall
  */
 export function hostedViolations(rawRun: HostedRun): string[] {
   // Each answer is classified again here from what was recorded, not taken from the classification stored beside it.
-  const run: HostedRun = { ...rawRun, deducts: rawRun.deducts.map((d) => ({ ...d, result: classifyDeduct(d.status) })), topups: rawRun.topups.map((t) => ({ ...t, result: classifyTopup(t.confirmations) })) };
+  const run: HostedRun = {
+    ...rawRun,
+    deducts: rawRun.deducts.map((d) => ({ ...d, result: classifyDeduct(d.status) })),
+    topups: rawRun.topups.map((t) => ({ ...t, result: classifyTopup(t.confirmations) })),
+  };
   const reasons: string[] = [];
   const f = run.final;
   if (!f) return ["the final state was not read"];
@@ -327,8 +385,14 @@ export function hostedViolations(rawRun: HostedRun): string[] {
     const rows = f.ledger.filter((r) => r.type === "deduction" && r.amount === -a * scale).length;
     const accepted = run.deducts.filter((d) => d.amount === a && d.result === "accepted").length;
     const unknown = run.deducts.filter((d) => d.amount === a && d.result === "unknown").length;
-    if (rows < accepted) reasons.push(`${accepted} deductions of ${a} were accepted but only ${rows} ledger rows exist (credits were charged and not recorded, or recorded and lost)`);
-    if (rows > accepted + unknown) reasons.push(`${rows} ledger rows for deductions of ${a} but only ${accepted} accepted and ${unknown} unknown (a refused or never-sent deduction left a trace, or one was charged twice)`);
+    if (rows < accepted)
+      reasons.push(
+        `${accepted} deductions of ${a} were accepted but only ${rows} ledger rows exist (credits were charged and not recorded, or recorded and lost)`,
+      );
+    if (rows > accepted + unknown)
+      reasons.push(
+        `${rows} ledger rows for deductions of ${a} but only ${accepted} accepted and ${unknown} unknown (a refused or never-sent deduction left a trace, or one was charged twice)`,
+      );
   }
   if (f.ledger.some((r) => r.type !== "deduction" && r.type !== "topup")) reasons.push("a ledger row of a kind no operation makes");
 
@@ -346,7 +410,8 @@ export function hostedViolations(rawRun: HostedRun): string[] {
       reasons.push("a top-up row for an order that was never requested");
       continue;
     }
-    if (row.amount !== requested.get(order)! * scale) reasons.push(`order ${order} credited ${row.amount}, not the ${requested.get(order)! * scale} it was for`);
+    if (row.amount !== requested.get(order)! * scale)
+      reasons.push(`order ${order} credited ${row.amount}, not the ${requested.get(order)! * scale} it was for`);
     credited.set(order, (credited.get(order) ?? 0) + 1);
   }
   const twice = [...credited.values()].filter((n) => n > 1).length;
@@ -357,7 +422,9 @@ export function hostedViolations(rawRun: HostedRun): string[] {
     if (t.result === "accepted" && rows !== 1) reasons.push(`order ${t.orderId} was reported credited once but has ${rows} ledger rows`);
     if (t.result === "violation" && rows > 1) reasons.push(`order ${t.orderId} has ${rows} ledger rows`);
   }
-  for (const [order] of requested) if (!run.topups.some((t) => t.orderId === order) && (credited.get(order) ?? 0) > 0) reasons.push(`order ${order} was never confirmed by the protocol but has a ledger row`);
+  for (const [order] of requested)
+    if (!run.topups.some((t) => t.orderId === order) && (credited.get(order) ?? 0) > 0)
+      reasons.push(`order ${order} was never confirmed by the protocol but has a ledger row`);
   return [...new Set(reasons)];
 }
 
@@ -380,33 +447,81 @@ export function evaluateHostedH5(input: { callsText: string; result: HostedResul
   } catch {
     return { checks, notes: ["the calls file is not valid JSON; nothing in it is believed"], summary: null };
   }
-  if (sha256(input.callsText) !== input.result.callsSha256 || input.callsText !== canonicalHosted(calls)) return { checks, notes: ["the calls file does not match the hash in the result file (one of them was edited, or they come from different runs); nothing in them is believed"], summary: null };
+  if (sha256(input.callsText) !== input.result.callsSha256 || input.callsText !== canonicalHosted(calls))
+    return {
+      checks,
+      notes: [
+        "the calls file does not match the hash in the result file (one of them was edited, or they come from different runs); nothing in them is believed",
+      ],
+      summary: null,
+    };
   const f = calls.facts;
   notes.push(`from the run that started ${calls.commandStartedAt}${input.result.completed ? "" : " (it did not complete)"}`);
 
   // The Worker must not have been changed, and nothing but rows and reads may have been sent to Cloudflare.
   const all = calls.clients.flatMap((c) => c.calls);
   const wrote = all.some((c) => c.method !== "GET" && !isQuery(c));
-  const sameVersion = f.versions.before !== null && f.versions.after !== null && f.versions.before.length > 0 && f.versions.before[0] === f.versions.after[0] && f.versions.before.length === f.versions.after.length && (f.deployedVersionFromH10 === null || f.deployedVersionFromH10 === f.versions.before[0]);
-  if (wrote || !sameVersion) return { checks, notes: [...notes, "the log shows a write other than a database row, or the Worker's version moved or is not the one the deploy left: this run says nothing about the deployed wallet"], summary: null };
+  const sameVersion =
+    f.versions.before !== null &&
+    f.versions.after !== null &&
+    f.versions.before.length > 0 &&
+    f.versions.before[0] === f.versions.after[0] &&
+    f.versions.before.length === f.versions.after.length &&
+    (f.deployedVersionFromH10 === null || f.deployedVersionFromH10 === f.versions.before[0]);
+  if (wrote || !sameVersion)
+    return {
+      checks,
+      notes: [
+        ...notes,
+        "the log shows a write other than a database row, or the Worker's version moved or is not the one the deploy left: this run says nothing about the deployed wallet",
+      ],
+      summary: null,
+    };
 
   // A stored classification that is not what the recorded answer means is an edited file, not a result.
   // Story 2.5: a run's scale is absent (recorded before), 1 or 1000; anything else is an edited or foreign file.
-  if (f.runs.some((r) => !isKnownScale(r.scale))) return { checks, notes: [...notes, "a run records a scale other than 1 or 1000: nothing in the file is believed"], summary: null };
-  const disagrees = f.runs.some((r) => r.deducts.some((d) => d.result !== classifyDeduct(d.status)) || r.topups.some((t) => t.result !== classifyTopup(t.confirmations)));
-  if (disagrees) return { checks, notes: [...notes, "a recorded outcome disagrees with the answer recorded beside it: the file was edited, and nothing in it is believed"], summary: null };
+  if (f.runs.some((r) => !isKnownScale(r.scale)))
+    return { checks, notes: [...notes, "a run records a scale other than 1 or 1000: nothing in the file is believed"], summary: null };
+  const disagrees = f.runs.some(
+    (r) => r.deducts.some((d) => d.result !== classifyDeduct(d.status)) || r.topups.some((t) => t.result !== classifyTopup(t.confirmations)),
+  );
+  if (disagrees)
+    return {
+      checks,
+      notes: [...notes, "a recorded outcome disagrees with the answer recorded beside it: the file was edited, and nothing in it is believed"],
+      summary: null,
+    };
   const judged = f.runs.filter((r) => r.final !== null);
   const violating = judged.map((r) => ({ run: r.run, reasons: hostedViolations(r) })).filter((r) => r.reasons.length > 0);
   const operations = f.runs.reduce((s, r) => s + r.ops.length, 0);
-  const unknown = f.runs.reduce((s, r) => s + r.deducts.filter((d) => d.result === "unknown").length + r.topups.filter((t) => t.result === "unknown").length, 0);
+  const unknown = f.runs.reduce(
+    (s, r) => s + r.deducts.filter((d) => d.result === "unknown").length + r.topups.filter((t) => t.result === "unknown").length,
+    0,
+  );
   const unknownShare = operations === 0 ? 1 : unknown / operations;
   const summary = { runs: f.runs.length, violatingRuns: violating.length, operations, unknown, unknownShare: Math.round(unknownShare * 10000) / 10000 };
   for (const v of violating) notes.push(`run ${v.run} VIOLATES: ${v.reasons.join("; ")}`);
-  notes.push(`${summary.runs} runs, ${operations} operations, ${unknown} with an unknown outcome (${(unknownShare * 100).toFixed(1)}%), ${violating.length} violating runs`);
+  notes.push(
+    `${summary.runs} runs, ${operations} operations, ${unknown} with an unknown outcome (${(unknownShare * 100).toFixed(1)}%), ${violating.length} violating runs`,
+  );
 
   if (violating.length > 0) checks.holdsOnHostedD1 = false;
-  else if (f.runsWanted === requiredRuns && f.runs.length === f.runsWanted && judged.length === f.runs.length && f.runs.every((r) => !r.setupError) && unknownShare <= UNKNOWN_SHARE_LIMIT && operations > 0) checks.holdsOnHostedD1 = true;
-  else notes.push(`inconclusive: ${f.runsWanted !== requiredRuns ? `${f.runsWanted} runs were asked for, the rule needs ${requiredRuns}; ` : ""}${f.runs.length < f.runsWanted ? `only ${f.runs.length} of ${f.runsWanted} runs were made; ` : ""}${judged.length < f.runs.length || f.runs.some((r) => r.setupError) ? "some runs could not be set up or read; " : ""}${unknownShare > UNKNOWN_SHARE_LIMIT ? `more than ${UNKNOWN_SHARE_LIMIT * 100}% of operations had an unknown outcome` : ""}`.replace(/; $/, ""));
+  else if (
+    f.runsWanted === requiredRuns &&
+    f.runs.length === f.runsWanted &&
+    judged.length === f.runs.length &&
+    f.runs.every((r) => !r.setupError) &&
+    unknownShare <= UNKNOWN_SHARE_LIMIT &&
+    operations > 0
+  )
+    checks.holdsOnHostedD1 = true;
+  else
+    notes.push(
+      `inconclusive: ${f.runsWanted !== requiredRuns ? `${f.runsWanted} runs were asked for, the rule needs ${requiredRuns}; ` : ""}${f.runs.length < f.runsWanted ? `only ${f.runs.length} of ${f.runsWanted} runs were made; ` : ""}${judged.length < f.runs.length || f.runs.some((r) => r.setupError) ? "some runs could not be set up or read; " : ""}${unknownShare > UNKNOWN_SHARE_LIMIT ? `more than ${UNKNOWN_SHARE_LIMIT * 100}% of operations had an unknown outcome` : ""}`.replace(
+        /; $/,
+        "",
+      ),
+    );
   return { checks, notes, summary };
 }
 

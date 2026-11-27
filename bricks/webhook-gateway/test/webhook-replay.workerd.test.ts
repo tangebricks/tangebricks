@@ -4,28 +4,16 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_webhook_gateway.sql?raw";
-import {
-  createWebhookRoutes,
-  WebhookService,
-} from "../src/index.ts";
+import { createWebhookRoutes, WebhookService } from "../src/index.ts";
 import type { WebhookEnv } from "../src/routes.ts";
-import {
-  verifyWithScheme,
-} from "../src/signature-scheme.ts";
+import { verifyWithScheme } from "../src/signature-scheme.ts";
 import { WEBHOOK_PRESETS, getPreset } from "../src/presets.ts";
 
 const db = env.DB as D1Like;
 const WS_A = "ws_replay_test";
 
 async function resetDb(): Promise<void> {
-  for (const table of [
-    "px_webhook_deliveries",
-    "wh_subscriptions",
-    "px_connections",
-    "wh_deliveries",
-    "wh_endpoints",
-    "px_logs",
-  ]) {
+  for (const table of ["px_webhook_deliveries", "wh_subscriptions", "px_connections", "wh_deliveries", "wh_endpoints", "px_logs"]) {
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   }
   await applyMigration(db, migration);
@@ -37,20 +25,9 @@ beforeEach(async () => {
 });
 
 // Helper to compute HMAC
-async function computeHmac(
-  algorithm: "SHA-256" | "SHA-1" | "SHA-512",
-  secret: string,
-  payload: string,
-  encoding: "hex" | "base64" = "hex",
-): Promise<string> {
+async function computeHmac(algorithm: "SHA-256" | "SHA-1" | "SHA-512", secret: string, payload: string, encoding: "hex" | "base64" = "hex"): Promise<string> {
   const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: algorithm },
-    false,
-    ["sign"],
-  );
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: algorithm }, false, ["sign"]);
   const signatureBuf = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
   const bytes = new Uint8Array(signatureBuf);
   if (encoding === "hex") {
@@ -67,15 +44,8 @@ async function computeHmac(
   return btoa(binary);
 }
 
-function makeRequest(
-  app: Hono<WebhookEnv>,
-  path: string,
-  options: RequestInit,
-) {
-  return app.fetch(
-    new Request(`http://localhost${path}`, options),
-    { DB: db },
-  );
+function makeRequest(app: Hono<WebhookEnv>, path: string, options: RequestInit) {
+  return app.fetch(new Request(`http://localhost${path}`, options), { DB: db });
 }
 
 describe("Story UC4.4 — Replay protection for every scheme", () => {
@@ -196,9 +166,12 @@ describe("Story UC4.4 — Replay protection for every scheme", () => {
     });
 
     const app = new Hono<WebhookEnv>();
-    app.route("/api", createWebhookRoutes({
-      adapter: { nowSeconds: () => nowSec },
-    }));
+    app.route(
+      "/api",
+      createWebhookRoutes({
+        adapter: { nowSeconds: () => nowSec },
+      }),
+    );
 
     const res = await makeRequest(app, `/api/webhooks/in/${sub.id}`, {
       method: "POST",
@@ -407,10 +380,7 @@ describe("Story UC4.4 — Replay protection for every scheme", () => {
       );
       expect(pastResult.ok).toBe(false);
       if (!pastResult.ok) {
-        expect(
-          pastResult.reason === "WEBHOOK_TIMESTAMP_OUT_OF_TOLERANCE" ||
-          pastResult.reason === "WEBHOOK_SIGNATURE_MALFORMED",
-        ).toBe(true);
+        expect(pastResult.reason === "WEBHOOK_TIMESTAMP_OUT_OF_TOLERANCE" || pastResult.reason === "WEBHOOK_SIGNATURE_MALFORMED").toBe(true);
       }
 
       // 2. Future expiration: now + (tolerance + 1)
@@ -430,10 +400,7 @@ describe("Story UC4.4 — Replay protection for every scheme", () => {
       );
       expect(futureResult.ok).toBe(false);
       if (!futureResult.ok) {
-        expect(
-          futureResult.reason === "WEBHOOK_TIMESTAMP_OUT_OF_TOLERANCE" ||
-          futureResult.reason === "WEBHOOK_SIGNATURE_MALFORMED",
-        ).toBe(true);
+        expect(futureResult.reason === "WEBHOOK_TIMESTAMP_OUT_OF_TOLERANCE" || futureResult.reason === "WEBHOOK_SIGNATURE_MALFORMED").toBe(true);
       }
     }
   });

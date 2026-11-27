@@ -19,9 +19,7 @@ export type RemediationOp = z.infer<typeof RemediationOpSchema>;
 
 export const ActionableIssueSchema = z.object({
   code: z.string().min(1),
-  path: z
-    .string()
-    .regex(/^(\/[^/]+)+$/, "path must be a non-empty RFC 6901 JSON pointer (e.g. /bricks/credit-wallet)"),
+  path: z.string().regex(/^(\/[^/]+)+$/, "path must be a non-empty RFC 6901 JSON pointer (e.g. /bricks/credit-wallet)"),
   message: z.string().min(1),
   suggestedFix: z.string().min(1),
   remediationOp: RemediationOpSchema.optional(),
@@ -152,16 +150,9 @@ function findCycleBackEdge(workflow: Workflow): WorkflowEdge | undefined {
   return cycleEdge ?? workflow.edges[workflow.edges.length - 1];
 }
 
-function inferValidSettingReplacement(
-  brickId: string | undefined,
-  nodeType: string | undefined,
-  fieldKey: string,
-  catalog?: Catalog,
-): unknown {
+function inferValidSettingReplacement(brickId: string | undefined, nodeType: string | undefined, fieldKey: string, catalog?: Catalog): unknown {
   if (brickId && catalog?.bricks[brickId]) {
-    const def = catalog.bricks[brickId].manifest.settings[fieldKey] as
-      | { default?: unknown; type?: string; values?: unknown[]; min?: number }
-      | undefined;
+    const def = catalog.bricks[brickId].manifest.settings[fieldKey] as { default?: unknown; type?: string; values?: unknown[]; min?: number } | undefined;
     if (def) {
       if (def.default !== undefined) return def.default;
       if (def.type === "enum") return def.values?.[0] ?? "default";
@@ -176,9 +167,7 @@ function inferValidSettingReplacement(
   if (nodeType && catalog) {
     for (const pack of Object.values(catalog.nodePacks ?? {})) {
       const nodeDesc = pack.manifest.nodes.find((n) => n.type === nodeType);
-      const def = nodeDesc?.config?.[fieldKey] as
-        | { default?: unknown; type?: string; values?: unknown[]; min?: number }
-        | undefined;
+      const def = nodeDesc?.config?.[fieldKey] as { default?: unknown; type?: string; values?: unknown[]; min?: number } | undefined;
       if (def) {
         if (def.default !== undefined) return def.default;
         if (def.type === "enum") return def.values?.[0] ?? "default";
@@ -192,9 +181,7 @@ function inferValidSettingReplacement(
     }
     for (const brick of Object.values(catalog.bricks ?? {})) {
       const nodeDesc = (brick.manifest.nodes ?? []).find((n) => n.type === nodeType);
-      const def = nodeDesc?.config?.[fieldKey] as
-        | { default?: unknown; type?: string; values?: unknown[]; min?: number }
-        | undefined;
+      const def = nodeDesc?.config?.[fieldKey] as { default?: unknown; type?: string; values?: unknown[]; min?: number } | undefined;
       if (def) {
         if (def.default !== undefined) return def.default;
         if (def.type === "enum") return def.values?.[0] ?? "default";
@@ -218,10 +205,7 @@ function inferValidSettingReplacement(
 /**
  * Convert a BlueprintValidationError or ReadinessNeed into a canonical ActionableIssue.
  */
-export function toActionableIssue(
-  raw: BlueprintValidationError | ReadinessNeed,
-  ctx: IssueEnrichmentContext = {},
-): ActionableIssue {
+export function toActionableIssue(raw: BlueprintValidationError | ReadinessNeed, ctx: IssueEnrichmentContext = {}): ActionableIssue {
   const rawPath = "path" in raw && typeof raw.path === "string" ? raw.path : "/blueprint";
   const pointer = toJsonPointerPath(rawPath);
   const segments = pointer.split("/").slice(1);
@@ -250,12 +234,11 @@ export function toActionableIssue(
   if (rawCode === "BRICK_CONFLICT") {
     const conflictMatch = /conflict:\s*([a-z0-9-]+)\s*×\s*([a-z0-9-]+)/i.exec(raw.message);
     const brickIdFromPath = segments[0] === "bricks" ? segments[1] : undefined;
-    const conflictingBrick =
-      conflictMatch
-        ? conflictMatch[1] === brickIdFromPath
-          ? conflictMatch[2]!
-          : conflictMatch[1]!
-        : brickIdFromPath ?? "conflicting-brick";
+    const conflictingBrick = conflictMatch
+      ? conflictMatch[1] === brickIdFromPath
+        ? conflictMatch[2]!
+        : conflictMatch[1]!
+      : (brickIdFromPath ?? "conflicting-brick");
     return {
       code: "BRICK_CONFLICT",
       path: pointer.startsWith("/bricks/") ? pointer : `/bricks/${conflictingBrick}`,
@@ -401,11 +384,7 @@ export function toActionableIssue(
   }
 
   // 7. Invalid setting value (brick config or node config)
-  if (
-    rawCode === "INVALID_BRICK_CONFIG" ||
-    rawCode === "invalid_config" ||
-    rawCode === "INVALID_SETTING_VALUE"
-  ) {
+  if (rawCode === "INVALID_BRICK_CONFIG" || rawCode === "invalid_config" || rawCode === "INVALID_SETTING_VALUE") {
     if (segments[0] === "bricks") {
       const brickId = segments[1] ?? "credit-wallet";
       const settingMatch = /setting\s+"([^"]+)"/i.exec(raw.message);
@@ -568,8 +547,7 @@ export function toActionableIssue(
     // there is nothing for the agent to bind, so no bind_secret_ref remediation is offered.
     const brickManifest = targetKind === "brick" ? ctx.catalog?.bricks?.[targetId]?.manifest : undefined;
     const generated =
-      /Studio generates it/.test(raw.message) ||
-      (brickManifest ? secretDeclarations(brickManifest).some((d) => d.name === secretName && d.generate) : false);
+      /Studio generates it/.test(raw.message) || (brickManifest ? secretDeclarations(brickManifest).some((d) => d.name === secretName && d.generate) : false);
     if (generated) {
       return {
         code: "MISSING_SECRET",
@@ -662,9 +640,7 @@ export function toActionableIssue(
     code: rawCode,
     path: pointer,
     message: raw.message,
-    suggestedFix:
-      ("suggestedFix" in raw && raw.suggestedFix) ||
-      `Resolve issue "${rawCode}" at ${pointer} and retry apply_ops.`,
+    suggestedFix: ("suggestedFix" in raw && raw.suggestedFix) || `Resolve issue "${rawCode}" at ${pointer} and retry apply_ops.`,
   };
 }
 
@@ -672,10 +648,7 @@ export function toActionableIssue(
  * Inspect an entire BlueprintState and return all ActionableIssues across readiness,
  * brick conflicts, brick configs, entity definitions, workflow graphs, and connection bindings.
  */
-export function collectBlueprintActionableIssues(
-  state: BlueprintState,
-  ctx: IssueEnrichmentContext = {},
-): ActionableIssue[] {
+export function collectBlueprintActionableIssues(state: BlueprintState, ctx: IssueEnrichmentContext = {}): ActionableIssue[] {
   const issues: ActionableIssue[] = [];
   const seenKeys = new Set<string>();
   const pushUnique = (issue: ActionableIssue) => {
@@ -687,8 +660,7 @@ export function collectBlueprintActionableIssues(
   };
 
   const catalog = ctx.catalog;
-  const nodeRegistry =
-    ctx.nodeRegistry ?? (catalog ? buildCatalogNodeRegistry(catalog, toyRegistry) : toyRegistry);
+  const nodeRegistry = ctx.nodeRegistry ?? (catalog ? buildCatalogNodeRegistry(catalog, toyRegistry) : toyRegistry);
   const fullCtx: IssueEnrichmentContext = {
     ...ctx,
     state,
@@ -869,8 +841,7 @@ export function collectBlueprintActionableIssues(
       const connRef = node.data?.connectionRef;
       if (typeof connRef === "string" && connRef.trim().length > 0 && ctx.boundConnectionIds) {
         if (!ctx.boundConnectionIds.includes(connRef)) {
-          const validConn =
-            ctx.availableConnectionIds?.[0] ?? ctx.boundConnectionIds[0] ?? "conn_default";
+          const validConn = ctx.availableConnectionIds?.[0] ?? ctx.boundConnectionIds[0] ?? "conn_default";
           pushUnique({
             code: "UNBOUND_CONNECTION",
             path: `/workflows/${wf.id}/nodes/${node.id}/data/connectionRef`,
@@ -906,9 +877,7 @@ export function collectBlueprintActionableIssues(
         toActionableIssue(
           {
             code: gIssue.code,
-            path: gIssue.nodeId
-              ? `workflows.${wf.id}.nodes.${gIssue.nodeId}`
-              : `workflows.${wf.id}`,
+            path: gIssue.nodeId ? `workflows.${wf.id}.nodes.${gIssue.nodeId}` : `workflows.${wf.id}`,
             message: gIssue.message,
           },
           fullCtx,
@@ -917,19 +886,13 @@ export function collectBlueprintActionableIssues(
     }
 
     // Static budget check for workflows (UC7.4)
-    const budgetIssues = checkGraphBudget(
-      { nodes: wf.nodes, edges: wf.edges },
-      nodeRegistry,
-      "free",
-    );
+    const budgetIssues = checkGraphBudget({ nodes: wf.nodes, edges: wf.edges }, nodeRegistry, "free");
     for (const bIssue of budgetIssues) {
       pushUnique(
         toActionableIssue(
           {
             code: bIssue.code,
-            path: bIssue.nodeId
-              ? `workflows.${wf.id}.nodes.${bIssue.nodeId}`
-              : `workflows.${wf.id}`,
+            path: bIssue.nodeId ? `workflows.${wf.id}.nodes.${bIssue.nodeId}` : `workflows.${wf.id}`,
             message: bIssue.message,
             suggestedFix: bIssue.fix,
           },
@@ -954,9 +917,7 @@ export function buildConflictActionableIssues(params: {
   const firstConflict = params.conflictingOps[0];
   const rawTarget = firstConflict?.targetKey ?? "blueprint";
   const path = toJsonPointerPath(rawTarget.replace(/:/g, "."), "/blueprint");
-  const payloadExample: Record<string, unknown> = params.failedOp
-    ? { ...params.failedOp, baseRev: params.currentRev }
-    : { baseRev: params.currentRev };
+  const payloadExample: Record<string, unknown> = params.failedOp ? { ...params.failedOp, baseRev: params.currentRev } : { baseRev: params.currentRev };
 
   return [
     {
@@ -1099,7 +1060,10 @@ export function missingSecretsRemediation(names: readonly string[], connectionsU
 export function buildDeployBlockerActionableIssue(blockerMessage: string, context?: { connectionsUrl?: string }): ActionableIssue {
   const missing = /Missing required secrets:\s*(.+)$/i.exec(blockerMessage);
   if (missing) {
-    const names = missing[1]!.split(",").map((n) => n.trim()).filter((n) => n.length > 0);
+    const names = missing[1]!
+      .split(",")
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
     return {
       code: "MISSING_REQUIRED_SECRETS",
       path: "/secrets",

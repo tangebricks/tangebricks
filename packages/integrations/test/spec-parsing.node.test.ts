@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import {
-  parseSpecDocument,
-  detectSpecVersion,
-  importIntegrationSpec,
-} from "../src/importer.ts";
+import { parseSpecDocument, detectSpecVersion, importIntegrationSpec } from "../src/importer.ts";
 
 const YAML_FIXTURES_DIR = resolve(__dirname, "fixtures/yaml");
 const REPORT_FIXTURES_DIR = resolve(__dirname, "fixtures/report");
@@ -51,9 +47,7 @@ describe("UC2.4: Spec parsing, version detection and servers diff", () => {
   describe("AC2: Alias bomb rejection", () => {
     it("fails on alias-bomb.yaml with OPENAPI_IMPORT_PARSE_ERROR", () => {
       const aliasBombYaml = loadYamlFixture("alias-bomb.yaml");
-      expect(() => parseSpecDocument(aliasBombYaml)).toThrowError(
-        /OPENAPI_IMPORT_PARSE_ERROR/,
-      );
+      expect(() => parseSpecDocument(aliasBombYaml)).toThrowError(/OPENAPI_IMPORT_PARSE_ERROR/);
     });
   });
 
@@ -95,9 +89,7 @@ describe("UC2.4: Spec parsing, version detection and servers diff", () => {
 
   describe("AC3: Swagger 2.0 import with format openapi3 vs auto-detected / swagger2", () => {
     it("fails with OPENAPI_IMPORT_FORMAT_MISMATCH on format openapi3, up-converts on swagger2", () => {
-      const swagger2Spec = JSON.parse(
-        readFileSync(resolve(REPORT_FIXTURES_DIR, "lossy-swagger2.json"), "utf8"),
-      );
+      const swagger2Spec = JSON.parse(readFileSync(resolve(REPORT_FIXTURES_DIR, "lossy-swagger2.json"), "utf8"));
 
       // AC2: --format openapi3 on a Swagger doc fails with OPENAPI_IMPORT_FORMAT_MISMATCH
       expect(() =>
@@ -130,16 +122,12 @@ describe("UC2.4: Spec parsing, version detection and servers diff", () => {
       });
 
       const report = result.report;
-      const upconvertEntry = report.entries.find(
-        (e) => e.code === "SWAGGER2_UPCONVERTED",
-      );
+      const upconvertEntry = report.entries.find((e) => e.code === "SWAGGER2_UPCONVERTED");
       expect(upconvertEntry).toBeDefined();
       expect(upconvertEntry?.element).toBe("document");
       expect(upconvertEntry?.status).toBe("normalized");
 
-      const writeOp = result.manifest.operations.find(
-        (o) => o.operationId === "opSwaggerBody",
-      );
+      const writeOp = result.manifest.operations.find((o) => o.operationId === "opSwaggerBody");
       expect(writeOp).toBeDefined();
       expect(writeOp?.body).toBeDefined();
     });
@@ -166,9 +154,7 @@ describe("UC2.4: Spec parsing, version detection and servers diff", () => {
         curation: BASE_CURATION,
       });
 
-      const serverEntries = result.report.entries.filter(
-        (e) => e.element === "server",
-      );
+      const serverEntries = result.report.entries.filter((e) => e.element === "server");
       expect(serverEntries).toHaveLength(1);
       expect(serverEntries[0]!.code).toBe("BASEURL");
       expect(serverEntries[0]!.status).toBe("mapped");
@@ -198,9 +184,7 @@ describe("UC2.4: Spec parsing, version detection and servers diff", () => {
         },
       });
 
-      const serverEntries = result.report.entries.filter(
-        (e) => e.element === "server" && e.code === "BASEURL_CURATED",
-      );
+      const serverEntries = result.report.entries.filter((e) => e.element === "server" && e.code === "BASEURL_CURATED");
       expect(serverEntries).toHaveLength(1);
       expect(serverEntries[0]!.status).toBe("curated");
       expect(serverEntries[0]!.from).toBe("https://api-spec.example.com/v1");
@@ -238,9 +222,7 @@ describe("UC2.4: Spec parsing, version detection and servers diff", () => {
         },
       });
 
-      const expandedEntry = result.report.entries.find(
-        (e) => e.code === "SERVER_VARIABLE_EXPANDED",
-      );
+      const expandedEntry = result.report.entries.find((e) => e.code === "SERVER_VARIABLE_EXPANDED");
       expect(expandedEntry).toBeDefined();
       expect(expandedEntry?.element).toBe("server");
       expect(expandedEntry?.status).toBe("normalized");
@@ -273,9 +255,7 @@ describe("UC2.4: Spec parsing, version detection and servers diff", () => {
         mode: "lenient",
       });
 
-      const overrideEntry = result.report.entries.find(
-        (e) => e.code === "OPERATION_SERVER_OVERRIDE",
-      );
+      const overrideEntry = result.report.entries.find((e) => e.code === "OPERATION_SERVER_OVERRIDE");
       expect(overrideEntry).toBeDefined();
       expect(overrideEntry?.op).toBe("ping");
       expect(overrideEntry?.status).toBe("unsupported");
@@ -306,9 +286,7 @@ describe("UC2.4: Spec parsing, version detection and servers diff", () => {
         },
       });
 
-      const narrowedEntry = result.report.entries.find(
-        (e) => e.code === "ALLOWED_HOSTS_NARROWED",
-      );
+      const narrowedEntry = result.report.entries.find((e) => e.code === "ALLOWED_HOSTS_NARROWED");
       expect(narrowedEntry).toBeDefined();
       expect(narrowedEntry?.status).toBe("curated");
     });

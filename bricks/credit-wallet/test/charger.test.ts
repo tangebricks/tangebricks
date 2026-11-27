@@ -63,8 +63,18 @@ describe("walletCharger (story 1.13)", () => {
   test("refund gives back at most what the debit under againstKey took, once per key, to that workspace only", async () => {
     expect((await walletCharger.debit(db, WS_A, 5, "ai:log2", "AI generation (reserved)", "usr_alice")).ok).toBe(true);
     const reason = "AI generation (unused reservation)";
-    expect(await walletCharger.refund(db, WS_A, 2, "ai:log2:refund", "ai:log2", reason, "usr_alice")).toEqual({ ok: true, balanceAfterMilli: 7, duplicate: false, milli: 2 });
-    expect(await walletCharger.refund(db, WS_A, 2, "ai:log2:refund", "ai:log2", reason, "usr_alice")).toEqual({ ok: true, balanceAfterMilli: 7, duplicate: true, milli: 2 });
+    expect(await walletCharger.refund(db, WS_A, 2, "ai:log2:refund", "ai:log2", reason, "usr_alice")).toEqual({
+      ok: true,
+      balanceAfterMilli: 7,
+      duplicate: false,
+      milli: 2,
+    });
+    expect(await walletCharger.refund(db, WS_A, 2, "ai:log2:refund", "ai:log2", reason, "usr_alice")).toEqual({
+      ok: true,
+      balanceAfterMilli: 7,
+      duplicate: true,
+      milli: 2,
+    });
     expect(await walletCharger.balanceMilli(db, WS_A)).toBe(7);
     expect(await walletCharger.balanceMilli(db, WS_B)).toBe(10);
     expect(await ledgerRows(WS_A)).toEqual([
@@ -101,7 +111,11 @@ describe("walletCharger (story 1.13)", () => {
     expect(await walletCharger.balanceMilli(db, WS_A)).toBe(2);
     expect(await ledgerRows(WS_A)).toHaveLength(1);
     // A different key is still refused.
-    expect(await walletCharger.debit(db, WS_A, 8, "ai:other", "AI generation (reserved)")).toEqual({ ok: false, code: "INSUFFICIENT_CREDITS", balanceMilli: 2 });
+    expect(await walletCharger.debit(db, WS_A, 8, "ai:other", "AI generation (reserved)")).toEqual({
+      ok: false,
+      code: "INSUFFICIENT_CREDITS",
+      balanceMilli: 2,
+    });
   });
 
   test("parallel debits never take more than the balance: only the ones it covers succeed", async () => {
@@ -151,7 +165,12 @@ describe("walletCharger.chargeAction (story 2.5)", () => {
     await setCost(WS_A, "email.send", 1);
     const defaultCosts = "email.send:0.005,message.send:0.003";
     expect(await walletCharger.chargeAction(db, WS_A, "email.send", 1, "d-1", "x", { defaultCosts })).toMatchObject({ ok: true, costMilli: 1 });
-    expect(await walletCharger.chargeAction(db, WS_A, "message.send", 2, "d-2", "x", { defaultCosts, userId: "usr_bob" })).toMatchObject({ ok: true, costMilli: 3, chargedMilli: 6, balanceAfterMilli: 3 });
+    expect(await walletCharger.chargeAction(db, WS_A, "message.send", 2, "d-2", "x", { defaultCosts, userId: "usr_bob" })).toMatchObject({
+      ok: true,
+      costMilli: 3,
+      chargedMilli: 6,
+      balanceAfterMilli: 3,
+    });
     expect((await ledgerRows(WS_A))[1]).toMatchObject({ user_id: "usr_bob" });
     await expect(walletCharger.chargeAction(db, WS_A, "x", 1, "d-3", "x", { defaultCosts: "Bad Entry" })).rejects.toThrow(RangeError);
   });
@@ -169,7 +188,12 @@ describe("walletCharger.chargeAction (story 2.5)", () => {
   test("a free action takes nothing but records a zero row under its key, so a retry after a price change is a duplicate; it still needs a wallet", async () => {
     await setCost(WS_A, "ping", 0);
     await setCost("ws-without-wallet", "ping", 0);
-    expect(await walletCharger.chargeAction(db, WS_A, "ping", 5, "free", "x")).toMatchObject({ ok: true, chargedMilli: 0, balanceAfterMilli: 10, duplicate: false });
+    expect(await walletCharger.chargeAction(db, WS_A, "ping", 5, "free", "x")).toMatchObject({
+      ok: true,
+      chargedMilli: 0,
+      balanceAfterMilli: 10,
+      duplicate: false,
+    });
     expect(await ledgerRows(WS_A)).toEqual([{ amount: 0, reason: "x", user_id: "system", idempotency_key: "free" }]);
     await db.prepare("UPDATE credit_action_costs SET cost_milli = 2 WHERE workspace_id = ? AND action = 'ping'").bind(WS_A).run();
     expect(await walletCharger.chargeAction(db, WS_A, "ping", 5, "free", "x")).toMatchObject({ ok: true, chargedMilli: 0, duplicate: true });
@@ -181,7 +205,11 @@ describe("walletCharger.chargeAction (story 2.5)", () => {
 describe("walletCharger.grant (story 2.6)", () => {
   async function withRegistry(): Promise<void> {
     await db.prepare("DROP TABLE IF EXISTS mw_workspaces").run();
-    await db.prepare("CREATE TABLE mw_workspaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, owner_id TEXT NOT NULL, suspended INTEGER NOT NULL DEFAULT 0, suspended_reason TEXT)").run();
+    await db
+      .prepare(
+        "CREATE TABLE mw_workspaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, owner_id TEXT NOT NULL, suspended INTEGER NOT NULL DEFAULT 0, suspended_reason TEXT)",
+      )
+      .run();
     await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id, suspended) VALUES ('ws-live', 'Live', 'o', 0), ('ws-held', 'Held', 'o', 1)").run();
   }
 
@@ -190,7 +218,10 @@ describe("walletCharger.grant (story 2.6)", () => {
     expect(await walletCharger.grant(db, WS_A, 12500, "g1", "goodwill", "op")).toEqual({ ok: true, balanceAfterMilli: 12510, duplicate: true, opened: false });
     expect(await walletCharger.balanceMilli(db, WS_A)).toBe(12510);
     expect(await walletCharger.balanceMilli(db, WS_B)).toBe(10);
-    const row = await db.prepare("SELECT type, amount_milli, user_id, metadata FROM credit_ledger WHERE workspace_id = ? AND idempotency_key = 'g1'").bind(WS_A).first();
+    const row = await db
+      .prepare("SELECT type, amount_milli, user_id, metadata FROM credit_ledger WHERE workspace_id = ? AND idempotency_key = 'g1'")
+      .bind(WS_A)
+      .first();
     expect(row).toEqual({ type: "topup", amount_milli: 12500, user_id: "op", metadata: JSON.stringify({ op: "grant" }) });
   });
 
@@ -211,7 +242,12 @@ describe("walletCharger.grant (story 2.6)", () => {
     expect(await walletCharger.grant(db, "ws-live", 1000, "g", "grant")).toEqual({ ok: true, balanceAfterMilli: 1000, duplicate: false, opened: true });
     expect(await walletCharger.grant(db, "ws-held", 1000, "g", "grant")).toEqual({ ok: false, code: "WALLET_NOT_FOUND", balanceMilli: 0 });
     expect(await walletCharger.grant(db, "ws-gone", 1000, "g", "grant")).toEqual({ ok: false, code: "WALLET_NOT_FOUND", balanceMilli: 0 });
-    expect(await db.prepare("SELECT workspace_id FROM credit_wallets WHERE workspace_id IN ('ws-held', 'ws-gone')").all().then((r) => r.results)).toEqual([]);
+    expect(
+      await db
+        .prepare("SELECT workspace_id FROM credit_wallets WHERE workspace_id IN ('ws-held', 'ws-gone')")
+        .all()
+        .then((r) => r.results),
+    ).toEqual([]);
     await db.prepare("DROP TABLE mw_workspaces").run();
   });
 

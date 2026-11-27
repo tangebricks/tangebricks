@@ -85,7 +85,10 @@ describe("MCP deploy through Studio's real Cloudflare client", () => {
       expect(approved.status, JSON.stringify(approved.body)).toBe(200);
       const applied = await tool("deploy_apply", { project, env: "preview", approvalId });
       expect(applied.result?.isError, applied.text).toBeFalsy();
-      const writes = fake.requests.slice(before).filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`);
+      const writes = fake.requests
+        .slice(before)
+        .filter((r) => r.method !== "GET")
+        .map((r) => `${r.method} ${r.path}`);
       expect(writes).toContain(`PUT /client/v4/accounts/{account}/workers/scripts/px-${project}-preview`);
       expect(writes).toContain("POST /client/v4/accounts/{account}/d1/database");
       expect(bundled).toEqual([`${project}:preview`]);

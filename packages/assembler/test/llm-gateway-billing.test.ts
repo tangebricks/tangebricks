@@ -51,7 +51,10 @@ async function newWorkspace(owner: string, name: string): Promise<string> {
 async function setBalance(workspaceId: string, credits: number): Promise<void> {
   await createWallet(db, undefined).openWallet(workspaceId, 0);
   // The wallet holds thousandths of a credit (story 2.5).
-  await db.prepare("UPDATE credit_wallets SET balance_milli = ? WHERE workspace_id = ?").bind(credits * 1000, workspaceId).run();
+  await db
+    .prepare("UPDATE credit_wallets SET balance_milli = ? WHERE workspace_id = ?")
+    .bind(credits * 1000, workspaceId)
+    .run();
 }
 
 async function balanceOf(workspaceId: string): Promise<number> {
@@ -230,7 +233,12 @@ describe("AI generation is billed to the workspace wallet in the assembled max-c
       },
     });
 
-    const res = await call(app!, "POST", "/api/ai/generate", { user: "alice", ws: wsA, body: { prompt: "hello", maxTokens: 1000 }, env: { ...env, DB: flaky } });
+    const res = await call(app!, "POST", "/api/ai/generate", {
+      user: "alice",
+      ws: wsA,
+      body: { prompt: "hello", maxTokens: 1000 },
+      env: { ...env, DB: flaky },
+    });
     expect(armed, "the debit batch was interrupted").toBe(false);
     expect(res.status, res.text).toBe(200);
     expect(JSON.parse(res.text).result).toMatchObject({ costCredits: 2, billed: true });

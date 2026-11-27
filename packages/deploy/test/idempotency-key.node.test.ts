@@ -3,13 +3,7 @@ import { z } from "zod";
 import type { BrickManifest, ExecutionContext, Executor } from "@poc/sdk";
 import { createRegistry, toyRegistry } from "@poc/sdk";
 import { toyExecutors } from "@poc/runtime";
-import {
-  APP_WORKSPACE,
-  GRAPH_MIGRATIONS,
-  GRAPH_TABLE,
-  TELEMETRY_MIGRATION,
-  runStoredGraph,
-} from "../src/worker/graph-run.ts";
+import { APP_WORKSPACE, GRAPH_MIGRATIONS, GRAPH_TABLE, TELEMETRY_MIGRATION, runStoredGraph } from "../src/worker/graph-run.ts";
 import type { StepConfig, StepLike } from "../src/worker/graph-run.ts";
 import { sqliteD1 } from "../../../test/support/sqlite-d1.ts";
 
@@ -23,11 +17,7 @@ function fakeStep(kept: Map<string, unknown> = new Map()) {
   const calls: StepCall[] = [];
   const started = new Set<string>();
   const step: StepLike = {
-    do: (async (
-      name: string,
-      a: StepConfig | (() => Promise<unknown>),
-      b?: () => Promise<unknown>,
-    ) => {
+    do: (async (name: string, a: StepConfig | (() => Promise<unknown>), b?: () => Promise<unknown>) => {
       const config = typeof a === "function" ? undefined : a;
       const callback = (typeof a === "function" ? a : b)!;
       if (started.has(name)) throw new Error(`DUPLICATE_STEP_NAME ${name}`);
@@ -44,8 +34,7 @@ function fakeStep(kept: Map<string, unknown> = new Map()) {
   return { step, calls, kept };
 }
 
-const nonRetryable = (message: string) =>
-  Object.assign(new Error(message), { retry: false });
+const nonRetryable = (message: string) => Object.assign(new Error(message), { retry: false });
 
 const writeManifest: BrickManifest = {
   type: "proof.write",
@@ -67,11 +56,7 @@ const secondWriteManifest: BrickManifest = {
   sideEffects: "write",
 };
 
-const testRegistry = createRegistry([
-  ...toyRegistry.values(),
-  writeManifest,
-  secondWriteManifest,
-]);
+const testRegistry = createRegistry([...toyRegistry.values(), writeManifest, secondWriteManifest]);
 
 let world: ReturnType<typeof sqliteD1>;
 
@@ -196,28 +181,21 @@ describe("UC7.1 — Tracer: stable run id and idempotency key runId:nodeId on Ex
     });
     expect(result3.ok).toBe(true);
 
-    const w1Run3 = recordedEvents.find(
-      (e) => e.nodeId === "w1" && e.runId === differentInstanceId,
-    );
+    const w1Run3 = recordedEvents.find((e) => e.nodeId === "w1" && e.runId === differentInstanceId);
     expect(w1Run3).toBeDefined();
     expect(w1Run3!.idempotencyKey).toBe(`${differentInstanceId}:w1`);
     expect(w1Run3!.idempotencyKey).not.toBe(w1Events[0]!.idempotencyKey);
   });
 
   test("AC3: telemetry run record stores the same runId as the Workflow instance id", async () => {
-    const testExecutors = new Map<string, Executor>([
-      ...toyExecutors,
-      ["proof.write", () => ({ out: "ok" })],
-    ]);
+    const testExecutors = new Map<string, Executor>([...toyExecutors, ["proof.write", () => ({ out: "ok" })]]);
 
     const graph = {
       nodes: [
         { id: "t", type: "trigger.manual", data: {} },
         { id: "w1", type: "proof.write", data: {} },
       ],
-      edges: [
-        { id: "e1", source: "t", sourceHandle: "out", target: "w1", targetHandle: "in" },
-      ],
+      edges: [{ id: "e1", source: "t", sourceHandle: "out", target: "w1", targetHandle: "in" }],
     };
 
     storeGraph("g_telemetry_idemp", graph);

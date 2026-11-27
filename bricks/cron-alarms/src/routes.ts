@@ -80,10 +80,7 @@ export function createScheduleRoutes(options: CronRouteOptions = {}): Hono<CronE
     });
 
     if (!result.ok) {
-      return c.json(
-        { error: result.error, ...(result.errorCode ? { code: result.errorCode } : {}) },
-        result.code as 400 | 403 | 500,
-      );
+      return c.json({ error: result.error, ...(result.errorCode ? { code: result.errorCode } : {}) }, result.code as 400 | 403 | 500);
     }
 
     return c.json({ schedule: result.schedule }, 201);

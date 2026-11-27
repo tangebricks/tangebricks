@@ -32,10 +32,7 @@ import {
   traverseSafePropertyPath,
   validateStepExpression,
 } from "@poc/runtime/expressions";
-import type {
-  ParsedPillExpression,
-  StepExpressionValidationResult,
-} from "@poc/runtime/expressions";
+import type { ParsedPillExpression, StepExpressionValidationResult } from "@poc/runtime/expressions";
 import type {
   BlueprintMetadata,
   BlueprintState as CanonicalBlueprintState,
@@ -96,30 +93,13 @@ export {
   validateGraph,
   validateStepExpression,
 };
-export type {
-  ParsedPillExpression,
-  StepExpressionValidationResult,
-};
+export type { ParsedPillExpression, StepExpressionValidationResult };
 
 export function semanticHash(state: BlueprintState): string {
-  return canonicalSemanticHash(
-    normalizeBlueprintState(state as CanonicalBlueprintState),
-  );
+  return canonicalSemanticHash(normalizeBlueprintState(state as CanonicalBlueprintState));
 }
 
-export type EntityFieldType =
-  | "text"
-  | "string"
-  | "number"
-  | "integer"
-  | "boolean"
-  | "enum"
-  | "json"
-  | "datetime"
-  | "relation"
-  | "date"
-  | "money"
-  | "longtext";
+export type EntityFieldType = "text" | "string" | "number" | "integer" | "boolean" | "enum" | "json" | "datetime" | "relation" | "date" | "money" | "longtext";
 
 export interface EntityFieldBase {
   name: string;
@@ -159,14 +139,12 @@ export type EntityField =
       maxLength?: number;
     });
 
-export interface EntityDefinition
-  extends Omit<CanonicalEntityDefinition, "fields" | "workspaceScoped"> {
+export interface EntityDefinition extends Omit<CanonicalEntityDefinition, "fields" | "workspaceScoped"> {
   workspaceScoped?: true;
   fields: EntityField[];
 }
 
-export interface BlueprintState
-  extends Omit<CanonicalBlueprintState, "metadata" | "entities"> {
+export interface BlueprintState extends Omit<CanonicalBlueprintState, "metadata" | "entities"> {
   entities: EntityDefinition[];
   metadata?: BlueprintMetadata;
 }
@@ -199,15 +177,7 @@ export type StudioOrgRole = "owner" | "admin" | "builder" | "viewer";
 
 export type BrickMaturity = "production" | "beta" | "experimental";
 
-export type BrickCategory =
-  | "identity"
-  | "billing"
-  | "data"
-  | "automation"
-  | "communication"
-  | "ai"
-  | "developer"
-  | "governance";
+export type BrickCategory = "identity" | "billing" | "data" | "automation" | "communication" | "ai" | "developer" | "governance";
 
 export type CatalogSettingDefinition =
   | {
@@ -388,28 +358,12 @@ export interface StudioProjectSummary {
   updatedAt: string;
 }
 
-export type StudioNavTab =
-  | "overview"
-  | "bricks"
-  | "data"
-  | "workflows"
-  | "connections"
-  | "history";
+export type StudioNavTab = "overview" | "bricks" | "data" | "workflows" | "connections" | "history";
 export type StudioRightDockTab = "inspector" | "ledger";
 export type SyncStatus = "Live" | "Connecting…" | "Offline";
 
-export type StudioSecretKind =
-  | "api_key"
-  | "webhook_secret"
-  | "brick_secret"
-  | "oauth2";
-export type StudioSecretStatus =
-  | "valid"
-  | "connected"
-  | "expired"
-  | "revoked"
-  | "error"
-  | "missing";
+export type StudioSecretKind = "api_key" | "webhook_secret" | "brick_secret" | "oauth2";
+export type StudioSecretStatus = "valid" | "connected" | "expired" | "revoked" | "error" | "missing";
 
 export interface StudioSecretUsedByTarget {
   targetKind: "brick" | "node" | "connection";
@@ -560,37 +514,28 @@ export function brickSecretNames(manifest: Pick<CatalogBrickManifest, "secrets">
   return (manifest?.secrets ?? []).map((s) => (typeof s === "string" ? s : s.name));
 }
 
-export const DEFAULT_CATALOG: Record<string, CatalogBrickManifest> = (
-  catalogDataJson as unknown as { bricks: Record<string, CatalogBrickManifest> }
-).bricks;
+export const DEFAULT_CATALOG: Record<string, CatalogBrickManifest> = (catalogDataJson as unknown as { bricks: Record<string, CatalogBrickManifest> }).bricks;
 
-export const DEFAULT_NODE_PACKS: Record<string, { manifest: CatalogNodePackManifest }> = (
-  catalogDataJson as unknown as {
-    nodePacks?: Record<string, { manifest: CatalogNodePackManifest }>;
-  }
-).nodePacks ?? {};
+export const DEFAULT_NODE_PACKS: Record<string, { manifest: CatalogNodePackManifest }> =
+  (
+    catalogDataJson as unknown as {
+      nodePacks?: Record<string, { manifest: CatalogNodePackManifest }>;
+    }
+  ).nodePacks ?? {};
 
-export const DEFAULT_INTEGRATIONS: Record<
-  string,
-  { manifest: CatalogIntegrationManifest; nodes?: CatalogNodeDefinition[] }
-> = (
-  catalogDataJson as unknown as {
-    integrations?: Record<
-      string,
-      { manifest: CatalogIntegrationManifest; nodes?: CatalogNodeDefinition[] }
-    >;
-  }
-).integrations ?? {};
+export const DEFAULT_INTEGRATIONS: Record<string, { manifest: CatalogIntegrationManifest; nodes?: CatalogNodeDefinition[] }> =
+  (
+    catalogDataJson as unknown as {
+      integrations?: Record<string, { manifest: CatalogIntegrationManifest; nodes?: CatalogNodeDefinition[] }>;
+    }
+  ).integrations ?? {};
 
-export const DEFAULT_CATALOG_VERSION: string =
-  (catalogDataJson as unknown as { catalogVersion?: string }).catalogVersion ?? "";
+export const DEFAULT_CATALOG_VERSION: string = (catalogDataJson as unknown as { catalogVersion?: string }).catalogVersion ?? "";
 
 type BlueprintCatalogInput = Parameters<typeof computeReadiness>[1];
 type BlueprintNodeRegistryInput = NonNullable<Parameters<typeof computeReadiness>[2]>;
 
-export function toBlueprintCatalog(
-  catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG,
-): BlueprintCatalogInput {
+export function toBlueprintCatalog(catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG): BlueprintCatalogInput {
   return {
     ...(DEFAULT_CATALOG_VERSION ? { catalogVersion: DEFAULT_CATALOG_VERSION } : {}),
     bricks: Object.fromEntries(
@@ -615,9 +560,7 @@ export function toBlueprintCatalog(
               })),
             },
           } as unknown as BlueprintCatalogInput["bricks"][string]["manifest"],
-          files: Object.fromEntries(
-            (manifest.migrations ?? []).map((m) => [m, "-- migration\n"]),
-          ),
+          files: Object.fromEntries((manifest.migrations ?? []).map((m) => [m, "-- migration\n"])),
         },
       ]),
     ),
@@ -630,22 +573,16 @@ const permissiveConfigSchema = {
   safeParse: (data: unknown) => ({ success: true as const, data }),
 };
 
-const BASE_CATALOG_NODE_REGISTRY = buildCatalogNodeRegistry(
-  toBlueprintCatalog(DEFAULT_CATALOG),
-);
+const BASE_CATALOG_NODE_REGISTRY = buildCatalogNodeRegistry(toBlueprintCatalog(DEFAULT_CATALOG));
 
 export const STUDIO_NODE_REGISTRY: BlueprintNodeRegistryInput = {
-  has: (type: string) =>
-    BASE_CATALOG_NODE_REGISTRY.has(type) ||
-    type.includes(".") ||
-    type === "trigger",
+  has: (type: string) => BASE_CATALOG_NODE_REGISTRY.has(type) || type.includes(".") || type === "trigger",
   get: (type: string) => {
     const catalogMatch = BASE_CATALOG_NODE_REGISTRY.get(type);
     if (catalogMatch) {
       return catalogMatch;
     }
-    const isTrigger =
-      type.startsWith("trigger.") || type.endsWith(".trigger") || type === "trigger";
+    const isTrigger = type.startsWith("trigger.") || type.endsWith(".trigger") || type === "trigger";
     const isTransform = type.startsWith("transform.");
     return {
       type,
@@ -666,10 +603,7 @@ export const STUDIO_NODE_REGISTRY: BlueprintNodeRegistryInput = {
 
 export const createEmptyBlueprintState = createEmptyBlueprint;
 
-export function computeStudioReadiness(
-  state: BlueprintState,
-  catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG,
-): ReadinessResult {
+export function computeStudioReadiness(state: BlueprintState, catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG): ReadinessResult {
   const canonical = normalizeBlueprintState(state as CanonicalBlueprintState);
   return computeReadiness(canonical, toBlueprintCatalog(catalog), STUDIO_NODE_REGISTRY);
 }
@@ -681,15 +615,10 @@ export function applyStudioOps(
 ): BlueprintState {
   const bpCatalog = toBlueprintCatalog(catalog);
   const canonicalBase = normalizeBlueprintState(baseState as CanonicalBlueprintState);
-  const normalizedOps: Array<Record<string, unknown> & { opId: string }> = ops.map(
-    (rawOp, idx) => ({
-      ...rawOp,
-      opId:
-        typeof rawOp.opId === "string" && rawOp.opId.trim().length > 0
-          ? rawOp.opId
-          : `studio-op-${idx + 1}`,
-    }),
-  );
+  const normalizedOps: Array<Record<string, unknown> & { opId: string }> = ops.map((rawOp, idx) => ({
+    ...rawOp,
+    opId: typeof rawOp.opId === "string" && rawOp.opId.trim().length > 0 ? rawOp.opId : `studio-op-${idx + 1}`,
+  }));
 
   const batchResult = applyOps(canonicalBase, normalizedOps, bpCatalog, STUDIO_NODE_REGISTRY);
   if (batchResult.ok) {
@@ -698,12 +627,7 @@ export function applyStudioOps(
 
   let current = canonicalBase;
   for (const op of normalizedOps) {
-    if (
-      op.type === "add_node" &&
-      typeof op.workflowId === "string" &&
-      op.workflowId.length > 0 &&
-      !current.workflows.some((w) => w.id === op.workflowId)
-    ) {
+    if (op.type === "add_node" && typeof op.workflowId === "string" && op.workflowId.length > 0 && !current.workflows.some((w) => w.id === op.workflowId)) {
       const initWf = applyOp(
         current,
         {
@@ -743,9 +667,7 @@ interface RawPreset {
 
 export function normalizePresetToBlueprint(raw: RawPreset): BlueprintState {
   const bricks: BrickEntry[] = raw.bricks.map((entry) =>
-    typeof entry === "string"
-      ? { id: entry, config: {} }
-      : { id: entry.id, config: entry.config ?? {} },
+    typeof entry === "string" ? { id: entry, config: {} } : { id: entry.id, config: entry.config ?? {} },
   );
   const entities: EntityDefinition[] = (raw.entities ?? []).map((ent) => ({
     name: ent.name,
@@ -796,9 +718,7 @@ export function normalizePresetToBlueprint(raw: RawPreset): BlueprintState {
 }
 
 export const PRESET_BLUEPRINTS: Record<string, BlueprintState> = Object.fromEntries(
-  Object.entries(presetsDataJson as unknown as Record<string, RawPreset>).map(
-    ([name, raw]) => [name, normalizePresetToBlueprint(raw)],
-  ),
+  Object.entries(presetsDataJson as unknown as Record<string, RawPreset>).map(([name, raw]) => [name, normalizePresetToBlueprint(raw)]),
 );
 
 export function formatAuthorBadge(author: AuthorAttribution): {
@@ -832,11 +752,7 @@ export function matchesAuthorFilter(rev: RevisionSummary, filter: string): boole
   if (filter.startsWith("agent:")) {
     if (rev.author.type !== "agent") return false;
     const { agentTag } = formatAuthorBadge(rev.author);
-    return (
-      agentTag === filter ||
-      rev.author.id === filter ||
-      `agent:${rev.author.id}` === filter
-    );
+    return agentTag === filter || rev.author.id === filter || `agent:${rev.author.id}` === filter;
   }
   return true;
 }
@@ -913,9 +829,7 @@ export function extractAffectedTargets(rev: RevisionSummary): AffectedObjectTarg
         break;
       }
       case "add_workflow": {
-        const wf = rawOp.workflow as
-          | { id?: string; nodes?: Array<{ id?: string; label?: string }> }
-          | undefined;
+        const wf = rawOp.workflow as { id?: string; nodes?: Array<{ id?: string; label?: string }> } | undefined;
         if (wf?.id) {
           pushTarget({ kind: "workflow", id: wf.id, label: wf.id });
           for (const node of wf.nodes ?? []) {
@@ -967,9 +881,7 @@ export function extractAffectedTargets(rev: RevisionSummary): AffectedObjectTarg
       }
       case "connect_edges": {
         const workflowId = typeof rawOp.workflowId === "string" ? rawOp.workflowId : undefined;
-        const edges = Array.isArray(rawOp.edges)
-          ? (rawOp.edges as Array<{ source?: string; target?: string }>)
-          : [];
+        const edges = Array.isArray(rawOp.edges) ? (rawOp.edges as Array<{ source?: string; target?: string }>) : [];
         for (const edge of edges) {
           if (edge.source) {
             pushTarget({
@@ -1076,18 +988,12 @@ export function hasSchedulingOrQueueTriggers(manifest: CatalogBrickManifest, con
   if (hasSchedules || hasQueues) {
     return true;
   }
-  return (
-    manifest.id === "cron-alarms" ||
-    manifest.id === "queue-jobs" ||
-    manifest.id === "workflow-dag"
-  );
+  return manifest.id === "cron-alarms" || manifest.id === "queue-jobs" || manifest.id === "workflow-dag";
 }
 
 export function takesEntitiesInManifest(manifest: CatalogBrickManifest): boolean {
   return manifest.worker.routes.some((route) =>
-    Object.values(route.options ?? {}).some(
-      (val) => typeof val === "object" && val !== null && "$entities" in val,
-    ),
+    Object.values(route.options ?? {}).some((val) => typeof val === "object" && val !== null && "$entities" in val),
   );
 }
 
@@ -1110,8 +1016,7 @@ function formatFieldColumnSql(field: EntityField): string {
     case "string":
     case "json":
     case "datetime": {
-      const maxLen =
-        field.maxLength ?? (field.type === "json" ? 5000 : field.type === "datetime" ? 64 : 500);
+      const maxLen = field.maxLength ?? (field.type === "json" ? 5000 : field.type === "datetime" ? 64 : 500);
       return `${name} TEXT${notNull}${uniqueSql}${defaultSql} CHECK (length(${name}) <= ${maxLen})`;
     }
     // A relation holds the id (a UUID) of a row of its target entity, as the SDK stores it.
@@ -1119,10 +1024,7 @@ function formatFieldColumnSql(field: EntityField): string {
       return `${name} TEXT${notNull}${uniqueSql}${defaultSql} CHECK (length(${name}) = 36)`;
     case "number":
     case "integer": {
-      const bounds = [
-        field.min !== undefined ? `${name} >= ${field.min}` : null,
-        field.max !== undefined ? `${name} <= ${field.max}` : null,
-      ].filter(Boolean);
+      const bounds = [field.min !== undefined ? `${name} >= ${field.min}` : null, field.max !== undefined ? `${name} <= ${field.max}` : null].filter(Boolean);
       return `${name} INTEGER${notNull}${uniqueSql}${defaultSql}${bounds.length > 0 ? ` CHECK (${bounds.join(" AND ")})` : ""}`;
     }
     case "boolean":
@@ -1145,18 +1047,12 @@ function formatFieldColumnSql(field: EntityField): string {
   }
 }
 
-export function formatEntityDdl(
-  entity: EntityDefinition,
-  previousEntity?: EntityDefinition | null,
-): string {
+export function formatEntityDdl(entity: EntityDefinition, previousEntity?: EntityDefinition | null): string {
   const safeName = entity.name || "unnamed";
   const table = `ent_${safeName}`;
   const uniqueConstraints = entity.fields
     .filter((f) => f.unique && f.name)
-    .map(
-      (f) =>
-        `UNIQUE(${quoteSqlIdentifier("workspace_id")}, ${quoteSqlIdentifier(f.name)})`,
-    );
+    .map((f) => `UNIQUE(${quoteSqlIdentifier("workspace_id")}, ${quoteSqlIdentifier(f.name)})`);
   const columns = [
     `${quoteSqlIdentifier("id")} TEXT PRIMARY KEY`,
     `${quoteSqlIdentifier("workspace_id")} TEXT NOT NULL`,
@@ -1190,9 +1086,7 @@ export function formatEntityDdl(
     for (const [fName, nextField] of nextByName) {
       const prevField = prevByName.get(fName);
       if (!prevField) {
-        alterLines.push(
-          `ALTER TABLE ${quoteSqlIdentifier(table)} ADD COLUMN ${formatFieldColumnSql(nextField)};`,
-        );
+        alterLines.push(`ALTER TABLE ${quoteSqlIdentifier(table)} ADD COLUMN ${formatFieldColumnSql(nextField)};`);
       } else if (prevField.type !== nextField.type) {
         alterLines.push(
           `-- Type change on ${quoteSqlIdentifier(fName)} (${prevField.type} -> ${nextField.type}):\n` +
@@ -1204,9 +1098,7 @@ export function formatEntityDdl(
 
     for (const [fName] of prevByName) {
       if (!nextByName.has(fName)) {
-        alterLines.push(
-          `ALTER TABLE ${quoteSqlIdentifier(table)} DROP COLUMN ${quoteSqlIdentifier(fName)};`,
-        );
+        alterLines.push(`ALTER TABLE ${quoteSqlIdentifier(table)} DROP COLUMN ${quoteSqlIdentifier(fName)};`);
       }
     }
 
@@ -1218,9 +1110,7 @@ export function formatEntityDdl(
   return ddl;
 }
 
-export function getReservedEntityRoutePrefixes(
-  catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG,
-): Set<string> {
+export function getReservedEntityRoutePrefixes(catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG): Set<string> {
   const reserved = new Set<string>();
   for (const manifest of Object.values(catalog)) {
     for (const prefix of manifest.routePrefixes ?? []) {
@@ -1251,17 +1141,12 @@ export function validateEntityDraft(
   if (!trimmedName) {
     nameError = "Entity name is required.";
   } else if (!ENTITY_NAME_PATTERN.test(trimmedName)) {
-    nameError =
-      "Entity name must start with a lowercase letter and use only lowercase letters, digits, or underscores (max 40 chars).";
+    nameError = "Entity name must start with a lowercase letter and use only lowercase letters, digits, or underscores (max 40 chars).";
   } else {
     const reserved = getReservedEntityRoutePrefixes(catalog);
     if (reserved.has(trimmedName)) {
       nameError = `Entity "${trimmedName}" collides with a reserved brick route prefix (/api/${trimmedName}).`;
-    } else if (
-      existingEntities.some(
-        (e) => e.name === trimmedName && e.name !== editingOriginalName,
-      )
-    ) {
+    } else if (existingEntities.some((e) => e.name === trimmedName && e.name !== editingOriginalName)) {
       nameError = `Entity "${trimmedName}" is already declared in this project.`;
     }
   }
@@ -1284,8 +1169,7 @@ export function validateEntityDraft(
       return;
     }
     if (!ENTITY_NAME_PATTERN.test(fName)) {
-      fieldErrors[idx] =
-        "Field name must be snake_case (lowercase letters, digits, underscores, starting with a letter).";
+      fieldErrors[idx] = "Field name must be snake_case (lowercase letters, digits, underscores, starting with a letter).";
       return;
     }
     if (seenNames.has(fName)) {
@@ -1315,11 +1199,7 @@ export function validateEntityDraft(
     }
 
     if (field.type === "number" || field.type === "integer") {
-      if (
-        field.min !== undefined &&
-        field.max !== undefined &&
-        field.min > field.max
-      ) {
+      if (field.min !== undefined && field.max !== undefined && field.min > field.max) {
         fieldErrors[idx] = `Field "${fName}" has min (${field.min}) > max (${field.max}).`;
         return;
       }
@@ -1360,10 +1240,7 @@ export function validateEntityDraft(
     }
   });
 
-  const ok =
-    !nameError &&
-    Object.keys(fieldErrors).length === 0 &&
-    generalErrors.length === 0;
+  const ok = !nameError && Object.keys(fieldErrors).length === 0 && generalErrors.length === 0;
 
   return { ok, nameError, fieldErrors, generalErrors };
 }
@@ -1444,15 +1321,16 @@ export function formatEntityIsolationPreview(entity: EntityDefinition): string {
     .filter((f) => f.name)
     .map((f) => `"${f.name}"`)
     .join(", ");
-  const selectCols = ["\"id\"", ...(cols ? [cols] : []), "\"created_at\"", "\"updated_at\""].join(
-    ", ",
-  );
+  const selectCols = ['"id"', ...(cols ? [cols] : []), '"created_at"', '"updated_at"'].join(", ");
   return [
     `-- Mandatory Tenant Isolation Contract (AD-7 / C1):`,
     `-- Every query binds ctx.workspace.id from the verified session guard; body/query workspace_id is ignored.`,
     `SELECT ${selectCols} FROM ${table} WHERE "workspace_id" = :ctx.workspaceId ORDER BY "created_at" DESC LIMIT ? OFFSET ?;`,
     `SELECT ${selectCols} FROM ${table} WHERE "id" = ? AND "workspace_id" = :ctx.workspaceId;`,
-    `INSERT INTO ${table} ("id", "workspace_id"${cols ? `, ${cols}` : ""}) VALUES (:uuid, :ctx.workspaceId${entity.fields.filter((f) => f.name).map(() => ", ?").join("")});`,
+    `INSERT INTO ${table} ("id", "workspace_id"${cols ? `, ${cols}` : ""}) VALUES (:uuid, :ctx.workspaceId${entity.fields
+      .filter((f) => f.name)
+      .map(() => ", ?")
+      .join("")});`,
     `UPDATE ${table} SET ... WHERE "id" = ? AND "workspace_id" = :ctx.workspaceId;`,
     `DELETE FROM ${table} WHERE "id" = ? AND "workspace_id" = :ctx.workspaceId;`,
   ].join("\n");
@@ -1484,9 +1362,7 @@ export function computeDestructiveEntityImpact(
   const retypedFields: Array<{ name: string; fromType: string; toType: string }> = [];
 
   if (action === "remove_entity") {
-    reasons.push(
-      `Drops table "ent_${entityName}" and permanently deletes all tenant rows in every workspace.`,
-    );
+    reasons.push(`Drops table "ent_${entityName}" and permanently deletes all tenant rows in every workspace.`);
     if (beforeEntity) {
       for (const f of beforeEntity.fields) {
         droppedFields.push(f.name);
@@ -1498,18 +1374,14 @@ export function computeDestructiveEntityImpact(
       const nextField = afterMap.get(prevField.name);
       if (!nextField) {
         droppedFields.push(prevField.name);
-        reasons.push(
-          `Drops column "${prevField.name}" (${prevField.type}) from "ent_${entityName}", losing stored values in that column.`,
-        );
+        reasons.push(`Drops column "${prevField.name}" (${prevField.type}) from "ent_${entityName}", losing stored values in that column.`);
       } else if (prevField.type !== nextField.type) {
         retypedFields.push({
           name: prevField.name,
           fromType: prevField.type,
           toType: nextField.type,
         });
-        reasons.push(
-          `Changes column "${prevField.name}" type from ${prevField.type} to ${nextField.type} on "ent_${entityName}".`,
-        );
+        reasons.push(`Changes column "${prevField.name}" type from ${prevField.type} to ${nextField.type} on "ent_${entityName}".`);
       }
     }
   }
@@ -1526,7 +1398,7 @@ export function computeDestructiveEntityImpact(
       const dataStr = JSON.stringify(node.data ?? {});
       const touchesEntity =
         node.data?.entity === entityName ||
-        node.type.startsWith("dynamic-entities.") && dataStr.includes(entityName) ||
+        (node.type.startsWith("dynamic-entities.") && dataStr.includes(entityName)) ||
         dataStr.includes(`"${entityName}"`) ||
         dataStr.includes(`${entityName}.`);
       const touchesField = droppedFields.some(
@@ -1546,10 +1418,7 @@ export function computeDestructiveEntityImpact(
   }
 
   return {
-    isDestructive:
-      action === "remove_entity" ||
-      droppedFields.length > 0 ||
-      retypedFields.length > 0,
+    isDestructive: action === "remove_entity" || droppedFields.length > 0 || retypedFields.length > 0,
     action,
     entityName,
     reasons,
@@ -1629,18 +1498,13 @@ export function computeBrickEnablePreview(
       if (providedCapabilities.has(reqCap)) continue;
 
       const preferredId = PREFERRED_CAPABILITY_PROVIDER[reqCap];
-      let chosenProvider: CatalogBrickManifest | undefined =
-        preferredId && catalog[preferredId]?.provides.includes(reqCap)
-          ? catalog[preferredId]
-          : undefined;
+      let chosenProvider: CatalogBrickManifest | undefined = preferredId && catalog[preferredId]?.provides.includes(reqCap) ? catalog[preferredId] : undefined;
 
       if (!chosenProvider) {
         const candidates = Object.values(catalog)
           .filter((c) => c.provides.includes(reqCap))
           .sort((a, b) => a.id.localeCompare(b.id));
-        chosenProvider =
-          candidates.find((c) => (c.ui?.maturity ?? "production") === "production") ??
-          candidates[0];
+        chosenProvider = candidates.find((c) => (c.ui?.maturity ?? "production") === "production") ?? candidates[0];
       }
 
       if (chosenProvider && !plannedIds.has(chosenProvider.id)) {
@@ -1695,11 +1559,7 @@ export function computeBrickEnablePreview(
       // Also check duplicate capability providers (which readiness flags as DUPLICATE_CAPABILITY_PROVIDER)
       for (const cap of candidateManifest.provides ?? []) {
         if (otherManifest?.provides.includes(cap)) {
-          recordConflict(
-            candidateId,
-            otherId,
-            `Both bricks provide capability "${cap}" (enable only one)`,
-          );
+          recordConflict(candidateId, otherId, `Both bricks provide capability "${cap}" (enable only one)`);
         }
       }
     }
@@ -1748,9 +1608,7 @@ export function computeBrickDisableImpact(
   const manifest = catalog[brickId];
   if (!manifest) return null;
 
-  const remainingEnabledIds = (state?.bricks ?? [])
-    .map((b) => b.id)
-    .filter((id) => id !== brickId);
+  const remainingEnabledIds = (state?.bricks ?? []).map((b) => b.id).filter((id) => id !== brickId);
 
   const remainingCapabilities = new Set<string>();
   for (const id of remainingEnabledIds) {
@@ -1788,9 +1646,7 @@ export function computeBrickDisableImpact(
   }> = [];
 
   for (const wf of state?.workflows ?? []) {
-    const matchingNodes = wf.nodes.filter(
-      (n) => n.type.startsWith(`${brickId}.`) || declaredNodeTypes.has(n.type),
-    );
+    const matchingNodes = wf.nodes.filter((n) => n.type.startsWith(`${brickId}.`) || declaredNodeTypes.has(n.type));
     if (matchingNodes.length > 0) {
       dependentWorkflows.push({
         workflowId: wf.id,
@@ -1875,13 +1731,7 @@ export function validateBrickSettingValue(
   }
 }
 
-export type PaletteCategory =
-  | "triggers"
-  | "brick-actions"
-  | "integrations"
-  | "logic"
-  | "data"
-  | "http";
+export type PaletteCategory = "triggers" | "brick-actions" | "integrations" | "logic" | "data" | "http";
 
 export interface PaletteNodeItem {
   type: string;
@@ -1903,18 +1753,9 @@ export interface PaletteNodeItem {
   defaultData: Record<string, SettingValue>;
 }
 
-const DATA_CORE_NODE_TYPES = new Set([
-  "core.field_map",
-  "core.rename_keys",
-  "core.format_template",
-  "core.json_transform",
-  "core.math",
-  "core.date_time",
-]);
+const DATA_CORE_NODE_TYPES = new Set(["core.field_map", "core.rename_keys", "core.format_template", "core.json_transform", "core.math", "core.date_time"]);
 
-function extractDefaultNodeData(
-  config: Record<string, CatalogSettingDefinition> | undefined,
-): Record<string, SettingValue> {
+function extractDefaultNodeData(config: Record<string, CatalogSettingDefinition> | undefined): Record<string, SettingValue> {
   const out: Record<string, SettingValue> = {};
   for (const [k, def] of Object.entries(config ?? {})) {
     if (def.default !== undefined) {
@@ -1924,10 +1765,7 @@ function extractDefaultNodeData(
   return out;
 }
 
-export function getCatalogNodeDefinition(
-  nodeType: string,
-  catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG,
-): CatalogNodeDefinition {
+export function getCatalogNodeDefinition(nodeType: string, catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG): CatalogNodeDefinition {
   for (const pack of Object.values(DEFAULT_NODE_PACKS)) {
     const found = pack.manifest.nodes.find((n) => n.type === nodeType);
     if (found) return found;
@@ -1977,25 +1815,13 @@ export function getCatalogNodeDefinition(
     }
   }
 
-  const isTrigger =
-    nodeType.startsWith("trigger.") ||
-    nodeType.includes(".trigger.") ||
-    nodeType.endsWith(".trigger") ||
-    nodeType === "trigger";
-  const isLogic =
-    nodeType.startsWith("logic.") ||
-    nodeType.startsWith("transform.") ||
-    nodeType.startsWith("util.") ||
-    nodeType.startsWith("core.");
+  const isTrigger = nodeType.startsWith("trigger.") || nodeType.includes(".trigger.") || nodeType.endsWith(".trigger") || nodeType === "trigger";
+  const isLogic = nodeType.startsWith("logic.") || nodeType.startsWith("transform.") || nodeType.startsWith("util.") || nodeType.startsWith("core.");
 
   return {
     type: nodeType,
     label: nodeType,
-    summary: isTrigger
-      ? "Workflow trigger node"
-      : isLogic
-        ? "Workflow logic / transform node"
-        : "Workflow action node",
+    summary: isTrigger ? "Workflow trigger node" : isLogic ? "Workflow logic / transform node" : "Workflow action node",
     role: isTrigger ? "trigger" : isLogic ? "logic" : "action",
     inputs: isTrigger ? [] : [{ id: "in", label: "Input", dataType: "any" }],
     outputs: [{ id: "out", label: "Output", dataType: "any" }],
@@ -2006,10 +1832,7 @@ export function getCatalogNodeDefinition(
   };
 }
 
-export function isTriggerNodeType(
-  nodeType: string,
-  catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG,
-): boolean {
+export function isTriggerNodeType(nodeType: string, catalog: Record<string, CatalogBrickManifest> = DEFAULT_CATALOG): boolean {
   return getCatalogNodeDefinition(nodeType, catalog).role === "trigger";
 }
 
@@ -2060,8 +1883,7 @@ export function getPaletteCatalogItems(
     const brickDisplayName = manifest.ui?.displayName ?? manifest.id;
 
     for (const node of manifest.nodes ?? []) {
-      const category: PaletteCategory =
-        node.role === "trigger" ? "triggers" : "brick-actions";
+      const category: PaletteCategory = node.role === "trigger" ? "triggers" : "brick-actions";
       items.push({
         type: node.type,
         label: node.label,
@@ -2087,9 +1909,7 @@ export function getPaletteCatalogItems(
     const maturity = intManifest.ui?.maturity ?? "production";
     const maturityReason = intManifest.ui?.maturityReason;
     const appTitle = intManifest.ui?.displayName ?? intManifest.ui?.title ?? intManifest.app;
-    const projectedByType = new Map(
-      (entry.nodes ?? []).map((n) => [n.type, n]),
-    );
+    const projectedByType = new Map((entry.nodes ?? []).map((n) => [n.type, n]));
 
     for (const op of intManifest.operations ?? []) {
       const opId = op.operationId ?? op.id ?? "";
@@ -2097,13 +1917,7 @@ export function getPaletteCatalogItems(
       const fullType = `int:${intManifest.app}.${opId}`;
       const projected = projectedByType.get(fullType);
       const opLabel = op.label ?? op.title ?? projected?.label ?? opId;
-      const opSummary =
-        op.summary ??
-        op.description ??
-        projected?.summary ??
-        intManifest.ui?.summary ??
-        intManifest.ui?.description ??
-        "";
+      const opSummary = op.summary ?? op.description ?? projected?.summary ?? intManifest.ui?.summary ?? intManifest.ui?.description ?? "";
       const opConfig = op.config ?? projected?.config ?? {};
       items.push({
         type: fullType,
@@ -2128,12 +1942,7 @@ export function getPaletteCatalogItems(
     for (const trig of intManifest.triggers ?? []) {
       const fullType = `int:${intManifest.app}.trigger.${trig.id}`;
       const trigLabel = trig.label ?? trig.title ?? trig.id;
-      const trigSummary =
-        trig.summary ??
-        trig.description ??
-        intManifest.ui?.summary ??
-        intManifest.ui?.description ??
-        "";
+      const trigSummary = trig.summary ?? trig.description ?? intManifest.ui?.summary ?? intManifest.ui?.description ?? "";
       items.push({
         type: fullType,
         label: `${appTitle}: ${trigLabel}`,
@@ -2158,9 +1967,7 @@ export function getPaletteCatalogItems(
   return items;
 }
 
-export function entityFieldTypeToPortDataType(
-  fieldType: EntityFieldType | string,
-): CatalogNodePort["dataType"] {
+export function entityFieldTypeToPortDataType(fieldType: EntityFieldType | string): CatalogNodePort["dataType"] {
   switch (fieldType) {
     case "number":
     case "integer":
@@ -2183,13 +1990,9 @@ export function entityFieldTypeToPortDataType(
   }
 }
 
-export type EntityLookupInput =
-  | ReadonlyArray<EntityDefinition>
-  | Readonly<Record<string, EntityDefinition>>;
+export type EntityLookupInput = ReadonlyArray<EntityDefinition> | Readonly<Record<string, EntityDefinition>>;
 
-function toEntityMap(
-  entities: EntityLookupInput = [],
-): Record<string, EntityDefinition> {
+function toEntityMap(entities: EntityLookupInput = []): Record<string, EntityDefinition> {
   if (Array.isArray(entities)) {
     const map: Record<string, EntityDefinition> = {};
     for (const ent of entities) {
@@ -2202,26 +2005,15 @@ function toEntityMap(
   return { ...(entities as Record<string, EntityDefinition>) };
 }
 
-export function resolveNodeBoundEntity(
-  node: WorkflowNode,
-  entities: EntityLookupInput = [],
-): EntityDefinition | null {
+export function resolveNodeBoundEntity(node: WorkflowNode, entities: EntityLookupInput = []): EntityDefinition | null {
   const entityMap = toEntityMap(entities);
-  const rawData =
-    (node.data as Record<string, unknown> | undefined) ??
-    {};
-  const explicitEntity =
-    typeof rawData.entity === "string" && rawData.entity.trim()
-      ? rawData.entity.trim()
-      : "";
+  const rawData = (node.data as Record<string, unknown> | undefined) ?? {};
+  const explicitEntity = typeof rawData.entity === "string" && rawData.entity.trim() ? rawData.entity.trim() : "";
   if (explicitEntity && Object.hasOwn(entityMap, explicitEntity)) {
     return entityMap[explicitEntity] ?? null;
   }
 
-  const eventVal =
-    typeof rawData.event === "string" && rawData.event.trim()
-      ? rawData.event.trim()
-      : "";
+  const eventVal = typeof rawData.event === "string" && rawData.event.trim() ? rawData.event.trim() : "";
   if (eventVal.includes(".")) {
     const prefix = eventVal.split(".")[0]!;
     if (prefix && Object.hasOwn(entityMap, prefix)) {
@@ -2229,10 +2021,7 @@ export function resolveNodeBoundEntity(
     }
   }
 
-  if (
-    node.type.startsWith("dynamic-entities.") ||
-    node.type === "core.brick_event"
-  ) {
+  if (node.type.startsWith("dynamic-entities.") || node.type === "core.brick_event") {
     const entityKeys = Object.keys(entityMap);
     if (entityKeys.length === 1) {
       return entityMap[entityKeys[0]!] ?? null;
@@ -2290,16 +2079,10 @@ export function getEffectiveNodePorts(
   }
 
   // Template placeholders (`ph-<placeholder>`) from template/body/subject/message strings
-  const rawData =
-    (node.data as Record<string, unknown> | undefined) ??
-    {};
-  const templateCandidates = [
-    rawData.template,
-    rawData.body,
-    rawData.subject,
-    rawData.message,
-    rawData.text,
-  ].filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+  const rawData = (node.data as Record<string, unknown> | undefined) ?? {};
+  const templateCandidates = [rawData.template, rawData.body, rawData.subject, rawData.message, rawData.text].filter(
+    (v): v is string => typeof v === "string" && v.trim().length > 0,
+  );
 
   const placeholderSet = new Set<string>();
   for (const str of templateCandidates) {
@@ -2384,12 +2167,7 @@ export function getUpstreamAncestorNodes(
     const fields: DataPillFieldOption[] = [];
     const seenFields = new Set<string>();
 
-    const addField = (
-      fieldName: string,
-      label: string,
-      dataType: CatalogNodePort["dataType"],
-      sourceKind: "entity-column" | "node-output",
-    ) => {
+    const addField = (fieldName: string, label: string, dataType: CatalogNodePort["dataType"], sourceKind: "entity-column" | "node-output") => {
       if (seenFields.has(fieldName)) return;
       seenFields.add(fieldName);
       fields.push({
@@ -2407,22 +2185,12 @@ export function getUpstreamAncestorNodes(
     if (boundEntity) {
       addField("id", "id", "string", "entity-column");
       for (const f of boundEntity.fields) {
-        addField(
-          f.name,
-          f.name,
-          entityFieldTypeToPortDataType(f.type),
-          "entity-column",
-        );
+        addField(f.name, f.name, entityFieldTypeToPortDataType(f.type), "entity-column");
       }
     }
 
     for (const outPort of baseDef.outputs) {
-      addField(
-        outPort.id,
-        outPort.label ?? outPort.id,
-        outPort.dataType,
-        "node-output",
-      );
+      addField(outPort.id, outPort.label ?? outPort.id, outPort.dataType, "node-output");
     }
 
     if (ancNode.type === "core.if") {
@@ -2487,17 +2255,11 @@ export function validateWorkflowConnection(
     };
   }
 
-  const resolvedSourceHandle =
-    sourceHandle ?? sourceEffective.outputs[0]?.id ?? "out";
-  const resolvedTargetHandle =
-    targetHandle ?? targetEffective.inputs[0]?.id ?? "in";
+  const resolvedSourceHandle = sourceHandle ?? sourceEffective.outputs[0]?.id ?? "out";
+  const resolvedTargetHandle = targetHandle ?? targetEffective.inputs[0]?.id ?? "in";
 
-  const sourcePort =
-    sourceEffective.outputs.find((p) => p.id === resolvedSourceHandle) ??
-    sourceEffective.outputs[0];
-  const targetPort =
-    targetEffective.inputs.find((p) => p.id === resolvedTargetHandle) ??
-    targetEffective.inputs[0];
+  const sourcePort = sourceEffective.outputs.find((p) => p.id === resolvedSourceHandle) ?? sourceEffective.outputs[0];
+  const targetPort = targetEffective.inputs.find((p) => p.id === resolvedTargetHandle) ?? targetEffective.inputs[0];
 
   if (!sourcePort) {
     return {
@@ -2513,10 +2275,7 @@ export function validateWorkflowConnection(
   }
 
   // Port dataType compatibility check
-  const compatible =
-    sourcePort.dataType === "any" ||
-    targetPort.dataType === "any" ||
-    sourcePort.dataType === targetPort.dataType;
+  const compatible = sourcePort.dataType === "any" || targetPort.dataType === "any" || sourcePort.dataType === targetPort.dataType;
 
   if (!compatible) {
     return {
@@ -2529,11 +2288,7 @@ export function validateWorkflowConnection(
 
   // Duplicate edge check
   const alreadyConnected = workflow.edges.some(
-    (e) =>
-      e.source === sourceNodeId &&
-      e.target === targetNodeId &&
-      (e.sourceHandle ?? "out") === sourcePort.id &&
-      (e.targetHandle ?? "in") === targetPort.id,
+    (e) => e.source === sourceNodeId && e.target === targetNodeId && (e.sourceHandle ?? "out") === sourcePort.id && (e.targetHandle ?? "in") === targetPort.id,
   );
   if (alreadyConnected) {
     return {
@@ -2587,22 +2342,12 @@ export function computeStudioInverseOps(
 ): Array<Record<string, unknown>> {
   const bpCatalog = toBlueprintCatalog(catalog);
   const canonicalBase = normalizeBlueprintState(baseState as CanonicalBlueprintState);
-  const normalizedOps: Array<Record<string, unknown> & { opId: string }> = ops.map(
-    (rawOp, idx) => ({
-      ...rawOp,
-      opId:
-        typeof rawOp.opId === "string" && rawOp.opId.trim().length > 0
-          ? rawOp.opId
-          : `studio-op-${idx + 1}`,
-    }),
-  );
+  const normalizedOps: Array<Record<string, unknown> & { opId: string }> = ops.map((rawOp, idx) => ({
+    ...rawOp,
+    opId: typeof rawOp.opId === "string" && rawOp.opId.trim().length > 0 ? rawOp.opId : `studio-op-${idx + 1}`,
+  }));
 
-  const batchResult = applyOps(
-    canonicalBase,
-    normalizedOps,
-    bpCatalog,
-    STUDIO_NODE_REGISTRY,
-  );
+  const batchResult = applyOps(canonicalBase, normalizedOps, bpCatalog, STUDIO_NODE_REGISTRY);
   if (batchResult.ok) {
     return batchResult.inverseOps as unknown as Array<Record<string, unknown>>;
   }
@@ -2613,9 +2358,7 @@ export function computeStudioInverseOps(
     const step = applyOp(current, op, bpCatalog, STUDIO_NODE_REGISTRY);
     if (step.ok) {
       current = step.state;
-      stepInverses.push(
-        step.inverseOps as unknown as Array<Record<string, unknown>>,
-      );
+      stepInverses.push(step.inverseOps as unknown as Array<Record<string, unknown>>);
     }
   }
   return stepInverses.reverse().flat();
@@ -2681,14 +2424,7 @@ export function reconstructRevisionInverseOps(
     return [];
   }
   const parentRev = rev.parentRevision ?? Math.max(0, targetRev - 1);
-  const parentState = reconstructBlueprintStateAtRevision(
-    project,
-    revisions,
-    parentRev,
-    currentState,
-    currentRev,
-    catalog,
-  );
+  const parentState = reconstructBlueprintStateAtRevision(project, revisions, parentRev, currentState, currentRev, catalog);
   return computeStudioInverseOps(parentState, rev.ops, catalog);
 }
 
@@ -2696,13 +2432,7 @@ export interface StudioValidationIssue {
   id: string;
   code: string;
   severity: "error" | "warning";
-  category:
-    | "capability"
-    | "secret"
-    | "expression"
-    | "graph"
-    | "entity"
-    | "brick";
+  category: "capability" | "secret" | "expression" | "graph" | "entity" | "brick";
   message: string;
   suggestedFix?: string;
   nav: StudioNavTab;
@@ -2722,8 +2452,7 @@ export function computeStudioValidationIssues(
   readiness?: ReadinessResult,
 ): StudioValidationIssue[] {
   if (!state) return [];
-  const effectiveReadiness =
-    readiness ?? computeStudioReadiness(state, catalog);
+  const effectiveReadiness = readiness ?? computeStudioReadiness(state, catalog);
   const issues: StudioValidationIssue[] = [];
   const seenIds = new Set<string>();
 
@@ -2738,20 +2467,10 @@ export function computeStudioValidationIssues(
   for (const need of effectiveReadiness.needs) {
     const pathParts = (need.path ?? "").split(".");
     const parsedBrickId = pathParts[0] === "bricks" ? pathParts[1] : undefined;
-    const parsedSecretName =
-      pathParts[0] === "bricks" && pathParts[2] === "secrets"
-        ? pathParts[3]
-        : undefined;
-    const parsedCapability =
-      pathParts[0] === "bricks" && pathParts[2] === "requires"
-        ? pathParts[3]
-        : undefined;
-    const parsedWorkflowId =
-      pathParts[0] === "workflows" ? pathParts[1] : undefined;
-    const parsedNodeId =
-      pathParts[0] === "workflows" && pathParts[2] === "nodes"
-        ? pathParts[3]
-        : undefined;
+    const parsedSecretName = pathParts[0] === "bricks" && pathParts[2] === "secrets" ? pathParts[3] : undefined;
+    const parsedCapability = pathParts[0] === "bricks" && pathParts[2] === "requires" ? pathParts[3] : undefined;
+    const parsedWorkflowId = pathParts[0] === "workflows" ? pathParts[1] : undefined;
+    const parsedNodeId = pathParts[0] === "workflows" && pathParts[2] === "nodes" ? pathParts[3] : undefined;
 
     if (need.code === "MISSING_CAPABILITY_PROVIDER") {
       const id = `need:cap:${parsedBrickId ?? "unknown"}:${parsedCapability ?? need.path}`;
@@ -2805,10 +2524,7 @@ export function computeStudioValidationIssues(
       let matchedNodeId = parsedNodeId;
       if (!matchedNodeId && wf) {
         const foundNode = wf.nodes.find(
-          (n) =>
-            need.message.includes(`"${n.id}"`) ||
-            need.message.includes(`node ${n.id}`) ||
-            need.message.includes(`(${n.id})`),
+          (n) => need.message.includes(`"${n.id}"`) || need.message.includes(`node ${n.id}`) || need.message.includes(`(${n.id})`),
         );
         matchedNodeId = foundNode?.id;
       }
@@ -2846,17 +2562,12 @@ export function computeStudioValidationIssues(
 
   // 2. Check bound SecretRefs for missing / revoked / expired status in Secrets Vault
   const secretByRef = new Map(secrets.map((s) => [s.ref, s]));
-  const hasLoadedVaultSecrets = secrets.some(
-    (s) => !s.id.startsWith("missing:"),
-  );
+  const hasLoadedVaultSecrets = secrets.some((s) => !s.id.startsWith("missing:"));
   for (const sr of state.secretRefs ?? []) {
     const meta = secretByRef.get(sr.ref);
     const isInvalidVaultStatus =
       meta &&
-      (meta.status === "revoked" ||
-        meta.status === "expired" ||
-        (meta.status === "missing" &&
-          (!meta.id.startsWith("missing:") || hasLoadedVaultSecrets)));
+      (meta.status === "revoked" || meta.status === "expired" || (meta.status === "missing" && (!meta.id.startsWith("missing:") || hasLoadedVaultSecrets)));
     if (isInvalidVaultStatus) {
       if (sr.targetKind === "brick") {
         pushIssue({
@@ -2872,9 +2583,7 @@ export function computeStudioValidationIssues(
           brickId: sr.targetId,
         });
       } else {
-        const wf = state.workflows.find((w) =>
-          w.nodes.some((n) => n.id === sr.targetId),
-        );
+        const wf = state.workflows.find((w) => w.nodes.some((n) => n.id === sr.targetId));
         pushIssue({
           id: `secret:status:node:${sr.targetId}:${sr.secretName}`,
           code: `SECRET_${meta.status.toUpperCase()}`,
@@ -2922,33 +2631,16 @@ export function computeStudioValidationIssues(
         continue;
       }
 
-      const sourceEffective = getEffectiveNodePorts(
-        sourceNode,
-        catalog,
-        state.entities,
-      );
-      const targetEffective = getEffectiveNodePorts(
-        targetNode,
-        catalog,
-        state.entities,
-      );
-      const resolvedSourceHandle =
-        edge.sourceHandle ?? sourceEffective.outputs[0]?.id ?? "out";
-      const resolvedTargetHandle =
-        edge.targetHandle ?? targetEffective.inputs[0]?.id ?? "in";
+      const sourceEffective = getEffectiveNodePorts(sourceNode, catalog, state.entities);
+      const targetEffective = getEffectiveNodePorts(targetNode, catalog, state.entities);
+      const resolvedSourceHandle = edge.sourceHandle ?? sourceEffective.outputs[0]?.id ?? "out";
+      const resolvedTargetHandle = edge.targetHandle ?? targetEffective.inputs[0]?.id ?? "in";
 
-      const sourcePort =
-        sourceEffective.outputs.find((p) => p.id === resolvedSourceHandle) ??
-        sourceEffective.outputs[0];
-      const targetPort =
-        targetEffective.inputs.find((p) => p.id === resolvedTargetHandle) ??
-        targetEffective.inputs[0];
+      const sourcePort = sourceEffective.outputs.find((p) => p.id === resolvedSourceHandle) ?? sourceEffective.outputs[0];
+      const targetPort = targetEffective.inputs.find((p) => p.id === resolvedTargetHandle) ?? targetEffective.inputs[0];
 
       if (sourcePort && targetPort) {
-        const compatible =
-          sourcePort.dataType === "any" ||
-          targetPort.dataType === "any" ||
-          sourcePort.dataType === targetPort.dataType;
+        const compatible = sourcePort.dataType === "any" || targetPort.dataType === "any" || sourcePort.dataType === targetPort.dataType;
         if (!compatible) {
           pushIssue({
             id: `graph:port-mismatch:${wf.id}:${edge.id}`,
@@ -2970,8 +2662,7 @@ export function computeStudioValidationIssues(
     // Node-level validation
     for (const node of wf.nodes ?? []) {
       const nodeDef = getCatalogNodeDefinition(node.type, catalog);
-      const rawData =
-        (node.data as Record<string, unknown> | undefined) ?? {};
+      const rawData = (node.data as Record<string, unknown> | undefined) ?? {};
 
       // Check unreachable non-trigger node
       if (nodeDef.role !== "trigger" && wf.nodes.length > 1) {
@@ -2979,10 +2670,7 @@ export function computeStudioValidationIssues(
         if (!hasIncoming) {
           const alreadyHasUnreachable = issues.some(
             (iss) =>
-              iss.workflowId === wf.id &&
-              iss.nodeId === node.id &&
-              (iss.code.includes("UNREACHABLE") ||
-                iss.message.toLowerCase().includes("unreachable")),
+              iss.workflowId === wf.id && iss.nodeId === node.id && (iss.code.includes("UNREACHABLE") || iss.message.toLowerCase().includes("unreachable")),
           );
           if (!alreadyHasUnreachable) {
             pushIssue({
@@ -3002,18 +2690,11 @@ export function computeStudioValidationIssues(
       }
 
       // Check unbound or missing secret on HTTP / secret-using node
-      const explicitSecretRef =
-        typeof rawData.secretRef === "string" ? rawData.secretRef.trim() : "";
+      const explicitSecretRef = typeof rawData.secretRef === "string" ? rawData.secretRef.trim() : "";
       const requiresNodeSecret =
-        rawData.requireSecret === true ||
-        rawData.authType === "secret" ||
-        rawData.authType === "bearer" ||
-        explicitSecretRef.length > 0;
+        rawData.requireSecret === true || rawData.authType === "secret" || rawData.authType === "bearer" || explicitSecretRef.length > 0;
       const boundNodeRefs = (state.secretRefs ?? []).filter(
-        (sr) =>
-          (sr.targetKind === "connection" ||
-            (sr.targetKind as string) === "node") &&
-          sr.targetId === node.id,
+        (sr) => (sr.targetKind === "connection" || (sr.targetKind as string) === "node") && sr.targetId === node.id,
       );
       if (requiresNodeSecret && boundNodeRefs.length === 0 && !explicitSecretRef) {
         pushIssue({
@@ -3030,14 +2711,9 @@ export function computeStudioValidationIssues(
           selection: { kind: "node", id: node.id, workflowId: wf.id },
         });
       } else if (explicitSecretRef) {
-        const isBoundInBlueprint = boundNodeRefs.some(
-          (sr) => sr.ref === explicitSecretRef,
-        );
+        const isBoundInBlueprint = boundNodeRefs.some((sr) => sr.ref === explicitSecretRef);
         const vaultEntry = secretByRef.get(explicitSecretRef);
-        if (
-          (!isBoundInBlueprint && !vaultEntry) ||
-          (vaultEntry && vaultEntry.status !== "valid")
-        ) {
+        if ((!isBoundInBlueprint && !vaultEntry) || (vaultEntry && vaultEntry.status !== "valid")) {
           pushIssue({
             id: `secret:missing-node-ref:${wf.id}:${node.id}:${explicitSecretRef}`,
             code: "UNBOUND_NODE_SECRET",
@@ -3055,12 +2731,7 @@ export function computeStudioValidationIssues(
       }
 
       // Check step expression pills ({{steps.<nodeId>.output.<field>}})
-      const ancestors = getUpstreamAncestorNodes(
-        wf,
-        node.id,
-        catalog,
-        state.entities,
-      );
+      const ancestors = getUpstreamAncestorNodes(wf, node.id, catalog, state.entities);
       const ancestorById = new Map(ancestors.map((a) => [a.node.id, a]));
       const ancestorNodeOutputs: Record<string, string[]> = {};
       for (const anc of ancestors) {
@@ -3074,11 +2745,9 @@ export function computeStudioValidationIssues(
             const check = validateStepExpression(pill.raw, ancestorNodeOutputs);
             const refNodeId = pill.nodeId ?? "";
             if (!check.ok) {
-              const targetExistsInWf = refNodeId
-                ? nodeById.has(refNodeId)
-                : false;
+              const targetExistsInWf = refNodeId ? nodeById.has(refNodeId) : false;
               const reasonMsg = !refNodeId
-                ? check.reason ?? `Invalid step expression ${pill.raw}.`
+                ? (check.reason ?? `Invalid step expression ${pill.raw}.`)
                 : !targetExistsInWf
                   ? `Broken reference ${pill.raw} in "${fieldKey}": step "${refNodeId}" was deleted or does not exist in workflow "${wf.name}".`
                   : `Broken reference ${pill.raw} in "${fieldKey}": step "${refNodeId}" is not an upstream ancestor of "${node.label ?? node.id}".`;
@@ -3101,12 +2770,7 @@ export function computeStudioValidationIssues(
             // Also verify top-level output field exists on upstream ancestor if known
             const ancInfo = refNodeId ? ancestorById.get(refNodeId) : undefined;
             const outputField = pill.fieldPath.split(".")[0];
-            if (
-              ancInfo &&
-              outputField &&
-              ancInfo.fields.length > 0 &&
-              !ancInfo.fields.some((f) => f.fieldName === outputField)
-            ) {
+            if (ancInfo && outputField && ancInfo.fields.length > 0 && !ancInfo.fields.some((f) => f.fieldName === outputField)) {
               pushIssue({
                 id: `expr:field:${wf.id}:${node.id}:${fieldKey}:${pill.raw}`,
                 code: "BROKEN_DATA_PILL_FIELD",
@@ -3126,9 +2790,7 @@ export function computeStudioValidationIssues(
       }
 
       // Check node config settings against CatalogSettingDefinition (when not a template expression)
-      for (const [settingKey, settingDef] of Object.entries(
-        nodeDef.config ?? {},
-      )) {
+      for (const [settingKey, settingDef] of Object.entries(nodeDef.config ?? {})) {
         if (!(settingKey in rawData)) continue;
         const val = rawData[settingKey];
         if (typeof val === "string" && val.includes("{{")) continue;
@@ -3178,5 +2840,3 @@ export function computeStudioValidationIssues(
 
   return issues;
 }
-
-

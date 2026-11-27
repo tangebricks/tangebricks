@@ -1,14 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  inRange,
-  mergeRecords,
-  parseHypotheses,
-  rangesOverlap,
-  verdict,
-  withFailedFile,
-  type Hypothesis,
-  type Result,
-} from "../src/index.ts";
+import { inRange, mergeRecords, parseHypotheses, rangesOverlap, verdict, withFailedFile, type Hypothesis, type Result } from "../src/index.ts";
 import hypothesesJson from "../../../hypotheses.json";
 
 const file = parseHypotheses(hypothesesJson);
@@ -112,12 +103,9 @@ describe("H3 (no metric; undeclared secret visible is a kill)", () => {
     expect(verdict(h3, { checks: { ...H3_CHECKS, undeclaredSecretAbsent: false } }).verdict).toBe("kill");
   });
 
-  test.each(["declaredSecretReadable", "undeclaredReadThrows", "rawEnvUnreachable"])(
-    "%s false is a fail, not a kill",
-    (name) => {
-      expect(verdict(h3, { checks: { ...H3_CHECKS, [name]: false } }).verdict).toBe("fail");
-    },
-  );
+  test.each(["declaredSecretReadable", "undeclaredReadThrows", "rawEnvUnreachable"])("%s false is a fail, not a kill", (name) => {
+    expect(verdict(h3, { checks: { ...H3_CHECKS, [name]: false } }).verdict).toBe("fail");
+  });
 });
 
 describe("H5 thresholds (pass at 0 violating runs of 20, kill at 1 or more; five checks required)", () => {
@@ -234,7 +222,15 @@ describe("H7 thresholds (pass under 5 seconds, kill over 30; identical files req
 
 describe("H8 (no metric; safety failures are kills, a functional failure is a fail)", () => {
   const h8 = byId("H8");
-  const checks = { tenantACrud: true, tenantBDenied: true, bodyWorkspaceIgnored: true, hostileInputsSafe: true, entityCodeIsGeneric: true, walletStillDenied: true, emittedProjectUnchanged: true };
+  const checks = {
+    tenantACrud: true,
+    tenantBDenied: true,
+    bodyWorkspaceIgnored: true,
+    hostileInputsSafe: true,
+    entityCodeIsGeneric: true,
+    walletStillDenied: true,
+    emittedProjectUnchanged: true,
+  };
 
   test("all seven checks true is a pass", () => {
     expect(verdict(h8, { checks }).verdict).toBe("pass");
@@ -294,7 +290,11 @@ describe("H9 thresholds (pass at 15 percent or less, kill above 40; three checks
   test("a ratio with the checks not reported is a fail that names them, never a pass", () => {
     const out = verdict(h9, { measured: 5 });
     expect(out.verdict).toBe("fail");
-    expect(out.reasons).toEqual(["check not reported: fiveToolCallsOrFewer", "check not reported: sessionBuiltTheDirectProject", "check not reported: bothSidesCountedTheSameWay"]);
+    expect(out.reasons).toEqual([
+      "check not reported: fiveToolCallsOrFewer",
+      "check not reported: sessionBuiltTheDirectProject",
+      "check not reported: bothSidesCountedTheSameWay",
+    ]);
   });
 
   test("the checks without a ratio are a fail", () => {
@@ -304,7 +304,15 @@ describe("H9 thresholds (pass at 15 percent or less, kill above 40; three checks
 
 describe("H10 thresholds (pass at 120 seconds or less, kill above 600 or when REST refuses the upload; seven checks required)", () => {
   const h10 = byId("H10");
-  const checks = { restUploadAccepted: true, deployedOverRestOnly: true, urlAnswersCorrectly: true, secondRunChangesNothing: true, changedProjectChangesOneThing: true, publicAccessGated: true, tokenNeverLeaked: true };
+  const checks = {
+    restUploadAccepted: true,
+    deployedOverRestOnly: true,
+    urlAnswersCorrectly: true,
+    secondRunChangesNothing: true,
+    changedProjectChangesOneThing: true,
+    publicAccessGated: true,
+    tokenNeverLeaked: true,
+  };
 
   test.each([
     [0.5, "pass"],
@@ -367,9 +375,12 @@ describe("H11 (no metric; needing a re-upload for an edit is a kill, other false
     expect(verdict(h11, { checks: { ...checks, [name]: false } }).verdict).toBe("kill");
   });
 
-  test.each(Object.keys(checks).filter((name) => name !== "editChangedNextRun" && name !== "scriptVersionUnchanged"))("%s false is a fail, not a kill", (name) => {
-    expect(verdict(h11, { checks: { ...checks, [name]: false } }).verdict).toBe("fail");
-  });
+  test.each(Object.keys(checks).filter((name) => name !== "editChangedNextRun" && name !== "scriptVersionUnchanged"))(
+    "%s false is a fail, not a kill",
+    (name) => {
+      expect(verdict(h11, { checks: { ...checks, [name]: false } }).verdict).toBe("fail");
+    },
+  );
 
   test("a kill outranks a fail in the same run", () => {
     expect(verdict(h11, { checks: { ...checks, scriptVersionUnchanged: false, graphReadFromD1: false } }).verdict).toBe("kill");
@@ -408,7 +419,13 @@ describe("H12 (no metric; needing glue code or not showing the live balance is a
 
 describe("H5's extra evidence (a kill if reported false, no effect if never reported, but the scoreboard says so)", () => {
   const h5 = byId("H5");
-  const base = { controlLosesUpdates: true, orderCreditedOnce: true, insufficientRefusesUnchanged: true, graphDeductChangesBalanceOnce: true, portedTestsPass: true };
+  const base = {
+    controlLosesUpdates: true,
+    orderCreditedOnce: true,
+    insufficientRefusesUnchanged: true,
+    graphDeductChangesBalanceOnce: true,
+    portedTestsPass: true,
+  };
 
   test("is declared outside mustHold, so it cannot turn the existing pass into a fail", () => {
     expect(h5.status === "live" && h5.killIfFalseWhenReported).toEqual(["holdsOnHostedD1"]);

@@ -54,16 +54,31 @@ function world(options: Partial<FakeOptions> = {}) {
   const make = () => createClient({ credentials, fetch: fake.fetch, sleep: async (ms) => void sleeps.push(ms), alsoHide: [KEY] });
   const client = make();
   const store = memoryStore();
-  const ledger = openLedger(store, () => SUFFIX, () => new Date("2026-10-21T00:00:00Z"));
+  const ledger = openLedger(
+    store,
+    () => SUFFIX,
+    () => new Date("2026-10-21T00:00:00Z"),
+  );
   const names = resourceNames(SUFFIX);
-  const input = (over: Partial<DeployInput> = {}): DeployInput => ({ client, ledger, names, accessKey: KEY, bundle: BUNDLE, migrations: MIGRATIONS, compatibilityDate: "2026-10-01", nowIso: () => "2026-10-21T00:00:00.000Z", ...over });
+  const input = (over: Partial<DeployInput> = {}): DeployInput => ({
+    client,
+    ledger,
+    names,
+    accessKey: KEY,
+    bundle: BUNDLE,
+    migrations: MIGRATIONS,
+    compatibilityDate: "2026-10-01",
+    nowIso: () => "2026-10-21T00:00:00.000Z",
+    ...over,
+  });
   return { fake, client, store, ledger, names, input, independentClient: make, sleeps };
 }
 
 let logged: string[];
 beforeEach(() => {
   logged = [];
-  for (const method of ["log", "info", "warn", "error", "debug"] as const) vi.spyOn(console, method).mockImplementation((...args: unknown[]) => void logged.push(args.map(String).join(" ")));
+  for (const method of ["log", "info", "warn", "error", "debug"] as const)
+    vi.spyOn(console, method).mockImplementation((...args: unknown[]) => void logged.push(args.map(String).join(" ")));
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -71,7 +86,14 @@ describe("a first deploy to an empty account", () => {
   test("creates the database, applies each migration once in order, uploads one Worker with its bindings, and switches its address on", async () => {
     const w = world();
     const result = await deploy(w.input());
-    expect(result.changes.map((c) => c.kind)).toEqual(["database_created", "bookkeeping_created", "migration_applied", "migration_applied", "script_uploaded", "address_enabled"]);
+    expect(result.changes.map((c) => c.kind)).toEqual([
+      "database_created",
+      "bookkeeping_created",
+      "migration_applied",
+      "migration_applied",
+      "script_uploaded",
+      "address_enabled",
+    ]);
     expect(result.url).toBe("https://projectx-poc-0a1b2c3d.fake-subdomain.workers.dev");
 
     const state = w.fake.state();
@@ -92,7 +114,9 @@ describe("a first deploy to an empty account", () => {
     const at = (text: string) => order.findIndex((line) => line.includes(text));
     expect(at("POST /client/v4/accounts/{account}/d1/database")).toBeLessThan(at("PUT /client/v4/accounts/{account}/workers/scripts/"));
     expect(at("/query")).toBeLessThan(at("PUT /client/v4/accounts/{account}/workers/scripts/"));
-    expect(at("PUT /client/v4/accounts/{account}/workers/scripts/")).toBeLessThan(at("POST /client/v4/accounts/{account}/workers/scripts/projectx-poc-0a1b2c3d/subdomain"));
+    expect(at("PUT /client/v4/accounts/{account}/workers/scripts/")).toBeLessThan(
+      at("POST /client/v4/accounts/{account}/workers/scripts/projectx-poc-0a1b2c3d/subdomain"),
+    );
   });
 
   test("records what it created in the ledger, with the database's id, and nothing else", async () => {
@@ -147,7 +171,15 @@ describe("a first deploy to an empty account", () => {
     const assembled = assemble(INVOICE_FLOW_BLUEPRINT, catalog);
     if (!assembled.ok) throw new Error(assembled.errors.join("; "));
     const migrations = migrationsFrom(assembled.files);
-    expect(migrations.map((m) => m.name)).toEqual(["0001_multi-workspace__0001_multi_workspace.sql", "0002_credit-wallet__0001_credit_wallet.sql", "0003_credit-wallet__0002_workspace_scoped_idempotency.sql", "0004_credit-wallet__0003_order_currency.sql", "0005_credit-wallet__0004_milli_credits.sql", "0006_entity__invoices.sql", "0007_shell__px_rate_limits.sql"]);
+    expect(migrations.map((m) => m.name)).toEqual([
+      "0001_multi-workspace__0001_multi_workspace.sql",
+      "0002_credit-wallet__0001_credit_wallet.sql",
+      "0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
+      "0004_credit-wallet__0003_order_currency.sql",
+      "0005_credit-wallet__0004_milli_credits.sql",
+      "0006_entity__invoices.sql",
+      "0007_shell__px_rate_limits.sql",
+    ]);
     const w = world();
     await deploy(w.input({ migrations }));
     const tables = w.fake.state().databases[0]!.tables;
@@ -345,7 +377,10 @@ describe("an account that is not ready, or a run that stopped", () => {
 
   test("the ledger already knows a database is coming BEFORE it is asked for, so a failed create leaves a trace", async () => {
     const w = world();
-    w.fake.fail({ when: (m, p) => m === "POST" && p.endsWith("/d1/database"), respond: { status: 500, body: { success: false, errors: [{ code: 1000, message: "internal" }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "POST" && p.endsWith("/d1/database"),
+      respond: { status: 500, body: { success: false, errors: [{ code: 1000, message: "internal" }] } },
+    });
     await expect(deploy(w.input())).rejects.toBeInstanceOf(CloudflareApiError);
     expect(w.store.snapshot()!.entries).toEqual([{ kind: "d1_database", name: w.names.database, status: "creating", at: "2026-10-21T00:00:00.000Z" }]);
   });
@@ -370,7 +405,11 @@ describe("an account that is not ready, or a run that stopped", () => {
 
   test("a run that stopped after the migrations but before the upload picks up where it left off", async () => {
     const w = world();
-    w.fake.fail({ when: (m, p) => m === "PUT" && p.includes("/workers/scripts/"), times: 1, respond: { status: 500, body: { success: false, errors: [{ code: 1000, message: "internal" }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "PUT" && p.includes("/workers/scripts/"),
+      times: 1,
+      respond: { status: 500, body: { success: false, errors: [{ code: 1000, message: "internal" }] } },
+    });
     await expect(deploy(w.input())).rejects.toBeInstanceOf(UploadFailed);
     const resumed = await deploy(w.input());
     expect(resumed.changes.map((c) => c.kind)).toEqual(["script_uploaded", "address_enabled"]);
@@ -461,12 +500,21 @@ describe("the Workflow the binding names", () => {
   // Found on the real service (2026-10-21): uploading a Worker with a Workflow binding registers NOTHING. The Workflows list
   // stayed empty and starting a run threw until the Workflow was registered with its own call. The fake now behaves so.
   const WORKFLOW = { binding: "GRAPH_RUNNER", className: "GraphRunner" };
-  const workflowCalls = (w: ReturnType<typeof world>, from = 0) => w.client.calls.slice(from).filter((c) => c.path.includes("/workflows/") && c.method === "PUT");
+  const workflowCalls = (w: ReturnType<typeof world>, from = 0) =>
+    w.client.calls.slice(from).filter((c) => c.path.includes("/workflows/") && c.method === "PUT");
 
   test("is registered by its own call, after the upload and before the address is switched on", async () => {
     const w = world();
     const result = await deploy(w.input({ workflow: WORKFLOW }));
-    expect(result.changes.map((c) => c.kind)).toEqual(["database_created", "bookkeeping_created", "migration_applied", "migration_applied", "script_uploaded", "workflow_registered", "address_enabled"]);
+    expect(result.changes.map((c) => c.kind)).toEqual([
+      "database_created",
+      "bookkeeping_created",
+      "migration_applied",
+      "migration_applied",
+      "script_uploaded",
+      "workflow_registered",
+      "address_enabled",
+    ]);
     const order = w.fake.requests.map((r) => `${r.method} ${r.path.replace("/client/v4/accounts/{account}", "")}`);
     const at = (text: string) => order.findIndex((line) => line.includes(text));
     expect(at("PUT /workers/scripts/projectx-poc-0a1b2c3d")).toBeGreaterThan(-1);
@@ -480,16 +528,38 @@ describe("the Workflow the binding names", () => {
     await deploy(w.input()); // no workflow asked for: nothing is registered, as the real service does
     expect(w.fake.state().workflows).toEqual([]);
     const upload = new FormData();
-    upload.set("metadata", new Blob([JSON.stringify({ main_module: "worker.mjs", compatibility_date: "2026-10-01", bindings: [{ type: "workflow", name: "GRAPH_RUNNER", workflow_name: "someone-elses-flow", class_name: "GraphRunner" }] })], { type: "application/json" }));
+    upload.set(
+      "metadata",
+      new Blob(
+        [
+          JSON.stringify({
+            main_module: "worker.mjs",
+            compatibility_date: "2026-10-01",
+            bindings: [{ type: "workflow", name: "GRAPH_RUNNER", workflow_name: "someone-elses-flow", class_name: "GraphRunner" }],
+          }),
+        ],
+        { type: "application/json" },
+      ),
+    );
     upload.set("worker.mjs", new Blob([BUNDLE.code], { type: "application/javascript+module" }), "worker.mjs");
-    const response = await w.fake.fetch(new Request(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/workers/scripts/some-script`, { method: "PUT", headers: { authorization: `Bearer ${TOKEN}` }, body: upload }));
+    const response = await w.fake.fetch(
+      new Request(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/workers/scripts/some-script`, {
+        method: "PUT",
+        headers: { authorization: `Bearer ${TOKEN}` },
+        body: upload,
+      }),
+    );
     expect(response.status).toBe(200);
     expect(w.fake.state().workflows).toEqual([]);
   });
 
   test("the ledger knows the Workflow is coming before it is asked for, and has it as created afterwards", async () => {
     const w = world();
-    w.fake.fail({ when: (m, p) => m === "PUT" && p.includes("/workflows/"), times: 1, respond: { status: 500, body: { success: false, errors: [{ code: 1000, message: "internal" }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "PUT" && p.includes("/workflows/"),
+      times: 1,
+      respond: { status: 500, body: { success: false, errors: [{ code: 1000, message: "internal" }] } },
+    });
     await expect(deploy(w.input({ workflow: WORKFLOW }))).rejects.toBeInstanceOf(CloudflareApiError);
     expect(w.ledger.entries().find((e) => e.kind === "workflow")).toMatchObject({ status: "creating" });
     expect(w.fake.state().workflows).toEqual([]);
@@ -552,7 +622,10 @@ describe("the Workflow the binding names", () => {
 
   test("a refusal of the registration is reported as it is, not as a refusal of the upload", async () => {
     const w = world();
-    w.fake.fail({ when: (m, p) => m === "PUT" && p.includes("/workflows/"), respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: "Authentication error" }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "PUT" && p.includes("/workflows/"),
+      respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: "Authentication error" }] } },
+    });
     const error = await deploy(w.input({ workflow: WORKFLOW })).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(CloudflareApiError);
     expect(error).not.toBeInstanceOf(UploadFailed);
@@ -567,12 +640,21 @@ describe("secrets", () => {
     outputs.push(JSON.stringify(first));
     outputs.push(JSON.stringify((await deploy(w.input())).changes));
     outputs.push(JSON.stringify(await deploy(w.input({ bundle: bundleOf(BUNDLE.code + "\n//2") }))));
-    w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/d1/database"), times: 1, respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: `denied for ${TOKEN} on ${ACCOUNT} with ${KEY}` }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/d1/database"),
+      times: 1,
+      respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: `denied for ${TOKEN} on ${ACCOUNT} with ${KEY}` }] } },
+    });
     const failure = (await deploy(w.input()).catch((e: unknown) => e)) as Error;
     outputs.push(failure.message, JSON.stringify(failure, Object.getOwnPropertyNames(failure)));
     const bad = world({ refuseWorkflowBindings: true });
     const refused = (await deploy(bad.input({ workflow: { binding: "GRAPH_RUNNER", className: "GraphRunner" } })).catch((e: unknown) => e)) as Error;
-    outputs.push(refused.message, JSON.stringify(refused, Object.getOwnPropertyNames(refused)), JSON.stringify(bad.client.calls), JSON.stringify(bad.store.snapshot()));
+    outputs.push(
+      refused.message,
+      JSON.stringify(refused, Object.getOwnPropertyNames(refused)),
+      JSON.stringify(bad.client.calls),
+      JSON.stringify(bad.store.snapshot()),
+    );
     outputs.push(JSON.stringify(w.client.calls), JSON.stringify(w.store.snapshot()), logged.join("\n"));
 
     const all = outputs.join("\n");
@@ -601,7 +683,9 @@ describe("secrets", () => {
     const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
     expect(files.length).toBeGreaterThanOrEqual(9);
     for (const file of files) {
-      const code = codeLines(readFileSync(join(dir, file), "utf8")).map((l) => l.text).join("\n");
+      const code = codeLines(readFileSync(join(dir, file), "utf8"))
+        .map((l) => l.text)
+        .join("\n");
       expect(code, file).not.toMatch(/child_process|\bspawn\w*\s*\(|\bexec\w*\s*\(|\bwrangler\b/);
       expect(code, file).not.toMatch(/\bconsole\./);
       expect(findDynamicEvaluation(code), file).toEqual([]);
@@ -637,7 +721,10 @@ describe("teardown", () => {
   test("a ledger entry whose name is not the proof's stops teardown before any request is made", async () => {
     const w = world();
     await deploy(w.input());
-    const damaged = memoryStore({ suffix: SUFFIX, entries: [{ kind: "d1_database", name: "production-db", id: "x", status: "created", at: "2026-10-21T00:00:00Z" }, ...w.store.snapshot()!.entries] });
+    const damaged = memoryStore({
+      suffix: SUFFIX,
+      entries: [{ kind: "d1_database", name: "production-db", id: "x", status: "created", at: "2026-10-21T00:00:00Z" }, ...w.store.snapshot()!.entries],
+    });
     const ledger = openLedger(damaged, () => SUFFIX);
     const before = w.fake.requests.length;
     await expect(teardown(w.client, ledger)).rejects.toThrow(/refusing to touch "production-db"/);
@@ -657,8 +744,18 @@ describe("teardown", () => {
       { kind: "worker_script", name: "projectx-poc-deadbeef" },
       { kind: "d1_database", name: "projectx-poc-deadbeef-db" },
     ]);
-    expect(w.fake.state().scripts.map((s) => s.name).sort()).toEqual(["my-production-worker", "projectx-poc-deadbeef"]);
-    expect(w.fake.state().databases.map((d) => d.name).sort()).toEqual(["my-production-db", "projectx-poc-deadbeef-db"]);
+    expect(
+      w.fake
+        .state()
+        .scripts.map((s) => s.name)
+        .sort(),
+    ).toEqual(["my-production-worker", "projectx-poc-deadbeef"]);
+    expect(
+      w.fake
+        .state()
+        .databases.map((d) => d.name)
+        .sort(),
+    ).toEqual(["my-production-db", "projectx-poc-deadbeef-db"]);
   });
 
   test("a database that has this name but not the id the ledger recorded is not deleted (it is not the one we made)", async () => {
@@ -695,7 +792,14 @@ describe("teardown", () => {
 
 describe("migrationsFrom", () => {
   test("takes the project's migrations/*.sql in path order and nothing else", () => {
-    const files = { "migrations/0002_b.sql": "B", "migrations/0001_a.sql": "A", "src/index.ts": "x", "migrations/notes.md": "n", "migrations/sub/0003_c.sql": "C", "package.json": "{}" };
+    const files = {
+      "migrations/0002_b.sql": "B",
+      "migrations/0001_a.sql": "A",
+      "src/index.ts": "x",
+      "migrations/notes.md": "n",
+      "migrations/sub/0003_c.sql": "C",
+      "package.json": "{}",
+    };
     expect(migrationsFrom(files)).toEqual([
       { name: "0001_a.sql", sql: "A" },
       { name: "0002_b.sql", sql: "B" },

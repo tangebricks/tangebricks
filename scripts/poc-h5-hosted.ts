@@ -63,7 +63,10 @@ const { calls, result: measured } = await runHostedH5({
 const secrets = { token: credentials.token, accountId: credentials.accountId, accessKey };
 // the account's workers.dev subdomain never reaches the evidence; callsSha256 is taken over the redacted calls text
 const { callsText, result: first } = redactCallsAndResult(canonicalHosted(calls), measured);
-for (const [name, text] of [["h5-hosted-calls.json", callsText], ["h5-hosted-result.json", JSON.stringify(first, null, 2)]] as const) {
+for (const [name, text] of [
+  ["h5-hosted-calls.json", callsText],
+  ["h5-hosted-result.json", JSON.stringify(first, null, 2)],
+] as const) {
   const hits = findSecrets(text, secrets);
   if (hits.length > 0) {
     console.error(`refusing to write ${name}: it contains ${hits.join(" and ")}`);

@@ -52,7 +52,7 @@ export function createThreadRoutes(): Hono<ThreadEnv> {
       parsed.data.targetType,
       parsed.data.targetId,
       { authorId, authorName, body: parsed.data.body },
-      parsed.data.title
+      parsed.data.title,
     );
 
     return c.json({ thread }, 201);
@@ -120,13 +120,7 @@ export function createThreadRoutes(): Hono<ThreadEnv> {
 
     const service = c.get("discussionService") || new ThreadedDiscussionService(c.env.DB);
     try {
-      const comment = await service.addComment(
-        workspaceId,
-        threadId,
-        { authorId, authorName },
-        parsed.data.body,
-        parsed.data.parentCommentId
-      );
+      const comment = await service.addComment(workspaceId, threadId, { authorId, authorName }, parsed.data.body, parsed.data.parentCommentId);
       return c.json({ comment }, 201);
     } catch (err: unknown) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);

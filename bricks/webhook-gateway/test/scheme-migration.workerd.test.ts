@@ -5,10 +5,7 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration0001 from "../migrations/0001_webhook_gateway.sql?raw";
 import migration0002 from "../migrations/0002_webhook_signature_scheme.sql?raw";
-import {
-  createWebhookRoutes,
-  WebhookService,
-} from "../src/index.ts";
+import { createWebhookRoutes, WebhookService } from "../src/index.ts";
 import type { WebhookEnv, WebhookRouteOptions } from "../src/routes.ts";
 import type { WebhookGatewayAdapter } from "../src/gateway.ts";
 
@@ -17,13 +14,7 @@ const WS_DEFAULT = "ws_scheme_mig";
 
 async function signHmacSha256Hex(secret: string, payload: string): Promise<string> {
   const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
   return Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -49,15 +40,7 @@ const createApp = (options: WebhookRouteOptions = {}, wsId = WS_DEFAULT) => {
 };
 
 async function resetDb(): Promise<void> {
-  for (const table of [
-    "px_webhook_deliveries",
-    "wh_subscriptions_v2",
-    "wh_subscriptions",
-    "px_connections",
-    "wh_deliveries",
-    "wh_endpoints",
-    "px_logs",
-  ]) {
+  for (const table of ["px_webhook_deliveries", "wh_subscriptions_v2", "wh_subscriptions", "px_connections", "wh_deliveries", "wh_endpoints", "px_logs"]) {
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   }
 }
@@ -84,11 +67,31 @@ describe("Story UC4.5 — Persist scheme configs and migrate stored subscription
           (?, ?, ?, ?, ?, 'ed25519', 'X-Signature-Ed25519', 'ed_shared_secret', 1, '2026-01-05 00:00:00')`,
       )
       .bind(
-        "sub_mig_hmac", "ws_hmac", "wf_hmac", "github", "push",
-        "sub_mig_stripe", "ws_stripe", "wf_stripe", "stripe", "payment",
-        "sub_mig_shared", "ws_shared", "wf_shared", "custom", "event",
-        "sub_mig_none", "ws_none", "wf_none", "custom", "test",
-        "sub_mig_ed25519", "ws_ed", "wf_ed", "discord", "interaction",
+        "sub_mig_hmac",
+        "ws_hmac",
+        "wf_hmac",
+        "github",
+        "push",
+        "sub_mig_stripe",
+        "ws_stripe",
+        "wf_stripe",
+        "stripe",
+        "payment",
+        "sub_mig_shared",
+        "ws_shared",
+        "wf_shared",
+        "custom",
+        "event",
+        "sub_mig_none",
+        "ws_none",
+        "wf_none",
+        "custom",
+        "test",
+        "sub_mig_ed25519",
+        "ws_ed",
+        "wf_ed",
+        "discord",
+        "interaction",
       )
       .run();
 
@@ -107,9 +110,7 @@ describe("Story UC4.5 — Persist scheme configs and migrate stored subscription
       created_at: string;
     }
 
-    const { results } = await db
-      .prepare("SELECT * FROM wh_subscriptions ORDER BY id ASC")
-      .all<SubMigratedRow>();
+    const { results } = await db.prepare("SELECT * FROM wh_subscriptions ORDER BY id ASC").all<SubMigratedRow>();
 
     const rowsById = new Map(results.map((r) => [r.id, r]));
 
@@ -393,10 +394,7 @@ describe("Story UC4.5 — Persist scheme configs and migrate stored subscription
     expect(subPreset.scheme_json).toBeDefined();
 
     // Verify DB row
-    const rowPreset = await db
-      .prepare("SELECT * FROM wh_subscriptions WHERE id = ?")
-      .bind("sub_new_slack")
-      .first<{ scheme_json: string }>();
+    const rowPreset = await db.prepare("SELECT * FROM wh_subscriptions WHERE id = ?").bind("sub_new_slack").first<{ scheme_json: string }>();
     expect(rowPreset?.scheme_json).toBeDefined();
     expect(JSON.parse(rowPreset!.scheme_json).preset).toBe("slack-v0");
 

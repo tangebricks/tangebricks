@@ -3,13 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
 import { createRegistry } from "@poc/sdk";
 import type { D1Like, Executor } from "@poc/sdk";
-import {
-  TELEMETRY_SIGNATURE_HEADER,
-  ensureTelemetryTables,
-  getRunRecord,
-  listStepEventsForRun,
-  signControlPlaneRequest,
-} from "@poc/telemetry";
+import { TELEMETRY_SIGNATURE_HEADER, ensureTelemetryTables, getRunRecord, listStepEventsForRun, signControlPlaneRequest } from "@poc/telemetry";
 import {
   GraphWorkflow,
   PLACEHOLDER_BRICK_EXECUTOR_MODULES,
@@ -32,10 +26,7 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
 
   beforeEach(async () => {
     await ensureTelemetryTables(db);
-    await db.batch([
-      db.prepare("DELETE FROM px_step_events"),
-      db.prepare("DELETE FROM px_runs"),
-    ]);
+    await db.batch([db.prepare("DELETE FROM px_step_events"), db.prepare("DELETE FROM px_runs")]);
   });
 
   afterEach(() => {
@@ -157,23 +148,20 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
     expect(rehearseBrickBody.status).toBe("succeeded");
     expect(rehearseBrickBody.runId.startsWith("rehearsal:")).toBe(true);
 
-    const prodBrickRun = await workflow.start({ workspaceId: "ws_acme_tenant",
+    const prodBrickRun = await workflow.start({
+      workspaceId: "ws_acme_tenant",
       graph: {
         nodes: [
           { id: "trig", type: "trigger.manual", data: {} },
           { id: "node_wallet_debit", type: "credit-wallet.debit", data: walletConfig },
         ],
-        edges: [
-          { id: "e1", source: "trig", sourceHandle: "out", target: "node_wallet_debit", targetHandle: "in" },
-        ],
+        edges: [{ id: "e1", source: "trig", sourceHandle: "out", target: "node_wallet_debit", targetHandle: "in" }],
       },
       payload: walletInput,
     });
     expect(prodBrickRun.ok).toBe(true);
     expect(rehearseBrickBody.output).toEqual(prodBrickRun.outputs.node_wallet_debit);
-    expect(JSON.parse(rehearseBrickBody.outputPreview)).toEqual(
-      prodBrickRun.outputs.node_wallet_debit,
-    );
+    expect(JSON.parse(rehearseBrickBody.outputPreview)).toEqual(prodBrickRun.outputs.node_wallet_debit);
 
     // Verify px_step_events and px_runs rows were written with run_id = "rehearsal:<uuid>"
     const brickRunRow = await getRunRecord(db, rehearseBrickBody.runId, { workspaceId: "ws_acme_tenant" });
@@ -199,15 +187,14 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
     const rehearseLogicBody = (await rehearseLogicRes.json()) as StepRehearsalResult;
     expect(rehearseLogicBody.status).toBe("succeeded");
 
-    const prodLogicRun = await workflow.start({ workspaceId: "ws_test",
+    const prodLogicRun = await workflow.start({
+      workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "trig", type: "trigger.manual", data: {} },
           { id: "node_if_plan", type: "core.if", data: logicConfig },
         ],
-        edges: [
-          { id: "e1", source: "trig", sourceHandle: "out", target: "node_if_plan", targetHandle: "in" },
-        ],
+        edges: [{ id: "e1", source: "trig", sourceHandle: "out", target: "node_if_plan", targetHandle: "in" }],
       },
       payload: logicInput,
     });
@@ -236,15 +223,14 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
     const rehearseHttpBody = (await rehearseHttpRes.json()) as StepRehearsalResult;
     expect(rehearseHttpBody.status).toBe("succeeded");
 
-    const prodHttpRun = await workflow.start({ workspaceId: "ws_test",
+    const prodHttpRun = await workflow.start({
+      workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "trig", type: "trigger.manual", data: {} },
           { id: "node_http_verify", type: "core.http_request", data: httpConfig },
         ],
-        edges: [
-          { id: "e1", source: "trig", sourceHandle: "out", target: "node_http_verify", targetHandle: "in" },
-        ],
+        edges: [{ id: "e1", source: "trig", sourceHandle: "out", target: "node_http_verify", targetHandle: "in" }],
       },
       payload: httpInput,
     });
@@ -281,10 +267,7 @@ describe("POST /__px/rehearse — 3-node-type parity with GraphWorkflow, preview
       };
     };
 
-    const customExecutors = new Map<string, Executor>([
-      ...baseExecutors,
-      ["action.secret_rehearsal_probe", probeExecutor],
-    ]);
+    const customExecutors = new Map<string, Executor>([...baseExecutors, ["action.secret_rehearsal_probe", probeExecutor]]);
 
     const payload = JSON.stringify({
       workflowId: "wf_sec_probe",

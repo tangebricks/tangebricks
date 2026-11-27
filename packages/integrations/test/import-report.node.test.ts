@@ -4,10 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { IntegrationManifestSchema } from "@poc/assembler";
-import {
-  importIntegrationSpec,
-  type CurationConfig,
-} from "../src/importer.ts";
+import { importIntegrationSpec, type CurationConfig } from "../src/importer.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -54,9 +51,7 @@ describe("UC2.1 import report and manifest fidelity block", () => {
       blocking: false,
     });
 
-    const authEntry = result.report.entries.find(
-      (e: any) => e.op === "getPet" && e.element === "auth",
-    );
+    const authEntry = result.report.entries.find((e: any) => e.op === "getPet" && e.element === "auth");
     expect(authEntry).toBeDefined();
     expect(authEntry.status).toBe("curated");
     expect(authEntry.code).toBe("AUTH_FROM_CURATION");
@@ -66,9 +61,7 @@ describe("UC2.1 import report and manifest fidelity block", () => {
   });
 
   it("AC2: manifest.fidelity.specHash equals sha256 of spec file bytes and changes on 1-byte change", () => {
-    const expectedHash =
-      "sha256:" +
-      createHash("sha256").update(Buffer.from(petstoreSpecText, "utf8")).digest("hex");
+    const expectedHash = "sha256:" + createHash("sha256").update(Buffer.from(petstoreSpecText, "utf8")).digest("hex");
 
     const result1 = importIntegrationSpec({
       spec: petstoreSpecText,
@@ -100,14 +93,10 @@ describe("UC2.1 import report and manifest fidelity block", () => {
 
     const opIds = result.manifest.operations.map((op: any) => op.operationId);
     for (const opId of opIds) {
-      const responseEntries = result.report.entries.filter(
-        (e: any) => e.op === opId && e.element === "response",
-      );
+      const responseEntries = result.report.entries.filter((e: any) => e.op === opId && e.element === "response");
       expect(responseEntries).toHaveLength(1);
 
-      const authEntries = result.report.entries.filter(
-        (e: any) => e.op === opId && e.element === "auth",
-      );
+      const authEntries = result.report.entries.filter((e: any) => e.op === opId && e.element === "auth");
       expect(authEntries).toHaveLength(1);
     }
   });

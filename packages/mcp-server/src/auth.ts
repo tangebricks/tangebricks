@@ -30,10 +30,7 @@ export interface McpVerifiedToken {
  * Turns a presented bearer into a verified token, or null to refuse it. `env` is the Worker's bindings, so a verifier can
  * read its records from a secret binding.
  */
-export type McpTokenVerifier = (
-  token: string,
-  env: Record<string, unknown>,
-) => Promise<McpVerifiedToken | null>;
+export type McpTokenVerifier = (token: string, env: Record<string, unknown>) => Promise<McpVerifiedToken | null>;
 
 /** The scope a tool needs: deploy_apply needs deploy, request_connection needs connect, other writes need edit. */
 export function requiredScopeForTool(name: string, readOnly: boolean): McpScope {
@@ -50,9 +47,7 @@ export function scopesAllow(scopes: readonly McpScope[], required: McpScope): bo
 }
 
 export async function hashMcpToken(token: string): Promise<string> {
-  const digest = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)),
-  );
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)));
   return Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -91,10 +86,7 @@ function parseRecord(value: unknown): McpTokenRecord | null {
   };
 }
 
-async function verifyAgainst(
-  token: string,
-  records: readonly McpTokenRecord[],
-): Promise<McpVerifiedToken | null> {
+async function verifyAgainst(token: string, records: readonly McpTokenRecord[]): Promise<McpVerifiedToken | null> {
   if (token.length === 0) return null;
   const presented = await hashMcpToken(token);
   let match: McpTokenRecord | null = null;
@@ -121,9 +113,7 @@ export const MCP_TOKEN_RECORDS_BINDING = "MCP_TOKEN_RECORDS";
  * A verifier that reads hashed per-project token records (a JSON array of McpTokenRecord) from a secret binding. A missing,
  * empty or malformed binding refuses every token.
  */
-export function createHashedTokenVerifier(
-  binding: string = MCP_TOKEN_RECORDS_BINDING,
-): McpTokenVerifier {
+export function createHashedTokenVerifier(binding: string = MCP_TOKEN_RECORDS_BINDING): McpTokenVerifier {
   return async (token, env) => {
     const raw = env[binding];
     if (typeof raw !== "string" || raw.trim().length === 0) return null;
@@ -150,8 +140,6 @@ export function createStaticTokenVerifier(
     clientName?: string;
   }>,
 ): McpTokenVerifier {
-  const records = Promise.all(
-    tokens.map(async ({ token, ...rest }) => ({ ...rest, tokenHash: await hashMcpToken(token) })),
-  );
+  const records = Promise.all(tokens.map(async ({ token, ...rest }) => ({ ...rest, tokenHash: await hashMcpToken(token) })));
   return async (token) => verifyAgainst(token, await records);
 }

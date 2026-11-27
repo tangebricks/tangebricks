@@ -5,12 +5,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import {
-  analyzeSpec,
-  importIntegrationSpec,
-  parseCurationConfig,
-  type ImportSpecFormat,
-} from "../src/importer.ts";
+import { analyzeSpec, importIntegrationSpec, parseCurationConfig, type ImportSpecFormat } from "../src/importer.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../../../");
@@ -39,17 +34,9 @@ describe("UC2.8 golden snapshots (byte-identical before and after refactor)", ()
     it(`pack ${pack}: import-report.json and manifest`, () => {
       const dir = join(repoRoot, "integrations", pack);
       const discovery = join(dir, "discovery.json");
-      const specPath = existsSync(discovery)
-        ? discovery
-        : existsSync(join(dir, "openapi.json"))
-          ? join(dir, "openapi.json")
-          : join(dir, "openapi.yaml");
-      const curation = parseCurationConfig(
-        JSON.parse(readFileSync(join(dir, "curation.config.json"), "utf8")),
-      );
-      const format: ImportSpecFormat = existsSync(discovery)
-        ? "google-discovery"
-        : (curation.format ?? "openapi3");
+      const specPath = existsSync(discovery) ? discovery : existsSync(join(dir, "openapi.json")) ? join(dir, "openapi.json") : join(dir, "openapi.yaml");
+      const curation = parseCurationConfig(JSON.parse(readFileSync(join(dir, "curation.config.json"), "utf8")));
+      const format: ImportSpecFormat = existsSync(discovery) ? "google-discovery" : (curation.format ?? "openapi3");
       const result = importIntegrationSpec({
         spec: readFileSync(specPath, "utf8"),
         format,
@@ -62,18 +49,13 @@ describe("UC2.8 golden snapshots (byte-identical before and after refactor)", ()
   }
 
   const fixturesDir = join(__dirname, "fixtures", "report");
-  const fixtures = readdirSync(fixturesDir).filter((f) => f.endsWith(".json")).sort();
+  const fixtures = readdirSync(fixturesDir)
+    .filter((f) => f.endsWith(".json"))
+    .sort();
   for (const file of fixtures) {
     it(`analyzeSpec summary: fixtures/report/${file}`, () => {
-      const spec = JSON.parse(readFileSync(join(fixturesDir, file), "utf8")) as Record<
-        string,
-        unknown
-      >;
-      const format: ImportSpecFormat | "swagger2" = file.includes("discovery")
-        ? "google-discovery"
-        : file.includes("swagger2")
-          ? "swagger2"
-          : "openapi3";
+      const spec = JSON.parse(readFileSync(join(fixturesDir, file), "utf8")) as Record<string, unknown>;
+      const format: ImportSpecFormat | "swagger2" = file.includes("discovery") ? "google-discovery" : file.includes("swagger2") ? "swagger2" : "openapi3";
       const report = analyzeSpec({ spec, format, appName: file.replace(/\..*$/, "") });
       check(`fixtures/${file}`, text(report));
     });

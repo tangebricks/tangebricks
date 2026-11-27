@@ -52,12 +52,4 @@ export {
   scrubMcpSecrets,
   toolDescriptions,
 } from "./tools.ts";
-export type {
-  ApplyRisk,
-  OpSafetyMetadata,
-  StudioRequestFn,
-  Tool,
-  ToolAnnotations,
-  ToolContext,
-} from "./tools.ts";
-
+export type { ApplyRisk, OpSafetyMetadata, StudioRequestFn, Tool, ToolAnnotations, ToolContext } from "./tools.ts";

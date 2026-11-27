@@ -117,7 +117,12 @@ export function parseBalanceFile(text: string, format: "json" | "csv"): BalanceI
       const workspaceId = typeof row.workspaceId === "string" ? row.workspaceId : "";
       const source = `item ${index}`;
       if (typeof row.balance === "number") {
-        return { workspaceId, balance: String(row.balance), source, error: 'a JSON balance must be a string, e.g. "12.345", not a number (numbers lose precision when parsed)' };
+        return {
+          workspaceId,
+          balance: String(row.balance),
+          source,
+          error: 'a JSON balance must be a string, e.g. "12.345", not a number (numbers lose precision when parsed)',
+        };
       }
       return { workspaceId, balance: typeof row.balance === "string" ? row.balance : "", source };
     });

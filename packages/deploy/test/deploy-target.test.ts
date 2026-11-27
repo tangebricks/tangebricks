@@ -130,9 +130,7 @@ describe("Story 5.1 — Abstract DeployTarget & DeployProvisioner (packages/depl
     });
 
     expect(planResult.noChanges).toBe(false);
-    expect(
-      planResult.actions.some((a) => a.kind === "worker_script" && a.action === "create"),
-    ).toBe(true);
+    expect(planResult.actions.some((a) => a.kind === "worker_script" && a.action === "create")).toBe(true);
     expect(JSON.stringify(planResult)).not.toContain(PLAINTEXT_TOKEN);
 
     const applyResult = await provisioner.apply({
@@ -158,16 +156,8 @@ describe("Story 5.1 — Abstract DeployTarget & DeployProvisioner (packages/depl
 
     const expectedPreviewNames = deriveEnvironmentResourceNames("billing-app", "preview");
     expect(applyResult.scriptName).toBe(expectedPreviewNames.scriptName);
-    expect(
-      applyResult.appliedActions.some(
-        (a) => a.kind === "d1_migration" && a.name === "0001_init.sql",
-      ),
-    ).toBe(true);
-    expect(
-      applyResult.appliedActions.some(
-        (a) => a.kind === "secret" && a.name === "STRIPE_API_KEY",
-      ),
-    ).toBe(true);
+    expect(applyResult.appliedActions.some((a) => a.kind === "d1_migration" && a.name === "0001_init.sql")).toBe(true);
+    expect(applyResult.appliedActions.some((a) => a.kind === "secret" && a.name === "STRIPE_API_KEY")).toBe(true);
     expect(JSON.stringify(applyResult)).not.toContain(PLAINTEXT_TOKEN);
 
     // Repeat plan against deployed preview state should report noChanges === true
@@ -252,22 +242,10 @@ describe("Story 5.1 — Abstract DeployTarget & DeployProvisioner (packages/depl
       actor: "user_owner_1",
       deployId: "dep_destroy_01",
     });
-    expect(destroyResult.removedResources).toContain(
-      expectedPreviewNames.scriptName,
-    );
-    expect(destroyResult.removedResources).toContain(
-      expectedPreviewNames.databaseName,
-    );
+    expect(destroyResult.removedResources).toContain(expectedPreviewNames.scriptName);
+    expect(destroyResult.removedResources).toContain(expectedPreviewNames.databaseName);
 
-    expect(resolvedCalls.map((c) => c.context.action)).toEqual([
-      "plan",
-      "apply",
-      "plan",
-      "putGraph",
-      "putSecret",
-      "promote",
-      "destroy",
-    ]);
+    expect(resolvedCalls.map((c) => c.context.action)).toEqual(["plan", "apply", "plan", "putGraph", "putSecret", "promote", "destroy"]);
   });
 
   it("aborts plan and apply immediately with zero Cloudflare API requests when TokenResolver throws TOKEN_REVOKED", async () => {
@@ -325,10 +303,7 @@ describe("Story 5.1 — Abstract DeployTarget & DeployProvisioner (packages/depl
       const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
       const apiToken = process.env["CLOUDFLARE_API_TOKEN"];
     `;
-    const issues1 = scanSourceForForbiddenDeployEnvReads(
-      badProcessEnv,
-      "packages/deploy/src/bad.ts",
-    );
+    const issues1 = scanSourceForForbiddenDeployEnvReads(badProcessEnv, "packages/deploy/src/bad.ts");
     expect(issues1).toHaveLength(2);
     expect(issues1[0]?.rule).toBe("FORBIDDEN_CLOUDFLARE_ENV_READ");
     expect(issues1[1]?.rule).toBe("FORBIDDEN_CLOUDFLARE_ENV_READ");
@@ -338,20 +313,14 @@ describe("Story 5.1 — Abstract DeployTarget & DeployProvisioner (packages/depl
         return c.env.CLOUDFLARE_API_TOKEN;
       }
     `;
-    const issues2 = scanSourceForForbiddenDeployEnvReads(
-      badWorkerEnv,
-      "apps/studio-api/src/bad-route.ts",
-    );
+    const issues2 = scanSourceForForbiddenDeployEnvReads(badWorkerEnv, "apps/studio-api/src/bad-route.ts");
     expect(issues2).toHaveLength(1);
     expect(issues2[0]?.rule).toBe("FORBIDDEN_CLOUDFLARE_ENV_READ");
 
     const badHardcodedAccount = `
       const target = { accountId: "0123456789abcdef0123456789abcdef" };
     `;
-    const issues3 = scanSourceForForbiddenDeployEnvReads(
-      badHardcodedAccount,
-      "packages/deploy/src/hardcoded.ts",
-    );
+    const issues3 = scanSourceForForbiddenDeployEnvReads(badHardcodedAccount, "packages/deploy/src/hardcoded.ts");
     expect(issues3).toHaveLength(1);
     expect(issues3[0]?.rule).toBe("FORBIDDEN_HARDCODED_ACCOUNT_ID");
 
@@ -361,8 +330,6 @@ describe("Story 5.1 — Abstract DeployTarget & DeployProvisioner (packages/depl
         return target.accountId;
       }
     `;
-    expect(
-      scanSourceForForbiddenDeployEnvReads(cleanSource, "packages/deploy/src/clean.ts"),
-    ).toHaveLength(0);
+    expect(scanSourceForForbiddenDeployEnvReads(cleanSource, "packages/deploy/src/clean.ts")).toHaveLength(0);
   });
 });

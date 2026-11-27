@@ -4,12 +4,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  extractGoogleDiscoveryOperations,
-  extractOpenApi3Operations,
-  parseSpecDocument,
-  sanitizeOperationId,
-} from "../packages/integrations/src/importer.ts";
+import { extractGoogleDiscoveryOperations, extractOpenApi3Operations, parseSpecDocument, sanitizeOperationId } from "../packages/integrations/src/importer.ts";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // Outputs kept per op, chosen so every pack op stays within the 250-token get_node budget.
@@ -57,11 +52,14 @@ for (const app of packs) {
   let changed = 0;
   for (const [packOp, upId] of Object.entries<string>(curation.upstream.operationIds)) {
     const up = upOps.get(upId) ?? upOps.get(sanitizeOperationId(upId));
-    if (!up) { console.log(app, packOp, "NO UPSTREAM", upId); continue; }
+    if (!up) {
+      console.log(app, packOp, "NO UPSTREAM", upId);
+      continue;
+    }
     for (const item of Object.values<any>(fixture.paths)) {
       for (const op of Object.values<any>(item)) {
         if (op?.operationId !== packOp) continue;
-        const outs = (up.response.outputs ?? []).slice(0, (PACK_CAPS[CURRENT] ?? DEFAULT_CAP));
+        const outs = (up.response.outputs ?? []).slice(0, PACK_CAPS[CURRENT] ?? DEFAULT_CAP);
         const responses: Record<string, unknown> = {};
         const status = up.response.status;
         if (outs.length > 0) {
@@ -101,9 +99,7 @@ for (const app of packs) {
 CURRENT = "google";
 const googleDir = `${repo}/integrations/google`;
 const gCuration = JSON.parse(readFileSync(`${googleDir}/curation.config.json`, "utf8"));
-const docs = ["google-calendar", "google-drive", "google-gmail", "google-sheets"].map((n) =>
-  load(`${repo}/corpus/real-specs/.cache/${n}.json`),
-);
+const docs = ["google-calendar", "google-drive", "google-gmail", "google-sheets"].map((n) => load(`${repo}/corpus/real-specs/.cache/${n}.json`));
 const upOps = new Map<string, any>();
 const rawRefs = new Map<string, string>();
 for (const doc of docs) {
@@ -129,9 +125,15 @@ for (const [packOp, upId] of Object.entries<string>(gCuration.upstream.operation
   const up = upOps.get(upId);
   const ref = rawRefs.get(upId);
   const method = methodsById.get(packOp);
-  if (!up || !method) { console.log("google", packOp, "MISSING", !!up, !!method); continue; }
-  const outs = (up.response.outputs ?? []).slice(0, (PACK_CAPS[CURRENT] ?? DEFAULT_CAP));
-  if (outs.length === 0 || !ref) { console.log("google", packOp, "no outputs / ref", ref); continue; }
+  if (!up || !method) {
+    console.log("google", packOp, "MISSING", !!up, !!method);
+    continue;
+  }
+  const outs = (up.response.outputs ?? []).slice(0, PACK_CAPS[CURRENT] ?? DEFAULT_CAP);
+  if (outs.length === 0 || !ref) {
+    console.log("google", packOp, "no outputs / ref", ref);
+    continue;
+  }
   {
     gFixture.schemas[ref] = {
       id: ref,

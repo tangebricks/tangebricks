@@ -75,9 +75,7 @@ export function runStress(runs: number, files: string[]) {
       console.log(`Run ${i}/${runs}: FAIL (${duration}s) - ${failureSummary}`);
       const cleanOutput = stripAnsi(fullOutput);
       const errorMatch =
-        cleanOutput.match(/(TestingLibraryElementError:[^\r\n]+)/) ||
-        cleanOutput.match(/(AssertionError:[^\r\n]+)/) ||
-        cleanOutput.match(/(Error:[^\r\n]+)/);
+        cleanOutput.match(/(TestingLibraryElementError:[^\r\n]+)/) || cleanOutput.match(/(AssertionError:[^\r\n]+)/) || cleanOutput.match(/(Error:[^\r\n]+)/);
       if (errorMatch) {
         console.log(`    Detail: ${errorMatch[1]}`);
       }

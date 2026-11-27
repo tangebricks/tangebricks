@@ -37,7 +37,17 @@ const CREDITS: PlanCreditsConfig = { charger, planCredits: "free:100,pro:1000" }
 const DAY = 86_400_000;
 
 async function reset(): Promise<void> {
-  for (const t of ["sub_subscriptions", "sub_plans", "credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs", "mw_invites", "mw_members", "mw_workspaces"]) {
+  for (const t of [
+    "sub_subscriptions",
+    "sub_plans",
+    "credit_ledger",
+    "credit_orders",
+    "credit_wallets",
+    "credit_action_costs",
+    "mw_invites",
+    "mw_members",
+    "mw_workspaces",
+  ]) {
     await db.prepare(`DROP TABLE IF EXISTS ${t}`).run();
   }
   for (const sql of [mwMigration, wallet0001, wallet0002, wallet0003, wallet0004, migration0001, migration0002]) await applyMigration(db, sql);
@@ -51,12 +61,17 @@ async function registerWorkspace(id: string): Promise<void> {
 
 const balance = (ws: string) => walletCharger.balanceMilli(db, ws);
 const ledgerKeys = async (ws: string) =>
-  (await db.prepare("SELECT idempotency_key FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid").bind(ws).all<{ idempotency_key: string }>()).results.map((r) => r.idempotency_key);
+  (await db.prepare("SELECT idempotency_key FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid").bind(ws).all<{ idempotency_key: string }>()).results.map(
+    (r) => r.idempotency_key,
+  );
 const marker = async (ws: string) =>
   (await db.prepare("SELECT credits_granted_period AS p FROM sub_subscriptions WHERE workspace_id = ?").bind(ws).first<{ p: number | null }>())?.p;
 /** Moves the subscription's start back, which is the same as moving the clock forward for the period count. */
 const backdate = (ws: string, days: number) =>
-  db.prepare("UPDATE sub_subscriptions SET created_at = ? WHERE workspace_id = ?").bind(new Date(Date.now() - days * DAY).toISOString(), ws).run();
+  db
+    .prepare("UPDATE sub_subscriptions SET created_at = ? WHERE workspace_id = ?")
+    .bind(new Date(Date.now() - days * DAY).toISOString(), ws)
+    .run();
 
 beforeEach(async () => {
   expect.hasAssertions();
@@ -65,7 +80,10 @@ beforeEach(async () => {
 
 describe("the planCredits setting and the credit period", () => {
   it("parses tier:credits entries; the first entry for a tier wins; a bad value is refused with the format", () => {
-    expect([...parsePlanCredits("free:100,pro:1000,free:5")]).toEqual([["free", 100], ["pro", 1000]]);
+    expect([...parsePlanCredits("free:100,pro:1000,free:5")]).toEqual([
+      ["free", 100],
+      ["pro", 1000],
+    ]);
     expect(parsePlanCredits("").size).toBe(0);
     for (const bad of ["free", "free:-1", "free:1.5", "Free:1", "free:1,", " free:1", "free:1234567890"]) {
       expect(() => parsePlanCredits(bad), bad).toThrow(/tier:credits/);
@@ -194,7 +212,11 @@ describe("grants on read and create (story 1.20)", () => {
     const headers = { "x-workspace-id": WS_B, "content-type": "application/json" };
     const reads = [
       new Request(`https://x.test/api/subscriptions/current?workspaceId=${WS_B}&workspace_id=${WS_B}`, { headers }),
-      new Request("https://x.test/api/subscriptions/change", { method: "POST", headers, body: JSON.stringify({ planId: "free", workspaceId: WS_B, workspace_id: WS_B }) }),
+      new Request("https://x.test/api/subscriptions/change", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ planId: "free", workspaceId: WS_B, workspace_id: WS_B }),
+      }),
     ];
     for (const req of reads) expect((await app.fetch(req, { DB: db })).status).toBe(200);
     expect(await balance(WS_A)).toBe(100_000);
@@ -217,7 +239,14 @@ describe("the self-serve plan change cannot mint credits (story 1.20)", () => {
     return app;
   };
   const change = (planId: string) =>
-    ownerApp().fetch(new Request("https://x.test/api/subscriptions/change", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ planId }) }), { DB: db });
+    ownerApp().fetch(
+      new Request("https://x.test/api/subscriptions/change", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ planId }),
+      }),
+      { DB: db },
+    );
   const planIds = async () => (await db.prepare("SELECT id FROM sub_plans ORDER BY id").all<{ id: string }>()).results.map((r) => r.id);
 
   it("an owner switching to a credited tier that has no plan row is refused: no grant, no plan row created", async () => {
@@ -316,7 +345,9 @@ describe("the per-minute sweep (story 1.20)", () => {
     await registerWorkspace("ws_late");
     expect(await at(PLAN_CREDIT_RETRY_DELAY_MS + 60_000)).toMatchObject({ scanned: 1, granted: 1, failed: 0 });
     expect(await marker("ws_late")).toBe(0);
-    expect(await db.prepare("SELECT credits_retry_after AS r FROM sub_subscriptions WHERE workspace_id = 'ws_late'").first<{ r: string | null }>()).toEqual({ r: null });
+    expect(await db.prepare("SELECT credits_retry_after AS r FROM sub_subscriptions WHERE workspace_id = 'ws_late'").first<{ r: string | null }>()).toEqual({
+      r: null,
+    });
     expect(await balance("ws_late")).toBe(100_000);
   });
 });

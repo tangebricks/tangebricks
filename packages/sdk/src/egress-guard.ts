@@ -100,8 +100,7 @@ function embeddedIPv4(high: number, low: number): IPv4Octets {
 }
 
 function isPrivateIPv6(words: number[]): boolean {
-  const firstFiveZero =
-    words[0] === 0 && words[1] === 0 && words[2] === 0 && words[3] === 0 && words[4] === 0;
+  const firstFiveZero = words[0] === 0 && words[1] === 0 && words[2] === 0 && words[3] === 0 && words[4] === 0;
   // Loopback ::1
   if (firstFiveZero && words[5] === 0 && words[6] === 0 && words[7] === 1) return true;
   // Unspecified ::
@@ -111,14 +110,7 @@ function isPrivateIPv6(words: number[]): boolean {
   // IPv4-compatible ::a.b.c.d (deprecated, still routed by some stacks)
   if (firstFiveZero && words[5] === 0) return isPrivateIPv4(embeddedIPv4(words[6]!, words[7]!));
   // NAT64 well-known prefix 64:ff9b::/96
-  if (
-    words[0] === 0x64 &&
-    words[1] === 0xff9b &&
-    words[2] === 0 &&
-    words[3] === 0 &&
-    words[4] === 0 &&
-    words[5] === 0
-  ) {
+  if (words[0] === 0x64 && words[1] === 0xff9b && words[2] === 0 && words[3] === 0 && words[4] === 0 && words[5] === 0) {
     return isPrivateIPv4(embeddedIPv4(words[6]!, words[7]!));
   }
   // 6to4 2002::/16 carries the IPv4 address in bits 16-47
@@ -165,13 +157,7 @@ export function isIpLiteral(host: string): boolean {
 }
 
 /** Host names that always point at the local machine, the local network, or a cloud metadata service. */
-const METADATA_HOSTNAMES = new Set([
-  "metadata",
-  "metadata.google.internal",
-  "metadata.goog",
-  "instance-data",
-  "instance-data.ec2.internal",
-]);
+const METADATA_HOSTNAMES = new Set(["metadata", "metadata.google.internal", "metadata.goog", "instance-data", "instance-data.ec2.internal"]);
 
 /**
  * True for host names that resolve to the local machine or network: `localhost`, `*.localhost`, `*.local` (mDNS).

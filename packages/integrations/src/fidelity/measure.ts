@@ -1,12 +1,6 @@
 import type { CurationConfig } from "../importer.ts";
-import {
-  importIntegrationSpec,
-  swagger2ToOpenApi3,
-} from "../importer.ts";
-import {
-  NON_STRUCTURAL_CLASSES,
-  type DefectClass,
-} from "./classes.ts";
+import { importIntegrationSpec, swagger2ToOpenApi3 } from "../importer.ts";
+import { NON_STRUCTURAL_CLASSES, type DefectClass } from "./classes.ts";
 import { isObject } from "./measure-util.ts";
 import type { MeasureContext } from "./measure-types.ts";
 import { measureOpenApiOps } from "./measure-openapi.ts";
@@ -33,16 +27,11 @@ export interface MeasureOptions {
   readonly allFields?: boolean;
 }
 
-
 /**
  * Measures an OpenAPI 3, Swagger 2, or Google Discovery specification against
  * known importer defect classes and computes defect and importability statistics.
  */
-export function measureSpecFidelity(
-  spec: unknown,
-  format: FidelitySpecFormat,
-  options?: MeasureOptions
-): FidelityReport {
+export function measureSpecFidelity(spec: unknown, format: FidelitySpecFormat, options?: MeasureOptions): FidelityReport {
   const classes: Partial<Record<DefectClass, Set<string>>> = {};
   const examples: Partial<Record<DefectClass, { op: string; [key: string]: unknown }>> = {};
 
@@ -56,26 +45,13 @@ export function measureSpecFidelity(
   const notes: string[] = [];
 
   const rawDocs: any[] =
-    format === "google-discovery"
-      ? Array.isArray(spec)
-        ? spec
-        : isObject(spec) && Array.isArray((spec as any).apis)
-          ? (spec as any).apis
-          : [spec]
-      : [];
+    format === "google-discovery" ? (Array.isArray(spec) ? spec : isObject(spec) && Array.isArray((spec as any).apis) ? (spec as any).apis : [spec]) : [];
 
   const isSwagger = format === "swagger2" || (spec as any)?.swagger === "2.0";
-  const spec0 = format === "google-discovery"
-    ? rawDocs[0]
-    : isSwagger
-      ? swagger2ToOpenApi3(spec as any).spec
-      : (spec as any);
+  const spec0 = format === "google-discovery" ? rawDocs[0] : isSwagger ? swagger2ToOpenApi3(spec as any).spec : (spec as any);
 
   const ctx: MeasureContext = { flag, notes, spec0, rawDocs, options };
-  const measured =
-    format === "openapi3" || format === "swagger2"
-      ? measureOpenApiOps(ctx)
-      : measureDiscoveryOps(ctx);
+  const measured = format === "openapi3" || format === "swagger2" ? measureOpenApiOps(ctx) : measureDiscoveryOps(ctx);
   const extracted = measured.extracted;
   const specOps = measured.specOps;
 

@@ -42,7 +42,8 @@ const DEMO_HEADERS = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   // The page is one inline script that talks to its own origin and nothing else.
-  "content-security-policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+  "content-security-policy":
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
 };
 
 /** Routes the deploy adds beside the project's own. Called only after the access key has been checked; null means "not mine, give it to the project". */

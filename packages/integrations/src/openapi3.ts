@@ -1,13 +1,7 @@
 import { FIDELITY_CODES } from "@poc/assembler";
 import { escapeJsonPointer } from "./report.ts";
 import type { ReportCollector } from "./report.ts";
-import {
-  derefObject,
-  isPlainObject,
-  resolveJsonPointerRef,
-  sanitizeOperationId,
-  truncateText,
-} from "./util.ts";
+import { derefObject, isPlainObject, resolveJsonPointerRef, sanitizeOperationId, truncateText } from "./util.ts";
 import { extractSpecSecurity } from "./security.ts";
 import { extractOpenApiResponse } from "./response.ts";
 import { backfillPathParams, extractOpenApiParams, reportSwagger2Body } from "./openapi3-params.ts";
@@ -95,12 +89,8 @@ export function extractOpenApi3Operations(
       }
 
       const method = methodLower.toUpperCase() as IntegrationOperation["method"];
-      const label =
-        truncateText(opRaw.summary, 45) ??
-        truncateText(opRaw.operationId, 45) ??
-        operationId;
-      const summary =
-        truncateText(opRaw.summary ?? opRaw.description, 100) ?? label;
+      const label = truncateText(opRaw.summary, 45) ?? truncateText(opRaw.operationId, 45) ?? operationId;
+      const summary = truncateText(opRaw.summary ?? opRaw.description, 100) ?? label;
 
       const opLevelParams = Array.isArray(opRaw.parameters) ? opRaw.parameters : [];
       const opParamKeys = new Set<string>();
@@ -142,25 +132,15 @@ export function extractOpenApi3Operations(
       }
 
       const ctx: OpenApiOpContext = { spec, report, operationId, rawPath, methodLower };
-      const { params, usedCleanNames, hasSwagger2Body } = extractOpenApiParams(
-        ctx,
-        combinedParams,
-      );
+      const { params, usedCleanNames, hasSwagger2Body } = extractOpenApiParams(ctx, combinedParams);
       reportSwagger2Body(ctx, combinedParams, hasSwagger2Body);
       backfillPathParams(ctx, params, usedCleanNames);
       const body = extractOpenApiBody(ctx, opRaw, usedCleanNames);
 
       const normalizedPath = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
 
-      const opCuration =
-        (curation?.operations as any)?.[operationId] ??
-        (curation?.operations as any)?.[rawOpId];
-      const hasPredicate = Boolean(
-        curation?.errorWhen ||
-          curation?.successWhen ||
-          opCuration?.errorWhen ||
-          opCuration?.successWhen,
-      );
+      const opCuration = (curation?.operations as any)?.[operationId] ?? (curation?.operations as any)?.[rawOpId];
+      const hasPredicate = Boolean(curation?.errorWhen || curation?.successWhen || opCuration?.errorWhen || opCuration?.successWhen);
       const hasPagination = Boolean(opCuration?.pagination);
 
       const response = extractOpenApiResponse(
@@ -173,12 +153,7 @@ export function extractOpenApi3Operations(
         hasPagination,
       );
 
-      const opSecurityValue = reportOpenApiAuth(
-        ctx,
-        opRaw,
-        { schemes, requirements: rootRequirements },
-        curationAuth,
-      );
+      const opSecurityValue = reportOpenApiAuth(ctx, opRaw, { schemes, requirements: rootRequirements }, curationAuth);
       report?.mapped({
         op: operationId,
         element: "operation",

@@ -64,10 +64,7 @@ const testRegistry = createRegistry([
 describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret redaction", () => {
   beforeEach(async () => {
     await ensureTelemetryTables(db);
-    await db.batch([
-      db.prepare("DELETE FROM px_step_events"),
-      db.prepare("DELETE FROM px_runs"),
-    ]);
+    await db.batch([db.prepare("DELETE FROM px_step_events"), db.prepare("DELETE FROM px_runs")]);
   });
 
   test("3-node happy-path workflow records queued, running, and succeeded events, updates px_runs, signs webhooks, and scrubs canary secrets", async () => {
@@ -100,11 +97,7 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
       },
     });
 
-    const executors = new Map<string, Executor>([
-      ...toyExecutors,
-      ["action.secret_enrich", enrichExecutor],
-      ["sink.result", sinkExecutor],
-    ]);
+    const executors = new Map<string, Executor>([...toyExecutors, ["action.secret_enrich", enrichExecutor], ["sink.result", sinkExecutor]]);
 
     const graph: Graph = {
       nodes: [
@@ -138,7 +131,8 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     };
 
     const workflow = new GraphWorkflow(testRegistry, executors);
-    const runResult = await workflow.start({ workspaceId: "ws_test",
+    const runResult = await workflow.start({
+      workspaceId: "ws_test",
       graph,
       payload: { orderId: "ord_101", amount: 2500 },
       env: {
@@ -189,9 +183,7 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     expect(events).toHaveLength(9);
 
     for (const nodeId of ["n1_trigger", "n2_enrich", "n3_sink"]) {
-      const statuses = events
-        .filter((e) => e.nodeId === nodeId)
-        .map((e) => e.status);
+      const statuses = events.filter((e) => e.nodeId === nodeId).map((e) => e.status);
       expect(statuses).toEqual(["queued", "running", "succeeded"]);
     }
 
@@ -227,11 +219,7 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
       throw new Error(`Upstream gateway rejected key ${key} on attempt ${attempts}`);
     };
 
-    const executors = new Map<string, Executor>([
-      ...toyExecutors,
-      ["action.flaky_fail", flakyExecutor],
-      ["sink.result", ({ inputs }) => ({ out: inputs.in })],
-    ]);
+    const executors = new Map<string, Executor>([...toyExecutors, ["action.flaky_fail", flakyExecutor], ["sink.result", ({ inputs }) => ({ out: inputs.in })]]);
 
     const graph: Graph = {
       nodes: [
@@ -258,7 +246,8 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     };
 
     const workflow = new GraphWorkflow(testRegistry, executors);
-    const result = await workflow.start({ workspaceId: "ws_test",
+    const result = await workflow.start({
+      workspaceId: "ws_test",
       graph,
       payload: { test: "retry-failure" },
       env: {
@@ -287,17 +276,13 @@ describe("@poc/runtime — 3-node GraphWorkflow telemetry, retries, and secret r
     expect(runRow?.errorStack).not.toContain(CANARY_STRIPE_KEY);
 
     const events = await listStepEventsForRun(db, "run_fail_retry_3node", { workspaceId: "ws_test" });
-    const flakyFailed = events.find(
-      (e) => e.nodeId === "n2_flaky" && e.status === "failed",
-    );
+    const flakyFailed = events.find((e) => e.nodeId === "n2_flaky" && e.status === "failed");
     expect(flakyFailed).toBeDefined();
     expect(flakyFailed?.retries).toBe(2);
     expect(flakyFailed?.errorStack).toContain("[REDACTED]");
     expect(flakyFailed?.errorStack).not.toContain(CANARY_STRIPE_KEY);
 
-    const downstreamSkipped = events.find(
-      (e) => e.nodeId === "n3_downstream" && e.status === "skipped",
-    );
+    const downstreamSkipped = events.find((e) => e.nodeId === "n3_downstream" && e.status === "skipped");
     expect(downstreamSkipped).toBeDefined();
   });
 });

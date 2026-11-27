@@ -38,7 +38,11 @@ function setup() {
     timeMs += 1000;
     return new Date(timeMs);
   };
-  const ledger = openLedger(store, () => SUFFIX, () => nextTime());
+  const ledger = openLedger(
+    store,
+    () => SUFFIX,
+    () => nextTime(),
+  );
   const names = resourceNames(SUFFIX);
   const input = (over: Partial<DeployInput> = {}): DeployInput => ({
     client,
@@ -63,9 +67,7 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
 
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
-    const [deployRowV1] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowV1] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     const v1VersionId = String(deployRowV1!.results[0]!.version_id);
 
     const m2: Migration = { name: "0002_add_col.sql", sql: "ALTER TABLE items ADD COLUMN note TEXT;" };
@@ -92,9 +94,7 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     expect(historyRowsAfterFail!.results[0]!.last_good_version_id).toBe(v1VersionId);
 
     // 3. Migration m2 was applied to D1
-    const [appliedMigrations] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT name FROM ${MIGRATIONS_TABLE} ORDER BY name;` },
-    ]);
+    const [appliedMigrations] = await client.queryDatabase(databaseId, [{ sql: `SELECT name FROM ${MIGRATIONS_TABLE} ORDER BY name;` }]);
     expect(appliedMigrations!.results.map((r) => r.name)).toEqual(["0001_init.sql", "0002_add_col.sql"]);
 
     // Re-run deploy without faults
@@ -134,9 +134,7 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     await deploy(input({ bundle: BUNDLE_V1 }));
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
-    const [deployRowV1] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowV1] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     const v1VersionId = String(deployRowV1!.results[0]!.version_id);
 
     // Inject fault: uploadVersion succeeds in Cloudflare, but response is lost
@@ -165,9 +163,7 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     const rerunCalls = client.calls.slice(callsBeforeRerun);
 
     // Re-run must NOT have called uploadVersion again! It must detect and reuse orphan version
-    const uploadVersionCallsInRerun = rerunCalls.filter(
-      (c) => c.method === "POST" && c.path.includes(`/workers/scripts/${names.script}/versions`),
-    );
+    const uploadVersionCallsInRerun = rerunCalls.filter((c) => c.method === "POST" && c.path.includes(`/workers/scripts/${names.script}/versions`));
     expect(uploadVersionCallsInRerun.length, "must not re-upload version; must adopt orphan version").toBe(0);
 
     // The deployed version should be the adopted orphan version
@@ -175,9 +171,7 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     expect(finalDeployments[0]!.versions[0]!.version_id).toBe(orphanVersionId);
 
     // History and deploy table updated with orphan version
-    const [deployRowFinal] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowFinal] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     expect(deployRowFinal!.results[0]!.version_id).toBe(orphanVersionId);
     expect(deployRowFinal!.results[0]!.last_good_version_id).toBe(orphanVersionId);
 
@@ -192,9 +186,7 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     await deploy(input({ bundle: BUNDLE_V1 }));
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
-    const [deployRowV1] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowV1] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     const v1VersionId = String(deployRowV1!.results[0]!.version_id);
 
     // Inject fault: createDeployment succeeds on Cloudflare, but network fails after handling
@@ -225,15 +217,11 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     const rerunCalls = client.calls.slice(callsBeforeRerun);
 
     // Must make NO second createDeployment call!
-    const deploymentCallsInRerun = rerunCalls.filter(
-      (c) => c.method === "POST" && c.path.includes(`/workers/scripts/${names.script}/deployments`),
-    );
+    const deploymentCallsInRerun = rerunCalls.filter((c) => c.method === "POST" && c.path.includes(`/workers/scripts/${names.script}/deployments`));
     expect(deploymentCallsInRerun.length, "must make no second deployment call").toBe(0);
 
     // History and deploy table reconciled to liveVersionId with status success
-    const [deployRowFinal] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowFinal] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     expect(deployRowFinal!.results[0]!.version_id).toBe(liveVersionId);
     expect(deployRowFinal!.results[0]!.last_good_version_id).toBe(liveVersionId);
 
@@ -269,14 +257,10 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     // Verify: no migration statements from m2 ran
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
-    const [tables] = await client.queryDatabase(databaseId, [
-      { sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'new_table';" },
-    ]);
+    const [tables] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'new_table';" }]);
     expect(tables!.results.length).toBe(0);
 
-    const [recordedMigrations] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT name FROM ${MIGRATIONS_TABLE};` },
-    ]);
+    const [recordedMigrations] = await client.queryDatabase(databaseId, [{ sql: `SELECT name FROM ${MIGRATIONS_TABLE};` }]);
     expect(recordedMigrations!.results.map((r) => r.name)).toEqual(["0001_init.sql"]);
 
     // AC1: readAccountState has only m1
@@ -302,15 +286,11 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     await expect(deploy(input({ migrations: [m1, m2Bad], bundle: BUNDLE_V2 }))).rejects.toThrow();
 
     // Assert atomicity: partial_table was rolled back and does NOT exist
-    const [tables] = await client.queryDatabase(databaseId, [
-      { sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'partial_table';" },
-    ]);
+    const [tables] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'partial_table';" }]);
     expect(tables!.results.length, "partial_table must be rolled back by batch transaction").toBe(0);
 
     // _projectx_migrations is unchanged
-    const [recorded] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT name FROM ${MIGRATIONS_TABLE};` },
-    ]);
+    const [recorded] = await client.queryDatabase(databaseId, [{ sql: `SELECT name FROM ${MIGRATIONS_TABLE};` }]);
     expect(recorded!.results.map((r) => r.name)).toEqual(["0001_init.sql"]);
 
     // Re-run with fixed migration
@@ -321,14 +301,10 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     await deploy(input({ migrations: [m1, m2Fixed], bundle: BUNDLE_V2 }));
 
     // Assert: re-run retries and applies m2Fixed
-    const [tablesAfter] = await client.queryDatabase(databaseId, [
-      { sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'partial_table';" },
-    ]);
+    const [tablesAfter] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'partial_table';" }]);
     expect(tablesAfter!.results.length).toBe(1);
 
-    const [rowsAfter] = await client.queryDatabase(databaseId, [
-      { sql: "SELECT id FROM partial_table;" },
-    ]);
+    const [rowsAfter] = await client.queryDatabase(databaseId, [{ sql: "SELECT id FROM partial_table;" }]);
     expect(rowsAfter!.results[0]!.id).toBe("fixed");
 
     // AC1: readAccountState has both
@@ -342,9 +318,7 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     await deploy(input({ bundle: BUNDLE_V1 }));
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
-    const [deployRowV1] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowV1] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     const v1VersionId = String(deployRowV1!.results[0]!.version_id);
 
     // Inject fault: createDeployment returns 500
@@ -365,9 +339,7 @@ describe("Deploy fault-injection suite (UC8.7)", () => {
     expect(fake.codeOf(names.script)).toContain("build: 'v1'");
 
     // AC1: readAccountState consistency: latest active / last_good is v1
-    const [deployRow] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRow] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     expect(deployRow!.results[0]!.version_id).toBe(v1VersionId);
     expect(deployRow!.results[0]!.last_good_version_id).toBe(v1VersionId);
   });

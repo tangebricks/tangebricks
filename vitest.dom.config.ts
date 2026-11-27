@@ -9,16 +9,9 @@ export default defineConfig({
   test: {
     name: "dom",
     environment: "jsdom",
-    include: [
-      "packages/*/client/test/**/*.test.{ts,tsx}",
-      "bricks/*/client/test/**/*.test.{ts,tsx}",
-      "apps/studio-web/test/**/*.test.{ts,tsx}",
-    ],
+    include: ["packages/*/client/test/**/*.test.{ts,tsx}", "bricks/*/client/test/**/*.test.{ts,tsx}", "apps/studio-web/test/**/*.test.{ts,tsx}"],
     globalSetup: ["./test/support/dom-global-setup.ts"],
-    setupFiles: [
-      "./test/support/dom-setup.ts",
-      "./test/support/assertion-counter.ts",
-    ],
+    setupFiles: ["./test/support/dom-setup.ts", "./test/support/assertion-counter.ts"],
     testTimeout: 60_000,
   },
 });

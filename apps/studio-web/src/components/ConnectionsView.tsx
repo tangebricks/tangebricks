@@ -12,19 +12,9 @@ import {
   recheckCloudflareToken,
   testProjectConnection,
 } from "../api.ts";
-import type {
-  CloudflareTokenMetadataSummary,
-  EnvironmentDeploymentRecordPayload,
-  ProjectDeployEnvironmentRecord,
-} from "../api.ts";
+import type { CloudflareTokenMetadataSummary, EnvironmentDeploymentRecordPayload, ProjectDeployEnvironmentRecord } from "../api.ts";
 import { getActiveOrg, getActiveRole, useStudioStore } from "../store.ts";
-import type {
-  StudioConnectionRequest,
-  StudioSecretKind,
-  StudioSecretMetadata,
-  StudioSecretStatus,
-  StudioSecretUsedByTarget,
-} from "../types.ts";
+import type { StudioConnectionRequest, StudioSecretKind, StudioSecretMetadata, StudioSecretStatus, StudioSecretUsedByTarget } from "../types.ts";
 import { brickSecretNames } from "../types.ts";
 import { ConnectCloudflareModal } from "./ConnectCloudflareModal.tsx";
 import { DeployPlanModal } from "./DeployPlanModal.tsx";
@@ -112,27 +102,18 @@ export function ConnectionsView() {
   const isViewer = activeRole === "viewer";
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [rotatingSecret, setRotatingSecret] =
-    useState<StudioSecretMetadata | null>(null);
-  const [deletingSecret, setDeletingSecret] =
-    useState<StudioSecretMetadata | null>(null);
+  const [rotatingSecret, setRotatingSecret] = useState<StudioSecretMetadata | null>(null);
+  const [deletingSecret, setDeletingSecret] = useState<StudioSecretMetadata | null>(null);
 
   const [cfWizardOpen, setCfWizardOpen] = useState(false);
-  const [replacingTokenRef, setReplacingTokenRef] = useState<string | null>(
-    null,
-  );
-  const [activeCfToken, setActiveCfToken] =
-    useState<CloudflareTokenMetadataSummary | null>(null);
-  const [cfEnvironments, setCfEnvironments] = useState<
-    ProjectDeployEnvironmentRecord[]
-  >([]);
+  const [replacingTokenRef, setReplacingTokenRef] = useState<string | null>(null);
+  const [activeCfToken, setActiveCfToken] = useState<CloudflareTokenMetadataSummary | null>(null);
+  const [cfEnvironments, setCfEnvironments] = useState<ProjectDeployEnvironmentRecord[]>([]);
   const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
   const [cfStatusMessage, setCfStatusMessage] = useState<string | null>(null);
   const [cfRechecking, setCfRechecking] = useState(false);
   const [deployPlanOpen, setDeployPlanOpen] = useState(false);
-  const [deployPlanEnv, setDeployPlanEnv] = useState<"preview" | "production">(
-    "preview",
-  );
+  const [deployPlanEnv, setDeployPlanEnv] = useState<"preview" | "production">("preview");
   const [checkingDriftEnv, setCheckingDriftEnv] = useState<string | null>(null);
   const [rollbackTarget, setRollbackTarget] = useState<{
     envName: "preview" | "production";
@@ -148,12 +129,8 @@ export function ConnectionsView() {
   const [secretValue, setSecretValue] = useState("");
   const [selectedBindOption, setSelectedBindOption] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [connectionRequests, setConnectionRequests] = useState<
-    StudioConnectionRequest[]
-  >([]);
-  const [connectionActionMessage, setConnectionActionMessage] = useState<
-    string | null
-  >(null);
+  const [connectionRequests, setConnectionRequests] = useState<StudioConnectionRequest[]>([]);
+  const [connectionActionMessage, setConnectionActionMessage] = useState<string | null>(null);
   const [caseBPreviewStates, setCaseBPreviewStates] = useState<
     Record<
       string,
@@ -228,9 +205,7 @@ export function ConnectionsView() {
     };
   }, [projectSlug, resolvedOrgId, currentRevision, setSecrets]);
 
-  const handleCheckEnvironmentDrift = async (
-    envName: "preview" | "production",
-  ) => {
+  const handleCheckEnvironmentDrift = async (envName: "preview" | "production") => {
     if (!projectSlug) return;
     setCheckingDriftEnv(envName);
     try {
@@ -238,22 +213,14 @@ export function ConnectionsView() {
         orgId: resolvedOrgId,
       });
       setCfEnvironments((prev) => {
-        const filtered = prev.filter(
-          (e) =>
-            !(
-              e.projectId === res.environment.projectId &&
-              e.envName === res.environment.envName
-            ),
-        );
+        const filtered = prev.filter((e) => !(e.projectId === res.environment.projectId && e.envName === res.environment.envName));
         return [...filtered, res.environment];
       });
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("studio:environments-updated"));
       }
     } catch (err) {
-      setCfStatusMessage(
-        err instanceof Error ? err.message : "Failed to check drift",
-      );
+      setCfStatusMessage(err instanceof Error ? err.message : "Failed to check drift");
     } finally {
       setCheckingDriftEnv(null);
     }
@@ -264,16 +231,11 @@ export function ConnectionsView() {
     setCfRechecking(true);
     setCfStatusMessage(null);
     try {
-      const res = await recheckCloudflareToken(
-        resolvedOrgId,
-        activeCfToken.tokenRef,
-      );
+      const res = await recheckCloudflareToken(resolvedOrgId, activeCfToken.tokenRef);
       setActiveCfToken(res.token);
       setCfStatusMessage(res.verification.summaryMessage);
     } catch (err) {
-      setCfStatusMessage(
-        err instanceof Error ? err.message : "Failed to re-check token",
-      );
+      setCfStatusMessage(err instanceof Error ? err.message : "Failed to re-check token");
     } finally {
       setCfRechecking(false);
     }
@@ -282,21 +244,13 @@ export function ConnectionsView() {
   const handleConfirmDisconnectCf = async () => {
     if (!activeCfToken) return;
     try {
-      const res = await disconnectCloudflareToken(
-        resolvedOrgId,
-        activeCfToken.tokenRef,
-      );
+      const res = await disconnectCloudflareToken(resolvedOrgId, activeCfToken.tokenRef);
       setActiveCfToken(null);
       setCfEnvironments([]);
       setConfirmDisconnectOpen(false);
-      setCfStatusMessage(
-        res.workersKeepRunningMessage ??
-          "Disconnected. Your deployed Workers keep running in your Cloudflare account.",
-      );
+      setCfStatusMessage(res.workersKeepRunningMessage ?? "Disconnected. Your deployed Workers keep running in your Cloudflare account.");
     } catch (err) {
-      setCfStatusMessage(
-        err instanceof Error ? err.message : "Failed to disconnect token",
-      );
+      setCfStatusMessage(err instanceof Error ? err.message : "Failed to disconnect token");
     }
   };
 
@@ -327,16 +281,8 @@ export function ConnectionsView() {
 
     for (const wf of projectState.workflows) {
       for (const node of wf.nodes) {
-        if (
-          node.type === "core.http_request" ||
-          node.type === "core.webhook" ||
-          node.type.includes("http") ||
-          node.type.includes("webhook")
-        ) {
-          const defaultSecretName =
-            node.type === "core.webhook"
-              ? "WEBHOOK_SIGNING_SECRET"
-              : "AUTHORIZATION_BEARER";
+        if (node.type === "core.http_request" || node.type === "core.webhook" || node.type.includes("http") || node.type.includes("webhook")) {
+          const defaultSecretName = node.type === "core.webhook" ? "WEBHOOK_SIGNING_SECRET" : "AUTHORIZATION_BEARER";
           options.push({
             value: `node:${node.id}:${defaultSecretName}`,
             label: `Workflow Step: ${wf.name} / ${node.label ?? node.id} (${defaultSecretName})`,
@@ -382,20 +328,10 @@ export function ConnectionsView() {
     if (!projectSlug) return;
     try {
       const res = await testProjectConnection(projectSlug, secret.ref);
-      setSecrets(
-        secrets.map((s) =>
-          s.ref === secret.ref
-            ? { ...s, status: res.status, lastCheckedAt: res.lastCheckedAt }
-            : s,
-        ),
-      );
-      setConnectionActionMessage(
-        `Tested ${secret.ref}: status is ${res.status}.`,
-      );
+      setSecrets(secrets.map((s) => (s.ref === secret.ref ? { ...s, status: res.status, lastCheckedAt: res.lastCheckedAt } : s)));
+      setConnectionActionMessage(`Tested ${secret.ref}: status is ${res.status}.`);
     } catch (err) {
-      setConnectionActionMessage(
-        err instanceof Error ? err.message : "Failed to test connection",
-      );
+      setConnectionActionMessage(err instanceof Error ? err.message : "Failed to test connection");
     }
   };
 
@@ -403,16 +339,8 @@ export function ConnectionsView() {
     if (!projectSlug) return;
     try {
       const res = await reauthorizeProjectConnection(projectSlug, secret.ref);
-      setSecrets(
-        secrets.map((s) =>
-          s.ref === secret.ref ? { ...s, status: res.status } : s,
-        ),
-      );
-      setConnectionActionMessage(
-        res.authorizeUrl
-          ? `Re-authorization ready for ${secret.ref} (${res.authorizeUrl}).`
-          : `Re-authorized ${secret.ref}.`,
-      );
+      setSecrets(secrets.map((s) => (s.ref === secret.ref ? { ...s, status: res.status } : s)));
+      setConnectionActionMessage(res.authorizeUrl ? `Re-authorization ready for ${secret.ref} (${res.authorizeUrl}).` : `Re-authorized ${secret.ref}.`);
     } catch {
       openRotateModal(secret);
     }
@@ -447,9 +375,7 @@ export function ConnectionsView() {
     const trimmedValue = (secretValue ?? "").trim();
 
     if (!trimmedRef.startsWith("sec_") || !isValidSecretRefHandle(trimmedRef).ok) {
-      setFormError(
-        "Secret reference handle must start with sec_ and contain only safe handle characters.",
-      );
+      setFormError("Secret reference handle must start with sec_ and contain only safe handle characters.");
       return;
     }
 
@@ -458,9 +384,7 @@ export function ConnectionsView() {
       return;
     }
 
-    const chosenBind = availableBindOptions.find(
-      (o) => o.value === selectedBindOption,
-    );
+    const chosenBind = availableBindOptions.find((o) => o.value === selectedBindOption);
 
     const res = await upsertSecret({
       ref: trimmedRef,
@@ -504,9 +428,7 @@ export function ConnectionsView() {
       selectItem({ kind: "brick", id: target.targetId }, "bricks");
       return;
     }
-    const matchingWorkflow = projectState?.workflows.find((wf) =>
-      wf.nodes.some((n) => n.id === target.targetId),
-    );
+    const matchingWorkflow = projectState?.workflows.find((wf) => wf.nodes.some((n) => n.id === target.targetId));
     selectItem(
       {
         kind: "node",
@@ -527,10 +449,8 @@ export function ConnectionsView() {
             <span>Connections &amp; Secrets Center</span>
           </h1>
           <p className="text-xs text-text-secondary mt-1">
-            Secrets are encrypted with AES-GCM 256-bit keys in the Studio Vault.
-            Blueprints and AI agents only ever see opaque{" "}
-            <code className="font-mono text-amber-300">sec_*</code> handles and
-            4-character masked hints.
+            Secrets are encrypted with AES-GCM 256-bit keys in the Studio Vault. Blueprints and AI agents only ever see opaque{" "}
+            <code className="font-mono text-amber-300">sec_*</code> handles and 4-character masked hints.
           </p>
         </div>
 
@@ -546,11 +466,7 @@ export function ConnectionsView() {
       </div>
 
       {mutationError && (
-        <div
-          role="alert"
-          data-testid="connections-mutation-error"
-          className="p-3 rounded-md bg-rose-950/80 border border-rose-700 text-rose-200 text-xs"
-        >
+        <div role="alert" data-testid="connections-mutation-error" className="p-3 rounded-md bg-rose-950/80 border border-rose-700 text-rose-200 text-xs">
           ✕ {mutationError}
         </div>
       )}
@@ -566,16 +482,10 @@ export function ConnectionsView() {
       )}
 
       {connectionRequests.filter((r) => r.status === "pending").length > 0 && (
-        <div
-          data-testid="agent-connection-consent-banner"
-          className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/40 space-y-2.5"
-        >
+        <div data-testid="agent-connection-consent-banner" className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/40 space-y-2.5">
           <div className="text-xs font-bold text-amber-300 flex items-center gap-2">
             <span>🤖</span>
-            <span>
-              AI Agent Requested Connection Consent (
-              {connectionRequests.filter((r) => r.status === "pending").length})
-            </span>
+            <span>AI Agent Requested Connection Consent ({connectionRequests.filter((r) => r.status === "pending").length})</span>
           </div>
           <div className="space-y-2">
             {connectionRequests
@@ -588,14 +498,8 @@ export function ConnectionsView() {
                 >
                   <div className="space-y-0.5">
                     <div className="font-semibold text-text-primary">
-                      Connect{" "}
-                      <span className="font-mono text-amber-300">
-                        {req.app}
-                      </span>{" "}
-                      as{" "}
-                      <code className="font-mono text-amber-300">
-                        {req.suggestedRef}
-                      </code>
+                      Connect <span className="font-mono text-amber-300">{req.app}</span> as{" "}
+                      <code className="font-mono text-amber-300">{req.suggestedRef}</code>
                     </div>
                     <div className="text-text-secondary">{req.reason}</div>
                   </div>
@@ -615,16 +519,11 @@ export function ConnectionsView() {
       )}
 
       {/* Cloudflare Deploy Target (BYOC) Card */}
-      <div
-        data-testid="cloudflare-connection-card"
-        className="p-4 rounded-lg bg-surface-raised border border-border space-y-3"
-      >
+      <div data-testid="cloudflare-connection-card" className="p-4 rounded-lg bg-surface-raised border border-border space-y-3">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="font-bold text-sm text-text-primary">
-                ☁ Cloudflare Deploy Target (BYOC)
-              </span>
+              <span className="font-bold text-sm text-text-primary">☁ Cloudflare Deploy Target (BYOC)</span>
               {activeCfToken && activeCfToken.status === "active" ? (
                 <span
                   data-testid="cloudflare-connection-status"
@@ -648,10 +547,7 @@ export function ConnectionsView() {
                 </span>
               )}
             </div>
-            <p
-              data-testid="cloudflare-byoc-explanation"
-              className="text-xs text-text-secondary"
-            >
+            <p data-testid="cloudflare-byoc-explanation" className="text-xs text-text-secondary">
               Your backend runs in your own Cloudflare account. We never host it.
             </p>
           </div>
@@ -721,17 +617,11 @@ export function ConnectionsView() {
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-text-secondary">
                 Account:{" "}
-                <strong
-                  data-testid="cloudflare-connected-account-name"
-                  className="text-text-primary"
-                >
+                <strong data-testid="cloudflare-connected-account-name" className="text-text-primary">
                   {activeCfToken.accountName}
                 </strong>{" "}
                 (
-                <code
-                  data-testid="cloudflare-connected-account-id"
-                  className="font-mono text-amber-300"
-                >
+                <code data-testid="cloudflare-connected-account-id" className="font-mono text-amber-300">
                   {activeCfToken.accountId}
                 </code>
                 )
@@ -746,19 +636,10 @@ export function ConnectionsView() {
 
             <div className="flex items-center gap-2 flex-wrap">
               {(() => {
-                const filtered = cfEnvironments
-                  .filter((e) => !projectSlug || e.projectId === projectSlug)
-                  .map((e) => e.envName);
-                const envNames =
-                  filtered.length > 0
-                    ? Array.from(new Set(filtered))
-                    : (["preview", "production"] as const);
+                const filtered = cfEnvironments.filter((e) => !projectSlug || e.projectId === projectSlug).map((e) => e.envName);
+                const envNames = filtered.length > 0 ? Array.from(new Set(filtered)) : (["preview", "production"] as const);
                 return envNames.map((envName) => {
-                  const envRec = cfEnvironments.find(
-                    (e) =>
-                      (!projectSlug || e.projectId === projectSlug) &&
-                      e.envName === envName,
-                  );
+                  const envRec = cfEnvironments.find((e) => (!projectSlug || e.projectId === projectSlug) && e.envName === envName);
                   return (
                     <span
                       key={envName}
@@ -768,9 +649,7 @@ export function ConnectionsView() {
                     >
                       {envName} · byoc
                       {envRec?.deployedRev ? ` · r${envRec.deployedRev}` : ""}
-                      {envRec?.buildHash
-                        ? ` · ${envRec.buildHash.slice(0, 10)}`
-                        : ""}
+                      {envRec?.buildHash ? ` · ${envRec.buildHash.slice(0, 10)}` : ""}
                     </span>
                   );
                 });
@@ -804,14 +683,10 @@ export function ConnectionsView() {
         )}
 
         {confirmDisconnectOpen && activeCfToken && (
-          <div
-            data-testid="cloudflare-disconnect-confirm-panel"
-            className="p-3 rounded bg-rose-950/70 border border-rose-700 text-xs text-rose-100 space-y-2"
-          >
+          <div data-testid="cloudflare-disconnect-confirm-panel" className="p-3 rounded bg-rose-950/70 border border-rose-700 text-xs text-rose-100 space-y-2">
             <div>
-              <strong>Disconnect Cloudflare token?</strong> Your already-deployed
-              Workers and D1 databases keep running in your Cloudflare account.
-              Studio will immediately wipe the encrypted token from its vault.
+              <strong>Disconnect Cloudflare token?</strong> Your already-deployed Workers and D1 databases keep running in your Cloudflare account. Studio will
+              immediately wipe the encrypted token from its vault.
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -843,31 +718,20 @@ export function ConnectionsView() {
         )}
 
         {cfStatusMessage && (
-          <div
-            data-testid="cloudflare-status-message"
-            className="p-2.5 rounded bg-surface-base border border-border text-xs text-text-secondary"
-          >
+          <div data-testid="cloudflare-status-message" className="p-2.5 rounded bg-surface-base border border-border text-xs text-text-secondary">
             {cfStatusMessage}
           </div>
         )}
 
         {/* Environment Drift & Deployment History Panels */}
         {activeCfToken && cfEnvironments.length > 0 && (
-          <div
-            data-testid="cloudflare-environments-detail-grid"
-            className="pt-3 border-t border-border/60 grid grid-cols-1 lg:grid-cols-2 gap-4"
-          >
+          <div data-testid="cloudflare-environments-detail-grid" className="pt-3 border-t border-border/60 grid grid-cols-1 lg:grid-cols-2 gap-4">
             {(["preview", "production"] as const).map((envName) => {
-              const envRec = cfEnvironments.find(
-                (e) =>
-                  (!projectSlug || e.projectId === projectSlug) &&
-                  e.envName === envName,
-              );
+              const envRec = cfEnvironments.find((e) => (!projectSlug || e.projectId === projectSlug) && e.envName === envName);
               if (!envRec) return null;
               const drift = envRec.driftReport;
               const deployments = envRec.deployments ?? [];
-              const isDeployed =
-                envRec.deployedRev !== null && envRec.deployedRev !== undefined;
+              const isDeployed = envRec.deployedRev !== null && envRec.deployedRev !== undefined;
               const inSync = drift ? drift.inSync : true;
               const bpDrift = drift?.blueprintDrift;
               const oobDrift = drift?.outOfBandDrift ?? [];
@@ -880,16 +744,12 @@ export function ConnectionsView() {
                 >
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold uppercase tracking-wider text-text-primary">
-                        {envName}
-                      </span>
+                      <span className="font-bold uppercase tracking-wider text-text-primary">{envName}</span>
                       {isDeployed ? (
                         <span
                           data-testid={`env-drift-status-${envName}`}
                           className={`px-2 py-0.5 rounded border text-[11px] font-semibold ${
-                            inSync
-                              ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
-                              : "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                            inSync ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" : "bg-amber-500/20 border-amber-500/50 text-amber-300"
                           }`}
                         >
                           {inSync ? "✓ In Sync" : "⚠ Drift Detected"}
@@ -911,38 +771,22 @@ export function ConnectionsView() {
                       onClick={() => void handleCheckEnvironmentDrift(envName)}
                       className="px-2.5 py-1 rounded bg-surface-control hover:bg-slate-700 border border-border-strong text-[11px] font-semibold text-text-primary disabled:opacity-40"
                     >
-                      {checkingDriftEnv === envName
-                        ? "Checking…"
-                        : "↻ Check Drift"}
+                      {checkingDriftEnv === envName ? "Checking…" : "↻ Check Drift"}
                     </button>
                   </div>
 
                   {/* Blueprint Drift Summary */}
                   {isDeployed && bpDrift && (
-                    <div
-                      data-testid={`blueprint-drift-summary-${envName}`}
-                      className="p-2.5 rounded bg-surface-raised border border-border/80 space-y-1"
-                    >
+                    <div data-testid={`blueprint-drift-summary-${envName}`} className="p-2.5 rounded bg-surface-raised border border-border/80 space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-text-secondary">
-                          Deployed Rev:{" "}
-                          <strong className="font-mono text-text-primary">
-                            r{bpDrift.deployedRev}
-                          </strong>{" "}
-                          · Current Blueprint:{" "}
-                          <strong className="font-mono text-accent">
-                            r{bpDrift.currentRev}
-                          </strong>
+                          Deployed Rev: <strong className="font-mono text-text-primary">r{bpDrift.deployedRev}</strong> · Current Blueprint:{" "}
+                          <strong className="font-mono text-accent">r{bpDrift.currentRev}</strong>
                         </span>
-                        <span className="font-mono text-[11px] text-text-muted">
-                          {envRec.buildHash?.slice(0, 12)}
-                        </span>
+                        <span className="font-mono text-[11px] text-text-muted">{envRec.buildHash?.slice(0, 12)}</span>
                       </div>
                       {(bpDrift.hasCodeDrift || bpDrift.hasGraphDrift) && (
-                        <div
-                          data-testid={`blueprint-drift-flags-${envName}`}
-                          className="flex items-center gap-2 flex-wrap pt-1"
-                        >
+                        <div data-testid={`blueprint-drift-flags-${envName}`} className="flex items-center gap-2 flex-wrap pt-1">
                           {bpDrift.hasCodeDrift && (
                             <span
                               data-testid={`blueprint-code-drift-badge-${envName}`}
@@ -966,19 +810,11 @@ export function ConnectionsView() {
 
                   {/* Out-of-Band Drift Items */}
                   {oobDrift.length > 0 && (
-                    <div
-                      data-testid={`out-of-band-drift-list-${envName}`}
-                      className="p-2.5 rounded bg-rose-950/60 border border-rose-700/70 space-y-1.5"
-                    >
-                      <div className="font-bold text-rose-200 text-[11px]">
-                        ⚠ Out-of-Band Cloudflare Drift ({oobDrift.length})
-                      </div>
+                    <div data-testid={`out-of-band-drift-list-${envName}`} className="p-2.5 rounded bg-rose-950/60 border border-rose-700/70 space-y-1.5">
+                      <div className="font-bold text-rose-200 text-[11px]">⚠ Out-of-Band Cloudflare Drift ({oobDrift.length})</div>
                       <ul className="space-y-1 text-[11px] font-mono text-rose-100">
                         {oobDrift.map((item, idx) => (
-                          <li
-                            key={`${item.resource}:${idx}`}
-                            data-testid={`out-of-band-drift-item-${envName}-${idx}`}
-                          >
+                          <li key={`${item.resource}:${idx}`} data-testid={`out-of-band-drift-item-${envName}-${idx}`}>
                             [{item.resource.toUpperCase()}] {item.message}
                           </li>
                         ))}
@@ -990,11 +826,7 @@ export function ConnectionsView() {
                   <div className="space-y-1.5">
                     <div className="font-semibold text-text-secondary text-[11px] flex items-center justify-between">
                       <span>Deployment History ({deployments.length})</span>
-                      {envRec.deployedBy && (
-                        <span className="text-text-muted font-mono text-[10px]">
-                          Last by {envRec.deployedBy}
-                        </span>
-                      )}
+                      {envRec.deployedBy && <span className="text-text-muted font-mono text-[10px]">Last by {envRec.deployedBy}</span>}
                     </div>
 
                     {deployments.length === 0 ? (
@@ -1005,14 +837,10 @@ export function ConnectionsView() {
                         No deployments recorded for {envName} yet.
                       </div>
                     ) : (
-                      <div
-                        data-testid={`deployment-history-${envName}`}
-                        className="space-y-1.5 max-h-60 overflow-y-auto"
-                      >
+                      <div data-testid={`deployment-history-${envName}`} className="space-y-1.5 max-h-60 overflow-y-auto">
                         {deployments.map((dep, idx) => {
                           const isLatest = idx === 0;
-                          const canRollback =
-                            !isViewer && (!isLatest || !inSync);
+                          const canRollback = !isViewer && (!isLatest || !inSync);
                           return (
                             <div
                               key={dep.deployId}
@@ -1028,30 +856,22 @@ export function ConnectionsView() {
                                   >
                                     {dep.versionLabel}
                                   </span>
-                                  <span className="font-mono font-semibold text-text-primary text-[11px]">
-                                    r{dep.revision}
-                                  </span>
-                                  <code
-                                    data-testid={`deployment-build-hash-${dep.deployId}`}
-                                    className="font-mono text-[10px] text-amber-300"
-                                  >
+                                  <span className="font-mono font-semibold text-text-primary text-[11px]">r{dep.revision}</span>
+                                  <code data-testid={`deployment-build-hash-${dep.deployId}`} className="font-mono text-[10px] text-amber-300">
                                     {dep.buildHash.slice(0, 10)}
                                   </code>
                                   <span className="px-1.5 py-0.5 rounded bg-surface-control border border-border text-[10px] text-text-secondary">
                                     {dep.action}
                                   </span>
                                   {isLatest && (
-                                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-semibold text-[10px]">
-                                      Active
-                                    </span>
+                                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-semibold text-[10px]">Active</span>
                                   )}
                                   {dep.rollbackFromDeploymentId && (
                                     <span
                                       data-testid={`deployment-rollback-badge-${dep.deployId}`}
                                       className="px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono text-[10px]"
                                     >
-                                      ↶ rolled back from{" "}
-                                      {dep.rollbackFromDeploymentId.slice(0, 12)}
+                                      ↶ rolled back from {dep.rollbackFromDeploymentId.slice(0, 12)}
                                     </span>
                                   )}
                                 </div>
@@ -1099,26 +919,17 @@ export function ConnectionsView() {
         onConnected={({ token, environments }) => {
           setActiveCfToken(token);
           setCfEnvironments(environments);
-          setCfStatusMessage(
-            `Connected to ${token.accountName} — preview & production environments ready.`,
-          );
+          setCfStatusMessage(`Connected to ${token.accountName} — preview & production environments ready.`);
         }}
       />
 
       {/* Secrets & Connections Table / List */}
       {secrets.length === 0 ? (
-        <div
-          data-testid="connections-empty-state"
-          className="p-8 rounded-lg bg-surface-raised border border-border text-center space-y-2"
-        >
-          <div className="text-sm font-semibold text-text-primary">
-            No connections or secrets configured yet
-          </div>
+        <div data-testid="connections-empty-state" className="p-8 rounded-lg bg-surface-raised border border-border text-center space-y-2">
+          <div className="text-sm font-semibold text-text-primary">No connections or secrets configured yet</div>
           <p className="text-xs text-text-muted max-w-md mx-auto">
-            Add an API Key, Webhook Signing Secret, or Brick Secret to seal it in
-            the AES-GCM vault and bind its{" "}
-            <code className="font-mono text-amber-300">sec_*</code> handle to
-            your bricks or workflow steps.
+            Add an API Key, Webhook Signing Secret, or Brick Secret to seal it in the AES-GCM vault and bind its{" "}
+            <code className="font-mono text-amber-300">sec_*</code> handle to your bricks or workflow steps.
           </p>
         </div>
       ) : (
@@ -1134,9 +945,7 @@ export function ConnectionsView() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <span className="font-bold text-sm text-text-primary">
-                        {secret.label}
-                      </span>
+                      <span className="font-bold text-sm text-text-primary">{secret.label}</span>
                       <span
                         data-testid={`secret-ref-${secret.ref}`}
                         className="px-2 py-0.5 rounded bg-surface-base border border-border font-mono text-xs text-amber-300"
@@ -1156,10 +965,7 @@ export function ConnectionsView() {
 
                     <div className="flex items-center gap-4 text-xs text-text-muted">
                       <span>
-                        App / Brick:{" "}
-                        <strong className="font-mono text-text-secondary">
-                          {secret.appOrBrick}
-                        </strong>
+                        App / Brick: <strong className="font-mono text-text-secondary">{secret.appOrBrick}</strong>
                       </span>
                       <span>
                         Key Hint:{" "}
@@ -1171,10 +977,7 @@ export function ConnectionsView() {
                         </code>
                       </span>
                       <span>
-                        Scope:{" "}
-                        <span className="font-mono text-text-secondary">
-                          {secret.envScope}
-                        </span>
+                        Scope: <span className="font-mono text-text-secondary">{secret.envScope}</span>
                       </span>
                     </div>
                   </div>
@@ -1206,9 +1009,7 @@ export function ConnectionsView() {
                       onClick={() => openRotateModal(secret)}
                       className="px-2.5 py-1 rounded bg-surface-control hover:bg-slate-700 border border-border-strong text-xs font-semibold text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {secret.status === "missing"
-                        ? "Provide Value"
-                        : "Rotate / Replace"}
+                      {secret.status === "missing" ? "Provide Value" : "Rotate / Replace"}
                     </button>
                     <button
                       type="button"
@@ -1223,15 +1024,10 @@ export function ConnectionsView() {
                 </div>
 
                 {/* Used By Targets */}
-                <div
-                  data-testid={`secret-used-by-${secret.ref}`}
-                  className="pt-2 border-t border-border/60 flex items-center gap-2 flex-wrap text-xs"
-                >
+                <div data-testid={`secret-used-by-${secret.ref}`} className="pt-2 border-t border-border/60 flex items-center gap-2 flex-wrap text-xs">
                   <span className="text-text-muted font-semibold">Used by:</span>
                   {secret.usedBy.length === 0 ? (
-                    <span className="text-text-muted italic">
-                      Not bound to any brick or workflow step yet
-                    </span>
+                    <span className="text-text-muted italic">Not bound to any brick or workflow step yet</span>
                   ) : (
                     secret.usedBy.map((target) => (
                       <button
@@ -1241,13 +1037,9 @@ export function ConnectionsView() {
                         onClick={() => handleJumpToTarget(target)}
                         className="px-2 py-0.5 rounded bg-surface-control hover:bg-accent/20 border border-border-strong text-[11px] font-mono text-sky-300 flex items-center gap-1.5 transition"
                       >
-                        <span>
-                          {target.targetKind === "brick" ? "▣ Brick" : "☍ Node"}:
-                        </span>
+                        <span>{target.targetKind === "brick" ? "▣ Brick" : "☍ Node"}:</span>
                         <span className="font-bold">{target.targetId}</span>
-                        <span className="text-text-muted">
-                          ({target.secretName})
-                        </span>
+                        <span className="text-text-muted">({target.secretName})</span>
                       </button>
                     ))
                   )}
@@ -1272,9 +1064,7 @@ export function ConnectionsView() {
                 bricks/integration-connections
               </span>
             </h2>
-            <p className="text-[11px] text-text-secondary">
-              End-user multi-tenant OAuth2 widget isolated per customer workspace (AD-S19,Aad-bound).
-            </p>
+            <p className="text-[11px] text-text-secondary">End-user multi-tenant OAuth2 widget isolated per customer workspace (AD-S19,Aad-bound).</p>
           </div>
         </div>
 
@@ -1306,9 +1096,7 @@ export function ConnectionsView() {
               >
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-text-primary">
-                      {displayName}
-                    </span>
+                    <span className="text-xs font-bold text-text-primary">{displayName}</span>
                     <span
                       data-testid={`case-b-provider-status-${provider}`}
                       className="px-1.5 py-0.5 rounded text-[10px] font-semibold border border-border-strong text-text-secondary"
@@ -1317,10 +1105,7 @@ export function ConnectionsView() {
                     </span>
                   </div>
                   {entry.status === "connected" && entry.accountLabel && (
-                    <div
-                      data-testid={`case-b-provider-account-${provider}`}
-                      className="text-[11px] text-emerald-300 font-mono"
-                    >
+                    <div data-testid={`case-b-provider-account-${provider}`} className="text-[11px] text-emerald-300 font-mono">
                       {entry.accountLabel}
                     </div>
                   )}
@@ -1419,9 +1204,7 @@ export function ConnectionsView() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-text-primary">
-                {rotatingSecret
-                  ? `Rotate Secret Value (${rotatingSecret.ref})`
-                  : "Add Connection / Secret"}
+                {rotatingSecret ? `Rotate Secret Value (${rotatingSecret.ref})` : "Add Connection / Secret"}
               </h2>
               <button
                 type="button"
@@ -1438,20 +1221,13 @@ export function ConnectionsView() {
             </div>
 
             {formError && (
-              <div
-                role="alert"
-                data-testid="secret-modal-error"
-                className="p-2.5 rounded bg-rose-950/80 border border-rose-700 text-rose-200 text-xs"
-              >
+              <div role="alert" data-testid="secret-modal-error" className="p-2.5 rounded bg-rose-950/80 border border-rose-700 text-rose-200 text-xs">
                 {formError}
               </div>
             )}
 
             <div className="space-y-1">
-              <label
-                htmlFor="secret-kind-select"
-                className="block text-xs font-semibold text-text-secondary"
-              >
+              <label htmlFor="secret-kind-select" className="block text-xs font-semibold text-text-secondary">
                 Secret Kind
               </label>
               <select
@@ -1468,10 +1244,7 @@ export function ConnectionsView() {
             </div>
 
             <div className="space-y-1">
-              <label
-                htmlFor="secret-label-input"
-                className="block text-xs font-semibold text-text-secondary"
-              >
+              <label htmlFor="secret-label-input" className="block text-xs font-semibold text-text-secondary">
                 Display Label
               </label>
               <input
@@ -1486,10 +1259,7 @@ export function ConnectionsView() {
             </div>
 
             <div className="space-y-1">
-              <label
-                htmlFor="secret-handle-input"
-                className="block text-xs font-semibold text-text-secondary"
-              >
+              <label htmlFor="secret-handle-input" className="block text-xs font-semibold text-text-secondary">
                 Opaque Handle (<code className="font-mono">sec_*</code>)
               </label>
               <input
@@ -1507,10 +1277,7 @@ export function ConnectionsView() {
             </div>
 
             <div className="space-y-1">
-              <label
-                htmlFor="secret-app-input"
-                className="block text-xs font-semibold text-text-secondary"
-              >
+              <label htmlFor="secret-app-input" className="block text-xs font-semibold text-text-secondary">
                 App or Brick Identifier
               </label>
               <input
@@ -1525,10 +1292,7 @@ export function ConnectionsView() {
             </div>
 
             <div className="space-y-1">
-              <label
-                htmlFor="secret-value-input"
-                className="block text-xs font-semibold text-text-secondary"
-              >
+              <label htmlFor="secret-value-input" className="block text-xs font-semibold text-text-secondary">
                 Secret Plaintext Value (Write-Only · Sealed with AES-GCM)
               </label>
               <input
@@ -1545,10 +1309,7 @@ export function ConnectionsView() {
 
             {!rotatingSecret && availableBindOptions.length > 0 && (
               <div className="space-y-1">
-                <label
-                  htmlFor="secret-bind-target-select"
-                  className="block text-xs font-semibold text-text-secondary"
-                >
+                <label htmlFor="secret-bind-target-select" className="block text-xs font-semibold text-text-secondary">
                   Bind to Brick or Workflow Step (Optional)
                 </label>
                 <select
@@ -1603,27 +1364,16 @@ export function ConnectionsView() {
           className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
         >
           <div className="w-full max-w-md rounded-lg bg-surface-raised border border-rose-500/40 p-5 space-y-4 shadow-xl">
-            <h2 className="text-sm font-bold text-rose-300">
-              Delete Secret {deletingSecret.ref}?
-            </h2>
+            <h2 className="text-sm font-bold text-rose-300">Delete Secret {deletingSecret.ref}?</h2>
             <p className="text-xs text-text-secondary">
-              This will permanently remove the encrypted ciphertext from the
-              Studio Vault and unbind{" "}
-              <code className="font-mono text-amber-300">
-                {deletingSecret.ref}
-              </code>{" "}
-              from the blueprint.
+              This will permanently remove the encrypted ciphertext from the Studio Vault and unbind{" "}
+              <code className="font-mono text-amber-300">{deletingSecret.ref}</code> from the blueprint.
             </p>
 
             {deletingSecret.usedBy.length > 0 && (
-              <div
-                data-testid="delete-secret-impact-warning"
-                className="p-3 rounded bg-amber-500/10 border border-amber-500/30 space-y-1.5"
-              >
+              <div data-testid="delete-secret-impact-warning" className="p-3 rounded bg-amber-500/10 border border-amber-500/30 space-y-1.5">
                 <div className="text-xs font-bold text-amber-300">
-                  ⚠ Warning: {deletingSecret.usedBy.length}{" "}
-                  {deletingSecret.usedBy.length === 1 ? "target" : "targets"}{" "}
-                  will become unready:
+                  ⚠ Warning: {deletingSecret.usedBy.length} {deletingSecret.usedBy.length === 1 ? "target" : "targets"} will become unready:
                 </div>
                 <ul className="list-disc list-inside text-xs font-mono text-amber-200 space-y-0.5">
                   {deletingSecret.usedBy.map((t) => (
@@ -1666,13 +1416,7 @@ export function ConnectionsView() {
         onDeployed={({ environment }) => {
           if (environment) {
             setCfEnvironments((prev) => {
-              const filtered = prev.filter(
-                (e) =>
-                  !(
-                    e.projectId === environment.projectId &&
-                    e.envName === environment.envName
-                  ),
-              );
+              const filtered = prev.filter((e) => !(e.projectId === environment.projectId && e.envName === environment.envName));
               return [...filtered, environment];
             });
           }
@@ -1692,19 +1436,11 @@ export function ConnectionsView() {
         onRolledBack={({ environment, revision }) => {
           if (environment) {
             setCfEnvironments((prev) => {
-              const filtered = prev.filter(
-                (e) =>
-                  !(
-                    e.projectId === environment.projectId &&
-                    e.envName === environment.envName
-                  ),
-              );
+              const filtered = prev.filter((e) => !(e.projectId === environment.projectId && e.envName === environment.envName));
               return [...filtered, environment];
             });
           }
-          setCfStatusMessage(
-            `Rolled back ${rollbackTarget?.envName ?? "environment"} to r${revision ?? ""}.`,
-          );
+          setCfStatusMessage(`Rolled back ${rollbackTarget?.envName ?? "environment"} to r${revision ?? ""}.`);
           if (typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("studio:environments-updated"));
           }

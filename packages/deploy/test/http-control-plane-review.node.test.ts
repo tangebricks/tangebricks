@@ -32,7 +32,10 @@ function setup(fakeOptions: Partial<Parameters<typeof createFakeCloudflare>[0]> 
 describe("verification: unreachable is not a refusal", () => {
   test("a 5xx from the user endpoint propagates as unreachable, never as an invalid token", async () => {
     const { fake, cp, rest } = setup({ tokenKind: "user" });
-    fake.fail({ when: (m, p) => m === "GET" && p === "/client/v4/user/tokens/verify", respond: { status: 503, body: { success: false, errors: [{ code: 10013, message: "service unavailable" }] } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p === "/client/v4/user/tokens/verify",
+      respond: { status: 503, body: { success: false, errors: [{ code: 10013, message: "service unavailable" }] } },
+    });
     await expect(verifyCloudflareToken(TOKEN, ACCOUNT, { client: cp })).rejects.toThrow(/HTTP 503/);
     await expect(rest.verifyToken()).rejects.toMatchObject({ status: 503 });
   });
@@ -45,7 +48,10 @@ describe("verification: unreachable is not a refusal", () => {
 
   test("a 4xx from both endpoints is a refusal (invalid)", async () => {
     const { fake, cp } = setup({ tokenKind: "user" });
-    fake.fail({ when: (m, p) => m === "GET" && p === "/client/v4/user/tokens/verify", respond: { status: 403, body: { success: false, errors: [{ code: 9109, message: "no" }] } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p === "/client/v4/user/tokens/verify",
+      respond: { status: 403, body: { success: false, errors: [{ code: 9109, message: "no" }] } },
+    });
     expect(await verifyCloudflareToken(TOKEN, ACCOUNT, { client: cp })).toMatchObject({ ok: false, status: "invalid" });
   });
 });
@@ -105,7 +111,12 @@ describe("lists are read across pages", () => {
     fake.seedDatabase("a-first");
     fake.seedDatabase("b-second");
     fake.seedDatabase("px-tangebricks-test-0badf00d-preview-db");
-    const ledger = openLedger(memoryStore(), () => "a1b2c3d4", () => new Date(), STUDIO_TEST_NAME_POLICY);
+    const ledger = openLedger(
+      memoryStore(),
+      () => "a1b2c3d4",
+      () => new Date(),
+      STUDIO_TEST_NAME_POLICY,
+    );
     expect(await findUnledgered(rest, ledger, STUDIO_TEST_NAME_POLICY)).toEqual([{ kind: "d1_database", name: "px-tangebricks-test-0badf00d-preview-db" }]);
     expect(fake.requests.filter((r) => r.path.endsWith("/d1/database")).every((r) => !r.query.includes("name="))).toBe(true);
   });
@@ -116,17 +127,29 @@ describe("lists are read across pages", () => {
     fake.seedWorkflow("px-tangebricks-test-0badf00d-preview-graphs");
     fake.seedQueue("q-other");
     fake.seedQueue("px-tangebricks-test-0badf00d-preview-jobs");
-    const ledger = openLedger(memoryStore(), () => "a1b2c3d4", () => new Date(), STUDIO_TEST_NAME_POLICY);
+    const ledger = openLedger(
+      memoryStore(),
+      () => "a1b2c3d4",
+      () => new Date(),
+      STUDIO_TEST_NAME_POLICY,
+    );
     const found = await findUnledgered(rest, ledger, STUDIO_TEST_NAME_POLICY);
-    expect(found).toEqual(expect.arrayContaining([
-      { kind: "workflow", name: "px-tangebricks-test-0badf00d-preview-graphs" },
-      { kind: "queue", name: "px-tangebricks-test-0badf00d-preview-jobs" },
-    ]));
+    expect(found).toEqual(
+      expect.arrayContaining([
+        { kind: "workflow", name: "px-tangebricks-test-0badf00d-preview-graphs" },
+        { kind: "queue", name: "px-tangebricks-test-0badf00d-preview-jobs" },
+      ]),
+    );
   });
 
   test("findUnledgered tolerates an account without Queues (400)", async () => {
     const { rest } = setup({ queuesUnavailable: 400 });
-    const ledger = openLedger(memoryStore(), () => "a1b2c3d4", () => new Date(), STUDIO_TEST_NAME_POLICY);
+    const ledger = openLedger(
+      memoryStore(),
+      () => "a1b2c3d4",
+      () => new Date(),
+      STUDIO_TEST_NAME_POLICY,
+    );
     expect(await findUnledgered(rest, ledger, STUDIO_TEST_NAME_POLICY)).toEqual([]);
   });
 });
@@ -137,10 +160,20 @@ describe("no changes is judged in the account", () => {
   test("a plan that says noop while the Worker is gone from the account redeploys it", async () => {
     const { fake, cp } = setup();
     const provisioner = createByocProvisioner({ apiClient: cp, resolveToken: async () => TOKEN });
-    const input = { target, project: "r53-gone", buildHash: "build_1", codeHash: "code_1", graphHash: "graph_1", bundle: { code: "export class GraphRunner {} export default {};", sha256: "code_1" } };
+    const input = {
+      target,
+      project: "r53-gone",
+      buildHash: "build_1",
+      codeHash: "code_1",
+      graphHash: "graph_1",
+      bundle: { code: "export class GraphRunner {} export default {};", sha256: "code_1" },
+    };
     await provisioner.apply(input as never);
     await cp.deleteScript(ACCOUNT, TOKEN, "px-r53-gone-preview");
-    const again = await provisioner.apply({ ...input, envState: { deployedRev: 1, currentBuildHash: "build_1", currentCodeHash: "code_1", currentGraphHash: "graph_1", databaseExists: true } } as never);
+    const again = await provisioner.apply({
+      ...input,
+      envState: { deployedRev: 1, currentBuildHash: "build_1", currentCodeHash: "code_1", currentGraphHash: "graph_1", databaseExists: true },
+    } as never);
     expect(again.action).not.toBe("noop");
     expect(again.rebuiltWorker).toBe(true);
     expect(fake.state().scripts.map((s) => s.name)).toContain("px-r53-gone-preview");
@@ -149,7 +182,14 @@ describe("no changes is judged in the account", () => {
   test("without the caller's memory, the account's own state makes an unchanged redeploy a no-op with zero writes", async () => {
     const { cp } = setup();
     const provisioner = createByocProvisioner({ apiClient: cp, resolveToken: async () => TOKEN });
-    const input = { target, project: "r53-acct", buildHash: "build_1", codeHash: "code_1", graphHash: "graph_1", bundle: { code: "export default {};", sha256: "code_1" } };
+    const input = {
+      target,
+      project: "r53-acct",
+      buildHash: "build_1",
+      codeHash: "code_1",
+      graphHash: "graph_1",
+      bundle: { code: "export default {};", sha256: "code_1" },
+    };
     await provisioner.apply(input as never);
     const before = cp.httpCalls.length;
     const again = await provisioner.apply({ ...input, envState: { deployedRev: 1 } } as never);
@@ -160,9 +200,21 @@ describe("no changes is judged in the account", () => {
   test("a changed bundle hash (the gate or runtime layer) uploads again", async () => {
     const { cp } = setup();
     const provisioner = createByocProvisioner({ apiClient: cp, resolveToken: async () => TOKEN });
-    const input = { target, project: "r53-layer", buildHash: "build_1", codeHash: "bundle_a", graphHash: "graph_1", bundle: { code: "export default {}; // a", sha256: "bundle_a" } };
+    const input = {
+      target,
+      project: "r53-layer",
+      buildHash: "build_1",
+      codeHash: "bundle_a",
+      graphHash: "graph_1",
+      bundle: { code: "export default {}; // a", sha256: "bundle_a" },
+    };
     await provisioner.apply(input as never);
-    const again = await provisioner.apply({ ...input, codeHash: "bundle_b", bundle: { code: "export default {}; // b", sha256: "bundle_b" }, envState: { deployedRev: 1 } } as never);
+    const again = await provisioner.apply({
+      ...input,
+      codeHash: "bundle_b",
+      bundle: { code: "export default {}; // b", sha256: "bundle_b" },
+      envState: { deployedRev: 1 },
+    } as never);
     expect(again.rebuiltWorker).toBe(true);
     expect((await cp.getScript(ACCOUNT, TOKEN, "px-r53-layer-preview"))?.codeHash).toBe("bundle_b");
   });

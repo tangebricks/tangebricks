@@ -93,10 +93,7 @@ export async function hashLegacySessionTokens(db: D1Like, table = "session"): Pr
   for (const row of rows.results ?? []) {
     if (typeof row.token !== "string" || isHashedSessionToken(row.token)) continue;
     const hashed = await sha256HexString(row.token);
-    const res = await db
-      .prepare(`UPDATE ${quoted} SET "token" = ? WHERE "id" = ? AND "token" = ?`)
-      .bind(hashed, row.id, row.token)
-      .run();
+    const res = await db.prepare(`UPDATE ${quoted} SET "token" = ? WHERE "id" = ? AND "token" = ?`).bind(hashed, row.id, row.token).run();
     rewritten += Number(res.meta?.changes ?? 0);
   }
   return rewritten;
@@ -148,9 +145,7 @@ export function withHashedSessionTokens(
    * Hashes the token predicates of `where`; returns the new clause and digest -> raw token for the raw values. A value in
    * the stored-row form (`sha256.<digest>`, what list-sessions hands out) names that row's digest directly.
    */
-  async function mapWhere(
-    where: WhereLike[] | undefined,
-  ): Promise<{ where: WhereLike[] | undefined; rawByDigest: Map<string, string> }> {
+  async function mapWhere(where: WhereLike[] | undefined): Promise<{ where: WhereLike[] | undefined; rawByDigest: Map<string, string> }> {
     const rawByDigest = new Map<string, string>();
     if (!Array.isArray(where)) return { where, rawByDigest };
     const hashOne = async (value: unknown): Promise<unknown> => {
@@ -165,9 +160,7 @@ export function withHashedSessionTokens(
     const mapped = await Promise.all(
       where.map(async (clause) => {
         if (clause.field !== field) return clause;
-        const value = Array.isArray(clause.value)
-          ? await Promise.all(clause.value.map(hashOne))
-          : await hashOne(clause.value);
+        const value = Array.isArray(clause.value) ? await Promise.all(clause.value.map(hashOne)) : await hashOne(clause.value);
         return { ...clause, value };
       }),
     );
@@ -291,9 +284,7 @@ export function withHashedSessionTokens(
       },
       async transaction(callback: (trx: any) => Promise<any>) {
         const adapter = await getAdapter();
-        return adapter.transaction((trx: SessionAdapterLike) =>
-          callback(wrap(async () => trx, { id: trx?.id ?? base.id, options: trx?.options })),
-        );
+        return adapter.transaction((trx: SessionAdapterLike) => callback(wrap(async () => trx, { id: trx?.id ?? base.id, options: trx?.options })));
       },
     };
     return wrapped;

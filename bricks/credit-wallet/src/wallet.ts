@@ -69,7 +69,15 @@ export interface Wallet {
    * ledger answers `duplicate: true` only when that row is a deduction of the same amount carrying the same tags; any
    * other row, including one written before tags existed, is `idempotency_key_reused` and nothing is taken.
    */
-  deduct(input: { workspaceId: string; userId: string; amountMilli: number; reason: string; metadata?: Record<string, unknown>; idempotencyKey?: string; match?: IdempotencyMatch }): Promise<DeductResult>;
+  deduct(input: {
+    workspaceId: string;
+    userId: string;
+    amountMilli: number;
+    reason: string;
+    metadata?: Record<string, unknown>;
+    idempotencyKey?: string;
+    match?: IdempotencyMatch;
+  }): Promise<DeductResult>;
   /**
    * Adds `amountMilli` once per key (a top-up row). Story 2.6: `match` tags the row like a deduction's (e.g. `{ op: "grant" }`),
    * and a retry is a duplicate only when the row under its key is a top-up of the same amount carrying the same tags.
@@ -87,7 +95,14 @@ export interface Wallet {
    * Story 2.5: moves `amountMilli` from one workspace's wallet to another's in one D1 batch, idempotent per (source
    * workspace, key). The caller has already decided that `userId` may spend the source workspace's credits.
    */
-  transfer(input: { fromWorkspaceId: string; toWorkspaceId: string; userId: string; amountMilli: number; idempotencyKey: string; note?: string }): Promise<TransferResult>;
+  transfer(input: {
+    fromWorkspaceId: string;
+    toWorkspaceId: string;
+    userId: string;
+    amountMilli: number;
+    idempotencyKey: string;
+    note?: string;
+  }): Promise<TransferResult>;
   createOrder(input: { workspaceId: string; userId: string; amount: number }): Promise<{ orderId: string; paymentSessionId: string }>;
   getOrder(orderId: string): Promise<OrderRow | null>;
   confirmOrder(orderId: string): Promise<ConfirmResult>;
@@ -97,8 +112,7 @@ const isWholeAmount = (n: unknown): n is number => typeof n === "number" && Numb
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const isOverdraw = (error: unknown) => /CHECK constraint failed: (balance_milli|balance_after_milli) >= 0/.test(errorText(error));
 // Migration 0002 makes the key unique per (workspace_id, idempotency_key); SQLite names both columns.
-const isDuplicateKey = (error: unknown) =>
-  /UNIQUE constraint failed: credit_ledger\.workspace_id, credit_ledger\.idempotency_key/.test(errorText(error));
+const isDuplicateKey = (error: unknown) => /UNIQUE constraint failed: credit_ledger\.workspace_id, credit_ledger\.idempotency_key/.test(errorText(error));
 // A transfer's ledger rows read their balance with a scalar subquery, which is NULL when that wallet does not exist:
 // the NOT NULL column then raises, and the whole batch is rolled back.
 const isMissingWallet = (error: unknown) => /NOT NULL constraint failed: credit_ledger\.balance_after_milli/.test(errorText(error));
@@ -196,7 +210,8 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
     },
 
     async openWallet(workspaceId, initialBalanceMilli = 0) {
-      if (!Number.isSafeInteger(initialBalanceMilli) || initialBalanceMilli < 0) throw new RangeError("initialBalanceMilli must be a whole number of thousandths, zero or more");
+      if (!Number.isSafeInteger(initialBalanceMilli) || initialBalanceMilli < 0)
+        throw new RangeError("initialBalanceMilli must be a whole number of thousandths, zero or more");
       await db.prepare("INSERT OR IGNORE INTO credit_wallets (workspace_id, balance_milli) VALUES (?, ?)").bind(workspaceId, initialBalanceMilli).run();
     },
 
@@ -310,9 +325,7 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
         // statement, the destination's credit included.
         await db.batch([
           db.prepare("UPDATE credit_wallets SET balance_milli = balance_milli - ? WHERE workspace_id = ?").bind(amountMilli, fromWorkspaceId),
-          db
-            .prepare(creditDestination)
-            .bind(amountMilli, toWorkspaceId, ...destinationArgs),
+          db.prepare(creditDestination).bind(amountMilli, toWorkspaceId, ...destinationArgs),
           db
             .prepare(insertOut)
             .bind(
@@ -330,7 +343,19 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
           // The destination's row names neither the source workspace nor its user: only the amount and the code.
           db
             .prepare(insertIn)
-            .bind(crypto.randomUUID(), toWorkspaceId, "transfer", "transfer_in", amountMilli, toWorkspaceId, ...destinationArgs, "Transfer in", "{}", null, transferCode),
+            .bind(
+              crypto.randomUUID(),
+              toWorkspaceId,
+              "transfer",
+              "transfer_in",
+              amountMilli,
+              toWorkspaceId,
+              ...destinationArgs,
+              "Transfer in",
+              "{}",
+              null,
+              transferCode,
+            ),
         ]);
       } catch (error) {
         if (isOverdraw(error) || isDuplicateKey(error)) {
@@ -391,7 +416,8 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
       } catch {
         // A provider that fetches by its own reference cannot find an order stored without one: say so, or the
         // retries end in a permanent, unexplained 502.
-        if (!order.provider_ref) console.error(`credit-wallet: order has no provider reference, so the provider could not be asked about it (order ${orderId})`);
+        if (!order.provider_ref)
+          console.error(`credit-wallet: order has no provider reference, so the provider could not be asked about it (order ${orderId})`);
         return { status: "gateway_error", credited: false };
       }
       if (gatewayOrder.status !== "PAID") return { status: gatewayOrder.status, credited: false };
@@ -407,10 +433,7 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
       } catch {
         return { status: "invalid_amount", credited: false };
       }
-      const check = checkGatewayOrder(
-        { orderId, amountMinor: expectedMinor, currency: orderCurrency, customerId: order.user_id },
-        gatewayOrder,
-      );
+      const check = checkGatewayOrder({ orderId, amountMinor: expectedMinor, currency: orderCurrency, customerId: order.user_id }, gatewayOrder);
       if (!check.ok) return { status: "verification_mismatch", credited: false, field: check.field, workspaceId: order.workspace_id };
 
       // The order's whole amount times the multiplier's thousandths: an integer product, never a float.
@@ -428,7 +451,14 @@ export function createWallet(db: D1Like, gateway: PaymentGateway | undefined, op
               "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key) " +
                 "SELECT ?, workspace_id, ?, 'topup', ?, balance_milli, 'Top-up', ?, ? FROM credit_wallets WHERE workspace_id = ?",
             )
-            .bind(crypto.randomUUID(), order.user_id, creditsMilli, JSON.stringify({ order_id: orderId, amount_paid: order.amount, credits_per_unit_milli: creditsPerUnitMilli }), key, order.workspace_id),
+            .bind(
+              crypto.randomUUID(),
+              order.user_id,
+              creditsMilli,
+              JSON.stringify({ order_id: orderId, amount_paid: order.amount, credits_per_unit_milli: creditsPerUnitMilli }),
+              key,
+              order.workspace_id,
+            ),
           // Marked processed only if the ledger row above exists, so an order can never be closed without a credit.
           db
             .prepare(

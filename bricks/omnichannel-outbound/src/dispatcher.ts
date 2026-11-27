@@ -225,7 +225,8 @@ function templateError(template: OutboundTemplate): string | null {
   if (variables.length > 50) return "A template takes at most 50 variables";
   for (const [key, value] of variables) {
     if (!TEMPLATE_VARIABLE.test(key)) return "Template variable names must be 1 to 64 letters, digits, '_', '.' or '-'";
-    if (typeof value !== "string" || value.length > 1024 || hasHeaderBreak(value)) return "Template variable values must be strings of at most 1024 characters without CR, LF or NUL";
+    if (typeof value !== "string" || value.length > 1024 || hasHeaderBreak(value))
+      return "Template variable values must be strings of at most 1024 characters without CR, LF or NUL";
   }
   return null;
 }
@@ -357,7 +358,8 @@ export class MessageDispatcherService {
 
     if (!provider || provider.length > 64) return { ok: false, error: "Provider name must be between 1 and 64 characters", code: 400 };
     if (!sender || sender.length > 255) return { ok: false, error: "Sender address must be between 1 and 255 characters", code: 400 };
-    if (hasHeaderBreak(senderAddressRaw) || /[,;]/.test(sender)) return { ok: false, error: "Sender address must be one address without CR, LF or NUL", code: 400 };
+    if (hasHeaderBreak(senderAddressRaw) || /[,;]/.test(sender))
+      return { ok: false, error: "Sender address must be one address without CR, LF or NUL", code: 400 };
     if (channelType === "email" && !EMAIL.test(sender)) return { ok: false, error: "Sender address must be a valid email address", code: 400 };
 
     const configShapeProblem = configError(config);
@@ -437,7 +439,12 @@ export class MessageDispatcherService {
       return { ok: false, error: "The provider could not be asked about the sender; try again later", code: 502, errorCode: "PROVIDER_UNAVAILABLE" };
     }
     if (verification.method === "credential") {
-      await db.update("msg_channels", { verified: verification.verified ? 1 : 0, verify_code_hash: null, verify_code_expires_at: null, verify_code_attempts: 0 }, "id = ?", [channelId]);
+      await db.update(
+        "msg_channels",
+        { verified: verification.verified ? 1 : 0, verify_code_hash: null, verify_code_expires_at: null, verify_code_attempts: 0 },
+        "id = ?",
+        [channelId],
+      );
       return { ok: true, channel: { ...channel, verified: verification.verified }, method: "credential" };
     }
     if (channel.verified) return { ok: true, channel, method: "code", codeSent: false };
@@ -451,7 +458,12 @@ export class MessageDispatcherService {
       const key = await rateLimitStorageKey("messages-verify-code-workspace", workspaceId);
       const counted = await hitRateLimit(this.db, key, VERIFY_CODE_MAX_SENDS_PER_WORKSPACE_HOUR, 3600, nowMs);
       if (!counted.allowed) {
-        return { ok: false, error: `At most ${VERIFY_CODE_MAX_SENDS_PER_WORKSPACE_HOUR} codes per workspace per hour; try again later`, code: 429, errorCode: "TOO_MANY_CODES" };
+        return {
+          ok: false,
+          error: `At most ${VERIFY_CODE_MAX_SENDS_PER_WORKSPACE_HOUR} codes per workspace per hour; try again later`,
+          code: 429,
+          errorCode: "TOO_MANY_CODES",
+        };
       }
     } catch {
       return { ok: false, error: "The code limiter is unavailable; no code was sent", code: 503, errorCode: "RATE_LIMIT_UNAVAILABLE" };
@@ -481,7 +493,12 @@ export class MessageDispatcherService {
       )
       .run();
     if (Number(claimed.meta?.changes ?? 0) !== 1) {
-      return { ok: false, error: `At most ${VERIFY_CODE_MAX_SENDS_PER_HOUR} codes per hour for one channel; try again later`, code: 429, errorCode: "TOO_MANY_CODES" };
+      return {
+        ok: false,
+        error: `At most ${VERIFY_CODE_MAX_SENDS_PER_HOUR} codes per hour for one channel; try again later`,
+        code: 429,
+        errorCode: "TOO_MANY_CODES",
+      };
     }
     const outcome = await this.deliver(adapter, channel, credentials, {
       recipient: channel.sender_address,
@@ -628,11 +645,7 @@ export class MessageDispatcherService {
    * more than one recipient, an unverified sender (409) and a provider without an adapter (503). The outcome is
    * recorded once: `sent` only with the provider's id, otherwise `failed`.
    */
-  async sendMessage(
-    workspaceId: string,
-    channelIdOrType: string,
-    input: SendInput,
-  ): Promise<{ ok: true; dispatch: DispatchRecord } | Failure> {
+  async sendMessage(workspaceId: string, channelIdOrType: string, input: SendInput): Promise<{ ok: true; dispatch: DispatchRecord } | Failure> {
     const recipient = input.recipient.trim();
     if (!recipient || recipient.length > 255) return { ok: false, error: "Recipient must be between 1 and 255 characters", code: 400 };
     if (hasHeaderBreak(input.recipient)) return { ok: false, error: "Recipient must not contain CR, LF or NUL", code: 400 };
@@ -758,12 +771,11 @@ export class MessageDispatcherService {
       if (!from || typeof update.externalId !== "string") continue;
       const set: Record<string, unknown> = { status: update.status };
       if (update.status === "failed") set.error_text = (update.error ?? "PROVIDER_REPORTED_FAILURE").slice(0, 256);
-      const res = await db.update(
-        "msg_dispatches",
-        set,
-        `external_id = ? AND channel_id = ? AND status IN (${from.map(() => "?").join(", ")})`,
-        [update.externalId, row.id, ...from],
-      );
+      const res = await db.update("msg_dispatches", set, `external_id = ? AND channel_id = ? AND status IN (${from.map(() => "?").join(", ")})`, [
+        update.externalId,
+        row.id,
+        ...from,
+      ]);
       updated += Number(res.meta?.changes ?? 0);
     }
     return { status: 200, ignored: updated === 0, updated };

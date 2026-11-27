@@ -22,11 +22,7 @@ const TELEMETRY_SECRET = "test_px_logs_hmac_secret_6_3";
 describe("@poc/telemetry — Story 6.3 structured logs, redaction, correlation, and /__px/logs pull", () => {
   beforeEach(async () => {
     await ensureTelemetryTables(db);
-    await db.batch([
-      db.prepare("DELETE FROM px_logs"),
-      db.prepare("DELETE FROM px_step_events"),
-      db.prepare("DELETE FROM px_runs"),
-    ]);
+    await db.batch([db.prepare("DELETE FROM px_logs"), db.prepare("DELETE FROM px_step_events"), db.prepare("DELETE FROM px_runs")]);
   });
 
   test("creates px_logs table with required columns and correlation indexes", async () => {
@@ -35,9 +31,7 @@ describe("@poc/telemetry — Story 6.3 structured logs, redaction, correlation, 
     expect(PX_TELEMETRY_MIGRATION_SQL).toContain("idx_px_logs_workspace_brick");
 
     const indexRows = await db
-      .prepare(
-        "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'px_logs'",
-      )
+      .prepare("SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'px_logs'")
       .all<{ name: string; sql: string | null }>();
     const names = (indexRows.results ?? []).map((r) => r.name);
     expect(names).toContain("idx_px_logs_ts");
@@ -77,18 +71,15 @@ describe("@poc/telemetry — Story 6.3 structured logs, redaction, correlation, 
       authorization: `Bearer ${CANARY_BEARER}`,
     });
 
-    await stepLogger.error(
-      `Payment gateway timeout using key ${CANARY_API_KEY}`,
-      {
-        gateway: "razorpay",
-        apiKey: CANARY_API_KEY,
-        nested: {
-          webhookSecret: "whsec_super_secret_value",
-          authorization: `Bearer ${CANARY_BEARER}`,
-        },
-        errorStack: `Error: Gateway timeout (${CANARY_API_KEY}) at Authorization: Bearer ${CANARY_BEARER}\n    at chargeNode (workflow.ts:42:11)`,
+    await stepLogger.error(`Payment gateway timeout using key ${CANARY_API_KEY}`, {
+      gateway: "razorpay",
+      apiKey: CANARY_API_KEY,
+      nested: {
+        webhookSecret: "whsec_super_secret_value",
+        authorization: `Bearer ${CANARY_BEARER}`,
       },
-    );
+      errorStack: `Error: Gateway timeout (${CANARY_API_KEY}) at Authorization: Bearer ${CANARY_BEARER}\n    at chargeNode (workflow.ts:42:11)`,
+    });
 
     // 2. Brick route logger (simulating bricks/credit-wallet route handler)
     const brickRouteLogger = createStructuredLogger({
@@ -126,9 +117,7 @@ describe("@poc/telemetry — Story 6.3 structured logs, redaction, correlation, 
     expect(streamedJson).toContain(REDACTED_PLACEHOLDER);
 
     // Verify raw D1 rows in px_logs have exact correlation tags and zero leaked secrets
-    const rawRows = await db
-      .prepare("SELECT * FROM px_logs ORDER BY seq ASC")
-      .all<Record<string, unknown>>();
+    const rawRows = await db.prepare("SELECT * FROM px_logs ORDER BY seq ASC").all<Record<string, unknown>>();
     const rows = rawRows.results ?? [];
     expect(rows).toHaveLength(3);
 
@@ -203,9 +192,13 @@ describe("@poc/telemetry — Story 6.3 structured logs, redaction, correlation, 
     expect((await queryStructuredLogs(db, { workspaceId: "ws_alpha" }, { level: "error" })).logs).toHaveLength(0);
 
     // Scope ws_alpha & brickId=credit-wallet
-    const wsBrickFiltered = await queryStructuredLogs(db, { workspaceId: "ws_alpha" }, {
-      brickId: "credit-wallet",
-    });
+    const wsBrickFiltered = await queryStructuredLogs(
+      db,
+      { workspaceId: "ws_alpha" },
+      {
+        brickId: "credit-wallet",
+      },
+    );
     expect(wsBrickFiltered.logs).toHaveLength(1);
     expect(wsBrickFiltered.logs[0]!.logId).toBe(second.logId);
 
@@ -224,21 +217,17 @@ describe("@poc/telemetry — Story 6.3 structured logs, redaction, correlation, 
     await expect(queryStructuredLogs(db, {}, { level: "error" })).rejects.toBeInstanceOf(TelemetryScopeError);
 
     // A log line with neither a workspace nor a project stamp is refused
-    await expect(insertStructuredLog(db, { level: "info", message: "orphan line" })).rejects.toBeInstanceOf(
-      TelemetryWriteRefusedError,
-    );
+    await expect(insertStructuredLog(db, { level: "info", message: "orphan line" })).rejects.toBeInstanceOf(TelemetryWriteRefusedError);
 
     // Unsigned request to GET /__px/logs is rejected with 401
-    const unsignedRes = await handleTelemetryLogsPullRequest(
-      new Request("https://worker.example/__px/logs?workspaceId=ws_beta&level=error"),
-      { db, telemetrySecret: TELEMETRY_SECRET },
-    );
+    const unsignedRes = await handleTelemetryLogsPullRequest(new Request("https://worker.example/__px/logs?workspaceId=ws_beta&level=error"), {
+      db,
+      telemetrySecret: TELEMETRY_SECRET,
+    });
     expect(unsignedRes?.status).toBe(401);
 
     // Signed request with facet filters and cursor tailing
-    const url = new URL(
-      `https://worker.example/__px/logs?env=preview&workspaceId=ws_beta&brickId=credit-wallet&level=error&after=${first.seq ?? 0}&limit=10`,
-    );
+    const url = new URL(`https://worker.example/__px/logs?env=preview&workspaceId=ws_beta&brickId=credit-wallet&level=error&after=${first.seq ?? 0}&limit=10`);
     // The old body-only scheme over GET:<path and query> is refused
     const legacyRes = await handleTelemetryLogsPullRequest(
       new Request(url.toString(), {
@@ -258,10 +247,11 @@ describe("@poc/telemetry — Story 6.3 structured logs, redaction, correlation, 
     });
     expect(swappedRes?.status).toBe(401);
 
-    const signedRes = await handleTelemetryLogsPullRequest(
-      new Request(url.toString(), { headers: signed }),
-      { db, telemetrySecret: TELEMETRY_SECRET, pxEnv: "preview" },
-    );
+    const signedRes = await handleTelemetryLogsPullRequest(new Request(url.toString(), { headers: signed }), {
+      db,
+      telemetrySecret: TELEMETRY_SECRET,
+      pxEnv: "preview",
+    });
     expect(signedRes?.status).toBe(200);
     const body = (await signedRes!.json()) as {
       ok: boolean;

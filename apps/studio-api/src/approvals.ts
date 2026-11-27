@@ -16,20 +16,12 @@ import { recordStudioAuditLog } from "./auth.ts";
 import type { StudioCaller } from "./auth.ts";
 import { STUDIO_APPROVAL_REQUESTS_DDL } from "./blueprint-do.ts";
 
-export type ApprovalAction =
-  | "deploy"
-  | "promote"
-  | "rollback"
-  | "revert"
-  | "sandbox_deploy"
-  | "promote_to_byoc"
-  | "import";
+export type ApprovalAction = "deploy" | "promote" | "rollback" | "revert" | "sandbox_deploy" | "promote_to_byoc" | "import";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected" | "consumed" | "expired";
 
 /** How long an approval request stays usable after it is created. */
 export const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
-
 
 /** What an approval is bound to. The org always comes from `authorizeProjectAccess`, never from input. */
 export interface ApprovalBinding {
@@ -103,8 +95,7 @@ export interface ApprovalErrorBody {
 }
 
 export type RequireApprovalResult =
-  | { ok: true; approvalId: string | null; consumedAt?: string }
-  | { ok: false; status: 403 | 404 | 409; body: ApprovalErrorBody };
+  { ok: true; approvalId: string | null; consumedAt?: string } | { ok: false; status: 403 | 404 | 409; body: ApprovalErrorBody };
 
 export async function ensureApprovalSchema(db: D1Like): Promise<void> {
   await db.batch(STUDIO_APPROVAL_REQUESTS_DDL.map((sql) => db.prepare(sql)));
@@ -127,10 +118,7 @@ function toRecord(row: ApprovalRow, nowMs: number): ApprovalRequestRecord {
   } catch {
     summary = {};
   }
-  const requester =
-    summary.requestedBy && typeof summary.requestedBy === "object"
-      ? (summary.requestedBy as { clientName?: unknown; userId?: unknown })
-      : {};
+  const requester = summary.requestedBy && typeof summary.requestedBy === "object" ? (summary.requestedBy as { clientName?: unknown; userId?: unknown }) : {};
   return {
     approvalId: row.id,
     projectId: row.project_id,
@@ -154,16 +142,9 @@ function toRecord(row: ApprovalRow, nowMs: number): ApprovalRequestRecord {
   };
 }
 
-async function readApprovalRow(
-  db: D1Like,
-  orgId: string,
-  projectId: string,
-  approvalId: string,
-): Promise<ApprovalRow | null> {
+async function readApprovalRow(db: D1Like, orgId: string, projectId: string, approvalId: string): Promise<ApprovalRow | null> {
   return db
-    .prepare(
-      `SELECT ${APPROVAL_COLUMNS} FROM studio_approval_requests WHERE id = ? AND org_id = ? AND project_id = ? LIMIT 1`,
-    )
+    .prepare(`SELECT ${APPROVAL_COLUMNS} FROM studio_approval_requests WHERE id = ? AND org_id = ? AND project_id = ? LIMIT 1`)
     .bind(approvalId, orgId, projectId)
     .first<ApprovalRow>();
 }
@@ -304,17 +285,7 @@ export async function requireApproval(
            AND plan_fingerprint = ? AND requested_by_token = ? AND status = 'pending' AND expires_at > ?
          ORDER BY created_at DESC LIMIT 1`,
       )
-      .bind(
-        binding.orgId,
-        binding.projectId,
-        binding.action,
-        env,
-        target,
-        binding.blueprintRev,
-        fingerprint,
-        caller.tokenId,
-        nowIso,
-      )
+      .bind(binding.orgId, binding.projectId, binding.action, env, target, binding.blueprintRev, fingerprint, caller.tokenId, nowIso)
       .first<ApprovalRow>();
 
     let id: string;
@@ -382,17 +353,11 @@ export async function requireApproval(
   }
 
   const status = rowStatus(row, nowMs);
-  const refuse = async (
-    httpStatus: 403 | 409,
-    code: ApprovalErrorBody["error"]["code"],
-    message: string,
-    remediation: string,
-  ) => {
+  const refuse = async (httpStatus: 403 | 409, code: ApprovalErrorBody["error"]["code"], message: string, remediation: string) => {
     await audit("project.approval.consume", "refused", { approvalId: row.id, code });
     return refusal(httpStatus, code, message, remediation, row.id);
   };
-  const newRequest =
-    "Retry without approvalId to create a new approval request, then ask an editor to approve it in Studio.";
+  const newRequest = "Retry without approvalId to create a new approval request, then ask an editor to approve it in Studio.";
 
   if (status === "consumed") {
     return refuse(409, "APPROVAL_USED", `Approval ${row.id} was already used; an approval is single-use.`, newRequest);
@@ -404,12 +369,7 @@ export async function requireApproval(
     return refuse(403, "APPROVAL_EXPIRED", `Approval ${row.id} expired (approvals last 24 hours).`, newRequest);
   }
   if (status === "pending") {
-    return refuse(
-      403,
-      "APPROVAL_PENDING",
-      `Approval ${row.id} has not been approved yet.`,
-      RETRY_REMEDIATION(row.id),
-    );
+    return refuse(403, "APPROVAL_PENDING", `Approval ${row.id} has not been approved yet.`, RETRY_REMEDIATION(row.id));
   }
   if (
     row.action !== binding.action ||
@@ -504,9 +464,7 @@ export async function listApprovalRequests(
   return status ? records.filter((r) => r.status === status) : records;
 }
 
-export type DecideApprovalResult =
-  | { ok: true; approval: ApprovalRequestRecord }
-  | { ok: false; status: 403 | 404 | 409; body: ApprovalErrorBody };
+export type DecideApprovalResult = { ok: true; approval: ApprovalRequestRecord } | { ok: false; status: 403 | 404 | 409; body: ApprovalErrorBody };
 
 /**
  * Approves or rejects a pending request. The caller must already be a verified Studio session user with editor+ on the
@@ -599,8 +557,7 @@ export function sessionReviewerRefusal(caller: StudioCaller): ApprovalErrorBody 
   return {
     error: {
       code: "APPROVAL_SESSION_REQUIRED",
-      message:
-        "Only a person signed in to Studio can approve, reject, accept or decline; an MCP token cannot review its own changes.",
+      message: "Only a person signed in to Studio can approve, reject, accept or decline; an MCP token cannot review its own changes.",
       remediation: "Ask an editor (builder, admin or owner) to review this in Studio.",
     },
   };

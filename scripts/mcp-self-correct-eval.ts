@@ -13,10 +13,7 @@ import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
-import {
-  createDirectMcpCaller,
-  runSelfCorrectionEvalSuite,
-} from "../packages/mcp-server/src/self-correction-eval.ts";
+import { createDirectMcpCaller, runSelfCorrectionEvalSuite } from "../packages/mcp-server/src/self-correction-eval.ts";
 import { createInMemoryBlueprintClient } from "../packages/mcp-server/src/store.ts";
 import type { D1Like, D1Result, D1Statement } from "../packages/sdk/src/index.ts";
 

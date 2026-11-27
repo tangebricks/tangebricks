@@ -48,8 +48,7 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
     await ensureTelemetryTables(db);
 
     const fixedNow = new Date("2026-06-01T12:00:00.000Z");
-    const daysAgoIso = (days: number) =>
-      new Date(fixedNow.getTime() - days * 86_400_000).toISOString();
+    const daysAgoIso = (days: number) => new Date(fixedNow.getTime() - days * 86_400_000).toISOString();
 
     // Seed runs at 16d, 10d, and 3d ago
     for (const [runId, days] of [
@@ -121,13 +120,8 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
     expect(defaultPrune.deletedHttpRollups).toBe(1); // 10d rollup deleted
 
     // Verify px_steps view mirrors px_step_events
-    const stepsViaView = await db
-      .prepare("SELECT run_id FROM px_steps ORDER BY run_id ASC")
-      .all<{ run_id: string }>();
-    expect((stepsViaView.results ?? []).map((r) => r.run_id)).toEqual([
-      "run_10d",
-      "run_3d",
-    ]);
+    const stepsViaView = await db.prepare("SELECT run_id FROM px_steps ORDER BY run_id ASC").all<{ run_id: string }>();
+    expect((stepsViaView.results ?? []).map((r) => r.run_id)).toEqual(["run_10d", "run_3d"]);
 
     // Custom windows via scheduled cron: runRetentionDays = 7, telemetryRetentionDays = 4
     const customPrune = await runScheduledTelemetryRetentionPrune(
@@ -143,19 +137,11 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
     expect(customPrune.deletedLogs).toBe(1); // log_6d deleted, only log_2d remains
     expect(customPrune.deletedHttpRollups).toBe(1);
 
-    const remainingRuns = await db
-      .prepare("SELECT run_id FROM px_runs")
-      .all<{ run_id: string }>();
-    expect((remainingRuns.results ?? []).map((r) => r.run_id)).toEqual([
-      "run_3d",
-    ]);
+    const remainingRuns = await db.prepare("SELECT run_id FROM px_runs").all<{ run_id: string }>();
+    expect((remainingRuns.results ?? []).map((r) => r.run_id)).toEqual(["run_3d"]);
 
-    const remainingLogs = await db
-      .prepare("SELECT log_id FROM px_logs")
-      .all<{ log_id: string }>();
-    expect((remainingLogs.results ?? []).map((r) => r.log_id)).toEqual([
-      "log_2d",
-    ]);
+    const remainingLogs = await db.prepare("SELECT log_id FROM px_logs").all<{ log_id: string }>();
+    expect((remainingLogs.results ?? []).map((r) => r.log_id)).toEqual(["log_2d"]);
   });
 
   it("omits step input_preview and output_preview in production when captureStepIoInProd is false while preserving status, durationMs, retries, and errorStack", async () => {
@@ -192,10 +178,7 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
     ]);
 
     const executors: Executors = new Map([
-      [
-        "test.trigger",
-        async (ctx) => ({ out: ctx.payload }),
-      ],
+      ["test.trigger", async (ctx) => ({ out: ctx.payload })],
       [
         "test.worker",
         async () => ({
@@ -212,7 +195,8 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
       edges: [{ id: "e1", source: "n_trig", target: "n_work" }],
     };
 
-    const prodRun = await runGraph(graph, registry, executors, { workspaceId: "ws_test",
+    const prodRun = await runGraph(graph, registry, executors, {
+      workspaceId: "ws_test",
       payload: { rawCustomerPayload: sensitiveInput },
       env: { DB: db, PX_ENV: "production" },
       telemetry: {
@@ -225,17 +209,14 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
 
     expect(prodRun.ok).toBe(true);
 
-    const stepRows = await db
-      .prepare("SELECT * FROM px_steps WHERE run_id = ?1 ORDER BY seq ASC")
-      .bind("run_prod_no_io")
-      .all<{
-        node_id: string;
-        status: string;
-        duration_ms: number;
-        retries: number;
-        input_preview: string;
-        output_preview: string;
-      }>();
+    const stepRows = await db.prepare("SELECT * FROM px_steps WHERE run_id = ?1 ORDER BY seq ASC").bind("run_prod_no_io").all<{
+      node_id: string;
+      status: string;
+      duration_ms: number;
+      retries: number;
+      input_preview: string;
+      output_preview: string;
+    }>();
 
     expect((stepRows.results ?? []).length).toBeGreaterThan(0);
     for (const row of stepRows.results ?? []) {
@@ -248,7 +229,8 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
     }
 
     // Preview environment still captures step I/O even when captureStepIoInProd is false
-    await runGraph(graph, registry, executors, { workspaceId: "ws_test",
+    await runGraph(graph, registry, executors, {
+      workspaceId: "ws_test",
       payload: { rawCustomerPayload: sensitiveInput },
       env: { DB: db, PX_ENV: "preview" },
       telemetry: {
@@ -260,16 +242,10 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
     });
 
     const previewRows = await db
-      .prepare(
-        "SELECT * FROM px_steps WHERE run_id = ?1 AND status = 'succeeded'",
-      )
+      .prepare("SELECT * FROM px_steps WHERE run_id = ?1 AND status = 'succeeded'")
       .bind("run_preview_with_io")
       .all<{ input_preview: string; output_preview: string }>();
-    expect(
-      (previewRows.results ?? []).some((r) =>
-        r.output_preview.includes(sensitiveOutput),
-      ),
-    ).toBe(true);
+    expect((previewRows.results ?? []).some((r) => r.output_preview.includes(sensitiveOutput))).toBe(true);
   });
 
   it("redacts ctx.secret(), ctx.connection(), widget='secret' fields, default secret keys, and additionalRedactKeys with zero leaks across D1 tables (AC 4)", async () => {
@@ -312,25 +288,19 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
     ]);
 
     const executors: Executors = new Map([
-      [
-        "audit.trigger",
-        async (ctx) => ({ out: ctx.payload }),
-      ],
+      ["audit.trigger", async (ctx) => ({ out: ctx.payload })],
       [
         "audit.FailingAction",
         async (ctx) => {
           const envSec = ctx.secret("STRIPE_SECRET_KEY");
           const conn = (await ctx.connection?.("slack_conn")) ?? {};
-          await ctx.log?.info(
-            `Calling upstream with ${envSec} and ${String(conn.access_token)}`,
-            {
-              authorization: canaryDefaultKeyHeader,
-              ssn: canaryCustomSsn,
-              nested: {
-                customerTaxId: canaryCustomTaxId,
-              },
+          await ctx.log?.info(`Calling upstream with ${envSec} and ${String(conn.access_token)}`, {
+            authorization: canaryDefaultKeyHeader,
+            ssn: canaryCustomSsn,
+            nested: {
+              customerTaxId: canaryCustomTaxId,
             },
-          );
+          });
           throw new Error(
             `Upstream failed for secret=${envSec} token=${String(conn.access_token)} refresh=${String(conn.refresh_token)} ssn=${canaryCustomSsn}`,
           );
@@ -354,7 +324,8 @@ describe("Story 8.2 — Configurable Retention, Step I/O Toggle & Redaction Audi
       edges: [{ id: "e1", source: "t1", target: "a1" }],
     };
 
-    const res = await runGraph(graph, registry, executors, { workspaceId: "ws_test",
+    const res = await runGraph(graph, registry, executors, {
+      workspaceId: "ws_test",
       payload: {
         authorization: canaryDefaultKeyHeader,
         ssn: canaryCustomSsn,

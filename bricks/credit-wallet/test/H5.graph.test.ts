@@ -35,12 +35,24 @@ const balanceOf = async (workspaceId: string) => {
 
 // What the graph does after the paid step: stands for the work the credits pay for. Counts how often it ran.
 let paidWorkRuns = 0;
-const paidWork: BrickManifest = { type: "test.paid-work", category: "action", inputs: [{ id: "in", dataType: "json" }], outputs: [], configSchema: z.object({}), secrets: [] };
+const paidWork: BrickManifest = {
+  type: "test.paid-work",
+  category: "action",
+  inputs: [{ id: "in", dataType: "json" }],
+  outputs: [],
+  configSchema: z.object({}),
+  secrets: [],
+};
 const bricks: BrickManifest[] = [paidWork, ...creditWalletBricks];
 const registry = createRegistry([...toyRegistry.values(), ...bricks, ...snoopBricks()]);
 
 function snoopBricks(): BrickManifest[] {
-  const base = { category: "transform" as const, inputs: [{ id: "in", dataType: "json" }], outputs: [{ id: "out", dataType: "json" }], configSchema: z.object({}) };
+  const base = {
+    category: "transform" as const,
+    inputs: [{ id: "in", dataType: "json" }],
+    outputs: [{ id: "out", dataType: "json" }],
+    configSchema: z.object({}),
+  };
   return [
     { ...base, type: "test.no-bindings", secrets: [] },
     { ...base, type: "test.binding-db", secrets: [], bindings: ["DB"] },
@@ -49,12 +61,7 @@ function snoopBricks(): BrickManifest[] {
   ];
 }
 const executors = (extra: Record<string, Executor> = {}): Map<string, Executor> =>
-  new Map<string, Executor>([
-    ...toyExecutors,
-    ...creditWalletExecutors,
-    ["test.paid-work", () => ((paidWorkRuns += 1), {})],
-    ...Object.entries(extra),
-  ]);
+  new Map<string, Executor>([...toyExecutors, ...creditWalletExecutors, ["test.paid-work", () => ((paidWorkRuns += 1), {})], ...Object.entries(extra)]);
 
 /** trigger -> deduct -> paid work. The host gives the runtime only the database, never the whole env. */
 const paidGraph = (amount: number, data: Record<string, unknown> = {}) => ({
@@ -143,8 +150,15 @@ describe("a deduct-credits step in a graph", () => {
     await reset();
     paidWorkRuns = 0;
     await createWallet(db, undefined).openWallet(WS, 10_000);
-    const options = { payload: { workspaceId: WS, userId: "u1" }, env: { DB: db }, ...(workspaceId === undefined ? {} : { workspaceId: workspaceId as string }) };
-    const refused = await runGraph(paidGraph(3), registry, executors(), options as never).then(() => null, (e: unknown) => e);
+    const options = {
+      payload: { workspaceId: WS, userId: "u1" },
+      env: { DB: db },
+      ...(workspaceId === undefined ? {} : { workspaceId: workspaceId as string }),
+    };
+    const refused = await runGraph(paidGraph(3), registry, executors(), options as never).then(
+      () => null,
+      (e: unknown) => e,
+    );
     expect(refused).toBeInstanceOf(RunRefusedError);
     expect((refused as RunRefusedError).code).toBe("NO_WORKSPACE");
     expect(paidWorkRuns).toBe(0);
@@ -169,7 +183,11 @@ describe("a deduct-credits step in a graph", () => {
 
   test.each([
     ["an empty workspace in the input", { workspaceId: "", userId: "u1" }, "invalid input: workspaceId: Too small: expected string to have >=1 characters"],
-    ["a workspace in the input that is not text", { workspaceId: 7, userId: "u1" }, "invalid input: workspaceId: Invalid input: expected string, received number"],
+    [
+      "a workspace in the input that is not text",
+      { workspaceId: 7, userId: "u1" },
+      "invalid input: workspaceId: Invalid input: expected string, received number",
+    ],
     ["no user", { workspaceId: WS }, "invalid input: userId: Invalid input: expected string, received undefined"],
     ["no payload at all", undefined, "invalid input: (value): Invalid input: expected object, received undefined"],
   ])("%s: the step fails with a readable reason and nothing changes", async (_name, payload, message) => {
@@ -200,7 +218,11 @@ describe("a deduct-credits step in a graph", () => {
 
 describe("bindings are scoped by the manifest, as secrets are", () => {
   const run = (type: string, exec: Executor, hostEnv: Record<string, unknown> = { DB: db, POC_TEST_DECLARED: String(env.POC_TEST_DECLARED) }) =>
-    runGraph({ nodes: [node("t", "trigger.manual"), node("x", type)], edges: [wire("t", "x")] }, registry, executors({ [type]: exec }), { payload: {}, env: hostEnv, workspaceId: WS });
+    runGraph({ nodes: [node("t", "trigger.manual"), node("x", type)], edges: [wire("t", "x")] }, registry, executors({ [type]: exec }), {
+      payload: {},
+      env: hostEnv,
+      workspaceId: WS,
+    });
 
   test("a brick receives the binding its manifest declares", async () => {
     const result = await run("test.binding-db", (ctx) => ({ out: ctx.binding("DB") === db }));

@@ -34,16 +34,7 @@ export async function ensureTestProjectToken(
       id, org_id, project_id, user_id, client_name, token_hash, scopes, revoked_at, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
   )
-    .bind(
-      tokenId,
-      base.orgId,
-      project,
-      base.userId,
-      clientName,
-      await sha256Hex(token),
-      scopes.join(","),
-      new Date().toISOString(),
-    )
+    .bind(tokenId, base.orgId, project, base.userId, clientName, await sha256Hex(token), scopes.join(","), new Date().toISOString())
     .run();
   // A real token is only issued for a project with a row (story 16): register the project in the token's org, as
   // POST /api/orgs/:orgId/projects would, unless it already exists.
@@ -68,10 +59,7 @@ export async function ensureTestProjectToken(
  * Test headers for a Studio API path: a `/api/projects/:project/...` path gets that project's own MCP token
  * (ensureTestProjectToken); any other path gets the default seed token from ensureDefaultTestAuth.
  */
-export async function ensureTestAuthForPath(
-  env: StudioApiEnv,
-  path: string,
-): Promise<{ headers: Record<string, string>; userId: string; orgId: string }> {
+export async function ensureTestAuthForPath(env: StudioApiEnv, path: string): Promise<{ headers: Record<string, string>; userId: string; orgId: string }> {
   const match = /\/api\/projects\/([^/?#]+)/.exec(path);
   if (match?.[1]) {
     const scoped = await ensureTestProjectToken(env, decodeURIComponent(match[1]));

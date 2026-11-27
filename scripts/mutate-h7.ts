@@ -14,8 +14,15 @@ function h7(): string {
   const run = spawnSync(process.execPath, [join(root, "scripts", "verify.ts"), "H7"], { cwd: root, encoding: "utf8" });
   const out = stripVTControlCharacters(run.stdout + run.stderr);
   const lines = out.split(/\r?\n/);
-  const row = lines.find((l) => l.startsWith("H7 "))?.replace(/\s{2,}/g, " ").replace(" Assembly is deterministic, offline and fast", "") ?? "(no H7 row)";
-  const reasons = lines.filter((l) => /^\s+- /.test(l)).map((l) => l.trim().replace(/^- /, "")).join("; ");
+  const row =
+    lines
+      .find((l) => l.startsWith("H7 "))
+      ?.replace(/\s{2,}/g, " ")
+      .replace(" Assembly is deterministic, offline and fast", "") ?? "(no H7 row)";
+  const reasons = lines
+    .filter((l) => /^\s+- /.test(l))
+    .map((l) => l.trim().replace(/^- /, ""))
+    .join("; ");
   const tests = lines.find((l) => l.startsWith("Tests:"))?.replace(/\. Verdicts.*/, "") ?? "";
   return `exit ${run.status} | ${row} | ${tests} | ${reasons.slice(0, 120)}`;
 }
@@ -33,24 +40,146 @@ interface Case {
   also?: Array<{ file: string; from: string; to: string }>;
 }
 const cases: Case[] = [
-  { name: "a timestamp in project.json", file: ASM, ...tweak('project: blueprint.project,\n    identity: blueprint.identity,', 'project: blueprint.project,\n    builtAt: new Date().toISOString(),\n    identity: blueprint.identity,') },
-  { name: "only the DATE is stamped (identical across runs on one day)", file: ASM, ...tweak('project: blueprint.project,\n    identity: blueprint.identity,', 'project: blueprint.project,\n    builtOn: new Date().toISOString().slice(0, 10),\n    identity: blueprint.identity,') },
-  { name: "the year is stamped (identical for a year)", file: ASM, ...tweak('project: blueprint.project,\n    identity: blueprint.identity,', 'project: blueprint.project,\n    year: new Date().getFullYear(),\n    identity: blueprint.identity,') },
-  { name: "Math.random in package.json", file: ASM, ...tweak('name: blueprint.project,\n    private: true,', 'name: blueprint.project,\n    nonce: Math.random(),\n    private: true,') },
-  { name: "a random id in package.json", file: ASM, ...tweak('name: blueprint.project,\n    private: true,', 'name: blueprint.project,\n    nonce: globalThis.crypto.randomUUID(),\n    private: true,') },
-  { name: "the time zone is read from the environment", file: ASM, ...tweak('project: blueprint.project,\n    identity: blueprint.identity,', 'project: blueprint.project,\n    zone: (globalThis as { process?: { env?: Record<string, string> } }).process?.env?.TZ ?? null,\n    identity: blueprint.identity,') },
-  { name: "the working folder is read", file: ASM, ...tweak('project: blueprint.project,\n    identity: blueprint.identity,', 'project: blueprint.project,\n    where: (globalThis as { process?: { cwd(): string } }).process?.cwd(),\n    identity: blueprint.identity,') },
+  {
+    name: "a timestamp in project.json",
+    file: ASM,
+    ...tweak(
+      "project: blueprint.project,\n    identity: blueprint.identity,",
+      "project: blueprint.project,\n    builtAt: new Date().toISOString(),\n    identity: blueprint.identity,",
+    ),
+  },
+  {
+    name: "only the DATE is stamped (identical across runs on one day)",
+    file: ASM,
+    ...tweak(
+      "project: blueprint.project,\n    identity: blueprint.identity,",
+      "project: blueprint.project,\n    builtOn: new Date().toISOString().slice(0, 10),\n    identity: blueprint.identity,",
+    ),
+  },
+  {
+    name: "the year is stamped (identical for a year)",
+    file: ASM,
+    ...tweak(
+      "project: blueprint.project,\n    identity: blueprint.identity,",
+      "project: blueprint.project,\n    year: new Date().getFullYear(),\n    identity: blueprint.identity,",
+    ),
+  },
+  {
+    name: "Math.random in package.json",
+    file: ASM,
+    ...tweak("name: blueprint.project,\n    private: true,", "name: blueprint.project,\n    nonce: Math.random(),\n    private: true,"),
+  },
+  {
+    name: "a random id in package.json",
+    file: ASM,
+    ...tweak("name: blueprint.project,\n    private: true,", "name: blueprint.project,\n    nonce: globalThis.crypto.randomUUID(),\n    private: true,"),
+  },
+  {
+    name: "the time zone is read from the environment",
+    file: ASM,
+    ...tweak(
+      "project: blueprint.project,\n    identity: blueprint.identity,",
+      "project: blueprint.project,\n    zone: (globalThis as { process?: { env?: Record<string, string> } }).process?.env?.TZ ?? null,\n    identity: blueprint.identity,",
+    ),
+  },
+  {
+    name: "the working folder is read",
+    file: ASM,
+    ...tweak(
+      "project: blueprint.project,\n    identity: blueprint.identity,",
+      "project: blueprint.project,\n    where: (globalThis as { process?: { cwd(): string } }).process?.cwd(),\n    identity: blueprint.identity,",
+    ),
+  },
   { name: "a fetch to the network", file: ASM, ...tweak(START, START + '  void fetch("http://127.0.0.1:9/");\n') },
-  { name: "a socket connection", file: ASM, ...tweak(START, START + '  (globalThis as { process: { getBuiltinModule(n: string): { connect(p: number, h: string): unknown } } }).process.getBuiltinModule("node:net").connect(9, "127.0.0.1");\n') },
-  { name: "a DNS lookup", file: ASM, ...tweak(START, START + '  (globalThis as { process: { getBuiltinModule(n: string): { lookup(h: string, cb: () => void): unknown } } }).process.getBuiltinModule("node:dns").lookup("example.invalid", () => {});\n') },
-  { name: "a program is started", file: ASM, ...tweak(START, START + '  (globalThis as { process: { getBuiltinModule(n: string): { spawnSync(c: string): unknown } } }).process.getBuiltinModule("node:child_process").spawnSync("curl");\n') },
-  { name: "six seconds of busy work (slow, not wrong)", file: ASM, ...tweak(START, START + '  for (const end = performance.now() + 6000; performance.now() < end; ) { /* busy */ }\n') },
-  { name: "the second run is no longer shifted in time", file: TEST, ...tweak('shiftClock: true', 'shiftClock: false'), also: [{ file: ASM, from: 'project: blueprint.project,\n    identity: blueprint.identity,', to: 'project: blueprint.project,\n    builtOn: new Date().toISOString().slice(0, 10),\n    identity: blueprint.identity,' }] },
-  { name: "both runs start in the same folder and zone (a leak on either would be hidden)", file: TEST, ...tweak('{ cwd: scratch, env: { TZ: "Asia/Kolkata"', '{ cwd: root, env: { TZ: "UTC"'), also: [{ file: ASM, from: 'project: blueprint.project,\n    identity: blueprint.identity,', to: 'project: blueprint.project,\n    where: (globalThis as { process?: { cwd(): string } }).process?.cwd(),\n    identity: blueprint.identity,' }] },
-  { name: "the traps are removed from the runner (a fetch goes unseen)", file: RUNNER, ...tweak('globalThis.fetch = ((): Promise<Response> => {\n  attempts.push("fetch");', 'const keepFetch = ((): Promise<Response> => {\n  attempts.push("fetch");'), also: [{ file: ASM, from: START, to: START + '  void fetch("http://127.0.0.1:9/").catch(() => {});\n' }] },
-  { name: "the report claims zero attempts without looking", file: TEST, ...tweak('noNetworkAttempts: first.report.attempts.length === 0 && second.report.attempts.length === 0 && trapsLive,', 'noNetworkAttempts: true,'), also: [{ file: ASM, from: START, to: START + '  void fetch("http://127.0.0.1:9/").catch(() => {});\n' }] },
-  { name: "the report claims identical hashes without looking", file: TEST, ...tweak('identicalHashes: (stoppedByTrap || sameFiles) && clockShifted && first.report.cwd !== second.report.cwd && second.report.tz === "Asia/Kolkata",', 'identicalHashes: true,'), also: [{ file: ASM, from: 'name: blueprint.project,\n    private: true,', to: 'name: blueprint.project,\n    nonce: Math.random(),\n    private: true,' }] },
-  { name: "a run that stops for an unexplained reason is waved through as 'identical'", file: TEST, ...tweak('for (const run of runs) if (run.failure !== null && run.attempts.length === 0) throw new Error(`a run stopped without any outside attempt: ${run.failure}`);', ''), also: [{ file: ASM, from: START, to: START + '  throw new Error("something unrelated broke");\n' }] },
+  {
+    name: "a socket connection",
+    file: ASM,
+    ...tweak(
+      START,
+      START +
+        '  (globalThis as { process: { getBuiltinModule(n: string): { connect(p: number, h: string): unknown } } }).process.getBuiltinModule("node:net").connect(9, "127.0.0.1");\n',
+    ),
+  },
+  {
+    name: "a DNS lookup",
+    file: ASM,
+    ...tweak(
+      START,
+      START +
+        '  (globalThis as { process: { getBuiltinModule(n: string): { lookup(h: string, cb: () => void): unknown } } }).process.getBuiltinModule("node:dns").lookup("example.invalid", () => {});\n',
+    ),
+  },
+  {
+    name: "a program is started",
+    file: ASM,
+    ...tweak(
+      START,
+      START +
+        '  (globalThis as { process: { getBuiltinModule(n: string): { spawnSync(c: string): unknown } } }).process.getBuiltinModule("node:child_process").spawnSync("curl");\n',
+    ),
+  },
+  {
+    name: "six seconds of busy work (slow, not wrong)",
+    file: ASM,
+    ...tweak(START, START + "  for (const end = performance.now() + 6000; performance.now() < end; ) { /* busy */ }\n"),
+  },
+  {
+    name: "the second run is no longer shifted in time",
+    file: TEST,
+    ...tweak("shiftClock: true", "shiftClock: false"),
+    also: [
+      {
+        file: ASM,
+        from: "project: blueprint.project,\n    identity: blueprint.identity,",
+        to: "project: blueprint.project,\n    builtOn: new Date().toISOString().slice(0, 10),\n    identity: blueprint.identity,",
+      },
+    ],
+  },
+  {
+    name: "both runs start in the same folder and zone (a leak on either would be hidden)",
+    file: TEST,
+    ...tweak('{ cwd: scratch, env: { TZ: "Asia/Kolkata"', '{ cwd: root, env: { TZ: "UTC"'),
+    also: [
+      {
+        file: ASM,
+        from: "project: blueprint.project,\n    identity: blueprint.identity,",
+        to: "project: blueprint.project,\n    where: (globalThis as { process?: { cwd(): string } }).process?.cwd(),\n    identity: blueprint.identity,",
+      },
+    ],
+  },
+  {
+    name: "the traps are removed from the runner (a fetch goes unseen)",
+    file: RUNNER,
+    ...tweak(
+      'globalThis.fetch = ((): Promise<Response> => {\n  attempts.push("fetch");',
+      'const keepFetch = ((): Promise<Response> => {\n  attempts.push("fetch");',
+    ),
+    also: [{ file: ASM, from: START, to: START + '  void fetch("http://127.0.0.1:9/").catch(() => {});\n' }],
+  },
+  {
+    name: "the report claims zero attempts without looking",
+    file: TEST,
+    ...tweak("noNetworkAttempts: first.report.attempts.length === 0 && second.report.attempts.length === 0 && trapsLive,", "noNetworkAttempts: true,"),
+    also: [{ file: ASM, from: START, to: START + '  void fetch("http://127.0.0.1:9/").catch(() => {});\n' }],
+  },
+  {
+    name: "the report claims identical hashes without looking",
+    file: TEST,
+    ...tweak(
+      'identicalHashes: (stoppedByTrap || sameFiles) && clockShifted && first.report.cwd !== second.report.cwd && second.report.tz === "Asia/Kolkata",',
+      "identicalHashes: true,",
+    ),
+    also: [{ file: ASM, from: "name: blueprint.project,\n    private: true,", to: "name: blueprint.project,\n    nonce: Math.random(),\n    private: true," }],
+  },
+  {
+    name: "a run that stops for an unexplained reason is waved through as 'identical'",
+    file: TEST,
+    ...tweak(
+      "for (const run of runs) if (run.failure !== null && run.attempts.length === 0) throw new Error(`a run stopped without any outside attempt: ${run.failure}`);",
+      "",
+    ),
+    also: [{ file: ASM, from: START, to: START + '  throw new Error("something unrelated broke");\n' }],
+  },
 ];
 function tweak(from: string, to: string) {
   return { from, to };

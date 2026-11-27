@@ -5,11 +5,7 @@ import { PX_RATE_LIMITS_DDL, applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_edge_traffic_armor.sql?raw";
 import rateLimitMigration from "../migrations/0002_px_rate_limits.sql?raw";
-import {
-  TrafficArmorService,
-  createTrafficArmorRoutes,
-  trafficArmorMiddleware,
-} from "../src/index.ts";
+import { TrafficArmorService, createTrafficArmorRoutes, trafficArmorMiddleware } from "../src/index.ts";
 import type { ArmorEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -122,15 +118,23 @@ describe("Traffic Armor HTTP Middleware & API", () => {
     app.get("/data", (c) => c.json({ ok: true }));
 
     // Request from blocked IP
-    const blockedRes = await app.request("/data", {
-      headers: { "cf-connecting-ip": "198.51.100.99" },
-    }, { DB: db });
+    const blockedRes = await app.request(
+      "/data",
+      {
+        headers: { "cf-connecting-ip": "198.51.100.99" },
+      },
+      { DB: db },
+    );
     expect(blockedRes.status).toBe(403);
 
     // Request from good IP
-    const allowedRes = await app.request("/data", {
-      headers: { "cf-connecting-ip": "198.51.100.1" },
-    }, { DB: db });
+    const allowedRes = await app.request(
+      "/data",
+      {
+        headers: { "cf-connecting-ip": "198.51.100.1" },
+      },
+      { DB: db },
+    );
     expect(allowedRes.status).toBe(200);
   });
 
@@ -172,15 +176,19 @@ describe("Traffic Armor HTTP Middleware & API", () => {
     app.route("/api", createTrafficArmorRoutes());
 
     // 1. Add rule
-    const addRes = await app.request("/api/armor/rules", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        ipOrCidr: "203.0.113.88",
-        action: "block",
-        reason: "Malicious scanner",
-      }),
-    }, { DB: db });
+    const addRes = await app.request(
+      "/api/armor/rules",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          ipOrCidr: "203.0.113.88",
+          action: "block",
+          reason: "Malicious scanner",
+        }),
+      },
+      { DB: db },
+    );
     expect(addRes.status).toBe(201);
 
     // 2. List rules
@@ -190,13 +198,17 @@ describe("Traffic Armor HTTP Middleware & API", () => {
     expect(listJson.rules).toHaveLength(1);
 
     // 3. Delete rule
-    const delRes = await app.request("/api/armor/rules", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        ipOrCidr: "203.0.113.88",
-      }),
-    }, { DB: db });
+    const delRes = await app.request(
+      "/api/armor/rules",
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          ipOrCidr: "203.0.113.88",
+        }),
+      },
+      { DB: db },
+    );
     expect(delRes.status).toBe(200);
   });
 });

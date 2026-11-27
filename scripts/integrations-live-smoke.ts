@@ -2,11 +2,7 @@ import { resolve } from "node:path";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
 import { measureIntegrationTokenMetrics } from "../packages/integrations/src/index.ts";
-import {
-  buildExecutorsFromCatalog,
-  buildRegistryFromCatalog,
-  rehearseStep,
-} from "../packages/runtime/src/index.ts";
+import { buildExecutorsFromCatalog, buildRegistryFromCatalog, rehearseStep } from "../packages/runtime/src/index.ts";
 
 export interface AppSmokeEntry {
   readonly app: string;
@@ -99,9 +95,7 @@ export async function runIntegrationsSmokeSuite(): Promise<IntegrationsPackV1Evi
   let totalTriggers = 0;
   let allOk = true;
 
-  for (const [app, entry] of Object.entries(integrations).sort(([a], [b]) =>
-    a.localeCompare(b),
-  )) {
+  for (const [app, entry] of Object.entries(integrations).sort(([a], [b]) => a.localeCompare(b))) {
     const { manifest } = entry;
     totalOperations += manifest.operations.length;
     totalTriggers += manifest.triggers?.length ?? 0;
@@ -114,8 +108,7 @@ export async function runIntegrationsSmokeSuite(): Promise<IntegrationsPackV1Evi
     const liveToken = process.env[smokeSpec.envKey]?.trim();
     const mode: "live" | "recorded-fixture" = liveToken ? "live" : "recorded-fixture";
 
-    const fixtureFetcher = async (): Promise<Response> =>
-      Response.json(smokeSpec.fixtureResponse, { status: 200 });
+    const fixtureFetcher = async (): Promise<Response> => Response.json(smokeSpec.fixtureResponse, { status: 200 });
 
     const nodeType = `int:${app}.${smokeSpec.operationId}`;
     const res = await rehearseStep(
@@ -128,9 +121,7 @@ export async function runIntegrationsSmokeSuite(): Promise<IntegrationsPackV1Evi
       },
       {
         registry,
-        executors: mode === "live"
-          ? executors
-          : buildExecutorsFromCatalog(catalog, { integration: { fetcher: fixtureFetcher } }),
+        executors: mode === "live" ? executors : buildExecutorsFromCatalog(catalog, { integration: { fetcher: fixtureFetcher } }),
         connections: {
           [app]: {
             app,
@@ -141,11 +132,7 @@ export async function runIntegrationsSmokeSuite(): Promise<IntegrationsPackV1Evi
     );
 
     const metrics = measureIntegrationTokenMetrics(manifest);
-    const entryOk =
-      res.ok &&
-      metrics.compactSummaryTokens <= 600 &&
-      metrics.maxOperationDetailTokens <= 250 &&
-      metrics.maxSearchPageTokens <= 400;
+    const entryOk = res.ok && metrics.compactSummaryTokens <= 600 && metrics.maxOperationDetailTokens <= 250 && metrics.maxSearchPageTokens <= 400;
     if (!entryOk) {
       allOk = false;
     }
@@ -170,10 +157,7 @@ export async function runIntegrationsSmokeSuite(): Promise<IntegrationsPackV1Evi
   }
 
   const totalApps = Object.keys(appsReport).length;
-  const totalContractTestsPassed = Object.values(appsReport).reduce(
-    (sum, entry) => sum + entry.contractTestPassCount,
-    0,
-  );
+  const totalContractTestsPassed = Object.values(appsReport).reduce((sum, entry) => sum + entry.contractTestPassCount, 0);
 
   return {
     suite: "integrations-pack-v1",
@@ -194,9 +178,7 @@ async function main() {
   const prov = stampEvidence("scripts/integrations-live-smoke.ts", "measured");
   writeEvidence(outPath, report, prov);
 
-  console.log(
-    `[integrations:smoke:live] apps=${report.totalApps} operations=${report.totalOperations} triggers=${report.totalTriggers} ok=${report.ok}`,
-  );
+  console.log(`[integrations:smoke:live] apps=${report.totalApps} operations=${report.totalOperations} triggers=${report.totalTriggers} ok=${report.ok}`);
   for (const a of Object.values(report.apps)) {
     console.log(
       `  [${a.ok ? "PASS" : "FAIL"}] ${a.app.padEnd(10)} mode=${a.mode.padEnd(16)} ops=${String(a.operationCount).padEnd(3)} trig=${a.triggerCount} op=${a.smokeOperation} summaryTok=${a.tokenMetrics.compactSummaryTokens}/600 maxOpTok=${a.tokenMetrics.maxOperationDetailTokens}/250 maxPageTok=${a.tokenMetrics.maxSearchPageTokens}/400`,

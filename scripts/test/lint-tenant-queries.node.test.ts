@@ -96,10 +96,7 @@ describe("lint-tenant-queries", () => {
       }),
     );
 
-    writeFileSync(
-      join(brickDir, "migrations", "0001_init.sql"),
-      "CREATE TABLE t (id TEXT, workspace_id TEXT);",
-    );
+    writeFileSync(join(brickDir, "migrations", "0001_init.sql"), "CREATE TABLE t (id TEXT, workspace_id TEXT);");
 
     writeFileSync(
       join(brickDir, "src", "index.ts"),
@@ -112,12 +109,7 @@ export function test(db: D1Like) {
     );
 
     const allowlistPath = join(tempDir, "allowlist.json");
-    writeFileSync(
-      allowlistPath,
-      JSON.stringify([
-        { file: "allowed-brick/src/index.ts", table: "t", reason: "cross-tenant admin maintenance" },
-      ]),
-    );
+    writeFileSync(allowlistPath, JSON.stringify([{ file: "allowed-brick/src/index.ts", table: "t", reason: "cross-tenant admin maintenance" }]));
 
     const result = lintTenantQueries({
       bricksDir: tempDir,
@@ -161,10 +153,7 @@ export function test(db: D1Like) {
       }),
     );
 
-    writeFileSync(
-      join(brickDir, "migrations", "0001_init.sql"),
-      "CREATE TABLE t (id TEXT, workspace_id TEXT);",
-    );
+    writeFileSync(join(brickDir, "migrations", "0001_init.sql"), "CREATE TABLE t (id TEXT, workspace_id TEXT);");
 
     writeFileSync(
       join(brickDir, "src", "index.ts"),
@@ -205,10 +194,7 @@ export function test(db: D1Like) {
   ].join("\n");
 
   /** Writes a one-file brick into a temp dir and lints it. */
-  function lintSource(
-    source: string,
-    options: { allowlist?: unknown; globalTables?: Array<{ table: string; reason: string }> } = {},
-  ) {
+  function lintSource(source: string, options: { allowlist?: unknown; globalTables?: Array<{ table: string; reason: string }> } = {}) {
     const tempDir = mkdtempSync(join(tmpdir(), "tenant-lint-test-"));
     tempDirs.push(tempDir);
     const brickDir = join(tempDir, "seeded-brick");
@@ -292,12 +278,7 @@ export function test(db: D1Like) {
         "}",
       ),
     );
-    expect(result.violations.map((v) => `${v.line}:${v.table}`)).toEqual([
-      "4:credit_ledger",
-      "5:credit_ledger",
-      "7:credit_ledger",
-      "8:credit_ledger",
-    ]);
+    expect(result.violations.map((v) => `${v.line}:${v.table}`)).toEqual(["4:credit_ledger", "5:credit_ledger", "7:credit_ledger", "8:credit_ledger"]);
   });
 
   test("LINT_SYSTEMSCOPE_UNSCOPED: an allowlist entry naming the file and table exempts it; one for another table does not", () => {
@@ -438,9 +419,9 @@ export function test(db: D1Like) {
       lines(
         'import { global } from "@poc/sdk";',
         'import type { D1Like } from "@poc/sdk";',
-        "export const read = (db: D1Like, table: string) => global(db, table, \"dynamic\").first(\"id = ?\", [1]);",
+        'export const read = (db: D1Like, table: string) => global(db, table, "dynamic").first("id = ?", [1]);',
         "// tenant-lint: allow fixture: the table is chosen from a fixed list of global tables",
-        "export const ok = (db: D1Like, table: string) => global(db, table, \"dynamic\").first(\"id = ?\", [1]);",
+        'export const ok = (db: D1Like, table: string) => global(db, table, "dynamic").first("id = ?", [1]);',
       ),
     );
     expect(result.violations.map((v) => `${v.line}:${v.table}`)).toEqual(["3:<non-literal table>"]);

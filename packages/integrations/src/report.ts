@@ -1,23 +1,8 @@
 import type { IntegrationFidelity } from "@poc/assembler";
 
-export type ImportReportStatus =
-  | "mapped"
-  | "normalized"
-  | "curated"
-  | "approximated"
-  | "unsupported";
+export type ImportReportStatus = "mapped" | "normalized" | "curated" | "approximated" | "unsupported";
 
-export type ImportReportElement =
-  | "document"
-  | "operation"
-  | "param"
-  | "bodyField"
-  | "body"
-  | "contentType"
-  | "response"
-  | "auth"
-  | "server"
-  | "pagination";
+export type ImportReportElement = "document" | "operation" | "param" | "bodyField" | "body" | "contentType" | "response" | "auth" | "server" | "pagination";
 
 export interface ImportReportEntry {
   readonly op: string | null;
@@ -80,15 +65,10 @@ export class ReportCollector {
     this._excludedByCuration = count;
   }
 
-  applyPointerMap(
-    pointerMap: Map<string, string>,
-    translateFn?: (map: Map<string, string>, ptr: string) => string,
-  ): void {
+  applyPointerMap(pointerMap: Map<string, string>, translateFn?: (map: Map<string, string>, ptr: string) => string): void {
     for (let i = 0; i < this._entries.length; i++) {
       const e = this._entries[i]!;
-      const translated = translateFn
-        ? translateFn(pointerMap, e.pointer)
-        : (pointerMap.get(e.pointer) ?? e.pointer);
+      const translated = translateFn ? translateFn(pointerMap, e.pointer) : (pointerMap.get(e.pointer) ?? e.pointer);
       if (translated !== e.pointer) {
         this._entries[i] = { ...e, pointer: translated };
       }
@@ -107,9 +87,7 @@ export class ReportCollector {
     excludedByCuration = this._excludedByCuration,
     allowedOpIds?: ReadonlySet<string>,
   ): ImportReport {
-    const rawList = allowedOpIds
-      ? this._entries.filter((e) => e.op === null || allowedOpIds.has(e.op))
-      : this._entries;
+    const rawList = allowedOpIds ? this._entries.filter((e) => e.op === null || allowedOpIds.has(e.op)) : this._entries;
 
     // Sort entries deterministically by (op, pointer, code)
     const sorted = [...rawList].sort((a, b) => {
@@ -131,16 +109,9 @@ export class ReportCollector {
       summary[entry.status]++;
     }
 
-    const totalSummary =
-      summary.mapped +
-      summary.normalized +
-      summary.curated +
-      summary.approximated +
-      summary.unsupported;
+    const totalSummary = summary.mapped + summary.normalized + summary.curated + summary.approximated + summary.unsupported;
     if (totalSummary !== sorted.length) {
-      throw new Error(
-        `Import report summary sum (${totalSummary}) does not match entries count (${sorted.length})`,
-      );
+      throw new Error(`Import report summary sum (${totalSummary}) does not match entries count (${sorted.length})`);
     }
 
     return {
@@ -162,14 +133,7 @@ export class ReportCollector {
     excludedByCuration = this._excludedByCuration,
     allowedOpIds?: ReadonlySet<string>,
   ): ImportReport {
-    return this.finish(
-      app,
-      format,
-      specHash,
-      importerVersion,
-      excludedByCuration,
-      allowedOpIds,
-    );
+    return this.finish(app, format, specHash, importerVersion, excludedByCuration, allowedOpIds);
   }
 }
 

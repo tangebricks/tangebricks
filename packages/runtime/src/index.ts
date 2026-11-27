@@ -27,10 +27,7 @@ import type {
   IntegrationFetcher,
   ParseRetryDelayResult,
 } from "./integration-executor.ts";
-import {
-  createHardenedFetch,
-  isPrivateAddress,
-} from "./egress.ts";
+import { createHardenedFetch, isPrivateAddress } from "./egress.ts";
 import type { EgressPolicy } from "./egress.ts";
 import {
   PX_CONNECTIONS_MIGRATION_SQL,
@@ -116,14 +113,7 @@ export {
   normalizeNodePortOutput,
   runGraph,
 } from "./run.ts";
-export type {
-  Graph,
-  RunGraphOptions,
-  RunResult,
-  RunStep,
-  StepRetryPolicy,
-  TelemetryRunOptions,
-} from "./run.ts";
+export type { Graph, RunGraphOptions, RunResult, RunStep, StepRetryPolicy, TelemetryRunOptions } from "./run.ts";
 export { parseDurationMs, stepPolicyFor } from "./step-policy.ts";
 export type { StepPolicy } from "./step-policy.ts";
 export {
@@ -220,10 +210,7 @@ export {
   traverseSafePropertyPath,
   validateStepExpression,
 } from "./expressions.ts";
-export type {
-  ParsedPillExpression,
-  StepExpressionValidationResult,
-} from "./expressions.ts";
+export type { ParsedPillExpression, StepExpressionValidationResult } from "./expressions.ts";
 
 /**
  * TEST-ONLY placeholder executors for brick action nodes (story 0.9, R-B).
@@ -240,9 +227,7 @@ const placeholderBrickExecutorModules: Readonly<Record<string, Readonly<Record<s
       const rawAmount = typeof ctx.data.amount === "number" ? ctx.data.amount : 1;
       const amount = Math.max(1, Math.trunc(rawAmount));
       const input =
-        ctx.inputs.in !== null && typeof ctx.inputs.in === "object" && !Array.isArray(ctx.inputs.in)
-          ? (ctx.inputs.in as Record<string, unknown>)
-          : {};
+        ctx.inputs.in !== null && typeof ctx.inputs.in === "object" && !Array.isArray(ctx.inputs.in) ? (ctx.inputs.in as Record<string, unknown>) : {};
       const balanceBefore = typeof input.balance === "number" ? input.balance : 100;
       const workspaceId = ctx.workspaceId;
       if (balanceBefore < amount) {
@@ -268,9 +253,7 @@ const placeholderBrickExecutorModules: Readonly<Record<string, Readonly<Record<s
       const rawAmount = typeof ctx.data.amount === "number" ? ctx.data.amount : 1;
       const amount = Math.max(1, Math.trunc(rawAmount));
       const input =
-        ctx.inputs.in !== null && typeof ctx.inputs.in === "object" && !Array.isArray(ctx.inputs.in)
-          ? (ctx.inputs.in as Record<string, unknown>)
-          : {};
+        ctx.inputs.in !== null && typeof ctx.inputs.in === "object" && !Array.isArray(ctx.inputs.in) ? (ctx.inputs.in as Record<string, unknown>) : {};
       const balanceBefore = typeof input.balance === "number" ? input.balance : 0;
       const workspaceId = ctx.workspaceId;
       await ctx.log?.info(`Credited ${amount} credits to workspace wallet`, {
@@ -293,9 +276,7 @@ const placeholderBrickExecutorModules: Readonly<Record<string, Readonly<Record<s
   "@poc/dynamic-entities": {
     executeEntityCreateRecord: async (ctx) => {
       const record =
-        ctx.inputs.in !== null && typeof ctx.inputs.in === "object" && !Array.isArray(ctx.inputs.in)
-          ? (ctx.inputs.in as Record<string, unknown>)
-          : {};
+        ctx.inputs.in !== null && typeof ctx.inputs.in === "object" && !Array.isArray(ctx.inputs.in) ? (ctx.inputs.in as Record<string, unknown>) : {};
       return {
         out: {
           entity: typeof ctx.data.entity === "string" ? ctx.data.entity : "record",
@@ -408,18 +389,13 @@ export function isNotConfiguredExecutor(fn: unknown): boolean {
 
 function notConfiguredBrickExecutor(nodeType: string, packageName: string): Executor {
   const fn: Executor = async (ctx) => {
-    throw new NotConfiguredError(
-      `${nodeType} (${ctx.nodeId}): no executor is configured for this brick action (package ${packageName}); nothing was done.`,
-    );
+    throw new NotConfiguredError(`${nodeType} (${ctx.nodeId}): no executor is configured for this brick action (package ${packageName}); nothing was done.`);
   };
   notConfiguredExecutorFns.add(fn);
   return fn;
 }
 
-export function buildRegistryFromCatalog(
-  catalog: Catalog = defaultCatalog,
-  baseRegistry: Registry = toyRegistry,
-): Registry {
+export function buildRegistryFromCatalog(catalog: Catalog = defaultCatalog, baseRegistry: Registry = toyRegistry): Registry {
   registerCatalogIntegrations(catalog);
   const merged = new Map<string, BrickManifest>(baseRegistry);
   for (const packEntry of Object.values(catalog.nodePacks ?? {})) {
@@ -437,8 +413,7 @@ export function buildRegistryFromCatalog(
     }
   }
   for (const integrationEntry of Object.values(catalog.integrations ?? {})) {
-    const nodes =
-      integrationEntry.nodes ?? projectIntegrationToNodes(integrationEntry.manifest);
+    const nodes = integrationEntry.nodes ?? projectIntegrationToNodes(integrationEntry.manifest);
     for (const node of nodes) {
       if (!merged.has(node.type)) {
         merged.set(node.type, catalogNodeToBrickManifest(node));
@@ -459,9 +434,7 @@ export interface BuildExecutorsFromCatalogOptions {
 
 export function buildExecutorsFromCatalog(
   catalog: Catalog = defaultCatalog,
-  packageExportsOrOptions:
-    | Readonly<Record<string, Readonly<Record<string, unknown>>>>
-    | BuildExecutorsFromCatalogOptions = {},
+  packageExportsOrOptions: Readonly<Record<string, Readonly<Record<string, unknown>>>> | BuildExecutorsFromCatalogOptions = {},
   baseExecutorsOrOptions: Executors | BuildExecutorsFromCatalogOptions = toyExecutors,
   optionsArg?: BuildExecutorsFromCatalogOptions,
 ): Executors {
@@ -469,10 +442,7 @@ export function buildExecutorsFromCatalog(
   let baseExecutors: Executors = toyExecutors;
   let options: BuildExecutorsFromCatalogOptions | undefined = optionsArg;
 
-  if (
-    packageExportsOrOptions &&
-    ("integration" in packageExportsOrOptions || "environment" in packageExportsOrOptions)
-  ) {
+  if (packageExportsOrOptions && ("integration" in packageExportsOrOptions || "environment" in packageExportsOrOptions)) {
     options = packageExportsOrOptions as BuildExecutorsFromCatalogOptions;
   } else if (packageExportsOrOptions) {
     packageExportsByPackage = packageExportsOrOptions as Readonly<Record<string, Readonly<Record<string, unknown>>>>;
@@ -480,10 +450,7 @@ export function buildExecutorsFromCatalog(
 
   if (baseExecutorsOrOptions instanceof Map) {
     baseExecutors = baseExecutorsOrOptions;
-  } else if (
-    baseExecutorsOrOptions &&
-    ("integration" in baseExecutorsOrOptions || "environment" in baseExecutorsOrOptions)
-  ) {
+  } else if (baseExecutorsOrOptions && ("integration" in baseExecutorsOrOptions || "environment" in baseExecutorsOrOptions)) {
     options = baseExecutorsOrOptions as BuildExecutorsFromCatalogOptions;
   }
 
@@ -495,9 +462,7 @@ export function buildExecutorsFromCatalog(
     const nodeType =
       ctxWithMeta.nodeType ??
       (typeof ctx.data.nodeType === "string" ? ctx.data.nodeType : undefined) ??
-      (typeof ctx.data.app === "string" && typeof ctx.data.operationId === "string"
-        ? `int:${ctx.data.app}.${ctx.data.operationId}`
-        : undefined);
+      (typeof ctx.data.app === "string" && typeof ctx.data.operationId === "string" ? `int:${ctx.data.app}.${ctx.data.operationId}` : undefined);
 
     if (nodeType) {
       const reg = getRegisteredIntegrationOperation(nodeType);
@@ -507,9 +472,7 @@ export function buildExecutorsFromCatalog(
       }
     }
 
-    throw new Error(
-      `INTEGRATION_OPERATION_NOT_FOUND: No registered integration operation found for node "${ctx.nodeId}"${nodeType ? ` (${nodeType})` : ""}`,
-    );
+    throw new Error(`INTEGRATION_OPERATION_NOT_FOUND: No registered integration operation found for node "${ctx.nodeId}"${nodeType ? ` (${nodeType})` : ""}`);
   };
   merged.set("integration.operation", genericExecutor);
   for (const [nodeType, fn] of coreNodeExecutors.entries()) {
@@ -548,14 +511,7 @@ export function buildExecutorsFromCatalog(
     for (const operation of integrationEntry.manifest.operations ?? []) {
       const nodeType = `int:${integrationEntry.manifest.app}.${operation.operationId}`;
       if (!merged.has(nodeType)) {
-        merged.set(
-          nodeType,
-          createIntegrationOperationExecutor(
-            integrationEntry.manifest,
-            operation,
-            options?.integration,
-          ),
-        );
+        merged.set(nodeType, createIntegrationOperationExecutor(integrationEntry.manifest, operation, options?.integration));
       }
     }
   }

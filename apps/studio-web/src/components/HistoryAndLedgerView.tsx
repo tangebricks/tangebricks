@@ -1,37 +1,10 @@
-import {
-  computeSemanticDiff,
-  createEmptyBlueprint,
-  normalizeBlueprintState,
-} from "@poc/blueprint";
+import { computeSemanticDiff, createEmptyBlueprint, normalizeBlueprintState } from "@poc/blueprint";
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  fetchProjectAuditLogs,
-  fetchProjectDiff,
-  fetchProjectRetentionSettings,
-  fetchProjectRevisions,
-  updateProjectRetentionSettings,
-} from "../api.ts";
-import type {
-  ProjectRetentionSettingsPayload,
-  StudioAuditLogEntry,
-} from "../api.ts";
+import { fetchProjectAuditLogs, fetchProjectDiff, fetchProjectRetentionSettings, fetchProjectRevisions, updateProjectRetentionSettings } from "../api.ts";
+import type { ProjectRetentionSettingsPayload, StudioAuditLogEntry } from "../api.ts";
 import { getActiveRole, useStudioStore } from "../store.ts";
-import {
-  applyStudioOps,
-  extractAffectedTargets,
-  formatAuthorBadge,
-  formatRelativeTimestamp,
-  getDistinctAgentFilters,
-  matchesAuthorFilter,
-} from "../types.ts";
-import type {
-  AffectedObjectTarget,
-  BlueprintState,
-  RevisionSummary,
-  SemanticDiff,
-  StudioNavTab,
-  StudioSelection,
-} from "../types.ts";
+import { applyStudioOps, extractAffectedTargets, formatAuthorBadge, formatRelativeTimestamp, getDistinctAgentFilters, matchesAuthorFilter } from "../types.ts";
+import type { AffectedObjectTarget, BlueprintState, RevisionSummary, SemanticDiff, StudioNavTab, StudioSelection } from "../types.ts";
 
 export interface ChangeLedgerProps {
   compact?: boolean;
@@ -40,12 +13,7 @@ export interface ChangeLedgerProps {
   initialDiff?: SemanticDiff | null;
 }
 
-function computeFallbackDiffFromRevisions(
-  project: string,
-  revisions: RevisionSummary[],
-  fromRev: number,
-  toRev: number,
-): SemanticDiff {
+function computeFallbackDiffFromRevisions(project: string, revisions: RevisionSummary[], fromRev: number, toRev: number): SemanticDiff {
   const ordered = [...revisions].sort((a, b) => a.revision - b.revision);
   let stateFrom: BlueprintState = createEmptyBlueprint(project);
   for (const rev of ordered) {
@@ -85,11 +53,7 @@ export function AuthorFilterPills({
   ];
 
   return (
-    <div
-      role="group"
-      aria-label="Filter revisions by author"
-      className="flex items-center gap-1.5 flex-wrap"
-    >
+    <div role="group" aria-label="Filter revisions by author" className="flex items-center gap-1.5 flex-wrap">
       {basePills.map((pill) => {
         const active = activeFilter === pill.id;
         return (
@@ -99,9 +63,7 @@ export function AuthorFilterPills({
             data-testid={`${testIdPrefix}-${pill.id}`}
             onClick={() => onSelectFilter(pill.id)}
             className={`px-2 py-1 rounded text-[11px] font-semibold transition border ${
-              active
-                ? "bg-surface-control text-accent border-amber-500/40"
-                : "bg-surface-base text-text-secondary border-border hover:border-border-strong"
+              active ? "bg-surface-control text-accent border-amber-500/40" : "bg-surface-base text-text-secondary border-border hover:border-border-strong"
             }`}
           >
             {pill.label}
@@ -118,9 +80,7 @@ export function AuthorFilterPills({
             data-testid={`${testIdPrefix}-${agentTag}`}
             onClick={() => onSelectFilter(agentTag)}
             className={`px-2 py-1 rounded text-[11px] font-mono transition border ${
-              active
-                ? "bg-sky-400/20 text-sky-200 border-sky-400/50 font-semibold"
-                : "bg-sky-400/10 text-sky-300 border-sky-400/25 hover:border-sky-400/50"
+              active ? "bg-sky-400/20 text-sky-200 border-sky-400/50 font-semibold" : "bg-sky-400/10 text-sky-300 border-sky-400/25 hover:border-sky-400/50"
             }`}
           >
             🤖 {agentTag}
@@ -147,11 +107,7 @@ export function SemanticDiffPanel({
   onClose?: () => void;
 }) {
   const initialFallback = useMemo(
-    () =>
-      overrideDiff ??
-      (revisions.length > 0
-        ? computeFallbackDiffFromRevisions(project, revisions, fromRev, toRev)
-        : null),
+    () => overrideDiff ?? (revisions.length > 0 ? computeFallbackDiffFromRevisions(project, revisions, fromRev, toRev) : null),
     [overrideDiff, project, revisions, fromRev, toRev],
   );
   const [diff, setDiff] = useState<SemanticDiff | null>(initialFallback);
@@ -166,9 +122,7 @@ export function SemanticDiffPanel({
 
     let cancelled = false;
     if (revisions.length > 0) {
-      setDiff(
-        computeFallbackDiffFromRevisions(project, revisions, fromRev, toRev),
-      );
+      setDiff(computeFallbackDiffFromRevisions(project, revisions, fromRev, toRev));
       setLoading(false);
     } else {
       setLoading(true);
@@ -183,12 +137,7 @@ export function SemanticDiffPanel({
       })
       .catch(() => {
         if (!cancelled) {
-          const fallback = computeFallbackDiffFromRevisions(
-            project,
-            revisions,
-            fromRev,
-            toRev,
-          );
+          const fallback = computeFallbackDiffFromRevisions(project, revisions, fromRev, toRev);
           setDiff(fallback);
           setLoading(false);
         }
@@ -208,10 +157,7 @@ export function SemanticDiffPanel({
       <div className="flex items-center justify-between gap-2 border-b border-border pb-2.5">
         <div className="flex items-center gap-2">
           <span className="font-bold text-sm text-text-primary">Semantic Diff</span>
-          <span
-            data-testid="semantic-diff-range"
-            className="px-2 py-0.5 rounded bg-surface-control border border-border font-mono text-[11px] text-accent"
-          >
+          <span data-testid="semantic-diff-range" className="px-2 py-0.5 rounded bg-surface-control border border-border font-mono text-[11px] text-accent">
             r{fromRev} → r{toRev}
           </span>
         </div>
@@ -232,10 +178,7 @@ export function SemanticDiffPanel({
           Computing semantic diff r{fromRev} → r{toRev}…
         </div>
       ) : !diff || diff.isEmpty ? (
-        <div
-          data-testid="semantic-diff-empty"
-          className="p-3 rounded bg-surface-base border border-border text-text-muted text-center"
-        >
+        <div data-testid="semantic-diff-empty" className="p-3 rounded bg-surface-base border border-border text-text-muted text-center">
           No semantic changes between r{fromRev} and r{toRev} (layout-only or identical state).
         </div>
       ) : (
@@ -243,24 +186,17 @@ export function SemanticDiffPanel({
           {/* Identity */}
           {diff.identity && (
             <div data-testid="diff-section-identity" className="space-y-1.5">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                Identity Provider
-              </div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Identity Provider</div>
               <div className="p-2.5 rounded bg-amber-500/10 border border-amber-500/30 font-mono text-[11px] text-amber-200">
-                ~ Identity: <span className="line-through opacity-75">{diff.identity.from}</span> →{" "}
-                <span className="font-bold">{diff.identity.to}</span>
+                ~ Identity: <span className="line-through opacity-75">{diff.identity.from}</span> → <span className="font-bold">{diff.identity.to}</span>
               </div>
             </div>
           )}
 
           {/* Bricks */}
-          {(diff.bricks.added.length > 0 ||
-            diff.bricks.removed.length > 0 ||
-            diff.bricks.updated.length > 0) && (
+          {(diff.bricks.added.length > 0 || diff.bricks.removed.length > 0 || diff.bricks.updated.length > 0) && (
             <div data-testid="diff-section-bricks" className="space-y-2">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                Bricks
-              </div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Bricks</div>
               {diff.bricks.added.map((brick) => (
                 <div
                   key={`brick-add-${brick.id}`}
@@ -286,9 +222,7 @@ export function SemanticDiffPanel({
                   data-testid={`diff-brick-updated-${upd.id}`}
                   className="p-2.5 rounded bg-amber-500/10 border border-amber-500/30 space-y-2"
                 >
-                  <div className="font-mono text-[11px] text-amber-300 font-semibold">
-                    ~ Brick modified: {upd.id}
-                  </div>
+                  <div className="font-mono text-[11px] text-amber-300 font-semibold">~ Brick modified: {upd.id}</div>
                   <table className="w-full text-[11px] font-mono border-collapse">
                     <thead>
                       <tr className="text-left text-text-muted border-b border-border">
@@ -298,20 +232,11 @@ export function SemanticDiffPanel({
                       </tr>
                     </thead>
                     <tbody>
-                      {Array.from(
-                        new Set([
-                          ...Object.keys(upd.before.config),
-                          ...Object.keys(upd.after.config),
-                        ]),
-                      ).map((key) => (
+                      {Array.from(new Set([...Object.keys(upd.before.config), ...Object.keys(upd.after.config)])).map((key) => (
                         <tr key={key} className="border-b border-border/50">
                           <td className="py-1 pr-2 text-text-primary">{key}</td>
-                          <td className="py-1 pr-2 text-red-300">
-                            {JSON.stringify(upd.before.config[key])}
-                          </td>
-                          <td className="py-1 text-emerald-300">
-                            {JSON.stringify(upd.after.config[key])}
-                          </td>
+                          <td className="py-1 pr-2 text-red-300">{JSON.stringify(upd.before.config[key])}</td>
+                          <td className="py-1 text-emerald-300">{JSON.stringify(upd.after.config[key])}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -322,13 +247,9 @@ export function SemanticDiffPanel({
           )}
 
           {/* Entities */}
-          {(diff.entities.added.length > 0 ||
-            diff.entities.removed.length > 0 ||
-            diff.entities.updated.length > 0) && (
+          {(diff.entities.added.length > 0 || diff.entities.removed.length > 0 || diff.entities.updated.length > 0) && (
             <div data-testid="diff-section-entities" className="space-y-2">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                Data Entities
-              </div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Data Entities</div>
               {diff.entities.added.map((ent) => (
                 <div
                   key={`ent-add-${ent.name}`}
@@ -353,9 +274,7 @@ export function SemanticDiffPanel({
                   data-testid={`diff-entity-updated-${upd.name}`}
                   className="p-2.5 rounded bg-amber-500/10 border border-amber-500/30 space-y-2"
                 >
-                  <div className="font-mono text-[11px] text-amber-300 font-semibold">
-                    ~ Entity modified: {upd.name}
-                  </div>
+                  <div className="font-mono text-[11px] text-amber-300 font-semibold">~ Entity modified: {upd.name}</div>
                   <div className="space-y-1 font-mono text-[11px]">
                     {upd.fieldsAdded.map((f) => (
                       <div key={`fa-${f.name}`} className="text-emerald-300">
@@ -379,13 +298,9 @@ export function SemanticDiffPanel({
           )}
 
           {/* Workflows */}
-          {(diff.workflows.added.length > 0 ||
-            diff.workflows.removed.length > 0 ||
-            diff.workflows.updated.length > 0) && (
+          {(diff.workflows.added.length > 0 || diff.workflows.removed.length > 0 || diff.workflows.updated.length > 0) && (
             <div data-testid="diff-section-workflows" className="space-y-2">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                Workflows & Nodes
-              </div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Workflows & Nodes</div>
               {diff.workflows.added.map((wf) => (
                 <div
                   key={`wf-add-${wf.id}`}
@@ -414,31 +329,18 @@ export function SemanticDiffPanel({
                     ~ Workflow modified: {upd.id} ({upd.name})
                   </div>
                   {upd.nodesAdded.map((n) => (
-                    <div
-                      key={`na-${n.id}`}
-                      data-testid={`diff-node-added-${n.id}`}
-                      className="text-emerald-300"
-                    >
+                    <div key={`na-${n.id}`} data-testid={`diff-node-added-${n.id}`} className="text-emerald-300">
                       + Node {n.id} ({n.type}) {n.label ? `"${n.label}"` : ""}
                     </div>
                   ))}
                   {upd.nodesRemoved.map((n) => (
-                    <div
-                      key={`nr-${n.id}`}
-                      data-testid={`diff-node-removed-${n.id}`}
-                      className="text-red-300"
-                    >
+                    <div key={`nr-${n.id}`} data-testid={`diff-node-removed-${n.id}`} className="text-red-300">
                       - Node {n.id} ({n.type})
                     </div>
                   ))}
                   {upd.nodesUpdated.map((n) => (
-                    <div
-                      key={`nu-${n.id}`}
-                      data-testid={`diff-node-updated-${n.id}`}
-                      className="text-amber-200"
-                    >
-                      ~ Node {n.id}: {JSON.stringify(n.before.data)} →{" "}
-                      {JSON.stringify(n.after.data)}
+                    <div key={`nu-${n.id}`} data-testid={`diff-node-updated-${n.id}`} className="text-amber-200">
+                      ~ Node {n.id}: {JSON.stringify(n.before.data)} → {JSON.stringify(n.after.data)}
                     </div>
                   ))}
                   {upd.edgesAdded.map((e) => (
@@ -457,34 +359,21 @@ export function SemanticDiffPanel({
           )}
 
           {/* Secret Refs */}
-          {(diff.secretRefs.added.length > 0 ||
-            diff.secretRefs.removed.length > 0 ||
-            diff.secretRefs.updated.length > 0) && (
+          {(diff.secretRefs.added.length > 0 || diff.secretRefs.removed.length > 0 || diff.secretRefs.updated.length > 0) && (
             <div data-testid="diff-section-secrets" className="space-y-2">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                Secret References
-              </div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Secret References</div>
               {diff.secretRefs.added.map((s) => (
-                <div
-                  key={`sec-add-${s.ref}`}
-                  className="p-2 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono text-[11px]"
-                >
+                <div key={`sec-add-${s.ref}`} className="p-2 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono text-[11px]">
                   + Secret ref {s.ref} ({s.targetKind}:{s.targetId}.{s.secretName})
                 </div>
               ))}
               {diff.secretRefs.removed.map((s) => (
-                <div
-                  key={`sec-rem-${s.ref}`}
-                  className="p-2 rounded bg-red-500/10 border border-red-500/30 text-red-300 font-mono text-[11px]"
-                >
+                <div key={`sec-rem-${s.ref}`} className="p-2 rounded bg-red-500/10 border border-red-500/30 text-red-300 font-mono text-[11px]">
                   - Secret ref {s.ref}
                 </div>
               ))}
               {diff.secretRefs.updated.map((u) => (
-                <div
-                  key={`sec-upd-${u.ref}`}
-                  className="p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-[11px]"
-                >
+                <div key={`sec-upd-${u.ref}`} className="p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-[11px]">
                   ~ Secret ref {u.ref}: {u.before.secretName} → {u.after.secretName}
                 </div>
               ))}
@@ -506,10 +395,7 @@ export function SameObjectConflictCard() {
 
   const allFieldKeys = useMemo(() => {
     if (!pendingConflict) return [];
-    const keys = new Set<string>([
-      ...Object.keys(pendingConflict.mineData),
-      ...Object.keys(pendingConflict.aiData),
-    ]);
+    const keys = new Set<string>([...Object.keys(pendingConflict.mineData), ...Object.keys(pendingConflict.aiData)]);
     return [...keys].sort();
   }, [pendingConflict]);
 
@@ -532,11 +418,7 @@ export function SameObjectConflictCard() {
   const authorBadge = formatAuthorBadge(pendingConflict.conflictingAuthor);
 
   return (
-    <div
-      role="alert"
-      data-testid="same-object-conflict-card"
-      className="p-3.5 rounded-lg bg-amber-950/80 border border-amber-500/60 space-y-3 text-xs"
-    >
+    <div role="alert" data-testid="same-object-conflict-card" className="p-3.5 rounded-lg bg-amber-950/80 border border-amber-500/60 space-y-3 text-xs">
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="font-bold text-amber-300 flex items-center gap-1.5">
@@ -546,11 +428,8 @@ export function SameObjectConflictCard() {
             </span>
           </div>
           <p className="text-[11px] text-amber-100/90 mt-1">
-            You were editing{" "}
-            <span className="font-mono font-semibold">{pendingConflict.targetId}</span>{" "}
-            (base r{pendingConflict.baseRevision}) while{" "}
-            <span className="font-mono font-semibold">{authorBadge.badgeText}</span>{" "}
-            committed r{pendingConflict.conflictingRevision}. Choose how to resolve:
+            You were editing <span className="font-mono font-semibold">{pendingConflict.targetId}</span> (base r{pendingConflict.baseRevision}) while{" "}
+            <span className="font-mono font-semibold">{authorBadge.badgeText}</span> committed r{pendingConflict.conflictingRevision}. Choose how to resolve:
           </p>
         </div>
       </div>
@@ -573,15 +452,9 @@ export function SameObjectConflictCard() {
                 const selectedSide = fieldChoices[fieldKey] ?? "mine";
                 return (
                   <tr key={fieldKey} className="border-b border-border/50">
-                    <td className="py-1.5 pr-2 font-bold text-text-primary">
-                      {fieldKey}
-                    </td>
-                    <td className="py-1.5 pr-2 text-amber-200">
-                      {JSON.stringify(mineVal)}
-                    </td>
-                    <td className="py-1.5 pr-2 text-sky-300">
-                      {JSON.stringify(aiVal)}
-                    </td>
+                    <td className="py-1.5 pr-2 font-bold text-text-primary">{fieldKey}</td>
+                    <td className="py-1.5 pr-2 text-amber-200">{JSON.stringify(mineVal)}</td>
+                    <td className="py-1.5 pr-2 text-sky-300">{JSON.stringify(aiVal)}</td>
                     <td className="py-1.5">
                       <div className="inline-flex items-center gap-1">
                         <button
@@ -613,9 +486,7 @@ export function SameObjectConflictCard() {
                             }))
                           }
                           className={`px-1.5 py-0.5 rounded border text-[10px] ${
-                            selectedSide === "ai"
-                              ? "bg-sky-500/30 border-sky-400 text-sky-100 font-bold"
-                              : "bg-surface-control border-border text-text-muted"
+                            selectedSide === "ai" ? "bg-sky-500/30 border-sky-400 text-sky-100 font-bold" : "bg-surface-control border-border text-text-muted"
                           }`}
                         >
                           AI
@@ -665,11 +536,7 @@ export function SameObjectConflictCard() {
   );
 }
 
-export function ChangeLedgerFeed({
-  compact = false,
-  onFocusObject,
-  onViewDiff,
-}: ChangeLedgerProps) {
+export function ChangeLedgerFeed({ compact = false, onFocusObject, onViewDiff }: ChangeLedgerProps) {
   const revisions = useStudioStore((s) => s.revisions);
   const isMutating = useStudioStore((s) => s.isMutating);
   const orgs = useStudioStore((s) => s.orgs);
@@ -686,15 +553,9 @@ export function ChangeLedgerFeed({
 
   const [pendingUndoRev, setPendingUndoRev] = useState<RevisionSummary | null>(null);
 
-  const filteredRevisions = useMemo(
-    () => revisions.filter((rev) => matchesAuthorFilter(rev, ledgerAuthorFilter)),
-    [revisions, ledgerAuthorFilter],
-  );
+  const filteredRevisions = useMemo(() => revisions.filter((rev) => matchesAuthorFilter(rev, ledgerAuthorFilter)), [revisions, ledgerAuthorFilter]);
 
-  const handleTargetClick = (
-    e: React.MouseEvent,
-    target: AffectedObjectTarget,
-  ) => {
+  const handleTargetClick = (e: React.MouseEvent, target: AffectedObjectTarget) => {
     e.stopPropagation();
     if (target.kind === "brick") {
       const sel: StudioSelection = { kind: "brick", id: target.id };
@@ -758,18 +619,11 @@ export function ChangeLedgerFeed({
           data-testid="ledger-undo-confirm-modal"
           className="p-3.5 rounded-lg bg-surface-raised border border-amber-500/60 space-y-2.5 text-xs"
         >
-          <div className="font-bold text-amber-300">
-            ⚠ Confirm Undo of Revision r{pendingUndoRev.revision}
-          </div>
+          <div className="font-bold text-amber-300">⚠ Confirm Undo of Revision r{pendingUndoRev.revision}</div>
           <p className="text-text-secondary">
-            Later revisions exist after{" "}
-            <span className="font-mono font-semibold">r{pendingUndoRev.revision}</span>{" "}
-            ({pendingUndoRev.summary ?? "revision"}). Choose whether to apply the inverse operations of{" "}
-            <span className="font-mono">r{pendingUndoRev.revision}</span> or revert the entire project back to{" "}
-            <span className="font-mono">
-              r{Math.max(0, (pendingUndoRev.parentRevision ?? pendingUndoRev.revision - 1))}
-            </span>
-            :
+            Later revisions exist after <span className="font-mono font-semibold">r{pendingUndoRev.revision}</span> ({pendingUndoRev.summary ?? "revision"}).
+            Choose whether to apply the inverse operations of <span className="font-mono">r{pendingUndoRev.revision}</span> or revert the entire project back to{" "}
+            <span className="font-mono">r{Math.max(0, pendingUndoRev.parentRevision ?? pendingUndoRev.revision - 1)}</span>:
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -796,8 +650,7 @@ export function ChangeLedgerFeed({
               }}
               className="px-2.5 py-1 rounded bg-amber-500/20 border border-amber-500/50 text-amber-200 font-semibold text-[11px]"
             >
-              Revert project to r
-              {Math.max(0, pendingUndoRev.parentRevision ?? pendingUndoRev.revision - 1)}
+              Revert project to r{Math.max(0, pendingUndoRev.parentRevision ?? pendingUndoRev.revision - 1)}
             </button>
             <button
               type="button"
@@ -819,10 +672,7 @@ export function ChangeLedgerFeed({
       />
 
       {filteredRevisions.length === 0 ? (
-        <div
-          data-testid="ledger-empty-state"
-          className="p-4 rounded bg-surface-base border border-border text-text-muted text-xs text-center"
-        >
+        <div data-testid="ledger-empty-state" className="p-4 rounded bg-surface-base border border-border text-text-muted text-xs text-center">
           No revisions match the selected author filter.
         </div>
       ) : (
@@ -836,9 +686,7 @@ export function ChangeLedgerFeed({
               <div
                 key={rev.revision}
                 data-testid={`ledger-entry-${rev.revision}`}
-                onClick={() =>
-                  selectItem({ kind: "revision", id: String(rev.revision) })
-                }
+                onClick={() => selectItem({ kind: "revision", id: String(rev.revision) })}
                 className="p-3 rounded-lg bg-surface-base border border-border hover:border-border-strong cursor-pointer text-xs space-y-2 transition"
               >
                 <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -862,11 +710,7 @@ export function ChangeLedgerFeed({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <time
-                      dateTime={rev.createdAt}
-                      title={rev.createdAt}
-                      className="text-[10px] font-mono text-text-muted"
-                    >
+                    <time dateTime={rev.createdAt} title={rev.createdAt} className="text-[10px] font-mono text-text-muted">
                       {relTime} · {rev.createdAt.slice(0, 19).replace("T", " ")}
                     </time>
                     <button
@@ -890,21 +734,12 @@ export function ChangeLedgerFeed({
                   </div>
                 </div>
 
-                <div className="text-text-primary font-medium">
-                  {rev.summary ?? "Blueprint revision"}
-                </div>
+                <div className="text-text-primary font-medium">{rev.summary ?? "Blueprint revision"}</div>
 
                 {targets.length > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                     {targets.map((target) => {
-                      const chipIcon =
-                        target.kind === "brick"
-                          ? "▣"
-                          : target.kind === "entity"
-                            ? "▤"
-                            : target.kind === "workflow"
-                              ? "⑂"
-                              : "⚡";
+                      const chipIcon = target.kind === "brick" ? "▣" : target.kind === "entity" ? "▤" : target.kind === "workflow" ? "⑂" : "⚡";
                       return (
                         <button
                           key={`${target.kind}:${target.workflowId ?? ""}:${target.id}`}
@@ -928,11 +763,7 @@ export function ChangeLedgerFeed({
   );
 }
 
-export function HistoryAndLedgerView({
-  onFocusObject,
-  onViewDiff,
-  initialDiff,
-}: ChangeLedgerProps = {}) {
+export function HistoryAndLedgerView({ onFocusObject, onViewDiff, initialDiff }: ChangeLedgerProps = {}) {
   const activeProjectId = useStudioStore((s) => s.activeProjectId);
   const projectState = useStudioStore((s) => s.projectState);
   const revisions = useStudioStore((s) => s.revisions);
@@ -960,28 +791,23 @@ export function HistoryAndLedgerView({
   const isViewer = activeRole === "viewer";
 
   const [fromSelect, setFromSelect] = useState<number>(0);
-  const [toSelect, setToSelect] = useState<number>(
-    revisions[0]?.revision ?? 1,
-  );
+  const [toSelect, setToSelect] = useState<number>(revisions[0]?.revision ?? 1);
 
   const [auditLogs, setAuditLogs] = useState<StudioAuditLogEntry[]>([]);
   const [auditActionFilter, setAuditActionFilter] = useState<string>("all");
-  const [retentionSettings, setRetentionSettings] =
-    useState<ProjectRetentionSettingsPayload>({
-      projectId: projectSlug,
-      orgId: "org_default",
-      runRetentionDays: 14,
-      telemetryRetentionDays: 7,
-      captureStepIoInProd: true,
-      additionalRedactKeys: [],
-      updatedAt: new Date(0).toISOString(),
-      updatedBy: null,
-    });
+  const [retentionSettings, setRetentionSettings] = useState<ProjectRetentionSettingsPayload>({
+    projectId: projectSlug,
+    orgId: "org_default",
+    runRetentionDays: 14,
+    telemetryRetentionDays: 7,
+    captureStepIoInProd: true,
+    additionalRedactKeys: [],
+    updatedAt: new Date(0).toISOString(),
+    updatedBy: null,
+  });
   const [redactKeysText, setRedactKeysText] = useState<string>("");
   const [retentionSaving, setRetentionSaving] = useState<boolean>(false);
-  const [retentionSaveMessage, setRetentionSaveMessage] = useState<string | null>(
-    null,
-  );
+  const [retentionSaveMessage, setRetentionSaveMessage] = useState<string | null>(null);
 
   // Fetch revisions on mount if empty and an activeProjectId is set
   useEffect(() => {
@@ -1040,9 +866,7 @@ export function HistoryAndLedgerView({
       const refreshedLogs = await fetchProjectAuditLogs(projectSlug);
       setAuditLogs(refreshedLogs);
     } catch (err) {
-      setRetentionSaveMessage(
-        err instanceof Error ? err.message : "Failed to save retention settings",
-      );
+      setRetentionSaveMessage(err instanceof Error ? err.message : "Failed to save retention settings");
     } finally {
       setRetentionSaving(false);
     }
@@ -1050,9 +874,7 @@ export function HistoryAndLedgerView({
 
   const filteredAuditLogs = useMemo(() => {
     if (auditActionFilter === "all") return auditLogs;
-    return auditLogs.filter((entry) =>
-      entry.action.toLowerCase().startsWith(auditActionFilter.toLowerCase()),
-    );
+    return auditLogs.filter((entry) => entry.action.toLowerCase().startsWith(auditActionFilter.toLowerCase()));
   }, [auditLogs, auditActionFilter]);
 
   const distinctActivityAgentFilters = useMemo(() => {
@@ -1100,9 +922,7 @@ export function HistoryAndLedgerView({
       {/* Header & Compare Revisions bar */}
       <section className="p-4 rounded-lg bg-surface-raised border border-border flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-base font-bold text-text-primary">
-            Revision History & AI Change Ledger
-          </h2>
+          <h2 className="text-base font-bold text-text-primary">Revision History & AI Change Ledger</h2>
           <p className="text-xs text-text-secondary">
             Chronological revision log with human vs AI agent attribution, click-to-focus objects, and semantic diffing
           </p>
@@ -1179,35 +999,23 @@ export function HistoryAndLedgerView({
       )}
 
       {/* Draft Proposals Queue (Story 7.2) */}
-      <section
-        data-testid="history-proposals-section"
-        className="p-4 rounded-lg bg-surface-raised border border-border space-y-3"
-      >
+      <section data-testid="history-proposals-section" className="p-4 rounded-lg bg-surface-raised border border-border space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">
-              Draft Proposals ({proposals.length})
-            </h3>
-            <p className="text-[11px] text-text-secondary">
-              Agent and human draft branches awaiting or having completed Visual Diff Review
-            </p>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Draft Proposals ({proposals.length})</h3>
+            <p className="text-[11px] text-text-secondary">Agent and human draft branches awaiting or having completed Visual Diff Review</p>
           </div>
         </div>
 
         {proposals.length === 0 ? (
-          <div
-            data-testid="proposals-empty-state"
-            className="p-3 rounded bg-surface-base border border-border text-text-muted text-xs text-center"
-          >
+          <div data-testid="proposals-empty-state" className="p-3 rounded bg-surface-base border border-border text-text-muted text-xs text-center">
             No draft proposals recorded for this project.
           </div>
         ) : (
           <div className="space-y-2">
             {proposals.map((prop) => {
               const isAgent = prop.actor.type === "agent";
-              const actorBadge = isAgent
-                ? `🤖 agent:${prop.actor.id}${prop.actor.client ? ` (${prop.actor.client})` : ""}`
-                : `👤 user:${prop.actor.id}`;
+              const actorBadge = isAgent ? `🤖 agent:${prop.actor.id}${prop.actor.client ? ` (${prop.actor.client})` : ""}` : `👤 user:${prop.actor.id}`;
               const statusStyle =
                 prop.status === "pending"
                   ? "bg-amber-500/20 text-amber-200 border-amber-500/40"
@@ -1242,9 +1050,7 @@ export function HistoryAndLedgerView({
                       <span
                         data-testid={`proposal-actor-badge-${prop.proposalId}`}
                         className={`px-2 py-0.5 rounded text-[11px] font-mono ${
-                          isAgent
-                            ? "bg-sky-400/15 text-sky-300 border border-sky-400/30"
-                            : "bg-surface-control text-text-secondary border border-border"
+                          isAgent ? "bg-sky-400/15 text-sky-300 border border-sky-400/30" : "bg-surface-control text-text-secondary border border-border"
                         }`}
                       >
                         {actorBadge}
@@ -1253,9 +1059,7 @@ export function HistoryAndLedgerView({
                         {prop.ops.length} op{prop.ops.length === 1 ? "" : "s"}
                       </span>
                     </div>
-                    <div className="font-medium text-text-primary">
-                      {prop.summary}
-                    </div>
+                    <div className="font-medium text-text-primary">{prop.summary}</div>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1280,15 +1084,10 @@ export function HistoryAndLedgerView({
       </section>
 
       {/* Unified Activity Feed (R44 / Story 7.2 AC 4 & AC 5) */}
-      <section
-        data-testid="unified-activity-feed"
-        className="p-4 rounded-lg bg-surface-raised border border-border space-y-3"
-      >
+      <section data-testid="unified-activity-feed" className="p-4 rounded-lg bg-surface-raised border border-border space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">
-              Unified Activity Feed ({activityEvents.length})
-            </h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Unified Activity Feed ({activityEvents.length})</h3>
             <p className="text-[11px] text-text-secondary">
               Revisions, proposals, builds, deployments, connection changes, and workflow runs with exact actor attribution
             </p>
@@ -1334,10 +1133,7 @@ export function HistoryAndLedgerView({
         </div>
 
         {/* Author filter pills for Unified Activity Feed */}
-        <div
-          data-testid="activity-author-filters"
-          className="flex items-center gap-1.5 flex-wrap text-[11px]"
-        >
+        <div data-testid="activity-author-filters" className="flex items-center gap-1.5 flex-wrap text-[11px]">
           <span className="text-text-muted font-mono mr-1">Author:</span>
           {[
             { value: "all", label: "All" },
@@ -1353,9 +1149,7 @@ export function HistoryAndLedgerView({
                 data-testid={`activity-author-filter-${pill.value}`}
                 onClick={() => setActivityAuthorFilter(pill.value)}
                 className={`px-2 py-0.5 rounded font-mono transition ${
-                  active
-                    ? "bg-accent text-slate-950 font-bold"
-                    : "bg-surface-control text-text-secondary hover:text-text-primary border border-border"
+                  active ? "bg-accent text-slate-950 font-bold" : "bg-surface-control text-text-secondary hover:text-text-primary border border-border"
                 }`}
               >
                 {pill.label}
@@ -1365,10 +1159,7 @@ export function HistoryAndLedgerView({
         </div>
 
         {activityEvents.length === 0 ? (
-          <div
-            data-testid="activity-empty-state"
-            className="p-3 rounded bg-surface-base border border-border text-text-muted text-xs text-center"
-          >
+          <div data-testid="activity-empty-state" className="p-3 rounded bg-surface-base border border-border text-text-muted text-xs text-center">
             No activity events match the active filters.
           </div>
         ) : (
@@ -1398,46 +1189,36 @@ export function HistoryAndLedgerView({
                   className="p-2.5 rounded-lg bg-surface-base border border-border flex items-center justify-between gap-3 flex-wrap text-xs"
                 >
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span
-                      className={`px-1.5 py-0.5 rounded border font-mono font-bold text-[10px] uppercase ${typeBadgeColor}`}
-                    >
+                    <span className={`px-1.5 py-0.5 rounded border font-mono font-bold text-[10px] uppercase ${typeBadgeColor}`}>
                       {ev.type}:{ev.action}
                     </span>
                     <span
                       data-testid={`activity-actor-${ev.id}`}
                       className={`px-2 py-0.5 rounded font-mono text-[11px] ${
-                        isAgent
-                          ? "bg-sky-400/15 text-sky-300 border border-sky-400/30"
-                          : "bg-surface-control text-text-secondary border border-border"
+                        isAgent ? "bg-sky-400/15 text-sky-300 border border-sky-400/30" : "bg-surface-control text-text-secondary border border-border"
                       }`}
                     >
                       {isAgent ? "🤖 " : "👤 "}
                       {ev.actor.displayId}
                       {ev.actor.client ? ` (${ev.actor.client})` : ""}
                     </span>
-                    <span className="text-text-primary font-medium">
-                      {ev.summary}
-                    </span>
+                    <span className="text-text-primary font-medium">{ev.summary}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <time
-                      dateTime={ev.timestamp}
-                      className="text-[10px] font-mono text-text-muted"
-                    >
+                    <time dateTime={ev.timestamp} className="text-[10px] font-mono text-text-muted">
                       {ev.timestamp.slice(0, 19).replace("T", " ")}
                     </time>
-                    {ev.type === "proposal" &&
-                      typeof ev.proposalId === "string" && (
-                        <button
-                          type="button"
-                          data-testid={`activity-review-proposal-${ev.proposalId}`}
-                          onClick={() => startProposalReview(String(ev.proposalId))}
-                          className="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold text-[11px]"
-                        >
-                          Review
-                        </button>
-                      )}
+                    {ev.type === "proposal" && typeof ev.proposalId === "string" && (
+                      <button
+                        type="button"
+                        data-testid={`activity-review-proposal-${ev.proposalId}`}
+                        onClick={() => startProposalReview(String(ev.proposalId))}
+                        className="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold text-[11px]"
+                      >
+                        Review
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -1449,28 +1230,17 @@ export function HistoryAndLedgerView({
       {/* Chronological Revision Stream */}
       <section className="p-4 rounded-lg bg-surface-raised border border-border space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">
-            Chronological Revisions ({revisions.length})
-          </h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Chronological Revisions ({revisions.length})</h3>
         </div>
 
-        <ChangeLedgerFeed
-          compact={false}
-          onFocusObject={onFocusObject}
-          onViewDiff={onViewDiff}
-        />
+        <ChangeLedgerFeed compact={false} onFocusObject={onFocusObject} onViewDiff={onViewDiff} />
       </section>
 
       {/* Retention & Privacy Settings Panel (Story 8.2 AC 3) */}
-      <section
-        data-testid="retention-settings-panel"
-        className="p-4 rounded-lg bg-surface-raised border border-border space-y-4"
-      >
+      <section data-testid="retention-settings-panel" className="p-4 rounded-lg bg-surface-raised border border-border space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">
-              Retention &amp; Privacy Settings
-            </h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Retention &amp; Privacy Settings</h3>
             <p className="text-[11px] text-text-secondary">
               Configurable D1 run retention, telemetry &amp; structured log retention, production step I/O privacy, and custom redaction keys
             </p>
@@ -1487,14 +1257,8 @@ export function HistoryAndLedgerView({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div className="p-3 rounded bg-surface-base border border-border space-y-1.5">
-            <label
-              htmlFor="retention-run-days-input"
-              className="block font-semibold text-text-primary"
-            >
-              Run History Retention (1–90 days, default 14d):{" "}
-              <span className="font-mono text-accent">
-                {retentionSettings.runRetentionDays}d
-              </span>
+            <label htmlFor="retention-run-days-input" className="block font-semibold text-text-primary">
+              Run History Retention (1–90 days, default 14d): <span className="font-mono text-accent">{retentionSettings.runRetentionDays}d</span>
             </label>
             <input
               id="retention-run-days-input"
@@ -1505,10 +1269,7 @@ export function HistoryAndLedgerView({
               disabled={isViewer || retentionSaving}
               value={retentionSettings.runRetentionDays}
               onChange={(e) => {
-                const val = Math.max(
-                  1,
-                  Math.min(90, Math.round(Number(e.target.value) || 14)),
-                );
+                const val = Math.max(1, Math.min(90, Math.round(Number(e.target.value) || 14)));
                 setRetentionSettings((prev) => ({
                   ...prev,
                   runRetentionDays: val,
@@ -1519,14 +1280,9 @@ export function HistoryAndLedgerView({
           </div>
 
           <div className="p-3 rounded bg-surface-base border border-border space-y-1.5">
-            <label
-              htmlFor="retention-telemetry-days-input"
-              className="block font-semibold text-text-primary"
-            >
+            <label htmlFor="retention-telemetry-days-input" className="block font-semibold text-text-primary">
               Telemetry &amp; Structured Log Retention (1–30 days, default 7d):{" "}
-              <span className="font-mono text-accent">
-                {retentionSettings.telemetryRetentionDays}d
-              </span>
+              <span className="font-mono text-accent">{retentionSettings.telemetryRetentionDays}d</span>
             </label>
             <input
               id="retention-telemetry-days-input"
@@ -1537,10 +1293,7 @@ export function HistoryAndLedgerView({
               disabled={isViewer || retentionSaving}
               value={retentionSettings.telemetryRetentionDays}
               onChange={(e) => {
-                const val = Math.max(
-                  1,
-                  Math.min(30, Math.round(Number(e.target.value) || 7)),
-                );
+                const val = Math.max(1, Math.min(30, Math.round(Number(e.target.value) || 7)));
                 setRetentionSettings((prev) => ({
                   ...prev,
                   telemetryRetentionDays: val,
@@ -1552,10 +1305,7 @@ export function HistoryAndLedgerView({
 
           <div className="p-3 rounded bg-surface-base border border-border flex items-center justify-between gap-3">
             <div>
-              <label
-                htmlFor="retention-capture-step-io-toggle"
-                className="font-semibold text-text-primary block"
-              >
+              <label htmlFor="retention-capture-step-io-toggle" className="font-semibold text-text-primary block">
                 Capture Step I/O in Production
               </label>
               <div className="text-[11px] text-text-secondary">
@@ -1580,10 +1330,7 @@ export function HistoryAndLedgerView({
           </div>
 
           <div className="p-3 rounded bg-surface-base border border-border space-y-1.5">
-            <label
-              htmlFor="retention-redact-keys-input"
-              className="block font-semibold text-text-primary"
-            >
+            <label htmlFor="retention-redact-keys-input" className="block font-semibold text-text-primary">
               Custom Redaction Keys (comma-separated)
             </label>
             <input
@@ -1613,25 +1360,15 @@ export function HistoryAndLedgerView({
       </section>
 
       {/* Immutable Audit Log Panel (Story 8.2 AC 2) */}
-      <section
-        data-testid="studio-audit-log-panel"
-        className="p-4 rounded-lg bg-surface-raised border border-border space-y-3"
-      >
+      <section data-testid="studio-audit-log-panel" className="p-4 rounded-lg bg-surface-raised border border-border space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">
-              Immutable Audit Log ({filteredAuditLogs.length})
-            </h3>
-            <p className="text-[11px] text-text-secondary">
-              Append-only privileged control-plane ledger enforced by SQLite immutability triggers
-            </p>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Immutable Audit Log ({filteredAuditLogs.length})</h3>
+            <p className="text-[11px] text-text-secondary">Append-only privileged control-plane ledger enforced by SQLite immutability triggers</p>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <label
-              htmlFor="audit-action-filter"
-              className="text-text-muted font-mono text-[11px]"
-            >
+            <label htmlFor="audit-action-filter" className="text-text-muted font-mono text-[11px]">
               Category:
             </label>
             <select
@@ -1655,10 +1392,7 @@ export function HistoryAndLedgerView({
         </div>
 
         {filteredAuditLogs.length === 0 ? (
-          <div
-            data-testid="audit-log-empty-state"
-            className="p-3 rounded bg-surface-base border border-border text-text-muted text-xs text-center"
-          >
+          <div data-testid="audit-log-empty-state" className="p-3 rounded bg-surface-base border border-border text-text-muted text-xs text-center">
             No immutable audit log entries recorded yet for this filter.
           </div>
         ) : (
@@ -1681,31 +1415,22 @@ export function HistoryAndLedgerView({
                     <span
                       data-testid={`audit-log-actor-${entry.id}`}
                       className={`px-2 py-0.5 rounded font-mono text-[11px] ${
-                        isAgent
-                          ? "bg-sky-400/15 text-sky-300 border border-sky-400/30"
-                          : "bg-surface-control text-text-secondary border border-border"
+                        isAgent ? "bg-sky-400/15 text-sky-300 border border-sky-400/30" : "bg-surface-control text-text-secondary border border-border"
                       }`}
                     >
                       {isAgent ? "🤖 " : "👤 "}
                       {entry.actor}
                     </span>
                     {entry.targetRef && (
-                      <span
-                        data-testid={`audit-log-target-${entry.id}`}
-                        className="font-mono text-[11px] text-text-primary"
-                      >
+                      <span data-testid={`audit-log-target-${entry.id}`} className="font-mono text-[11px] text-text-primary">
                         target: {entry.targetRef}
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2 font-mono text-[10px] text-text-muted">
-                    <span title={`Hashed IP: ${entry.ipHash}`}>
-                      ip:{entry.ipHash}
-                    </span>
-                    <time dateTime={entry.ts}>
-                      {entry.ts.slice(0, 19).replace("T", " ")}
-                    </time>
+                    <span title={`Hashed IP: ${entry.ipHash}`}>ip:{entry.ipHash}</span>
+                    <time dateTime={entry.ts}>{entry.ts.slice(0, 19).replace("T", " ")}</time>
                   </div>
                 </div>
               );

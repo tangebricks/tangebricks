@@ -82,10 +82,16 @@ describe("UC9.1 — Tracer: generated /healthz and /readyz in every assembled pr
     const firstPath = sortedPaths[0]!;
     const firstName = firstPath.split("/").pop()!;
     await applyMigration(db, sql[firstPath]!);
-    await db.prepare("INSERT INTO _projectx_migrations (name, sha256, applied_at) VALUES (?, ?, datetime('now'))").bind(firstName, sha256Sync(sql[firstPath]!)).run();
+    await db
+      .prepare("INSERT INTO _projectx_migrations (name, sha256, applied_at) VALUES (?, ?, datetime('now'))")
+      .bind(firstName, sha256Sync(sql[firstPath]!))
+      .run();
 
     // Every migration after the first is pending, in order.
-    const pendingNames = sortedPaths.slice(1).map((p) => p.split("/").pop()!).join(", ");
+    const pendingNames = sortedPaths
+      .slice(1)
+      .map((p) => p.split("/").pop()!)
+      .join(", ");
 
     const res = await app!.fetch(new Request("http://localhost/readyz"), { DB: db });
     expect(res.status).toBe(503);

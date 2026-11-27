@@ -15,16 +15,8 @@ export interface WorkerLoaderStub {
 }
 
 export interface WorkerLoaderBinding {
-  load?(spec: {
-    id: string;
-    code: string;
-    env?: Record<string, unknown>;
-    globalOutbound?: unknown;
-  }): Promise<WorkerLoaderStub> | WorkerLoaderStub;
-  get?(
-    id: string,
-    options?: { env?: Record<string, unknown>; globalOutbound?: unknown },
-  ): WorkerLoaderStub;
+  load?(spec: { id: string; code: string; env?: Record<string, unknown>; globalOutbound?: unknown }): Promise<WorkerLoaderStub> | WorkerLoaderStub;
+  get?(id: string, options?: { env?: Record<string, unknown>; globalOutbound?: unknown }): WorkerLoaderStub;
 }
 
 export interface DispatchNamespaceBinding {
@@ -166,10 +158,7 @@ export function workerLoaderIsolate(loader: unknown): ScriptIsolate {
       } catch (err: unknown) {
         const durationMs = Math.max(1, Date.now() - startTime);
         const e = err as Error;
-        const isTimeout =
-          e?.name === "TimeoutError" ||
-          e?.name === "AbortError" ||
-          /timeout|aborted|cancelled|time limit|cpu limit/i.test(e?.message || "");
+        const isTimeout = e?.name === "TimeoutError" || e?.name === "AbortError" || /timeout|aborted|cancelled|time limit|cpu limit/i.test(e?.message || "");
 
         if (isTimeout) {
           return {
@@ -216,9 +205,13 @@ export function dispatchNamespaceIsolate(dispatcher: unknown): ScriptIsolate {
           await binding.put(scriptId, wrapped, { bindings: [] });
         }
 
-        const worker = binding?.get(scriptId, {}, {
-          limits: { cpuMs: limits.cpuMs, subRequests: 0 },
-        });
+        const worker = binding?.get(
+          scriptId,
+          {},
+          {
+            limits: { cpuMs: limits.cpuMs, subRequests: 0 },
+          },
+        );
 
         if (!worker || typeof worker.fetch !== "function") {
           return {
@@ -275,10 +268,7 @@ export function dispatchNamespaceIsolate(dispatcher: unknown): ScriptIsolate {
       } catch (err: unknown) {
         const durationMs = Math.max(1, Date.now() - startTime);
         const e = err as Error;
-        const isTimeout =
-          e?.name === "TimeoutError" ||
-          e?.name === "AbortError" ||
-          /timeout|aborted|cancelled|time limit|cpu limit/i.test(e?.message || "");
+        const isTimeout = e?.name === "TimeoutError" || e?.name === "AbortError" || /timeout|aborted|cancelled|time limit|cpu limit/i.test(e?.message || "");
 
         if (isTimeout) {
           return {

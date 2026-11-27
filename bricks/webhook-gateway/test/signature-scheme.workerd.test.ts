@@ -5,28 +5,15 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { WebhookSignatureSchemeSchema } from "@poc/assembler";
 import migration from "../migrations/0001_webhook_gateway.sql?raw";
-import {
-  createWebhookRoutes,
-  WebhookService,
-} from "../src/index.ts";
+import { createWebhookRoutes, WebhookService } from "../src/index.ts";
 import type { WebhookEnv, WebhookRouteOptions } from "../src/routes.ts";
-import {
-  verifyWithScheme,
-  type WebhookSignatureScheme,
-} from "../src/signature-scheme.ts";
+import { verifyWithScheme, type WebhookSignatureScheme } from "../src/signature-scheme.ts";
 
 const db = env.DB as D1Like;
 const WS_A = "ws_sig_scheme_test";
 
 async function resetDb(): Promise<void> {
-  for (const table of [
-    "px_webhook_deliveries",
-    "wh_subscriptions",
-    "px_connections",
-    "wh_deliveries",
-    "wh_endpoints",
-    "px_logs",
-  ]) {
+  for (const table of ["px_webhook_deliveries", "wh_subscriptions", "px_connections", "wh_deliveries", "wh_endpoints", "px_logs"]) {
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   }
   await applyMigration(db, migration);
@@ -38,20 +25,9 @@ beforeEach(async () => {
 });
 
 // Helper to compute HMAC in tests using WebCrypto
-async function computeHmac(
-  algorithm: "SHA-256" | "SHA-1" | "SHA-512",
-  secret: string,
-  payload: string,
-  encoding: "hex" | "base64" = "hex",
-): Promise<string> {
+async function computeHmac(algorithm: "SHA-256" | "SHA-1" | "SHA-512", secret: string, payload: string, encoding: "hex" | "base64" = "hex"): Promise<string> {
   const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: algorithm },
-    false,
-    ["sign"],
-  );
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: algorithm }, false, ["sign"]);
   const signatureBuf = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
   const bytes = new Uint8Array(signatureBuf);
   if (encoding === "hex") {
@@ -264,11 +240,7 @@ describe("Declarative Webhook Signature Schemes (UC4.1)", () => {
         prefix: "sha1=",
       };
       const sha1Sig = await computeHmac("SHA-1", secret, body, "hex");
-      const sha1Result = await verifyWithScheme(
-        sha1Scheme,
-        { rawBody: body, headers: { "x-hub-signature": `sha1=${sha1Sig}` } },
-        secret,
-      );
+      const sha1Result = await verifyWithScheme(sha1Scheme, { rawBody: body, headers: { "x-hub-signature": `sha1=${sha1Sig}` } }, secret);
       expect(sha1Result).toEqual({ ok: true });
 
       // 2. hmac-sha512 scheme
@@ -279,11 +251,7 @@ describe("Declarative Webhook Signature Schemes (UC4.1)", () => {
         encoding: "hex",
       };
       const sha512Sig = await computeHmac("SHA-512", secret, body, "hex");
-      const sha512Result = await verifyWithScheme(
-        sha512Scheme,
-        { rawBody: body, headers: { "x-signature-512": sha512Sig } },
-        secret,
-      );
+      const sha512Result = await verifyWithScheme(sha512Scheme, { rawBody: body, headers: { "x-signature-512": sha512Sig } }, secret);
       expect(sha512Result).toEqual({ ok: true });
 
       // 3. timestamp+body base64 scheme
@@ -387,11 +355,7 @@ describe("Declarative Webhook Signature Schemes (UC4.1)", () => {
       });
       expect(invalidToken.success).toBe(false);
       if (!invalidToken.success) {
-        expect(
-          invalidToken.error.issues.some((i) =>
-            i.message.includes("WEBHOOK_SCHEME_UNKNOWN_TOKEN"),
-          ),
-        ).toBe(true);
+        expect(invalidToken.error.issues.some((i) => i.message.includes("WEBHOOK_SCHEME_UNKNOWN_TOKEN"))).toBe(true);
       }
     });
 

@@ -187,8 +187,7 @@ describe("Run History Drawer, Historical Revision Replay & Run Replay Inspector"
                 durationMs: 12,
                 retries: 0,
                 inputPreview: '{"orderId":"ord_77"}',
-                outputPreview:
-                  '{"__truncated":true,"originalBytes":24576,"preview":"Order=ord_77_large_payload"}',
+                outputPreview: '{"__truncated":true,"originalBytes":24576,"preview":"Order=ord_77_large_payload"}',
                 createdAt: "2026-10-30T10:15:00.017Z",
               },
               {
@@ -202,8 +201,7 @@ describe("Run History Drawer, Historical Revision Replay & Run Replay Inspector"
                 retries: 2,
                 inputPreview: '{"amount":40,"apiKey":"[REDACTED]"}',
                 outputPreview: "{}",
-                errorStack:
-                  "Error: Wallet debit failed after 2 retries\n    at debitWallet (wallet.ts:88:9)",
+                errorStack: "Error: Wallet debit failed after 2 retries\n    at debitWallet (wallet.ts:88:9)",
                 createdAt: "2026-10-30T10:15:00.145Z",
               },
             ],
@@ -257,49 +255,27 @@ describe("Run History Drawer, Historical Revision Replay & Run Replay Inspector"
       expect(screen.getByTestId("run-replay-historical-rev-badge")).toBeTruthy();
     });
 
-    expect(screen.getByTestId("run-replay-banner").textContent).toContain(
-      "Revision r1",
-    );
-    expect(
-      screen.getByTestId("run-replay-historical-rev-badge").textContent,
-    ).toContain("Historical graph at r1");
+    expect(screen.getByTestId("run-replay-banner").textContent).toContain("Revision r1");
+    expect(screen.getByTestId("run-replay-historical-rev-badge").textContent).toContain("Historical graph at r1");
 
     // Historical node `step_removed_in_r2` is now rendered on the replay canvas!
     expect(screen.getByTestId("canvas-node-step_removed_in_r2")).toBeTruthy();
-    expect(
-      screen
-        .getByTestId("node-telemetry-badge-step_removed_in_r2")
-        .getAttribute("data-status"),
-    ).toBe("succeeded");
-    expect(
-      screen
-        .getByTestId("node-telemetry-badge-step_debit")
-        .getAttribute("data-status"),
-    ).toBe("failed");
+    expect(screen.getByTestId("node-telemetry-badge-step_removed_in_r2").getAttribute("data-status")).toBe("succeeded");
+    expect(screen.getByTestId("node-telemetry-badge-step_debit").getAttribute("data-status")).toBe("failed");
 
     // Failed node `step_debit` is selected automatically -> Run Replay Inspector shows retries=2 and errorStack
     expect(screen.getByTestId("inspector-run-replay-panel")).toBeTruthy();
-    expect(screen.getByTestId("replay-node-retries").textContent).toContain(
-      "2 retries",
-    );
-    expect(screen.getByTestId("replay-node-duration").textContent).toContain(
-      "128 ms",
-    );
-    expect(screen.getByTestId("replay-node-error-stack").textContent).toContain(
-      "Wallet debit failed after 2 retries",
-    );
-    expect(
-      screen.getByTestId("replay-node-input-preview").textContent,
-    ).toContain("[REDACTED]");
+    expect(screen.getByTestId("replay-node-retries").textContent).toContain("2 retries");
+    expect(screen.getByTestId("replay-node-duration").textContent).toContain("128 ms");
+    expect(screen.getByTestId("replay-node-error-stack").textContent).toContain("Wallet debit failed after 2 retries");
+    expect(screen.getByTestId("replay-node-input-preview").textContent).toContain("[REDACTED]");
 
     // Click `step_removed_in_r2` on the canvas -> Inspector shows 16 KB truncation notice badge
     fireEvent.click(screen.getByTestId("canvas-node-step_removed_in_r2"));
     await waitFor(() => {
       expect(screen.getByTestId("replay-preview-truncated-notice")).toBeTruthy();
     });
-    expect(
-      screen.getByTestId("replay-preview-truncated-notice").textContent,
-    ).toContain("truncated at 16 KB");
+    expect(screen.getByTestId("replay-preview-truncated-notice").textContent).toContain("truncated at 16 KB");
 
     // Exit Replay -> restores current r2 graph without `step_removed_in_r2`
     fireEvent.click(screen.getByTestId("exit-run-replay-button"));

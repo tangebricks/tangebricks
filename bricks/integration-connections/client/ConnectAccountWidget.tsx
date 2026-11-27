@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type {
-  IntegrationConnectionsClient,
-  WorkspaceIntegrationRecord,
-} from "./connections-client.ts";
+import type { IntegrationConnectionsClient, WorkspaceIntegrationRecord } from "./connections-client.ts";
 
 export interface ProviderDescriptor {
   provider: string;
@@ -31,23 +28,12 @@ const DEFAULT_PROVIDER_DESCRIPTORS: ProviderDescriptor[] = [
 export interface ConnectAccountWidgetProps {
   client: IntegrationConnectionsClient;
   providers?: ProviderDescriptor[];
-  onAuthorizeRedirect?: (params: {
-    provider: string;
-    authorizeUrl: string;
-    state: string;
-  }) => void | Promise<void>;
+  onAuthorizeRedirect?: (params: { provider: string; authorizeUrl: string; state: string }) => void | Promise<void>;
 }
 
-type LoadState =
-  | { phase: "loading" }
-  | { phase: "error"; message: string }
-  | { phase: "ready"; recordsByProvider: Record<string, WorkspaceIntegrationRecord> };
+type LoadState = { phase: "loading" } | { phase: "error"; message: string } | { phase: "ready"; recordsByProvider: Record<string, WorkspaceIntegrationRecord> };
 
-export function ConnectAccountWidget({
-  client,
-  providers = DEFAULT_PROVIDER_DESCRIPTORS,
-  onAuthorizeRedirect,
-}: ConnectAccountWidgetProps) {
+export function ConnectAccountWidget({ client, providers = DEFAULT_PROVIDER_DESCRIPTORS, onAuthorizeRedirect }: ConnectAccountWidgetProps) {
   const [state, setState] = useState<LoadState>({ phase: "loading" });
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -90,9 +76,7 @@ export function ConnectAccountWidget({
       }
     } catch (error) {
       setConnectingProvider(null);
-      setActionError(
-        error instanceof Error ? error.message : `Failed to start ${providerSlug} connection`,
-      );
+      setActionError(error instanceof Error ? error.message : `Failed to start ${providerSlug} connection`);
     }
   };
 
@@ -102,9 +86,7 @@ export function ConnectAccountWidget({
       await client.disconnect(providerSlug);
       await load();
     } catch (error) {
-      setActionError(
-        error instanceof Error ? error.message : `Failed to disconnect ${providerSlug}`,
-      );
+      setActionError(error instanceof Error ? error.message : `Failed to disconnect ${providerSlug}`);
     }
   };
 
@@ -132,33 +114,16 @@ export function ConnectAccountWidget({
             const record = state.recordsByProvider[slug];
             const isConnecting = connectingProvider === slug;
             const isConnected = !isConnecting && record?.status === "connected";
-            const isExpired =
-              !isConnecting &&
-              Boolean(record && (record.status === "expired" || record.status === "error"));
+            const isExpired = !isConnecting && Boolean(record && (record.status === "expired" || record.status === "error"));
 
-            const statusLabel = isConnecting
-              ? "Connecting"
-              : isConnected
-                ? "Connected"
-                : isExpired
-                  ? "Expired"
-                  : "Not connected";
+            const statusLabel = isConnecting ? "Connecting" : isConnected ? "Connected" : isExpired ? "Expired" : "Not connected";
 
             return (
-              <li
-                key={slug}
-                data-testid={`provider-row-${slug}`}
-                data-status={statusLabel.toLowerCase().replace(/\s+/g, "_")}
-              >
+              <li key={slug} data-testid={`provider-row-${slug}`} data-status={statusLabel.toLowerCase().replace(/\s+/g, "_")}>
                 <div>
-                  <strong>{item.displayName}</strong>{" "}
-                  <span data-testid={`provider-status-${slug}`}>{statusLabel}</span>
+                  <strong>{item.displayName}</strong> <span data-testid={`provider-status-${slug}`}>{statusLabel}</span>
                   {item.description && <p>{item.description}</p>}
-                  {isConnected && record?.accountLabel && (
-                    <p data-testid={`provider-account-${slug}`}>
-                      Account: {record.accountLabel}
-                    </p>
-                  )}
+                  {isConnected && record?.accountLabel && <p data-testid={`provider-account-${slug}`}>Account: {record.accountLabel}</p>}
                 </div>
                 <div>
                   {isConnecting && (
@@ -167,29 +132,17 @@ export function ConnectAccountWidget({
                     </button>
                   )}
                   {!isConnecting && !record && (
-                    <button
-                      type="button"
-                      data-testid={`provider-connect-btn-${slug}`}
-                      onClick={() => void handleConnect(slug)}
-                    >
+                    <button type="button" data-testid={`provider-connect-btn-${slug}`} onClick={() => void handleConnect(slug)}>
                       Connect {item.displayName}
                     </button>
                   )}
                   {isConnected && (
-                    <button
-                      type="button"
-                      data-testid={`provider-disconnect-btn-${slug}`}
-                      onClick={() => void handleDisconnect(slug)}
-                    >
+                    <button type="button" data-testid={`provider-disconnect-btn-${slug}`} onClick={() => void handleDisconnect(slug)}>
                       Disconnect
                     </button>
                   )}
                   {isExpired && (
-                    <button
-                      type="button"
-                      data-testid={`provider-reconnect-btn-${slug}`}
-                      onClick={() => void handleConnect(slug)}
-                    >
+                    <button type="button" data-testid={`provider-reconnect-btn-${slug}`} onClick={() => void handleConnect(slug)}>
                       Reconnect
                     </button>
                   )}

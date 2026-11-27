@@ -54,9 +54,7 @@ test.describe("Structured Data-Pill Picker ({{steps.nodeId.output.field}}) and d
     await page.getByTestId("new-workflow-button").click();
     await page.getByTestId("new-workflow-name-input").fill("Invoice Paid Email Flow");
     await page.getByTestId("create-workflow-confirm").click();
-    await expect(page.getByTestId("workflow-selector")).toHaveValue(
-      "wf-invoice-paid-email-flow",
-    );
+    await expect(page.getByTestId("workflow-selector")).toHaveValue("wf-invoice-paid-email-flow");
 
     // 3. Add Brick Event Trigger, If Condition, and Format Template nodes from Palette
     const trigNodeId = "node-brick-event-1";
@@ -79,15 +77,9 @@ test.describe("Structured Data-Pill Picker ({{steps.nodeId.output.field}}) and d
 
     await expect(page.getByTestId("inspector-node-dynamic-ports")).toBeVisible();
     await expect(page.getByTestId("dynamic-port-out-col-id")).toContainText("col-id:string");
-    await expect(page.getByTestId("dynamic-port-out-col-amount")).toContainText(
-      "col-amount:number",
-    );
-    await expect(page.getByTestId("dynamic-port-out-col-status")).toContainText(
-      "col-status:string",
-    );
-    await expect(page.getByTestId("dynamic-port-out-col-customer_email")).toContainText(
-      "col-customer_email:string",
-    );
+    await expect(page.getByTestId("dynamic-port-out-col-amount")).toContainText("col-amount:number");
+    await expect(page.getByTestId("dynamic-port-out-col-status")).toContainText("col-status:string");
+    await expect(page.getByTestId("dynamic-port-out-col-customer_email")).toContainText("col-customer_email:string");
 
     await page.getByTestId("inspector-node-save").click();
     await expect(page.getByTestId("inspector-node-saved-badge")).toBeVisible();
@@ -177,9 +169,7 @@ test.describe("Structured Data-Pill Picker ({{steps.nodeId.output.field}}) and d
 
     await page.getByTestId(`canvas-node-${ifNodeId}`).click();
     await expect(page.getByTestId("data-pill-chip-field-status")).toBeVisible();
-    const persistedIfConfig = JSON.parse(
-      (await page.getByTestId("inspector-node-config").textContent()) ?? "{}",
-    ) as Record<string, unknown>;
+    const persistedIfConfig = JSON.parse((await page.getByTestId("inspector-node-config").textContent()) ?? "{}") as Record<string, unknown>;
     expect(persistedIfConfig.field).toBe(`{{steps.${trigNodeId}.output.status}}`);
     expect(persistedIfConfig.value).toBe("paid");
 
@@ -188,17 +178,9 @@ test.describe("Structured Data-Pill Picker ({{steps.nodeId.output.field}}) and d
     await expect(page.getByTestId("data-pill-chip-template-id")).toBeVisible();
     await expect(page.getByTestId("data-pill-chip-template-amount")).toBeVisible();
 
-    const persistedFormatConfig = JSON.parse(
-      (await page.getByTestId("inspector-node-config").textContent()) ?? "{}",
-    ) as Record<string, unknown>;
-    expect(persistedFormatConfig.to).toBe(
-      `{{steps.${trigNodeId}.output.customer_email}}`,
-    );
-    expect(String(persistedFormatConfig.template)).toContain(
-      `{{steps.${trigNodeId}.output.id}}`,
-    );
-    expect(String(persistedFormatConfig.template)).toContain(
-      `{{steps.${trigNodeId}.output.amount}}`,
-    );
+    const persistedFormatConfig = JSON.parse((await page.getByTestId("inspector-node-config").textContent()) ?? "{}") as Record<string, unknown>;
+    expect(persistedFormatConfig.to).toBe(`{{steps.${trigNodeId}.output.customer_email}}`);
+    expect(String(persistedFormatConfig.template)).toContain(`{{steps.${trigNodeId}.output.id}}`);
+    expect(String(persistedFormatConfig.template)).toContain(`{{steps.${trigNodeId}.output.amount}}`);
   });
 });

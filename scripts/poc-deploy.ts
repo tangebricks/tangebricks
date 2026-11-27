@@ -17,7 +17,25 @@ import { bundleWorker } from "../packages/deploy/src/bundle.ts";
 import { canonical, evaluateH10, runH10, withLeakScan } from "../packages/deploy/src/h10.ts";
 import type { H10Result } from "../packages/deploy/src/h10.ts";
 import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
-import { CredentialsError, createClient, createRedactor, fileKeyStore, fileStore, findSecrets, loadCredentials, loadOrCreateAccessKey, memoryKeyStore, memoryStore, migrationsFrom, newSuffix, openLedger, formatPlan, planDeploy, resourceNames, telemetryWebhookConfig } from "../packages/deploy/src/provisioner/index.ts";
+import {
+  CredentialsError,
+  createClient,
+  createRedactor,
+  fileKeyStore,
+  fileStore,
+  findSecrets,
+  loadCredentials,
+  loadOrCreateAccessKey,
+  memoryKeyStore,
+  memoryStore,
+  migrationsFrom,
+  newSuffix,
+  openLedger,
+  formatPlan,
+  planDeploy,
+  resourceNames,
+  telemetryWebhookConfig,
+} from "../packages/deploy/src/provisioner/index.ts";
 import { INVOICE_FLOW_BLUEPRINT } from "../test/support/blueprints.ts";
 import { OUT_DIR, writeProject } from "../test/support/emitted.ts";
 import { WORKERS_SUBDOMAIN_FILE } from "../packages/deploy/src/context.ts";
@@ -68,7 +86,8 @@ if (inside(stateDir, root) || inside(stateDir, planRepo)) {
 // ---- building the project
 const variantBlueprint = (variant: "base" | "changed") => ({
   ...INVOICE_FLOW_BLUEPRINT,
-  bricks: variant === "base" ? [...INVOICE_FLOW_BLUEPRINT.bricks] : ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 2 } }, "dynamic-entities"],
+  bricks:
+    variant === "base" ? [...INVOICE_FLOW_BLUEPRINT.bricks] : ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 2 } }, "dynamic-entities"],
 });
 async function build(variant: "base" | "changed") {
   const assembled = assemble(variantBlueprint(variant) as never, catalog, { environment });
@@ -76,7 +95,12 @@ async function build(variant: "base" | "changed") {
   const projectDir = join(OUT_DIR, "deploy", `invoice-flow-${variant}`);
   await writeProject(projectDir, assembled.files);
   const bundle = await bundleWorker({ projectDir, environment });
-  return { bundle: { code: bundle.code, sha256: bundle.sha256, bytes: bundle.bytes }, compatibilityFlags: bundle.compatibilityFlags, migrations: migrationsFrom(assembled.files), lock: JSON.parse(assembled.files["project.json"]!) as ProjectLock };
+  return {
+    bundle: { code: bundle.code, sha256: bundle.sha256, bytes: bundle.bytes },
+    compatibilityFlags: bundle.compatibilityFlags,
+    migrations: migrationsFrom(assembled.files),
+    lock: JSON.parse(assembled.files["project.json"]!) as ProjectLock,
+  };
 }
 
 // ---- --plan: what a deploy would change, read-only. Reads the account and the ledger, writes nothing to either.
@@ -86,10 +110,24 @@ if (process.argv.includes("--plan")) {
   const planLedgerPath = join(stateDir, "ledger.json");
   const planStore = memoryStore(existsSync(planLedgerPath) ? fileStore(planLedgerPath).read() : null); // a copy: the file is never written
   const planLedger = openLedger(planStore, () => newSuffix((n) => randomBytes(n)));
-  const planAccessKey = loadOrCreateAccessKey(memoryKeyStore(existsSync(join(stateDir, "access-key.txt")) ? readFileSync(join(stateDir, "access-key.txt"), "utf8").trim() : null), (n) => randomBytes(n));
+  const planAccessKey = loadOrCreateAccessKey(
+    memoryKeyStore(existsSync(join(stateDir, "access-key.txt")) ? readFileSync(join(stateDir, "access-key.txt"), "utf8").trim() : null),
+    (n) => randomBytes(n),
+  );
   const built = await build(variant);
   const planClient = createClient({ credentials, fetch: (request) => fetch(request), now: clock, alsoHide: [planAccessKey] });
-  const deployPlan = await planDeploy({ client: planClient, ledger: planLedger, names: resourceNames(planLedger.suffix), accessKey: planAccessKey, bundle: built.bundle, migrations: built.migrations, compatibilityDate: COMPATIBILITY_DATE, ...(built.compatibilityFlags.length > 0 ? { compatibilityFlags: built.compatibilityFlags } : {}), lock: built.lock, catalog: catalog as never });
+  const deployPlan = await planDeploy({
+    client: planClient,
+    ledger: planLedger,
+    names: resourceNames(planLedger.suffix),
+    accessKey: planAccessKey,
+    bundle: built.bundle,
+    migrations: built.migrations,
+    compatibilityDate: COMPATIBILITY_DATE,
+    ...(built.compatibilityFlags.length > 0 ? { compatibilityFlags: built.compatibilityFlags } : {}),
+    lock: built.lock,
+    catalog: catalog as never,
+  });
   console.log(JSON.stringify(deployPlan, null, 2));
   process.exit(0);
 }
@@ -103,7 +141,9 @@ const existing = store.read();
 if (existing) {
   const live = existing.entries.filter((e) => e.status !== "removed");
   if (live.length > 0) {
-    console.error(`the ledger lists ${live.length} resource(s) not yet removed (${live.map((e) => e.name).join(", ")}). The timed run must start from nothing: run scripts/poc-teardown.ts first.`);
+    console.error(
+      `the ledger lists ${live.length} resource(s) not yet removed (${live.map((e) => e.name).join(", ")}). The timed run must start from nothing: run scripts/poc-teardown.ts first.`,
+    );
     process.exit(5);
   }
   renameSync(ledgerPath, `${ledgerPath}.${new Date().toISOString().replace(/[:.]/g, "-")}.done`); // a finished ledger is kept, and a new suffix is used
@@ -127,7 +167,18 @@ const hide = createRedactor([credentials.token, credentials.accountId, accessKey
   const started = performance.now();
   const built = await build("base");
   const preflightClient = createClient({ credentials, fetch: (request) => fetch(request), now: clock, alsoHide: [accessKey, ...derivedSecrets] });
-  const plan = await planDeploy({ client: preflightClient, ledger, names, accessKey, bundle: built.bundle, migrations: built.migrations, compatibilityDate: COMPATIBILITY_DATE, ...(built.compatibilityFlags.length > 0 ? { compatibilityFlags: built.compatibilityFlags } : {}), lock: built.lock, catalog: catalog as never });
+  const plan = await planDeploy({
+    client: preflightClient,
+    ledger,
+    names,
+    accessKey,
+    bundle: built.bundle,
+    migrations: built.migrations,
+    compatibilityDate: COMPATIBILITY_DATE,
+    ...(built.compatibilityFlags.length > 0 ? { compatibilityFlags: built.compatibilityFlags } : {}),
+    lock: built.lock,
+    catalog: catalog as never,
+  });
   out("plan (read-only, not timed):");
   for (const line of formatPlan(plan).split(/\r?\n/)) out(`  ${line}`);
   preflightMs = performance.now() - started;
@@ -169,7 +220,10 @@ const { callsText, result: first } = redactCallsAndResult(canonical(calls), meas
 const dir = join(root, "evidence", "deployed");
 mkdirSync(dir, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-for (const [name, text] of [["h10-calls.json", callsText], ["h10-result.json", JSON.stringify(first, null, 2)]] as const) {
+for (const [name, text] of [
+  ["h10-calls.json", callsText],
+  ["h10-result.json", JSON.stringify(first, null, 2)],
+] as const) {
   const hits = findSecrets(text, secrets);
   if (hits.length > 0) {
     console.error(`refusing to write ${name}: it contains ${hits.join(" and ")}`);
@@ -187,8 +241,12 @@ writeFileSync(join(dir, "h10-calls.json"), callsText);
 // The evidence shows the address with the account's subdomain redacted; the real one stays in the state folder (outside both
 // repositories) for the later live scripts (loadDeployment, poc-graphs: resolveWorkerUrl).
 const accountSubdomain = calls.facts.url ? accountSubdomainOf(calls.facts.url) : undefined;
-if (accountSubdomain) writeFileSync(join(stateDir, WORKERS_SUBDOMAIN_FILE), `${accountSubdomain}
-`);
+if (accountSubdomain)
+  writeFileSync(
+    join(stateDir, WORKERS_SUBDOMAIN_FILE),
+    `${accountSubdomain}
+`,
+  );
 writeFileSync(join(dir, "h10-result.json"), `${JSON.stringify(first, null, 2)}\n`);
 
 const scan = scanTreesForSecrets([root, ...(existsSync(planRepo) ? [planRepo] : [])], secrets);
@@ -203,13 +261,26 @@ writeFileSync(join(dir, "h10-result.json"), finalText);
 
 const attemptsPath = join(dir, "h10-attempts.json");
 const attempts = existsSync(attemptsPath) ? (JSON.parse(readFileSync(attemptsPath, "utf8")) as unknown[]) : [];
-attempts.push({ startedAt: calls.commandStartedAt, completed: final.completed, seconds: final.secondsToCorrectAnswer, stoppedBecause: final.stoppedBecause ?? null, uploadOutcome: calls.facts.upload.outcome });
+attempts.push({
+  startedAt: calls.commandStartedAt,
+  completed: final.completed,
+  seconds: final.secondsToCorrectAnswer,
+  stoppedBecause: final.stoppedBecause ?? null,
+  uploadOutcome: calls.facts.upload.outcome,
+});
 mkdirSync(dirname(attemptsPath), { recursive: true });
 writeFileSync(attemptsPath, `${JSON.stringify(attempts, null, 2)}\n`);
 
 // ---- what the files say (the same recomputation pnpm poc:verify does)
 const sources: Record<string, string> = {};
-for (const file of ["scripts/poc-deploy.ts", "packages/deploy/src/h10.ts", ...["access-key", "cloudflare", "credentials", "deploy", "index", "ledger", "names", "redact", "teardown"].map((n) => `packages/deploy/src/provisioner/${n}.ts`)]) sources[file] = readFileSync(join(root, file), "utf8");
+for (const file of [
+  "scripts/poc-deploy.ts",
+  "packages/deploy/src/h10.ts",
+  ...["access-key", "cloudflare", "credentials", "deploy", "index", "ledger", "names", "redact", "teardown"].map(
+    (n) => `packages/deploy/src/provisioner/${n}.ts`,
+  ),
+])
+  sources[file] = readFileSync(join(root, file), "utf8");
 const evaluation = evaluateH10({ callsText, result: final, sources, evidenceTexts: [callsText, finalText] });
 out("");
 out(`secondsToCorrectAnswer: ${evaluation.measured ?? "not measured"}`);

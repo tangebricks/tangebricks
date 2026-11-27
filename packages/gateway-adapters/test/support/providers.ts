@@ -79,7 +79,12 @@ export function fakeProvider(): TestProvider {
     tamper: async (orderId: string, field: TamperField) => {
       const current = await fake.fetchOrder(orderId, undefined);
       const changed = tampered({ ...current, amount: current.amountMinor }, field);
-      fake.setOrder(orderId, { orderId: changed.orderId, amountMinor: Number(changed.amount), currency: changed.currency, customerId: changed.customerId } satisfies Partial<GatewayOrder>);
+      fake.setOrder(orderId, {
+        orderId: changed.orderId,
+        amountMinor: Number(changed.amount),
+        currency: changed.currency,
+        customerId: changed.customerId,
+      } satisfies Partial<GatewayOrder>);
     },
     signedWebhook: (orderId) => fake.signWebhook(orderId),
     forgedWebhook: async (orderId) => createFakeGateway().signWebhook(orderId),
@@ -104,8 +109,20 @@ export function cashfreeProvider() {
     if (u.hostname !== "sandbox.cashfree.com") return json({ message: "wrong host" }, 404);
     if (u.pathname === "/pg/orders" && method === "POST") {
       const sent = JSON.parse(body ?? "{}") as { order_id: string; order_amount: number; order_currency: string; customer_details: { customer_id: string } };
-      orders.set(sent.order_id, { orderId: sent.order_id, status: "ACTIVE", amount: sent.order_amount, currency: sent.order_currency, customerId: sent.customer_details.customer_id });
-      return json({ ...createOrderFixture, order_id: sent.order_id, order_amount: sent.order_amount, order_currency: sent.order_currency, customer_details: { ...createOrderFixture.customer_details, ...sent.customer_details } });
+      orders.set(sent.order_id, {
+        orderId: sent.order_id,
+        status: "ACTIVE",
+        amount: sent.order_amount,
+        currency: sent.order_currency,
+        customerId: sent.customer_details.customer_id,
+      });
+      return json({
+        ...createOrderFixture,
+        order_id: sent.order_id,
+        order_amount: sent.order_amount,
+        order_currency: sent.order_currency,
+        customer_details: { ...createOrderFixture.customer_details, ...sent.customer_details },
+      });
     }
     const match = /^\/pg\/orders\/([^/]+)$/.exec(u.pathname);
     if (match && method === "GET") {
@@ -137,7 +154,15 @@ export function cashfreeProvider() {
     const body = JSON.stringify({ ...webhookFixture, data: { ...webhookFixture.data, order: { ...webhookFixture.data.order, order_id: orderId } } });
     const timestamp = String(NOW);
     const signature = toBase64(await hmacSha256(secret, timestamp + body));
-    return { body, headers: new Headers({ "content-type": "application/json", "x-webhook-timestamp": timestamp, "x-webhook-signature": signature, "x-webhook-version": "2023-08-01" }) };
+    return {
+      body,
+      headers: new Headers({
+        "content-type": "application/json",
+        "x-webhook-timestamp": timestamp,
+        "x-webhook-signature": signature,
+        "x-webhook-version": "2023-08-01",
+      }),
+    };
   };
   const provider: TestProvider & { orders: typeof orders; requests: typeof requests; setRaw(orderId: string, patch: Partial<StoredOrder>): void } = {
     name: "cashfree",
@@ -184,7 +209,8 @@ export function stripeProvider(): TestProvider & { sentAmounts: number[] } {
       const params = new URLSearchParams(typeof init?.body === "string" ? init.body : "");
       const orderId = params.get("metadata[order_id]") ?? "";
       const customer = params.get("customer");
-      if (customer !== null && !customer.startsWith("cus_")) return json({ error: { code: "resource_missing", message: "No such customer", type: "invalid_request_error" } }, 400);
+      if (customer !== null && !customer.startsWith("cus_"))
+        return json({ error: { code: "resource_missing", message: "No such customer", type: "invalid_request_error" } }, 400);
       sentAmounts.push(Number(params.get("amount")));
       const intentId = `pi_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
       intentOf.set(orderId, intentId);
@@ -201,7 +227,14 @@ export function stripeProvider(): TestProvider & { sentAmounts: number[] } {
       const id = decodeURIComponent(u.pathname.slice("/v1/payment_intents/".length));
       const order = intents.get(id);
       if (!order) return json({ error: { code: "resource_missing", message: "no such intent", type: "invalid_request_error" } }, 404);
-      return json({ id, object: "payment_intent", status: order.status, amount: order.amount, currency: order.currency, metadata: { order_id: order.orderId, customer_id: order.customerId } });
+      return json({
+        id,
+        object: "payment_intent",
+        status: order.status,
+        amount: order.amount,
+        currency: order.currency,
+        metadata: { order_id: order.orderId, customer_id: order.customerId },
+      });
     }
     return json({ error: { code: "not_found" } }, 404);
   };
@@ -213,7 +246,12 @@ export function stripeProvider(): TestProvider & { sentAmounts: number[] } {
     now: () => NOW,
   });
   const sign = async (orderId: string, secret: string) => {
-    const body = JSON.stringify({ id: "evt_test", object: "event", type: "payment_intent.succeeded", data: { object: { id: intentOf.get(orderId) ?? "pi_unknown", object: "payment_intent", metadata: { order_id: orderId } } } });
+    const body = JSON.stringify({
+      id: "evt_test",
+      object: "event",
+      type: "payment_intent.succeeded",
+      data: { object: { id: intentOf.get(orderId) ?? "pi_unknown", object: "payment_intent", metadata: { order_id: orderId } } },
+    });
     const t = String(Math.floor(NOW / 1000));
     const v1 = toHex(await hmacSha256(secret, `${t}.${body}`));
     return { body, headers: new Headers({ "content-type": "application/json", "stripe-signature": `t=${t},v1=${v1}` }) };

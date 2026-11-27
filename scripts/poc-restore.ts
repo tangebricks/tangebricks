@@ -95,7 +95,9 @@ export async function runRestore(options: RestoreOptions): Promise<RestoreResult
       log("  (no deploy history recorded yet)");
     } else {
       for (const row of history) {
-        log(`  - deploy: ${row.id} | started: ${row.started_at} | bookmark: ${row.bookmark} | status: ${row.status} | from: ${row.from_version_id ?? "none"} -> to: ${row.to_version_id ?? "none"}`);
+        log(
+          `  - deploy: ${row.id} | started: ${row.started_at} | bookmark: ${row.bookmark} | status: ${row.status} | from: ${row.from_version_id ?? "none"} -> to: ${row.to_version_id ?? "none"}`,
+        );
       }
     }
     log("\nSpecify --to <bookmark|deploy-id> to restore.");

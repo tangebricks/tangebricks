@@ -62,8 +62,7 @@ export function createMetaWhatsAppAdapter(options: MetaWhatsAppAdapterOptions = 
     return null;
   }
 
-  const bearer = (credentials: ChannelCredentials): string | null =>
-    nonEmpty(credentials.accessToken) ? `Bearer ${credentials.accessToken.trim()}` : null;
+  const bearer = (credentials: ChannelCredentials): string | null => (nonEmpty(credentials.accessToken) ? `Bearer ${credentials.accessToken.trim()}` : null);
 
   return {
     checkConfig,

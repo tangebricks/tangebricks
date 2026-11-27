@@ -13,24 +13,14 @@ const VALUE_PATTERNS_TS = join(ROOT, "packages", "telemetry", "src", "value-patt
 
 describe("UC9.9 — Refactor sweep (UC9)", () => {
   it("AC2 & Task 2: exactly one AuthUser interface definition exists in the repo (in packages/sdk)", () => {
-    const searchDirs = [
-      join(ROOT, "bricks"),
-      join(ROOT, "packages"),
-      join(ROOT, "apps"),
-      join(ROOT, "scripts"),
-    ];
+    const searchDirs = [join(ROOT, "bricks"), join(ROOT, "packages"), join(ROOT, "apps"), join(ROOT, "scripts")];
 
     const authUserDefHits: string[] = [];
 
     function scan(dir: string) {
       if (!existsSync(dir)) return;
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        if (
-          entry.name === "node_modules" ||
-          entry.name === "dist" ||
-          entry.name === ".evidence-run" ||
-          entry.name === "catalog.generated.ts"
-        ) {
+        if (entry.name === "node_modules" || entry.name === "dist" || entry.name === ".evidence-run" || entry.name === "catalog.generated.ts") {
           continue;
         }
         const full = join(dir, entry.name);
@@ -51,10 +41,7 @@ describe("UC9.9 — Refactor sweep (UC9)", () => {
       scan(dir);
     }
 
-    expect(
-      authUserDefHits,
-      `Exactly one interface AuthUser definition must exist across the repo (found in: ${authUserDefHits.join(", ")})`,
-    ).toHaveLength(1);
+    expect(authUserDefHits, `Exactly one interface AuthUser definition must exist across the repo (found in: ${authUserDefHits.join(", ")})`).toHaveLength(1);
 
     expect(
       authUserDefHits[0]?.endsWith("packages/sdk/src/auth.ts"),
@@ -66,34 +53,21 @@ describe("UC9.9 — Refactor sweep (UC9)", () => {
     expect(existsSync(SDK_AUTH_TS), "packages/sdk/src/auth.ts must exist").toBe(true);
 
     const coreAuthIndex = readFileSync(CORE_AUTH_INDEX_TS, "utf8");
-    expect(
-      coreAuthIndex.includes("AuthUser"),
-      "bricks/core-auth/src/index.ts must export AuthUser",
-    ).toBe(true);
+    expect(coreAuthIndex.includes("AuthUser"), "bricks/core-auth/src/index.ts must export AuthUser").toBe(true);
 
     const oidcVerifyIndex = readFileSync(OIDC_VERIFY_INDEX_TS, "utf8");
-    expect(
-      oidcVerifyIndex.includes("AuthUser"),
-      "bricks/oidc-verify/src/index.ts must export AuthUser",
-    ).toBe(true);
+    expect(oidcVerifyIndex.includes("AuthUser"), "bricks/oidc-verify/src/index.ts must export AuthUser").toBe(true);
 
     const multiWorkspaceIndex = readFileSync(MULTI_WORKSPACE_INDEX_TS, "utf8");
-    expect(
-      multiWorkspaceIndex.includes("AuthUser"),
-      "bricks/multi-workspace/src/index.ts must export AuthUser",
-    ).toBe(true);
+    expect(multiWorkspaceIndex.includes("AuthUser"), "bricks/multi-workspace/src/index.ts must export AuthUser").toBe(true);
   });
 
   it("Task 2: registerDataCollector and UserDataCollector are removed from data-privacy-gdpr", () => {
     const privacyContent = readFileSync(PRIVACY_TS, "utf8");
-    expect(
-      privacyContent.includes("registerDataCollector"),
-      "registerDataCollector should be removed from bricks/data-privacy-gdpr/src/privacy.ts",
-    ).toBe(false);
-    expect(
-      privacyContent.includes("UserDataCollector"),
-      "UserDataCollector should be removed from bricks/data-privacy-gdpr/src/privacy.ts",
-    ).toBe(false);
+    expect(privacyContent.includes("registerDataCollector"), "registerDataCollector should be removed from bricks/data-privacy-gdpr/src/privacy.ts").toBe(
+      false,
+    );
+    expect(privacyContent.includes("UserDataCollector"), "UserDataCollector should be removed from bricks/data-privacy-gdpr/src/privacy.ts").toBe(false);
   });
 
   it("Task 3: VALUE_PATTERNS in packages/telemetry/src/value-patterns.ts does not duplicate regex literals per entry", () => {
@@ -108,9 +82,6 @@ describe("UC9.9 — Refactor sweep (UC9)", () => {
         duplicatedLiteralCount++;
       }
     }
-    expect(
-      duplicatedLiteralCount,
-      "VALUE_PATTERNS must not declare duplicate regex and pattern regex literals on every item",
-    ).toBe(0);
+    expect(duplicatedLiteralCount, "VALUE_PATTERNS must not declare duplicate regex and pattern regex literals on every item").toBe(0);
   });
 });

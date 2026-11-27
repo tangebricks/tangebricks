@@ -90,17 +90,20 @@ describe.each(providers)("wallet verification with the %s gateway", (_name, make
     expect(await ledgerRows()).toBe(1);
   });
 
-  it.each(["orderId", "amount", "currency", "customerId"] as TamperField[])("a %s mismatch is refused with 409 and credits nothing (client verify)", async (field) => {
-    const { provider, verify, newOrder } = setup();
-    const orderId = await newOrder();
-    await provider.markPaid(orderId);
-    await provider.tamper(orderId, field);
-    const res = await verify(orderId);
-    expect(res.status).toBe(409);
-    expect(await res.json()).toMatchObject({ status: "verification_mismatch", credited: false });
-    expect(await balance()).toBe(0);
-    expect(await ledgerRows()).toBe(0);
-  });
+  it.each(["orderId", "amount", "currency", "customerId"] as TamperField[])(
+    "a %s mismatch is refused with 409 and credits nothing (client verify)",
+    async (field) => {
+      const { provider, verify, newOrder } = setup();
+      const orderId = await newOrder();
+      await provider.markPaid(orderId);
+      await provider.tamper(orderId, field);
+      const res = await verify(orderId);
+      expect(res.status).toBe(409);
+      expect(await res.json()).toMatchObject({ status: "verification_mismatch", credited: false });
+      expect(await balance()).toBe(0);
+      expect(await ledgerRows()).toBe(0);
+    },
+  );
 
   it.each(["orderId", "amount", "currency", "customerId"] as TamperField[])("a %s mismatch is refused by confirmOrder and names the field", async (field) => {
     const { provider, wallet, newOrder } = setup();
@@ -164,15 +167,18 @@ describe.each(providers)("wallet verification with the %s gateway", (_name, make
     expect(await balance()).toBe(0);
   });
 
-  it.each(["orderId", "amount", "currency", "customerId"] as TamperField[])("a webhook whose re-fetched order has a %s mismatch is 409 and credits nothing", async (field) => {
-    const { provider, webhook, newOrder } = setup();
-    const orderId = await newOrder();
-    await provider.markPaid(orderId);
-    await provider.tamper(orderId, field);
-    const res = await webhook(await provider.signedWebhook(orderId));
-    expect(res.status).toBe(409);
-    expect(await balance()).toBe(0);
-  });
+  it.each(["orderId", "amount", "currency", "customerId"] as TamperField[])(
+    "a webhook whose re-fetched order has a %s mismatch is 409 and credits nothing",
+    async (field) => {
+      const { provider, webhook, newOrder } = setup();
+      const orderId = await newOrder();
+      await provider.markPaid(orderId);
+      await provider.tamper(orderId, field);
+      const res = await webhook(await provider.signedWebhook(orderId));
+      expect(res.status).toBe(409);
+      expect(await balance()).toBe(0);
+    },
+  );
 
   it("a provider outage is 502 (retry later) on both paths and credits nothing", async () => {
     const { provider, verify, webhook, newOrder } = setup();
@@ -229,7 +235,10 @@ describe("amount units: the wallet's whole rupees cross the interface as paise (
   });
 
   it("zero-decimal (JPY) and three-decimal (KWD) wallets convert exactly and are credited", async () => {
-    for (const [currency, sentAmount] of [["JPY", "500"], ["KWD", "500.000"]] as const) {
+    for (const [currency, sentAmount] of [
+      ["JPY", "500"],
+      ["KWD", "500.000"],
+    ] as const) {
       await reset();
       const provider = cashfreeProvider();
       const wallet = createWallet(db, provider.gateway, { currency });
@@ -268,7 +277,9 @@ describe("webhook edge cases (story 2.3)", () => {
     const { NOW, STRIPE_WEBHOOK_SECRET } = await import("./support/providers.ts");
     const body = JSON.stringify({ id: "evt_x", type: "customer.created", data: { object: { id: "cus_1" } } });
     const t = String(Math.floor(NOW / 1000));
-    const res = await post(appFor(provider.gateway), body, { "stripe-signature": `t=${t},v1=${toHex(await hmacSha256(STRIPE_WEBHOOK_SECRET, `${t}.${body}`))}` });
+    const res = await post(appFor(provider.gateway), body, {
+      "stripe-signature": `t=${t},v1=${toHex(await hmacSha256(STRIPE_WEBHOOK_SECRET, `${t}.${body}`))}`,
+    });
     expect(res.status).toBe(200);
   });
 
@@ -346,7 +357,14 @@ describe("webhook edge cases (story 2.3)", () => {
 
 describe("payment configuration", () => {
   const post = (app: Hono, path: string, body: unknown) =>
-    app.fetch(new Request(`http://localhost/api${path}`, { method: "POST", headers: { "content-type": "application/json", "x-test-user": OWNER }, body: JSON.stringify(body) }), { DB: db });
+    app.fetch(
+      new Request(`http://localhost/api${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-test-user": OWNER },
+        body: JSON.stringify(body),
+      }),
+      { DB: db },
+    );
 
   it("a gateway without a currency answers 503 NOT_CONFIGURED on every payment route", async () => {
     const app = new Hono();
@@ -426,6 +444,8 @@ describe("checkout-gateway through the Cashfree adapter: minor units pass straig
     const res = await app.fetch(new Request("http://localhost/api/checkout/webhook", { method: "POST", headers: hook.headers, body: hook.body }), { DB: db });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ status: "PAID" });
-    expect((await db.prepare("SELECT total_cents FROM pay_invoices WHERE session_id = ?").bind(session.id).first<{ total_cents: number }>())?.total_cents).toBe(12345);
+    expect((await db.prepare("SELECT total_cents FROM pay_invoices WHERE session_id = ?").bind(session.id).first<{ total_cents: number }>())?.total_cents).toBe(
+      12345,
+    );
   });
 });

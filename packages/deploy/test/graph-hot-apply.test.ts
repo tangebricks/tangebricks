@@ -1,23 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
-  assemble,
-  computeArtifactHashes,
-  computeBuildHash,
-  computeCodeHash,
-  computeGraphHash,
-} from "@poc/assembler";
+import { assemble, computeArtifactHashes, computeBuildHash, computeCodeHash, computeGraphHash } from "@poc/assembler";
 import type { Blueprint } from "@poc/assembler";
-import {
-  computeBlueprintBuildHash,
-  computeBlueprintCodeHash,
-  computeBlueprintGraphHash,
-} from "@poc/blueprint";
+import { computeBlueprintBuildHash, computeBlueprintCodeHash, computeBlueprintGraphHash } from "@poc/blueprint";
 import { catalog } from "../../assembler/catalog.generated.ts";
 import { INVOICE_FLOW_BLUEPRINT } from "../../../test/support/blueprints.ts";
-import {
-  MockCloudflareControlPlane,
-  createByocProvisioner,
-} from "../src/index.ts";
+import { MockCloudflareControlPlane, createByocProvisioner } from "../src/index.ts";
 import type { DeployTarget } from "../src/index.ts";
 
 describe("Story 5.4 — Deterministic Hash Split & Graph-Only Hot-Apply Path (packages/deploy)", () => {
@@ -114,14 +101,10 @@ describe("Story 5.4 — Deterministic Hash Split & Graph-Only Hot-Apply Path (pa
     expect(hashes1.buildHash).not.toBe(hashes2.buildHash);
 
     expect(await computeCodeHash(assembled1.files)).toBe(hashes1.codeHash);
-    expect(
-      await computeGraphHash(assembled1.files, { schedules: ["0 * * * *"] }),
-    ).not.toBe(
+    expect(await computeGraphHash(assembled1.files, { schedules: ["0 * * * *"] })).not.toBe(
       await computeGraphHash(assembled2.files, { schedules: ["*/15 * * * *"] }),
     );
-    expect(await computeBuildHash(hashes1.codeHash, hashes1.graphHash, "1.0.0")).toBe(
-      hashes1.buildHash,
-    );
+    expect(await computeBuildHash(hashes1.codeHash, hashes1.graphHash, "1.0.0")).toBe(hashes1.buildHash);
 
     // 3. Deploy rev1 to preview via provisioner
     const ACCOUNT_ID = "fedcba9876543210fedcba9876543210";
@@ -222,16 +205,9 @@ describe("Story 5.4 — Deterministic Hash Split & Graph-Only Hot-Apply Path (pa
     // Worker script was NOT uploaded a second time
     expect(controlPlane.scriptUploadCount).toBe(1);
 
-    const dbSnapAfterApply = controlPlane.inspectDatabase(
-      ACCOUNT_ID,
-      "px-invoice-flow-preview-db",
-    );
-    expect(dbSnapAfterApply?.graphs["wf-invoice-approval"]?.graph).toContain(
-      "fastTrack",
-    );
-    expect(dbSnapAfterApply?.schedules).toEqual([
-      { id: "sched_1", cron_expression: "*/15 * * * *", active: 1 },
-    ]);
+    const dbSnapAfterApply = controlPlane.inspectDatabase(ACCOUNT_ID, "px-invoice-flow-preview-db");
+    expect(dbSnapAfterApply?.graphs["wf-invoice-approval"]?.graph).toContain("fastTrack");
+    expect(dbSnapAfterApply?.schedules).toEqual([{ id: "sched_1", cron_expression: "*/15 * * * *", active: 1 }]);
 
     // 6. Also verify direct provisioner.putGraph(target, graphs, schedules) signature
     const directPutGraph = await provisioner.putGraph(

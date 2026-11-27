@@ -16,10 +16,7 @@ export interface BlobStoreGetResult {
 }
 
 export interface BlobStore {
-  put(
-    body: ReadableStream | ArrayBuffer,
-    meta: BlobStorePutMeta,
-  ): Promise<BlobStorePutResult>;
+  put(body: ReadableStream | ArrayBuffer, meta: BlobStorePutMeta): Promise<BlobStorePutResult>;
   get(ref: string): Promise<BlobStoreGetResult>;
 }
 
@@ -36,18 +33,12 @@ export function createMemoryBlobStore(): BlobStore {
   const store = new Map<string, { bytes: Uint8Array; contentType: string }>();
 
   return {
-    async put(
-      body: ReadableStream | ArrayBuffer,
-      meta: BlobStorePutMeta,
-    ): Promise<BlobStorePutResult> {
+    async put(body: ReadableStream | ArrayBuffer, meta: BlobStorePutMeta): Promise<BlobStorePutResult> {
       let bytes: Uint8Array;
       if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
         const u8 = body instanceof ArrayBuffer ? new Uint8Array(body) : new Uint8Array(body.buffer, body.byteOffset, body.byteLength);
         if (u8.byteLength > meta.maxBytes) {
-          throw new BlobStoreError(
-            `INTEGRATION_PAYLOAD_TOO_LARGE: payload exceeded limit of ${meta.maxBytes} bytes`,
-            "INTEGRATION_PAYLOAD_TOO_LARGE",
-          );
+          throw new BlobStoreError(`INTEGRATION_PAYLOAD_TOO_LARGE: payload exceeded limit of ${meta.maxBytes} bytes`, "INTEGRATION_PAYLOAD_TOO_LARGE");
         }
         bytes = new Uint8Array(u8);
       } else {
@@ -62,10 +53,7 @@ export function createMemoryBlobStore(): BlobStore {
             total += value.byteLength;
             if (total > meta.maxBytes) {
               await reader.cancel();
-              throw new BlobStoreError(
-                `INTEGRATION_PAYLOAD_TOO_LARGE: payload exceeded limit of ${meta.maxBytes} bytes`,
-                "INTEGRATION_PAYLOAD_TOO_LARGE",
-              );
+              throw new BlobStoreError(`INTEGRATION_PAYLOAD_TOO_LARGE: payload exceeded limit of ${meta.maxBytes} bytes`, "INTEGRATION_PAYLOAD_TOO_LARGE");
             }
           }
         } finally {
@@ -87,10 +75,7 @@ export function createMemoryBlobStore(): BlobStore {
     async get(ref: string): Promise<BlobStoreGetResult> {
       const item = store.get(ref);
       if (!item) {
-        throw new BlobStoreError(
-          `INTEGRATION_BLOB_NOT_FOUND: blob ref "${ref}" not found`,
-          "INTEGRATION_BLOB_NOT_FOUND",
-        );
+        throw new BlobStoreError(`INTEGRATION_BLOB_NOT_FOUND: blob ref "${ref}" not found`, "INTEGRATION_BLOB_NOT_FOUND");
       }
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {

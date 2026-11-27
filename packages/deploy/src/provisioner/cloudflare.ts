@@ -41,7 +41,9 @@ export class CloudflareApiError extends Error {
   /** The answer's body with secrets hidden, kept so a refusal can be shown to the owner exactly as Cloudflare gave it. */
   readonly body: string;
   constructor(method: string, path: string, status: number, codes: number[], details: string[], body: string) {
-    super(`Cloudflare refused ${method} ${path}: HTTP ${status}${codes.length ? `, code ${codes.join(", ")}` : ""}${details.length ? `: ${details.join("; ")}` : ""}`);
+    super(
+      `Cloudflare refused ${method} ${path}: HTTP ${status}${codes.length ? `, code ${codes.join(", ")}` : ""}${details.length ? `: ${details.join("; ")}` : ""}`,
+    );
     this.name = "CloudflareApiError";
     this.method = method;
     this.path = path;
@@ -88,7 +90,8 @@ export class RequestGuardError extends Error {
 }
 
 export type CloudflareError = CloudflareApiError | CloudflareNetworkError | CloudflareMalformedError;
-export const isCloudflareError = (e: unknown): e is CloudflareError => e instanceof CloudflareApiError || e instanceof CloudflareNetworkError || e instanceof CloudflareMalformedError;
+export const isCloudflareError = (e: unknown): e is CloudflareError =>
+  e instanceof CloudflareApiError || e instanceof CloudflareNetworkError || e instanceof CloudflareMalformedError;
 
 /**
  * Cloudflare's documented limit is 1,200 API requests per five minutes per user/account. The budget is set below it so a
@@ -110,7 +113,9 @@ export interface RequestBudget {
   waitedMs(): number;
 }
 
-export function createRequestBudget(options: { limit?: number; windowMs?: number; now?: () => number; sleep?: (ms: number) => Promise<void> } = {}): RequestBudget {
+export function createRequestBudget(
+  options: { limit?: number; windowMs?: number; now?: () => number; sleep?: (ms: number) => Promise<void> } = {},
+): RequestBudget {
   const limit = options.limit ?? DEFAULT_REQUEST_BUDGET;
   const windowMs = options.windowMs ?? REQUEST_BUDGET_WINDOW_MS;
   if (!(limit > 0) || !(windowMs > 0)) throw new Error("a request budget needs a positive limit and window");
@@ -230,16 +235,25 @@ export interface Client {
   createDatabase(name: string): Promise<{ uuid: string; name: string }>;
   deleteDatabase(id: string): Promise<void>;
   /** One statement list sent as one atomic batch. */
-  queryDatabase(id: string, statements: Array<{ sql: string; params?: unknown[] }>): Promise<Array<{ results: Record<string, unknown>[]; meta: Record<string, unknown> }>>;
+  queryDatabase(
+    id: string,
+    statements: Array<{ sql: string; params?: unknown[] }>,
+  ): Promise<Array<{ results: Record<string, unknown>[]; meta: Record<string, unknown> }>>;
   /** Retrieves a D1 Time Travel bookmark for the database, optionally for a specific timestamp. */
   getD1Bookmark(databaseId: string, timestamp?: string): Promise<string>;
   /** Restores a D1 database to a previous bookmark, returning the bookmark of the state before restoration. */
   restoreD1(databaseId: string, bookmark: string): Promise<{ previous_bookmark: string }>;
 
   listScripts(): Promise<string[]>;
-  uploadScript(name: string, upload: { mainModule: string; code: string; metadata: Record<string, unknown> }): Promise<{ etag?: string; startupTimeMs?: number }>;
+  uploadScript(
+    name: string,
+    upload: { mainModule: string; code: string; metadata: Record<string, unknown> },
+  ): Promise<{ etag?: string; startupTimeMs?: number }>;
   uploadVersion(name: string, upload: { mainModule: string; code: string; metadata: Record<string, unknown> }): Promise<{ id: string; number?: number }>;
-  createDeployment(name: string, versions: Array<{ versionId: string; percentage: number }>): Promise<{ id?: string; created_on?: string; versions: Array<{ versionId: string; percentage: number }> }>;
+  createDeployment(
+    name: string,
+    versions: Array<{ versionId: string; percentage: number }>,
+  ): Promise<{ id?: string; created_on?: string; versions: Array<{ versionId: string; percentage: number }> }>;
   listDeployments(name: string): Promise<Array<{ id: string; created_on?: string; versions: Array<{ versionId: string; percentage: number }> }> | null>;
   fetchWithVersionOverride(url: string, name: string, versionId: string, init?: RequestInit): Promise<Response>;
   deleteScript(name: string): Promise<void>;
@@ -312,7 +326,11 @@ export function createClient(options: ClientOptions): Client {
     /** The path is relative to the API base, not to /accounts/{id} (the user-token endpoint). */
     outsideAccount?: boolean;
     /** Receives the answer's result_info (paging), when it has one. */
-    onInfo?: (info: { page?: number; per_page?: number; total_pages?: number; total_count?: number; count?: number; cursor?: string; cursors?: { after?: string } } | undefined) => void;
+    onInfo?: (
+      info:
+        | { page?: number; per_page?: number; total_pages?: number; total_count?: number; count?: number; cursor?: string; cursors?: { after?: string } }
+        | undefined,
+    ) => void;
   }
 
   async function send<T>(spec: Request1): Promise<T | null> {
@@ -326,7 +344,18 @@ export function createClient(options: ClientOptions): Client {
       await budget.take(); // waits for budget instead of failing; a retry takes a token like any other attempt
       const t0 = now();
       const record = (status: number | null, outcome: Outcome, extra: Partial<CallRecord> = {}) => {
-        const entry: CallRecord = { n: calls.length + 1, atMs: Math.round(t0 - started), method: spec.method, path: shownPath, status, ms: Math.round(now() - t0), outcome, attempt, ...(spec.sqlKind ? { sqlKind: spec.sqlKind } : {}), ...extra };
+        const entry: CallRecord = {
+          n: calls.length + 1,
+          atMs: Math.round(t0 - started),
+          method: spec.method,
+          path: shownPath,
+          status,
+          ms: Math.round(now() - t0),
+          outcome,
+          attempt,
+          ...(spec.sqlKind ? { sqlKind: spec.sqlKind } : {}),
+          ...extra,
+        };
         calls.push(entry);
         options.onCall?.(entry);
       };
@@ -335,7 +364,13 @@ export function createClient(options: ClientOptions): Client {
       try {
         const headers: Record<string, string> = { authorization: `Bearer ${token}`, accept: "application/json" };
         if (spec.json !== undefined) headers["content-type"] = "application/json";
-        response = await options.fetch(new Request(`${base}${path}${queryString}`, { method: spec.method, headers, body: spec.form ?? (spec.json === undefined ? null : JSON.stringify(spec.json)) }));
+        response = await options.fetch(
+          new Request(`${base}${path}${queryString}`, {
+            method: spec.method,
+            headers,
+            body: spec.form ?? (spec.json === undefined ? null : JSON.stringify(spec.json)),
+          }),
+        );
       } catch (error) {
         if (error instanceof RequestGuardError) throw error; // refused before it was sent: not a network failure
         record(null, "network_error");
@@ -372,7 +407,12 @@ export function createClient(options: ClientOptions): Client {
 
       if (body === null || typeof body !== "object") {
         record(response.status, "malformed");
-        throw new CloudflareMalformedError(spec.method, shownPath, response.status, response.ok ? "the body is not JSON" : `the body is not JSON (${hide(text).slice(0, 120)})`);
+        throw new CloudflareMalformedError(
+          spec.method,
+          shownPath,
+          response.status,
+          response.ok ? "the body is not JSON" : `the body is not JSON (${hide(text).slice(0, 120)})`,
+        );
       }
       if (!response.ok || body.success === false) {
         const codes = (body.errors ?? []).map((e) => e.code).filter((c): c is number => typeof c === "number");
@@ -413,7 +453,10 @@ export function createClient(options: ClientOptions): Client {
     let totalCount: number | undefined;
     for (let page = 1; page <= MAX_LIST_PAGES; page += 1) {
       let info: { total_pages?: number; per_page?: number; total_count?: number; cursor?: string; cursors?: { after?: string } } | undefined;
-      const r = must(await send<T[]>({ method: "GET", path, query: { ...query, page: String(page), per_page: String(LIST_PAGE_SIZE) }, onInfo: (i) => (info = i) }), path);
+      const r = must(
+        await send<T[]>({ method: "GET", path, query: { ...query, page: String(page), per_page: String(LIST_PAGE_SIZE) }, onInfo: (i) => (info = i) }),
+        path,
+      );
       if (!Array.isArray(r)) throw new CloudflareMalformedError("GET", path, 200, "the result is not a list");
       let fresh = 0;
       for (const item of r) {
@@ -425,7 +468,8 @@ export function createClient(options: ClientOptions): Client {
       }
       if (typeof info?.total_count === "number") totalCount = info.total_count;
       // A cursor-paged answer is not followed by this page/per_page reader: refuse rather than return part of the list.
-      if (info?.cursor || info?.cursors?.after) throw new CloudflareMalformedError("GET", path, 200, "the list is cursor-paged and this reader follows page numbers only; refusing a partial list");
+      if (info?.cursor || info?.cursors?.after)
+        throw new CloudflareMalformedError("GET", path, 200, "the list is cursor-paged and this reader follows page numbers only; refusing a partial list");
       if (fresh === 0) break;
       if (typeof info?.total_pages === "number") {
         if (page >= info.total_pages) break;
@@ -444,7 +488,12 @@ export function createClient(options: ClientOptions): Client {
 
     async verifyToken() {
       type Verified = { id?: string; status: string; expires_on?: string };
-      const shape = (r: Verified, kind: "account" | "user") => ({ status: r.status, ...(r.id ? { id: r.id } : {}), ...(r.expires_on ? { expiresOn: r.expires_on } : {}), kind });
+      const shape = (r: Verified, kind: "account" | "user") => ({
+        status: r.status,
+        ...(r.id ? { id: r.id } : {}),
+        ...(r.expires_on ? { expiresOn: r.expires_on } : {}),
+        kind,
+      });
       try {
         return shape(must(await send<Verified>({ method: "GET", path: "/tokens/verify" }), "/tokens/verify"), "account");
       } catch (accountError) {
@@ -462,8 +511,17 @@ export function createClient(options: ClientOptions): Client {
     },
     async getTokenPermissions(tokenId) {
       // Reading a token's own policies needs a permission this token may not have; the caller treats a refusal as "unknown", not as a failure.
-      const r = must(await send<{ policies?: Array<{ effect?: string; permission_groups?: Array<{ name?: string }> }> }>({ method: "GET", path: `/tokens/${encodeURIComponent(tokenId)}`, display: "/accounts/{account}/tokens/{token-id}" }), "/tokens/{id}");
-      const names = (r.policies ?? []).filter((p) => p.effect === undefined || p.effect === "allow").flatMap((p) => (p.permission_groups ?? []).map((g) => g.name).filter((n): n is string => typeof n === "string"));
+      const r = must(
+        await send<{ policies?: Array<{ effect?: string; permission_groups?: Array<{ name?: string }> }> }>({
+          method: "GET",
+          path: `/tokens/${encodeURIComponent(tokenId)}`,
+          display: "/accounts/{account}/tokens/{token-id}",
+        }),
+        "/tokens/{id}",
+      );
+      const names = (r.policies ?? [])
+        .filter((p) => p.effect === undefined || p.effect === "allow")
+        .flatMap((p) => (p.permission_groups ?? []).map((g) => g.name).filter((n): n is string => typeof n === "string"));
       return [...new Set(names)].sort();
     },
     async getAccountSubdomain() {
@@ -477,13 +535,22 @@ export function createClient(options: ClientOptions): Client {
       return r.map((d) => ({ uuid: d.uuid, name: d.name }));
     },
     async getDatabase(id) {
-      const r = must(await send<{ uuid?: string; name?: string }>({ method: "GET", path: `/d1/database/${encodeURIComponent(id)}`, display: "/accounts/{account}/d1/database/{id}" }), "/d1/database/{id}");
-      if (typeof r.uuid !== "string" || typeof r.name !== "string") throw new CloudflareMalformedError("GET", "/d1/database/{id}", 200, "the database has no uuid or name");
+      const r = must(
+        await send<{ uuid?: string; name?: string }>({
+          method: "GET",
+          path: `/d1/database/${encodeURIComponent(id)}`,
+          display: "/accounts/{account}/d1/database/{id}",
+        }),
+        "/d1/database/{id}",
+      );
+      if (typeof r.uuid !== "string" || typeof r.name !== "string")
+        throw new CloudflareMalformedError("GET", "/d1/database/{id}", 200, "the database has no uuid or name");
       return { uuid: r.uuid, name: r.name };
     },
     async createDatabase(name) {
       const r = must(await send<{ uuid?: string; name?: string }>({ method: "POST", path: "/d1/database", json: { name } }), "/d1/database");
-      if (typeof r.uuid !== "string" || typeof r.name !== "string") throw new CloudflareMalformedError("POST", "/d1/database", 200, "the created database has no uuid or name");
+      if (typeof r.uuid !== "string" || typeof r.name !== "string")
+        throw new CloudflareMalformedError("POST", "/d1/database", 200, "the created database has no uuid or name");
       return { uuid: r.uuid, name: r.name };
     },
     async deleteDatabase(id) {
@@ -491,8 +558,19 @@ export function createClient(options: ClientOptions): Client {
     },
     async queryDatabase(id, statements) {
       const sqlKind = sqlKindOf(statements);
-      const json = statements.length === 1 ? { sql: statements[0]!.sql, params: statements[0]!.params ?? [] } : { batch: statements.map((s) => ({ sql: s.sql, params: s.params ?? [] })) };
-      const r = must(await send<Array<{ results?: Record<string, unknown>[]; meta?: Record<string, unknown> }>>({ method: "POST", path: `/d1/database/${encodeURIComponent(id)}/query`, json, sqlKind }), "/query");
+      const json =
+        statements.length === 1
+          ? { sql: statements[0]!.sql, params: statements[0]!.params ?? [] }
+          : { batch: statements.map((s) => ({ sql: s.sql, params: s.params ?? [] })) };
+      const r = must(
+        await send<Array<{ results?: Record<string, unknown>[]; meta?: Record<string, unknown> }>>({
+          method: "POST",
+          path: `/d1/database/${encodeURIComponent(id)}/query`,
+          json,
+          sqlKind,
+        }),
+        "/query",
+      );
       if (!Array.isArray(r)) throw new CloudflareMalformedError("POST", "/d1/database/{id}/query", 200, "the result is not a list");
       return r.map((q) => ({ results: q.results ?? [], meta: q.meta ?? {} }));
     },
@@ -518,7 +596,8 @@ export function createClient(options: ClientOptions): Client {
         }),
         "/d1/database/{id}/time_travel/restore",
       );
-      if (typeof r.previous_bookmark !== "string") throw new CloudflareMalformedError("POST", "/d1/database/{id}/time_travel/restore", 200, "no previous_bookmark field");
+      if (typeof r.previous_bookmark !== "string")
+        throw new CloudflareMalformedError("POST", "/d1/database/{id}/time_travel/restore", 200, "no previous_bookmark field");
       return { previous_bookmark: r.previous_bookmark };
     },
 
@@ -530,7 +609,10 @@ export function createClient(options: ClientOptions): Client {
       const form = new FormData();
       form.set("metadata", new Blob([JSON.stringify({ ...upload.metadata, main_module: upload.mainModule })], { type: "application/json" }), "metadata.json");
       form.set(upload.mainModule, new Blob([upload.code], { type: "application/javascript+module" }), upload.mainModule);
-      const r = must(await send<{ etag?: string; startup_time_ms?: number }>({ method: "PUT", path: `/workers/scripts/${encodeURIComponent(name)}`, form }), "/workers/scripts");
+      const r = must(
+        await send<{ etag?: string; startup_time_ms?: number }>({ method: "PUT", path: `/workers/scripts/${encodeURIComponent(name)}`, form }),
+        "/workers/scripts",
+      );
       return { ...(r.etag ? { etag: r.etag } : {}), ...(typeof r.startup_time_ms === "number" ? { startupTimeMs: r.startup_time_ms } : {}) };
     },
     async uploadVersion(name, upload) {
@@ -631,7 +713,13 @@ export function createClient(options: ClientOptions): Client {
       const seen = new Set<string>();
       for (let page = 1; page <= MAX_LIST_PAGES; page += 1) {
         let info: { total_pages?: number; per_page?: number } | undefined;
-        const r = await send<{ items?: Item[] }>({ method: "GET", path: `/workers/scripts/${encodeURIComponent(name)}/versions`, query: { page: String(page), per_page: String(LIST_PAGE_SIZE) }, notFoundIs: "null", onInfo: (i) => (info = i) });
+        const r = await send<{ items?: Item[] }>({
+          method: "GET",
+          path: `/workers/scripts/${encodeURIComponent(name)}/versions`,
+          query: { page: String(page), per_page: String(LIST_PAGE_SIZE) },
+          notFoundIs: "null",
+          onInfo: (i) => (info = i),
+        });
         if (r === null) return page === 1 ? null : out;
         const items = r.items ?? [];
         let fresh = 0;
@@ -649,15 +737,32 @@ export function createClient(options: ClientOptions): Client {
       return out;
     },
     async getVersion(name, versionId) {
-      const r = await send<{ id?: string; metadata?: Record<string, unknown>; annotations?: Record<string, unknown> }>({ method: "GET", path: `/workers/scripts/${encodeURIComponent(name)}/versions/${encodeURIComponent(versionId)}`, notFoundIs: "null" });
+      const r = await send<{ id?: string; metadata?: Record<string, unknown>; annotations?: Record<string, unknown> }>({
+        method: "GET",
+        path: `/workers/scripts/${encodeURIComponent(name)}/versions/${encodeURIComponent(versionId)}`,
+        notFoundIs: "null",
+      });
       if (r === null) return null;
       return shapeVersion({ id: r.id ?? versionId, ...(r.metadata ? { metadata: r.metadata } : {}), ...(r.annotations ? { annotations: r.annotations } : {}) });
     },
     async getScriptBindings(name) {
       // Keeps only what is not secret: a binding's type and name, and for a Workflow its workflow name and class. A secret's text is never read back by the API and is dropped here regardless.
-      const r = await send<{ bindings?: Array<{ type?: string; name?: string; workflow_name?: string; class_name?: string }> }>({ method: "GET", path: `/workers/scripts/${encodeURIComponent(name)}/settings`, notFoundIs: "null" });
+      const r = await send<{ bindings?: Array<{ type?: string; name?: string; workflow_name?: string; class_name?: string }> }>({
+        method: "GET",
+        path: `/workers/scripts/${encodeURIComponent(name)}/settings`,
+        notFoundIs: "null",
+      });
       if (r === null) return null;
-      return (r.bindings ?? []).filter((b): b is { type: string; name: string; workflow_name?: string; class_name?: string } => typeof b.type === "string" && typeof b.name === "string").map((b) => ({ type: b.type, name: b.name, ...(b.type === "workflow" && b.workflow_name ? { workflowName: b.workflow_name } : {}), ...(b.type === "workflow" && b.class_name ? { className: b.class_name } : {}) }));
+      return (r.bindings ?? [])
+        .filter(
+          (b): b is { type: string; name: string; workflow_name?: string; class_name?: string } => typeof b.type === "string" && typeof b.name === "string",
+        )
+        .map((b) => ({
+          type: b.type,
+          name: b.name,
+          ...(b.type === "workflow" && b.workflow_name ? { workflowName: b.workflow_name } : {}),
+          ...(b.type === "workflow" && b.class_name ? { className: b.class_name } : {}),
+        }));
     },
     async getScriptSubdomain(name) {
       const r = await send<{ enabled?: boolean }>({ method: "GET", path: `/workers/scripts/${encodeURIComponent(name)}/subdomain`, notFoundIs: "null" });
@@ -676,7 +781,11 @@ export function createClient(options: ClientOptions): Client {
     async putScriptSecret(name, secretName, value) {
       // PUT /workers/scripts/{script_name}/secrets with {name, text, type: "secret_text"} ("Add script secret", Cloudflare v4).
       // The value travels only in the body, which the call log never keeps; error text goes through hide() like every other.
-      const r = await send<{ version_id?: unknown; versionId?: unknown }>({ method: "PUT", path: `/workers/scripts/${encodeURIComponent(name)}/secrets`, json: { name: secretName, text: value, type: "secret_text" } });
+      const r = await send<{ version_id?: unknown; versionId?: unknown }>({
+        method: "PUT",
+        path: `/workers/scripts/${encodeURIComponent(name)}/secrets`,
+        json: { name: secretName, text: value, type: "secret_text" },
+      });
       // Whether the answer names the version this put created is NOT checked against the live API; an id is used only if present.
       const versionId = typeof r?.version_id === "string" ? r.version_id : typeof r?.versionId === "string" ? r.versionId : undefined;
       return versionId ? { versionId } : {};
@@ -686,13 +795,24 @@ export function createClient(options: ClientOptions): Client {
     },
     async getSchedules(name) {
       // GET /workers/scripts/{script_name}/schedules -> {schedules: [{cron}]}. From the documentation; not yet checked against the live API.
-      const r = await send<{ schedules?: Array<{ cron?: string }> }>({ method: "GET", path: `/workers/scripts/${encodeURIComponent(name)}/schedules`, notFoundIs: "null" });
+      const r = await send<{ schedules?: Array<{ cron?: string }> }>({
+        method: "GET",
+        path: `/workers/scripts/${encodeURIComponent(name)}/schedules`,
+        notFoundIs: "null",
+      });
       if (r === null) return null;
       return (r.schedules ?? []).map((s) => s.cron).filter((c): c is string => typeof c === "string");
     },
     async putSchedules(name, crons) {
       // PUT /workers/scripts/{script_name}/schedules with [{cron}], which replaces the list. Not yet checked against the live API.
-      const r = must(await send<{ schedules?: Array<{ cron?: string }> }>({ method: "PUT", path: `/workers/scripts/${encodeURIComponent(name)}/schedules`, json: crons.map((cron) => ({ cron })) }), "/workers/scripts/{id}/schedules");
+      const r = must(
+        await send<{ schedules?: Array<{ cron?: string }> }>({
+          method: "PUT",
+          path: `/workers/scripts/${encodeURIComponent(name)}/schedules`,
+          json: crons.map((cron) => ({ cron })),
+        }),
+        "/workers/scripts/{id}/schedules",
+      );
       return (r.schedules ?? []).map((s) => s.cron).filter((c): c is string => typeof c === "string");
     },
     async listQueues() {
@@ -719,10 +839,19 @@ export function createClient(options: ClientOptions): Client {
       return r.map((w) => ({ name: w.name, className: w.class_name ?? "", scriptName: w.script_name ?? "" }));
     },
     async putWorkflow(name, definition) {
-      await send({ method: "PUT", path: `/workflows/${encodeURIComponent(name)}`, json: { class_name: definition.className, script_name: definition.scriptName } });
+      await send({
+        method: "PUT",
+        path: `/workflows/${encodeURIComponent(name)}`,
+        json: { class_name: definition.className, script_name: definition.scriptName },
+      });
     },
     async getWorkflowInstance(workflowName, instanceId) {
-      const r = await send<Record<string, unknown>>({ method: "GET", path: `/workflows/${encodeURIComponent(workflowName)}/instances/${encodeURIComponent(instanceId)}`, display: `/accounts/{account}/workflows/{workflow}/instances/{run}`, notFoundIs: "null" });
+      const r = await send<Record<string, unknown>>({
+        method: "GET",
+        path: `/workflows/${encodeURIComponent(workflowName)}/instances/${encodeURIComponent(instanceId)}`,
+        display: `/accounts/{account}/workflows/{workflow}/instances/{run}`,
+        notFoundIs: "null",
+      });
       if (r === null) return null;
       // Outputs arrive as text holding JSON; they are parsed here so a caller compares values, not spellings.
       const parse = (value: unknown): unknown => {
@@ -743,7 +872,16 @@ export function createClient(options: ClientOptions): Client {
         ...(s.output !== undefined ? { output: parse(s.output) } : {}),
       }));
       const error = r.error && typeof r.error === "object" ? (r.error as { name?: string; message?: string }) : null;
-      return { status: String(r.status ?? ""), success: typeof r.success === "boolean" ? r.success : null, error: error ? { ...(error.name ? { name: hide(String(error.name)) } : {}), ...(error.message ? { message: hide(String(error.message)) } : {}) } : null, output: parse(r.output), params: r.params ?? null, start: typeof r.start === "string" ? r.start : null, end: typeof r.end === "string" ? r.end : null, steps };
+      return {
+        status: String(r.status ?? ""),
+        success: typeof r.success === "boolean" ? r.success : null,
+        error: error ? { ...(error.name ? { name: hide(String(error.name)) } : {}), ...(error.message ? { message: hide(String(error.message)) } : {}) } : null,
+        output: parse(r.output),
+        params: r.params ?? null,
+        start: typeof r.start === "string" ? r.start : null,
+        end: typeof r.end === "string" ? r.end : null,
+        steps,
+      };
     },
     async deleteWorkflow(name) {
       await send({ method: "DELETE", path: `/workflows/${encodeURIComponent(name)}` });

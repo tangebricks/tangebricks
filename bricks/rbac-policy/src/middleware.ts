@@ -55,10 +55,13 @@ export function requirePermission(resource: string, action: string): MiddlewareH
     const rbac = new RbacService(c.env.DB);
     const allowed = await rbac.can(workspace.id, user.uid, resource, action);
     if (!allowed) {
-      return c.json({
-        error: "Permission denied",
-        required: `${resource}:${action}`,
-      }, 403);
+      return c.json(
+        {
+          error: "Permission denied",
+          required: `${resource}:${action}`,
+        },
+        403,
+      );
     }
 
     await next();

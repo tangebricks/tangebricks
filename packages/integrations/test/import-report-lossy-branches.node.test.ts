@@ -2,12 +2,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import {
-  analyzeSpec,
-  importIntegrationSpec,
-  type CurationConfig,
-  type ImportReportStatus,
-} from "../src/importer.ts";
+import { analyzeSpec, importIntegrationSpec, type CurationConfig, type ImportReportStatus } from "../src/importer.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../../../");
@@ -154,25 +149,14 @@ describe("UC2.2 import report lossy branches and skipped operations", () => {
   describe("AC4 (UC3.4): parameter fidelity entries no longer emitted for fixtures", () => {
     it("does not emit PARAM_LOCATION_UNSUPPORTED(cookie), PARAM_ENUM_DROPPED, PARAM_DEFAULT_DROPPED, PARAM_ITEMS_TYPE_DROPPED, PARAM_STYLE_UNHONOURED, or PATH_RESERVED_EXPANSION_LOST", () => {
       const openApiReport = getReport("lossy-branches.openapi.json", "openapi3");
-      const retiredCodes = [
-        "PARAM_ENUM_DROPPED",
-        "PARAM_DEFAULT_DROPPED",
-        "PARAM_ITEMS_TYPE_DROPPED",
-        "PARAM_STYLE_UNHONOURED",
-      ];
+      const retiredCodes = ["PARAM_ENUM_DROPPED", "PARAM_DEFAULT_DROPPED", "PARAM_ITEMS_TYPE_DROPPED", "PARAM_STYLE_UNHONOURED"];
       for (const code of retiredCodes) {
         expect(openApiReport.entries.filter((e) => e.code === code)).toHaveLength(0);
       }
-      expect(
-        openApiReport.entries.filter(
-          (e) => e.code === "PARAM_LOCATION_UNSUPPORTED" && e.from === "cookie",
-        ),
-      ).toHaveLength(0);
+      expect(openApiReport.entries.filter((e) => e.code === "PARAM_LOCATION_UNSUPPORTED" && e.from === "cookie")).toHaveLength(0);
 
       const discoveryReport = getReport("lossy-discovery.json", "google-discovery");
-      expect(
-        discoveryReport.entries.filter((e) => e.code === "PATH_RESERVED_EXPANSION_LOST"),
-      ).toHaveLength(0);
+      expect(discoveryReport.entries.filter((e) => e.code === "PATH_RESERVED_EXPANSION_LOST")).toHaveLength(0);
     });
   });
 
@@ -192,21 +176,15 @@ describe("UC2.2 import report lossy branches and skipped operations", () => {
       }
 
       const discoveryReport = getReport("lossy-discovery.json", "google-discovery");
-      expect(
-        discoveryReport.entries.filter((e) => e.code === "BODY_REF_PROPERTY_UNRESOLVED"),
-      ).toHaveLength(0);
+      expect(discoveryReport.entries.filter((e) => e.code === "BODY_REF_PROPERTY_UNRESOLVED")).toHaveLength(0);
     });
   });
 
   describe("AC1 (UC3.7): Swagger 2.0 bodies up-converted, SWAGGER2_BODY_DROPPED no longer emitted", () => {
     it("does not emit SWAGGER2_BODY_DROPPED, emits SWAGGER2_UPCONVERTED", () => {
       const swaggerReport = getReport("lossy-swagger2.json", "swagger2");
-      expect(
-        swaggerReport.entries.filter((e) => e.code === "SWAGGER2_BODY_DROPPED"),
-      ).toHaveLength(0);
-      expect(
-        swaggerReport.entries.filter((e) => e.code === "SWAGGER2_UPCONVERTED"),
-      ).toHaveLength(1);
+      expect(swaggerReport.entries.filter((e) => e.code === "SWAGGER2_BODY_DROPPED")).toHaveLength(0);
+      expect(swaggerReport.entries.filter((e) => e.code === "SWAGGER2_UPCONVERTED")).toHaveLength(1);
     });
   });
 
@@ -219,12 +197,7 @@ describe("UC2.2 import report lossy branches and skipped operations", () => {
       {
         id: "google",
         format: "google-discovery" as const,
-        files: [
-          "google-calendar.json",
-          "google-gmail.json",
-          "google-drive.json",
-          "google-sheets.json",
-        ],
+        files: ["google-calendar.json", "google-gmail.json", "google-drive.json", "google-sheets.json"],
         expectedOps: 198,
       },
     ];
@@ -239,18 +212,14 @@ describe("UC2.2 import report lossy branches and skipped operations", () => {
 
         let report: ReturnType<typeof analyzeSpec>;
         if (specDef.files) {
-          const docs = specDef.files.map((f) =>
-            JSON.parse(readFileSync(resolve(cacheDir, f), "utf8")),
-          );
+          const docs = specDef.files.map((f) => JSON.parse(readFileSync(resolve(cacheDir, f), "utf8")));
           report = analyzeSpec({
             spec: docs,
             format: specDef.format,
             appName: specDef.id,
           });
         } else {
-          const raw = JSON.parse(
-            readFileSync(resolve(cacheDir, specDef.file!), "utf8"),
-          );
+          const raw = JSON.parse(readFileSync(resolve(cacheDir, specDef.file!), "utf8"));
           report = analyzeSpec({
             spec: raw,
             format: specDef.format,
@@ -273,12 +242,7 @@ describe("UC2.2 import report lossy branches and skipped operations", () => {
   describe("Summary invariant: sum(summary) === entries.length", () => {
     it("satisfies sum(summary) === entries.length across reports", () => {
       const report = getReport("lossy-branches.openapi.json", "openapi3");
-      const sum =
-        report.summary.mapped +
-        report.summary.normalized +
-        report.summary.curated +
-        report.summary.approximated +
-        report.summary.unsupported;
+      const sum = report.summary.mapped + report.summary.normalized + report.summary.curated + report.summary.approximated + report.summary.unsupported;
       expect(sum).toBe(report.entries.length);
     });
   });

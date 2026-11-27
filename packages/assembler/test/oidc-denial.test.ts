@@ -24,20 +24,13 @@ async function generateRsaKeyPair() {
 }
 
 function base64UrlEncode(bytes: Uint8Array | string): string {
-  const binary =
-    typeof bytes === "string"
-      ? btoa(bytes)
-      : btoa(String.fromCharCode(...bytes));
+  const binary = typeof bytes === "string" ? btoa(bytes) : btoa(String.fromCharCode(...bytes));
   return binary.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 type CryptoKeyType = Awaited<ReturnType<typeof crypto.subtle.importKey>>;
 
-async function signJwt(
-  header: Record<string, unknown>,
-  payload: Record<string, unknown>,
-  key: CryptoKeyType,
-): Promise<string> {
+async function signJwt(header: Record<string, unknown>, payload: Record<string, unknown>, key: CryptoKeyType): Promise<string> {
   const encHeader = base64UrlEncode(JSON.stringify(header));
   const encPayload = base64UrlEncode(JSON.stringify(payload));
   const data = new TextEncoder().encode(`${encHeader}.${encPayload}`);
@@ -51,11 +44,7 @@ describe("Story UC9.6 / AC3: Blueprint assembly and denial suite with identity '
     const blueprint = {
       project: "oidc-app",
       identity: "oidc-verify",
-      bricks: [
-        "oidc-verify",
-        "multi-workspace",
-        "credit-wallet",
-      ],
+      bricks: ["oidc-verify", "multi-workspace", "credit-wallet"],
     };
 
     const res = assemble(blueprint, catalog);
@@ -146,12 +135,7 @@ describe("Story UC9.6 / AC3: Blueprint assembly and denial suite with identity '
     const malloryToken = await createToken("mallory");
     const expiredAliceToken = await createToken("alice", -600);
 
-    const call = async (
-      path: string,
-      token: string | null,
-      workspaceId: string | null,
-      body?: unknown,
-    ): Promise<{ status: number; body: any }> => {
+    const call = async (path: string, token: string | null, workspaceId: string | null, body?: unknown): Promise<{ status: number; body: any }> => {
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       if (workspaceId) headers["x-workspace-id"] = workspaceId;
@@ -208,10 +192,7 @@ describe("Story UC9.6 / AC3: Blueprint assembly and denial suite with identity '
     // 5. Alice trying to deduct from Bob's wallet -> 403 Forbidden, Bob's balance intact
     const deductAttackRes = await call("/api/wallet/deduct", aliceToken, wsB, { amount: 20 });
     expect(deductAttackRes.status).toBe(403);
-    const bobBal = await db
-      .prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?")
-      .bind(wsB)
-      .first<{ balance_milli: number }>();
+    const bobBal = await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind(wsB).first<{ balance_milli: number }>();
     expect(bobBal?.balance_milli).toBe(50_000);
 
     // 6. Mallory (stranger with valid token but no memberships) attacked both -> 403 Forbidden

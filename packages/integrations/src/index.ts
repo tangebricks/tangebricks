@@ -20,10 +20,7 @@ export {
   swagger2ToOpenApi3,
   translatePointer,
 } from "./importer.ts";
-export type {
-  Swagger2ConversionResult,
-  Swagger2UnsupportedEntry,
-} from "./importer.ts";
+export type { Swagger2ConversionResult, Swagger2UnsupportedEntry } from "./importer.ts";
 export type {
   CurationAcknowledge,
   CurationConfig,

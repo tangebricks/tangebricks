@@ -111,10 +111,20 @@ async function seedWholeCreditRows(): Promise<void> {
   await db.batch([
     db.prepare("INSERT INTO credit_wallets (workspace_id, balance) VALUES (?, 75), (?, 25)").bind(A, B),
     db
-      .prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key) VALUES ('l1', ?, 'user-a', 'deduction', -30, 70, 'usage', ?, 'old-a')")
+      .prepare(
+        "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key) VALUES ('l1', ?, 'user-a', 'deduction', -30, 70, 'usage', ?, 'old-a')",
+      )
       .bind(A, JSON.stringify({ n: 1 })),
-    db.prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key) VALUES ('l2', ?, 'user-a', 'topup', 5, 75, 'refund', '{}', NULL)").bind(A),
-    db.prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key) VALUES ('l3', ?, 'user-b', 'deduction', -15, 25, 'usage', '{}', 'old-b')").bind(B),
+    db
+      .prepare(
+        "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key) VALUES ('l2', ?, 'user-a', 'topup', 5, 75, 'refund', '{}', NULL)",
+      )
+      .bind(A),
+    db
+      .prepare(
+        "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key) VALUES ('l3', ?, 'user-b', 'deduction', -15, 25, 'usage', '{}', 'old-b')",
+      )
+      .bind(B),
     db.prepare("INSERT INTO credit_orders (order_id, workspace_id, user_id, amount, processed) VALUES ('order_keep', ?, 'user-a', 9, 1)").bind(A),
   ]);
 }
@@ -145,7 +155,9 @@ describe("MIGRATION_PRESERVES: 0002 keeps every ledger row and the overdraw refu
     expect(await db.prepare("SELECT name FROM sqlite_master WHERE name = 'credit_ledger_v2'").first()).toBeNull();
 
     // CHECK (balance >= 0) on the wallet, CHECK (balance_after >= 0) and the type CHECK on the rebuilt ledger.
-    await expect(db.prepare("UPDATE credit_wallets SET balance = balance - 76 WHERE workspace_id = ?").bind(A).run()).rejects.toThrow(/CHECK constraint failed: balance >= 0/);
+    await expect(db.prepare("UPDATE credit_wallets SET balance = balance - 76 WHERE workspace_id = ?").bind(A).run()).rejects.toThrow(
+      /CHECK constraint failed: balance >= 0/,
+    );
     await expect(
       db
         .prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason) VALUES ('neg', ?, 'u', 'deduction', -1, -1, 'x')")
@@ -159,9 +171,19 @@ describe("MIGRATION_PRESERVES: 0002 keeps every ledger row and the overdraw refu
         .run(),
     ).rejects.toThrow(/CHECK constraint failed/);
     // The same key in another workspace is now allowed; in the same workspace it is not.
-    await db.prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, idempotency_key) VALUES ('l4', ?, 'u', 'deduction', -1, 24, 'x', 'old-a')").bind(B).run();
+    await db
+      .prepare(
+        "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, idempotency_key) VALUES ('l4', ?, 'u', 'deduction', -1, 24, 'x', 'old-a')",
+      )
+      .bind(B)
+      .run();
     await expect(
-      db.prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, idempotency_key) VALUES ('l5', ?, 'u', 'deduction', -1, 69, 'x', 'old-a')").bind(A).run(),
+      db
+        .prepare(
+          "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, idempotency_key) VALUES ('l5', ?, 'u', 'deduction', -1, 69, 'x', 'old-a')",
+        )
+        .bind(A)
+        .run(),
     ).rejects.toThrow(/UNIQUE constraint failed/);
   });
 });
@@ -182,11 +204,45 @@ describe("MIGRATION_MILLI: 0004 converts whole credits to thousandths exactly, a
       { workspace_id: A, balance_milli: 75_000 },
       { workspace_id: B, balance_milli: 25_000 },
     ]);
-    const ledger = await db.prepare("SELECT id, workspace_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key, transfer_code FROM credit_ledger ORDER BY rowid").all();
+    const ledger = await db
+      .prepare(
+        "SELECT id, workspace_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key, transfer_code FROM credit_ledger ORDER BY rowid",
+      )
+      .all();
     expect(ledger.results).toEqual([
-      { id: "l1", workspace_id: A, type: "deduction", amount_milli: -30_000, balance_after_milli: 70_000, reason: "usage", metadata: JSON.stringify({ n: 1 }), idempotency_key: "old-a", transfer_code: null },
-      { id: "l2", workspace_id: A, type: "topup", amount_milli: 5_000, balance_after_milli: 75_000, reason: "refund", metadata: "{}", idempotency_key: null, transfer_code: null },
-      { id: "l3", workspace_id: B, type: "deduction", amount_milli: -15_000, balance_after_milli: 25_000, reason: "usage", metadata: "{}", idempotency_key: "old-b", transfer_code: null },
+      {
+        id: "l1",
+        workspace_id: A,
+        type: "deduction",
+        amount_milli: -30_000,
+        balance_after_milli: 70_000,
+        reason: "usage",
+        metadata: JSON.stringify({ n: 1 }),
+        idempotency_key: "old-a",
+        transfer_code: null,
+      },
+      {
+        id: "l2",
+        workspace_id: A,
+        type: "topup",
+        amount_milli: 5_000,
+        balance_after_milli: 75_000,
+        reason: "refund",
+        metadata: "{}",
+        idempotency_key: null,
+        transfer_code: null,
+      },
+      {
+        id: "l3",
+        workspace_id: B,
+        type: "deduction",
+        amount_milli: -15_000,
+        balance_after_milli: 25_000,
+        reason: "usage",
+        metadata: "{}",
+        idempotency_key: "old-b",
+        transfer_code: null,
+      },
     ]);
     // Order amounts are money, not credits: unchanged.
     expect(await db.prepare("SELECT amount FROM credit_orders WHERE order_id = 'order_keep'").first()).toEqual({ amount: 9 });
@@ -215,7 +271,9 @@ describe("MIGRATION_MILLI: 0004 converts whole credits to thousandths exactly, a
     );
     const insert = (id: string, type: string, balanceAfter: number, code: string | null) =>
       db
-        .prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, transfer_code) VALUES (?, ?, 'u', ?, -1, ?, 'x', ?)")
+        .prepare(
+          "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, transfer_code) VALUES (?, ?, 'u', ?, -1, ?, 'x', ?)",
+        )
         .bind(id, A, type, balanceAfter, code)
         .run();
     await expect(insert("neg", "deduction", -1, null)).rejects.toThrow(/CHECK constraint failed: balance_after_milli >= 0/);

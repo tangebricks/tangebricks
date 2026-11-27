@@ -44,7 +44,11 @@ function setup() {
   const client = createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, alsoHide: [KEY] });
   let timeMs = Date.parse("2026-10-21T00:00:00.000Z");
   const nextTime = () => new Date((timeMs += 1000));
-  const ledger = openLedger(memoryStore(), () => SUFFIX, () => nextTime());
+  const ledger = openLedger(
+    memoryStore(),
+    () => SUFFIX,
+    () => nextTime(),
+  );
   const names = resourceNames(SUFFIX);
   const input = (over: Partial<DeployInput> = {}): DeployInput => ({
     client,
@@ -92,7 +96,15 @@ describe("planDeploy (UC8.8)", () => {
     const before = client.calls.length;
     const plan = await planDeploy({ ...input(), lock: LOCK_V1 });
     expect(client.calls.slice(before).filter(isWriteCall)).toEqual([]);
-    expect(plan).toMatchObject({ migrations: [], bricks: [], settings: [], worker: { changed: false, reasons: [] }, workflow: { action: "none" }, blocking: [], empty: true });
+    expect(plan).toMatchObject({
+      migrations: [],
+      bricks: [],
+      settings: [],
+      worker: { changed: false, reasons: [] },
+      workflow: { action: "none" },
+      blocking: [],
+      empty: true,
+    });
   });
 
   test("a destructive migration and an unacknowledged major bump block; acknowledging the major clears only that", async () => {

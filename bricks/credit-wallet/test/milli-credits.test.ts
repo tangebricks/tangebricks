@@ -12,7 +12,17 @@ import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?r
 import migration0003 from "../migrations/0003_order_currency.sql?raw";
 import migration0004 from "../migrations/0004_milli_credits.sql?raw";
 import manifest from "../brick.manifest.json";
-import { chargeAction, createFakeGateway, createWallet, createWalletRoutes, deductCreditsExecutor, importWalletBalances, parseBalanceFile, parseDefaultActionCosts, walletCharger } from "../src/index.ts";
+import {
+  chargeAction,
+  createFakeGateway,
+  createWallet,
+  createWalletRoutes,
+  deductCreditsExecutor,
+  importWalletBalances,
+  parseBalanceFile,
+  parseDefaultActionCosts,
+  walletCharger,
+} from "../src/index.ts";
 import { seeded } from "./support/workload.ts";
 
 // Story 2.5: credits are whole thousandths. Fractional debits are exact, actions have per-workspace costs, credits move
@@ -31,9 +41,20 @@ async function reset(): Promise<void> {
 const ledger = async (workspaceId: string) =>
   (
     await db
-      .prepare("SELECT type, amount_milli, balance_after_milli, user_id, reason, metadata, idempotency_key, transfer_code FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid")
+      .prepare(
+        "SELECT type, amount_milli, balance_after_milli, user_id, reason, metadata, idempotency_key, transfer_code FROM credit_ledger WHERE workspace_id = ? ORDER BY rowid",
+      )
       .bind(workspaceId)
-      .all<{ type: string; amount_milli: number; balance_after_milli: number; user_id: string; reason: string; metadata: string; idempotency_key: string | null; transfer_code: string | null }>()
+      .all<{
+        type: string;
+        amount_milli: number;
+        balance_after_milli: number;
+        user_id: string;
+        reason: string;
+        metadata: string;
+        idempotency_key: string | null;
+        transfer_code: string | null;
+      }>()
   ).results;
 
 beforeEach(async () => {
@@ -47,7 +68,9 @@ describe("exactness: fractional debits end exactly", () => {
     await wallet.openWallet("ws-exact", 10_000_000);
     for (const milli of [200, 500]) {
       for (let chunk = 0; chunk < 10_000; chunk += 100) {
-        const results = await Promise.all(Array.from({ length: 100 }, () => wallet.deduct({ workspaceId: "ws-exact", userId: "u", amountMilli: milli, reason: "usage" })));
+        const results = await Promise.all(
+          Array.from({ length: 100 }, () => wallet.deduct({ workspaceId: "ws-exact", userId: "u", amountMilli: milli, reason: "usage" })),
+        );
         expect(results.every((r) => r.ok)).toBe(true);
       }
     }
@@ -105,18 +128,43 @@ describe("transfers between workspaces (wallet)", () => {
 
   test("moves the amount in one step: two ledger rows sharing a transfer code, and the destination's says nothing of the source", async () => {
     const wallet = await open();
-    const result = await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: B, userId: "alice", amountMilli: 1_500, idempotencyKey: "t1", note: "for the campaign" });
+    const result = await wallet.transfer({
+      fromWorkspaceId: A,
+      toWorkspaceId: B,
+      userId: "alice",
+      amountMilli: 1_500,
+      idempotencyKey: "t1",
+      note: "for the campaign",
+    });
     expect(result).toMatchObject({ ok: true, amountMilli: 1_500, balanceAfterMilli: 8_500, duplicate: false });
     const code = result.ok ? result.transferCode : "";
     expect(code).toMatch(/^tr_[0-9a-f]{32}$/);
     expect(await wallet.getBalanceMilli(A)).toBe(8_500);
     expect(await wallet.getBalanceMilli(B)).toBe(1_500);
     expect(await ledger(A)).toEqual([
-      { type: "transfer_out", amount_milli: -1_500, balance_after_milli: 8_500, user_id: "alice", reason: "for the campaign", metadata: JSON.stringify({ to_workspace_id: B }), idempotency_key: "t1", transfer_code: code },
+      {
+        type: "transfer_out",
+        amount_milli: -1_500,
+        balance_after_milli: 8_500,
+        user_id: "alice",
+        reason: "for the campaign",
+        metadata: JSON.stringify({ to_workspace_id: B }),
+        idempotency_key: "t1",
+        transfer_code: code,
+      },
     ]);
     const incoming = await ledger(B);
     expect(incoming).toEqual([
-      { type: "transfer_in", amount_milli: 1_500, balance_after_milli: 1_500, user_id: "transfer", reason: "Transfer in", metadata: "{}", idempotency_key: null, transfer_code: code },
+      {
+        type: "transfer_in",
+        amount_milli: 1_500,
+        balance_after_milli: 1_500,
+        user_id: "transfer",
+        reason: "Transfer in",
+        metadata: "{}",
+        idempotency_key: null,
+        transfer_code: code,
+      },
     ]);
     expect(JSON.stringify(incoming)).not.toMatch(/alice|ws-tr-a|campaign/);
   });
@@ -147,7 +195,9 @@ describe("transfers between workspaces (wallet)", () => {
 
   test("parallel retries of one transfer move it once", async () => {
     const wallet = await open(5_000);
-    const results = await Promise.all(Array.from({ length: 10 }, () => wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: B, userId: "alice", amountMilli: 1_000, idempotencyKey: "p" })));
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: B, userId: "alice", amountMilli: 1_000, idempotencyKey: "p" })),
+    );
     expect(results.every((r) => r.ok)).toBe(true);
     expect(results.filter((r) => r.ok && !r.duplicate)).toHaveLength(1);
     expect([await wallet.getBalanceMilli(A), await wallet.getBalanceMilli(B)]).toEqual([4_000, 1_000]);
@@ -155,7 +205,10 @@ describe("transfers between workspaces (wallet)", () => {
 
   test("a transfer to itself, or to a workspace without a wallet, moves nothing", async () => {
     const wallet = await open();
-    expect(await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: A, userId: "alice", amountMilli: 1, idempotencyKey: "self" })).toMatchObject({ ok: false, reason: "same_workspace" });
+    expect(await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: A, userId: "alice", amountMilli: 1, idempotencyKey: "self" })).toMatchObject({
+      ok: false,
+      reason: "same_workspace",
+    });
     expect(await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: "ws-nowhere", userId: "alice", amountMilli: 1, idempotencyKey: "gone" })).toMatchObject({
       ok: false,
       reason: "destination_not_found",
@@ -216,25 +269,54 @@ describe("transfers between workspaces (wallet)", () => {
     expect((await wallet.deduct({ workspaceId: A, userId: "u", amountMilli: 5, reason: "x", idempotencyKey: "topup-key" })).ok).toBe(false);
     // A deduction's key reused for a different amount, or for a refund.
     await wallet.deduct({ workspaceId: A, userId: "u", amountMilli: 7, reason: "x", idempotencyKey: "ded-key" });
-    expect(await wallet.deduct({ workspaceId: A, userId: "u", amountMilli: 8, reason: "x", idempotencyKey: "ded-key" })).toMatchObject({ ok: false, reason: "idempotency_key_reused" });
-    expect(await wallet.refund({ workspaceId: A, userId: "u", amountMilli: 7, reason: "x", idempotencyKey: "ded-key" })).toMatchObject({ ok: false, reason: "idempotency_key_reused" });
+    expect(await wallet.deduct({ workspaceId: A, userId: "u", amountMilli: 8, reason: "x", idempotencyKey: "ded-key" })).toMatchObject({
+      ok: false,
+      reason: "idempotency_key_reused",
+    });
+    expect(await wallet.refund({ workspaceId: A, userId: "u", amountMilli: 7, reason: "x", idempotencyKey: "ded-key" })).toMatchObject({
+      ok: false,
+      reason: "idempotency_key_reused",
+    });
     // The same deduction again is still a duplicate.
-    expect(await wallet.deduct({ workspaceId: A, userId: "u", amountMilli: 7, reason: "x", idempotencyKey: "ded-key" })).toMatchObject({ ok: true, duplicate: true });
+    expect(await wallet.deduct({ workspaceId: A, userId: "u", amountMilli: 7, reason: "x", idempotencyKey: "ded-key" })).toMatchObject({
+      ok: true,
+      duplicate: true,
+    });
     expect(await wallet.getBalanceMilli(A)).toBe(10_000 - 1_000 + 5 - 7);
   });
 
   test("a charge's key reused with another action or another quantity takes nothing", async () => {
     await open();
-    for (const [action, cost] of [["email.send", 200], ["sms.send", 300]] as const) {
+    for (const [action, cost] of [
+      ["email.send", 200],
+      ["sms.send", 300],
+    ] as const) {
       await db.prepare("INSERT INTO credit_action_costs (workspace_id, action, cost_milli) VALUES (?, ?, ?)").bind(A, action, cost).run();
     }
-    expect(await chargeAction(db, A, { userId: "u", action: "email.send", quantity: 2, idempotencyKey: "c1" })).toMatchObject({ ok: true, chargedMilli: 400, duplicate: false });
-    expect(await chargeAction(db, A, { userId: "u", action: "email.send", quantity: 2, idempotencyKey: "c1" })).toMatchObject({ ok: true, chargedMilli: 400, duplicate: true });
-    expect(await chargeAction(db, A, { userId: "u", action: "email.send", quantity: 3, idempotencyKey: "c1" })).toEqual({ ok: false, code: "IDEMPOTENCY_KEY_REUSED" });
-    expect(await chargeAction(db, A, { userId: "u", action: "sms.send", quantity: 2, idempotencyKey: "c1" })).toEqual({ ok: false, code: "IDEMPOTENCY_KEY_REUSED" });
+    expect(await chargeAction(db, A, { userId: "u", action: "email.send", quantity: 2, idempotencyKey: "c1" })).toMatchObject({
+      ok: true,
+      chargedMilli: 400,
+      duplicate: false,
+    });
+    expect(await chargeAction(db, A, { userId: "u", action: "email.send", quantity: 2, idempotencyKey: "c1" })).toMatchObject({
+      ok: true,
+      chargedMilli: 400,
+      duplicate: true,
+    });
+    expect(await chargeAction(db, A, { userId: "u", action: "email.send", quantity: 3, idempotencyKey: "c1" })).toEqual({
+      ok: false,
+      code: "IDEMPOTENCY_KEY_REUSED",
+    });
+    expect(await chargeAction(db, A, { userId: "u", action: "sms.send", quantity: 2, idempotencyKey: "c1" })).toEqual({
+      ok: false,
+      code: "IDEMPOTENCY_KEY_REUSED",
+    });
     // A plain deduction's key is not a charge either.
     await createWallet(db, undefined).deduct({ workspaceId: A, userId: "u", amountMilli: 400, reason: "x", idempotencyKey: "d1" });
-    expect(await chargeAction(db, A, { userId: "u", action: "email.send", quantity: 2, idempotencyKey: "d1" })).toEqual({ ok: false, code: "IDEMPOTENCY_KEY_REUSED" });
+    expect(await chargeAction(db, A, { userId: "u", action: "email.send", quantity: 2, idempotencyKey: "d1" })).toEqual({
+      ok: false,
+      code: "IDEMPOTENCY_KEY_REUSED",
+    });
     expect(await createWallet(db, undefined).getBalanceMilli(A)).toBe(10_000 - 400 - 400);
   });
 
@@ -265,8 +347,16 @@ describe("transfers between workspaces (wallet)", () => {
       const next = seeded(run);
       const debits = Array.from({ length: 12 }, () => 200 + Math.floor(next() * 4) * 100);
       const ops = [
-        ...debits.map((amountMilli, i) => async () => ({ kind: "debit" as const, amountMilli, r: await wallet.deduct({ workspaceId: A, userId: "u", amountMilli, reason: `d${i}` }) })),
-        async () => ({ kind: "transfer" as const, amountMilli: 6_000, r: await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: B, userId: "alice", amountMilli: 6_000, idempotencyKey: `race-${run}` }) }),
+        ...debits.map((amountMilli, i) => async () => ({
+          kind: "debit" as const,
+          amountMilli,
+          r: await wallet.deduct({ workspaceId: A, userId: "u", amountMilli, reason: `d${i}` }),
+        })),
+        async () => ({
+          kind: "transfer" as const,
+          amountMilli: 6_000,
+          r: await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: B, userId: "alice", amountMilli: 6_000, idempotencyKey: `race-${run}` }),
+        }),
       ];
       // A different interleaving each run: the transfer starts somewhere among the debits.
       const at = Math.floor(next() * ops.length);
@@ -323,7 +413,12 @@ describe("routes: action costs, charge and transfer", () => {
     app.fetch(
       new Request(`http://localhost/api${path}`, {
         method,
-        headers: { "content-type": "application/json", ...(user ? { "x-test-user": user } : {}), ...(workspace ? { "x-workspace-id": workspace } : {}), ...extra },
+        headers: {
+          "content-type": "application/json",
+          ...(user ? { "x-test-user": user } : {}),
+          ...(workspace ? { "x-workspace-id": workspace } : {}),
+          ...extra,
+        },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       }),
       { DB: db },
@@ -346,7 +441,12 @@ describe("routes: action costs, charge and transfer", () => {
   });
 
   test("an owner or admin sets and removes costs; a member reads them but cannot set them", async () => {
-    expect(await json(await call("PUT", "/wallet/costs/email.send", "alice", "ws-a", { cost: 0.2 }))).toEqual({ action: "email.send", cost: 0.2, costMilli: 200, source: "workspace" });
+    expect(await json(await call("PUT", "/wallet/costs/email.send", "alice", "ws-a", { cost: 0.2 }))).toEqual({
+      action: "email.send",
+      cost: 0.2,
+      costMilli: 200,
+      source: "workspace",
+    });
     expect((await call("PUT", "/wallet/costs/sms.send", "adam", "ws-a", { cost: "1.25" })).status).toBe(200);
     expect((await call("PUT", "/wallet/costs/sms.send", "mel", "ws-a", { cost: 0 })).status).toBe(403);
     expect((await call("DELETE", "/wallet/costs/sms.send", "mel", "ws-a")).status).toBe(403);
@@ -363,9 +463,12 @@ describe("routes: action costs, charge and transfer", () => {
     expect((await json(await call("GET", "/wallet/costs", "bob", "ws-b"))).costs).toEqual([]);
   });
 
-  test.each([[{ cost: 0.0001 }], [{ cost: "1e-3" }], [{ cost: -1 }], [{ cost: 1_000_001 }], [{}], [{ cost: "abc" }]])("a cost of %j is refused with 400", async (body) => {
-    expect((await call("PUT", "/wallet/costs/email.send", "alice", "ws-a", body)).status).toBe(400);
-  });
+  test.each([[{ cost: 0.0001 }], [{ cost: "1e-3" }], [{ cost: -1 }], [{ cost: 1_000_001 }], [{}], [{ cost: "abc" }]])(
+    "a cost of %j is refused with 400",
+    async (body) => {
+      expect((await call("PUT", "/wallet/costs/email.send", "alice", "ws-a", body)).status).toBe(400);
+    },
+  );
 
   test("a malformed action name is refused with 400", async () => {
     expect((await call("PUT", "/wallet/costs/Email.Send", "alice", "ws-a", { cost: 1 })).status).toBe(400);
@@ -387,16 +490,27 @@ describe("routes: action costs, charge and transfer", () => {
       balanceAfterMilli: 9_400,
       duplicate: false,
     });
-    expect(await json(await call("POST", "/wallet/charge", "mel", "ws-a", { action: "email.send", quantity: 3, idempotencyKey: "batch-1" }))).toMatchObject({ duplicate: true, chargedMilli: 600 });
+    expect(await json(await call("POST", "/wallet/charge", "mel", "ws-a", { action: "email.send", quantity: 3, idempotencyKey: "batch-1" }))).toMatchObject({
+      duplicate: true,
+      chargedMilli: 600,
+    });
     // A default cost applies to an action the workspace has not priced.
-    expect(await json(await call("POST", "/wallet/charge", "mel", "ws-a", { action: "message.send", idempotencyKey: "m-1" }))).toMatchObject({ chargedMilli: 500, balanceAfterMilli: 8_900 });
+    expect(await json(await call("POST", "/wallet/charge", "mel", "ws-a", { action: "message.send", idempotencyKey: "m-1" }))).toMatchObject({
+      chargedMilli: 500,
+      balanceAfterMilli: 8_900,
+    });
     const unknown = await call("POST", "/wallet/charge", "mel", "ws-a", { action: "fax.send", idempotencyKey: "f-1" });
     expect(unknown.status).toBe(404);
     expect((await json(unknown)).code).toBe("UNKNOWN_ACTION");
     const tooMuch = await call("POST", "/wallet/charge", "mel", "ws-a", { action: "email.send", quantity: 10_000, idempotencyKey: "big" });
     expect(tooMuch.status).toBe(402);
     expect(await json(tooMuch)).toMatchObject({ code: "INSUFFICIENT_CREDITS", balance: 8.9, balanceMilli: 8_900 });
-    for (const body of [{ action: "email.send", quantity: 0, idempotencyKey: "q" }, { action: "email.send", quantity: 10_001, idempotencyKey: "q" }, { action: "email.send", quantity: 1.5, idempotencyKey: "q" }, { action: "email.send" }]) {
+    for (const body of [
+      { action: "email.send", quantity: 0, idempotencyKey: "q" },
+      { action: "email.send", quantity: 10_001, idempotencyKey: "q" },
+      { action: "email.send", quantity: 1.5, idempotencyKey: "q" },
+      { action: "email.send" },
+    ]) {
       expect((await call("POST", "/wallet/charge", "mel", "ws-a", body)).status).toBe(400);
     }
     expect(await createWallet(db, undefined).getBalanceMilli("ws-a")).toBe(8_900);
@@ -411,9 +525,17 @@ describe("routes: action costs, charge and transfer", () => {
     const b = (await json(await call("GET", "/wallet/history", "bob", "ws-b"))).ledgers;
     expect(a[0]).toMatchObject({ type: "transfer_out", amount: -1.5, amountMilli: -1_500, transferCode: body.transferCode });
     expect(b).toHaveLength(1);
-    expect(b[0]).toMatchObject({ type: "transfer_in", amount: 1.5, amountMilli: 1_500, balanceAfter: 1.5, transferCode: body.transferCode, description: "Transfer in", metadata: {} });
+    expect(b[0]).toMatchObject({
+      type: "transfer_in",
+      amount: 1.5,
+      amountMilli: 1_500,
+      balanceAfter: 1.5,
+      transferCode: body.transferCode,
+      description: "Transfer in",
+      metadata: {},
+    });
     expect(JSON.stringify(b)).not.toMatch(/ws-a|adam|seed b/);
-    expect((await json(await call("GET", "/wallet", "bob", "ws-b")))).toMatchObject({ currentBalance: 1.5, currentBalanceMilli: 1_500 });
+    expect(await json(await call("GET", "/wallet", "bob", "ws-b"))).toMatchObject({ currentBalance: 1.5, currentBalanceMilli: 1_500 });
   });
 
   test("transfer refusals: a member, an API key, itself, too much, an unknown destination, a bad amount; nothing moves", async () => {
@@ -461,7 +583,7 @@ describe("routes: action costs, charge and transfer", () => {
 
 describe("importing decimal balances", () => {
   const HASH = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-  const csv = "workspaceId,balance,ignored\nws-i1,12.345,x\nws-i2,0.2,y\n\"ws-i3\",\"7\",z\nws-i4,0,\n";
+  const csv = 'workspaceId,balance,ignored\nws-i1,12.345,x\nws-i2,0.2,y\n"ws-i3","7",z\nws-i4,0,\n';
   /** Live workspaces (the rows the workspace guard reads); `wallets` also get an empty wallet. */
   const live = async (ids: string[], wallets = true) => {
     for (const id of ids) {
@@ -483,11 +605,25 @@ describe("importing decimal balances", () => {
       ["ws-i3", 7_000, "would_import", 7_000],
       ["ws-i4", 0, "zero", 0],
     ]);
-    expect(dry).toMatchObject({ applied: false, sourceTotal: "19.545", importedTotal: "19.545", importedTotalMilli: 19_545, mismatchedRows: 0, reconciled: true });
+    expect(dry).toMatchObject({
+      applied: false,
+      sourceTotal: "19.545",
+      importedTotal: "19.545",
+      importedTotalMilli: 19_545,
+      mismatchedRows: 0,
+      reconciled: true,
+    });
     expect(await createWallet(db, undefined).getBalanceMilli("ws-i1")).toBe(0);
 
     const applied = await importWalletBalances(db, rows, { fileHash: HASH, apply: true });
-    expect(applied).toMatchObject({ applied: true, importedTotal: "19.545", resultingTotalMilli: 19_545, ledgerMismatches: 0, balanceMismatches: 0, reconciled: true });
+    expect(applied).toMatchObject({
+      applied: true,
+      importedTotal: "19.545",
+      resultingTotalMilli: 19_545,
+      ledgerMismatches: 0,
+      balanceMismatches: 0,
+      reconciled: true,
+    });
     expect(applied.rows.map((r) => [r.status, r.resultingBalanceMilli, r.balanceMatches])).toEqual([
       ["imported", 12_345, true],
       ["imported", 200, true],
@@ -495,9 +631,12 @@ describe("importing decimal balances", () => {
       ["zero", 0, true],
     ]);
     const wallet = createWallet(db, undefined);
-    expect([await wallet.getBalanceMilli("ws-i1"), await wallet.getBalanceMilli("ws-i2"), await wallet.getBalanceMilli("ws-i3"), await wallet.getBalanceMilli("ws-i4")]).toEqual([
-      12_345, 200, 7_000, 0,
-    ]);
+    expect([
+      await wallet.getBalanceMilli("ws-i1"),
+      await wallet.getBalanceMilli("ws-i2"),
+      await wallet.getBalanceMilli("ws-i3"),
+      await wallet.getBalanceMilli("ws-i4"),
+    ]).toEqual([12_345, 200, 7_000, 0]);
     expect((await ledger("ws-i1"))[0]).toMatchObject({ type: "topup", amount_milli: 12_345, idempotency_key: `import:${HASH}:ws-i1` });
   });
 
@@ -544,7 +683,13 @@ describe("importing decimal balances", () => {
 
   test("more than three decimals is refused, unless a rounding mode is given, and then every rounded row is reported", async () => {
     await live(["ws-r1", "ws-r2"]);
-    const rows = parseBalanceFile(JSON.stringify([{ workspaceId: "ws-r1", balance: "1.2345" }, { workspaceId: "ws-r2", balance: "2.5" }]), "json");
+    const rows = parseBalanceFile(
+      JSON.stringify([
+        { workspaceId: "ws-r1", balance: "1.2345" },
+        { workspaceId: "ws-r2", balance: "2.5" },
+      ]),
+      "json",
+    );
     const strict = await importWalletBalances(db, rows, { fileHash: HASH, apply: true });
     expect(strict.rows[0]).toMatchObject({ status: "refused", milli: null });
     expect(strict).toMatchObject({ refusedRows: 1, mismatchedRows: 1, sourceTotal: "3.7345", importedTotal: "2.5", reconciled: false });
@@ -594,17 +739,7 @@ describe("defaultActionCosts: the manifest's pattern and the parser agree", () =
   const action64 = `a${"z".repeat(63)}`;
 
   test("every boundary the pattern accepts parses without throwing, to the cost it names; the first entry for an action wins", () => {
-    const accepted = [
-      "",
-      "a:0",
-      "a:999999.999",
-      `${action64}:1`,
-      "email.send:0.2,message.send:0.5",
-      "message:wa:1",
-      "a-b_c.d:e:0.001",
-      "a:1,a:2",
-      "a:000999",
-    ];
+    const accepted = ["", "a:0", "a:999999.999", `${action64}:1`, "email.send:0.2,message.send:0.5", "message:wa:1", "a-b_c.d:e:0.001", "a:1,a:2", "a:000999"];
     for (const spec of accepted) {
       expect(pattern.test(spec), spec).toBe(true);
       expect(() => parseDefaultActionCosts(spec), spec).not.toThrow();
@@ -666,21 +801,34 @@ describe("operation tags: a key answers duplicate only for the very same operati
   });
 
   test("a row whose metadata is null or not an object is never the same operation, and reuse of its key does not throw", async () => {
-    for (const [key, meta] of [["k-null", "null"], ["k-num", "7"], ["k-bad", "{not json"]] as const) {
+    for (const [key, meta] of [
+      ["k-null", "null"],
+      ["k-num", "7"],
+      ["k-bad", "{not json"],
+    ] as const) {
       await db
-        .prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key) VALUES (?, ?, 'u', 'deduction', -1000, 99000, 'x', ?, ?)")
+        .prepare(
+          "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key) VALUES (?, ?, 'u', 'deduction', -1000, 99000, 'x', ?, ?)",
+        )
         .bind(`row-${key}`, W, meta, key)
         .run();
-      expect(await createWallet(db, undefined).deduct({ workspaceId: W, userId: "u", amountMilli: 1_000, reason: "x", idempotencyKey: key })).toMatchObject({ ok: false, reason: "idempotency_key_reused" });
+      expect(await createWallet(db, undefined).deduct({ workspaceId: W, userId: "u", amountMilli: 1_000, reason: "x", idempotencyKey: key })).toMatchObject({
+        ok: false,
+        reason: "idempotency_key_reused",
+      });
       expect(await chargeAction(db, W, { userId: "u", action: "email.send", idempotencyKey: key })).toEqual({ ok: false, code: "IDEMPOTENCY_KEY_REUSED" });
     }
     await db
-      .prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key, transfer_code) VALUES ('row-t', ?, 'u', 'transfer_out', -1000, 99000, 'x', 'null', 'k-tr', 'tr_x')")
+      .prepare(
+        "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata, idempotency_key, transfer_code) VALUES ('row-t', ?, 'u', 'transfer_out', -1000, 99000, 'x', 'null', 'k-tr', 'tr_x')",
+      )
       .bind(W)
       .run();
     await createWallet(db, undefined).openWallet("ws-tags-b", 0);
     await db.prepare("INSERT OR IGNORE INTO mw_workspaces (id, name, owner_id) VALUES ('ws-tags-b', 'b', 'o')").run();
-    expect(await createWallet(db, undefined).transfer({ fromWorkspaceId: W, toWorkspaceId: "ws-tags-b", userId: "u", amountMilli: 1_000, idempotencyKey: "k-tr" })).toMatchObject({
+    expect(
+      await createWallet(db, undefined).transfer({ fromWorkspaceId: W, toWorkspaceId: "ws-tags-b", userId: "u", amountMilli: 1_000, idempotencyKey: "k-tr" }),
+    ).toMatchObject({
       ok: false,
       reason: "idempotency_key_reused",
     });
@@ -700,7 +848,9 @@ describe("the destination's state inside the transfer's batch, and the optional 
     const racing = freshHandle(db, async () => {
       await db.prepare("UPDATE mw_workspaces SET suspended = 1 WHERE id = ?").bind(B).run();
     });
-    expect(await createWallet(racing, undefined).transfer({ fromWorkspaceId: A, toWorkspaceId: B, userId: "u", amountMilli: 1_000, idempotencyKey: "race" })).toEqual({
+    expect(
+      await createWallet(racing, undefined).transfer({ fromWorkspaceId: A, toWorkspaceId: B, userId: "u", amountMilli: 1_000, idempotencyKey: "race" }),
+    ).toEqual({
       ok: false,
       reason: "destination_not_found",
       balanceMilli: null,
@@ -721,10 +871,12 @@ describe("the destination's state inside the transfer's batch, and the optional 
     expect(await findWorkspaceState(bare, "anything")).toEqual({ suspended: false, reason: null, deleting: false, checked: false });
     const wallet = createWallet(bare, undefined);
     expect(await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: B, userId: "u", amountMilli: 1_000, idempotencyKey: "nr" })).toMatchObject({ ok: true });
-    expect(await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: "ws-no-wallet", userId: "u", amountMilli: 1_000, idempotencyKey: "nr-2" })).toMatchObject({
-      ok: false,
-      reason: "destination_not_found",
-    });
+    expect(await wallet.transfer({ fromWorkspaceId: A, toWorkspaceId: "ws-no-wallet", userId: "u", amountMilli: 1_000, idempotencyKey: "nr-2" })).toMatchObject(
+      {
+        ok: false,
+        reason: "destination_not_found",
+      },
+    );
     const report = await importWalletBalances(bare, parseBalanceFile("workspaceId,balance\nws-reg-b,0\nws-new,1\n", "csv"), {
       fileHash: "ef".repeat(32),
       apply: true,
@@ -752,7 +904,10 @@ describe("import: a row that fails while writing", () => {
       batches += 1;
       if (batches === 2) throw new Error("network reset");
     });
-    const report = await importWalletBalances(flaky, parseBalanceFile("workspaceId,balance\nws-w1,1\nws-w2,2\nws-w3,3\n", "csv"), { fileHash: HASH, apply: true });
+    const report = await importWalletBalances(flaky, parseBalanceFile("workspaceId,balance\nws-w1,1\nws-w2,2\nws-w3,3\n", "csv"), {
+      fileHash: HASH,
+      apply: true,
+    });
     expect(report.rows.map((r) => [r.status, r.milli])).toEqual([
       ["imported", 1_000],
       ["refused", null],

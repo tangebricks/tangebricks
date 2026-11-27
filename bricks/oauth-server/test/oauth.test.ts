@@ -4,11 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_oauth_server.sql?raw";
-import {
-  OAuthServerService,
-  computeCodeChallenge,
-  createOAuthRoutes,
-} from "../src/index.ts";
+import { OAuthServerService, computeCodeChallenge, createOAuthRoutes } from "../src/index.ts";
 import type { OAuthEnv } from "../src/middleware.ts";
 
 const db = env.DB as D1Like;
@@ -74,7 +70,7 @@ describe("OAuth 2.0 PKCE & Service Core", () => {
         code: authRes.code,
         redirectUri: "https://app.example.com/callback",
         codeVerifier: "wrong_verifier",
-      })
+      }),
     ).rejects.toThrow("PKCE verification failed");
 
     // 5. Exchange Code with Valid Verifier
@@ -97,7 +93,7 @@ describe("OAuth 2.0 PKCE & Service Core", () => {
         code: authRes.code,
         redirectUri: "https://app.example.com/callback",
         codeVerifier: verifier,
-      })
+      }),
     ).rejects.toThrow("already used");
 
     // 7. Introspect access token
@@ -119,7 +115,7 @@ describe("OAuth 2.0 PKCE & Service Core", () => {
       service.refreshAccessToken({
         clientId: reg.client.client_id,
         refreshToken: tokens.refresh_token!,
-      })
+      }),
     ).rejects.toThrow("revoked");
   });
 
@@ -206,7 +202,7 @@ describe("OAuth 2.0 REST Endpoints", () => {
           isConfidential: true,
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(regRes.status).toBe(201);
     const regJson = (await regRes.json()) as any;
@@ -225,7 +221,7 @@ describe("OAuth 2.0 REST Endpoints", () => {
           scopes: ["read"],
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(authRes.status).toBe(201);
     const authJson = (await authRes.json()) as any;
@@ -245,7 +241,7 @@ describe("OAuth 2.0 REST Endpoints", () => {
           redirect_uri: "https://portal.example.com/cb",
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(tokenRes.status).toBe(200);
     const tokenJson = (await tokenRes.json()) as any;
@@ -259,7 +255,7 @@ describe("OAuth 2.0 REST Endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: tokenJson.access_token }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(introRes.status).toBe(200);
     const introJson = (await introRes.json()) as any;
@@ -273,14 +269,18 @@ describe("OAuth 2.0 REST Endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: tokenJson.access_token }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(revokeRes.status).toBe(200);
   });
 
   it("story 0.6: POST /oauth/clients needs owner/admin (UNAUTH 401, MEMBER 403, ADMIN 201)", async () => {
     const reg = (role: string | null, body = JSON.stringify({ clientName: "App", redirectUris: ["https://a.example.com/cb"], allowedScopes: ["read"] })) =>
-      createApp(WS_ALPHA, role).request("http://localhost/oauth/clients", { method: "POST", headers: { "Content-Type": "application/json" }, body }, { DB: db });
+      createApp(WS_ALPHA, role).request(
+        "http://localhost/oauth/clients",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body },
+        { DB: db },
+      );
     expect((await reg(null)).status).toBe(401);
     expect((await reg("member")).status).toBe(403);
     expect((await reg("member", "{bad")).status).toBe(403);
@@ -301,11 +301,15 @@ describe("OAuth 2.0 REST Endpoints", () => {
       return res.client.client_id;
     }
     const authorize = (app: Hono<OAuthEnv>, body: Record<string, unknown> | string) =>
-      app.request("http://localhost/oauth/authorize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: typeof body === "string" ? body : JSON.stringify(body),
-      }, { DB: db });
+      app.request(
+        "http://localhost/oauth/authorize",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: typeof body === "string" ? body : JSON.stringify(body),
+        },
+        { DB: db },
+      );
     async function codes(): Promise<Array<{ user_id: string }>> {
       return (await db.prepare("SELECT user_id FROM oauth_auth_codes").all<{ user_id: string }>()).results;
     }

@@ -1,44 +1,20 @@
-import type {
-  IntegrationManifestFile,
-  IntegrationOperation,
-} from "@poc/assembler";
+import type { IntegrationManifestFile, IntegrationOperation } from "@poc/assembler";
 import type { BlobStore } from "@poc/sdk";
-import {
-  DEFAULT_SECRET_HEADER_AND_FIELD_NAMES,
-  trackSecretValue,
-} from "./integration/redaction.ts";
-import {
-  validateAndBuildTargetUrl,
-  validatePathSegmentValue,
-  validateRawPathTemplate,
-} from "./integration/request-build.ts";
-import {
-  isRetryable,
-  parseRetryDelayMs,
-  sleep as defaultSleep,
-} from "./integration/retry.ts";
+import { DEFAULT_SECRET_HEADER_AND_FIELD_NAMES, trackSecretValue } from "./integration/redaction.ts";
+import { validateAndBuildTargetUrl, validatePathSegmentValue, validateRawPathTemplate } from "./integration/request-build.ts";
+import { isRetryable, parseRetryDelayMs, sleep as defaultSleep } from "./integration/retry.ts";
 import { IntegrationCallError } from "./integration/errors.ts";
 import { createHardenedFetch } from "./egress.ts";
 import { redactTelemetryString } from "@poc/telemetry";
 import { serializeParam } from "./integration/param-serialization.ts";
 import { resolveOperationAuth } from "./integration/auth.ts";
 import { encodeRequestBody } from "./integration/body-encoding.ts";
-import {
-  initPaginationState,
-  updatePaginationOnPage,
-  finalizePaginationResult,
-} from "./integration/pagination.ts";
-import {
-  decodeResponseBody,
-  findErrorMappingForStatus,
-} from "./integration/response-decoding.ts";
+import { initPaginationState, updatePaginationOnPage, finalizePaginationResult } from "./integration/pagination.ts";
+import { decodeResponseBody, findErrorMappingForStatus } from "./integration/response-decoding.ts";
 
 export { IntegrationCallError };
 
-export type IntegrationFetcher = (
-  input: string | URL | Request,
-  init?: RequestInit,
-) => Promise<Response>;
+export type IntegrationFetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
 export interface CallOperationOptions {
   readonly connection?: Record<string, unknown> | null;
@@ -69,31 +45,19 @@ export async function callOperation(
   options: CallOperationOptions,
 ): Promise<CallOperationResult> {
   if (!options || typeof options.fetcher !== "function") {
-    throw new IntegrationCallError(
-      "INTEGRATION_FETCHER_MISSING: options.fetcher is required and must be a function",
-      { code: "INTEGRATION_FETCHER_MISSING" },
-    );
+    throw new IntegrationCallError("INTEGRATION_FETCHER_MISSING: options.fetcher is required and must be a function", { code: "INTEGRATION_FETCHER_MISSING" });
   }
 
-  const operation = manifest.operations.find(
-    (op: IntegrationOperation) => op.operationId === operationId,
-  );
+  const operation = manifest.operations.find((op: IntegrationOperation) => op.operationId === operationId);
   if (!operation) {
-    throw new IntegrationCallError(
-      `INTEGRATION_OPERATION_NOT_FOUND: Operation "${operationId}" not found in manifest "${manifest.app}"`,
-      { code: "INTEGRATION_OPERATION_NOT_FOUND" },
-    );
+    throw new IntegrationCallError(`INTEGRATION_OPERATION_NOT_FOUND: Operation "${operationId}" not found in manifest "${manifest.app}"`, {
+      code: "INTEGRATION_OPERATION_NOT_FOUND",
+    });
   }
 
-  const blockingEntries = (manifest.fidelity?.unsupported ?? []).filter(
-    (e) =>
-      (e.op === operation.operationId || e.op === null || e.op === "*") &&
-      e.blocking,
-  );
+  const blockingEntries = (manifest.fidelity?.unsupported ?? []).filter((e) => (e.op === operation.operationId || e.op === null || e.op === "*") && e.blocking);
   if (blockingEntries.length > 0) {
-    const details = blockingEntries
-      .map((e) => (e.pointer ? `${e.code} at ${e.pointer}` : e.code))
-      .join(", ");
+    const details = blockingEntries.map((e) => (e.pointer ? `${e.code} at ${e.pointer}` : e.code)).join(", ");
     throw new IntegrationCallError(
       `INTEGRATION_UNSUPPORTED_FEATURE: Integration "${manifest.app}" operation "${operation.operationId}" cannot run faithfully: ${details}`,
       { code: "INTEGRATION_UNSUPPORTED_FEATURE" },
@@ -131,19 +95,16 @@ export async function callOperation(
         lookupName = paramName.slice(1);
         allowReserved = true;
       }
-      const paramDef = (operation.params ?? []).find(
-        (p) => p.name === lookupName && p.in === "path",
-      );
+      const paramDef = (operation.params ?? []).find((p) => p.name === lookupName && p.in === "path");
       if (paramDef?.allowReserved) {
         allowReserved = true;
       }
 
       const val = args[lookupName];
       if (val === undefined || val === null || String(val).trim().length === 0) {
-        throw new IntegrationCallError(
-          `INTEGRATION_MISSING_PARAM: Missing required path parameter "${lookupName}" for path "${rawPath}"`,
-          { code: "INTEGRATION_MISSING_PARAM" },
-        );
+        throw new IntegrationCallError(`INTEGRATION_MISSING_PARAM: Missing required path parameter "${lookupName}" for path "${rawPath}"`, {
+          code: "INTEGRATION_MISSING_PARAM",
+        });
       }
       if (paramDef?.sensitive || secretFieldNames.has(lookupName.toLowerCase())) {
         trackSecretValue(val, trackedSecrets);
@@ -167,15 +128,7 @@ export async function callOperation(
     };
 
     // 4. Apply connection auth
-    const authHeaderNames = resolveOperationAuth(
-      manifest,
-      operation,
-      options.connection,
-      requestHeaders,
-      targetUrl,
-      trackedSecrets,
-      secretFieldNames,
-    );
+    const authHeaderNames = resolveOperationAuth(manifest, operation, options.connection, requestHeaders, targetUrl, trackedSecrets, secretFieldNames);
 
     // 5. Resolve query, header, and cookie parameters
     const queryPairs: [string, string][] = [];
@@ -186,10 +139,7 @@ export async function callOperation(
       const val = args[param.name];
       if (val === undefined || val === null) {
         if (param.required) {
-          throw new IntegrationCallError(
-            `INTEGRATION_MISSING_PARAM: Missing required parameter "${param.name}"`,
-            { code: "INTEGRATION_MISSING_PARAM" },
-          );
+          throw new IntegrationCallError(`INTEGRATION_MISSING_PARAM: Missing required parameter "${param.name}"`, { code: "INTEGRATION_MISSING_PARAM" });
         }
         continue;
       }
@@ -203,10 +153,9 @@ export async function callOperation(
       } else if (serialized.kind === "header") {
         const hName = param.wireName ?? param.name;
         if (authHeaderNames.has(hName.toLowerCase())) {
-          throw new IntegrationCallError(
-            `INTEGRATION_HEADER_CONFLICT: Header parameter "${param.name}" conflicts with auth header "${hName}"`,
-            { code: "INTEGRATION_HEADER_CONFLICT" },
-          );
+          throw new IntegrationCallError(`INTEGRATION_HEADER_CONFLICT: Header parameter "${param.name}" conflicts with auth header "${hName}"`, {
+            code: "INTEGRATION_HEADER_CONFLICT",
+          });
         }
         requestHeaders[hName] = serialized.value;
       } else if (serialized.kind === "cookie") {
@@ -220,14 +169,7 @@ export async function callOperation(
     }
 
     // 6. Encode request body
-    const requestBody = await encodeRequestBody(
-      operation,
-      args,
-      requestHeaders,
-      options,
-      trackedSecrets,
-      secretFieldNames,
-    );
+    const requestBody = await encodeRequestBody(operation, args, requestHeaders, options, trackedSecrets, secretFieldNames);
 
     // 7. Append query parameters
     if (queryPairs.length > 0) {
@@ -245,12 +187,7 @@ export async function callOperation(
       if (options.idempotencyKey) {
         requestHeaders[headerName] = options.idempotencyKey;
       }
-    } else if (
-      operation.method === "POST" ||
-      operation.method === "PUT" ||
-      operation.method === "PATCH" ||
-      operation.method === "DELETE"
-    ) {
+    } else if (operation.method === "POST" || operation.method === "PUT" || operation.method === "PATCH" || operation.method === "DELETE") {
       if (options.idempotencyKey) {
         requestHeaders["Idempotency-Key"] = options.idempotencyKey;
       }
@@ -283,11 +220,7 @@ export async function callOperation(
         });
 
         if (response.status === 401) {
-          const mapped401 = findErrorMappingForStatus(
-            401,
-            operation.errorMappings,
-            manifest.errorMappings,
-          );
+          const mapped401 = findErrorMappingForStatus(401, operation.errorMappings, manifest.errorMappings);
           const code401 = mapped401?.code ?? "CONNECTION_EXPIRED";
           const hintSuffix = mapped401?.hint ? ` (${mapped401.hint})` : "";
           throw new IntegrationCallError(
@@ -297,35 +230,16 @@ export async function callOperation(
         }
 
         const opRetryable = isRetryable(operation);
-        if (
-          (response.status === 429 || response.status === 503) &&
-          opRetryable &&
-          attempt < maxRetries
-        ) {
-          const mapped429 = findErrorMappingForStatus(
-            response.status,
-            operation.errorMappings,
-            manifest.errorMappings,
-          );
-          const retryDelay = parseRetryDelayMs(
-            response,
-            attempt,
-            operation.rateLimit,
-            maxSleepMs,
-            mapped429?.retryAfterHeader,
-            nowFn,
-          );
+        if ((response.status === 429 || response.status === 503) && opRetryable && attempt < maxRetries) {
+          const mapped429 = findErrorMappingForStatus(response.status, operation.errorMappings, manifest.errorMappings);
+          const retryDelay = parseRetryDelayMs(response, attempt, operation.rateLimit, maxSleepMs, mapped429?.retryAfterHeader, nowFn);
           if (retryDelay.exceedsCeiling) {
             const rawText = await response.text();
             const safeBodyText = redactTelemetryString(rawText.slice(0, 300), {
               secretValues: trackedSecrets,
               secretFieldNames,
             });
-            const mappedErr = findErrorMappingForStatus(
-              response.status,
-              operation.errorMappings,
-              manifest.errorMappings,
-            );
+            const mappedErr = findErrorMappingForStatus(response.status, operation.errorMappings, manifest.errorMappings);
             const errPrefix = mappedErr?.code ?? "RATE_LIMITED";
             const hintSuffix = mappedErr?.hint ? ` (${mappedErr.hint})` : "";
             throw new IntegrationCallError(
@@ -342,14 +256,7 @@ export async function callOperation(
           continue;
         }
 
-        return decodeResponseBody(
-          response,
-          manifest,
-          operation,
-          options,
-          trackedSecrets,
-          secretFieldNames,
-        );
+        return decodeResponseBody(response, manifest, operation, options, trackedSecrets, secretFieldNames);
       }
     };
 
@@ -358,23 +265,13 @@ export async function callOperation(
 
     while (paginationState.pagesFetched < paginationState.maxPages) {
       const decoded = await executeSinglePageFetch(paginationState.currentPageUrl);
-      const shouldContinue = updatePaginationOnPage(
-        paginationState,
-        manifest,
-        operation,
-        decoded.status,
-        decoded.body,
-        decoded.headers,
-      );
+      const shouldContinue = updatePaginationOnPage(paginationState, manifest, operation, decoded.status, decoded.body, decoded.headers);
       if (!shouldContinue) {
         break;
       }
     }
 
-    const { finalBody, extractedData, headersRecord } = finalizePaginationResult(
-      paginationState,
-      operation,
-    );
+    const { finalBody, extractedData, headersRecord } = finalizePaginationResult(paginationState, operation);
 
     return {
       ok: true,

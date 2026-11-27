@@ -5,7 +5,13 @@ import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { WORKERS_SUBDOMAIN_FILE, resolveWorkerUrl } from "../../packages/deploy/src/context.ts";
 import { canonical } from "../../packages/deploy/src/h10.ts";
-import { ACCOUNT_SUBDOMAIN_PLACEHOLDER, accountSubdomainOf, redactCallsAndResult, redactWorkersDevSubdomains, redactWorkersDevText } from "../lib/redact-subdomain.ts";
+import {
+  ACCOUNT_SUBDOMAIN_PLACEHOLDER,
+  accountSubdomainOf,
+  redactCallsAndResult,
+  redactWorkersDevSubdomains,
+  redactWorkersDevText,
+} from "../lib/redact-subdomain.ts";
 
 // The account's workers.dev subdomain is kept out of committed evidence: every live evidence writer passes its texts
 // through scripts/lib/redact-subdomain.ts before hashing. "example-acct" stands in for a real account's subdomain.
@@ -30,7 +36,12 @@ describe("redactWorkersDevText", () => {
   });
 
   test("leaves a bare <name>.workers.dev host, the placeholder itself and unrelated hosts alone (idempotent)", () => {
-    for (const text of ["https://px-drift-ui-app-preview.workers.dev", "https://x.<account-subdomain>.workers.dev", "https://api.cloudflare.com/client/v4", "<project>.<subdomain>.workers.dev"]) {
+    for (const text of [
+      "https://px-drift-ui-app-preview.workers.dev",
+      "https://x.<account-subdomain>.workers.dev",
+      "https://api.cloudflare.com/client/v4",
+      "<project>.<subdomain>.workers.dev",
+    ]) {
       expect(redactWorkersDevText(text)).toBe(text);
     }
     const once = redactWorkersDevText(`https://w.${SUB}.workers.dev`);
@@ -50,7 +61,14 @@ describe("redactWorkersDevText", () => {
 
 describe("redactWorkersDevSubdomains", () => {
   test("walks nested JSON (values and keys), returns a copy, and leaves non-strings unchanged", () => {
-    const input = { url: `https://w.${SUB}.workers.dev`, n: 3, ok: true, none: null, list: [{ deep: [`https://v.${SUB}.workers.dev/healthz`] }], [`k.${SUB}.workers.dev`]: 1 };
+    const input = {
+      url: `https://w.${SUB}.workers.dev`,
+      n: 3,
+      ok: true,
+      none: null,
+      list: [{ deep: [`https://v.${SUB}.workers.dev/healthz`] }],
+      [`k.${SUB}.workers.dev`]: 1,
+    };
     const out = redactWorkersDevSubdomains(input);
     expect(JSON.stringify(out)).not.toContain(SUB);
     expect(out.url).toBe("https://w.<account-subdomain>.workers.dev");
@@ -62,9 +80,16 @@ describe("redactWorkersDevSubdomains", () => {
 
 describe("redactCallsAndResult", () => {
   test("redacts both texts and re-points callsSha256 at the redacted calls text, which stays canonical", () => {
-    const calls = { commandStartedAt: "2026-01-01T00:00:00.000Z", facts: { url: `https://projectx-poc-0a1b2c3d.${SUB}.workers.dev`, changes: [`switched on https://projectx-poc-0a1b2c3d.${SUB}.workers.dev`] } };
+    const calls = {
+      commandStartedAt: "2026-01-01T00:00:00.000Z",
+      facts: { url: `https://projectx-poc-0a1b2c3d.${SUB}.workers.dev`, changes: [`switched on https://projectx-poc-0a1b2c3d.${SUB}.workers.dev`] },
+    };
     const raw = canonical(calls as never);
-    const { callsText, result } = redactCallsAndResult(raw, { schema: 1, callsSha256: sha(raw), note: `reached https://projectx-poc-0a1b2c3d.${SUB}.workers.dev` });
+    const { callsText, result } = redactCallsAndResult(raw, {
+      schema: 1,
+      callsSha256: sha(raw),
+      note: `reached https://projectx-poc-0a1b2c3d.${SUB}.workers.dev`,
+    });
     expect(callsText).not.toContain(SUB);
     expect(JSON.stringify(result)).not.toContain(SUB);
     expect(result.callsSha256).toBe(sha(callsText));

@@ -11,11 +11,7 @@ import type { Op } from "@poc/blueprint";
 import type { D1Like, D1Result, D1Statement } from "@poc/sdk";
 import { upsertRunRecord } from "../../../packages/telemetry/src/index.ts";
 import tailwindcss from "tailwindcss";
-import {
-  BlueprintDO,
-  app as studioApp,
-  ensureStudioD1Schema,
-} from "../../studio-api/src/index.ts";
+import { BlueprintDO, app as studioApp, ensureStudioD1Schema } from "../../studio-api/src/index.ts";
 import type { StudioApiEnv } from "../../studio-api/src/index.ts";
 import tailwindConfig from "../tailwind.config.ts";
 
@@ -29,12 +25,7 @@ interface NodeWs {
 }
 
 interface NodeWsServer {
-  handleUpgrade(
-    request: IncomingMessage,
-    socket: Duplex,
-    upgradeHead: Buffer,
-    callback: (client: NodeWs, request: IncomingMessage) => void,
-  ): void;
+  handleUpgrade(request: IncomingMessage, socket: Duplex, upgradeHead: Buffer, callback: (client: NodeWs, request: IncomingMessage) => void): void;
   close(cb?: () => void): void;
 }
 
@@ -183,30 +174,19 @@ function installNodeWebSocketPair(): void {
           ws.on("message", (raw) => {
             const text = typeof raw === "string" ? raw : raw.toString("utf8");
             if (doOwner) {
-              void doOwner.webSocketMessage(
-                serverSocket as unknown as WebSocket,
-                text,
-              );
+              void doOwner.webSocketMessage(serverSocket as unknown as WebSocket, text);
             }
           });
           ws.on("close", (code, reasonBuf) => {
             closed = true;
             if (doOwner) {
-              void doOwner.webSocketClose(
-                serverSocket as unknown as WebSocket,
-                code,
-                reasonBuf ? reasonBuf.toString("utf8") : "",
-                true,
-              );
+              void doOwner.webSocketClose(serverSocket as unknown as WebSocket, code, reasonBuf ? reasonBuf.toString("utf8") : "", true);
             }
           });
           ws.on("error", () => {
             closed = true;
             if (doOwner) {
-              void doOwner.webSocketError(
-                serverSocket as unknown as WebSocket,
-                new Error("ws error"),
-              );
+              void doOwner.webSocketError(serverSocket as unknown as WebSocket, new Error("ws error"));
             }
           });
         },
@@ -222,10 +202,7 @@ function createNodeDurableObjectNamespace(getEnv: () => StudioApiEnv): {
   namespace: DurableObjectNamespace;
   closeAll: () => void;
 } {
-  const instances = new Map<
-    string,
-    { instance: BlueprintDO; sqlite: DatabaseSync }
-  >();
+  const instances = new Map<string, { instance: BlueprintDO; sqlite: DatabaseSync }>();
 
   function getOrCreateInstance(name: string): BlueprintDO {
     let entry = instances.get(name);
@@ -247,10 +224,7 @@ function createNodeDurableObjectNamespace(getEnv: () => StudioApiEnv): {
         },
         storage: {
           sql: {
-            exec<T = Record<string, unknown>>(
-              query: string,
-              ...bindings: unknown[]
-            ): { toArray(): T[] } {
+            exec<T = Record<string, unknown>>(query: string, ...bindings: unknown[]): { toArray(): T[] } {
               const trimmed = query.trim();
               if (bindings.length === 0 && !/^SELECT\b/i.test(trimmed)) {
                 sqlite.exec(query);
@@ -258,9 +232,7 @@ function createNodeDurableObjectNamespace(getEnv: () => StudioApiEnv): {
               }
               const stmt = sqlite.prepare(query);
               if (/^SELECT\b/i.test(trimmed)) {
-                const rows = stmt
-                  .all(...(bindings as SQLInputValue[]))
-                  .map((r) => ({ ...r }) as T);
+                const rows = stmt.all(...(bindings as SQLInputValue[])).map((r) => ({ ...r }) as T);
                 return { toArray: () => rows };
               }
               stmt.run(...(bindings as SQLInputValue[]));
@@ -332,13 +304,7 @@ function createNodeDurableObjectNamespace(getEnv: () => StudioApiEnv): {
       const instance = getOrCreateInstance(name);
       return {
         fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-          const req =
-            input instanceof Request
-              ? input
-              : new Request(
-                  typeof input === "string" ? input : input.toString(),
-                  init,
-                );
+          const req = input instanceof Request ? input : new Request(typeof input === "string" ? input : input.toString(), init);
           return instance.fetch(req);
         },
       } as unknown as DurableObjectStub;
@@ -361,10 +327,7 @@ function createNodeDurableObjectNamespace(getEnv: () => StudioApiEnv): {
 }
 
 function extractSessionCookie(res: Response): string {
-  const setCookies =
-    typeof res.headers.getSetCookie === "function"
-      ? res.headers.getSetCookie()
-      : [res.headers.get("set-cookie") ?? ""].filter(Boolean);
+  const setCookies = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [res.headers.get("set-cookie") ?? ""].filter(Boolean);
   return setCookies
     .map((c) => c.split(";")[0]?.trim())
     .filter(Boolean)
@@ -392,10 +355,7 @@ async function seedRealStudioBackend(env: StudioApiEnv): Promise<void> {
     { projectId: "acme-saas" },
   );
 
-  const apiCall = async (
-    path: string,
-    init: RequestInit = {},
-  ): Promise<Response> => {
+  const apiCall = async (path: string, init: RequestInit = {}): Promise<Response> => {
     // Send the same-origin Origin header a browser sends; cookie-authenticated
     // mutating routes refuse requests without it (CSRF check, story 0.14).
     const headers = new Headers(init.headers);
@@ -464,11 +424,7 @@ async function seedRealStudioBackend(env: StudioApiEnv): Promise<void> {
   });
 
   // 4. Seed scoped MCP token for Acme Org ("Claude Desktop")
-  const aliceUserRow = await env.STUDIO_DB.prepare(
-    `SELECT id FROM "user" WHERE email = ?`,
-  )
-    .bind("alice@example.com")
-    .first<{ id: string }>();
+  const aliceUserRow = await env.STUDIO_DB.prepare(`SELECT id FROM "user" WHERE email = ?`).bind("alice@example.com").first<{ id: string }>();
   const aliceUserId = aliceUserRow?.id ?? "alice";
   const tokenHash = await sha256Hex(E2E_MCP_TOKEN);
   // Story 0.15: every MCP token is bound to one project; this one to "acme-saas". A spec that drives another project
@@ -477,15 +433,7 @@ async function seedRealStudioBackend(env: StudioApiEnv): Promise<void> {
     `INSERT INTO studio_mcp_tokens (id, org_id, project_id, user_id, client_name, token_hash, scopes, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
   )
-    .bind(
-      "mcp_tok_e2e_claude",
-      acmeOrgId,
-      "acme-saas",
-      aliceUserId,
-      "Claude Desktop",
-      tokenHash,
-      "read,edit",
-    )
+    .bind("mcp_tok_e2e_claude", acmeOrgId, "acme-saas", aliceUserId, "Claude Desktop", tokenHash, "read,edit")
     .run();
 
   // 5. Create project "acme-saas" and commit revisions r1 and r2 through real BlueprintDO
@@ -611,9 +559,7 @@ export default async function globalSetup() {
   installNodeWebSocketPair();
 
   const studioWebRoot = resolve(import.meta.dirname, "..");
-  const viteEntry = pathToFileURL(
-    resolve(studioWebRoot, "node_modules/vite/dist/node/index.js"),
-  ).href;
+  const viteEntry = pathToFileURL(resolve(studioWebRoot, "node_modules/vite/dist/node/index.js")).href;
 
   const studioDb = createSqliteD1();
   let studioEnv!: StudioApiEnv;
@@ -645,52 +591,47 @@ export default async function globalSetup() {
 
   const wss = new WebSocketServer({ noServer: true });
 
-  const apiServer = createHttpServer(
-    async (req: IncomingMessage, res: ServerResponse) => {
-      try {
-        const method = req.method ?? "GET";
-        const url = `http://127.0.0.1:8787${req.url ?? "/"}`;
-        const headers = buildFetchHeaders(req);
-        const hasBody = method !== "GET" && method !== "HEAD";
-        const bodyBuf = hasBody ? await readNodeRequestBody(req) : undefined;
+  const apiServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
+    try {
+      const method = req.method ?? "GET";
+      const url = `http://127.0.0.1:8787${req.url ?? "/"}`;
+      const headers = buildFetchHeaders(req);
+      const hasBody = method !== "GET" && method !== "HEAD";
+      const bodyBuf = hasBody ? await readNodeRequestBody(req) : undefined;
 
-        const fetchReq = new Request(url, {
-          method,
-          headers,
-          body: bodyBuf && bodyBuf.length > 0 ? new Uint8Array(bodyBuf) : undefined,
-        });
+      const fetchReq = new Request(url, {
+        method,
+        headers,
+        body: bodyBuf && bodyBuf.length > 0 ? new Uint8Array(bodyBuf) : undefined,
+      });
 
-        const fetchRes = await studioApp.fetch(fetchReq, studioEnv);
-        res.statusCode = fetchRes.status;
+      const fetchRes = await studioApp.fetch(fetchReq, studioEnv);
+      res.statusCode = fetchRes.status;
 
-        const setCookies =
-          typeof fetchRes.headers.getSetCookie === "function"
-            ? fetchRes.headers.getSetCookie()
-            : [];
-        if (setCookies.length > 0) {
-          res.setHeader("set-cookie", setCookies);
-        }
-        fetchRes.headers.forEach((value, key) => {
-          if (key.toLowerCase() === "set-cookie") return;
-          res.setHeader(key, value);
-        });
-
-        const arrayBuf = await fetchRes.arrayBuffer();
-        res.end(Buffer.from(arrayBuf));
-      } catch (err) {
-        res.statusCode = 500;
-        res.setHeader("content-type", "application/json");
-        res.end(
-          JSON.stringify({
-            error: {
-              code: "INTERNAL_ERROR",
-              message: err instanceof Error ? err.message : "Internal Server Error",
-            },
-          }),
-        );
+      const setCookies = typeof fetchRes.headers.getSetCookie === "function" ? fetchRes.headers.getSetCookie() : [];
+      if (setCookies.length > 0) {
+        res.setHeader("set-cookie", setCookies);
       }
-    },
-  );
+      fetchRes.headers.forEach((value, key) => {
+        if (key.toLowerCase() === "set-cookie") return;
+        res.setHeader(key, value);
+      });
+
+      const arrayBuf = await fetchRes.arrayBuffer();
+      res.end(Buffer.from(arrayBuf));
+    } catch (err) {
+      res.statusCode = 500;
+      res.setHeader("content-type", "application/json");
+      res.end(
+        JSON.stringify({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: err instanceof Error ? err.message : "Internal Server Error",
+          },
+        }),
+      );
+    }
+  });
 
   apiServer.on("upgrade", async (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     try {
@@ -702,9 +643,7 @@ export default async function globalSetup() {
       });
 
       const fetchRes = await studioApp.fetch(fetchReq, studioEnv);
-      const clientSocket = (
-        fetchRes as Response & { webSocket?: BridgeClientSocket }
-      ).webSocket;
+      const clientSocket = (fetchRes as Response & { webSocket?: BridgeClientSocket }).webSocket;
 
       if (!clientSocket || (fetchRes.status !== 101 && fetchRes.status !== 200)) {
         socket.write(`HTTP/1.1 ${fetchRes.status || 403} Forbidden\r\n\r\n`);
@@ -740,10 +679,7 @@ export default async function globalSetup() {
         plugins: [
           tailwindcss({
             ...tailwindConfig,
-            content: [
-              resolve(studioWebRoot, "./index.html"),
-              resolve(studioWebRoot, "./src/**/*.{ts,tsx}"),
-            ],
+            content: [resolve(studioWebRoot, "./index.html"), resolve(studioWebRoot, "./src/**/*.{ts,tsx}")],
           }),
         ],
       },

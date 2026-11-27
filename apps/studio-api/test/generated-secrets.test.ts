@@ -39,7 +39,13 @@ const seenBodies: string[] = [];
 
 /** Runs between a deploy's approval gate and the bind of its generated secrets (the test seam); null does nothing. */
 let betweenGateAndBind: (() => Promise<void>) | null = null;
-const hookedApp = createStudioApiApp({ deploy: { beforeGeneratedSecretBind: async () => { await betweenGateAndBind?.(); } } });
+const hookedApp = createStudioApiApp({
+  deploy: {
+    beforeGeneratedSecretBind: async () => {
+      await betweenGateAndBind?.();
+    },
+  },
+});
 let studioApp: { fetch: (request: Request, env: StudioApiEnv) => Response | Promise<Response> } = defaultStudioApp;
 
 async function call(
@@ -94,11 +100,16 @@ async function world(options: { identity?: "stub" | "core-auth"; extraBricks?: s
   });
   expect(signup.status).toBe(201);
   const owner = { token: signup.body.token as string, userId: (signup.body.user as { id: string }).id };
-  const org = await call("/api/orgs", { token: owner.token, body: { name: "Generated Secrets Org", slug: `gen-${counter}-${crypto.randomUUID().slice(0, 6)}` } });
+  const org = await call("/api/orgs", {
+    token: owner.token,
+    body: { name: "Generated Secrets Org", slug: `gen-${counter}-${crypto.randomUUID().slice(0, 6)}` },
+  });
   const orgId = org.body.id as string;
   const project = `gen-${counter}-${crypto.randomUUID().slice(0, 6)}`;
   expect((await call(`/api/orgs/${orgId}/projects`, { token: owner.token, body: { project } })).status).toBe(201);
-  expect((await call(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, { token: owner.token, body: { token: VALID_CF_TOKEN, projectId: project } })).status).toBe(201);
+  expect(
+    (await call(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, { token: owner.token, body: { token: VALID_CF_TOKEN, projectId: project } })).status,
+  ).toBe(201);
   const seeded = await call(`/api/projects/${project}/ops`, {
     token: owner.token,
     headers: { "x-org-id": orgId },
@@ -133,7 +144,10 @@ async function auditText(project: string): Promise<string> {
 }
 
 async function deployCount(project: string, envName: string): Promise<number> {
-  const row = await studioDb.prepare("SELECT COUNT(*) AS n FROM deployments WHERE project_id = ? AND env_name = ?").bind(project, envName).first<{ n: number }>();
+  const row = await studioDb
+    .prepare("SELECT COUNT(*) AS n FROM deployments WHERE project_id = ? AND env_name = ?")
+    .bind(project, envName)
+    .first<{ n: number }>();
   return row?.n ?? 0;
 }
 
@@ -233,7 +247,11 @@ describe("story 1.19: generated secrets on an approved preview deploy", () => {
     const w = await world({ identity: "core-auth" });
     const plan = await call(`/api/projects/${w.project}/environments/production/plan`, { token: w.owner.token, body: {} });
     expect(plan.body.secrets).toContainEqual(expect.objectContaining({ name: "BETTER_AUTH_SECRET", status: "missing" }));
-    const deployed = await call(`/api/projects/${w.project}/environments/production/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} });
+    const deployed = await call(`/api/projects/${w.project}/environments/production/deploy`, {
+      token: w.owner.token,
+      headers: { "x-org-id": w.orgId },
+      body: {},
+    });
     expect(deployed.status).toBe(422);
     expect(deployed.body.error.code).toBe("MISSING_REQUIRED_SECRETS");
     expect(deployed.body.error.message).toMatch(/BETTER_AUTH_SECRET/);
@@ -256,7 +274,10 @@ describe("story 1.19: generated secrets on an approved preview deploy", () => {
     expect(approvals.body.approvals).toHaveLength(0);
     expect(await vaultRow(w.project, generatedSecretRef("BETTER_AUTH_SECRET"))).toBeNull();
     // the agent cannot store the value itself
-    const stored = await call(`/api/projects/${w.project}/secrets`, { token: w.agent.token, body: { ref: "sec_px_conn_key", kind: "brick_secret", label: "PX_CONN_KEY", value: generateSecretValue() } });
+    const stored = await call(`/api/projects/${w.project}/secrets`, {
+      token: w.agent.token,
+      body: { ref: "sec_px_conn_key", kind: "brick_secret", label: "PX_CONN_KEY", value: generateSecretValue() },
+    });
     expect(stored.status).toBe(403);
     expect(stored.body.error.code).toBe("FORBIDDEN_AGENT_SECRET_ACCESS");
   });
@@ -301,13 +322,21 @@ describe("story 1.19: generated secrets on an approved preview deploy", () => {
     const preview = await call(`/api/projects/${w.project}/environments/preview/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} });
     expect(preview.status, JSON.stringify(preview.body)).toBe(200);
     expect(await vaultRow(w.project, generatedSecretRef("BETTER_AUTH_SECRET"))).not.toBeNull();
-    const production = await call(`/api/projects/${w.project}/environments/production/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} });
+    const production = await call(`/api/projects/${w.project}/environments/production/deploy`, {
+      token: w.owner.token,
+      headers: { "x-org-id": w.orgId },
+      body: {},
+    });
     expect(production.status).toBe(422);
     expect(production.body.error.code).toBe("MISSING_REQUIRED_SECRETS");
     expect(production.body.error.message).toMatch(/BETTER_AUTH_SECRET/);
     expect(await deployCount(w.project, "production")).toBe(0);
     // promoting from preview carries the generated secret over
-    const promoted = await call(`/api/projects/${w.project}/environments/production/promote`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} });
+    const promoted = await call(`/api/projects/${w.project}/environments/production/promote`, {
+      token: w.owner.token,
+      headers: { "x-org-id": w.orgId },
+      body: {},
+    });
     expect(promoted.status, JSON.stringify(promoted.body)).toBe(200);
   });
 

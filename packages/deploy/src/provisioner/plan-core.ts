@@ -61,7 +61,10 @@ export function planMigrations(
     if (appliedByKey.has(key)) {
       const before = appliedByKey.get(key);
       if (before && options.hashOf && before !== options.hashOf(migration.sql)) {
-        blocks.push({ code: "MIGRATION_EDITED", message: `migration ${migration.name} was applied with different contents; a migration is never run twice, so add a new one instead of editing it` });
+        blocks.push({
+          code: "MIGRATION_EDITED",
+          message: `migration ${migration.name} was applied with different contents; a migration is never run twice, so add a new one instead of editing it`,
+        });
       }
       continue;
     }
@@ -70,16 +73,27 @@ export function planMigrations(
     if (lint.class !== "destructive" || options.allowDestructive) continue;
     if (lint.header?.phase === "contract") {
       const expands = lint.header.expands;
-      if (!expands || !applied.has(expands)) blocks.push({ code: "MIGRATION_DESTRUCTIVE_BLOCKED", message: `MIGRATION_DESTRUCTIVE_BLOCKED: contract migration "${migration.name}" requires expand migration "${expands ?? "none"}" to be already applied` });
+      if (!expands || !applied.has(expands))
+        blocks.push({
+          code: "MIGRATION_DESTRUCTIVE_BLOCKED",
+          message: `MIGRATION_DESTRUCTIVE_BLOCKED: contract migration "${migration.name}" requires expand migration "${expands ?? "none"}" to be already applied`,
+        });
     } else {
-      blocks.push({ code: "MIGRATION_DESTRUCTIVE_BLOCKED", message: `MIGRATION_DESTRUCTIVE_BLOCKED: migration "${migration.name}" is destructive and blocked without expand/contract header or allowDestructive flag: ${lint.findings.map((f) => f.message).join("; ")}` });
+      blocks.push({
+        code: "MIGRATION_DESTRUCTIVE_BLOCKED",
+        message: `MIGRATION_DESTRUCTIVE_BLOCKED: migration "${migration.name}" is destructive and blocked without expand/contract header or allowDestructive flag: ${lint.findings.map((f) => f.message).join("; ")}`,
+      });
     }
   }
   return { migrations: planned, blocks };
 }
 
 function brickKind(from: string, to: string): BrickChangeKind {
-  const parse = (v: string) => v.match(/^(\d+)\.(\d+)\.(\d+)/)?.slice(1, 4).map(Number);
+  const parse = (v: string) =>
+    v
+      .match(/^(\d+)\.(\d+)\.(\d+)/)
+      ?.slice(1, 4)
+      .map(Number);
   const a = parse(from);
   const b = parse(to);
   if (!a || !b) return "changed";
@@ -117,12 +131,17 @@ export function planLockChanges(
       if (was.version !== b.version) {
         const kind = brickKind(was.version, b.version);
         bricks.push({ id, from: was.version, to: b.version, kind });
-        if (kind === "major" && options.allowMajor !== true) blocks.push({ code: "BRICK_MAJOR_UNACKNOWLEDGED", message: `brick ${id} would move from ${was.version} to ${b.version}, a major version; deploy again with allowMajor to acknowledge it` });
+        if (kind === "major" && options.allowMajor !== true)
+          blocks.push({
+            code: "BRICK_MAJOR_UNACKNOWLEDGED",
+            message: `brick ${id} would move from ${was.version} to ${b.version}, a major version; deploy again with allowMajor to acknowledge it`,
+          });
       }
       const wasSettings = (was.settings ?? {}) as Record<string, unknown>;
       const nowSettings = (b.settings ?? {}) as Record<string, unknown>;
       for (const key of [...new Set([...Object.keys(wasSettings), ...Object.keys(nowSettings)])].sort()) {
-        if (JSON.stringify(wasSettings[key] ?? null) !== JSON.stringify(nowSettings[key] ?? null)) settings.push({ brick: id, key, from: wasSettings[key] ?? null, to: nowSettings[key] ?? null });
+        if (JSON.stringify(wasSettings[key] ?? null) !== JSON.stringify(nowSettings[key] ?? null))
+          settings.push({ brick: id, key, from: wasSettings[key] ?? null, to: nowSettings[key] ?? null });
       }
     }
     for (const [id, was] of before) if (!after.has(id)) bricks.push({ id, from: was.version, to: null, kind: "removed" });
@@ -136,7 +155,15 @@ export function planLockChanges(
 }
 
 /** One printable summary of a plan: one line per difference, and a clear line when there is none. */
-export function describePlan(parts: { migrations: PlannedMigration[]; bricks: PlannedBrick[]; settings: PlannedSetting[]; worker?: { changed: boolean; reasons: string[] }; workflow?: { action: string }; rollbackTo?: string | null; blocking: string[] }): string {
+export function describePlan(parts: {
+  migrations: PlannedMigration[];
+  bricks: PlannedBrick[];
+  settings: PlannedSetting[];
+  worker?: { changed: boolean; reasons: string[] };
+  workflow?: { action: string };
+  rollbackTo?: string | null;
+  blocking: string[];
+}): string {
   const lines: string[] = [];
   for (const m of parts.migrations) lines.push(`migration  ${m.name} (${m.class})`);
   for (const b of parts.bricks) lines.push(`brick      ${b.id} ${b.from ?? "-"} -> ${b.to ?? "-"} (${b.kind})`);

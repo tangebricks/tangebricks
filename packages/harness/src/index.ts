@@ -12,4 +12,3 @@ export { findDynamicEvaluation } from "./gate.ts";
 export type { GateHit } from "./gate.ts";
 export { PortListSchema, checkPortedTests } from "./ported.ts";
 export type { PortCheck, PortList, TestOutcome } from "./ported.ts";
-

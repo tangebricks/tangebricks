@@ -40,19 +40,22 @@ export interface Exemption {
   reason: string;
 }
 
-const SERVICE_INPUT = "service-layer argument: `input` is the typed object the route handler built from c.get(\"ctx\"), not request data";
-const WORKFLOW_INPUT = "workflow node input, story 1.1: the step debits ctx.workspaceId (the run's verified workspace); an input workspaceId is only compared with it and a mismatch fails WORKSPACE_MISMATCH";
+const SERVICE_INPUT = 'service-layer argument: `input` is the typed object the route handler built from c.get("ctx"), not request data';
+const WORKFLOW_INPUT =
+  "workflow node input, story 1.1: the step debits ctx.workspaceId (the run's verified workspace); an input workspaceId is only compared with it and a mismatch fails WORKSPACE_MISMATCH";
 
 export const EXEMPTIONS: readonly Exemption[] = [
   {
     file: "bricks/multi-workspace/src/foreign-workspace.ts",
     rule: "query",
-    reason: "rejectForeignWorkspace: the one shared check that compares a caller-named workspace with ctx.workspaceId and refuses a mismatch with 403; the id is never used",
+    reason:
+      "rejectForeignWorkspace: the one shared check that compares a caller-named workspace with ctx.workspaceId and refuses a mismatch with 403; the id is never used",
   },
   {
     file: "bricks/multi-workspace/src/foreign-workspace.ts",
     rule: "body-read",
-    reason: "rejectForeignWorkspace: the one shared check that compares a caller-named workspace with ctx.workspaceId and refuses a mismatch with 403; the id is never used",
+    reason:
+      "rejectForeignWorkspace: the one shared check that compares a caller-named workspace with ctx.workspaceId and refuses a mismatch with 403; the id is never used",
   },
   { file: "bricks/credit-wallet/src/brick.ts", rule: "zod-schema", reason: WORKFLOW_INPUT },
   { file: "bricks/credit-wallet/src/brick.ts", rule: "body-read", reason: WORKFLOW_INPUT },
@@ -90,7 +93,9 @@ const BODY_READS: RegExp[] = [
   /\(\s*[\w$]+\s+as\s+[^()]*\)\??\.workspaceId\b/, // (body as { workspaceId?: unknown }).workspaceId
 ];
 const BODY_DESTRUCTURE = new RegExp(
-  String.raw`\{[^{}]*\bworkspaceId\b[^{}]*\}\s*=\s*(?:await\s+)?(?:${RECEIVERS}\b|[\w$]+\.data\b|(?:c\.)?req\.(?:json\(|valid\(\s*["'` + "`" + String.raw`](?:json|form)))`,
+  String.raw`\{[^{}]*\bworkspaceId\b[^{}]*\}\s*=\s*(?:await\s+)?(?:${RECEIVERS}\b|[\w$]+\.data\b|(?:c\.)?req\.(?:json\(|valid\(\s*["'` +
+    "`" +
+    String.raw`](?:json|form)))`,
 );
 
 function lineOf(text: string, index: number): number {

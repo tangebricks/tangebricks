@@ -1,12 +1,6 @@
 import { splitStatements } from "@poc/sdk";
 
-export type DestructiveMigrationKind =
-  | "drop_table"
-  | "drop_column"
-  | "type_narrowing"
-  | "truncate"
-  | "add_column_not_null"
-  | "rename_table";
+export type DestructiveMigrationKind = "drop_table" | "drop_column" | "type_narrowing" | "truncate" | "add_column_not_null" | "rename_table";
 
 export interface DestructiveMigrationWarning {
   migrationName: string;
@@ -44,9 +38,7 @@ export interface ParsedSqlTypeInfo {
 
 export function parseSqlColumnType(rawType: string): ParsedSqlTypeInfo {
   const upper = rawType.trim().toUpperCase();
-  const lenMatch = upper.match(
-    /^(VARCHAR|CHAR|NVARCHAR|NCHAR|CHARACTER\s+VARYING)\s*\(\s*(\d+)\s*\)/,
-  );
+  const lenMatch = upper.match(/^(VARCHAR|CHAR|NVARCHAR|NCHAR|CHARACTER\s+VARYING)\s*\(\s*(\d+)\s*\)/);
   if (lenMatch) {
     return {
       base: "VARCHAR",
@@ -64,40 +56,22 @@ export function parseSqlColumnType(rawType: string): ParsedSqlTypeInfo {
   ) {
     return { base: "TEXT", rank: 4, length: null };
   }
-  if (
-    upper.startsWith("REAL") ||
-    upper.startsWith("DOUBLE") ||
-    upper.startsWith("FLOAT") ||
-    upper.startsWith("NUMERIC") ||
-    upper.startsWith("DECIMAL")
-  ) {
+  if (upper.startsWith("REAL") || upper.startsWith("DOUBLE") || upper.startsWith("FLOAT") || upper.startsWith("NUMERIC") || upper.startsWith("DECIMAL")) {
     return { base: "REAL", rank: 3, length: null };
   }
   if (upper.startsWith("BIGINT") || upper.startsWith("INT8")) {
     return { base: "BIGINT", rank: 2, length: null };
   }
-  if (
-    upper.startsWith("INTEGER") ||
-    upper.startsWith("INT") ||
-    upper.startsWith("MEDIUMINT")
-  ) {
+  if (upper.startsWith("INTEGER") || upper.startsWith("INT") || upper.startsWith("MEDIUMINT")) {
     return { base: "INTEGER", rank: 1, length: null };
   }
-  if (
-    upper.startsWith("SMALLINT") ||
-    upper.startsWith("TINYINT") ||
-    upper.startsWith("BOOLEAN") ||
-    upper.startsWith("BOOL")
-  ) {
+  if (upper.startsWith("SMALLINT") || upper.startsWith("TINYINT") || upper.startsWith("BOOLEAN") || upper.startsWith("BOOL")) {
     return { base: "SMALLINT", rank: 0, length: null };
   }
   return { base: upper.split(/\s+/)[0] ?? "TEXT", rank: 4, length: null };
 }
 
-export function isNarrowerSqlType(
-  previousTypeRaw: string | undefined,
-  nextTypeRaw: string,
-): boolean {
+export function isNarrowerSqlType(previousTypeRaw: string | undefined, nextTypeRaw: string): boolean {
   const nextInfo = parseSqlColumnType(nextTypeRaw);
   if (!previousTypeRaw) {
     return nextInfo.rank < 4 || nextInfo.length !== null;
@@ -106,29 +80,17 @@ export function isNarrowerSqlType(
   if (nextInfo.rank < prevInfo.rank) {
     return true;
   }
-  if (
-    prevInfo.base === "TEXT" &&
-    prevInfo.length === null &&
-    nextInfo.length !== null
-  ) {
+  if (prevInfo.base === "TEXT" && prevInfo.length === null && nextInfo.length !== null) {
     return true;
   }
-  if (
-    prevInfo.length !== null &&
-    nextInfo.length !== null &&
-    nextInfo.length < prevInfo.length
-  ) {
+  if (prevInfo.length !== null && nextInfo.length !== null && nextInfo.length < prevInfo.length) {
     return true;
   }
   return false;
 }
 
-export function parseCreateTableColumns(
-  statement: string,
-): { tableName: string; columns: Record<string, string> } | null {
-  const headerMatch = statement.match(
-    /^CREATE\s+(?:TEMP\s+|TEMPORARY\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([^\s(]+)\s*\(([\s\S]+)\)$/i,
-  );
+export function parseCreateTableColumns(statement: string): { tableName: string; columns: Record<string, string> } | null {
+  const headerMatch = statement.match(/^CREATE\s+(?:TEMP\s+|TEMPORARY\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([^\s(]+)\s*\(([\s\S]+)\)$/i);
   if (!headerMatch) {
     return null;
   }
@@ -164,9 +126,7 @@ export function parseCreateTableColumns(
     ) {
       continue;
     }
-    const colMatch = clause.match(
-      /^([`"[]?[A-Za-z0-9_]+[`"\]]?)\s+([A-Za-z0-9_]+(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)/,
-    );
+    const colMatch = clause.match(/^([`"[]?[A-Za-z0-9_]+[`"\]]?)\s+([A-Za-z0-9_]+(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)/);
     if (colMatch) {
       const colName = cleanSqlIdentifier(colMatch[1]!);
       const colType = colMatch[2]!.trim().toUpperCase();
@@ -199,16 +159,9 @@ export function parseMigrationHeader(sql: string): MigrationHeader | undefined {
   return undefined;
 }
 
-export type PriorSchemaInput =
-  | Record<string, Record<string, string>>
-  | string[]
-  | ReadonlyArray<{ sql: string }>;
+export type PriorSchemaInput = Record<string, Record<string, string>> | string[] | ReadonlyArray<{ sql: string }>;
 
-export function lintMigration(
-  name: string,
-  sql: string,
-  priorSchema?: PriorSchemaInput,
-): MigrationLintResult {
+export function lintMigration(name: string, sql: string, priorSchema?: PriorSchemaInput): MigrationLintResult {
   const knownTables: Record<string, Record<string, string>> = {};
   if (priorSchema) {
     if (Array.isArray(priorSchema)) {
@@ -222,9 +175,7 @@ export function lintMigration(
               ...parsed.columns,
             };
           }
-          const addColMatch = stmt.match(
-            /^ALTER\s+TABLE\s+([^\s]+)\s+ADD\s+(?:COLUMN\s+)?([^\s]+)\s+([A-Za-z0-9_]+(?:\s*\(\s*\d+\s*\))?)/i,
-          );
+          const addColMatch = stmt.match(/^ALTER\s+TABLE\s+([^\s]+)\s+ADD\s+(?:COLUMN\s+)?([^\s]+)\s+([A-Za-z0-9_]+(?:\s*\(\s*\d+\s*\))?)/i);
           if (addColMatch) {
             const tbl = cleanSqlIdentifier(addColMatch[1]!);
             const col = cleanSqlIdentifier(addColMatch[2]!);
@@ -257,15 +208,11 @@ export function lintMigration(
     if (created) {
       createdInMigration.add(created.tableName);
     }
-    const dropMatch = stmt.match(
-      /^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([^\s;]+)/i,
-    );
+    const dropMatch = stmt.match(/^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([^\s;]+)/i);
     if (dropMatch) {
       droppedInMigration.add(cleanSqlIdentifier(dropMatch[1]!));
     }
-    const renameMatch = stmt.match(
-      /^ALTER\s+TABLE\s+([^\s]+)\s+RENAME\s+TO\s+([^\s]+)$/i,
-    );
+    const renameMatch = stmt.match(/^ALTER\s+TABLE\s+([^\s]+)\s+RENAME\s+TO\s+([^\s]+)$/i);
     if (renameMatch) {
       const fromTable = cleanSqlIdentifier(renameMatch[1]!);
       const toTable = cleanSqlIdentifier(renameMatch[2]!);
@@ -331,9 +278,7 @@ export function lintMigration(
     }
 
     // ALTER TABLE ... ADD [COLUMN] ...
-    const addColMatch = stmt.match(
-      /^ALTER\s+TABLE\s+([^\s]+)\s+ADD\s+(?:COLUMN\s+)?([^\s]+)\s+([\s\S]+)$/i,
-    );
+    const addColMatch = stmt.match(/^ALTER\s+TABLE\s+([^\s]+)\s+ADD\s+(?:COLUMN\s+)?([^\s]+)\s+([\s\S]+)$/i);
     if (addColMatch) {
       const tbl = cleanSqlIdentifier(addColMatch[1]!);
       const col = cleanSqlIdentifier(addColMatch[2]!);
@@ -362,20 +307,14 @@ export function lintMigration(
     }
 
     // DROP TABLE
-    const dropTableMatch = stmt.match(
-      /^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([^\s;]+)/i,
-    );
+    const dropTableMatch = stmt.match(/^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([^\s;]+)/i);
     if (dropTableMatch) {
       const affectedTable = cleanSqlIdentifier(dropTableMatch[1]!);
       if (rebuiltTargetTables.has(affectedTable)) {
         // Table rebuild pattern
         hasRewrite = true;
-        const tempEntry = [...renamedFromTo.entries()].find(
-          ([, target]) => target === affectedTable,
-        );
-        const tempInfo = tempEntry
-          ? tempCreatedTables.get(tempEntry[0])
-          : undefined;
+        const tempEntry = [...renamedFromTo.entries()].find(([, target]) => target === affectedTable);
+        const tempInfo = tempEntry ? tempCreatedTables.get(tempEntry[0]) : undefined;
         const prevCols = knownTables[affectedTable];
 
         if (tempInfo && prevCols) {
@@ -421,9 +360,7 @@ export function lintMigration(
     }
 
     // ALTER TABLE ... DROP [COLUMN]
-    const dropColMatch = stmt.match(
-      /^ALTER\s+TABLE\s+([^\s]+)\s+DROP\s+(?:COLUMN\s+)?(?:IF\s+EXISTS\s+)?([^\s;]+)/i,
-    );
+    const dropColMatch = stmt.match(/^ALTER\s+TABLE\s+([^\s]+)\s+DROP\s+(?:COLUMN\s+)?(?:IF\s+EXISTS\s+)?([^\s;]+)/i);
     if (dropColMatch) {
       const affectedTable = cleanSqlIdentifier(dropColMatch[1]!);
       const affectedColumn = cleanSqlIdentifier(dropColMatch[2]!);
@@ -443,15 +380,9 @@ export function lintMigration(
 
     // ALTER TABLE ... ALTER/MODIFY/CHANGE COLUMN ... TYPE
     const alterTypeMatch =
-      stmt.match(
-        /^ALTER\s+TABLE\s+([^\s]+)\s+ALTER\s+(?:COLUMN\s+)?([^\s]+)\s+(?:SET\s+DATA\s+)?TYPE\s+(.+)$/i,
-      ) ??
-      stmt.match(
-        /^ALTER\s+TABLE\s+([^\s]+)\s+MODIFY\s+(?:COLUMN\s+)?([^\s]+)\s+(.+)$/i,
-      ) ??
-      stmt.match(
-        /^ALTER\s+TABLE\s+([^\s]+)\s+CHANGE\s+(?:COLUMN\s+)?[^\s]+\s+([^\s]+)\s+(.+)$/i,
-      );
+      stmt.match(/^ALTER\s+TABLE\s+([^\s]+)\s+ALTER\s+(?:COLUMN\s+)?([^\s]+)\s+(?:SET\s+DATA\s+)?TYPE\s+(.+)$/i) ??
+      stmt.match(/^ALTER\s+TABLE\s+([^\s]+)\s+MODIFY\s+(?:COLUMN\s+)?([^\s]+)\s+(.+)$/i) ??
+      stmt.match(/^ALTER\s+TABLE\s+([^\s]+)\s+CHANGE\s+(?:COLUMN\s+)?[^\s]+\s+([^\s]+)\s+(.+)$/i);
     if (alterTypeMatch) {
       const affectedTable = cleanSqlIdentifier(alterTypeMatch[1]!);
       const affectedColumn = cleanSqlIdentifier(alterTypeMatch[2]!);
@@ -477,14 +408,11 @@ export function lintMigration(
     }
 
     // ALTER TABLE ... RENAME TO ...
-    const renameMatch = stmt.match(
-      /^ALTER\s+TABLE\s+([^\s]+)\s+RENAME\s+TO\s+([^\s]+)$/i,
-    );
+    const renameMatch = stmt.match(/^ALTER\s+TABLE\s+([^\s]+)\s+RENAME\s+TO\s+([^\s]+)$/i);
     if (renameMatch) {
       const fromTable = cleanSqlIdentifier(renameMatch[1]!);
       const toTable = cleanSqlIdentifier(renameMatch[2]!);
-      const isRebuild =
-        tempCreatedTables.has(fromTable) && rebuiltTargetTables.has(toTable);
+      const isRebuild = tempCreatedTables.has(fromTable) && rebuiltTargetTables.has(toTable);
 
       if (isRebuild) {
         hasRewrite = true;
@@ -510,9 +438,7 @@ export function lintMigration(
     }
 
     // TRUNCATE TABLE
-    const truncateMatch = stmt.match(
-      /^TRUNCATE\s+(?:TABLE\s+)?([^\s;]+)/i,
-    );
+    const truncateMatch = stmt.match(/^TRUNCATE\s+(?:TABLE\s+)?([^\s;]+)/i);
     if (truncateMatch) {
       const affectedTable = cleanSqlIdentifier(truncateMatch[1]!);
       findings.push({
@@ -526,16 +452,11 @@ export function lintMigration(
     }
 
     // DELETE FROM
-    const deleteMatch = stmt.match(
-      /^DELETE\s+FROM\s+([^\s;]+)(?:\s+WHERE\s+([\s\S]+))?$/i,
-    );
+    const deleteMatch = stmt.match(/^DELETE\s+FROM\s+([^\s;]+)(?:\s+WHERE\s+([\s\S]+))?$/i);
     if (deleteMatch) {
       const affectedTable = cleanSqlIdentifier(deleteMatch[1]!);
       const whereClause = deleteMatch[2]?.trim();
-      const isTrivialWhere =
-        !whereClause ||
-        /^1\s*=\s*1$/i.test(whereClause) ||
-        /^true$/i.test(whereClause);
+      const isTrivialWhere = !whereClause || /^1\s*=\s*1$/i.test(whereClause) || /^true$/i.test(whereClause);
       if (isTrivialWhere) {
         findings.push({
           migrationName: name,

@@ -14,7 +14,9 @@ import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-wo
 const db = env.DB as unknown as D1Like;
 
 async function rawRows(ws: string) {
-  return (await db.prepare("SELECT id, action, target_id, metadata_json, via_capability FROM audit_events WHERE workspace_id = ? ORDER BY rowid").bind(ws).all()).results;
+  return (
+    await db.prepare("SELECT id, action, target_id, metadata_json, via_capability FROM audit_events WHERE workspace_id = ? ORDER BY rowid").bind(ws).all()
+  ).results;
 }
 
 beforeEach(async () => {
@@ -26,11 +28,19 @@ beforeEach(async () => {
 
 describe("auditRecorder (story 2.6)", () => {
   test("statement() is a branded, capability-marked insert that commits with the caller's batch, and is rolled back with it", async () => {
-    const ok = auditRecorder.statement(db, "ws_a", { actorId: "op", action: "Platform.Test", targetType: "workspace", targetId: "ws_a", metadata: { reason: "r" } });
+    const ok = auditRecorder.statement(db, "ws_a", {
+      actorId: "op",
+      action: "Platform.Test",
+      targetType: "workspace",
+      targetId: "ws_a",
+      metadata: { reason: "r" },
+    });
     expect(isAuditStatement(ok)).toBe(true);
     expect(ok.workspaceId).toBe("ws_a");
     await db.batch([db.prepare("SELECT 1"), ok.statement]);
-    expect(await new AuditTrailService(db).list("ws_a")).toEqual([expect.objectContaining({ id: ok.id, actor_id: "op", actor_type: "user", action: "platform.test", metadata: { reason: "r" } })]);
+    expect(await new AuditTrailService(db).list("ws_a")).toEqual([
+      expect.objectContaining({ id: ok.id, actor_id: "op", actor_type: "user", action: "platform.test", metadata: { reason: "r" } }),
+    ]);
     expect((await rawRows("ws_a"))[0]).toMatchObject({ via_capability: 1 });
 
     const doomed = auditRecorder.statement(db, "ws_a", { actorId: "op", action: "x", targetType: "t", targetId: "i" });
@@ -64,7 +74,12 @@ describe("auditRecorder (story 2.6)", () => {
   });
 
   test("outcomes are appended rows naming the pending row; the pending row never changes; pending without outcome is listed", async () => {
-    const { id } = await auditRecorder.record(db, "ws_a", { actorId: "op", action: "grant", targetType: "t", targetId: "i", metadata: { status: "pending" } }, { dedupeKey: "k1" });
+    const { id } = await auditRecorder.record(
+      db,
+      "ws_a",
+      { actorId: "op", action: "grant", targetType: "t", targetId: "i", metadata: { status: "pending" } },
+      { dedupeKey: "k1" },
+    );
     const before = await rawRows("ws_a");
     expect((await auditRecorder.pendingWithoutOutcome(db, "ws_a")).map((r) => r.id)).toEqual([id]);
     expect((await auditRecorder.pendingAcrossWorkspaces(db)).rows.map((r) => [r.workspaceId, r.id])).toEqual([["ws_a", id]]);
@@ -81,11 +96,31 @@ describe("auditRecorder (story 2.6)", () => {
   });
 
   test("rows without the capability marker are ignored by every recorder read", async () => {
-    const { id } = await auditRecorder.record(db, "ws_a", { actorId: "op", action: "grant", targetType: "t", targetId: "i", metadata: { status: "pending" } }, { dedupeKey: "k1" });
+    const { id } = await auditRecorder.record(
+      db,
+      "ws_a",
+      { actorId: "op", action: "grant", targetType: "t", targetId: "i", metadata: { status: "pending" } },
+      { dedupeKey: "k1" },
+    );
     // Planted straight into the table (as the public route would write them): a fake pending row and a fake outcome.
-    await db.prepare("INSERT INTO audit_events (id, workspace_id, actor_id, action, target_type, target_id, metadata_json) VALUES ('aud_fake', 'ws_a', 'm', 'platform.credits.grant', 'workspace', 'ws_a', ?)").bind(JSON.stringify({ status: "pending" })).run();
-    await db.prepare("INSERT INTO audit_events (id, workspace_id, actor_id, action, target_type, target_id, metadata_json) VALUES ('aud_out', 'ws_a', 'm', 'audit.outcome', 'audit_event', ?, ?)").bind(id, JSON.stringify({ status: "applied" })).run();
-    await db.prepare("INSERT INTO audit_events (id, workspace_id, actor_id, action, target_type, target_id, metadata_json, dedupe_key) VALUES ('aud_key', 'ws_a', 'm', 'platform.credits.grant', 'workspace', 'ws_a', ?, 'k2')").bind(JSON.stringify({ status: "pending", amount: "999" })).run();
+    await db
+      .prepare(
+        "INSERT INTO audit_events (id, workspace_id, actor_id, action, target_type, target_id, metadata_json) VALUES ('aud_fake', 'ws_a', 'm', 'platform.credits.grant', 'workspace', 'ws_a', ?)",
+      )
+      .bind(JSON.stringify({ status: "pending" }))
+      .run();
+    await db
+      .prepare(
+        "INSERT INTO audit_events (id, workspace_id, actor_id, action, target_type, target_id, metadata_json) VALUES ('aud_out', 'ws_a', 'm', 'audit.outcome', 'audit_event', ?, ?)",
+      )
+      .bind(id, JSON.stringify({ status: "applied" }))
+      .run();
+    await db
+      .prepare(
+        "INSERT INTO audit_events (id, workspace_id, actor_id, action, target_type, target_id, metadata_json, dedupe_key) VALUES ('aud_key', 'ws_a', 'm', 'platform.credits.grant', 'workspace', 'ws_a', ?, 'k2')",
+      )
+      .bind(JSON.stringify({ status: "pending", amount: "999" }))
+      .run();
     expect((await auditRecorder.pendingWithoutOutcome(db, "ws_a")).map((r) => r.id)).toEqual([id]);
     expect((await auditRecorder.pendingAcrossWorkspaces(db)).rows.map((r) => r.id)).toEqual([id]);
     expect(await auditRecorder.latestOutcome(db, "ws_a", id)).toBeNull();
@@ -95,11 +130,15 @@ describe("auditRecorder (story 2.6)", () => {
 
   test("only the actor types user and system are accepted; required fields and the metadata limit are enforced", async () => {
     for (const actorType of ["support_impersonator", "api_key", "root"]) {
-      expect(() => auditRecorder.statement(db, "ws_a", { actorId: "op", actorType: actorType as never, action: "a", targetType: "t", targetId: "i" })).toThrow(RangeError);
+      expect(() => auditRecorder.statement(db, "ws_a", { actorId: "op", actorType: actorType as never, action: "a", targetType: "t", targetId: "i" })).toThrow(
+        RangeError,
+      );
     }
     expect(() => auditRecorder.statement(db, "ws_a", { actorId: "", action: "a", targetType: "t", targetId: "i" })).toThrow(RangeError);
     expect(() => auditRecorder.statement(db, "", { actorId: "op", action: "a", targetType: "t", targetId: "i" })).toThrow(RangeError);
-    await expect(auditRecorder.record(db, "ws_a", { actorId: "op", action: "a", targetType: "t", targetId: "i", metadata: { big: "x".repeat(5000) } })).rejects.toThrow(RangeError);
+    await expect(
+      auditRecorder.record(db, "ws_a", { actorId: "op", action: "a", targetType: "t", targetId: "i", metadata: { big: "x".repeat(5000) } }),
+    ).rejects.toThrow(RangeError);
     expect(await rawRows("ws_a")).toEqual([]);
   });
 });

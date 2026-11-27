@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  analyzeSpec,
-  importIntegrationSpec,
-} from "../src/importer.ts";
+import { analyzeSpec, importIntegrationSpec } from "../src/importer.ts";
 
 const testCuration = {
   app: "test",
@@ -82,9 +79,7 @@ describe("UC3.5 Request body fidelity importer tests", () => {
     expect(op?.body?.fields?.[0]?.required).toBe(true);
 
     const report = analyzeSpec({ appName: "test", spec, format: "openapi3" });
-    const cappedCodes = report.entries.filter(
-      (e) => e.code === "BODY_FIELD_CAPPED" || e.code === "BODY_REQUIRED_FIELD_CAPPED",
-    );
+    const cappedCodes = report.entries.filter((e) => e.code === "BODY_FIELD_CAPPED" || e.code === "BODY_REQUIRED_FIELD_CAPPED");
     expect(cappedCodes).toHaveLength(0);
   });
 
@@ -167,10 +162,7 @@ describe("UC3.5 Request body fidelity importer tests", () => {
               content: {
                 "application/json": {
                   schema: {
-                    allOf: [
-                      { $ref: "#/components/schemas/BasePart" },
-                      { $ref: "#/components/schemas/ExtraPart" },
-                    ],
+                    allOf: [{ $ref: "#/components/schemas/BasePart" }, { $ref: "#/components/schemas/ExtraPart" }],
                   },
                 },
               },
@@ -256,9 +248,7 @@ describe("UC3.5 Request body fidelity importer tests", () => {
     expect(rootOrField.discriminator).toBe("kind");
 
     const report = analyzeSpec({ appName: "test", spec, format: "openapi3" });
-    const composedDropped = report.entries.filter(
-      (e) => e.code === "BODY_COMPOSED_DROPPED" || e.code === "SCHEMA_COMPOSITION_ERASED",
-    );
+    const composedDropped = report.entries.filter((e) => e.code === "BODY_COMPOSED_DROPPED" || e.code === "SCHEMA_COMPOSITION_ERASED");
     expect(composedDropped).toHaveLength(0);
   });
 

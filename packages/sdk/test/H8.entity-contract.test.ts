@@ -120,7 +120,15 @@ describe("hostile or malformed declarations are refused with a reason", () => {
   test.each([
     ["no fields", { fields: [] }],
     ["97 fields", { fields: Array.from({ length: 97 }, (_, i) => ({ name: `f${i}`, type: "text" })) }],
-    ["a field declared twice", { fields: [{ name: "a", type: "text" }, { name: "a", type: "number" }] }],
+    [
+      "a field declared twice",
+      {
+        fields: [
+          { name: "a", type: "text" },
+          { name: "a", type: "number" },
+        ],
+      },
+    ],
     ["an entity that is not workspace-scoped", { workspaceScoped: false }],
     ["a key the entity does not define", { owner: "bob" }],
   ])("%s", (_label, overrides) => {
@@ -176,7 +184,10 @@ CREATE INDEX IF NOT EXISTS "ent_invoices_workspace_idx" ON "ent_invoices"("works
     await db.prepare('DROP TABLE IF EXISTS "ent_everything"').run();
     await applyMigration(db, entityDdl(all));
     const insert = (label: unknown, count: unknown, done: unknown, kind: unknown) =>
-      db.prepare('INSERT INTO "ent_everything" ("id","workspace_id","label","count","done","kind") VALUES (?, ?, ?, ?, ?, ?)').bind(crypto.randomUUID(), "w", label, count, done, kind).run();
+      db
+        .prepare('INSERT INTO "ent_everything" ("id","workspace_id","label","count","done","kind") VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(crypto.randomUUID(), "w", label, count, done, kind)
+        .run();
     await insert("ok", 5, 1, "a"); // a valid row
     await expect(insert("toolong", 5, 1, "a")).rejects.toThrow(/CHECK constraint failed/);
     await expect(insert("ok", 0, 1, "a")).rejects.toThrow(/CHECK constraint failed/);
@@ -188,13 +199,16 @@ CREATE INDEX IF NOT EXISTS "ent_invoices_workspace_idx" ON "ent_invoices"("works
     await insert("ok", null, 0, null); // optional fields may be empty
   });
 
-  test.each(["select", "order", "group", "table", "index", "values", "default", "check"])("a field named after the SQL word %s is quoted, and works", async (word) => {
-    const entity = good([{ name: "words", fields: [{ name: word, type: "text" }] }])[0]!;
-    await db.prepare('DROP TABLE IF EXISTS "ent_words"').run();
-    await applyMigration(db, entityDdl(entity));
-    await db.prepare(`INSERT INTO "ent_words" ("id","workspace_id","${word}") VALUES ('1','w','x')`).run();
-    expect((await db.prepare(`SELECT "${word}" AS v FROM "ent_words"`).first<{ v: string }>())?.v).toBe("x");
-  });
+  test.each(["select", "order", "group", "table", "index", "values", "default", "check"])(
+    "a field named after the SQL word %s is quoted, and works",
+    async (word) => {
+      const entity = good([{ name: "words", fields: [{ name: word, type: "text" }] }])[0]!;
+      await db.prepare('DROP TABLE IF EXISTS "ent_words"').run();
+      await applyMigration(db, entityDdl(entity));
+      await db.prepare(`INSERT INTO "ent_words" ("id","workspace_id","${word}") VALUES ('1','w','x')`).run();
+      expect((await db.prepare(`SELECT "${word}" AS v FROM "ent_words"`).first<{ v: string }>())?.v).toBe("x");
+    },
+  );
 
   test("two runs of the generator give the same text", () => {
     const entity: Entity = good([invoices])[0]!;
@@ -253,7 +267,15 @@ describe("relation, date, money and longtext (story 1.18)", () => {
   });
 
   test("a field named like a money field's currency column is refused", () => {
-    const message = refused([{ name: "things", fields: [{ name: "total", type: "money", currencies: ["INR"] }, { name: "total__currency", type: "text" }] }]);
+    const message = refused([
+      {
+        name: "things",
+        fields: [
+          { name: "total", type: "money", currencies: ["INR"] },
+          { name: "total__currency", type: "text" },
+        ],
+      },
+    ]);
     expect(message).toMatch(/currency column of money field "total"/);
   });
 

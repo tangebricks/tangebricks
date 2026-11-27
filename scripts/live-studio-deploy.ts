@@ -76,7 +76,11 @@ export function liveProofOps(): Array<Record<string, unknown>> {
     ...INVOICE_FLOW_BLUEPRINT.bricks.map((brickId, i) => ({ opId: `op_brick_${i}`, type: "enable_brick", brickId, config: {} })),
     { opId: "op_brick_auth", type: "enable_brick", brickId: "oidc-verify", config: {} },
     { opId: "op_identity", type: "set_identity", identity: "oidc-verify" },
-    ...INVOICE_FLOW_BLUEPRINT.entities.map((entity, i) => ({ opId: `op_entity_${i}`, type: "add_entity", entity: { ...entity, fields: entity.fields.map((f) => ({ ...f })) } })),
+    ...INVOICE_FLOW_BLUEPRINT.entities.map((entity, i) => ({
+      opId: `op_entity_${i}`,
+      type: "add_entity",
+      entity: { ...entity, fields: entity.fields.map((f) => ({ ...f })) },
+    })),
     {
       opId: "op_graph",
       type: "add_workflow",
@@ -118,7 +122,6 @@ export function coreAuthProofOps(): Array<Record<string, unknown>> {
     { opId: "op_entity", type: "add_entity", entity: { name: "notes", workspaceScoped: true, fields: [{ name: "body", type: "text", required: true }] } },
   ];
 }
-
 
 export interface LiveStudioDeployDeps {
   credentials: { token: string; accountId: string };
@@ -168,20 +171,34 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
   const pollIntervalMs = deps.pollIntervalMs ?? 3_000;
   const { token, accountId } = deps.credentials;
   // Before anything is sent anywhere: a Global API Key is never used, and the "revoked" token must be a different token.
-  if (GLOBAL_API_KEY.test(token.trim())) throw new LiveProofRefusal("CLOUDFLARE_API_TOKEN looks like a Global API Key (37 hex characters): use a scoped API token; nothing was sent");
+  if (GLOBAL_API_KEY.test(token.trim()))
+    throw new LiveProofRefusal("CLOUDFLARE_API_TOKEN looks like a Global API Key (37 hex characters): use a scoped API token; nothing was sent");
   if (deps.revokedToken !== undefined) {
     if (GLOBAL_API_KEY.test(deps.revokedToken.trim())) throw new LiveProofRefusal("the revoked token looks like a Global API Key: nothing was sent");
-    if (deps.revokedToken.trim() === token.trim()) throw new LiveProofRefusal("the revoked token is CLOUDFLARE_API_TOKEN itself: step 6 needs a different, revoked token; nothing was sent");
+    if (deps.revokedToken.trim() === token.trim())
+      throw new LiveProofRefusal("the revoked token is CLOUDFLARE_API_TOKEN itself: step 6 needs a different, revoked token; nothing was sent");
   }
-  if (typeof deps.rootSecret !== "string" || deps.rootSecret.trim().length < 16) throw new LiveProofRefusal("PX_TELEMETRY_SECRET (Studio's root secret, 16+ characters) is required");
+  if (typeof deps.rootSecret !== "string" || deps.rootSecret.trim().length < 16)
+    throw new LiveProofRefusal("PX_TELEMETRY_SECRET (Studio's root secret, 16+ characters) is required");
 
-  const ledger = openLedger(deps.ledgerStore, () => deps.randomHex(4), () => new Date(), STUDIO_TEST_NAME_POLICY);
+  const ledger = openLedger(
+    deps.ledgerStore,
+    () => deps.randomHex(4),
+    () => new Date(),
+    STUDIO_TEST_NAME_POLICY,
+  );
   const live = ledger.entries().filter((e) => e.status !== "removed");
-  if (live.length > 0) throw new LiveProofRefusal(`the ledger lists ${live.length} resource(s) not yet removed (${live.map((e) => e.name).join(", ")}): run with --teardown first`);
+  if (live.length > 0)
+    throw new LiveProofRefusal(
+      `the ledger lists ${live.length} resource(s) not yet removed (${live.map((e) => e.name).join(", ")}): run with --teardown first`,
+    );
   const project = studioTestProject(ledger.suffix);
   const ownPrefix = `px-${project}-`;
 
-  const accessKeys = { preview: await deriveWorkerAccessKey(deps.rootSecret, project, "preview"), production: await deriveWorkerAccessKey(deps.rootSecret, project, "production") };
+  const accessKeys = {
+    preview: await deriveWorkerAccessKey(deps.rootSecret, project, "preview"),
+    production: await deriveWorkerAccessKey(deps.rootSecret, project, "production"),
+  };
   const controlPlaneSecret = await deriveProjectSecret(deps.rootSecret, project, "control-plane");
   const webhookSecret = await deriveProjectSecret(deps.rootSecret, project, "telemetry-webhook");
   const secrets: Record<string, string> = {
@@ -200,16 +217,41 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
 
   let phase = "preflight";
   const calls: CallLine[] = [];
-  const guarded = openGuardedStudio({ credentials: deps.credentials, cloudflareFetch: deps.cloudflareFetch, workerFetch: deps.workerFetch, bundle: deps.bundle, rootSecret: deps.rootSecret, ownPrefix, ledger, calls, phase: () => phase, sleep, ...(deps.budget ? { budget: deps.budget } : {}), alsoHide: Object.values(secrets) });
+  const guarded = openGuardedStudio({
+    credentials: deps.credentials,
+    cloudflareFetch: deps.cloudflareFetch,
+    workerFetch: deps.workerFetch,
+    bundle: deps.bundle,
+    rootSecret: deps.rootSecret,
+    ownPrefix,
+    ledger,
+    calls,
+    phase: () => phase,
+    sleep,
+    ...(deps.budget ? { budget: deps.budget } : {}),
+    alsoHide: Object.values(secrets),
+  });
   const { budget, guardedFetch, rest } = guarded;
 
   const steps: Record<string, unknown> = {};
-  const result: LiveStudioDeployResult = { commandStartedAt, finishedAt: "", completed: false, stoppedBecause: null, project, prefix: ownPrefix, steps, teardown: null, writesDuringRedeploy: -1 };
+  const result: LiveStudioDeployResult = {
+    commandStartedAt,
+    finishedAt: "",
+    completed: false,
+    stoppedBecause: null,
+    project,
+    prefix: ownPrefix,
+    steps,
+    teardown: null,
+    writesDuringRedeploy: -1,
+  };
 
   // ---- safety: nothing of ours may already exist outside the ledger
   const unledgered = await findUnledgered(rest, ledger, STUDIO_TEST_NAME_POLICY);
   if (unledgered.length > 0) {
-    throw new LiveProofRefusal(`the account already holds ${unledgered.length} px-tangebricks-test-* resource(s) this ledger does not list (${unledgered.map((u) => `${u.kind} ${u.name}`).join(", ")}); nothing was created. Remove them yourself or point --state-dir at the ledger that made them.`);
+    throw new LiveProofRefusal(
+      `the account already holds ${unledgered.length} px-tangebricks-test-* resource(s) this ledger does not list (${unledgered.map((u) => `${u.kind} ${u.name}`).join(", ")}); nothing was created. Remove them yourself or point --state-dir at the ledger that made them.`,
+    );
   }
 
   const booted = guarded.boot();
@@ -242,158 +284,255 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
   try {
     // the invoice-flow proof runs steps 1-6; the core-auth proof (story 1.19) leaves this block after step 1
     proof: {
-    // ---- 1. connect the token through Studio's verify-and-save
-    phase = "connect";
-    const owner = await connectStudioOwner({ call, suffix: ledger.suffix, project, token, accountId, randomHex: deps.randomHex, name: "Tangebricks Live Proof", must, onConnect: (connect) => (steps.connect = connect) });
-    const { session, orgId } = owner;
-    say(`1. token verified by Cloudflare through Studio: ${owner.connect.status}, ${(owner.connect.permissions ?? []).length} permissions granted`);
+      // ---- 1. connect the token through Studio's verify-and-save
+      phase = "connect";
+      const owner = await connectStudioOwner({
+        call,
+        suffix: ledger.suffix,
+        project,
+        token,
+        accountId,
+        randomHex: deps.randomHex,
+        name: "Tangebricks Live Proof",
+        must,
+        onConnect: (connect) => (steps.connect = connect),
+      });
+      const { session, orgId } = owner;
+      say(`1. token verified by Cloudflare through Studio: ${owner.connect.status}, ${(owner.connect.permissions ?? []).length} permissions granted`);
 
-    if (variant === "core-auth") {
-      await runCoreAuthPreviewProof({ call, session, orgId, project, steps, secrets, say, must, setPhase: (p) => (phase = p), workerCall, accessKey: accessKeys.preview, randomHex: deps.randomHex, sleep, pollTimeoutMs, pollIntervalMs, studioAnswers, readGeneratedSecret: () => (deps.readGeneratedSecret ?? readGeneratedSecretFromVault)(studio, project, "BETTER_AUTH_SECRET") });
-      result.completed = true;
-      break proof;
-    }
-
-    // ---- 2. the project: INVOICE_FLOW_BLUEPRINT with credit-wallet, a real identity, and a stored graph trigger.manual -> credit-wallet.debit
-    phase = "blueprint";
-    const ops = liveProofOps();
-    const opsRes = await call("POST", `/api/projects/${project}/ops`, { summary: "Live Studio deploy proof (R53)", ops }, session, orgId);
-    must("applying the blueprint ops", opsRes.status === 200, opsRes);
-    for (const name of LIVE_PROOF_BRICK_SECRETS) {
-      const value = deps.randomHex(24);
-      secrets[`brick_${name}`] = value;
-      const sec = await call("POST", `/api/projects/${project}/secrets`, { ref: `sec_${name.toLowerCase()}`, kind: "brick_secret", label: name, appOrBrick: "core-auth", value, bindTarget: { targetKind: "brick", targetId: "core-auth", secretName: name } }, session, orgId);
-      must(`storing the ${name} brick secret`, sec.status === 200, sec);
-    }
-    say(`2. project ${project}: ${INVOICE_FLOW_BLUEPRINT.bricks.join(", ")}, oidc-verify identity, graph ${GRAPH_ID}`);
-
-    // ---- 3. plan and deploy preview, then production
-    const deployed: Record<string, { url: string; action: string }> = {};
-    for (const envName of ["preview", "production"] as const) {
-      phase = `deploy-${envName}`;
-      const plan = await call("POST", `/api/projects/${project}/environments/${envName}/plan`, {}, session, orgId);
-      must(`planning ${envName}`, plan.status === 200, plan);
-      const route = envName === "preview" ? "deploy" : "promote";
-      const dep = await call("POST", `/api/projects/${project}/environments/${envName}/${route}`, {}, session, orgId);
-      must(`deploying ${envName}`, dep.status === 200 && dep.body.ok === true, dep);
-      const url = String((dep.body.deployment as { url?: string } | undefined)?.url ?? "");
-      deployed[envName] = { url, action: String(dep.body.action) };
-      // the new address may take a little while to answer
-      let health = { status: 0, body: {} as Record<string, unknown> };
-      for (const started = Date.now(); Date.now() - started < pollTimeoutMs; await sleep(pollIntervalMs)) {
-        health = await workerCall(`${url}/healthz`, { headers: { [KEY_HEADER]: accessKeys[envName] } }).catch(() => ({ status: 0, body: {} }));
-        if (health.status === 200) break;
+      if (variant === "core-auth") {
+        await runCoreAuthPreviewProof({
+          call,
+          session,
+          orgId,
+          project,
+          steps,
+          secrets,
+          say,
+          must,
+          setPhase: (p) => (phase = p),
+          workerCall,
+          accessKey: accessKeys.preview,
+          randomHex: deps.randomHex,
+          sleep,
+          pollTimeoutMs,
+          pollIntervalMs,
+          studioAnswers,
+          readGeneratedSecret: () => (deps.readGeneratedSecret ?? readGeneratedSecretFromVault)(studio, project, "BETTER_AUTH_SECRET"),
+        });
+        result.completed = true;
+        break proof;
       }
-      steps[`deploy_${envName}`] = { planAction: plan.body.action, action: dep.body.action, workerUrl: url, healthzStatus: health.status, mutatingCallCount: dep.body.mutatingCallCount };
-      must(`${envName} /healthz`, health.status === 200, health);
-      say(`3. ${envName}: ${String(dep.body.action)} -> ${url} (/healthz ${health.status})`);
-    }
 
-    // ---- 4. redeploy both: nothing changes, nothing is written
-    phase = "redeploy";
-    const redeploys: Record<string, unknown> = {};
-    for (const envName of ["preview", "production"] as const) {
-      const route = envName === "preview" ? "deploy" : "promote";
-      const again = await call("POST", `/api/projects/${project}/environments/${envName}/${route}`, {}, session, orgId);
-      redeploys[envName] = { httpStatus: again.status, action: again.body.action, noChanges: again.body.noChanges, changes: again.body.appliedActions, mutatingCallCount: again.body.mutatingCallCount };
-      must(`redeploying ${envName} unchanged`, again.status === 200 && again.body.action === "noop" && Array.isArray(again.body.appliedActions) && (again.body.appliedActions as unknown[]).length === 0 && again.body.mutatingCallCount === 0, again);
-    }
-    result.writesDuringRedeploy = calls.filter((c) => c.phase === "redeploy" && c.write).length;
-    steps.redeploy = { ...redeploys, writeCalls: result.writesDuringRedeploy };
-    must("redeploy without write calls", result.writesDuringRedeploy === 0, calls.filter((c) => c.phase === "redeploy" && c.write));
-    say(`4. redeploy: changes [] on both, ${result.writesDuringRedeploy} write calls`);
+      // ---- 2. the project: INVOICE_FLOW_BLUEPRINT with credit-wallet, a real identity, and a stored graph trigger.manual -> credit-wallet.debit
+      phase = "blueprint";
+      const ops = liveProofOps();
+      const opsRes = await call("POST", `/api/projects/${project}/ops`, { summary: "Live Studio deploy proof (R53)", ops }, session, orgId);
+      must("applying the blueprint ops", opsRes.status === 200, opsRes);
+      for (const name of LIVE_PROOF_BRICK_SECRETS) {
+        const value = deps.randomHex(24);
+        secrets[`brick_${name}`] = value;
+        const sec = await call(
+          "POST",
+          `/api/projects/${project}/secrets`,
+          {
+            ref: `sec_${name.toLowerCase()}`,
+            kind: "brick_secret",
+            label: name,
+            appOrBrick: "core-auth",
+            value,
+            bindTarget: { targetKind: "brick", targetId: "core-auth", secretName: name },
+          },
+          session,
+          orgId,
+        );
+        must(`storing the ${name} brick secret`, sec.status === 200, sec);
+      }
+      say(`2. project ${project}: ${INVOICE_FLOW_BLUEPRINT.bricks.join(", ")}, oidc-verify identity, graph ${GRAPH_ID}`);
 
-    // ---- 5. the 1.1 live proof on production: a signed run debits a funded workspace once; no/bad workspace is refused
-    phase = "wallet";
-    const dbName = `${ownPrefix}production-db`;
-    const db = (await rest.listDatabases(dbName)).find((d) => d.name === dbName);
-    must("finding the production database", Boolean(db), { dbName });
-    const workspaceId = `ws_live_${ledger.suffix}`;
-    await rest.queryDatabase(db!.uuid, [{ sql: "INSERT INTO credit_wallets (workspace_id, balance_milli) VALUES (?, ?) ON CONFLICT(workspace_id) DO UPDATE SET balance_milli = excluded.balance_milli", params: [workspaceId, FUNDED_MILLI] }]);
-    const readWallet = async () => {
-      const [balance, ledgerRows] = await rest.queryDatabase(db!.uuid, [
-        { sql: "SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?", params: [workspaceId] },
-        { sql: "SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ? AND type = 'deduction'", params: [workspaceId] },
-      ]);
-      return { balanceMilli: Number(balance?.results[0]?.balance_milli ?? NaN), deductions: Number(ledgerRows?.results[0]?.n ?? NaN) };
-    };
-    const before = await readWallet();
-    const runUrl = `${deployed.production!.url}${WORKFLOW_RUNS_PATH}`;
-    const signedRun = async (payload: Record<string, unknown>) => {
-      const body = JSON.stringify(payload);
-      const signature = await signControlPlaneRequest(controlPlaneSecret, "POST", WORKFLOW_RUNS_PATH, body);
-      return workerCall(runUrl, { method: "POST", headers: { "content-type": "application/json", [KEY_HEADER]: accessKeys.production, ...signature }, body });
-    };
-    const runId = randomUUID();
-    const started = await signedRun({ requestId: runId, graphId: GRAPH_ID, workspaceId, payload: liveProofRunPayload(workspaceId) });
-    must("starting the signed run", started.status === 202, started);
-    let after = before;
-    for (const t0 = Date.now(); Date.now() - t0 < pollTimeoutMs; await sleep(pollIntervalMs)) {
-      after = await readWallet();
-      if (after.deductions >= 1) break;
-    }
-    // When the debit did not land, say why: Cloudflare's own record of the Workflow run (status, error, the failed nodes and
-    // each step), read with one GET on the pinned account, redacted.
-    let instance: Record<string, unknown> | undefined;
-    if (after.deductions < 1) {
-      instance = await describeWorkflowRun(rest, `${ownPrefix}production-graphs`, String((started.body as { id?: unknown }).id ?? runId), hide);
-    }
-    const noWorkspace = await signedRun({ requestId: randomUUID(), graphId: GRAPH_ID, payload: {} });
-    const badWorkspace = await signedRun({ requestId: randomUUID(), graphId: GRAPH_ID, workspaceId: "ws__not_a_tenant", payload: {} });
-    await sleep(Math.min(pollIntervalMs * 2, 10_000));
-    const final = await readWallet();
-    const codeOf = (r: { body: Record<string, unknown> }) => (r.body.error as { code?: string } | undefined)?.code;
-    steps.wallet = {
-      workspaceId,
-      fundedMilli: FUNDED_MILLI,
-      before,
-      afterRun: after,
-      runStatus: started.status,
-      ...(instance ? { instance } : {}),
-      noWorkspace: { status: noWorkspace.status, code: codeOf(noWorkspace) },
-      badWorkspace: { status: badWorkspace.status, code: codeOf(badWorkspace) },
-      final,
-    };
-    must("the signed run debited the workspace exactly once", after.deductions === 1 && after.balanceMilli < before.balanceMilli, steps.wallet);
-    must("a run with no workspace is refused (400 NO_WORKSPACE)", noWorkspace.status === 400 && codeOf(noWorkspace) === "NO_WORKSPACE", noWorkspace);
-    must("a run with a bad workspace is refused (400 BAD_WORKSPACE)", badWorkspace.status === 400 && codeOf(badWorkspace) === "BAD_WORKSPACE", badWorkspace);
-    must("the refused runs debited nothing", final.deductions === 1 && final.balanceMilli === after.balanceMilli, steps.wallet);
-    say(`5. wallet: ${before.balanceMilli} -> ${after.balanceMilli} milli-credits, 1 deduction; no workspace ${noWorkspace.status}, bad workspace ${badWorkspace.status}, nothing more debited`);
-
-    // ---- 6. a revoked token is refused by Studio, and a deploy with it is refused by Cloudflare
-    if (deps.revokedToken) {
-      phase = "revoked";
-      const refused = await call("POST", `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, { token: deps.revokedToken, accountId, projectId: project }, session);
-      const refusedStatus = (refused.body.verification as { status?: string } | undefined)?.status;
-      const revokedClient = createClient({ credentials: { token: deps.revokedToken, accountId }, fetch: guardedFetch, sleep, budget, alsoHide: Object.values(secrets) });
-      // Before any upload: Cloudflare itself must refuse the token at both verify endpoints (or report it not active).
-      let directVerify: string;
-      try {
-        const answer = await revokedClient.verifyToken();
-        directVerify = `${answer.kind} endpoint says ${answer.status}`;
-        if (answer.status === "active") {
-          steps.revoked = { verifyHttpStatus: refused.status, verifyStatus: refusedStatus, directVerify };
-          throw new LiveProofRefusal(`the "revoked" token is ACTIVE at Cloudflare (${directVerify}): step 6 stopped and nothing was uploaded with it; revoke it first`);
+      // ---- 3. plan and deploy preview, then production
+      const deployed: Record<string, { url: string; action: string }> = {};
+      for (const envName of ["preview", "production"] as const) {
+        phase = `deploy-${envName}`;
+        const plan = await call("POST", `/api/projects/${project}/environments/${envName}/plan`, {}, session, orgId);
+        must(`planning ${envName}`, plan.status === 200, plan);
+        const route = envName === "preview" ? "deploy" : "promote";
+        const dep = await call("POST", `/api/projects/${project}/environments/${envName}/${route}`, {}, session, orgId);
+        must(`deploying ${envName}`, dep.status === 200 && dep.body.ok === true, dep);
+        const url = String((dep.body.deployment as { url?: string } | undefined)?.url ?? "");
+        deployed[envName] = { url, action: String(dep.body.action) };
+        // the new address may take a little while to answer
+        let health = { status: 0, body: {} as Record<string, unknown> };
+        for (const started = Date.now(); Date.now() - started < pollTimeoutMs; await sleep(pollIntervalMs)) {
+          health = await workerCall(`${url}/healthz`, { headers: { [KEY_HEADER]: accessKeys[envName] } }).catch(() => ({ status: 0, body: {} }));
+          if (health.status === 200) break;
         }
-      } catch (error) {
-        if (error instanceof LiveProofRefusal) throw error;
-        if (!(error instanceof CloudflareApiError)) throw error; // unreachable is not a refusal
-        directVerify = `refused at both endpoints (HTTP ${error.status})`;
+        steps[`deploy_${envName}`] = {
+          planAction: plan.body.action,
+          action: dep.body.action,
+          workerUrl: url,
+          healthzStatus: health.status,
+          mutatingCallCount: dep.body.mutatingCallCount,
+        };
+        must(`${envName} /healthz`, health.status === 200, health);
+        say(`3. ${envName}: ${String(dep.body.action)} -> ${url} (/healthz ${health.status})`);
       }
-      let deployRefused = false;
-      let deployRefusal = "";
-      try {
-        await revokedClient.uploadScript(`${ownPrefix}revoked`, { mainModule: "worker.mjs", code: "export default { fetch() { return new Response('must not exist'); } };", metadata: { compatibility_date: "2026-10-01" } });
-      } catch (error) {
-        deployRefused = isCloudflareError(error) && "status" in error && ((error as { status: number }).status === 401 || (error as { status: number }).status === 403);
-        deployRefusal = hide(error instanceof Error ? error.message : String(error));
+
+      // ---- 4. redeploy both: nothing changes, nothing is written
+      phase = "redeploy";
+      const redeploys: Record<string, unknown> = {};
+      for (const envName of ["preview", "production"] as const) {
+        const route = envName === "preview" ? "deploy" : "promote";
+        const again = await call("POST", `/api/projects/${project}/environments/${envName}/${route}`, {}, session, orgId);
+        redeploys[envName] = {
+          httpStatus: again.status,
+          action: again.body.action,
+          noChanges: again.body.noChanges,
+          changes: again.body.appliedActions,
+          mutatingCallCount: again.body.mutatingCallCount,
+        };
+        must(
+          `redeploying ${envName} unchanged`,
+          again.status === 200 &&
+            again.body.action === "noop" &&
+            Array.isArray(again.body.appliedActions) &&
+            (again.body.appliedActions as unknown[]).length === 0 &&
+            again.body.mutatingCallCount === 0,
+          again,
+        );
       }
-      steps.revoked = { verifyHttpStatus: refused.status, verifyStatus: refusedStatus, errorCode: (refused.body.error as { code?: string } | undefined)?.code, directVerify, deployRefused, deployRefusal };
-      must("the revoked token is refused by verify-and-save", refused.status === 422 && refusedStatus !== "active", refused);
-      must("a deploy with the revoked token is refused", deployRefused, steps.revoked);
-      say(`6. revoked token: verify-and-save ${refused.status} (${refusedStatus}); upload refused by Cloudflare`);
-    }
-    result.completed = true;
+      result.writesDuringRedeploy = calls.filter((c) => c.phase === "redeploy" && c.write).length;
+      steps.redeploy = { ...redeploys, writeCalls: result.writesDuringRedeploy };
+      must(
+        "redeploy without write calls",
+        result.writesDuringRedeploy === 0,
+        calls.filter((c) => c.phase === "redeploy" && c.write),
+      );
+      say(`4. redeploy: changes [] on both, ${result.writesDuringRedeploy} write calls`);
+
+      // ---- 5. the 1.1 live proof on production: a signed run debits a funded workspace once; no/bad workspace is refused
+      phase = "wallet";
+      const dbName = `${ownPrefix}production-db`;
+      const db = (await rest.listDatabases(dbName)).find((d) => d.name === dbName);
+      must("finding the production database", Boolean(db), { dbName });
+      const workspaceId = `ws_live_${ledger.suffix}`;
+      await rest.queryDatabase(db!.uuid, [
+        {
+          sql: "INSERT INTO credit_wallets (workspace_id, balance_milli) VALUES (?, ?) ON CONFLICT(workspace_id) DO UPDATE SET balance_milli = excluded.balance_milli",
+          params: [workspaceId, FUNDED_MILLI],
+        },
+      ]);
+      const readWallet = async () => {
+        const [balance, ledgerRows] = await rest.queryDatabase(db!.uuid, [
+          { sql: "SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?", params: [workspaceId] },
+          { sql: "SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ? AND type = 'deduction'", params: [workspaceId] },
+        ]);
+        return { balanceMilli: Number(balance?.results[0]?.balance_milli ?? NaN), deductions: Number(ledgerRows?.results[0]?.n ?? NaN) };
+      };
+      const before = await readWallet();
+      const runUrl = `${deployed.production!.url}${WORKFLOW_RUNS_PATH}`;
+      const signedRun = async (payload: Record<string, unknown>) => {
+        const body = JSON.stringify(payload);
+        const signature = await signControlPlaneRequest(controlPlaneSecret, "POST", WORKFLOW_RUNS_PATH, body);
+        return workerCall(runUrl, { method: "POST", headers: { "content-type": "application/json", [KEY_HEADER]: accessKeys.production, ...signature }, body });
+      };
+      const runId = randomUUID();
+      const started = await signedRun({ requestId: runId, graphId: GRAPH_ID, workspaceId, payload: liveProofRunPayload(workspaceId) });
+      must("starting the signed run", started.status === 202, started);
+      let after = before;
+      for (const t0 = Date.now(); Date.now() - t0 < pollTimeoutMs; await sleep(pollIntervalMs)) {
+        after = await readWallet();
+        if (after.deductions >= 1) break;
+      }
+      // When the debit did not land, say why: Cloudflare's own record of the Workflow run (status, error, the failed nodes and
+      // each step), read with one GET on the pinned account, redacted.
+      let instance: Record<string, unknown> | undefined;
+      if (after.deductions < 1) {
+        instance = await describeWorkflowRun(rest, `${ownPrefix}production-graphs`, String((started.body as { id?: unknown }).id ?? runId), hide);
+      }
+      const noWorkspace = await signedRun({ requestId: randomUUID(), graphId: GRAPH_ID, payload: {} });
+      const badWorkspace = await signedRun({ requestId: randomUUID(), graphId: GRAPH_ID, workspaceId: "ws__not_a_tenant", payload: {} });
+      await sleep(Math.min(pollIntervalMs * 2, 10_000));
+      const final = await readWallet();
+      const codeOf = (r: { body: Record<string, unknown> }) => (r.body.error as { code?: string } | undefined)?.code;
+      steps.wallet = {
+        workspaceId,
+        fundedMilli: FUNDED_MILLI,
+        before,
+        afterRun: after,
+        runStatus: started.status,
+        ...(instance ? { instance } : {}),
+        noWorkspace: { status: noWorkspace.status, code: codeOf(noWorkspace) },
+        badWorkspace: { status: badWorkspace.status, code: codeOf(badWorkspace) },
+        final,
+      };
+      must("the signed run debited the workspace exactly once", after.deductions === 1 && after.balanceMilli < before.balanceMilli, steps.wallet);
+      must("a run with no workspace is refused (400 NO_WORKSPACE)", noWorkspace.status === 400 && codeOf(noWorkspace) === "NO_WORKSPACE", noWorkspace);
+      must("a run with a bad workspace is refused (400 BAD_WORKSPACE)", badWorkspace.status === 400 && codeOf(badWorkspace) === "BAD_WORKSPACE", badWorkspace);
+      must("the refused runs debited nothing", final.deductions === 1 && final.balanceMilli === after.balanceMilli, steps.wallet);
+      say(
+        `5. wallet: ${before.balanceMilli} -> ${after.balanceMilli} milli-credits, 1 deduction; no workspace ${noWorkspace.status}, bad workspace ${badWorkspace.status}, nothing more debited`,
+      );
+
+      // ---- 6. a revoked token is refused by Studio, and a deploy with it is refused by Cloudflare
+      if (deps.revokedToken) {
+        phase = "revoked";
+        const refused = await call(
+          "POST",
+          `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
+          { token: deps.revokedToken, accountId, projectId: project },
+          session,
+        );
+        const refusedStatus = (refused.body.verification as { status?: string } | undefined)?.status;
+        const revokedClient = createClient({
+          credentials: { token: deps.revokedToken, accountId },
+          fetch: guardedFetch,
+          sleep,
+          budget,
+          alsoHide: Object.values(secrets),
+        });
+        // Before any upload: Cloudflare itself must refuse the token at both verify endpoints (or report it not active).
+        let directVerify: string;
+        try {
+          const answer = await revokedClient.verifyToken();
+          directVerify = `${answer.kind} endpoint says ${answer.status}`;
+          if (answer.status === "active") {
+            steps.revoked = { verifyHttpStatus: refused.status, verifyStatus: refusedStatus, directVerify };
+            throw new LiveProofRefusal(
+              `the "revoked" token is ACTIVE at Cloudflare (${directVerify}): step 6 stopped and nothing was uploaded with it; revoke it first`,
+            );
+          }
+        } catch (error) {
+          if (error instanceof LiveProofRefusal) throw error;
+          if (!(error instanceof CloudflareApiError)) throw error; // unreachable is not a refusal
+          directVerify = `refused at both endpoints (HTTP ${error.status})`;
+        }
+        let deployRefused = false;
+        let deployRefusal = "";
+        try {
+          await revokedClient.uploadScript(`${ownPrefix}revoked`, {
+            mainModule: "worker.mjs",
+            code: "export default { fetch() { return new Response('must not exist'); } };",
+            metadata: { compatibility_date: "2026-10-01" },
+          });
+        } catch (error) {
+          deployRefused =
+            isCloudflareError(error) && "status" in error && ((error as { status: number }).status === 401 || (error as { status: number }).status === 403);
+          deployRefusal = hide(error instanceof Error ? error.message : String(error));
+        }
+        steps.revoked = {
+          verifyHttpStatus: refused.status,
+          verifyStatus: refusedStatus,
+          errorCode: (refused.body.error as { code?: string } | undefined)?.code,
+          directVerify,
+          deployRefused,
+          deployRefusal,
+        };
+        must("the revoked token is refused by verify-and-save", refused.status === 422 && refusedStatus !== "active", refused);
+        must("a deploy with the revoked token is refused", deployRefused, steps.revoked);
+        say(`6. revoked token: verify-and-save ${refused.status} (${refusedStatus}); upload refused by Cloudflare`);
+      }
+      result.completed = true;
     }
   } catch (error) {
     result.stoppedBecause = hide(error instanceof Error ? error.message : String(error));
@@ -407,7 +546,9 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
         result.completed = false;
         result.stoppedBecause = result.stoppedBecause ?? `teardown left ${result.teardown.leftBehind.length} resource(s) behind`;
       }
-      say(`7. teardown: ${result.teardown.removed.length} removed, ${result.teardown.alreadyGone.length} already gone, ${result.teardown.leftBehind.length} left behind`);
+      say(
+        `7. teardown: ${result.teardown.removed.length} removed, ${result.teardown.alreadyGone.length} already gone, ${result.teardown.leftBehind.length} left behind`,
+      );
     } catch (error) {
       result.completed = false;
       result.stoppedBecause = `${result.stoppedBecause ? `${result.stoppedBecause}; ` : ""}teardown failed: ${hide(error instanceof Error ? error.message : String(error))} (run again with --teardown)`;
@@ -422,7 +563,10 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
   const callsText = `${JSON.stringify(redactWorkersDevSubdomains({ commandStartedAt, project, calls }), null, 2)}\n`;
   // The calls file is covered by the integrity record through its hash in the result file (only *-result.json are recorded).
   const resultText = `${JSON.stringify({ ...redactWorkersDevSubdomains(result), ...(variant === "core-auth" ? { blueprint: variant } : {}), callsFile, callsSha256: createHash("sha256").update(callsText).digest("hex") }, null, 2)}\n`;
-  for (const [name, text] of [[resultFile, resultText], [callsFile, callsText]] as const) {
+  for (const [name, text] of [
+    [resultFile, resultText],
+    [callsFile, callsText],
+  ] as const) {
     const hits = findSecrets(text, secrets);
     if (hits.length > 0) throw new LiveProofRefusal(`refusing to write ${name}: it contains ${hits.join(" and ")}`);
   }
@@ -440,7 +584,8 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
       } catch {
         // unreadable: filed under this run's time
       }
-      for (const name of [resultFile, callsFile]) if (existsSync(join(dir, name))) renameSync(join(dir, name), join(attempts, `${stampOf(previousStart)}-${name}`));
+      for (const name of [resultFile, callsFile])
+        if (existsSync(join(dir, name))) renameSync(join(dir, name), join(attempts, `${stampOf(previousStart)}-${name}`));
     }
     writeFileSync(join(dir, resultFile), resultText);
     writeFileSync(join(dir, callsFile), callsText);
@@ -453,13 +598,18 @@ export async function runLiveStudioDeploy(deps: LiveStudioDeployDeps): Promise<L
   if (!integrity.ok) {
     result.completed = false;
     say(`evidence:record-live refused: ${integrity.errors.join("; ")}`);
-  } else say(`8. evidence written to evidence/deployed/${result.completed ? resultFile : `attempts/${stampOf(commandStartedAt)}-${resultFile}`} and recorded in integrity.json`);
+  } else
+    say(
+      `8. evidence written to evidence/deployed/${result.completed ? resultFile : `attempts/${stampOf(commandStartedAt)}-${resultFile}`} and recorded in integrity.json`,
+    );
   return result;
 }
 
 /** The value Studio generated for a secret, read from the run's own local Studio database (never sent anywhere). */
 export async function readGeneratedSecretFromVault(studio: { env: StudioApiEnv }, project: string, name: string): Promise<string | null> {
-  const row = await studio.env.STUDIO_DB.prepare("SELECT ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND ref = ? AND status = 'valid' LIMIT 1")
+  const row = await studio.env.STUDIO_DB.prepare(
+    "SELECT ciphertext_b64, iv_b64 FROM studio_secret_vault WHERE project_id = ? AND ref = ? AND status = 'valid' LIMIT 1",
+  )
     .bind(project, generatedSecretRef(name))
     .first<{ ciphertext_b64: string; iv_b64: string }>();
   if (!row) return null;
@@ -494,9 +644,20 @@ async function runCoreAuthPreviewProof(p: {
 }): Promise<void> {
   const { call, session, orgId, project, steps, must, say } = p;
   p.setPhase("blueprint");
-  const opsRes = await call("POST", `/api/projects/${project}/ops`, { summary: "Live core-auth preview proof (story 1.19)", ops: coreAuthProofOps() }, session, orgId);
+  const opsRes = await call(
+    "POST",
+    `/api/projects/${project}/ops`,
+    { summary: "Live core-auth preview proof (story 1.19)", ops: coreAuthProofOps() },
+    session,
+    orgId,
+  );
   must("applying the core-auth blueprint ops", opsRes.status === 200, opsRes);
-  const issued = await call("POST", `/api/orgs/${orgId}/mcp-tokens`, { clientName: "tangebricks-live-proof", projectId: project, scopes: ["read", "edit", "deploy"] }, session);
+  const issued = await call(
+    "POST",
+    `/api/orgs/${orgId}/mcp-tokens`,
+    { clientName: "tangebricks-live-proof", projectId: project, scopes: ["read", "edit", "deploy"] },
+    session,
+  );
   must("issuing the agent's MCP token (read, edit, deploy)", issued.status === 201, { status: issued.status, error: issued.body.error });
   p.secrets.mcpToken = String(issued.body.token);
   say(`2. project ${project}: multi-workspace, core-auth identity, dynamic-entities; no secret stored by anyone; MCP token issued`);
@@ -518,7 +679,11 @@ async function runCoreAuthPreviewProof(p: {
   p.setPhase("deploy-preview");
   const first = await mcp("deploy_apply", { project, env: "preview" });
   const approvalId = String(errorOf(first).approvalId ?? "");
-  must("the agent's preview deploy asks for approval, naming the generated secret", errorOf(first).code === "APPROVAL_REQUIRED" && /generate BETTER_AUTH_SECRET/.test(errorOf(first).message ?? "") && approvalId.length > 0, first);
+  must(
+    "the agent's preview deploy asks for approval, naming the generated secret",
+    errorOf(first).code === "APPROVAL_REQUIRED" && /generate BETTER_AUTH_SECRET/.test(errorOf(first).message ?? "") && approvalId.length > 0,
+    first,
+  );
   const approved = await call("POST", `/api/projects/${project}/approvals/${approvalId}/approve`, {}, session, orgId);
   must("the owner approves the deploy in Studio", approved.status === 200, approved);
   const retried = await mcp("deploy_apply", { project, env: "preview", approvalId });
@@ -527,7 +692,11 @@ async function runCoreAuthPreviewProof(p: {
   const generated = await p.readGeneratedSecret();
   if (generated) p.secrets.generatedBetterAuthSecret = generated;
   const approvedGenerate = ((approved.body.approval as { summary?: { generate?: unknown } } | undefined)?.summary?.generate ?? null) as unknown;
-  must("the approval the owner saw names generate BETTER_AUTH_SECRET", Array.isArray(approvedGenerate) && approvedGenerate.includes("generate BETTER_AUTH_SECRET"), { generate: approvedGenerate });
+  must(
+    "the approval the owner saw names generate BETTER_AUTH_SECRET",
+    Array.isArray(approvedGenerate) && approvedGenerate.includes("generate BETTER_AUTH_SECRET"),
+    { generate: approvedGenerate },
+  );
   const url = String(retried.json.workerUrl ?? "");
   must("the agent's retry deploys preview", !retried.isError && url.startsWith("https://"), retried);
   let health = { status: 0, body: {} as Record<string, unknown> };
@@ -535,7 +704,13 @@ async function runCoreAuthPreviewProof(p: {
     health = await p.workerCall(`${url}/healthz`, { headers: { [KEY_HEADER]: p.accessKey } }).catch(() => ({ status: 0, body: {} }));
     if (health.status === 200) break;
   }
-  steps.deploy_preview = { approval: { code: errorOf(first).code, generate: approvedGenerate, approvedStatus: approved.status }, action: retried.json.action, status: retried.json.status, workerUrl: url, healthzStatus: health.status };
+  steps.deploy_preview = {
+    approval: { code: errorOf(first).code, generate: approvedGenerate, approvedStatus: approved.status },
+    action: retried.json.action,
+    status: retried.json.status,
+    workerUrl: url,
+    healthzStatus: health.status,
+  };
   must("preview /healthz", health.status === 200, health);
   say(`3. preview: APPROVAL_REQUIRED (generate BETTER_AUTH_SECRET), approved by the owner, deployed -> ${url} (/healthz ${health.status})`);
 
@@ -544,7 +719,11 @@ async function runCoreAuthPreviewProof(p: {
   const password = `Pw-${p.randomHex(12)}!`;
   p.secrets.userPassword = password;
   const authCall = (path: string, body: Record<string, unknown>) =>
-    p.workerCall(`${url}${path}`, { method: "POST", headers: { [KEY_HEADER]: p.accessKey, "content-type": "application/json", origin: new URL(url).origin }, body: JSON.stringify(body) });
+    p.workerCall(`${url}${path}`, {
+      method: "POST",
+      headers: { [KEY_HEADER]: p.accessKey, "content-type": "application/json", origin: new URL(url).origin },
+      body: JSON.stringify(body),
+    });
   const signUp = await authCall("/api/auth/sign-up/email", { email, password, name: "Live Proof User" });
   for (const token of [signUp.body.token]) if (typeof token === "string" && token.length > 0) p.secrets.signUpToken = token;
   const signIn = await authCall("/api/auth/sign-in/email", { email, password });
@@ -552,7 +731,10 @@ async function runCoreAuthPreviewProof(p: {
   const signedInEmail = (signIn.body.user as { email?: string } | undefined)?.email;
   steps.emailSignIn = { signUpStatus: signUp.status, signInStatus: signIn.status, sameUser: signedInEmail === email };
   must("email sign-up on the deployed preview", signUp.status === 200, { status: signUp.status, error: signUp.body.message ?? signUp.body.error });
-  must("email sign-in on the deployed preview", signIn.status === 200 && signedInEmail === email, { status: signIn.status, error: signIn.body.message ?? signIn.body.error });
+  must("email sign-in on the deployed preview", signIn.status === 200 && signedInEmail === email, {
+    status: signIn.status,
+    error: signIn.body.message ?? signIn.body.error,
+  });
   say(`4. email sign-up ${signUp.status}, sign-in ${signIn.status} on the deployed preview`);
 
   p.setPhase("secret-scan");
@@ -568,7 +750,12 @@ async function runCoreAuthPreviewProof(p: {
  * outcome: its status, its error, the nodes the graph reported failed, and each step's name and success. Every text goes
  * through hide(). A read that fails is reported, never thrown: this only explains a failure already found.
  */
-export async function describeWorkflowRun(client: Client, workflowName: string, instanceId: string, hide: (text: string) => string): Promise<Record<string, unknown>> {
+export async function describeWorkflowRun(
+  client: Client,
+  workflowName: string,
+  instanceId: string,
+  hide: (text: string) => string,
+): Promise<Record<string, unknown>> {
   try {
     const record = await client.getWorkflowInstance(workflowName, instanceId);
     if (record === null) return { found: false };
@@ -637,7 +824,8 @@ async function main(argv: string[]): Promise<number> {
   // A finished ledger is kept beside a new one, so every run gets its own suffix.
   const ledgerPath = join(stateDir, "studio-ledger.json");
   const previous = ledgerStore.read();
-  if (previous && previous.entries.every((e) => e.status === "removed")) renameSync(ledgerPath, `${ledgerPath}.${new Date().toISOString().replace(/[:.]/g, "-")}.done`);
+  if (previous && previous.entries.every((e) => e.status === "removed"))
+    renameSync(ledgerPath, `${ledgerPath}.${new Date().toISOString().replace(/[:.]/g, "-")}.done`);
 
   const revokedEnv = arg("--revoked-token-env");
   const revokedToken = revokedEnv ? process.env[revokedEnv]?.trim() : undefined;
@@ -677,4 +865,3 @@ if (isMain) {
     },
   );
 }
-

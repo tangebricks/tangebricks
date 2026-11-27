@@ -70,7 +70,11 @@ export async function runScriptedCheck(send: Send, options: CheckOptions = {}): 
   note(wallet, { balance: wallet.body?.currentBalance ?? null });
 
   const created = await call("A creates an invoice", "POST", "/api/invoices", "alice", wsA, { client_name: "Acme", amount: 100, status: "draft" });
-  note(created, { clientName: created.body?.item?.client_name ?? null, amount: created.body?.item?.amount ?? null, invoiceStatus: created.body?.item?.status ?? null });
+  note(created, {
+    clientName: created.body?.item?.client_name ?? null,
+    amount: created.body?.item?.amount ?? null,
+    invoiceStatus: created.body?.item?.status ?? null,
+  });
   const invoiceId = String(created.body?.item?.id ?? "none");
 
   // B's refusal below only means something if the id is real, so A reads the same id first and gets the invoice.
@@ -105,7 +109,10 @@ export function describeDifferences(observations: readonly Observation[]): strin
   const out: string[] = [];
   SCRIPTED_EXPECTED.forEach((expected, i) => {
     const seen = observations[i];
-    if (JSON.stringify(seen) !== JSON.stringify(expected)) out.push(`${expected.step}: expected ${JSON.stringify({ status: expected.status, facts: expected.facts })}, saw ${seen ? JSON.stringify({ status: seen.status, facts: seen.facts }) : "nothing"}`);
+    if (JSON.stringify(seen) !== JSON.stringify(expected))
+      out.push(
+        `${expected.step}: expected ${JSON.stringify({ status: expected.status, facts: expected.facts })}, saw ${seen ? JSON.stringify({ status: seen.status, facts: seen.facts }) : "nothing"}`,
+      );
   });
   if (observations.length > SCRIPTED_EXPECTED.length) out.push(`${observations.length - SCRIPTED_EXPECTED.length} unexpected extra observations`);
   return out;

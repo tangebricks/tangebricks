@@ -8,12 +8,7 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import mcpMigrationSql from "../../../packages/mcp-server/migrations/0001_mcp_server.sql?raw";
 import { app as studioApp } from "../src/index.ts";
-import type {
-  ProjectStatePayload,
-  RevisionHistoryPayload,
-  SemanticDiffPayload,
-  StudioApiEnv,
-} from "../src/index.ts";
+import type { ProjectStatePayload, RevisionHistoryPayload, SemanticDiffPayload, StudioApiEnv } from "../src/index.ts";
 import { ensureTestAuthForPath } from "./project-token.ts";
 import { approveAsOwner, postOpsWithReview } from "./human-session.ts";
 
@@ -25,11 +20,7 @@ const mcpDo = (env as unknown as { BLUEPRINT_DO: BlueprintDoNamespaceLike }).BLU
 // names, and the author comes from that token, not from x-mcp-client headers.
 const mcpApp = createMcpApp({ catalog, callsPerMinute: 10_000, verifyToken: testTokenVerifier });
 
-async function studioReq(
-  path: string,
-  init: RequestInit = {},
-  targetEnv: StudioApiEnv = studioEnv,
-): Promise<Response> {
+async function studioReq(path: string, init: RequestInit = {}, targetEnv: StudioApiEnv = studioEnv): Promise<Response> {
   const { headers: authHeaders } = await ensureTestAuthForPath(targetEnv, path);
   const headers = new Headers(init.headers);
   for (const [k, v] of Object.entries(authHeaders)) {
@@ -204,11 +195,7 @@ describe("Story 1.5 — Revision history, semantic diff, and revert via inverse 
     expect(r3.status).toBe(200);
 
     // Diff rev 1 -> rev 2
-    const diff12Res = await studioReq(
-      `/api/projects/${project}/diff?from=1&to=2`,
-      { method: "GET" },
-      studioEnv,
-    );
+    const diff12Res = await studioReq(`/api/projects/${project}/diff?from=1&to=2`, { method: "GET" }, studioEnv);
     expect(diff12Res.status).toBe(200);
     const diff12 = (await diff12Res.json()) as SemanticDiffPayload;
     expect(diff12.fromRevision).toBe(1);
@@ -227,11 +214,7 @@ describe("Story 1.5 — Revision history, semantic diff, and revert via inverse 
     expect(diff12.diff.workflows.updated[0]?.edgesAdded.map((e) => e.id)).toEqual(["e2"]);
 
     // Diff rev 2 -> rev 3 (layout-only change)
-    const diff23Res = await studioReq(
-      `/api/projects/${project}/diff?from=2&to=3`,
-      { method: "GET" },
-      studioEnv,
-    );
+    const diff23Res = await studioReq(`/api/projects/${project}/diff?from=2&to=3`, { method: "GET" }, studioEnv);
     expect(diff23Res.status).toBe(200);
     const diff23 = (await diff23Res.json()) as SemanticDiffPayload;
     expect(diff23.fromSemanticHash).toBe(diff23.toSemanticHash);
@@ -314,11 +297,7 @@ describe("Story 1.5 — Revision history, semantic diff, and revert via inverse 
     expect(rev3State.revision).toBe(3);
 
     // Build at revision 3 -> hash3
-    const build3Res = await studioReq(
-      `/api/projects/${project}/build`,
-      { method: "POST" },
-      studioEnv,
-    );
+    const build3Res = await studioReq(`/api/projects/${project}/build`, { method: "POST" }, studioEnv);
     expect(build3Res.status).toBe(200);
     const build3 = (await build3Res.json()) as {
       project: string;
@@ -479,11 +458,7 @@ describe("Story 1.5 — Revision history, semantic diff, and revert via inverse 
     expect(rev8State.state).toEqual(rev3State.state);
 
     // Build at revision 8 -> buildHash must equal hash3
-    const build8Res = await studioReq(
-      `/api/projects/${project}/build`,
-      { method: "POST" },
-      studioEnv,
-    );
+    const build8Res = await studioReq(`/api/projects/${project}/build`, { method: "POST" }, studioEnv);
     expect(build8Res.status).toBe(200);
     const build8 = (await build8Res.json()) as {
       project: string;
@@ -498,21 +473,13 @@ describe("Story 1.5 — Revision history, semantic diff, and revert via inverse 
     expect(build8.bytes).toBe(build3.bytes);
 
     // Diff between revision 3 and revision 8 is empty
-    const diff38Res = await studioReq(
-      `/api/projects/${project}/diff?from=3&to=8`,
-      { method: "GET" },
-      studioEnv,
-    );
+    const diff38Res = await studioReq(`/api/projects/${project}/diff?from=3&to=8`, { method: "GET" }, studioEnv);
     expect(diff38Res.status).toBe(200);
     const diff38 = (await diff38Res.json()) as SemanticDiffPayload;
     expect(diff38.diff.isEmpty).toBe(true);
 
     // Revisions 1..7 remain intact in GET /api/projects/:project/revisions history (with descending order & pagination)
-    const historyPage1Res = await studioReq(
-      `/api/projects/${project}/revisions?limit=5`,
-      { method: "GET" },
-      studioEnv,
-    );
+    const historyPage1Res = await studioReq(`/api/projects/${project}/revisions?limit=5`, { method: "GET" }, studioEnv);
     expect(historyPage1Res.status).toBe(200);
     const page1 = (await historyPage1Res.json()) as RevisionHistoryPayload;
     expect(page1.revisions.map((r) => r.revision)).toEqual([8, 7, 6, 5, 4]);
@@ -548,12 +515,8 @@ describe("Story 1.5 — Revision history, semantic diff, and revert via inverse 
       entities: ["audit_notes", "invoices"],
     });
 
-    const rev6Fetched = (await (
-      await studioReq(`/api/projects/${project}/revisions/6`, { method: "GET" }, studioEnv)
-    ).json()) as ProjectStatePayload;
-    const rev9Fetched = (await (
-      await studioReq(`/api/projects/${project}/revisions/9`, { method: "GET" }, studioEnv)
-    ).json()) as ProjectStatePayload;
+    const rev6Fetched = (await (await studioReq(`/api/projects/${project}/revisions/6`, { method: "GET" }, studioEnv)).json()) as ProjectStatePayload;
+    const rev9Fetched = (await (await studioReq(`/api/projects/${project}/revisions/9`, { method: "GET" }, studioEnv)).json()) as ProjectStatePayload;
     expect(rev9Fetched.semanticHash).toBe(rev6Fetched.semanticHash);
     expect(rev9Fetched.author).toEqual({
       type: "agent",

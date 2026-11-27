@@ -34,7 +34,6 @@ export const SESSION_A_MAX_RATIO_PCT = 15.0;
 export const SESSION_B_MAX_TOTAL_TOKENS = 8000;
 export const SINGLE_TOOL_DEF_TOKEN_CEILING = 500;
 
-
 export const TEN_SCALE_BRICKS = [
   "multi-workspace",
   "credit-wallet",
@@ -68,12 +67,7 @@ export interface PerPageToolSummary {
 }
 
 export interface TokenBudgetViolation {
-  gate:
-    | "tool_definition_bloat"
-    | "per_page_ceiling"
-    | "session_a_calls"
-    | "session_a_ratio"
-    | "session_b_total";
+  gate: "tool_definition_bloat" | "per_page_ceiling" | "session_a_calls" | "session_a_ratio" | "session_b_total";
   tool: string;
   measured: number;
   limit: number;
@@ -153,8 +147,7 @@ const budgetTokenVerifier = createStaticTokenVerifier(
 );
 const budgetTokenFor = (params?: Record<string, unknown>): string => {
   const args = params?.arguments;
-  const project =
-    typeof args === "object" && args !== null ? (args as { project?: unknown }).project : undefined;
+  const project = typeof args === "object" && args !== null ? (args as { project?: unknown }).project : undefined;
   return (typeof project === "string" ? BUDGET_MCP_TOKENS[project] : undefined) ?? BUDGET_MCP_TOKEN;
 };
 
@@ -211,9 +204,7 @@ function buildTwentyNodeWorkflow(workflowId: string) {
   };
 }
 
-export async function runMcpTokenBudgetSuite(
-  options: McpTokenBudgetOptions,
-): Promise<McpTokenBudgetReport> {
+export async function runMcpTokenBudgetSuite(options: McpTokenBudgetOptions): Promise<McpTokenBudgetReport> {
   const {
     db,
     catalog,
@@ -402,17 +393,9 @@ export async function runMcpTokenBudgetSuite(
   }
 
   const sessionACalls = sessionASteps.length;
-  const sessionATokens = sessionAExchanges.reduce(
-    (sum, e) => sum + e.requestTokens + e.responseTokens,
-    0,
-  );
-  const sessionARatioPct = round(
-    (sessionATokens / sessionAEmittedTokens) * 100,
-    1,
-  );
-  const sessionAPassed =
-    sessionACalls <= sessionAMaxCalls &&
-    sessionARatioPct <= sessionAMaxRatioPct;
+  const sessionATokens = sessionAExchanges.reduce((sum, e) => sum + e.requestTokens + e.responseTokens, 0);
+  const sessionARatioPct = round((sessionATokens / sessionAEmittedTokens) * 100, 1);
+  const sessionAPassed = sessionACalls <= sessionAMaxCalls && sessionARatioPct <= sessionAMaxRatioPct;
 
   if (sessionACalls > sessionAMaxCalls) {
     violations.push({
@@ -424,9 +407,7 @@ export async function runMcpTokenBudgetSuite(
     });
   }
   if (sessionARatioPct > sessionAMaxRatioPct) {
-    const largestDef = Object.entries(perToolDefTokens).sort(
-      (a, b) => b[1] - a[1],
-    )[0];
+    const largestDef = Object.entries(perToolDefTokens).sort((a, b) => b[1] - a[1])[0];
     violations.push({
       gate: "session_a_ratio",
       tool: largestDef?.[0] ?? "tools/list",
@@ -487,9 +468,7 @@ export async function runMcpTokenBudgetSuite(
       name: step.tool,
       arguments: step.args,
     });
-    const reqTok = countBudgetTokens(
-      JSON.stringify({ name: step.tool, arguments: step.args }),
-    );
+    const reqTok = countBudgetTokens(JSON.stringify({ name: step.tool, arguments: step.args }));
     const resTok = ex.toolTextTokens;
     sessionBByCall.push({
       tool: step.tool,
@@ -499,24 +478,14 @@ export async function runMcpTokenBudgetSuite(
     });
   }
 
-  const sessionBIoTokens = sessionBByCall.reduce(
-    (sum, c) => sum + c.totalTokens,
-    0,
-  );
+  const sessionBIoTokens = sessionBByCall.reduce((sum, c) => sum + c.totalTokens, 0);
   const sessionBTotalTokens = toolsListTokens + sessionBIoTokens;
   const sessionBPassed = sessionBTotalTokens <= sessionBMaxTotalTokens;
 
   if (!sessionBPassed) {
-    const biggestCall = [...sessionBByCall].sort(
-      (a, b) => b.totalTokens - a.totalTokens,
-    )[0];
-    const largestDef = Object.entries(perToolDefTokens).sort(
-      (a, b) => b[1] - a[1],
-    )[0];
-    const culprit =
-      (largestDef?.[1] ?? 0) > (biggestCall?.totalTokens ?? 0)
-        ? (largestDef?.[0] ?? "tools/list")
-        : (biggestCall?.tool ?? "apply_ops");
+    const biggestCall = [...sessionBByCall].sort((a, b) => b.totalTokens - a.totalTokens)[0];
+    const largestDef = Object.entries(perToolDefTokens).sort((a, b) => b[1] - a[1])[0];
+    const culprit = (largestDef?.[1] ?? 0) > (biggestCall?.totalTokens ?? 0) ? (largestDef?.[0] ?? "tools/list") : (biggestCall?.tool ?? "apply_ops");
     violations.push({
       gate: "session_b_total",
       tool: culprit,
@@ -541,11 +510,7 @@ export async function runMcpTokenBudgetSuite(
   // 4. Gate 1: Per-page ceiling (<= 400 tokens) across search_bricks, search_nodes, list_runs, query_logs, and get_blueprint_summary
   const perPageByTool: Record<string, PerPageToolSummary> = {};
 
-  const checkPagedTool = async (
-    toolName: "search_bricks" | "search_nodes" | "list_runs" | "query_logs",
-    baseArgs: Record<string, unknown>,
-    maxPages = 20,
-  ) => {
+  const checkPagedTool = async (toolName: "search_bricks" | "search_nodes" | "list_runs" | "query_logs", baseArgs: Record<string, unknown>, maxPages = 20) => {
     let cursor: string | undefined;
     let pagesChecked = 0;
     let maxPageTokens = 0;
@@ -571,10 +536,7 @@ export async function runMcpTokenBudgetSuite(
           nextCursor?: string | null;
         };
         itemsLen = Array.isArray(body.items) ? body.items.length : 0;
-        nextCursor =
-          typeof body.nextCursor === "string" && body.nextCursor.length > 0
-            ? body.nextCursor
-            : null;
+        nextCursor = typeof body.nextCursor === "string" && body.nextCursor.length > 0 ? body.nextCursor : null;
       } catch {
         nextCursor = null;
       }
@@ -634,10 +596,7 @@ export async function runMcpTokenBudgetSuite(
     };
   }
 
-  const perPageMaxTokens = Math.max(
-    0,
-    ...Object.values(perPageByTool).map((s) => s.maxPageTokens),
-  );
+  const perPageMaxTokens = Math.max(0, ...Object.values(perPageByTool).map((s) => s.maxPageTokens));
 
   return {
     suite: "mcp-token-budget",
@@ -671,9 +630,7 @@ export async function runMcpTokenBudgetSuite(
   };
 }
 
-export function formatMcpTokenBudgetSummary(
-  report: McpTokenBudgetReport,
-): string {
+export function formatMcpTokenBudgetSummary(report: McpTokenBudgetReport): string {
   const lines: string[] = [
     `[mcp:budget] Tokenizer: ${report.tokenizer}`,
     `[mcp:budget] tools/list tokens: ${report.toolsListTokens}`,
@@ -693,14 +650,10 @@ export function formatMcpTokenBudgetSummary(
 
   if (report.violations.length > 0) {
     lines.push(`[mcp:budget] OFFENDING TOOLS / BUDGET VIOLATIONS (${report.violations.length}):`);
-    lines.push(
-      `  ${"GATE".padEnd(24)} | ${"TOOL".padEnd(22)} | ${"MEASURED".padEnd(10)} | ${"LIMIT".padEnd(10)} | MESSAGE`,
-    );
+    lines.push(`  ${"GATE".padEnd(24)} | ${"TOOL".padEnd(22)} | ${"MEASURED".padEnd(10)} | ${"LIMIT".padEnd(10)} | MESSAGE`);
     lines.push(`  ${"-".repeat(100)}`);
     for (const v of report.violations) {
-      lines.push(
-        `  ${v.gate.padEnd(24)} | ${v.tool.padEnd(22)} | ${String(v.measured).padEnd(10)} | ${String(v.limit).padEnd(10)} | ${v.message}`,
-      );
+      lines.push(`  ${v.gate.padEnd(24)} | ${v.tool.padEnd(22)} | ${String(v.measured).padEnd(10)} | ${String(v.limit).padEnd(10)} | ${v.message}`);
     }
   }
   return lines.join("\n");

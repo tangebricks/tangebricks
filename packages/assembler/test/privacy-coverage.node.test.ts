@@ -18,9 +18,7 @@ describe("Privacy & GDPR coverage enforcement in assembler (UC9.2)", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("Expected assemble to fail");
 
-    const found = result.errors.some((err) =>
-      err.includes('table "credit_wallets" (brick credit-wallet) has workspace_id but no privacy rule'),
-    );
+    const found = result.errors.some((err) => err.includes('table "credit_wallets" (brick credit-wallet) has workspace_id but no privacy rule'));
     expect(found).toBe(true);
   });
 
@@ -40,9 +38,7 @@ describe("Privacy & GDPR coverage enforcement in assembler (UC9.2)", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("Expected assemble to fail");
 
-    expect(result.errors).toContain(
-      'table "credit_wallets" (brick credit-wallet) has workspace_id but no privacy rule',
-    );
+    expect(result.errors).toContain('table "credit_wallets" (brick credit-wallet) has workspace_id but no privacy rule');
   });
 
   test("assemble() emits src/privacy.generated.ts with exportTenant and eraseTenant", () => {

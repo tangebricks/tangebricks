@@ -9,7 +9,16 @@
 // printed or written; a last scan of everything about to be written refuses to write if either appears.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { CredentialsError, createClient, describeProbe, findSecrets, forEvidence, loadCredentials, onlyReads, runProbe } from "../packages/deploy/src/provisioner/index.ts";
+import {
+  CredentialsError,
+  createClient,
+  describeProbe,
+  findSecrets,
+  forEvidence,
+  loadCredentials,
+  onlyReads,
+  runProbe,
+} from "../packages/deploy/src/provisioner/index.ts";
 import { redactWorkersDevSubdomains } from "./lib/redact-subdomain.ts";
 
 const root = resolve(import.meta.dirname, "..");

@@ -13,11 +13,7 @@ export interface WorkspaceMembership {
  * The multi-workspace membership lookup (the same query `workspaceMiddleware` runs): the caller's role in `workspaceId`,
  * or null when they are not a member. Used by identity bricks that map a token to a workspace (oidc-verify).
  */
-export async function findWorkspaceMembership(
-  db: D1Like,
-  workspaceId: string,
-  userId: string,
-): Promise<WorkspaceMembership | null> {
+export async function findWorkspaceMembership(db: D1Like, workspaceId: string, userId: string): Promise<WorkspaceMembership | null> {
   const row = await systemScope(db, "workspace membership check")
     .raw(
       "SELECT m.role AS role, w.suspended AS suspended FROM mw_members m JOIN mw_workspaces w ON m.workspace_id = w.id WHERE m.workspace_id = ? AND m.user_id = ?",
@@ -81,7 +77,12 @@ export async function findWorkspaceState(db: D1Like, workspaceId: string): Promi
     .raw("SELECT suspended, suspended_reason FROM mw_workspaces WHERE id = ?", [workspaceId])
     .first<{ suspended: number; suspended_reason: string | null }>();
   if (!row) return null;
-  return { suspended: Boolean(row.suspended), reason: row.suspended ? row.suspended_reason : null, deleting: row.suspended_reason === DELETING_REASON, checked: true };
+  return {
+    suspended: Boolean(row.suspended),
+    reason: row.suspended ? row.suspended_reason : null,
+    deleting: row.suspended_reason === DELETING_REASON,
+    checked: true,
+  };
 }
 
 /** `suspended_reason` while the workspace delete (story 1.10) is fenced in. */

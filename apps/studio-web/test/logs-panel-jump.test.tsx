@@ -1,11 +1,5 @@
 // @vitest-environment jsdom
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   REDACTED_PLACEHOLDER,
@@ -37,51 +31,63 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
     await ensureTelemetryTables(world.d1);
 
     // Seed a failed workflow run + step events in sqliteD1 so startRunReplay resolves real run telemetry
-    await upsertRunRecord(world.d1, {
-      runId: "run_charge_fail_01",
-      workflowId: "wf_payment",
-      revision: 2,
-      triggerType: "manual",
-      workspaceId: "ws_alpha",
-      status: "failed",
-      durationMs: 42,
-      retries: 1,
-      errorStack: "Error: credit-wallet.debit (node_charge_wallet): insufficient balance (40 < 250)",
-      startedAt: "2026-10-31T10:00:00.000Z",
-      endedAt: "2026-10-31T10:00:00.042Z",
-    }, { projectId: PROJECT });
+    await upsertRunRecord(
+      world.d1,
+      {
+        runId: "run_charge_fail_01",
+        workflowId: "wf_payment",
+        revision: 2,
+        triggerType: "manual",
+        workspaceId: "ws_alpha",
+        status: "failed",
+        durationMs: 42,
+        retries: 1,
+        errorStack: "Error: credit-wallet.debit (node_charge_wallet): insufficient balance (40 < 250)",
+        startedAt: "2026-10-31T10:00:00.000Z",
+        endedAt: "2026-10-31T10:00:00.042Z",
+      },
+      { projectId: PROJECT },
+    );
 
-    await insertStepEvent(world.d1, {
-      workspaceId: "ws_alpha",
-      eventId: "ev_step_01",
-      runId: "run_charge_fail_01",
-      workflowId: "wf_payment",
-      revision: 2,
-      nodeId: "node_trigger",
-      status: "succeeded",
-      durationMs: 5,
-      retries: 0,
-      inputPreview: "{}",
-      outputPreview: '{"out":{"balance":40,"workspaceId":"ws_alpha"}}',
-      errorStack: null,
-      createdAt: "2026-10-31T10:00:00.005Z",
-    }, { projectId: PROJECT });
+    await insertStepEvent(
+      world.d1,
+      {
+        workspaceId: "ws_alpha",
+        eventId: "ev_step_01",
+        runId: "run_charge_fail_01",
+        workflowId: "wf_payment",
+        revision: 2,
+        nodeId: "node_trigger",
+        status: "succeeded",
+        durationMs: 5,
+        retries: 0,
+        inputPreview: "{}",
+        outputPreview: '{"out":{"balance":40,"workspaceId":"ws_alpha"}}',
+        errorStack: null,
+        createdAt: "2026-10-31T10:00:00.005Z",
+      },
+      { projectId: PROJECT },
+    );
 
-    await insertStepEvent(world.d1, {
-      workspaceId: "ws_alpha",
-      eventId: "ev_step_02",
-      runId: "run_charge_fail_01",
-      workflowId: "wf_payment",
-      revision: 2,
-      nodeId: "node_charge_wallet",
-      status: "failed",
-      durationMs: 37,
-      retries: 1,
-      inputPreview: '{"in":{"balance":40,"workspaceId":"ws_alpha"}}',
-      outputPreview: "{}",
-      errorStack: "Error: credit-wallet.debit (node_charge_wallet): insufficient balance (40 < 250)",
-      createdAt: "2026-10-31T10:00:00.042Z",
-    }, { projectId: PROJECT });
+    await insertStepEvent(
+      world.d1,
+      {
+        workspaceId: "ws_alpha",
+        eventId: "ev_step_02",
+        runId: "run_charge_fail_01",
+        workflowId: "wf_payment",
+        revision: 2,
+        nodeId: "node_charge_wallet",
+        status: "failed",
+        durationMs: 37,
+        retries: 1,
+        inputPreview: '{"in":{"balance":40,"workspaceId":"ws_alpha"}}',
+        outputPreview: "{}",
+        errorStack: "Error: credit-wallet.debit (node_charge_wallet): insufficient balance (40 < 250)",
+        createdAt: "2026-10-31T10:00:00.042Z",
+      },
+      { projectId: PROJECT },
+    );
 
     // Seed structured log rows across levels (debug, info, warn, error) with canary secrets
     await insertStructuredLog(
@@ -100,7 +106,8 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
         fields: { payloadKeys: ["balance", "workspaceId"] },
         envName: "preview",
       },
-      { secretValues: [CANARY_SECRET] }, { projectId: PROJECT },
+      { secretValues: [CANARY_SECRET] },
+      { projectId: PROJECT },
     );
 
     await insertStructuredLog(
@@ -119,7 +126,8 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
         fields: { requestedAmount: 250, currentBalance: 40 },
         envName: "preview",
       },
-      { secretValues: [CANARY_SECRET] }, { projectId: PROJECT },
+      { secretValues: [CANARY_SECRET] },
+      { projectId: PROJECT },
     );
 
     await insertStructuredLog(
@@ -139,7 +147,8 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
         fields: { balance: 15, threshold: 50 },
         envName: "preview",
       },
-      { secretValues: [CANARY_SECRET] }, { projectId: PROJECT },
+      { secretValues: [CANARY_SECRET] },
+      { projectId: PROJECT },
     );
 
     await insertStructuredLog(
@@ -164,7 +173,8 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
         errorStack: `Error: insufficient balance (${CANARY_SECRET})\n    at executeWalletDebit (credit-wallet.ts:42:9)`,
         envName: "preview",
       },
-      { secretValues: [CANARY_SECRET] }, { projectId: PROJECT },
+      { secretValues: [CANARY_SECRET] },
+      { projectId: PROJECT },
     );
 
     useStudioStore.getState().resetStore({
@@ -232,18 +242,10 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
     });
 
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const urlStr =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
+      const urlStr = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       const u = new URL(urlStr, "http://localhost");
 
-      if (
-        u.pathname ===
-        "/api/projects/proj-logs-ui/environments/preview/logs"
-      ) {
+      if (u.pathname === "/api/projects/proj-logs-ui/environments/preview/logs") {
         // The same read studio-api's logs route makes (story 1.4: signed, confined to the project).
         const res = await readProjectLogs({
           db: world.d1,
@@ -257,13 +259,8 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
 
       if (u.pathname === "/api/projects/proj-logs-ui/runs/run_charge_fail_01") {
         const run = await getRunRecord(world.d1, "run_charge_fail_01", { projectId: PROJECT });
-        const stepEvents = await listStepEventsForRun(
-          world.d1,
-          "run_charge_fail_01",
-          { projectId: PROJECT },
-        );
-        const wf =
-          useStudioStore.getState().projectState?.workflows[0] ?? null;
+        const stepEvents = await listStepEventsForRun(world.d1, "run_charge_fail_01", { projectId: PROJECT });
+        const wf = useStudioStore.getState().projectState?.workflows[0] ?? null;
         return Response.json({
           project: "proj-logs-ui",
           env: "preview",
@@ -344,11 +341,7 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
 
     // Verify URL & sessionStorage persisted the level filter
     expect(window.location.search).toContain("logLevel=error");
-    const savedSession = JSON.parse(
-      window.sessionStorage.getItem(
-        "px_studio_structured_logs_state:proj-logs-ui",
-      ) ?? "{}",
-    );
+    const savedSession = JSON.parse(window.sessionStorage.getItem("px_studio_structured_logs_state:proj-logs-ui") ?? "{}");
     expect(savedSession.level).toBe("error");
 
     // Click the node correlation chip (`node:node_charge_wallet`) to jump to CP4 Run Replay
@@ -403,9 +396,7 @@ describe("Story 6.3 — Studio Web Structured Logs & Errors Panel & Jump-to-Repl
 
     await waitFor(() => {
       expect(screen.getByTestId("log-row-log_live_ws_01")).toBeTruthy();
-      expect(
-        screen.getByTestId("log-message-log_live_ws_01").textContent,
-      ).toContain("Live streamed error from BlueprintDO WebSocket");
+      expect(screen.getByTestId("log-message-log_live_ws_01").textContent).toContain("Live streamed error from BlueprintDO WebSocket");
     });
   });
 });

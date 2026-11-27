@@ -13,12 +13,7 @@ import {
   formatIssues,
   projectIntegrationToNodes,
 } from "../packages/assembler/src/schemas.ts";
-import type {
-  Catalog,
-  IntegrationManifestFile,
-  ManifestNodeDefinition,
-  NodePackManifestFile,
-} from "../packages/assembler/src/schemas.ts";
+import type { Catalog, IntegrationManifestFile, ManifestNodeDefinition, NodePackManifestFile } from "../packages/assembler/src/schemas.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const CATALOG_PATH = join(root, "packages", "assembler", "catalog.generated.ts");
@@ -77,13 +72,8 @@ export function buildCatalog(repoRoot = root, options: BuildCatalogOptions = {})
         throw new Error(`${manifestPath}:\n  ${formatIssues(parsed.error).join("\n  ")}`);
       }
       const manifest: IntegrationManifestFile = parsed.data;
-      if (
-        (manifest.ui.maturity === "production" || manifest.ui.maturity === "beta") &&
-        !manifest.ui.behaviourTest?.trim()
-      ) {
-        throw new Error(
-          `${manifestPath}:\n  ui.behaviourTest: ui.behaviourTest is required when ui.maturity is "${manifest.ui.maturity}"`,
-        );
+      if ((manifest.ui.maturity === "production" || manifest.ui.maturity === "beta") && !manifest.ui.behaviourTest?.trim()) {
+        throw new Error(`${manifestPath}:\n  ui.behaviourTest: ui.behaviourTest is required when ui.maturity is "${manifest.ui.maturity}"`);
       }
       const nodes: ManifestNodeDefinition[] = projectIntegrationToNodes(manifest);
       if (!manifest.auth.connectionFields) {
@@ -171,12 +161,8 @@ export function renderStudioWebCatalogJson(catalog: Catalog): string {
     }
   }
 
-  const brickTiersMap = new Map(
-    (tiersData?.bricks ?? []).map((b) => [b.id, b]),
-  );
-  const integrationTiersMap = new Map(
-    (tiersData?.integrations ?? []).map((i) => [i.id, i]),
-  );
+  const brickTiersMap = new Map((tiersData?.bricks ?? []).map((b) => [b.id, b]));
+  const integrationTiersMap = new Map((tiersData?.integrations ?? []).map((i) => [i.id, i]));
 
   const bricks = Object.fromEntries(
     Object.entries(normalized.bricks).map(([id, entry]) => {

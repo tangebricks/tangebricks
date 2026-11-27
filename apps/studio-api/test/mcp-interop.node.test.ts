@@ -21,7 +21,12 @@ const fetchIntoStudio = async (input: string | URL | Request, init?: RequestInit
   const request = new Request(input, init);
   const body = request.method === "POST" ? await request.clone().text() : "";
   const response = await app.fetch(request, studio.env);
-  calls.push({ method: request.method, rpc: body ? (JSON.parse(body) as { method?: string }).method : undefined, status: response.status, headers: Object.fromEntries(request.headers) });
+  calls.push({
+    method: request.method,
+    rpc: body ? (JSON.parse(body) as { method?: string }).method : undefined,
+    status: response.status,
+    headers: Object.fromEntries(request.headers),
+  });
   return response;
 };
 
@@ -45,7 +50,12 @@ beforeAll(async () => {
   const orgId = String(org.body.id);
   const project = await call("POST", `/api/orgs/${orgId}/projects`, { project: PROJECT }, session);
   expect([200, 201]).toContain(project.status);
-  const issued = await call("POST", `/api/orgs/${orgId}/mcp-tokens`, { clientName: "Claude Code", projectId: PROJECT, scopes: ["read", "edit", "deploy"] }, session);
+  const issued = await call(
+    "POST",
+    `/api/orgs/${orgId}/mcp-tokens`,
+    { clientName: "Claude Code", projectId: PROJECT, scopes: ["read", "edit", "deploy"] },
+    session,
+  );
   expect(issued.status).toBe(201);
   token = String(issued.body.token);
 });
@@ -65,7 +75,10 @@ describe("the official MCP client against Studio's /mcp", () => {
   test("GET and DELETE on /mcp and /api/mcp are 405 with Allow: POST (no stream, no sessions), and 401 without a caller", async () => {
     for (const path of ["/mcp", "/api/mcp"]) {
       for (const method of ["GET", "DELETE"]) {
-        const res = await app.fetch(new Request(`http://studio.local${path}`, { method, headers: { authorization: `Bearer ${token}`, accept: "text/event-stream" } }), studio.env);
+        const res = await app.fetch(
+          new Request(`http://studio.local${path}`, { method, headers: { authorization: `Bearer ${token}`, accept: "text/event-stream" } }),
+          studio.env,
+        );
         expect(res.status, `${method} ${path}`).toBe(405);
         expect(res.headers.get("allow")).toBe("POST");
         // without a caller it is the 401 every control-plane route answers
@@ -86,7 +99,14 @@ describe("the official MCP client against Studio's /mcp", () => {
     const client = await connect();
     const proposed = await client.callTool({
       name: "apply_ops",
-      arguments: { ops: ["multi-workspace", "credit-wallet", "dynamic-entities"].map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId, config: {} })) },
+      arguments: {
+        ops: ["multi-workspace", "credit-wallet", "dynamic-entities"].map((brickId) => ({
+          opId: `enable-${brickId}`,
+          type: "enable_brick",
+          brickId,
+          config: {},
+        })),
+      },
     });
     expect(proposed.isError, text(proposed)).toBeFalsy();
     const pending = JSON.parse(text(proposed)) as { status: string; proposalId: string };

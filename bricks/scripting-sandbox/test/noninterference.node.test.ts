@@ -7,10 +7,7 @@ import { createSqliteD1 } from "../../credit-wallet/client/test/support/sqlite-d
 import { ScriptingSandboxService, workerLoaderIsolate } from "../src/index.ts";
 
 const repoRoot = process.cwd();
-const migrationSql = readFileSync(
-  join(repoRoot, "bricks/scripting-sandbox/migrations/0001_scripting_sandbox.sql"),
-  "utf8"
-);
+const migrationSql = readFileSync(join(repoRoot, "bricks/scripting-sandbox/migrations/0001_scripting_sandbox.sql"), "utf8");
 
 function createTestWorkerLoader() {
   return {
@@ -30,7 +27,7 @@ function createTestWorkerLoader() {
                   while (true) {}
                 })();
               `,
-                { eval: true }
+                { eval: true },
               );
 
               const cleanup = () => {
@@ -50,7 +47,7 @@ function createTestWorkerLoader() {
                     cleanup();
                     reject(new DOMException("The operation was aborted", "TimeoutError"));
                   },
-                  { once: true }
+                  { once: true },
                 );
               }
 
@@ -129,9 +126,7 @@ describe("Scripting Sandbox Non-Interference Suite (UC6.6 Task 2)", () => {
     const healthInterval = setInterval(pollHealth, 20);
 
     // Tenant B executes 50 trivial scripts concurrently
-    const bPromises = Array.from({ length: 50 }, (_, i) =>
-      service.executeScript("ws_tenant_b", scriptB.id, { val: i })
-    );
+    const bPromises = Array.from({ length: 50 }, (_, i) => service.executeScript("ws_tenant_b", scriptB.id, { val: i }));
 
     const bResults = await Promise.all(bPromises);
     const bDuration = Date.now() - startTime;

@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_product_analytics.sql?raw";
-import {
-  ProductAnalyticsService,
-  createProductAnalyticsRoutes,
-} from "../src/index.ts";
+import { ProductAnalyticsService, createProductAnalyticsRoutes } from "../src/index.ts";
 import type { AnalyticsEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -88,20 +85,17 @@ describe("Product Analytics Core Telemetry & Funnel Logic", () => {
     interface CountRow {
       count: number;
     }
-    const count = await db.prepare(
-      "SELECT COUNT(*) as count FROM evt_analytics_events WHERE workspace_id = ? AND user_id = ?"
-    ).bind(WS_ALPHA, "usr_john_doe").first<CountRow>();
+    const count = await db
+      .prepare("SELECT COUNT(*) as count FROM evt_analytics_events WHERE workspace_id = ? AND user_id = ?")
+      .bind(WS_ALPHA, "usr_john_doe")
+      .first<CountRow>();
 
     expect(count?.count).toBe(3);
   });
 
   it("computes conversion funnel dropoff rates accurately", async () => {
     const service = new ProductAnalyticsService(db);
-    const funnel = await service.createFunnel(
-      WS_ALPHA,
-      "Self-Serve Onboarding",
-      ["visit", "signup", "checkout"]
-    );
+    const funnel = await service.createFunnel(WS_ALPHA, "Self-Serve Onboarding", ["visit", "signup", "checkout"]);
 
     // 10 users visit
     for (let i = 1; i <= 10; i++) {
@@ -161,15 +155,19 @@ describe("Product Analytics HTTP API", () => {
     app.route("/api", createProductAnalyticsRoutes());
 
     // 1. POST /analytics/track
-    const trackRes = await app.request("/api/analytics/track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        anonymousId: "device_test_1",
-        eventName: "product_viewed",
-        properties: { sku: "WIDGET-99" },
-      }),
-    }, { DB: db });
+    const trackRes = await app.request(
+      "/api/analytics/track",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          anonymousId: "device_test_1",
+          eventName: "product_viewed",
+          properties: { sku: "WIDGET-99" },
+        }),
+      },
+      { DB: db },
+    );
     expect(trackRes.status).toBe(201);
 
     // 2. GET /analytics/counts
@@ -179,25 +177,33 @@ describe("Product Analytics HTTP API", () => {
     expect(countsJson.counts["product_viewed"]).toBe(1);
 
     // 3. POST /analytics/identify
-    const identRes = await app.request("/api/analytics/identify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        anonymousId: "device_test_1",
-        userId: "usr_alice",
-      }),
-    }, { DB: db });
+    const identRes = await app.request(
+      "/api/analytics/identify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          anonymousId: "device_test_1",
+          userId: "usr_alice",
+        }),
+      },
+      { DB: db },
+    );
     expect(identRes.status).toBe(200);
 
     // 4. POST /analytics/funnels
-    const fnlRes = await app.request("/api/analytics/funnels", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        name: "Viewer to Buyer",
-        steps: ["product_viewed", "purchase_made"],
-      }),
-    }, { DB: db });
+    const fnlRes = await app.request(
+      "/api/analytics/funnels",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          name: "Viewer to Buyer",
+          steps: ["product_viewed", "purchase_made"],
+        }),
+      },
+      { DB: db },
+    );
     expect(fnlRes.status).toBe(201);
     const fnlJson = (await fnlRes.json()) as { funnel: { id: string } };
     const funnelId = fnlJson.funnel.id;

@@ -52,8 +52,17 @@ export interface FakeOptions {
 }
 
 export type Fault =
-  | { when: (method: string, path: string) => boolean; times?: number; respond: "network-error"; /** Let the fake process the request first, then lose the answer: the case where something was created but the caller never heard. */ afterHandling?: boolean }
-  | { when: (method: string, path: string) => boolean; times?: number; respond: { status: number; body?: unknown; text?: string; headers?: Record<string, string> } };
+  | {
+      when: (method: string, path: string) => boolean;
+      times?: number;
+      respond: "network-error";
+      /** Let the fake process the request first, then lose the answer: the case where something was created but the caller never heard. */ afterHandling?: boolean;
+    }
+  | {
+      when: (method: string, path: string) => boolean;
+      times?: number;
+      respond: { status: number; body?: unknown; text?: string; headers?: Record<string, string> };
+    };
 
 export interface ScriptVersion {
   id: string;
@@ -83,8 +92,13 @@ interface Script {
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const envelope = (result: unknown) => ({ success: true, errors: [], messages: [], result });
-const failure = (status: number, code: number, message: string) => new Response(JSON.stringify({ success: false, errors: [{ code, message }], messages: [], result: null }), { status, headers: { "content-type": "application/json" } });
-const json = (value: unknown, status = 200, headers: Record<string, string> = {}) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json", ...headers } });
+const failure = (status: number, code: number, message: string) =>
+  new Response(JSON.stringify({ success: false, errors: [{ code, message }], messages: [], result: null }), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+const json = (value: unknown, status = 200, headers: Record<string, string> = {}) =>
+  new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json", ...headers } });
 
 export function createFakeCloudflare(options: FakeOptions) {
   const databases = new Map<string, { uuid: string; name: string; created: string; sqlite: DatabaseSync }>();
@@ -119,7 +133,9 @@ export function createFakeCloudflare(options: FakeOptions) {
         throw new TypeError("fetch failed (simulated network failure)");
       }
       const r = fault.respond;
-      return r.text !== undefined ? new Response(r.text, { status: r.status, headers: r.headers }) : json(r.body ?? { success: false, errors: [{ code: 1000, message: "simulated fault" }] }, r.status, r.headers);
+      return r.text !== undefined
+        ? new Response(r.text, { status: r.status, headers: r.headers })
+        : json(r.body ?? { success: false, errors: [{ code: 1000, message: "simulated fault" }] }, r.status, r.headers);
     }
     return route(request);
   }
@@ -134,7 +150,10 @@ export function createFakeCloudflare(options: FakeOptions) {
     const page = Math.max(1, Number(pageParam ?? 1));
     const per = Math.max(1, Math.min(Number(perParam ?? 20), opts.maxPerPage ?? Number.MAX_SAFE_INTEGER));
     const slice = list.slice((page - 1) * per, page * per);
-    return json({ ...envelope(slice), result_info: { page, per_page: per, count: slice.length, total_count: list.length, total_pages: Math.max(1, Math.ceil(list.length / per)) } });
+    return json({
+      ...envelope(slice),
+      result_info: { page, per_page: per, count: slice.length, total_count: list.length, total_pages: Math.max(1, Math.ceil(list.length / per)) },
+    });
   }
 
   async function route(request: Request): Promise<Response> {
@@ -202,9 +221,16 @@ export function createFakeCloudflare(options: FakeOptions) {
     if (method === "GET" && path === "/tokens/fake-token-id") {
       // Like the real service for a token without permission to read tokens: refused. A list of group names makes it readable.
       if (options.tokenGroups === undefined || options.tokenGroups === null) return failure(403, 9109, "Unauthorized to access requested resource");
-      return json(envelope({ id: "fake-token-id", status: "active", policies: [{ effect: "allow", permission_groups: options.tokenGroups.map((name) => ({ id: name.toLowerCase().replace(/\W+/g, "-"), name })) }] }));
+      return json(
+        envelope({
+          id: "fake-token-id",
+          status: "active",
+          policies: [{ effect: "allow", permission_groups: options.tokenGroups.map((name) => ({ id: name.toLowerCase().replace(/\W+/g, "-"), name })) }],
+        }),
+      );
     }
-    if (method === "GET" && path === "/workers/subdomain") return subdomain === null ? failure(404, 10007, "This account has no workers.dev subdomain") : json(envelope({ subdomain }));
+    if (method === "GET" && path === "/workers/subdomain")
+      return subdomain === null ? failure(404, 10007, "This account has no workers.dev subdomain") : json(envelope({ subdomain }));
 
     // ---- D1
     if (path === "/d1/database" && method === "POST") {
@@ -218,7 +244,9 @@ export function createFakeCloudflare(options: FakeOptions) {
     if (path === "/d1/database" && method === "GET") {
       const wanted = url.searchParams.get("name");
       // the real endpoint searches; a database whose name merely contains the text is returned too, so callers must compare names exactly
-      const list = [...databases.values()].filter((d) => wanted === null || d.name.includes(wanted)).map((d) => ({ uuid: d.uuid, name: d.name, created_at: d.created, version: "production" }));
+      const list = [...databases.values()]
+        .filter((d) => wanted === null || d.name.includes(wanted))
+        .map((d) => ({ uuid: d.uuid, name: d.name, created_at: d.created, version: "production" }));
       return paged(list, url);
     }
     if ((m = path.match(/^\/d1\/database\/([^/]+)$/)) && method === "GET") {
@@ -243,7 +271,8 @@ export function createFakeCloudflare(options: FakeOptions) {
         const out = statements.map((s) => {
           const stmt = db.sqlite.prepare(s.sql);
           const params = (s.params ?? []) as SQLInputValue[];
-          if (/^\s*(select|pragma|with)\b/i.test(s.sql)) return { results: stmt.all(...params).map((r) => ({ ...r })), success: true, meta: { changes: 0, changed_db: false } };
+          if (/^\s*(select|pragma|with)\b/i.test(s.sql))
+            return { results: stmt.all(...params).map((r) => ({ ...r })), success: true, meta: { changes: 0, changed_db: false } };
           const r = stmt.run(...params);
           return { results: [], success: true, meta: { changes: Number(r.changes), changed_db: Number(r.changes) > 0 } };
         });
@@ -290,7 +319,11 @@ export function createFakeCloudflare(options: FakeOptions) {
     }
 
     // ---- Workers
-    if (path === "/workers/scripts" && method === "GET") return paged([...scripts.values()].map((s) => ({ id: s.name })), url);
+    if (path === "/workers/scripts" && method === "GET")
+      return paged(
+        [...scripts.values()].map((s) => ({ id: s.name })),
+        url,
+      );
     if ((m = path.match(/^\/workers\/scripts\/([^/]+)$/)) && method === "PUT") {
       const name = decodeURIComponent(m[1]!);
       if (opts.refuseAllUploads) return failure(400, 10021, "simulated: every upload is refused");
@@ -312,7 +345,8 @@ export function createFakeCloudflare(options: FakeOptions) {
       const modulePart = form.get(metadata.main_module);
       if (modulePart === null) return failure(400, 10021, `the module ${metadata.main_module} named in main_module was not uploaded`);
       const code = typeof modulePart === "string" ? modulePart : await (modulePart as Blob).text();
-      if (opts.maxScriptBytes !== undefined && Buffer.byteLength(code) > opts.maxScriptBytes) return failure(400, 10027, "The uncompressed script exceeds the size limit");
+      if (opts.maxScriptBytes !== undefined && Buffer.byteLength(code) > opts.maxScriptBytes)
+        return failure(400, 10027, "The uncompressed script exceeds the size limit");
       if (typeof metadata.compatibility_date !== "string") return failure(400, 10021, "metadata.compatibility_date is missing");
       const bindings = metadata.bindings ?? [];
       const names = new Set<string>();
@@ -324,7 +358,8 @@ export function createFakeCloudflare(options: FakeOptions) {
         if (b.type === "secret_text" && (typeof b.text !== "string" || b.text === "")) return failure(400, 10021, `binding ${b.name}: a secret needs text`);
         if (b.type === "workflow") {
           if (opts.refuseWorkflowBindings) return failure(400, 10021, "simulated: binding type workflow is not accepted in this upload");
-          if (typeof b.workflow_name !== "string" || typeof b.class_name !== "string") return failure(400, 10021, `binding ${b.name}: a workflow binding needs workflow_name and class_name`);
+          if (typeof b.workflow_name !== "string" || typeof b.class_name !== "string")
+            return failure(400, 10021, `binding ${b.name}: a workflow binding needs workflow_name and class_name`);
           if (!code.includes(b.class_name)) return failure(400, 10021, `binding ${b.name}: the script does not export a class named ${b.class_name}`);
         }
       }
@@ -342,7 +377,14 @@ export function createFakeCloudflare(options: FakeOptions) {
         if (!secretValues.has(name)) secretValues.set(name, new Map());
         secretValues.get(name)!.set(String(b.name), b.text);
       }
-      const version: ScriptVersion = { id: versionId, number: (existing?.versions.length ?? 0) + 1, createdOn: new Date().toISOString(), code, bindings: storedBindings, metadata };
+      const version: ScriptVersion = {
+        id: versionId,
+        number: (existing?.versions.length ?? 0) + 1,
+        createdOn: new Date().toISOString(),
+        code,
+        bindings: storedBindings,
+        metadata,
+      };
       const script: Script = existing ?? { name, code, bindings, versions: [], deployments: [], addressEnabled: false };
       script.code = code;
       script.bindings = storedBindings; // a stored secret is never read back
@@ -379,7 +421,8 @@ export function createFakeCloudflare(options: FakeOptions) {
       const modulePart = form.get(metadata.main_module);
       if (modulePart === null) return failure(400, 10021, `the module ${metadata.main_module} named in main_module was not uploaded`);
       const code = typeof modulePart === "string" ? modulePart : await (modulePart as Blob).text();
-      if (opts.maxScriptBytes !== undefined && Buffer.byteLength(code) > opts.maxScriptBytes) return failure(400, 10027, "The uncompressed script exceeds the size limit");
+      if (opts.maxScriptBytes !== undefined && Buffer.byteLength(code) > opts.maxScriptBytes)
+        return failure(400, 10027, "The uncompressed script exceeds the size limit");
       if (typeof metadata.compatibility_date !== "string") return failure(400, 10021, "metadata.compatibility_date is missing");
       const bindings = metadata.bindings ?? [];
       const script = scripts.get(name);
@@ -409,9 +452,8 @@ export function createFakeCloudflare(options: FakeOptions) {
       if (!body || !Array.isArray(body.versions) || body.versions.length === 0) {
         return failure(400, 10021, "versions array is required");
       }
-      const hasWorkflow = script.bindings.some((b) => b.type === "workflow") ||
-        [...workflows.values()].some((w) => w.script === name);
-      const isGradualSplit = body.versions.length > 1 || (body.versions[0]?.percentage !== 100);
+      const hasWorkflow = script.bindings.some((b) => b.type === "workflow") || [...workflows.values()].some((w) => w.script === name);
+      const isGradualSplit = body.versions.length > 1 || body.versions[0]?.percentage !== 100;
       if (hasWorkflow && isGradualSplit) {
         return failure(400, 10021, "Gradual deployments are not supported for scripts with Workflow bindings");
       }
@@ -459,20 +501,36 @@ export function createFakeCloudflare(options: FakeOptions) {
       const per = Math.min(Number(url.searchParams.get("per_page") ?? items.length) || items.length, opts.maxPerPage ?? Number.MAX_SAFE_INTEGER);
       const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
       if (!(url.searchParams.has("page") || opts.maxPerPage)) return json(envelope({ items }));
-      return json({ ...envelope({ items: items.slice((page - 1) * per, page * per) }), result_info: { page, per_page: per, count: Math.min(per, Math.max(0, items.length - (page - 1) * per)), total_count: items.length, total_pages: Math.max(1, Math.ceil(items.length / per)) } });
+      return json({
+        ...envelope({ items: items.slice((page - 1) * per, page * per) }),
+        result_info: {
+          page,
+          per_page: per,
+          count: Math.min(per, Math.max(0, items.length - (page - 1) * per)),
+          total_count: items.length,
+          total_pages: Math.max(1, Math.ceil(items.length / per)),
+        },
+      });
     }
     if ((m = path.match(/^\/workers\/scripts\/([^/]+)\/versions\/([^/]+)$/)) && method === "GET") {
       const script = scripts.get(decodeURIComponent(m[1]!));
       const v = script?.versions.find((x) => x.id === decodeURIComponent(m![2]!));
       if (!v) return failure(404, 10007, "version not found");
-      return json(envelope({ id: v.id, number: v.number, metadata: { created_on: v.createdOn, annotations: (v.metadata?.annotations as Record<string, unknown> | undefined) ?? {} } }));
+      return json(
+        envelope({
+          id: v.id,
+          number: v.number,
+          metadata: { created_on: v.createdOn, annotations: (v.metadata?.annotations as Record<string, unknown> | undefined) ?? {} },
+        }),
+      );
     }
     if ((m = path.match(/^\/workers\/scripts\/([^/]+)\/secrets$/)) && method === "PUT") {
       const name = decodeURIComponent(m[1]!);
       const script = scripts.get(name);
       if (!script) return failure(404, 10007, "This Worker does not exist on your account");
       const body = (await request.json().catch(() => null)) as { name?: unknown; text?: unknown; type?: unknown } | null;
-      if (!body || typeof body.name !== "string" || typeof body.text !== "string" || body.text === "" || body.type !== "secret_text") return failure(400, 10021, "a secret needs name, text and type secret_text");
+      if (!body || typeof body.name !== "string" || typeof body.text !== "string" || body.text === "" || body.type !== "secret_text")
+        return failure(400, 10021, "a secret needs name, text and type secret_text");
       const secretName = body.name;
       script.bindings = [...script.bindings.filter((b) => b.name !== secretName), { type: "secret_text", name: secretName, text: "[stored]" }];
       if (!secretValues.has(name)) secretValues.set(name, new Map());
@@ -521,7 +579,10 @@ export function createFakeCloudflare(options: FakeOptions) {
     // ---- Queues (shapes from the documentation; not checked against the real service)
     if (path === "/queues" && method === "GET") {
       if (opts.queuesUnavailable) return failure(opts.queuesUnavailable, 11000, "Queues is not available on this account");
-      return paged([...queues.values()].map((q) => ({ queue_id: q.id, queue_name: q.name, created_on: q.created })), url);
+      return paged(
+        [...queues.values()].map((q) => ({ queue_id: q.id, queue_name: q.name, created_on: q.created })),
+        url,
+      );
     }
     if (path === "/queues" && method === "POST") {
       const body = (await request.json().catch(() => null)) as { queue_name?: unknown } | null;
@@ -545,15 +606,29 @@ export function createFakeCloudflare(options: FakeOptions) {
     if ((m = path.match(/^\/workflows\/([^/]+)$/)) && method === "PUT") {
       const name = decodeURIComponent(m[1]!);
       const body = (await request.json().catch(() => null)) as { class_name?: unknown; script_name?: unknown } | null;
-      if (!body || typeof body.class_name !== "string" || body.class_name === "" || typeof body.script_name !== "string" || body.script_name === "") return failure(400, 10201, "class_name and script_name are required");
+      if (!body || typeof body.class_name !== "string" || body.class_name === "" || typeof body.script_name !== "string" || body.script_name === "")
+        return failure(400, 10201, "class_name and script_name are required");
       const script = scripts.get(body.script_name);
       if (!script) return failure(404, 10007, "This Worker does not exist on your account");
       if (!script.code.includes(body.class_name)) return failure(400, 10201, `the script does not export a class named ${body.class_name}`);
       const existing = workflows.get(name);
       workflows.set(name, { name, className: body.class_name, script: body.script_name });
-      return json(envelope({ id: existing ? "existing-workflow-id" : "new-workflow-id", name, class_name: body.class_name, script_name: body.script_name, created_on: new Date().toISOString(), modified_on: new Date().toISOString() }));
+      return json(
+        envelope({
+          id: existing ? "existing-workflow-id" : "new-workflow-id",
+          name,
+          class_name: body.class_name,
+          script_name: body.script_name,
+          created_on: new Date().toISOString(),
+          modified_on: new Date().toISOString(),
+        }),
+      );
     }
-    if (path === "/workflows" && method === "GET") return paged([...workflows.values()].map((w) => ({ name: w.name, class_name: w.className, script_name: w.script })), url);
+    if (path === "/workflows" && method === "GET")
+      return paged(
+        [...workflows.values()].map((w) => ({ name: w.name, class_name: w.className, script_name: w.script })),
+        url,
+      );
     if ((m = path.match(/^\/workflows\/([^/]+)$/)) && method === "DELETE") {
       if (!workflows.delete(decodeURIComponent(m[1]!))) return failure(404, 10007, "workflow not found");
       return json(envelope({}));
@@ -577,7 +652,22 @@ export function createFakeCloudflare(options: FakeOptions) {
     setSubdomain(next: string | null) {
       subdomain = next;
     },
-    set(next: Partial<Pick<FakeOptions, "refuseWorkflowBindings" | "refuseAllUploads" | "maxScriptBytes" | "tokenStatus" | "accountName" | "tokenKind" | "maxPerPage" | "queuesUnavailable" | "versionAnnotations">>) {
+    set(
+      next: Partial<
+        Pick<
+          FakeOptions,
+          | "refuseWorkflowBindings"
+          | "refuseAllUploads"
+          | "maxScriptBytes"
+          | "tokenStatus"
+          | "accountName"
+          | "tokenKind"
+          | "maxPerPage"
+          | "queuesUnavailable"
+          | "versionAnnotations"
+        >
+      >,
+    ) {
       Object.assign(opts, next);
     },
     /** Reads the fake's own state directly, so tests can judge a deploy without going through the provisioner. */
@@ -588,7 +678,13 @@ export function createFakeCloudflare(options: FakeOptions) {
           name: d.name,
           tables: (d.sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all() as Array<{ name: string }>).map((t) => t.name),
         })),
-        scripts: [...scripts.values()].map((s) => ({ name: s.name, versionIds: s.versions.map((v) => v.id), addressEnabled: s.addressEnabled, bindingTypes: s.bindings.map((b) => String(b.type)), codeSha256: sha(s.code) })),
+        scripts: [...scripts.values()].map((s) => ({
+          name: s.name,
+          versionIds: s.versions.map((v) => v.id),
+          addressEnabled: s.addressEnabled,
+          bindingTypes: s.bindings.map((b) => String(b.type)),
+          codeSha256: sha(s.code),
+        })),
         workflows: [...workflows.values()],
       };
     },
@@ -623,7 +719,10 @@ export function createFakeCloudflare(options: FakeOptions) {
     rows(databaseName: string, sql: string): Array<Record<string, unknown>> {
       const db = [...databases.values()].find((d) => d.name === databaseName);
       if (!db) throw new Error(`no database ${databaseName}`);
-      return db.sqlite.prepare(sql).all().map((r) => ({ ...r }));
+      return db.sqlite
+        .prepare(sql)
+        .all()
+        .map((r) => ({ ...r }));
     },
     /** Runs one statement on a database directly, as the deployed Worker itself would (tests that stand in for the Worker). */
     exec(databaseName: string, sql: string, params: unknown[] = []): void {
@@ -653,12 +752,14 @@ export function createFakeCloudflare(options: FakeOptions) {
         code,
         bindings: [],
         versions: [{ id: verId, number: 1, createdOn: new Date().toISOString(), code, bindings: [] }],
-        deployments: [{
-          id: `dep-${randomUUID().slice(0, 8)}`,
-          created_on: new Date().toISOString(),
-          strategy: "percentage",
-          versions: [{ version_id: verId, percentage: 100 }],
-        }],
+        deployments: [
+          {
+            id: `dep-${randomUUID().slice(0, 8)}`,
+            created_on: new Date().toISOString(),
+            strategy: "percentage",
+            versions: [{ version_id: verId, percentage: 100 }],
+          },
+        ],
         addressEnabled: false,
       });
     },

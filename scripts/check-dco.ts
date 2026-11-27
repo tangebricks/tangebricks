@@ -35,16 +35,16 @@ const SIGN_OFF_KEY = /^Signed-off-by:/i;
 
 /** The trailer block: the last paragraph of the message (the lines after its final blank line). */
 export function trailerLines(message: string): string[] {
-  const paragraphs = message.replace(/\r\n/g, "\n").trim().split(/\n[ \t]*\n/);
+  const paragraphs = message
+    .replace(/\r\n/g, "\n")
+    .trim()
+    .split(/\n[ \t]*\n/);
   if (paragraphs.length < 2) return [];
   return (paragraphs[paragraphs.length - 1] ?? "").split("\n").map((l) => l.trim());
 }
 
 export function isBot(commit: Pick<DcoCommit, "authorName" | "authorEmail">): boolean {
-  return (
-    commit.authorEmail.trim().toLowerCase().endsWith("[bot]@users.noreply.github.com") ||
-    commit.authorName.trim().endsWith("[bot]")
-  );
+  return commit.authorEmail.trim().toLowerCase().endsWith("[bot]@users.noreply.github.com") || commit.authorName.trim().endsWith("[bot]");
 }
 
 export function expectedTrailer(commit: Pick<DcoCommit, "authorName" | "authorEmail">): string {
@@ -105,11 +105,11 @@ export function parseGitLog(output: string): DcoCommit[] {
 }
 
 export function readCommits(base: string, head: string, cwd: string = process.cwd()): DcoCommit[] {
-  const output = execFileSync(
-    "git",
-    ["log", "--no-color", `--format=%H${US}%P${US}%an${US}%ae${US}%B${RS}`, `${base}..${head}`],
-    { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
-  );
+  const output = execFileSync("git", ["log", "--no-color", `--format=%H${US}%P${US}%an${US}%ae${US}%B${RS}`, `${base}..${head}`], {
+    cwd,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
   return parseGitLog(output);
 }
 

@@ -48,11 +48,29 @@ describe("lint-deploy-target: the fake control plane stays out of Studio's produ
   });
 
   test("a guard line with anything else on it is refused (not a substring match)", () => {
-    const sneaky = [ENVIRONMENTS, ...ACCESSOR, "export function v(env) {", '  if (studioDeployClientMode(env) === "fake" || true) return new MockCloudflareControlPlane();', "}"];
+    const sneaky = [
+      ENVIRONMENTS,
+      ...ACCESSOR,
+      "export function v(env) {",
+      '  if (studioDeployClientMode(env) === "fake" || true) return new MockCloudflareControlPlane();',
+      "}",
+    ];
     expect(scan(sneaky).map((i) => i.line)).toEqual([7]);
-    const extra = [ENVIRONMENTS, ...ACCESSOR, "export function v(env) {", '  const x = 1; if (studioDeployClientMode(env) === "fake") return new MockCloudflareControlPlane();', "}"];
+    const extra = [
+      ENVIRONMENTS,
+      ...ACCESSOR,
+      "export function v(env) {",
+      '  const x = 1; if (studioDeployClientMode(env) === "fake") return new MockCloudflareControlPlane();',
+      "}",
+    ];
     expect(scan(extra).map((i) => i.line)).toEqual([7]);
-    const call = [ENVIRONMENTS, ...ACCESSOR, "export function v(env) {", '  if (studioDeployClientMode(env) === "fake") return getStudioFakeControlPlane(other, env) ?? null;', "}"];
+    const call = [
+      ENVIRONMENTS,
+      ...ACCESSOR,
+      "export function v(env) {",
+      '  if (studioDeployClientMode(env) === "fake") return getStudioFakeControlPlane(other, env) ?? null;',
+      "}",
+    ];
     expect(scan(call).map((i) => i.line)).toEqual([7]);
   });
 

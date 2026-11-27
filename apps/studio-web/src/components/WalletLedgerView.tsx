@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  fetchDataBrowserWorkspaces,
-  fetchWorkspaceLedger,
-  isDataStoreNotConfiguredError,
-} from "../api.ts";
-import type {
-  WorkspaceLedgerEntryPayload,
-  WorkspaceUsageSummaryItemPayload,
-} from "../api.ts";
+import { fetchDataBrowserWorkspaces, fetchWorkspaceLedger, isDataStoreNotConfiguredError } from "../api.ts";
+import type { WorkspaceLedgerEntryPayload, WorkspaceUsageSummaryItemPayload } from "../api.ts";
 import { getActiveOrg, useStudioStore } from "../store.ts";
 
 /**
@@ -17,7 +10,9 @@ import { getActiveOrg, useStudioStore } from "../store.ts";
 export function formatLedgerCredits(credits: number, milli?: number): string {
   if (typeof milli !== "number" || !Number.isSafeInteger(milli)) return String(credits);
   const abs = Math.abs(milli);
-  const fraction = String(abs % 1000).padStart(3, "0").replace(/0+$/, "");
+  const fraction = String(abs % 1000)
+    .padStart(3, "0")
+    .replace(/0+$/, "");
   return `${milli < 0 ? "-" : ""}${Math.floor(abs / 1000)}${fraction ? `.${fraction}` : ""}`;
 }
 
@@ -47,35 +42,25 @@ export function WalletLedgerView() {
   const activeOrgId = useStudioStore((s) => s.activeOrgId);
   const startRunReplay = useStudioStore((s) => s.startRunReplay);
 
-  const activeProject =
-    activeProjectId ?? projectState?.project ?? "acme-saas";
+  const activeProject = activeProjectId ?? projectState?.project ?? "acme-saas";
   const activeOrg = getActiveOrg({ orgs, activeOrgId });
   const orgId = activeOrg?.id;
 
   const [envName, setEnvName] = useState<"preview" | "production">(() => {
-    const saved = readPersistedValue(
-      `${STORAGE_KEY_PREFIX}env_${activeProject}`,
-      "preview",
-    );
+    const saved = readPersistedValue(`${STORAGE_KEY_PREFIX}env_${activeProject}`, "preview");
     return saved === "production" ? "production" : "preview";
   });
 
   const [workspaces, setWorkspaces] = useState<string[]>([]);
-  const [selectedWorkspace, setSelectedWorkspace] = useState<string>(() =>
-    readPersistedValue(`${STORAGE_KEY_PREFIX}ws_${activeProject}`, ""),
-  );
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string>(() => readPersistedValue(`${STORAGE_KEY_PREFIX}ws_${activeProject}`, ""));
 
   const [balance, setBalance] = useState<string>("0");
   const [currencyOrUnit, setCurrencyOrUnit] = useState<string>("credits");
   const [netChange30d, setNetChange30d] = useState<number>(0);
   const [netChange30dText, setNetChange30dText] = useState<string>("0");
   const [updatedAt, setUpdatedAt] = useState<string>("");
-  const [usageSummary, setUsageSummary] = useState<
-    WorkspaceUsageSummaryItemPayload[]
-  >([]);
-  const [journalEntries, setJournalEntries] = useState<
-    WorkspaceLedgerEntryPayload[]
-  >([]);
+  const [usageSummary, setUsageSummary] = useState<WorkspaceUsageSummaryItemPayload[]>([]);
+  const [journalEntries, setJournalEntries] = useState<WorkspaceLedgerEntryPayload[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   // Story 17: set when the environment has no data store (503 NOT_CONFIGURED).
@@ -87,31 +72,15 @@ export function WalletLedgerView() {
       setErrorBanner(null);
       setNoDataStore(false);
       try {
-        const wsRes = await fetchDataBrowserWorkspaces(
-          activeProject,
-          targetEnv,
-          orgId,
-        );
-        const wsList =
-          wsRes.workspaces.length > 0 ? wsRes.workspaces : ["ws_default"];
+        const wsRes = await fetchDataBrowserWorkspaces(activeProject, targetEnv, orgId);
+        const wsList = wsRes.workspaces.length > 0 ? wsRes.workspaces : ["ws_default"];
         setWorkspaces(wsList);
 
-        const persistedWs = readPersistedValue(
-          `${STORAGE_KEY_PREFIX}ws_${activeProject}`,
-          "",
-        );
-        const effectiveWs =
-          preferredWs && wsList.includes(preferredWs)
-            ? preferredWs
-            : persistedWs && wsList.includes(persistedWs)
-              ? persistedWs
-              : wsList[0]!;
+        const persistedWs = readPersistedValue(`${STORAGE_KEY_PREFIX}ws_${activeProject}`, "");
+        const effectiveWs = preferredWs && wsList.includes(preferredWs) ? preferredWs : persistedWs && wsList.includes(persistedWs) ? persistedWs : wsList[0]!;
 
         setSelectedWorkspace(effectiveWs);
-        writePersistedValue(
-          `${STORAGE_KEY_PREFIX}ws_${activeProject}`,
-          effectiveWs,
-        );
+        writePersistedValue(`${STORAGE_KEY_PREFIX}ws_${activeProject}`, effectiveWs);
 
         const ledgerRes = await fetchWorkspaceLedger(activeProject, targetEnv, {
           workspaceId: effectiveWs,
@@ -132,11 +101,7 @@ export function WalletLedgerView() {
           setJournalEntries([]);
           return;
         }
-        setErrorBanner(
-          err instanceof Error
-            ? err.message
-            : "Failed to load workspace wallet & usage ledger",
-        );
+        setErrorBanner(err instanceof Error ? err.message : "Failed to load workspace wallet & usage ledger");
       } finally {
         setLoading(false);
       }
@@ -159,15 +124,10 @@ export function WalletLedgerView() {
     void loadWorkspacesAndLedger(envName, nextWs);
   };
 
-  const formattedNetChange =
-    netChange30d > 0 ? `+${netChange30dText}` : netChange30dText;
+  const formattedNetChange = netChange30d > 0 ? `+${netChange30dText}` : netChange30dText;
 
   return (
-    <div
-      data-testid="wallet-ledger-view"
-      className="flex flex-col gap-4"
-      style={{ display: "flex" }}
-    >
+    <div data-testid="wallet-ledger-view" className="flex flex-col gap-4" style={{ display: "flex" }}>
       {/* Top Bar: Environment Toggle, Mandatory Workspace Selector, and Permanent Immutable Badge */}
       <div
         data-testid="wallet-ledger-header"
@@ -180,28 +140,20 @@ export function WalletLedgerView() {
       >
         <div className="flex flex-wrap items-center gap-3">
           <div>
-            <h2 className="text-base font-bold text-text-primary">
-              Credit Wallet &amp; Usage Ledger
-            </h2>
+            <h2 className="text-base font-bold text-text-primary">Credit Wallet &amp; Usage Ledger</h2>
             <p className="text-xs text-text-secondary">
-              Strictly workspace-scoped (<code className="font-mono">WHERE workspace_id = ?1</code>)
-              read-only financial &amp; usage journal. Direct mutations are refused in all environments.
+              Strictly workspace-scoped (<code className="font-mono">WHERE workspace_id = ?1</code>) read-only financial &amp; usage journal. Direct mutations
+              are refused in all environments.
             </p>
           </div>
 
-          <div
-            role="group"
-            aria-label="Ledger Environment"
-            className="inline-flex rounded-lg bg-surface-base p-0.5 border border-border"
-          >
+          <div role="group" aria-label="Ledger Environment" className="inline-flex rounded-lg bg-surface-base p-0.5 border border-border">
             <button
               type="button"
               data-testid="ledger-env-preview"
               onClick={() => handleSelectEnv("preview")}
               className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
-                envName === "preview"
-                  ? "bg-accent text-slate-950 font-bold"
-                  : "text-text-secondary hover:text-text-primary"
+                envName === "preview" ? "bg-accent text-slate-950 font-bold" : "text-text-secondary hover:text-text-primary"
               }`}
             >
               preview
@@ -211,9 +163,7 @@ export function WalletLedgerView() {
               data-testid="ledger-env-production"
               onClick={() => handleSelectEnv("production")}
               className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
-                envName === "production"
-                  ? "bg-amber-400 text-slate-950 font-bold"
-                  : "text-text-secondary hover:text-text-primary"
+                envName === "production" ? "bg-amber-400 text-slate-950 font-bold" : "text-text-secondary hover:text-text-primary"
               }`}
             >
               production
@@ -235,10 +185,7 @@ export function WalletLedgerView() {
 
         {/* Mandatory Workspace Selector */}
         <div className="flex items-center gap-2">
-          <label
-            htmlFor="ledger-workspace-select"
-            className="text-xs font-bold uppercase tracking-wider text-text-muted"
-          >
+          <label htmlFor="ledger-workspace-select" className="text-xs font-bold uppercase tracking-wider text-text-muted">
             Workspace:
           </label>
           <select
@@ -268,9 +215,7 @@ export function WalletLedgerView() {
           data-testid="ledger-no-data-store"
           className="p-4 rounded-lg bg-surface-base border border-border text-text-secondary text-xs flex flex-col gap-1"
         >
-          <span className="font-semibold text-text-primary">
-            No data store for this environment
-          </span>
+          <span className="font-semibold text-text-primary">No data store for this environment</span>
           <span>
             {envName === "production"
               ? "Studio cannot reach production data. Browse data in a preview sandbox instead."
@@ -280,11 +225,7 @@ export function WalletLedgerView() {
       )}
 
       {errorBanner && (
-        <div
-          role="alert"
-          data-testid="ledger-error-alert"
-          className="p-3 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs"
-        >
+        <div role="alert" data-testid="ledger-error-alert" className="p-3 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs">
           ⚠ {errorBanner}
         </div>
       )}
@@ -299,20 +240,11 @@ export function WalletLedgerView() {
           }}
           className="p-4 rounded-lg bg-surface-raised border border-border space-y-1"
         >
-          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-            Current Credit Balance ({selectedWorkspace})
-          </div>
-          <div
-            data-testid="ledger-current-balance-value"
-            className="text-2xl font-bold font-mono text-emerald-400"
-          >
+          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Current Credit Balance ({selectedWorkspace})</div>
+          <div data-testid="ledger-current-balance-value" className="text-2xl font-bold font-mono text-emerald-400">
             {balance} <span className="text-xs font-normal text-text-secondary">{currencyOrUnit}</span>
           </div>
-          {updatedAt && (
-            <div className="text-[11px] font-mono text-text-muted">
-              Updated: {updatedAt}
-            </div>
-          )}
+          {updatedAt && <div className="text-[11px] font-mono text-text-muted">Updated: {updatedAt}</div>}
         </div>
 
         <div
@@ -323,23 +255,15 @@ export function WalletLedgerView() {
           }}
           className="p-4 rounded-lg bg-surface-raised border border-border space-y-1"
         >
-          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-            30-Day Net Change
-          </div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">30-Day Net Change</div>
           <div
             data-testid="ledger-net-change-30d-value"
-            className={`text-2xl font-bold font-mono ${
-              netChange30d >= 0 ? "text-emerald-400" : "text-slate-300"
-            }`}
+            className={`text-2xl font-bold font-mono ${netChange30d >= 0 ? "text-emerald-400" : "text-slate-300"}`}
           >
-            {formattedNetChange}{" "}
-            <span className="text-xs font-normal text-text-secondary">
-              {currencyOrUnit}
-            </span>
+            {formattedNetChange} <span className="text-xs font-normal text-text-secondary">{currencyOrUnit}</span>
           </div>
           <div className="text-[11px] text-text-muted">
-            Across {journalEntries.length} immutable journal{" "}
-            {journalEntries.length === 1 ? "entry" : "entries"}
+            Across {journalEntries.length} immutable journal {journalEntries.length === 1 ? "entry" : "entries"}
           </div>
         </div>
 
@@ -351,13 +275,9 @@ export function WalletLedgerView() {
           }}
           className="p-4 rounded-lg bg-surface-raised border border-border space-y-1.5"
         >
-          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-            Period Usage Totals
-          </div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Period Usage Totals</div>
           {usageSummary.length === 0 ? (
-            <div className="text-xs text-text-muted py-1">
-              0 metered events in current period
-            </div>
+            <div className="text-xs text-text-muted py-1">0 metered events in current period</div>
           ) : (
             <div className="space-y-1">
               {usageSummary.map((u) => (
@@ -367,9 +287,7 @@ export function WalletLedgerView() {
                   className="flex items-center justify-between text-xs font-mono"
                 >
                   <span className="text-text-secondary">{u.metricKey}</span>
-                  <span className="font-bold text-sky-300">
-                    {u.totalQuantity}
-                  </span>
+                  <span className="font-bold text-sky-300">{u.totalQuantity}</span>
                 </div>
               ))}
             </div>
@@ -380,19 +298,12 @@ export function WalletLedgerView() {
       {/* Chronological Immutable Journal Table */}
       <div className="p-4 rounded-lg bg-surface-raised border border-border space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-text-primary">
-            Immutable Journal Entries ({journalEntries.length})
-          </h3>
-          <span className="text-[11px] font-mono text-text-muted">
-            Single-statement atomic D1 batch ledger · Read-only in {envName}
-          </span>
+          <h3 className="text-sm font-bold text-text-primary">Immutable Journal Entries ({journalEntries.length})</h3>
+          <span className="text-[11px] font-mono text-text-muted">Single-statement atomic D1 batch ledger · Read-only in {envName}</span>
         </div>
 
         <div className="overflow-x-auto">
-          <table
-            data-testid="ledger-journal-table"
-            className="w-full text-left border-collapse text-xs"
-          >
+          <table data-testid="ledger-journal-table" className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
                 <th className="py-2 px-2.5">Timestamp</th>
@@ -406,24 +317,14 @@ export function WalletLedgerView() {
             <tbody className="divide-y divide-border font-mono">
               {loading ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="py-6 text-center text-text-muted font-sans"
-                  >
+                  <td colSpan={6} className="py-6 text-center text-text-muted font-sans">
                     Loading immutable ledger entries for {selectedWorkspace}…
                   </td>
                 </tr>
               ) : journalEntries.length === 0 ? (
                 <tr data-testid="ledger-empty-rows">
-                  <td
-                    colSpan={6}
-                    className="py-6 text-center text-text-muted font-sans"
-                  >
-                    No ledger entries recorded for workspace{" "}
-                    <span className="font-mono text-text-primary">
-                      {selectedWorkspace}
-                    </span>
-                    .
+                  <td colSpan={6} className="py-6 text-center text-text-muted font-sans">
+                    No ledger entries recorded for workspace <span className="font-mono text-text-primary">{selectedWorkspace}</span>.
                   </td>
                 </tr>
               ) : (
@@ -432,39 +333,22 @@ export function WalletLedgerView() {
                   const deltaText = formatLedgerCredits(entry.delta, entry.deltaMilli);
                   const formattedDelta = isPositive ? `+${deltaText}` : deltaText;
                   return (
-                    <tr
-                      key={entry.entryId}
-                      data-testid={`ledger-entry-row-${entry.entryId}`}
-                      className="hover:bg-surface-base/40"
-                    >
-                      <td className="py-2 px-2.5 text-text-secondary">
-                        {entry.createdAt}
-                      </td>
+                    <tr key={entry.entryId} data-testid={`ledger-entry-row-${entry.entryId}`} className="hover:bg-surface-base/40">
+                      <td className="py-2 px-2.5 text-text-secondary">{entry.createdAt}</td>
                       <td
                         data-testid={`ledger-entry-delta-${entry.entryId}`}
                         style={{
-                          color: isPositive
-                            ? "rgb(52, 211, 153)"
-                            : "rgb(203, 213, 225)",
+                          color: isPositive ? "rgb(52, 211, 153)" : "rgb(203, 213, 225)",
                         }}
-                        className={`py-2 px-2.5 font-bold ${
-                          isPositive ? "text-emerald-400" : "text-slate-300"
-                        }`}
+                        className={`py-2 px-2.5 font-bold ${isPositive ? "text-emerald-400" : "text-slate-300"}`}
                       >
                         {formattedDelta}
                       </td>
-                      <td
-                        data-testid={`ledger-entry-balance-${entry.entryId}`}
-                        className="py-2 px-2.5 text-text-primary font-semibold"
-                      >
+                      <td data-testid={`ledger-entry-balance-${entry.entryId}`} className="py-2 px-2.5 text-text-primary font-semibold">
                         {formatLedgerCredits(entry.balanceAfter, entry.balanceAfterMilli)}
                       </td>
-                      <td className="py-2 px-2.5 font-sans text-text-primary">
-                        {entry.reason}
-                      </td>
-                      <td className="py-2 px-2.5 text-text-muted">
-                        {entry.idempotencyKey ?? "—"}
-                      </td>
+                      <td className="py-2 px-2.5 font-sans text-text-primary">{entry.reason}</td>
+                      <td className="py-2 px-2.5 text-text-muted">{entry.idempotencyKey ?? "—"}</td>
                       <td className="py-2 px-2.5">
                         {entry.runId ? (
                           <button
@@ -472,21 +356,11 @@ export function WalletLedgerView() {
                             data-testid={`ledger-jump-run-${entry.entryId}`}
                             data-run-id={entry.runId}
                             data-node-id={entry.nodeId ?? ""}
-                            onClick={() =>
-                              void startRunReplay(
-                                entry.runId!,
-                                envName,
-                                entry.nodeId ?? null,
-                              )
-                            }
+                            onClick={() => void startRunReplay(entry.runId!, envName, entry.nodeId ?? null)}
                             className="px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/40 text-sky-300 hover:bg-sky-500/25 text-[11px] font-mono inline-flex items-center gap-1"
                           >
                             <span>↪ {entry.runId}</span>
-                            {entry.nodeId && (
-                              <span className="text-text-muted">
-                                / {entry.nodeId}
-                              </span>
-                            )}
+                            {entry.nodeId && <span className="text-text-muted">/ {entry.nodeId}</span>}
                           </button>
                         ) : (
                           <span className="text-text-muted">—</span>

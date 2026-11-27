@@ -15,10 +15,7 @@ describe("UC6.8 — Refactor sweep (UC6)", () => {
   it("AC2 & Task 2: tenant lint allowlist is at or below the count at story 0.7 close (<= 9) and lint passes with 0 violations", () => {
     const { entries, errors } = loadAllowlist(ALLOWLIST_PATH);
     expect(errors).toHaveLength(0);
-    expect(
-      entries.length,
-      `tenant-lint allowlist must be <= 9 entries (found: ${entries.length})`,
-    ).toBeLessThanOrEqual(9);
+    expect(entries.length, `tenant-lint allowlist must be <= 9 entries (found: ${entries.length})`).toBeLessThanOrEqual(9);
 
     for (const entry of entries) {
       expect(entry.table.trim().length).toBeGreaterThan(0);
@@ -33,11 +30,7 @@ describe("UC6.8 — Refactor sweep (UC6)", () => {
   });
 
   it("Task 3: no stale FORBIDDEN_TOKENS exports or definitions exist across bricks or runtime packages", () => {
-    const searchDirs = [
-      join(ROOT, "bricks"),
-      join(ROOT, "packages"),
-      join(ROOT, "scripts"),
-    ];
+    const searchDirs = [join(ROOT, "bricks"), join(ROOT, "packages"), join(ROOT, "scripts")];
 
     const forbiddenHits: string[] = [];
 
@@ -62,10 +55,7 @@ describe("UC6.8 — Refactor sweep (UC6)", () => {
       scan(dir);
     }
 
-    expect(
-      forbiddenHits,
-      `No FORBIDDEN_TOKENS should remain in runtime, bricks, or scripts (found in ${forbiddenHits.join(", ")})`,
-    ).toEqual([]);
+    expect(forbiddenHits, `No FORBIDDEN_TOKENS should remain in runtime, bricks, or scripts (found in ${forbiddenHits.join(", ")})`).toEqual([]);
   });
 
   it("Task 3: ManifestSchema enforces that untrusted bricks require isolation: 'dispatch' and rejects isolation: 'none'", () => {
@@ -131,9 +121,7 @@ describe("UC6.8 — Refactor sweep (UC6)", () => {
     const content = readFileSync(BRICK_AUDIT_PATH, "utf8");
 
     // 1. scripting-sandbox must NOT describe itself as using new Function or regex token blocklist
-    const scriptingLine = content
-      .split(/\r?\n/)
-      .find((line) => line.includes("| scripting-sandbox |"));
+    const scriptingLine = content.split(/\r?\n/).find((line) => line.includes("| scripting-sandbox |"));
     expect(scriptingLine, "scripting-sandbox entry must exist in docs/brick-audit.md").toBeDefined();
     expect(
       scriptingLine!.includes("new Function") || scriptingLine!.includes("regex blocklist"),

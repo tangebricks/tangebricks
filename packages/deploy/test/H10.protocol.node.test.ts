@@ -40,7 +40,8 @@ type Built = Awaited<ReturnType<H10Deps["build"]>>;
 const built = new Map<"base" | "changed", Promise<Built>>();
 const blueprint = (variant: "base" | "changed") => ({
   ...INVOICE_FLOW_BLUEPRINT,
-  bricks: variant === "base" ? [...INVOICE_FLOW_BLUEPRINT.bricks] : ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 2 } }, "dynamic-entities"],
+  bricks:
+    variant === "base" ? [...INVOICE_FLOW_BLUEPRINT.bricks] : ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 2 } }, "dynamic-entities"],
 });
 const build = (variant: "base" | "changed"): Promise<Built> => {
   if (!built.has(variant)) {
@@ -66,7 +67,9 @@ async function workerdFor(code: string): Promise<Miniflare> {
     running.set(
       code,
       (async () => {
-        const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: code, compatibilityDate: "2026-10-01", d1Databases: ["DB"], bindings: { POC_ACCESS_KEY: KEY } }));
+        const mf = new Miniflare(
+          convertV4MiniflareOptions({ modules: true, script: code, compatibilityDate: "2026-10-01", d1Databases: ["DB"], bindings: { POC_ACCESS_KEY: KEY } }),
+        );
         await mf.ready;
         const db = (await mf.getD1Database("DB")) as unknown as D1Like;
         for (const m of [...(await build("base")).migrations, ...GRAPH_MIGRATIONS]) await applyMigration(db, m.sql);
@@ -89,7 +92,11 @@ function world(options: WorldOptions = {}) {
   const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT, ...options.fake });
   const names = resourceNames(SUFFIX);
   const store = memoryStore();
-  const ledger = openLedger(store, () => SUFFIX, () => new Date("2026-10-21T00:00:00Z"));
+  const ledger = openLedger(
+    store,
+    () => SUFFIX,
+    () => new Date("2026-10-21T00:00:00Z"),
+  );
   const hide = createRedactor([TOKEN, ACCOUNT, KEY]);
   const lines: string[] = [];
   let unreachable = options.unreachableFor ?? 0;
@@ -97,7 +104,8 @@ function world(options: WorldOptions = {}) {
     clock: () => performance.now(),
     commandStart: performance.now(),
     sleep: async () => undefined,
-    createClient: (now) => createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, now, sleep: async () => undefined, alsoHide: [KEY] }),
+    createClient: (now) =>
+      createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, now, sleep: async () => undefined, alsoHide: [KEY] }),
     names,
     ledger,
     accessKey: KEY,
@@ -113,7 +121,11 @@ function world(options: WorldOptions = {}) {
       if (code === undefined) return new Response("no such Worker", { status: 404 });
       const mf = await workerdFor(code);
       const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
-      return (await mf.dispatchFetch(`http://deployed.invalid${url.pathname}${url.search}`, { method: request.method, headers: Object.fromEntries(request.headers), body } as never)) as unknown as Response;
+      return (await mf.dispatchFetch(`http://deployed.invalid${url.pathname}${url.search}`, {
+        method: request.method,
+        headers: Object.fromEntries(request.headers),
+        body,
+      } as never)) as unknown as Response;
     },
     compatibilityDate: "2026-10-01",
     hide,
@@ -126,7 +138,14 @@ function world(options: WorldOptions = {}) {
 /** What `pnpm poc:verify` does with the files: read them back and recompute. */
 const sources = (): Record<string, string> => {
   const out: Record<string, string> = {};
-  for (const file of ["scripts/poc-deploy.ts", "packages/deploy/src/h10.ts", ...["access-key", "cloudflare", "credentials", "deploy", "index", "ledger", "names", "redact", "teardown"].map((n) => `packages/deploy/src/provisioner/${n}.ts`)]) out[file] = readFileSync(join(root, file), "utf8");
+  for (const file of [
+    "scripts/poc-deploy.ts",
+    "packages/deploy/src/h10.ts",
+    ...["access-key", "cloudflare", "credentials", "deploy", "index", "ledger", "names", "redact", "teardown"].map(
+      (n) => `packages/deploy/src/provisioner/${n}.ts`,
+    ),
+  ])
+    out[file] = readFileSync(join(root, file), "utf8");
   return out;
 };
 const evaluate = (calls: H10Calls | string, result: H10Result, over: Partial<{ sources: Record<string, string>; evidenceTexts: string[] }> = {}) => {
@@ -157,12 +176,36 @@ describe("a complete run", () => {
     expect(complete.result.completed).toBe(true);
     expect(complete.result.stoppedBecause).toBeUndefined();
     const phases = complete.calls.facts.attempts.map((a) => a.phase);
-    expect(phases).toEqual(["build", "first deploy", "address answers", "scripted check", "second run", "third run (one setting changed)", "fourth run (setting restored)", "gate probes"]);
+    expect(phases).toEqual([
+      "build",
+      "first deploy",
+      "address answers",
+      "scripted check",
+      "second run",
+      "third run (one setting changed)",
+      "fourth run (setting restored)",
+      "gate probes",
+    ]);
     expect(complete.calls.facts.attempts.every((a) => a.outcome === "ok")).toBe(true);
   });
 
   test("the first run makes everything from nothing, in order, and puts the Worker's address on", () => {
-    expect(complete.calls.facts.runs.first!.changes).toEqual(["database_created", "bookkeeping_created", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "migration_applied", "script_uploaded", "workflow_registered", "address_enabled"]);
+    expect(complete.calls.facts.runs.first!.changes).toEqual([
+      "database_created",
+      "bookkeeping_created",
+      "migration_applied",
+      "migration_applied",
+      "migration_applied",
+      "migration_applied",
+      "migration_applied",
+      "migration_applied",
+      "migration_applied",
+      "migration_applied",
+      "migration_applied",
+      "script_uploaded",
+      "workflow_registered",
+      "address_enabled",
+    ]);
     expect(complete.calls.facts.url).toBe(`https://${complete.w.names.script}.fake-subdomain.workers.dev`);
   });
 
@@ -187,7 +230,11 @@ describe("a complete run", () => {
   });
 
   test("the ledger lists the three resources as created, none still 'creating'", () => {
-    expect(complete.w.ledger.entries().map((e) => [e.kind, e.status])).toEqual([["d1_database", "created"], ["worker_script", "created"], ["workflow", "created"]]);
+    expect(complete.w.ledger.entries().map((e) => [e.kind, e.status])).toEqual([
+      ["d1_database", "created"],
+      ["worker_script", "created"],
+      ["workflow", "created"],
+    ]);
   });
 
   test("the address was not answering at first: those requests are in the log with no status, and the run still came out right", () => {
@@ -203,13 +250,30 @@ describe("a complete run", () => {
 
   test("each Cloudflare run has its own log, and the readers' logs hold only reads", () => {
     const labels = complete.calls.clients.map((c) => c.label);
-    expect(labels).toEqual(["first-deploy", "read-back", "reader-before-second", "second-deploy", "reader-after-second", "reader-before-third", "third-deploy", "reader-after-third", "fourth-deploy", "reader-after-fourth"]);
-    for (const c of complete.calls.clients.filter((x) => x.label.startsWith("reader") || x.label === "read-back")) expect(c.calls.every((x) => x.method === "GET" || x.sqlKind === "select")).toBe(true);
+    expect(labels).toEqual([
+      "first-deploy",
+      "read-back",
+      "reader-before-second",
+      "second-deploy",
+      "reader-after-second",
+      "reader-before-third",
+      "third-deploy",
+      "reader-after-third",
+      "fourth-deploy",
+      "reader-after-fourth",
+    ]);
+    for (const c of complete.calls.clients.filter((x) => x.label.startsWith("reader") || x.label === "read-back"))
+      expect(c.calls.every((x) => x.method === "GET" || x.sqlKind === "select")).toBe(true);
     for (const c of complete.calls.clients) expect(c.calls.every((x) => x.path.startsWith("/accounts/{account}/"))).toBe(true);
   });
 
   test("the Worker's bindings, read back from Cloudflare, include the Workflow binding for the class the bundle exports", () => {
-    expect(complete.calls.facts.bindingsReadBack.bindings).toContainEqual({ type: "workflow", name: "GRAPH_RUNNER", workflowName: complete.w.names.workflow, className: "GraphRunner" });
+    expect(complete.calls.facts.bindingsReadBack.bindings).toContainEqual({
+      type: "workflow",
+      name: "GRAPH_RUNNER",
+      workflowName: complete.w.names.workflow,
+      className: "GraphRunner",
+    });
     expect(JSON.stringify(complete.calls.facts.bindingsReadBack)).not.toContain(KEY);
   });
 });
@@ -217,7 +281,15 @@ describe("a complete run", () => {
 describe("what the files say when they are re-read", () => {
   test("all seven checks come out true, and the seconds equal what the log says", () => {
     const e = evaluate(complete.calls, complete.result);
-    expect(e.checks).toEqual({ restUploadAccepted: true, deployedOverRestOnly: true, urlAnswersCorrectly: true, secondRunChangesNothing: true, changedProjectChangesOneThing: true, publicAccessGated: true, tokenNeverLeaked: true });
+    expect(e.checks).toEqual({
+      restUploadAccepted: true,
+      deployedOverRestOnly: true,
+      urlAnswersCorrectly: true,
+      secondRunChangesNothing: true,
+      changedProjectChangesOneThing: true,
+      publicAccessGated: true,
+      tokenNeverLeaked: true,
+    });
     expect(e.measured).toBe(complete.result.secondsToCorrectAnswer);
     expect(e.measured).toBeGreaterThan(0);
     expect(verdict(h10, { measured: e.measured, checks: e.checks }).verdict).toBe("pass");
@@ -267,7 +339,9 @@ describe("what the files say when they are re-read", () => {
 
   test("a second run with a write call in its log fails, whatever the readings say", () => {
     const calls = clone(complete.calls);
-    calls.clients.find((c) => c.label === "second-deploy")!.calls.push({ n: 99, atMs: 0, method: "PUT", path: "/accounts/{account}/workers/scripts/x", status: 200, ms: 1, outcome: "ok", attempt: 1 });
+    calls.clients
+      .find((c) => c.label === "second-deploy")!
+      .calls.push({ n: 99, atMs: 0, method: "PUT", path: "/accounts/{account}/workers/scripts/x", status: 200, ms: 1, outcome: "ok", attempt: 1 });
     const { calls: c, result } = rehash(calls, complete.result);
     expect(evaluate(c, result).checks.secondRunChangesNothing).toBe(false);
   });
@@ -297,7 +371,9 @@ describe("what the files say when they are re-read", () => {
   });
 
   test("a third run whose log has two uploads, or none, fails", () => {
-    const isUpload = (c: CallRecord) => (c.method === "PUT" && c.path.endsWith(`/workers/scripts/${complete.w.names.script}`)) || (c.method === "POST" && c.path.endsWith(`/workers/scripts/${complete.w.names.script}/versions`));
+    const isUpload = (c: CallRecord) =>
+      (c.method === "PUT" && c.path.endsWith(`/workers/scripts/${complete.w.names.script}`)) ||
+      (c.method === "POST" && c.path.endsWith(`/workers/scripts/${complete.w.names.script}/versions`));
     for (const mutate of [
       (list: H10Calls["clients"][number]["calls"]) => list.push({ ...list.find(isUpload)! }),
       (list: H10Calls["clients"][number]["calls"]) => void list.splice(0, list.length, ...list.filter((c) => !isUpload(c))),
@@ -311,23 +387,26 @@ describe("what the files say when they are re-read", () => {
 
   test("a gate probe that is missing, or answered with anything but what is expected, fails", () => {
     const missing = clone(complete.calls);
-    missing.urlEvents.splice(missing.urlEvents.findIndex((e) => e.phase === "gate"), 1);
-    expect(evaluate(...Object.values(rehash(missing, complete.result)) as [H10Calls, H10Result]).checks.publicAccessGated).toBe(false);
+    missing.urlEvents.splice(
+      missing.urlEvents.findIndex((e) => e.phase === "gate"),
+      1,
+    );
+    expect(evaluate(...(Object.values(rehash(missing, complete.result)) as [H10Calls, H10Result])).checks.publicAccessGated).toBe(false);
     const open = clone(complete.calls);
     open.urlEvents.filter((e) => e.phase === "gate")[0]!.status = 200;
-    expect(evaluate(...Object.values(rehash(open, complete.result)) as [H10Calls, H10Result]).checks.publicAccessGated).toBe(false);
+    expect(evaluate(...(Object.values(rehash(open, complete.result)) as [H10Calls, H10Result])).checks.publicAccessGated).toBe(false);
     const closedDemo = clone(complete.calls);
     closedDemo.urlEvents.find((e) => e.note === "demo-open")!.status = 401;
-    expect(evaluate(...Object.values(rehash(closedDemo, complete.result)) as [H10Calls, H10Result]).checks.publicAccessGated).toBe(false);
+    expect(evaluate(...(Object.values(rehash(closedDemo, complete.result)) as [H10Calls, H10Result])).checks.publicAccessGated).toBe(false);
   });
 
   test("a scripted check whose answers differ, in the observations or in the log's statuses, fails", () => {
     const wrongObservation = clone(complete.calls);
     wrongObservation.facts.observations.first![2]!.facts.balance = 5;
-    expect(evaluate(...Object.values(rehash(wrongObservation, complete.result)) as [H10Calls, H10Result]).checks.urlAnswersCorrectly).toBe(false);
+    expect(evaluate(...(Object.values(rehash(wrongObservation, complete.result)) as [H10Calls, H10Result])).checks.urlAnswersCorrectly).toBe(false);
     const wrongStatus = clone(complete.calls);
     wrongStatus.urlEvents.filter((e) => e.phase === wrongStatus.facts.timedCheckPhase)[7]!.status = 200;
-    expect(evaluate(...Object.values(rehash(wrongStatus, complete.result)) as [H10Calls, H10Result]).checks.urlAnswersCorrectly).toBe(false);
+    expect(evaluate(...(Object.values(rehash(wrongStatus, complete.result)) as [H10Calls, H10Result])).checks.urlAnswersCorrectly).toBe(false);
   });
 
   test("an upload that is not in the log is not 'accepted': the check is left unreported, not defaulted", () => {
@@ -368,7 +447,7 @@ describe("what the files say when they are re-read", () => {
     expect("tokenNeverLeaked" in noScan.checks).toBe(false);
     expect(evaluate(complete.calls, withLeakScan(complete.result, { ...LEAK_CLEAN, filesScanned: 3 })).checks.tokenNeverLeaked).toBe(false);
     expect(evaluate(complete.calls, withLeakScan(complete.result, { ...LEAK_CLEAN, scannedFor: ["token"] })).checks.tokenNeverLeaked).toBe(false);
-    expect(evaluate(complete.calls, complete.result, { evidenceTexts: ['Authorization: Bearer abc'] }).checks.tokenNeverLeaked).toBe(false);
+    expect(evaluate(complete.calls, complete.result, { evidenceTexts: ["Authorization: Bearer abc"] }).checks.tokenNeverLeaked).toBe(false);
     expect(evaluate(complete.calls, complete.result, { evidenceTexts: ['{"x-poc-key": "abc"}'] }).checks.tokenNeverLeaked).toBe(false);
   });
 
@@ -467,8 +546,16 @@ describe("when the first deploy does not go through", () => {
     w.fake.clearFaults();
     let uploads = 0;
     const inner = w.fake.fetch;
-    const isWorkerUpload = (req: Request) => (req.method === "PUT" && req.url.includes("/workers/scripts/")) || (req.method === "POST" && req.url.includes("/versions"));
-    w.deps.createClient = (now) => createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: async (request) => (isWorkerUpload(request) && ++uploads > 1 ? Promise.reject(new TypeError("fetch failed")) : inner(request)), now, sleep: async () => undefined, alsoHide: [KEY] });
+    const isWorkerUpload = (req: Request) =>
+      (req.method === "PUT" && req.url.includes("/workers/scripts/")) || (req.method === "POST" && req.url.includes("/versions"));
+    w.deps.createClient = (now) =>
+      createClient({
+        credentials: { token: TOKEN, accountId: ACCOUNT },
+        fetch: async (request) => (isWorkerUpload(request) && ++uploads > 1 ? Promise.reject(new TypeError("fetch failed")) : inner(request)),
+        now,
+        sleep: async () => undefined,
+        alsoHide: [KEY],
+      });
     const { calls, result } = await runH10(w.deps);
     expect(result.completed).toBe(false);
     expect(result.stoppedBecause).toMatch(/a later run stopped/);
@@ -482,7 +569,9 @@ describe("when the first deploy does not go through", () => {
 
 describe("secrets", () => {
   test("the token, the account id and the access key are in neither file, nor in any line printed, nor in the ledger", () => {
-    const text = [canonical(complete.calls), JSON.stringify(complete.result), complete.w.lines.join("\n"), JSON.stringify(complete.w.store.snapshot())].join("\n");
+    const text = [canonical(complete.calls), JSON.stringify(complete.result), complete.w.lines.join("\n"), JSON.stringify(complete.w.store.snapshot())].join(
+      "\n",
+    );
     expect(findSecrets(text, { token: TOKEN, accountId: ACCOUNT, accessKey: KEY })).toEqual([]);
   });
 
@@ -494,7 +583,10 @@ describe("secrets", () => {
 
   test("a failure whose message echoes the secrets has them hidden in the file", async () => {
     const w = world();
-    w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/workers/subdomain"), respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: `no access for ${TOKEN} / ${ACCOUNT} / ${KEY}` }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/workers/subdomain"),
+      respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: `no access for ${TOKEN} / ${ACCOUNT} / ${KEY}` }] } },
+    });
     const { calls, result } = await runH10(w.deps);
     expect(result.stoppedBecause).toContain("[hidden]");
     expect(findSecrets(canonical(calls) + JSON.stringify(result) + w.lines.join("\n"), { token: TOKEN, accountId: ACCOUNT, accessKey: KEY })).toEqual([]);

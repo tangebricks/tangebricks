@@ -4,8 +4,7 @@ import { toyRegistry, validateGraph } from "../src/index.ts";
 import validatorSource from "../src/validate.ts?raw";
 import { fixtures, type Fixture } from "./fixtures.ts";
 
-const codesFor = (f: Fixture): string[] =>
-  [...new Set(validateGraph(f.nodes, f.edges, toyRegistry).issues.map((i) => i.code))].sort();
+const codesFor = (f: Fixture): string[] => [...new Set(validateGraph(f.nodes, f.edges, toyRegistry).issues.map((i) => i.code))].sort();
 const matches = (f: Fixture): boolean => JSON.stringify(codesFor(f)) === JSON.stringify([...f.expect].sort());
 
 describe("H1: every fixture gets exactly the issue codes it should", () => {
@@ -15,16 +14,7 @@ describe("H1: every fixture gets exactly the issue codes it should", () => {
 });
 
 // The eight classes the H1 claim names. Extra classes found later are welcome but cannot replace these.
-const CLAIMED_CLASSES = [
-  "no_trigger",
-  "multi_trigger",
-  "cycle",
-  "orphan_node",
-  "unknown_brick",
-  "invalid_config",
-  "bad_ref",
-  "incompatible_wire",
-];
+const CLAIMED_CLASSES = ["no_trigger", "multi_trigger", "cycle", "orphan_node", "unknown_brick", "invalid_config", "bad_ref", "incompatible_wire"];
 
 test("H1 report", ({ task }) => {
   const invalid = fixtures.filter((f) => f.expect.length > 0);

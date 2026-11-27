@@ -126,11 +126,7 @@ export function createProductAnalyticsRoutes(): Hono<AnalyticsEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("analyticsService") || new ProductAnalyticsService(c.env.DB);
-    const funnel = await service.createFunnel(
-      workspaceId,
-      parsed.data.name,
-      parsed.data.steps
-    );
+    const funnel = await service.createFunnel(workspaceId, parsed.data.name, parsed.data.steps);
 
     return c.json({ funnel }, 201);
   });

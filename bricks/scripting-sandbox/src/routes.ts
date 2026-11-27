@@ -33,8 +33,7 @@ export function createScriptingRoutes(): Hono<ScriptEnv> {
 
   app.use("*", sandboxMiddleware);
 
-  const getService = (c: any): ScriptingSandboxService =>
-    c.get("sandboxService") || new ScriptingSandboxService(c.env.DB, createScriptIsolate(c.env));
+  const getService = (c: any): ScriptingSandboxService => c.get("sandboxService") || new ScriptingSandboxService(c.env.DB, createScriptIsolate(c.env));
 
   // POST /scripts - Create script
   app.post("/scripts", async (c) => {

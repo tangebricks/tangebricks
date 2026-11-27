@@ -22,28 +22,25 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
     expect(projectSlug).toMatch(/^project-\d+$/);
 
     // Enable multi-workspace brick so project has a base brick enabled
-    const enableRes = await request.post(
-      `http://127.0.0.1:8787/api/projects/${encodeURIComponent(projectSlug)}/ops`,
-      {
-        headers: {
-          authorization: `Bearer ${await e2eProjectToken(projectSlug)}`,
-          "content-type": "application/json",
-        },
-        data: {
-          author: { type: "human", id: "alice" },
-          mode: "apply", // AD-V8: a preview-safe edit the project token may apply directly
-          summary: "Enable multi-workspace brick",
-          ops: [
-            {
-              opId: "e2e-init-brick",
-              type: "enable_brick",
-              brickId: "multi-workspace",
-              config: {},
-            },
-          ],
-        },
+    const enableRes = await request.post(`http://127.0.0.1:8787/api/projects/${encodeURIComponent(projectSlug)}/ops`, {
+      headers: {
+        authorization: `Bearer ${await e2eProjectToken(projectSlug)}`,
+        "content-type": "application/json",
       },
-    );
+      data: {
+        author: { type: "human", id: "alice" },
+        mode: "apply", // AD-V8: a preview-safe edit the project token may apply directly
+        summary: "Enable multi-workspace brick",
+        ops: [
+          {
+            opId: "e2e-init-brick",
+            type: "enable_brick",
+            brickId: "multi-workspace",
+            config: {},
+          },
+        ],
+      },
+    });
     expect(enableRes.ok()).toBe(true);
     await expect(page.getByTestId("topbar-revision-badge")).toHaveText("r1");
 
@@ -96,13 +93,9 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
     const rawToggle = page.getByTestId("toggle-raw-expression-template");
     if (await rawToggle.isVisible()) {
       await rawToggle.click();
-      await page
-        .getByTestId("raw-expression-input-template")
-        .fill(`Hello {{steps.${noopNodeId}.output.out}}`);
+      await page.getByTestId("raw-expression-input-template").fill(`Hello {{steps.${noopNodeId}.output.out}}`);
     } else {
-      await page
-        .getByTestId("node-config-input-template")
-        .fill(`Hello {{steps.${noopNodeId}.output.out}}`);
+      await page.getByTestId("node-config-input-template").fill(`Hello {{steps.${noopNodeId}.output.out}}`);
     }
     await page.getByTestId("inspector-node-save").click();
     await expect(page.getByTestId("inspector-node-saved-badge")).toBeVisible();
@@ -146,10 +139,7 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
     await page.getByTestId("issue-jump-item-0").click();
     await expect(page.getByTestId("view-workflows")).toBeVisible();
     await expect(page.getByTestId("inspector-node-id")).toHaveText(tplNodeId);
-    await expect(page.getByTestId("inspector-highlighted-field")).toHaveAttribute(
-      "data-field-key",
-      "template",
-    );
+    await expect(page.getByTestId("inspector-highlighted-field")).toHaveAttribute("data-field-key", "template");
 
     // Fix the broken expression in the Inspector and save -> readiness badge transitions to Ready
     const rawInput = page.getByTestId("raw-expression-input-template");
@@ -159,13 +149,9 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
       const toggleRawAgain = page.getByTestId("toggle-raw-expression-template");
       if (await toggleRawAgain.isVisible()) {
         await toggleRawAgain.click();
-        await page
-          .getByTestId("raw-expression-input-template")
-          .fill("Hello clean template v1");
+        await page.getByTestId("raw-expression-input-template").fill("Hello clean template v1");
       } else {
-        await page
-          .getByTestId("node-config-input-template")
-          .fill("Hello clean template v1");
+        await page.getByTestId("node-config-input-template").fill("Hello clean template v1");
       }
     }
     await page.getByTestId("inspector-node-save").click();
@@ -180,9 +166,7 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
     await page.getByTestId("topbar-redo-button").click();
     await expect(readinessBadge).toContainText("Ready");
     await expect(page.getByTestId("topbar-undo-button")).toBeEnabled();
-    expect(await page.getByTestId("topbar-revision-badge").textContent()).not.toBe(
-      revBeforeUndo,
-    );
+    expect(await page.getByTestId("topbar-revision-badge").textContent()).not.toBe(revBeforeUndo);
 
     // Test keyboard Ctrl+Z and Ctrl+Shift+Z on window
     await page.locator("body").click({ position: { x: 10, y: 10 } });
@@ -195,74 +179,69 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
     await expect(page.getByTestId("topbar-undo-button")).toBeEnabled();
 
     // 4. Visual Diff Overlay on the Workflow Canvas
-    const revBeforeAiDiffText =
-      (await page.getByTestId("topbar-revision-badge").textContent()) ?? "r10";
+    const revBeforeAiDiffText = (await page.getByTestId("topbar-revision-badge").textContent()) ?? "r10";
     const revBeforeAiDiff = Number(revBeforeAiDiffText.replace(/^r/, ""));
 
     // AI commits a revision that removes httpNodeId, adds node-ai-added, and updates tplNodeId
     // AD-V8: the AI's edit removes a node (destructive), so it is a proposal that Alice accepts in Studio; the accepted
     // commit is the AI's revision the canvas diffs.
     const aiDiffRes = await e2eAgentOpsWithReview(projectSlug, {
-          author: { type: "agent", id: "claude-1", client: "Claude Desktop" },
-          summary: "AI refactored workflow nodes",
-          ops: [
+      author: { type: "agent", id: "claude-1", client: "Claude Desktop" },
+      summary: "AI refactored workflow nodes",
+      ops: [
+        {
+          opId: "ai-diff-2",
+          type: "remove_node",
+          workflowId: "wf-validation-diff-flow",
+          nodeId: httpNodeId,
+        },
+        {
+          opId: "ai-diff-3",
+          type: "update_node",
+          workflowId: "wf-validation-diff-flow",
+          nodeId: tplNodeId,
+          patch: {
+            label: "Format Template v2",
+            data: { template: "Hello AI updated template v2" },
+          },
+        },
+        {
+          opId: "ai-diff-4",
+          type: "add_node",
+          workflowId: "wf-validation-diff-flow",
+          node: {
+            id: "node-ai-added",
+            type: "core.http_request",
+            label: "AI Webhook Dispatch",
+            data: { method: "post", timeoutMs: 5000, url: "https://ai.example.com/hook" },
+          },
+        },
+        {
+          opId: "ai-diff-5",
+          type: "connect_edges",
+          workflowId: "wf-validation-diff-flow",
+          edges: [
             {
-              opId: "ai-diff-2",
-              type: "remove_node",
-              workflowId: "wf-validation-diff-flow",
-              nodeId: httpNodeId,
-            },
-            {
-              opId: "ai-diff-3",
-              type: "update_node",
-              workflowId: "wf-validation-diff-flow",
-              nodeId: tplNodeId,
-              patch: {
-                label: "Format Template v2",
-                data: { template: "Hello AI updated template v2" },
-              },
-            },
-            {
-              opId: "ai-diff-4",
-              type: "add_node",
-              workflowId: "wf-validation-diff-flow",
-              node: {
-                id: "node-ai-added",
-                type: "core.http_request",
-                label: "AI Webhook Dispatch",
-                data: { method: "post", timeoutMs: 5000, url: "https://ai.example.com/hook" },
-              },
-            },
-            {
-              opId: "ai-diff-5",
-              type: "connect_edges",
-              workflowId: "wf-validation-diff-flow",
-              edges: [
-                {
-                  id: "e-tpl-ai-added",
-                  source: tplNodeId,
-                  target: "node-ai-added",
-                  sourceHandle: "out",
-                  targetHandle: "in",
-                },
-              ],
+              id: "e-tpl-ai-added",
+              source: tplNodeId,
+              target: "node-ai-added",
+              sourceHandle: "out",
+              targetHandle: "in",
             },
           ],
-        });
+        },
+      ],
+    });
     expect(aiDiffRes.status).toBe(200);
     const aiDiffPayload = aiDiffRes.body as { revision: number };
     const revAfterAiDiff = aiDiffPayload.revision;
-    await expect(page.getByTestId("topbar-revision-badge")).toHaveText(
-      `r${revAfterAiDiff}`,
-    );
+    await expect(page.getByTestId("topbar-revision-badge")).toHaveText(`r${revAfterAiDiff}`);
 
     // Open History & AI Change Ledger and click Compare on Canvas between revBeforeAiDiff and revAfterAiDiff
     await page.getByTestId("nav-tab-history").click();
     await expect(page.getByTestId("view-history")).toBeVisible();
 
-    await page
-      .getByTestId("diff-from-select")
-      .selectOption(String(revBeforeAiDiff));
+    await page.getByTestId("diff-from-select").selectOption(String(revBeforeAiDiff));
     await page.getByTestId("diff-to-select").selectOption(String(revAfterAiDiff));
     await page.getByTestId("compare-on-canvas-button").click();
 
@@ -270,15 +249,9 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
     await expect(page.getByTestId("canvas-visual-diff-banner")).toBeVisible();
 
     // Verify + Added, - Removed (ghosted dashed), and ~ Changed badges on canvas
-    await expect(page.getByTestId("diff-badge-added-node-ai-added")).toContainText(
-      "+ Added",
-    );
-    await expect(page.getByTestId(`diff-badge-removed-${httpNodeId}`)).toContainText(
-      "- Removed",
-    );
-    await expect(page.getByTestId(`diff-badge-changed-${tplNodeId}`)).toContainText(
-      "~ Changed",
-    );
+    await expect(page.getByTestId("diff-badge-added-node-ai-added")).toContainText("+ Added");
+    await expect(page.getByTestId(`diff-badge-removed-${httpNodeId}`)).toContainText("- Removed");
+    await expect(page.getByTestId(`diff-badge-changed-${tplNodeId}`)).toContainText("~ Changed");
 
     // Click ~ Changed node to inspect side-by-side field diff in Right Dock Inspector
     await page.getByTestId(`canvas-node-${tplNodeId}`).click();
@@ -301,44 +274,37 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
       const toggleBtn = page.getByTestId("toggle-raw-expression-template");
       if (await toggleBtn.isVisible()) {
         await toggleBtn.click();
-        await page
-          .getByTestId("raw-expression-input-template")
-          .fill("Human draft template v3");
+        await page.getByTestId("raw-expression-input-template").fill("Human draft template v3");
       } else {
-        await page
-          .getByTestId("node-config-input-template")
-          .fill("Human draft template v3");
+        await page.getByTestId("node-config-input-template").fill("Human draft template v3");
       }
     }
 
     // Concurrently, AI commits a conflicting update to the same node (`tplNodeId`)
-    const conflictRes = await request.post(
-      `http://127.0.0.1:8787/api/projects/${encodeURIComponent(projectSlug)}/ops`,
-      {
-        headers: {
-          authorization: `Bearer ${await e2eProjectToken(projectSlug)}`,
-          "content-type": "application/json",
-        },
-        data: {
-          author: { type: "agent", id: "claude-1", client: "Claude Desktop" },
-          summary: "AI concurrent edit to Format Template",
-          mode: "apply", // AD-V8: a preview-safe edit an agent may apply directly
-          ops: [
-            {
-              opId: "ai-conflict-1",
-              type: "update_node",
-              workflowId: "wf-validation-diff-flow",
-              nodeId: tplNodeId,
-              patch: {
-                data: {
-                  template: "AI concurrent template v3",
-                },
+    const conflictRes = await request.post(`http://127.0.0.1:8787/api/projects/${encodeURIComponent(projectSlug)}/ops`, {
+      headers: {
+        authorization: `Bearer ${await e2eProjectToken(projectSlug)}`,
+        "content-type": "application/json",
+      },
+      data: {
+        author: { type: "agent", id: "claude-1", client: "Claude Desktop" },
+        summary: "AI concurrent edit to Format Template",
+        mode: "apply", // AD-V8: a preview-safe edit an agent may apply directly
+        ops: [
+          {
+            opId: "ai-conflict-1",
+            type: "update_node",
+            workflowId: "wf-validation-diff-flow",
+            nodeId: tplNodeId,
+            patch: {
+              data: {
+                template: "AI concurrent template v3",
               },
             },
-          ],
-        },
+          },
+        ],
       },
-    );
+    });
     expect(conflictRes.ok()).toBe(true);
 
     // Same-Object Conflict Card appears in the Right Dock Inspector
@@ -356,8 +322,6 @@ test.describe("Inline Validation, Multi-Step Undo/Redo, Canvas Visual Diff & Con
     await page.getByTestId("project-selector").selectOption(projectSlug);
     await page.getByTestId("nav-tab-workflows").click();
     await page.getByTestId(`canvas-node-${tplNodeId}`).click();
-    await expect(page.getByTestId("inspector-node-detail")).toContainText(
-      "Human draft template v3",
-    );
+    await expect(page.getByTestId("inspector-node-detail")).toContainText("Human draft template v3");
   });
 });

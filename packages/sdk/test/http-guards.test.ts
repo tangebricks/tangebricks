@@ -18,10 +18,7 @@ function req(method: string, url: string, headers: Record<string, string> = {}):
 
 describe("http guards (story 0.14)", () => {
   test("PX_ALLOWED_ORIGINS parsing keeps origins only: no wildcard, no paths, no junk", () => {
-    expect(parseAllowedOrigins("https://a.example, https://b.example/path ,*, not a url,")).toEqual([
-      "https://a.example",
-      "https://b.example",
-    ]);
+    expect(parseAllowedOrigins("https://a.example, https://b.example/path ,*, not a url,")).toEqual(["https://a.example", "https://b.example"]);
     expect(parseAllowedOrigins(undefined)).toEqual([]);
   });
 
@@ -55,9 +52,7 @@ describe("http guards (story 0.14)", () => {
     expect(checkCsrf(req("PATCH", url, { cookie: COOKIE }), [])?.status).toBe(403);
     expect(checkCsrf(req("PUT", url, { cookie: COOKIE, origin: "null" }), [])?.status).toBe(403);
     // Origin "null" is refused even with a same-origin Referer: Referer counts only when Origin is absent.
-    expect(
-      checkCsrf(req("POST", url, { cookie: COOKIE, origin: "null", referer: "https://app.example/page" }), [])?.status,
-    ).toBe(403);
+    expect(checkCsrf(req("POST", url, { cookie: COOKIE, origin: "null", referer: "https://app.example/page" }), [])?.status).toBe(403);
     // Origin absent: a same-origin Referer is accepted.
     expect(checkCsrf(req("POST", url, { cookie: COOKIE, referer: "https://app.example/page" }), [])).toBeNull();
     // Allowed: same origin, Sec-Fetch-Site same-origin, listed origin, bearer, no session cookie, safe method, exempt path.
@@ -75,17 +70,15 @@ describe("http guards (story 0.14)", () => {
   });
 
   test("preflight: allowed origin gets credentials and never `*`; unlisted origin gets no allow headers", () => {
-    const ok = handlePreflight(
-      req("OPTIONS", "https://app.example/api/x", { origin: "https://ui.example", "access-control-request-method": "POST" }),
-      ["https://ui.example"],
-    );
+    const ok = handlePreflight(req("OPTIONS", "https://app.example/api/x", { origin: "https://ui.example", "access-control-request-method": "POST" }), [
+      "https://ui.example",
+    ]);
     expect(ok?.status).toBe(204);
     expect(ok?.headers.get("access-control-allow-origin")).toBe("https://ui.example");
     expect(ok?.headers.get("access-control-allow-credentials")).toBe("true");
-    const denied = handlePreflight(
-      req("OPTIONS", "https://app.example/api/x", { origin: "https://evil.example", "access-control-request-method": "POST" }),
-      ["https://ui.example"],
-    );
+    const denied = handlePreflight(req("OPTIONS", "https://app.example/api/x", { origin: "https://evil.example", "access-control-request-method": "POST" }), [
+      "https://ui.example",
+    ]);
     expect(denied?.headers.get("access-control-allow-origin")).toBeNull();
     expect(handlePreflight(req("OPTIONS", "https://app.example/api/x"), [])).toBeNull();
   });

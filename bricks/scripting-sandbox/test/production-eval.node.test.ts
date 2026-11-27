@@ -33,12 +33,14 @@ describe("Production eval constraint confirmation (R) - UC6.6 Task 1", () => {
     });
 
     const script = bundled.outputFiles[0].text;
-    mf = new Miniflare(convertV4MiniflareOptions({
-      modules: true,
-      script,
-      compatibilityDate: "2026-10-01",
-      d1Databases: ["DB"],
-    }));
+    mf = new Miniflare(
+      convertV4MiniflareOptions({
+        modules: true,
+        script,
+        compatibilityDate: "2026-10-01",
+        d1Databases: ["DB"],
+      }),
+    );
   });
 
   afterAll(async () => {

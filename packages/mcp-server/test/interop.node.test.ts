@@ -83,23 +83,52 @@ describe("the official MCP client against this server", () => {
     const text = (result: Awaited<ReturnType<Client["callTool"]>>) => (result.content as Array<{ type: string; text: string }>)[0]!.text;
     expect((await client.callTool({ name: "list_bricks", arguments: {} })).isError).toBeFalsy();
     // AD-V8: enable_brick refuses a money brick for an agent; the agent proposes and a person accepts in Studio.
-    const refused = await client.callTool({ name: "enable_brick", arguments: { project: "interop", bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"] } });
+    const refused = await client.callTool({
+      name: "enable_brick",
+      arguments: { project: "interop", bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"] },
+    });
     expect(refused.isError).toBe(true);
     expect(JSON.parse(text(refused)).error.code).toBe("PROPOSAL_REQUIRED");
     const proposed = await client.callTool({
       name: "apply_ops",
-      arguments: { project: "interop", ops: ["multi-workspace", "credit-wallet", "dynamic-entities"].map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId })) },
+      arguments: {
+        project: "interop",
+        ops: ["multi-workspace", "credit-wallet", "dynamic-entities"].map((brickId) => ({ opId: `enable-${brickId}`, type: "enable_brick", brickId })),
+      },
     });
     expect(proposed.isError, text(proposed)).toBeFalsy();
     const pending = JSON.parse(text(proposed)) as { status: string; proposalId: string };
     expect(pending.status).toBe("pending");
-    const accepted = await blueprintClient.acceptProposal!({ project: "interop", proposalId: pending.proposalId, reviewer: { type: "human", id: "interop:reviewer" } });
+    const accepted = await blueprintClient.acceptProposal!({
+      project: "interop",
+      proposalId: pending.proposalId,
+      reviewer: { type: "human", id: "interop:reviewer" },
+    });
     expect(accepted.ok).toBe(true);
-    const defined = await client.callTool({ name: "define_entity", arguments: { project: "interop", entities: [{ name: "invoices", fields: [{ name: "client_name", type: "text", required: true }, { name: "amount", type: "number" }] }] } });
+    const defined = await client.callTool({
+      name: "define_entity",
+      arguments: {
+        project: "interop",
+        entities: [
+          {
+            name: "invoices",
+            fields: [
+              { name: "client_name", type: "text", required: true },
+              { name: "amount", type: "number" },
+            ],
+          },
+        ],
+      },
+    });
     expect(defined.isError, text(defined)).toBeFalsy();
     const built = await client.callTool({ name: "build_project", arguments: { project: "interop" } });
     expect(built.isError, text(built)).toBeFalsy();
-    expect(JSON.parse(text(built))).toMatchObject({ project: "interop", files: 15, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
+    expect(JSON.parse(text(built))).toMatchObject({
+      project: "interop",
+      files: 15,
+      bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"],
+      entities: ["invoices"],
+    });
     await client.close();
   });
 

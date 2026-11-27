@@ -150,9 +150,7 @@ test.describe("Story 7.2 — Draft Branch / Proposal Mode, Visual Diff Review & 
     // 5. Click "Review Visual Diff" -> enters Visual Diff Review Mode
     await page.getByTestId("review-latest-proposal-button").click();
     await expect(page.getByTestId("proposal-review-bar")).toBeVisible();
-    await expect(page.getByTestId("proposal-accept-selected")).toContainText(
-      "Accept selected (4/4)",
-    );
+    await expect(page.getByTestId("proposal-accept-selected")).toContainText("Accept selected (4/4)");
 
     // Verify added node (+ Added), modified node (~ Changed), and removed node (- Removed) on canvas
     const addedNode = page.getByTestId("canvas-node-node-added");
@@ -165,28 +163,16 @@ test.describe("Story 7.2 — Draft Branch / Proposal Mode, Visual Diff Review & 
 
     // Verify computed visual styles (border colors + strikethrough on removed node label)
     const styles = await page.evaluate(() => {
-      const addedEl = document.querySelector(
-        '[data-testid="canvas-node-node-added"]',
-      ) as HTMLElement | null;
-      const modifiedEl = document.querySelector(
-        '[data-testid="canvas-node-node-pick"]',
-      ) as HTMLElement | null;
-      const removedEl = document.querySelector(
-        '[data-testid="canvas-node-node-legacy"]',
-      ) as HTMLElement | null;
+      const addedEl = document.querySelector('[data-testid="canvas-node-node-added"]') as HTMLElement | null;
+      const modifiedEl = document.querySelector('[data-testid="canvas-node-node-pick"]') as HTMLElement | null;
+      const removedEl = document.querySelector('[data-testid="canvas-node-node-legacy"]') as HTMLElement | null;
       const removedLabelEl = removedEl?.querySelector(".line-through") as HTMLElement | null;
 
       return {
         addedBorderColor: addedEl ? window.getComputedStyle(addedEl).borderColor : "",
-        modifiedBorderColor: modifiedEl
-          ? window.getComputedStyle(modifiedEl).borderColor
-          : "",
-        removedBorderStyle: removedEl
-          ? window.getComputedStyle(removedEl).borderStyle
-          : "",
-        removedTextDecoration: removedLabelEl
-          ? window.getComputedStyle(removedLabelEl).textDecorationLine
-          : "",
+        modifiedBorderColor: modifiedEl ? window.getComputedStyle(modifiedEl).borderColor : "",
+        removedBorderStyle: removedEl ? window.getComputedStyle(removedEl).borderStyle : "",
+        removedTextDecoration: removedLabelEl ? window.getComputedStyle(removedLabelEl).textDecorationLine : "",
       };
     });
     expect(styles.addedBorderColor).not.toBe("");
@@ -197,12 +183,8 @@ test.describe("Story 7.2 — Draft Branch / Proposal Mode, Visual Diff Review & 
     // Click modified node -> verify side-by-side parameter diff in RightDock Inspector
     await modifiedNode.click();
     await expect(page.getByTestId("inspector-node-side-by-side-diff")).toBeVisible();
-    await expect(page.getByTestId("inspector-node-side-by-side-diff")).toContainText(
-      "title",
-    );
-    await expect(page.getByTestId("inspector-node-side-by-side-diff")).toContainText(
-      "invoice.normalized_title",
-    );
+    await expect(page.getByTestId("inspector-node-side-by-side-diff")).toContainText("title");
+    await expect(page.getByTestId("inspector-node-side-by-side-diff")).toContainText("invoice.normalized_title");
 
     // 6. Verify Visual Diff Review Mode survives full page reload (F5)
     await page.reload();
@@ -214,12 +196,8 @@ test.describe("Story 7.2 — Draft Branch / Proposal Mode, Visual Diff Review & 
     // 7. Per-op dependency guard: deselect `prop-add-node` while keeping `prop-connect-edge`
     await page.getByTestId("proposal-op-checkbox-prop-add-node").uncheck();
     await expect(page.getByTestId("proposal-validation-error")).toBeVisible();
-    await expect(page.getByTestId("proposal-validation-error")).toContainText(
-      'references missing target node "node-added"',
-    );
-    await expect(page.getByTestId("proposal-validation-error")).toContainText(
-      "422 VALIDATION_FAILED",
-    );
+    await expect(page.getByTestId("proposal-validation-error")).toContainText('references missing target node "node-added"');
+    await expect(page.getByTestId("proposal-validation-error")).toContainText("422 VALIDATION_FAILED");
     await expect(page.getByTestId("proposal-accept-selected")).toBeDisabled();
 
     // 8. Re-select `prop-add-node` and deselect `prop-remove-node` (keep `node-legacy`) -> Accept selected (3/4)
@@ -227,9 +205,7 @@ test.describe("Story 7.2 — Draft Branch / Proposal Mode, Visual Diff Review & 
     await page.getByTestId("proposal-op-checkbox-prop-remove-node").uncheck();
     await expect(page.getByTestId("proposal-validation-error")).toHaveCount(0);
     await expect(page.getByTestId("proposal-accept-selected")).toBeEnabled();
-    await expect(page.getByTestId("proposal-accept-selected")).toContainText(
-      "Accept selected (3/4)",
-    );
+    await expect(page.getByTestId("proposal-accept-selected")).toContainText("Accept selected (3/4)");
 
     await page.getByTestId("proposal-accept-selected").click();
 
@@ -271,9 +247,7 @@ test.describe("Story 7.2 — Draft Branch / Proposal Mode, Visual Diff Review & 
                 entity: {
                   name: "audit_logs",
                   workspaceScoped: true,
-                  fields: [
-                    { name: "action_name", type: "text", required: true, maxLength: 120 },
-                  ],
+                  fields: [{ name: "action_name", type: "text", required: true, maxLength: 120 }],
                 },
               },
             ],
@@ -296,9 +270,7 @@ test.describe("Story 7.2 — Draft Branch / Proposal Mode, Visual Diff Review & 
 
     // Jump to Bricks Diff view and verify `diff-badge-brick-changed-credit-wallet`
     await page.getByTestId("proposal-jump-bricks").click();
-    await expect(
-      page.getByTestId("diff-badge-brick-changed-credit-wallet").first(),
-    ).toBeVisible();
+    await expect(page.getByTestId("diff-badge-brick-changed-credit-wallet").first()).toBeVisible();
 
     // Jump to Entities Diff view and verify `diff-badge-entity-added-audit_logs`
     await page.getByTestId("proposal-jump-entities").click();
@@ -312,12 +284,8 @@ test.describe("Story 7.2 — Draft Branch / Proposal Mode, Visual Diff Review & 
     // 10. Navigate to History & Activity Feed view and verify proposal statuses + Unified Activity Feed author filters
     await page.getByTestId("nav-tab-history").click();
     await expect(page.getByTestId("history-proposals-section")).toBeVisible();
-    await expect(
-      page.getByTestId(`proposal-status-badge-${proposalPayload1.proposalId}`),
-    ).toContainText("partially accepted");
-    await expect(
-      page.getByTestId(`proposal-status-badge-${proposalPayload2.proposalId}`),
-    ).toContainText("rejected");
+    await expect(page.getByTestId(`proposal-status-badge-${proposalPayload1.proposalId}`)).toContainText("partially accepted");
+    await expect(page.getByTestId(`proposal-status-badge-${proposalPayload2.proposalId}`)).toContainText("rejected");
 
     const activityFeed = page.getByTestId("unified-activity-feed");
     await expect(activityFeed).toBeVisible();

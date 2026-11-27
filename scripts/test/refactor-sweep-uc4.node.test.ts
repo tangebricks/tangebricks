@@ -31,10 +31,9 @@ describe("UC4.6 — Refactor sweep (UC4)", () => {
     }
 
     scan(WH_SRC);
-    expect(
-      hits,
-      `Expected no occurrences of verifyHmacSignature or verifyStripeSignature in ${WH_SRC}, but found: ${JSON.stringify(hits, null, 2)}`,
-    ).toEqual([]);
+    expect(hits, `Expected no occurrences of verifyHmacSignature or verifyStripeSignature in ${WH_SRC}, but found: ${JSON.stringify(hits, null, 2)}`).toEqual(
+      [],
+    );
   });
 
   it("Task 2: superseded helpers are not exported from crypto.ts or index.ts, while required sign helpers remain", async () => {
@@ -42,22 +41,10 @@ describe("UC4.6 — Refactor sweep (UC4)", () => {
     const indexModule = await import("../../bricks/webhook-gateway/src/index.ts");
 
     // Superseded helpers must NOT be exported
-    expect(
-      (cryptoModule as Record<string, unknown>).verifyHmacSignature,
-      "verifyHmacSignature must not be exported from crypto.ts",
-    ).toBeUndefined();
-    expect(
-      (cryptoModule as Record<string, unknown>).verifyStripeSignature,
-      "verifyStripeSignature must not be exported from crypto.ts",
-    ).toBeUndefined();
-    expect(
-      (indexModule as Record<string, unknown>).verifyHmacSignature,
-      "verifyHmacSignature must not be exported from index.ts",
-    ).toBeUndefined();
-    expect(
-      (indexModule as Record<string, unknown>).verifyStripeSignature,
-      "verifyStripeSignature must not be exported from index.ts",
-    ).toBeUndefined();
+    expect((cryptoModule as Record<string, unknown>).verifyHmacSignature, "verifyHmacSignature must not be exported from crypto.ts").toBeUndefined();
+    expect((cryptoModule as Record<string, unknown>).verifyStripeSignature, "verifyStripeSignature must not be exported from crypto.ts").toBeUndefined();
+    expect((indexModule as Record<string, unknown>).verifyHmacSignature, "verifyHmacSignature must not be exported from index.ts").toBeUndefined();
+    expect((indexModule as Record<string, unknown>).verifyStripeSignature, "verifyStripeSignature must not be exported from index.ts").toBeUndefined();
 
     // Required sign helpers used by tests must remain exported
     expect(typeof cryptoModule.signHmacSha256).toBe("function");

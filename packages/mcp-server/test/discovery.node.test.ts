@@ -193,11 +193,22 @@ describe("compact, paged discovery and get_brick (AC 1, AC 2, AC 3)", () => {
   });
 
   test("story 0.11 LIST_DEFAULT: search_bricks by query hides quarantined bricks unless maturity='experimental' is asked for", async () => {
-    for (const [query, id] of [["splits", "marketplace-splits"], ["presence", "realtime-presence"], ["oauth", "oauth-server"], ["domain", "custom-domains"]] as const) {
+    for (const [query, id] of [
+      ["splits", "marketplace-splits"],
+      ["presence", "realtime-presence"],
+      ["oauth", "oauth-server"],
+      ["domain", "custom-domains"],
+    ] as const) {
       const hidden = (await callMcpTool("search_bricks", { query, limit: 10 })).json() as { items: Array<{ id: string }> };
-      expect(hidden.items.map((i) => i.id), query).not.toContain(id);
+      expect(
+        hidden.items.map((i) => i.id),
+        query,
+      ).not.toContain(id);
       const shown = (await callMcpTool("search_bricks", { query, maturity: "experimental", limit: 10 })).json() as { items: Array<{ id: string }> };
-      expect(shown.items.map((i) => i.id), query).toContain(id);
+      expect(
+        shown.items.map((i) => i.id),
+        query,
+      ).toContain(id);
     }
   });
 
@@ -225,7 +236,8 @@ describe("compact, paged discovery and get_brick (AC 1, AC 2, AC 3)", () => {
       summary: "Atomic double-entry credit ledger, balance invariant engine, and idempotency keys.",
       category: "billing",
       maturity: "beta",
-      maturityReason: "NO_DEFAULT_ADAPTER: Provider adapters exist (@poc/gateway-adapters) but none is wired by default; payment routes answer 503 NOT_CONFIGURED until a host passes a gateway and a currency.",
+      maturityReason:
+        "NO_DEFAULT_ADAPTER: Provider adapters exist (@poc/gateway-adapters) but none is wired by default; payment routes answer 503 NOT_CONFIGURED until a host passes a gateway and a currency.",
       provides: ["credit-wallet"],
       needs: ["workspace-context"],
       settings: {

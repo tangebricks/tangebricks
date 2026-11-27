@@ -80,31 +80,25 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
     expect(opsR1Res.ok()).toBe(true);
 
     // 2. Execute a succeeded run at r1 (`run_e2e_r1`) and a failed webhook run (`run_e2e_r1_fail`) for filtering
-    const runR1Res = await request.post(
-      `/api/projects/${project}/workflows/wf_replay_e2e/runs`,
-      {
-        headers: authHeaders,
-        data: {
-          runId: "run_e2e_r1",
-          triggerType: "manual",
-          triggerPayload: { amount: 30, a: 300, b: 10, workspaceId: "ws_e2e" },
-        },
+    const runR1Res = await request.post(`/api/projects/${project}/workflows/wf_replay_e2e/runs`, {
+      headers: authHeaders,
+      data: {
+        runId: "run_e2e_r1",
+        triggerType: "manual",
+        triggerPayload: { amount: 30, a: 300, b: 10, workspaceId: "ws_e2e" },
       },
-    );
+    });
     expect(runR1Res.ok()).toBe(true);
     expect(((await runR1Res.json()) as { runStatus: string }).runStatus).toBe("succeeded");
 
-    const runR1FailRes = await request.post(
-      `/api/projects/${project}/workflows/wf_replay_e2e/runs`,
-      {
-        headers: authHeaders,
-        data: {
-          runId: "run_e2e_r1_fail",
-          triggerType: "webhook",
-          triggerPayload: { amount: 30, a: 300, b: 0, workspaceId: "ws_e2e" },
-        },
+    const runR1FailRes = await request.post(`/api/projects/${project}/workflows/wf_replay_e2e/runs`, {
+      headers: authHeaders,
+      data: {
+        runId: "run_e2e_r1_fail",
+        triggerType: "webhook",
+        triggerPayload: { amount: 30, a: 300, b: 0, workspaceId: "ws_e2e" },
       },
-    );
+    });
     expect(runR1FailRes.ok()).toBe(true);
     const runR1FailBody = (await runR1FailRes.json()) as { runStatus: string; failed: Record<string, string> };
     expect(runR1FailBody.runStatus).toBe("failed");
@@ -113,31 +107,31 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
     // 3. Mutate blueprint to r2 by removing `step_audit_r1`
     // AD-V8: removing a node is destructive, so the agent's edit is proposed and Alice accepts it in Studio.
     const opsR2Res = await e2eAgentOpsWithReview(project, {
-        baseRevision: 1,
-        author: { type: "human", id: "alice" },
-        ops: [
-          {
-            opId: "op-r2-rm",
-            type: "remove_node",
-            workflowId: "wf_replay_e2e",
-            nodeId: "step_audit_r1",
-          },
-          {
-            opId: "op-r2-edge",
-            type: "connect_edges",
-            workflowId: "wf_replay_e2e",
-            edges: [
-              {
-                id: "e_r2",
-                source: "step_trigger",
-                sourceHandle: "out",
-                target: "step_divide",
-                targetHandle: "in",
-              },
-            ],
-          },
-        ],
-      });
+      baseRevision: 1,
+      author: { type: "human", id: "alice" },
+      ops: [
+        {
+          opId: "op-r2-rm",
+          type: "remove_node",
+          workflowId: "wf_replay_e2e",
+          nodeId: "step_audit_r1",
+        },
+        {
+          opId: "op-r2-edge",
+          type: "connect_edges",
+          workflowId: "wf_replay_e2e",
+          edges: [
+            {
+              id: "e_r2",
+              source: "step_trigger",
+              sourceHandle: "out",
+              target: "step_divide",
+              targetHandle: "in",
+            },
+          ],
+        },
+      ],
+    });
     expect(opsR2Res.status).toBe(200);
 
     // 4. Open Studio UI in browser, sign in as Alice, and open Workflows canvas
@@ -192,17 +186,13 @@ test.describe("Run History drawer, filtering, historical revision replay, and Ru
     expect(Number.parseFloat(bannerStyles.borderRadius)).toBeGreaterThan(0);
     expect(bannerStyles.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
 
-    await expect(
-      page.getByTestId("run-replay-historical-rev-badge"),
-    ).toBeVisible();
+    await expect(page.getByTestId("run-replay-historical-rev-badge")).toBeVisible();
     await expect(page.getByTestId("canvas-node-step_audit_r1")).toBeVisible();
 
     // 7. Click `step_audit_r1` and verify Run Replay Inspector panel in RightDock
     await page.getByTestId("canvas-node-step_audit_r1").click();
     await expect(page.getByTestId("inspector-run-replay-panel")).toBeVisible();
-    await expect(page.getByTestId("replay-node-output-preview")).toContainText(
-      '"amount": 30',
-    );
+    await expect(page.getByTestId("replay-node-output-preview")).toContainText('"amount": 30');
 
     // 8. Exit Replay and verify current r2 graph is restored
     await page.getByTestId("exit-run-replay-button").click();

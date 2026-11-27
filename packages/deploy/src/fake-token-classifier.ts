@@ -10,10 +10,7 @@ import type { CloudflareAccountSummary, CloudflarePermissionScope, RegisteredMoc
  * with no registered tokens): a real client always asks Cloudflare, so a "cf_revoked_token" string sent to it is simply a
  * token Cloudflare does not know.
  */
-export function synthesizeDeterministicTokenEntry(
-  rawToken: string,
-  requestedAccountId?: string,
-): RegisteredMockToken | null {
+export function synthesizeDeterministicTokenEntry(rawToken: string, requestedAccountId?: string): RegisteredMockToken | null {
   const trimmed = rawToken.trim();
   if (!trimmed || trimmed.length < 8) {
     return null;
@@ -21,23 +18,13 @@ export function synthesizeDeterministicTokenEntry(
 
   const lower = trimmed.toLowerCase();
   const normalizedAccountId =
-    requestedAccountId && /^[0-9a-fA-F]{32}$/.test(requestedAccountId.trim())
-      ? requestedAccountId.trim().toLowerCase()
-      : "abcdef0123456789abcdef0123456789";
+    requestedAccountId && /^[0-9a-fA-F]{32}$/.test(requestedAccountId.trim()) ? requestedAccountId.trim().toLowerCase() : "abcdef0123456789abcdef0123456789";
 
-  if (
-    lower.startsWith("cf_invalid") ||
-    lower.startsWith("cf_bad") ||
-    lower.includes("invalid_token")
-  ) {
+  if (lower.startsWith("cf_invalid") || lower.startsWith("cf_bad") || lower.includes("invalid_token")) {
     return null;
   }
 
-  if (
-    lower.startsWith("cf_global_key") ||
-    lower.includes("global_api_key") ||
-    /^[0-9a-f]{37}$/i.test(trimmed)
-  ) {
+  if (lower.startsWith("cf_global_key") || lower.includes("global_api_key") || /^[0-9a-f]{37}$/i.test(trimmed)) {
     return {
       token: trimmed,
       tokenId: "cf_tok_global_key",
@@ -62,11 +49,7 @@ export function synthesizeDeterministicTokenEntry(
     };
   }
 
-  if (
-    lower.startsWith("cf_revoked") ||
-    lower.startsWith("cf_disabled") ||
-    lower.includes("revoked_token")
-  ) {
+  if (lower.startsWith("cf_revoked") || lower.startsWith("cf_disabled") || lower.includes("revoked_token")) {
     return {
       token: trimmed,
       tokenId: "cf_tok_disabled",
@@ -78,9 +61,7 @@ export function synthesizeDeterministicTokenEntry(
     };
   }
 
-  const grantedScopes = new Set<CloudflarePermissionScope>(
-    REQUIRED_CLOUDFLARE_PERMISSIONS,
-  );
+  const grantedScopes = new Set<CloudflarePermissionScope>(REQUIRED_CLOUDFLARE_PERMISSIONS);
   if (lower.includes("missing_workers") || lower.includes("no_workers")) {
     grantedScopes.delete("Workers Scripts: Edit");
   }
@@ -107,8 +88,7 @@ export function synthesizeDeterministicTokenEntry(
         subdomain: "acme-sandbox",
       },
     ];
-    const chosen =
-      accounts.find((a) => a.id === normalizedAccountId) ?? accounts[0]!;
+    const chosen = accounts.find((a) => a.id === normalizedAccountId) ?? accounts[0]!;
     return {
       token: trimmed,
       tokenId: "cf_tok_multi",

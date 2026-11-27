@@ -31,7 +31,9 @@ export function scanAssemblerForBrickNames(repoRoot = defaultRoot): NameScan {
     for (const setting of Object.keys(manifest.settings)) names.add(setting);
   }
   const dir = join(repoRoot, "packages", "assembler", "src");
-  const sources = readdirSync(dir).filter((f) => f.endsWith(".ts")).map((file) => ({ file, text: readFileSync(join(dir, file), "utf8") }));
+  const sources = readdirSync(dir)
+    .filter((f) => f.endsWith(".ts"))
+    .map((file) => ({ file, text: readFileSync(join(dir, file), "utf8") }));
   const found = sources.flatMap(({ file, text }) => [...names].filter((name) => text.includes(name)).map((name) => `${file}: ${name}`));
   return { found, namesChecked: names.size, filesScanned: sources.length };
 }
@@ -102,13 +104,19 @@ export function scanForEntityNames(entities: ReadonlyArray<DeclaredEntity>, asse
       emittedScanned += 1;
       if (path === "src/index.ts") {
         // only the guard lines and the readiness manifest's migration file names, which the assembler writes from the declaration, may name an entity
-        const withoutGuards = text.split("\n").filter((line) => !/^app\.use\("\/api\/[a-z0-9_]+(\/\*)?", \w+\);$/.test(line))
+        const withoutGuards = text
+          .split("\n")
+          .filter((line) => !/^app\.use\("\/api\/[a-z0-9_]+(\/\*)?", \w+\);$/.test(line))
           // the readiness manifest (UC8.4) lists migration file names, which are data: "0003_entity__<name>.sql"
-          .filter((line) => !/^\s+"name": "\d{4}_[A-Za-z0-9_.-]+\.sql",$/.test(line)).join("\n");
+          .filter((line) => !/^\s+"name": "\d{4}_[A-Za-z0-9_.-]+\.sql",$/.test(line))
+          .join("\n");
         for (const name of names) if (withoutGuards.includes(name)) found.push(`emitted ${path}: ${name}`);
       } else if (path === "src/privacy.generated.ts") {
         // the privacy table list (UC9.2) is data written from the declaration: only its `"table": "ent_<name>",` lines may name an entity
-        const withoutTables = text.split("\n").filter((line) => !/^\s+"table": "ent_[A-Za-z0-9_]+",$/.test(line)).join("\n");
+        const withoutTables = text
+          .split("\n")
+          .filter((line) => !/^\s+"table": "ent_[A-Za-z0-9_]+",$/.test(line))
+          .join("\n");
         for (const name of names) if (withoutTables.includes(name)) found.push(`emitted ${path}: ${name}`);
       } else {
         for (const name of names) if (text.includes(name)) found.push(`emitted ${path}: ${name}`);
@@ -122,5 +130,7 @@ export function scanForEntityNames(entities: ReadonlyArray<DeclaredEntity>, asse
 }
 
 function listTs(dir: string): string[] {
-  return readdirSync(dir).filter((f) => f.endsWith(".ts")).map((f) => join(dir, f));
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => join(dir, f));
 }

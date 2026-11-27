@@ -60,15 +60,7 @@ export type ChargeOutcome = { ok: true } | { ok: false; code: string };
 export interface CreditCharger {
   balanceMilli(db: D1Like, workspaceId: string): Promise<number>;
   debit(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId?: string): Promise<ChargeOutcome>;
-  refund(
-    db: D1Like,
-    workspaceId: string,
-    milli: number,
-    idempotencyKey: string,
-    againstKey: string,
-    reason: string,
-    userId?: string,
-  ): Promise<ChargeOutcome>;
+  refund(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, againstKey: string, reason: string, userId?: string): Promise<ChargeOutcome>;
   settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ milli: number } | null>;
 }
 
@@ -232,7 +224,7 @@ export interface LlmProviderAdapter {
   generate(
     prompt: string,
     model: string,
-    options?: { temperature?: number; maxTokens?: number }
+    options?: { temperature?: number; maxTokens?: number },
   ): Promise<{ text: string; promptTokens: number; completionTokens: number; modelUsed: string }>;
 }
 
@@ -249,10 +241,7 @@ export class MockLlmAdapter implements LlmProviderAdapter {
     this.shouldFail = shouldFail;
   }
 
-  async generate(
-    prompt: string,
-    model: string
-  ): Promise<{ text: string; promptTokens: number; completionTokens: number; modelUsed: string }> {
+  async generate(prompt: string, model: string): Promise<{ text: string; promptTokens: number; completionTokens: number; modelUsed: string }> {
     if (this.shouldFail) {
       throw new Error(`Provider ${this.name} temporarily unavailable (rate_limit_exceeded)`);
     }
@@ -279,12 +268,7 @@ export class LlmGatewayService {
   private readonly defaultProvider: string | undefined;
   private readonly fallbackProviders: string[];
 
-  constructor(
-    db: D1Like,
-    customProviders?: LlmProviderAdapter[],
-    defaultProvider?: string,
-    options: LlmGatewayOptions = {}
-  ) {
+  constructor(db: D1Like, customProviders?: LlmProviderAdapter[], defaultProvider?: string, options: LlmGatewayOptions = {}) {
     this.db = db;
     this.defaultProvider = defaultProvider;
     const billing = options.billing ?? "wallet";
@@ -319,11 +303,8 @@ export class LlmGatewayService {
     nameRaw: string,
     templateTextRaw: string,
     defaultModelRaw?: string,
-    temperature = 0.7
-  ): Promise<
-    | { ok: true; template: TemplateRecord }
-    | { ok: false; error: string; code: number; errorCode?: "MODEL_NOT_ALLOWED" | "TOO_MANY_PLACEHOLDERS" }
-  > {
+    temperature = 0.7,
+  ): Promise<{ ok: true; template: TemplateRecord } | { ok: false; error: string; code: number; errorCode?: "MODEL_NOT_ALLOWED" | "TOO_MANY_PLACEHOLDERS" }> {
     const name = nameRaw.trim();
     if (!name || name.length > 100) {
       return { ok: false, error: "Template name must be between 1 and 100 characters", code: 400 };
@@ -378,23 +359,14 @@ export class LlmGatewayService {
    * Retrieves a template by ID scoped to workspace.
    */
   async getTemplate(workspaceId: string, templateId: string): Promise<TemplateRecord | null> {
-    return scoped(this.db, workspaceId).first<TemplateRecord>(
-      "ai_prompt_templates",
-      "id = ?",
-      [templateId],
-    );
+    return scoped(this.db, workspaceId).first<TemplateRecord>("ai_prompt_templates", "id = ?", [templateId]);
   }
 
   /**
    * Lists prompt templates in a workspace.
    */
   async listTemplates(workspaceId: string): Promise<TemplateRecord[]> {
-    return scoped(this.db, workspaceId).select<TemplateRecord>(
-      "ai_prompt_templates",
-      undefined,
-      [],
-      { orderBy: "created_at DESC" },
-    );
+    return scoped(this.db, workspaceId).select<TemplateRecord>("ai_prompt_templates", undefined, [], { orderBy: "created_at DESC" });
   }
 
   /**
@@ -447,11 +419,8 @@ export class LlmGatewayService {
       model?: string;
       temperature?: number;
       maxTokens?: number;
-    }
-  ): Promise<
-    | { ok: true; result: LlmResult }
-    | { ok: false; error: string; code: number; errorCode?: CompleteErrorCode; correlationId?: string }
-  > {
+    },
+  ): Promise<{ ok: true; result: LlmResult } | { ok: false; error: string; code: number; errorCode?: CompleteErrorCode; correlationId?: string }> {
     let finalPrompt = options.prompt || "";
     let model = options.model || this.defaultModel;
     let temperature = options.temperature ?? 0.7;
@@ -512,9 +481,7 @@ export class LlmGatewayService {
     const logId = `ail_${crypto.randomUUID().replace(/-/g, "")}`;
     const promptCap = maxPromptTokens(finalPrompt);
     const reserved = costInCredits(rate, promptCap, maxTokens);
-    const money: Money | undefined = charger
-      ? { charger, workspaceId, userId, reserveKey: `ai:${logId}`, refundKey: `ai:${logId}:refund` }
-      : undefined;
+    const money: Money | undefined = charger ? { charger, workspaceId, userId, reserveKey: `ai:${logId}`, refundKey: `ai:${logId}:refund` } : undefined;
     const baseRow = {
       id: logId,
       user_id: userId,
@@ -737,14 +704,19 @@ export class LlmGatewayService {
       req_count: number;
     }
 
-    const row = await scoped(this.db, workspaceId).raw(`
+    const row = await scoped(this.db, workspaceId)
+      .raw(
+        `
       SELECT SUM(prompt_tokens) as total_prompt,
              SUM(completion_tokens) as total_comp,
              SUM(cost_credits) as total_cost,
              COUNT(*) as req_count
       FROM ai_generation_logs
       WHERE workspace_id = ? AND billing_status IN ('charged', 'refund_failed', 'not_billed')
-    `, [workspaceId]).first<StatsRow>();
+    `,
+        [workspaceId],
+      )
+      .first<StatsRow>();
 
     return {
       totalPromptTokens: row?.total_prompt ?? 0,

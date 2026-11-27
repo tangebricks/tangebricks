@@ -4,10 +4,7 @@ import { describe, expect, it } from "vitest";
 import { importIntegrationSpec } from "../src/importer.ts";
 import { swagger2ToOpenApi3 } from "../src/swagger2.ts";
 
-const FIXTURE_PATH = resolve(
-  __dirname,
-  "fixtures/swagger2/slack-chat-min.json",
-);
+const FIXTURE_PATH = resolve(__dirname, "fixtures/swagger2/slack-chat-min.json");
 
 describe("UC3.7 — Swagger 2.0 import and in-importer up-conversion", () => {
   const baseCuration = {
@@ -65,9 +62,7 @@ describe("UC3.7 — Swagger 2.0 import and in-importer up-conversion", () => {
 
     // 3. Auth requirement slackAuth mapped
     expect(result.manifest.auth.schemes?.slackAuth).toEqual({ type: "oauth2" });
-    const authEntry = result.report.entries.find(
-      (e) => e.op === "chat_postMessage" && e.element === "auth",
-    );
+    const authEntry = result.report.entries.find((e) => e.op === "chat_postMessage" && e.element === "auth");
     expect(authEntry).toBeDefined();
     expect(authEntry?.status).toBe("mapped");
 
@@ -88,9 +83,7 @@ describe("UC3.7 — Swagger 2.0 import and in-importer up-conversion", () => {
     expect(upconvertEntry?.pointer).toBe("#/swagger");
 
     // Body field pointers translated back through pointerMap into Swagger 2 paths
-    const bodyFieldEntries = result.report.entries.filter(
-      (e) => e.op === "chat_postMessage" && e.element === "bodyField",
-    );
+    const bodyFieldEntries = result.report.entries.filter((e) => e.op === "chat_postMessage" && e.element === "bodyField");
     expect(bodyFieldEntries.length).toBeGreaterThan(0);
     for (const bfe of bodyFieldEntries) {
       expect(bfe.pointer).toMatch(/^#\/paths\/~1chat\.postMessage\/post\/parameters\//);
@@ -206,15 +199,11 @@ describe("UC3.7 — Swagger 2.0 import and in-importer up-conversion", () => {
     // #/definitions/ refs rewritten to #/components/schemas/
     expect(oas3.components?.schemas?.User).toBeDefined();
     const createReqBody = oas3.paths["/users"].post.requestBody;
-    expect(createReqBody.content["application/json"].schema.$ref).toBe(
-      "#/components/schemas/User",
-    );
+    expect(createReqBody.content["application/json"].schema.$ref).toBe("#/components/schemas/User");
 
     // response schema -> response content
     const resp200 = oas3.paths["/users"].post.responses["200"];
-    expect(resp200.content["application/json"].schema.$ref).toBe(
-      "#/components/schemas/User",
-    );
+    expect(resp200.content["application/json"].schema.$ref).toBe("#/components/schemas/User");
 
     // collectionFormat multi -> style: form, explode: true
     const listParams = oas3.paths["/users"].get.parameters;
@@ -223,9 +212,7 @@ describe("UC3.7 — Swagger 2.0 import and in-importer up-conversion", () => {
     expect(tagsParam.explode).toBe(true);
 
     // collectionFormat tsv -> unsupported COLLECTION_FORMAT_UNSUPPORTED
-    const tsvLoss = unsupportedEntries.find(
-      (e: any) => e.code === "COLLECTION_FORMAT_UNSUPPORTED",
-    );
+    const tsvLoss = unsupportedEntries.find((e: any) => e.code === "COLLECTION_FORMAT_UNSUPPORTED");
     expect(tsvLoss).toBeDefined();
 
     // pointerMap maps OpenAPI 3 pointers back to original Swagger pointers

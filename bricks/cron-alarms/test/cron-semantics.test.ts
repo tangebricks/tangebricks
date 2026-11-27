@@ -43,16 +43,11 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
 
     // Set next_run_at to 10 seconds ago
     const pastTime = new Date(Date.now() - 10000).toISOString();
-    await db
-      .prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?")
-      .bind(pastTime, created.schedule.id)
-      .run();
+    await db.prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?").bind(pastTime, created.schedule.id).run();
 
     // 10 concurrent trigger invocations for the exact same due minute
     const now = new Date();
-    const results = await Promise.all(
-      Array.from({ length: 10 }, () => service.triggerDueSchedules(now)),
-    );
+    const results = await Promise.all(Array.from({ length: 10 }, () => service.triggerDueSchedules(now)));
 
     const totalTriggered = results.flat();
     expect(totalTriggered).toHaveLength(1);
@@ -77,10 +72,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
     if (!created.ok) return;
 
     const dueTime = new Date(Date.now() - 5000);
-    await db
-      .prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?")
-      .bind(dueTime.toISOString(), created.schedule.id)
-      .run();
+    await db.prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?").bind(dueTime.toISOString(), created.schedule.id).run();
 
     // Deliver identical scheduledTime twice sequentially
     const run1 = await service.triggerDueSchedules(dueTime);
@@ -164,10 +156,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
 
     // Set next_run_at far in the future
     const futureTime = new Date(Date.now() + 86400 * 1000).toISOString();
-    await db
-      .prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?")
-      .bind(futureTime, created.schedule.id)
-      .run();
+    await db.prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?").bind(futureTime, created.schedule.id).run();
 
     // Invoking triggerDueSchedules with allowedIds containing the future schedule MUST NOT trigger it
     const triggered = await service.triggerDueSchedules(new Date(), [created.schedule.id]);
@@ -195,10 +184,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
     if (!created.ok) return;
 
     const pastTime = new Date(Date.now() - 5000).toISOString();
-    await db
-      .prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?")
-      .bind(pastTime, created.schedule.id)
-      .run();
+    await db.prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?").bind(pastTime, created.schedule.id).run();
 
     const triggered = await service.triggerDueSchedules(new Date());
     expect(triggered).toHaveLength(1);
@@ -257,12 +243,7 @@ describe("UC7.6 — Cron Overlap, Missed-Run, and Double-Fire Semantics", () => 
 
   it("AC3: status is derived from outcome; cron.ts source contains no constant 'success'", () => {
     // Must not have hardcoded `const status = "success"` or `status: "success"` assignment
-    const hasConstSuccess = /const\s+status(?:\s*:\s*[^=]+)?\s*=\s*["']success["']/.test(
-      cronSource,
-    );
-    expect(
-      hasConstSuccess,
-      "cron.ts must not hardcode status to constant 'success'",
-    ).toBe(false);
+    const hasConstSuccess = /const\s+status(?:\s*:\s*[^=]+)?\s*=\s*["']success["']/.test(cronSource);
+    expect(hasConstSuccess, "cron.ts must not hardcode status to constant 'success'").toBe(false);
   });
 });

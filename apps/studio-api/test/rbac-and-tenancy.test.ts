@@ -1,11 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
-import {
-  app as studioApp,
-  createStudioApiApp,
-  ensureDefaultTestAuth,
-  ensureStudioD1Schema,
-} from "../src/index.ts";
+import { app as studioApp, createStudioApiApp, ensureDefaultTestAuth, ensureStudioD1Schema } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
@@ -71,18 +66,11 @@ function isIntentionallyPublicRoute(method: string, path: string): boolean {
   if (method === "GET" && (path === "/api/catalog" || path === "/api/templates")) {
     return true;
   }
-  if (
-    path === "/api/integrations/:app/oauth/callback" ||
-    path === "/api/connections/oauth/:app/callback"
-  ) {
+  if (path === "/api/integrations/:app/oauth/callback" || path === "/api/connections/oauth/:app/callback") {
     return true;
   }
   // Telemetry & log ingestion endpoints use x-px-telemetry-signature HMAC rather than session cookies
-  if (
-    method === "POST" &&
-    (path === "/api/projects/:project/telemetry" ||
-      path === "/api/projects/:project/environments/:envName/logs")
-  ) {
+  if (method === "POST" && (path === "/api/projects/:project/telemetry" || path === "/api/projects/:project/environments/:envName/logs")) {
     return true;
   }
   return false;
@@ -120,10 +108,7 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
       }
 
       const res = await studioApp.request(concretePath, init, studioEnv);
-      expect(
-        res.status,
-        `Expected 401 for unauthenticated ${key} (${concretePath}), got ${res.status}`,
-      ).toBe(401);
+      expect(res.status, `Expected 401 for unauthenticated ${key} (${concretePath}), got ${res.status}`).toBe(401);
       checkedRoutes.push(key);
     }
 
@@ -132,16 +117,8 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
 
   test("Cross-org isolation: authenticated member of Org A is rejected (403 FORBIDDEN_ORG) on every Org B project, connection, secret, deploy token, environment, run, log, audit log, WebSocket, and MCP tool", async () => {
     const suffix = Date.now().toString(36);
-    const userA = await signupUser(
-      `alice-${suffix}@orga.example.com`,
-      "Alice OrgA",
-      `Org Alpha ${suffix}`,
-    );
-    const userB = await signupUser(
-      `bob-${suffix}@orgb.example.com`,
-      "Bob OrgB",
-      `Org Beta ${suffix}`,
-    );
+    const userA = await signupUser(`alice-${suffix}@orga.example.com`, "Alice OrgA", `Org Alpha ${suffix}`);
+    const userB = await signupUser(`bob-${suffix}@orgb.example.com`, "Bob OrgB", `Org Beta ${suffix}`);
 
     const projectB = `org-b-private-${suffix}`;
 
@@ -338,10 +315,7 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
         },
         studioEnv,
       );
-      expect(
-        res.status,
-        `Expected 403 for cross-org ${check.label} (${check.method} ${check.path}), got ${res.status}`,
-      ).toBe(403);
+      expect(res.status, `Expected 403 for cross-org ${check.label} (${check.method} ${check.path}), got ${res.status}`).toBe(403);
     }
 
     // Cross-org WebSocket upgrade via studio-api and BlueprintDO directly
@@ -358,18 +332,13 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
     );
     expect(wsApiRes.status).toBe(403);
 
-    const doStub = studioEnv.BLUEPRINT_DO.get(
-      studioEnv.BLUEPRINT_DO.idFromName(projectB),
-    );
-    const doCrossOrgRes = await doStub.fetch(
-      `https://blueprint.internal/ws?project=${encodeURIComponent(projectB)}`,
-      {
-        headers: {
-          Upgrade: "websocket",
-          "x-studio-org-id": userA.orgId,
-        },
+    const doStub = studioEnv.BLUEPRINT_DO.get(studioEnv.BLUEPRINT_DO.idFromName(projectB));
+    const doCrossOrgRes = await doStub.fetch(`https://blueprint.internal/ws?project=${encodeURIComponent(projectB)}`, {
+      headers: {
+        Upgrade: "websocket",
+        "x-studio-org-id": userA.orgId,
       },
-    );
+    });
     expect(doCrossOrgRes.status).toBe(403);
 
     // Cross-org MCP tool call using an Org A MCP token against Org B's project. Story 0.15: the token is bound to Org A's
@@ -435,33 +404,15 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
     const mcpCrossOrgBody = (await mcpCrossOrgRes.json()) as {
       error: { code?: string; data?: { code?: string } };
     };
-    expect(
-      mcpCrossOrgBody.error.code ?? mcpCrossOrgBody.error.data?.code,
-    ).toBe("FORBIDDEN_ORG");
+    expect(mcpCrossOrgBody.error.code ?? mcpCrossOrgBody.error.data?.code).toBe("FORBIDDEN_ORG");
   });
 
   test("RBAC role matrix (owner, editor, builder, viewer) and MCP OAuth 2.1 scope enforcement (read, edit, deploy, connect)", async () => {
     const suffix = Date.now().toString(36);
-    const owner = await signupUser(
-      `owner-${suffix}@rbac.example.com`,
-      "Owner User",
-      `RBAC Org ${suffix}`,
-    );
-    const editor = await signupUser(
-      `editor-${suffix}@rbac.example.com`,
-      "Editor User",
-      `Personal Editor ${suffix}`,
-    );
-    const builder = await signupUser(
-      `builder-${suffix}@rbac.example.com`,
-      "Builder User",
-      `Personal Builder ${suffix}`,
-    );
-    const viewer = await signupUser(
-      `viewer-${suffix}@rbac.example.com`,
-      "Viewer User",
-      `Personal Viewer ${suffix}`,
-    );
+    const owner = await signupUser(`owner-${suffix}@rbac.example.com`, "Owner User", `RBAC Org ${suffix}`);
+    const editor = await signupUser(`editor-${suffix}@rbac.example.com`, "Editor User", `Personal Editor ${suffix}`);
+    const builder = await signupUser(`builder-${suffix}@rbac.example.com`, "Builder User", `Personal Builder ${suffix}`);
+    const viewer = await signupUser(`viewer-${suffix}@rbac.example.com`, "Viewer User", `Personal Viewer ${suffix}`);
 
     // Owner adds editor, builder, and viewer to owner.orgId
     for (const [email, role] of [
@@ -582,25 +533,13 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
       "x-org-id": owner.orgId,
     };
 
-    const viewerGetProj = await studioApp.request(
-      `/api/projects/${project}`,
-      { headers: viewerHeaders },
-      studioEnv,
-    );
+    const viewerGetProj = await studioApp.request(`/api/projects/${project}`, { headers: viewerHeaders }, studioEnv);
     expect(viewerGetProj.status).toBe(200);
 
-    const viewerGetRetention = await studioApp.request(
-      `/api/projects/${project}/settings/retention`,
-      { headers: viewerHeaders },
-      studioEnv,
-    );
+    const viewerGetRetention = await studioApp.request(`/api/projects/${project}/settings/retention`, { headers: viewerHeaders }, studioEnv);
     expect(viewerGetRetention.status).toBe(200);
 
-    const viewerGetAudit = await studioApp.request(
-      `/api/projects/${project}/audit-logs`,
-      { headers: viewerHeaders },
-      studioEnv,
-    );
+    const viewerGetAudit = await studioApp.request(`/api/projects/${project}/audit-logs`, { headers: viewerHeaders }, studioEnv);
     expect(viewerGetAudit.status).toBe(200);
 
     for (const mut of [
@@ -642,10 +581,7 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
         },
         studioEnv,
       );
-      expect(
-        res.status,
-        `Expected 403 for viewer on ${mut.method} ${mut.path}`,
-      ).toBe(403);
+      expect(res.status, `Expected 403 for viewer on ${mut.method} ${mut.path}`).toBe(403);
     }
 
     // 5. MCP OAuth 2.1 scope matrix: read vs edit vs deploy vs connect
@@ -672,11 +608,7 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
       return data.token;
     }
 
-    async function callMcpWithToken(
-      token: string,
-      toolName: string,
-      args: Record<string, unknown>,
-    ): Promise<Response> {
+    async function callMcpWithToken(token: string, toolName: string, args: Record<string, unknown>): Promise<Response> {
       return studioApp.request(
         "/api/mcp",
         {
@@ -702,18 +634,10 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
     const connectOnlyToken = await issueMcpToken(["read", "connect"]);
 
     // readOnlyToken can read summary, cannot apply_ops, deploy_apply, or request_connection
-    expect(
-      (await callMcpWithToken(readOnlyToken, "get_blueprint_summary", { project })).status,
-    ).toBe(200);
-    expect(
-      (await callMcpWithToken(readOnlyToken, "apply_ops", { project, ops: [] })).status,
-    ).toBe(403);
-    expect(
-      (await callMcpWithToken(readOnlyToken, "deploy_apply", { project, env: "preview" })).status,
-    ).toBe(403);
-    expect(
-      (await callMcpWithToken(readOnlyToken, "request_connection", { project, key: "STRIPE_SECRET_KEY" })).status,
-    ).toBe(403);
+    expect((await callMcpWithToken(readOnlyToken, "get_blueprint_summary", { project })).status).toBe(200);
+    expect((await callMcpWithToken(readOnlyToken, "apply_ops", { project, ops: [] })).status).toBe(403);
+    expect((await callMcpWithToken(readOnlyToken, "deploy_apply", { project, env: "preview" })).status).toBe(403);
+    expect((await callMcpWithToken(readOnlyToken, "request_connection", { project, key: "STRIPE_SECRET_KEY" })).status).toBe(403);
 
     // editOnlyToken can apply_ops, cannot deploy_apply or request_connection
     expect(
@@ -724,33 +648,17 @@ describe("Story 8.2 — Cross-Org Isolation, Route Scanner & RBAC / MCP Scope Ma
         })
       ).status,
     ).toBe(200);
-    expect(
-      (await callMcpWithToken(editOnlyToken, "deploy_apply", { project, env: "preview" })).status,
-    ).toBe(403);
-    expect(
-      (await callMcpWithToken(editOnlyToken, "request_connection", { project, key: "STRIPE_SECRET_KEY" })).status,
-    ).toBe(403);
+    expect((await callMcpWithToken(editOnlyToken, "deploy_apply", { project, env: "preview" })).status).toBe(403);
+    expect((await callMcpWithToken(editOnlyToken, "request_connection", { project, key: "STRIPE_SECRET_KEY" })).status).toBe(403);
 
     // deployOnlyToken can invoke deploy_apply (passes scope check), cannot apply_ops or request_connection
-    expect(
-      (await callMcpWithToken(deployOnlyToken, "deploy_apply", { project, env: "preview" })).status,
-    ).toBe(200);
-    expect(
-      (await callMcpWithToken(deployOnlyToken, "apply_ops", { project, ops: [] })).status,
-    ).toBe(403);
-    expect(
-      (await callMcpWithToken(deployOnlyToken, "request_connection", { project, key: "STRIPE_SECRET_KEY" })).status,
-    ).toBe(403);
+    expect((await callMcpWithToken(deployOnlyToken, "deploy_apply", { project, env: "preview" })).status).toBe(200);
+    expect((await callMcpWithToken(deployOnlyToken, "apply_ops", { project, ops: [] })).status).toBe(403);
+    expect((await callMcpWithToken(deployOnlyToken, "request_connection", { project, key: "STRIPE_SECRET_KEY" })).status).toBe(403);
 
     // connectOnlyToken can invoke request_connection, cannot apply_ops or deploy_apply
-    expect(
-      (await callMcpWithToken(connectOnlyToken, "request_connection", { project, key: "STRIPE_SECRET_KEY" })).status,
-    ).toBe(200);
-    expect(
-      (await callMcpWithToken(connectOnlyToken, "apply_ops", { project, ops: [] })).status,
-    ).toBe(403);
-    expect(
-      (await callMcpWithToken(connectOnlyToken, "deploy_apply", { project, env: "preview" })).status,
-    ).toBe(403);
+    expect((await callMcpWithToken(connectOnlyToken, "request_connection", { project, key: "STRIPE_SECRET_KEY" })).status).toBe(200);
+    expect((await callMcpWithToken(connectOnlyToken, "apply_ops", { project, ops: [] })).status).toBe(403);
+    expect((await callMcpWithToken(connectOnlyToken, "deploy_apply", { project, env: "preview" })).status).toBe(403);
   });
 });

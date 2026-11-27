@@ -20,10 +20,7 @@ const db = env.DB as D1Like;
 describe("packages/telemetry retention pruning & filtered run history queries", () => {
   beforeEach(async () => {
     await ensureTelemetryTables(db);
-    await db.batch([
-      db.prepare("DELETE FROM px_step_events"),
-      db.prepare("DELETE FROM px_runs"),
-    ]);
+    await db.batch([db.prepare("DELETE FROM px_step_events"), db.prepare("DELETE FROM px_runs")]);
   });
 
   test("enforces default 14 days and minimum floor 7 days for PX_RUN_RETENTION_DAYS", () => {
@@ -40,18 +37,10 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
 
   test("pruneExpiredTelemetryRuns deletes px_step_events and px_runs older than retention window while preserving recent runs", async () => {
     const fixedNow = new Date("2026-10-30T12:00:00.000Z");
-    const twentyDaysAgo = new Date(
-      fixedNow.getTime() - 20 * 86_400_000,
-    ).toISOString();
-    const fifteenDaysAgo = new Date(
-      fixedNow.getTime() - 15 * 86_400_000,
-    ).toISOString();
-    const tenDaysAgo = new Date(
-      fixedNow.getTime() - 10 * 86_400_000,
-    ).toISOString();
-    const twoDaysAgo = new Date(
-      fixedNow.getTime() - 2 * 86_400_000,
-    ).toISOString();
+    const twentyDaysAgo = new Date(fixedNow.getTime() - 20 * 86_400_000).toISOString();
+    const fifteenDaysAgo = new Date(fixedNow.getTime() - 15 * 86_400_000).toISOString();
+    const tenDaysAgo = new Date(fixedNow.getTime() - 10 * 86_400_000).toISOString();
+    const twoDaysAgo = new Date(fixedNow.getTime() - 2 * 86_400_000).toISOString();
 
     await upsertRunRecord(db, {
       runId: "run_old_20d",
@@ -170,10 +159,7 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
     expect(pruneDefault.deletedStepEvents).toBe(2);
 
     const remainingAfterDefault = await listRunRecords(db, { workspaceId: "ws_1" });
-    expect(remainingAfterDefault.map((r) => r.runId)).toEqual([
-      "run_recent_2d",
-      "run_recent_10d",
-    ]);
+    expect(remainingAfterDefault.map((r) => r.runId)).toEqual(["run_recent_2d", "run_recent_10d"]);
     expect(await listStepEventsForRun(db, "run_old_20d", { workspaceId: "ws_1" })).toHaveLength(0);
     expect(await listStepEventsForRun(db, "run_old_15d", { workspaceId: "ws_1" })).toHaveLength(0);
     expect(await listStepEventsForRun(db, "run_recent_10d", { workspaceId: "ws_1" })).toHaveLength(1);
@@ -257,10 +243,14 @@ describe("packages/telemetry retention pruning & filtered run history queries", 
     const triggerFiltered = await queryRunHistory(db, { workspaceId: "ws_1" }, { trigger: "schedule" });
     expect(triggerFiltered.runs.map((r) => r.runId)).toEqual(["run_c"]);
 
-    const timeFiltered = await queryRunHistory(db, { workspaceId: "ws_1" }, {
-      from: "2026-10-29T00:00:00.000Z",
-      to: "2026-10-29T23:59:59.000Z",
-    });
+    const timeFiltered = await queryRunHistory(
+      db,
+      { workspaceId: "ws_1" },
+      {
+        from: "2026-10-29T00:00:00.000Z",
+        to: "2026-10-29T23:59:59.000Z",
+      },
+    );
     expect(timeFiltered.runs.map((r) => r.runId)).toEqual(["run_b"]);
 
     // Another workspace's run never appears in ws_1's history (story 1.4)

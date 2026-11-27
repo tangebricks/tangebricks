@@ -23,10 +23,7 @@ async function setupWalletAndUsageSchema(db: D1Like): Promise<void> {
   );
 
   // Seed workspace_A: +1000 topup -> -250 deduction (run_bill_a1 / node-charge) -> -150 deduction (run_bill_a2 / node-charge) => balance 600, netChange30d +600
-  await db
-    .prepare("INSERT INTO credit_wallets (workspace_id, balance, created_at) VALUES (?1, ?2, ?3)")
-    .bind("workspace_A", 600, "2026-04-19T10:00:00Z")
-    .run();
+  await db.prepare("INSERT INTO credit_wallets (workspace_id, balance, created_at) VALUES (?1, ?2, ?3)").bind("workspace_A", 600, "2026-04-19T10:00:00Z").run();
 
   await db
     .prepare(
@@ -126,15 +123,11 @@ async function setupWalletAndUsageSchema(db: D1Like): Promise<void> {
 
   // Seed usage_rollups for workspace_A and workspace_B
   await db
-    .prepare(
-      "INSERT INTO usage_rollups (id, workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-    )
+    .prepare("INSERT INTO usage_rollups (id, workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")
     .bind("ur_a_1", "workspace_A", "workflow_executions", "2026-04-01", "2026-04-30", 42)
     .run();
   await db
-    .prepare(
-      "INSERT INTO usage_rollups (id, workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-    )
+    .prepare("INSERT INTO usage_rollups (id, workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")
     .bind("ur_b_1", "workspace_B", "workflow_executions", "2026-04-01", "2026-04-30", 999)
     .run();
 }
@@ -186,10 +179,7 @@ describe("Story 6.2 — Worker Shell Read-Only Credit Wallet & Usage Ledger (/__
     const missingWsJson = (await missingWsRes.json()) as { error: { code: string } };
     expect(missingWsJson.error.code).toBe("WORKSPACE_ID_REQUIRED");
 
-    const wsARes = await callLedgerRoute(
-      db,
-      "/__px/data/ledger?workspaceId=workspace_A",
-    );
+    const wsARes = await callLedgerRoute(db, "/__px/data/ledger?workspaceId=workspace_A");
     expect(wsARes.status).toBe(200);
     const wsABody = (await wsARes.json()) as {
       ok: boolean;
@@ -223,11 +213,7 @@ describe("Story 6.2 — Worker Shell Read-Only Credit Wallet & Usage Ledger (/__
 
     expect(wsABody.journalEntries).toHaveLength(3);
     expect(wsABody.journalEntries.every((e) => e.workspaceId === "workspace_A")).toBe(true);
-    expect(wsABody.journalEntries.map((e) => e.entryId)).toEqual([
-      "led_a_3",
-      "led_a_2",
-      "led_a_1",
-    ]);
+    expect(wsABody.journalEntries.map((e) => e.entryId)).toEqual(["led_a_3", "led_a_2", "led_a_1"]);
     expect(wsABody.journalEntries[0]?.delta).toBe(-150);
     expect(wsABody.journalEntries[0]?.balanceAfter).toBe(600);
     expect(wsABody.journalEntries[0]?.runId).toBe("run_bill_a2");
@@ -242,41 +228,26 @@ describe("Story 6.2 — Worker Shell Read-Only Credit Wallet & Usage Ledger (/__
 
     for (const pxEnv of ["preview", "production"] as const) {
       for (const method of ["POST", "PATCH", "PUT", "DELETE"] as const) {
-        const directLedgerRes = await callLedgerRoute(
-          db,
-          "/__px/data/ledger?workspaceId=workspace_A",
-          {
-            method,
-            pxEnv,
-            body: { workspaceId: "workspace_A", confirmWrite: true, balance: 999999 },
-          },
-        );
+        const directLedgerRes = await callLedgerRoute(db, "/__px/data/ledger?workspaceId=workspace_A", {
+          method,
+          pxEnv,
+          body: { workspaceId: "workspace_A", confirmWrite: true, balance: 999999 },
+        });
         expect(directLedgerRes.status).toBe(403);
         const directBody = (await directLedgerRes.json()) as { error: { code: string } };
         expect(directBody.error.code).toBe("LEDGER_IMMUTABLE_READ_ONLY");
       }
 
-      for (const table of [
-        "credit_wallets",
-        "credit_ledger",
-        "wallet_balances",
-        "wallet_ledger",
-        "usage_events",
-        "usage_rollups",
-      ]) {
-        const tableWriteRes = await callLedgerRoute(
-          db,
-          `/__px/data/tables/${table}/rows?workspaceId=workspace_A`,
-          {
-            method: "POST",
-            pxEnv,
-            body: {
-              workspaceId: "workspace_A",
-              confirmWrite: true,
-              row: { id: "tamper_1", balance: 999999 },
-            },
+      for (const table of ["credit_wallets", "credit_ledger", "wallet_balances", "wallet_ledger", "usage_events", "usage_rollups"]) {
+        const tableWriteRes = await callLedgerRoute(db, `/__px/data/tables/${table}/rows?workspaceId=workspace_A`, {
+          method: "POST",
+          pxEnv,
+          body: {
+            workspaceId: "workspace_A",
+            confirmWrite: true,
+            row: { id: "tamper_1", balance: 999999 },
           },
-        );
+        });
         expect(tableWriteRes.status).toBe(403);
         const tableBody = (await tableWriteRes.json()) as { error: { code: string } };
         expect(tableBody.error.code).toBe("LEDGER_IMMUTABLE_READ_ONLY");
@@ -284,10 +255,7 @@ describe("Story 6.2 — Worker Shell Read-Only Credit Wallet & Usage Ledger (/__
     }
 
     // Verify workspace_A balance in D1 is completely untouched
-    const row = await db
-      .prepare("SELECT balance FROM credit_wallets WHERE workspace_id = ?1")
-      .bind("workspace_A")
-      .first<{ balance: number }>();
+    const row = await db.prepare("SELECT balance FROM credit_wallets WHERE workspace_id = ?1").bind("workspace_A").first<{ balance: number }>();
     expect(row?.balance).toBe(600);
   });
 });

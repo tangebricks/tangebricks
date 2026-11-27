@@ -14,8 +14,8 @@ const STAND_INS = {
   "86544e8": "base", // code change whose subject belongs to no story
   "63a8be2": "uc01-a", // "UC0.1: ..." code change
   "2332f00": "uc01-b", // "UC0.1: ..." code change
-  "b4294d1": "uc01-c", // "UC0.1: ..." code change
-  "c8e8a9c": "uc04-docs", // "UC0.4: ..." markdown-only change
+  b4294d1: "uc01-c", // "UC0.1: ..." code change
+  c8e8a9c: "uc04-docs", // "UC0.4: ..." markdown-only change
   a67cfb6: "uc04-docs", // markdown-only change
   b1dafe5: "evidence-only", // change under evidence/ only
   "8ff5a65": "side-branch", // commit that is not an ancestor of HEAD

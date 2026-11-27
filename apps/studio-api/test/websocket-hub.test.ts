@@ -20,11 +20,7 @@ const rawDo = (env as unknown as { BLUEPRINT_DO: BlueprintDoNamespaceLike }).BLU
 // names, and the author comes from that token, not from x-mcp-client headers.
 const mcpApp = createMcpApp({ catalog, callsPerMinute: 10_000, verifyToken: testTokenVerifier });
 
-async function studioReq(
-  path: string,
-  init: RequestInit = {},
-  targetEnv: StudioApiEnv = studioEnv,
-): Promise<Response> {
+async function studioReq(path: string, init: RequestInit = {}, targetEnv: StudioApiEnv = studioEnv): Promise<Response> {
   const { headers: authHeaders } = await ensureTestAuthForPath(targetEnv, path);
   // AD-V8: a token's edit applies when preview-safe; a money brick is proposed and the owner accepts it in Studio.
   const ops = /^\/api\/projects\/([^/]+)\/ops$/.exec(path);
@@ -39,11 +35,7 @@ async function studioReq(
 }
 
 let rpcId = 1;
-async function callMcpTool(
-  name: string,
-  args: Record<string, unknown>,
-  headers: Record<string, string> = {},
-) {
+async function callMcpTool(name: string, args: Record<string, unknown>, headers: Record<string, string> = {}) {
   const response = await mcpApp.fetch(
     new Request("http://localhost/mcp", {
       method: "POST",
@@ -84,10 +76,7 @@ interface WsClientHarness {
   close: () => void;
 }
 
-async function connectWsClient(
-  project: string,
-  sinceRevision?: number,
-): Promise<WsClientHarness> {
+async function connectWsClient(project: string, sinceRevision?: number): Promise<WsClientHarness> {
   const query = sinceRevision !== undefined ? `?sinceRevision=${sinceRevision}` : "";
   const response = await studioReq(
     `/api/projects/${project}/ws${query}`,
@@ -110,10 +99,7 @@ async function connectWsClient(
   const waiters: Array<(msg: Record<string, unknown>) => void> = [];
 
   ws.addEventListener("message", (event: MessageEvent) => {
-    const raw =
-      typeof event.data === "string"
-        ? event.data
-        : new TextDecoder().decode(event.data as ArrayBuffer);
+    const raw = typeof event.data === "string" ? event.data : new TextDecoder().decode(event.data as ArrayBuffer);
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const waiter = waiters.shift();
     if (waiter) {
@@ -194,10 +180,7 @@ describe("Story 1.7 — Project WebSocket hub in BlueprintDO for live revision b
     const startEnable = Date.now();
     expect(mcpRes1.isError).toBe(false);
 
-    const [rev1Client1, rev1Client2] = await Promise.all([
-      client1.nextMessage(200),
-      client2.nextMessage(200),
-    ]);
+    const [rev1Client1, rev1Client2] = await Promise.all([client1.nextMessage(200), client2.nextMessage(200)]);
     const elapsedEnableMs = Date.now() - startEnable;
     expect(elapsedEnableMs).toBeLessThanOrEqual(200);
 
@@ -242,10 +225,7 @@ describe("Story 1.7 — Project WebSocket hub in BlueprintDO for live revision b
 
     // AD-V8: the money brick makes this a proposal; both clients see it, then the token's user accepts it in Studio
     // and both see the revision.
-    const [prop2Client1, prop2Client2] = await Promise.all([
-      client1.nextMessage(200),
-      client2.nextMessage(200),
-    ]);
+    const [prop2Client1, prop2Client2] = await Promise.all([client1.nextMessage(200), client2.nextMessage(200)]);
     expect(prop2Client1).toEqual(prop2Client2);
     expect(prop2Client1).toMatchObject({ type: "proposal", project });
     const proposalId = mcpRes2.json<{ proposalId: string }>().proposalId;
@@ -257,10 +237,7 @@ describe("Story 1.7 — Project WebSocket hub in BlueprintDO for live revision b
     });
     expect(accepted.ok).toBe(true);
 
-    const [rev2Client1, rev2Client2] = await Promise.all([
-      client1.nextMessage(200),
-      client2.nextMessage(200),
-    ]);
+    const [rev2Client1, rev2Client2] = await Promise.all([client1.nextMessage(200), client2.nextMessage(200)]);
     const elapsedApplyOpsMs = Date.now() - startApplyOps;
     expect(elapsedApplyOpsMs).toBeLessThanOrEqual(200);
 
@@ -449,10 +426,7 @@ describe("Story 1.7 — Project WebSocket hub in BlueprintDO for live revision b
     );
     expect(okRes2.status).toBe(200);
 
-    const [after1, after2] = await Promise.all([
-      client1.nextMessage(200),
-      client2.nextMessage(200),
-    ]);
+    const [after1, after2] = await Promise.all([client1.nextMessage(200), client2.nextMessage(200)]);
     expect(after1).toMatchObject({ type: "revision", revision: 2 });
     expect(after2).toMatchObject({ type: "revision", revision: 2 });
 

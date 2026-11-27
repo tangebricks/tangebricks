@@ -33,9 +33,7 @@ function assertInverseRestoresSemanticHash(stateBefore: BlueprintState, op: Op):
   const forward = applyExpectOk(stateBefore, op);
   const backward = applyOps(forward.state, forward.inverseOps, catalog, toyRegistry);
   if (!backward.ok) {
-    throw new Error(
-      `Expected inverse of ${op.type} to succeed, got: ${JSON.stringify(backward.errors)}`,
-    );
+    throw new Error(`Expected inverse of ${op.type} to succeed, got: ${JSON.stringify(backward.errors)}`);
   }
   expect(semanticHash(backward.state)).toBe(hashBefore);
   expect(backward.state.bricks).toEqual(stateBefore.bricks);
@@ -238,9 +236,7 @@ describe("Every op kind happy path and round-trip inverse (AC 3, AC 4, AC 7)", (
         data: { path: "account.id" },
       },
     });
-    expect(
-      state.workflows[0]?.nodes.find((n) => n.id === "p1")?.data,
-    ).toEqual({ path: "account.id" });
+    expect(state.workflows[0]?.nodes.find((n) => n.id === "p1")?.data).toEqual({ path: "account.id" });
 
     // 12. connect_edges
     state = assertInverseRestoresSemanticHash(state, {
@@ -268,9 +264,7 @@ describe("Every op kind happy path and round-trip inverse (AC 3, AC 4, AC 7)", (
       opId: "op-13b",
       type: "connect_edges",
       workflowId: "wf-onboarding",
-      edges: [
-        { id: "e-p1-p2", source: "p1", target: "p2", sourceHandle: "out", targetHandle: "in" },
-      ],
+      edges: [{ id: "e-p1-p2", source: "p1", target: "p2", sourceHandle: "out", targetHandle: "in" }],
     });
 
     // 14. remove_node (with incident edge e-p1-p2 restored by inverse!)
@@ -392,11 +386,7 @@ describe("Every op kind happy path and round-trip inverse (AC 3, AC 4, AC 7)", (
 describe("Validation error fixtures — one per error class without mutating state (AC 4, AC 7)", () => {
   test("1. rejects unknown brick id", () => {
     const state = Object.freeze(createEmptyBlueprint("err-test"));
-    const res = applyOp(
-      state,
-      { opId: "e-brick", type: "enable_brick", brickId: "non-existent-brick" },
-      catalog,
-    );
+    const res = applyOp(state, { opId: "e-brick", type: "enable_brick", brickId: "non-existent-brick" }, catalog);
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.errors[0]?.code).toBe("UNKNOWN_BRICK");
@@ -1120,12 +1110,8 @@ describe("Purity and targetKey extraction", () => {
   });
 
   test("targetKey extracts deterministic logical targets for ops", () => {
-    expect(targetKey({ opId: "1", type: "enable_brick", brickId: "credit-wallet" })).toEqual([
-      "brick:credit-wallet",
-    ]);
-    expect(targetKey({ opId: "2", type: "set_identity", identity: "core-auth" })).toEqual([
-      "identity",
-    ]);
+    expect(targetKey({ opId: "1", type: "enable_brick", brickId: "credit-wallet" })).toEqual(["brick:credit-wallet"]);
+    expect(targetKey({ opId: "2", type: "set_identity", identity: "core-auth" })).toEqual(["identity"]);
     expect(
       targetKey({
         opId: "3",
@@ -1311,7 +1297,16 @@ describe("relations and the date, money and longtext types (story 1.18)", () => 
   test("a money field and a field named after its currency column are refused", () => {
     const res = applyOp(
       createEmptyBlueprint("rel"),
-      add({ name: "things", fields: [{ name: "total", type: "money", currencies: ["INR"] }, { name: "total__currency", type: "text" }] }, "t"),
+      add(
+        {
+          name: "things",
+          fields: [
+            { name: "total", type: "money", currencies: ["INR"] },
+            { name: "total__currency", type: "text" },
+          ],
+        },
+        "t",
+      ),
       catalog,
       toyRegistry,
     );
@@ -1330,9 +1325,18 @@ describe("relation follow-ups (story 1.18 review)", () => {
   });
 
   test.each(["add_entity", "update_entity"])("%s refuses a relation key on a field that is not of type relation", (type) => {
-    const base = applyOps(createEmptyBlueprint("rel"), [add(customer, "c"), add({ name: "invoice", fields: [{ name: "note", type: "text" }] }, "i")], catalog, toyRegistry);
+    const base = applyOps(
+      createEmptyBlueprint("rel"),
+      [add(customer, "c"), add({ name: "invoice", fields: [{ name: "note", type: "text" }] }, "i")],
+      catalog,
+      toyRegistry,
+    );
     if (!base.ok) throw new Error(JSON.stringify(base.errors));
-    const op = { opId: "x", type, entity: { name: type === "add_entity" ? "bill" : "invoice", fields: [{ name: "customer_id", type: "text", relation: "customer" }] } } as Op;
+    const op = {
+      opId: "x",
+      type,
+      entity: { name: type === "add_entity" ? "bill" : "invoice", fields: [{ name: "customer_id", type: "text", relation: "customer" }] },
+    } as Op;
     const res = applyOps(base.state, [op], catalog, toyRegistry);
     expect(res.ok).toBe(false);
     if (!res.ok) {

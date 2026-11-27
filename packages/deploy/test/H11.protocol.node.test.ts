@@ -34,7 +34,17 @@ const URL_BASE = `https://${names.script}.fake-subdomain.workers.dev`;
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const h11 = parseHypotheses(JSON.parse(readFileSync(join(root, "hypotheses.json"), "utf8"))).hypotheses.find((h) => h.id === "H11")!;
-const NINE = ["oneWorkflowClassRanAllGraphs", "graphReadFromD1", "editChangedNextRun", "scriptVersionUnchanged", "resultsMatchLocalInterpreter", "everyNodeRanInsideStepDo", "runKeepsItsGraphWhenEditedMidRun", "badEditRefusedBeforeAnyStep", "writeLatencyRecorded"];
+const NINE = [
+  "oneWorkflowClassRanAllGraphs",
+  "graphReadFromD1",
+  "editChangedNextRun",
+  "scriptVersionUnchanged",
+  "resultsMatchLocalInterpreter",
+  "everyNodeRanInsideStepDo",
+  "runKeepsItsGraphWhenEditedMidRun",
+  "badEditRefusedBeforeAnyStep",
+  "writeLatencyRecorded",
+];
 
 let mf: Miniflare;
 let db: D1Like;
@@ -68,7 +78,11 @@ afterAll(async () => {
 const fromWorker = async (path: string, init: { method?: string; body?: string } = {}) => {
   // reading a run's status needs the control-plane signature as well as the key (story 1.1)
   const signed = await signControlPlaneRequest(SIGNING_SECRET, init.method ?? "GET", path, init.body ?? "");
-  const response = (await mf.dispatchFetch(`http://deployed.invalid${path}`, { method: init.method ?? "GET", headers: { "x-poc-key": KEY, "content-type": "application/json", ...signed }, body: init.body } as never)) as unknown as Response;
+  const response = (await mf.dispatchFetch(`http://deployed.invalid${path}`, {
+    method: init.method ?? "GET",
+    headers: { "x-poc-key": KEY, "content-type": "application/json", ...signed },
+    body: init.body,
+  } as never)) as unknown as Response;
   return response;
 };
 
@@ -76,12 +90,25 @@ const fromWorker = async (path: string, init: { method?: string; body?: string }
 async function synthesize(instanceId: string, options: { delayAlreadyDone?: boolean }): Promise<unknown | null> {
   const response = await fromWorker(`/poc/runs/${instanceId}`);
   if (response.status !== 200) return null;
-  const st = (await response.json()) as { status: string; output?: { outputs: Record<string, unknown> } | null; error?: { name?: string; message?: string } | null; __LOCAL_DEV_STEP_OUTPUTS?: unknown[] };
+  const st = (await response.json()) as {
+    status: string;
+    output?: { outputs: Record<string, unknown> } | null;
+    error?: { name?: string; message?: string } | null;
+    __LOCAL_DEV_STEP_OUTPUTS?: unknown[];
+  };
   const t0 = startedAt.get(instanceId) ?? Date.now();
   const iso = (ms: number) => new Date(t0 + ms).toISOString();
   const stored = st.__LOCAL_DEV_STEP_OUTPUTS?.[0] as { nodes?: unknown[] } | undefined;
   const loaded = stored !== undefined;
-  const step = (name: string, output: unknown, start: number, end: number, success = true) => ({ type: "step", name: `${name}-1`, success, attempts: [{ start: iso(start), end: iso(end), success }], start: iso(start), end: iso(end), output: JSON.stringify(output) });
+  const step = (name: string, output: unknown, start: number, end: number, success = true) => ({
+    type: "step",
+    name: `${name}-1`,
+    success,
+    attempts: [{ start: iso(start), end: iso(end), success }],
+    start: iso(start),
+    end: iso(end),
+    output: JSON.stringify(output),
+  });
   const steps: unknown[] = [];
   const hasDelay = JSON.stringify(stored ?? {}).includes('"util.delay"') && JSON.stringify(stored ?? {}).includes(`"ms":${SLOW_DELAY_MS}`);
   if (loaded) steps.push(step("load graph", stored, 0, 1));
@@ -98,7 +125,17 @@ async function synthesize(instanceId: string, options: { delayAlreadyDone?: bool
     steps.length = 0;
     steps.push({ type: "step", name: "load graph-1", success: false, attempts: [{ start: iso(0), end: iso(1), success: false }], start: iso(0), end: iso(1) });
   }
-  return { status: st.status === "complete" || st.status === "errored" ? st.status : "running", success: st.status === "complete", error: st.error ?? null, output: st.output ?? null, params: {}, start: iso(0), end: st.status === "complete" || st.status === "errored" ? iso(SLOW_DELAY_MS + 10) : null, step_count: steps.length, steps };
+  return {
+    status: st.status === "complete" || st.status === "errored" ? st.status : "running",
+    success: st.status === "complete",
+    error: st.error ?? null,
+    output: st.output ?? null,
+    params: {},
+    start: iso(0),
+    end: st.status === "complete" || st.status === "errored" ? iso(SLOW_DELAY_MS + 10) : null,
+    step_count: steps.length,
+    steps,
+  };
 }
 
 interface WorldOptions {
@@ -115,15 +152,25 @@ async function world(options: WorldOptions = {}) {
   const fake = createFakeCloudflare({
     token: TOKEN,
     accountId: ACCOUNT,
-    instanceDetails: options.detailsNeverArrive ? () => null : async (_workflow, id) => {
-      const seen = (lagSeen.get(id) ?? 0) + 1;
-      lagSeen.set(id, seen);
-      const details = (await synthesize(id, { delayAlreadyDone: options.delayAlreadyDone })) as { status: string; steps: unknown[] } | null;
-      return details && seen <= (options.detailsLagCalls ?? 0) && details.status !== "running" ? { ...details, status: "running", steps: details.steps.slice(0, 1), output: null, end: null } : details;
-    },
+    instanceDetails: options.detailsNeverArrive
+      ? () => null
+      : async (_workflow, id) => {
+          const seen = (lagSeen.get(id) ?? 0) + 1;
+          lagSeen.set(id, seen);
+          const details = (await synthesize(id, { delayAlreadyDone: options.delayAlreadyDone })) as { status: string; steps: unknown[] } | null;
+          return details && seen <= (options.detailsLagCalls ?? 0) && details.status !== "running"
+            ? { ...details, status: "running", steps: details.steps.slice(0, 1), output: null, end: null }
+            : details;
+        },
   });
   fake.seedScript(names.script, `export class ${WORKFLOW_CLASS} {}`);
-  await fake.fetch(new Request(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/workflows/${names.workflow}`, { method: "PUT", headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" }, body: JSON.stringify({ class_name: WORKFLOW_CLASS, script_name: names.script }) }));
+  await fake.fetch(
+    new Request(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/workflows/${names.workflow}`, {
+      method: "PUT",
+      headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" },
+      body: JSON.stringify({ class_name: WORKFLOW_CLASS, script_name: names.script }),
+    }),
+  );
   const hide = createRedactor([TOKEN, ACCOUNT, KEY, SIGNING_SECRET]);
   const lines: string[] = [];
   // D1 REST queries go to the local database the Worker reads; everything else goes to the fake
@@ -137,7 +184,10 @@ async function world(options: WorldOptions = {}) {
         if (/^\s*select/i.test(s.sql)) results.push({ results: (await statement.all()).results, success: true, meta: {} });
         else results.push({ results: [], success: true, meta: { changes: (await statement.run()).meta.changes } });
       }
-      return new Response(JSON.stringify({ success: true, errors: [], messages: [], result: results }), { status: 200, headers: { "content-type": "application/json" } });
+      return new Response(JSON.stringify({ success: true, errors: [], messages: [], result: results }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     }
     return fake.fetch(request);
   };
@@ -145,7 +195,8 @@ async function world(options: WorldOptions = {}) {
     clock: () => performance.now(),
     commandStart: performance.now(),
     sleep: (ms) => new Promise((r) => setTimeout(r, Math.min(ms, 30))),
-    createClient: (now) => createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: bridge, now, sleep: async () => undefined, alsoHide: [KEY] }),
+    createClient: (now) =>
+      createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: bridge, now, sleep: async () => undefined, alsoHide: [KEY] }),
     names,
     databaseId: "db-1",
     url: URL_BASE,
@@ -155,7 +206,11 @@ async function world(options: WorldOptions = {}) {
       options.onFetch?.(request);
       const url = new URL(request.url);
       const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
-      const response = (await mf.dispatchFetch(`http://deployed.invalid${url.pathname}${url.search}`, { method: request.method, headers: Object.fromEntries(request.headers), body } as never)) as unknown as Response;
+      const response = (await mf.dispatchFetch(`http://deployed.invalid${url.pathname}${url.search}`, {
+        method: request.method,
+        headers: Object.fromEntries(request.headers),
+        body,
+      } as never)) as unknown as Response;
       if (request.method === "POST" && url.pathname === WORKFLOW_RUNS_PATH && response.status === 202) {
         const created = (await response.clone().json()) as { id: string };
         startedAt.set(created.id, Date.now());
@@ -205,7 +260,11 @@ describe("a complete rehearsal", () => {
   });
 
   test("every store and every edit was made over the D1 REST endpoint, the sum graph was stored only once, and nothing was written through the Worker", () => {
-    expect(complete.calls.facts.edits.map((e) => [e.key, e.graphId])).toEqual([["sum-edit", H11_IDS.sum], ["mid-edit", H11_IDS.slow], ["bad-edit", H11_IDS.bad]]);
+    expect(complete.calls.facts.edits.map((e) => [e.key, e.graphId])).toEqual([
+      ["sum-edit", H11_IDS.sum],
+      ["mid-edit", H11_IDS.slow],
+      ["bad-edit", H11_IDS.bad],
+    ]);
     for (const e of complete.calls.facts.edits) {
       expect(e.updatedAt).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);
       expect(complete.calls.clients.find((c) => c.label === e.client)!.calls.some((c) => c.method === "POST" && c.sqlKind === "write")).toBe(true);
@@ -235,11 +294,20 @@ describe("a complete rehearsal", () => {
   test("ten timings from inside the Worker and ten from the REST endpoint are kept", () => {
     expect(complete.calls.facts.latency.worker!.timingsMs).toHaveLength(10);
     expect(complete.calls.facts.latency.rest!.timingsMs).toHaveLength(10);
-    expect(complete.calls.facts.latency.rest!.timingsMs.length).toBe(complete.calls.clients.find((c) => c.label === "latency-rest")!.calls.filter((c) => c.sqlKind === "write").length);
+    expect(complete.calls.facts.latency.rest!.timingsMs.length).toBe(
+      complete.calls.clients.find((c) => c.label === "latency-rest")!.calls.filter((c) => c.sqlKind === "write").length,
+    );
   });
 
   test("neither the token, the account id nor the access key is in the files or the lines printed", () => {
-    expect(findSecrets(canonical11(complete.calls) + JSON.stringify(complete.result) + complete.lines.join("\n"), { token: TOKEN, accountId: ACCOUNT, accessKey: KEY, signingSecret: SIGNING_SECRET })).toEqual([]);
+    expect(
+      findSecrets(canonical11(complete.calls) + JSON.stringify(complete.result) + complete.lines.join("\n"), {
+        token: TOKEN,
+        accountId: ACCOUNT,
+        accessKey: KEY,
+        signingSecret: SIGNING_SECRET,
+      }),
+    ).toEqual([]);
   });
 });
 
@@ -269,16 +337,41 @@ describe("what the files say when re-read", () => {
   });
 
   test("a result that is not the interpreter's fails 'results match', in the output or in the Worker's own answer", async () => {
-    expect((await tampered((c) => void (runOf(c, "sum-edited").details!.output = { ok: true, outputs: {}, failed: {}, skipped: [] }))).checks.resultsMatchLocalInterpreter).toBe(false);
-    expect((await tampered((c) => void ((runOf(c, "diamond").workerStatus!.output as { ok: boolean }).ok = false))).checks.resultsMatchLocalInterpreter).toBe(false);
+    expect(
+      (await tampered((c) => void (runOf(c, "sum-edited").details!.output = { ok: true, outputs: {}, failed: {}, skipped: [] }))).checks
+        .resultsMatchLocalInterpreter,
+    ).toBe(false);
+    expect((await tampered((c) => void ((runOf(c, "diamond").workerStatus!.output as { ok: boolean }).ok = false))).checks.resultsMatchLocalInterpreter).toBe(
+      false,
+    );
   });
 
   test("an edit that changed nothing, or was made through the Worker, or with no write in its log, is not an edit that changed the next run", async () => {
-    expect((await tampered((c) => void (runOf(c, "sum-edited").details!.output = runOf(c, "sum-first").details!.output))).checks.editChangedNextRun).toBe(false);
-    expect((await tampered((c) => void c.urlEvents.push({ n: 999, atMs: 1, ms: 1, phase: "store-graph", method: "PUT", path: `/poc/graphs/${H11_IDS.sum}`, status: 200 }))).checks.editChangedNextRun).toBe(false);
+    expect((await tampered((c) => void (runOf(c, "sum-edited").details!.output = runOf(c, "sum-first").details!.output))).checks.editChangedNextRun).toBe(
+      false,
+    );
+    expect(
+      (
+        await tampered(
+          (c) => void c.urlEvents.push({ n: 999, atMs: 1, ms: 1, phase: "store-graph", method: "PUT", path: `/poc/graphs/${H11_IDS.sum}`, status: 200 }),
+        )
+      ).checks.editChangedNextRun,
+    ).toBe(false);
     // a second store of the same graph over REST is not "the edit" either
-    expect((await tampered((c) => void c.clients.push({ ...c.clients.find((x) => x.label === storeLabel(H11_IDS.sum, 1))!, label: storeLabel(H11_IDS.sum, 2) }))).checks.editChangedNextRun).toBe(false);
-    expect((await tampered((c) => void (c.clients.find((x) => x.label === "owner-edit-1")!.calls = c.clients.find((x) => x.label === "owner-edit-1")!.calls.filter((k) => k.sqlKind !== "write")))).checks.editChangedNextRun).toBe(false);
+    expect(
+      (await tampered((c) => void c.clients.push({ ...c.clients.find((x) => x.label === storeLabel(H11_IDS.sum, 1))!, label: storeLabel(H11_IDS.sum, 2) })))
+        .checks.editChangedNextRun,
+    ).toBe(false);
+    expect(
+      (
+        await tampered(
+          (c) =>
+            void (c.clients.find((x) => x.label === "owner-edit-1")!.calls = c.clients
+              .find((x) => x.label === "owner-edit-1")!
+              .calls.filter((k) => k.sqlKind !== "write")),
+        )
+      ).checks.editChangedNextRun,
+    ).toBe(false);
   });
 
   test("a Worker whose version moved, in any of the three readings, or that was written to other than by rows, fails — and a newest version that is not the one H10 left does too", async () => {
@@ -287,12 +380,23 @@ describe("what the files say when re-read", () => {
       expect(e.checks.scriptVersionUnchanged, where).toBe(false);
     }
     expect((await tampered((c) => void (c.facts.versions.after = [...c.facts.versions.after!, "extra"]))).checks.scriptVersionUnchanged).toBe(false);
-    expect((await tampered((c) => void c.clients.find((x) => x.label === "bracket-final")!.calls.push({ n: 99, atMs: 0, method: "PUT", path: "/accounts/{account}/workers/scripts/x", status: 200, ms: 1, outcome: "ok", attempt: 1 }))).checks.scriptVersionUnchanged).toBe(false);
+    expect(
+      (
+        await tampered(
+          (c) =>
+            void c.clients
+              .find((x) => x.label === "bracket-final")!
+              .calls.push({ n: 99, atMs: 0, method: "PUT", path: "/accounts/{account}/workers/scripts/x", status: 200, ms: 1, outcome: "ok", attempt: 1 }),
+        )
+      ).checks.scriptVersionUnchanged,
+    ).toBe(false);
     expect((await tampered((c) => void (c.facts.deployedVersionFromH10 = "some-other-version"))).checks.scriptVersionUnchanged).toBe(false);
   });
 
   test("the bracket is judged by its order: a reading taken after the runs began is not 'just before'", async () => {
-    expect((await tampered((c) => void (c.clients.find((x) => x.label === "bracket-before")!.startedAtMs = 10 ** 9))).checks.scriptVersionUnchanged).toBe(false);
+    expect((await tampered((c) => void (c.clients.find((x) => x.label === "bracket-before")!.startedAtMs = 10 ** 9))).checks.scriptVersionUnchanged).toBe(
+      false,
+    );
     expect((await tampered((c) => void (c.clients.find((x) => x.label === "bracket-after")!.startedAtMs = 0))).checks.scriptVersionUnchanged).toBe(false);
   });
 
@@ -305,7 +409,8 @@ describe("what the files say when re-read", () => {
       (c: H11Calls) => void (runOf(c, "sum-first").details!.steps[2]!.success = false),
       (c: H11Calls) => void (runOf(c, "sum-first").details!.steps[2]!.output = { out: 999 }),
       (c: H11Calls) => void (runOf(c, "sum-first").details!.steps[1]!.type = "sleep"),
-    ]) expect((await tampered(edit)).checks.everyNodeRanInsideStepDo).toBe(false);
+    ])
+      expect((await tampered(edit)).checks.everyNodeRanInsideStepDo).toBe(false);
   });
 
   test("the step names carry Cloudflare's own numbering, which is not part of the name", () => {
@@ -323,7 +428,9 @@ describe("what the files say when re-read", () => {
 
   test("one class, any graph: fewer than three kinds of graph, a second Workflow, or a run that was never started through the route fails", async () => {
     expect((await tampered((c) => void (runOf(c, "diamond").graphId = H11_IDS.sum))).checks.oneWorkflowClassRanAllGraphs).toBe(false);
-    expect((await tampered((c) => void c.facts.workflows!.push({ name: "another", className: "GraphRunner", scriptName: "x" }))).checks.oneWorkflowClassRanAllGraphs).toBe(false);
+    expect(
+      (await tampered((c) => void c.facts.workflows!.push({ name: "another", className: "GraphRunner", scriptName: "x" }))).checks.oneWorkflowClassRanAllGraphs,
+    ).toBe(false);
     expect((await tampered((c) => void (c.facts.workflows = []))).checks.oneWorkflowClassRanAllGraphs).toBe(false);
     expect((await tampered((c) => void (c.urlEvents.find((e) => e.phase === "start-run")!.status = 500))).checks.oneWorkflowClassRanAllGraphs).toBe(false);
   });
@@ -331,17 +438,36 @@ describe("what the files say when re-read", () => {
   test("an edit that did not land while the run was under way fails 'keeps its graph' — before the first step ended, after the wait ended, or with a wrong answer", async () => {
     const stamp = (ms: number) => new Date(ms).toISOString();
     const base = Date.parse(runOf(complete.calls, "slow-midrun").details!.steps[0]!.end!);
-    expect((await tampered((c) => void (c.facts.edits.find((e) => e.key === "mid-edit")!.updatedAt = stamp(base - 1000)))).checks.runKeepsItsGraphWhenEditedMidRun).toBe(false);
-    expect((await tampered((c) => void (c.facts.edits.find((e) => e.key === "mid-edit")!.updatedAt = stamp(base + 60_000)))).checks.runKeepsItsGraphWhenEditedMidRun).toBe(false);
-    expect((await tampered((c) => void (runOf(c, "slow-midrun").details!.output = runOf(c, "slow-after").details!.output))).checks.runKeepsItsGraphWhenEditedMidRun).toBe(false);
+    expect(
+      (await tampered((c) => void (c.facts.edits.find((e) => e.key === "mid-edit")!.updatedAt = stamp(base - 1000)))).checks.runKeepsItsGraphWhenEditedMidRun,
+    ).toBe(false);
+    expect(
+      (await tampered((c) => void (c.facts.edits.find((e) => e.key === "mid-edit")!.updatedAt = stamp(base + 60_000)))).checks.runKeepsItsGraphWhenEditedMidRun,
+    ).toBe(false);
+    expect(
+      (await tampered((c) => void (runOf(c, "slow-midrun").details!.output = runOf(c, "slow-after").details!.output))).checks.runKeepsItsGraphWhenEditedMidRun,
+    ).toBe(false);
     expect((await tampered((c) => void (c.facts.midRun!.polls.at(-1)!.delayDone = true))).checks.runKeepsItsGraphWhenEditedMidRun).toBe(false);
-    expect((await tampered((c) => void (runOf(c, "slow-after").details!.output = runOf(c, "slow-midrun").details!.output))).checks.runKeepsItsGraphWhenEditedMidRun).toBe(false);
-    expect((await tampered((c) => void (runOf(c, "slow-midrun").details!.steps[0]!.output = H11_GRAPHS.slowEdited))).checks.runKeepsItsGraphWhenEditedMidRun).toBe(false);
+    expect(
+      (await tampered((c) => void (runOf(c, "slow-after").details!.output = runOf(c, "slow-midrun").details!.output))).checks.runKeepsItsGraphWhenEditedMidRun,
+    ).toBe(false);
+    expect(
+      (await tampered((c) => void (runOf(c, "slow-midrun").details!.steps[0]!.output = H11_GRAPHS.slowEdited))).checks.runKeepsItsGraphWhenEditedMidRun,
+    ).toBe(false);
   });
 
   test("a refused graph that ran a node, was not refused, or was never stored fails 'refused before any step'", async () => {
-    expect((await tampered((c) => void runOf(c, "bad").details!.steps.push({ type: "step", name: "something-else-1", success: true, start: null, end: null, attempts: 1 }))).checks.badEditRefusedBeforeAnyStep).toBe(false);
-    expect((await tampered((c) => void runOf(c, "bad").details!.steps.push({ type: "step", name: "node:t-1", success: true, start: null, end: null, attempts: 1 }))).checks.badEditRefusedBeforeAnyStep).toBe(false);
+    expect(
+      (
+        await tampered(
+          (c) => void runOf(c, "bad").details!.steps.push({ type: "step", name: "something-else-1", success: true, start: null, end: null, attempts: 1 }),
+        )
+      ).checks.badEditRefusedBeforeAnyStep,
+    ).toBe(false);
+    expect(
+      (await tampered((c) => void runOf(c, "bad").details!.steps.push({ type: "step", name: "node:t-1", success: true, start: null, end: null, attempts: 1 })))
+        .checks.badEditRefusedBeforeAnyStep,
+    ).toBe(false);
     expect((await tampered((c) => void (runOf(c, "bad").details!.status = "complete"))).checks.badEditRefusedBeforeAnyStep).toBe(false);
     expect((await tampered((c) => void (runOf(c, "bad").rowText = JSON.stringify(H11_GRAPHS.sum)))).checks.badEditRefusedBeforeAnyStep).toBe(false);
     expect((await tampered((c) => void (runOf(c, "bad").details!.steps[0]!.success = true))).checks.badEditRefusedBeforeAnyStep).toBe(false);
@@ -353,10 +479,15 @@ describe("what the files say when re-read", () => {
     expect((await tampered((c) => void (c.facts.latency.worker!.timingsMs[0] = -1))).checks.writeLatencyRecorded).toBe(false);
     expect((await tampered((c) => void (c.facts.latency.worker!.medianMs += 5))).checks.writeLatencyRecorded).toBe(false);
     expect((await tampered((c) => void (c.facts.latency.rest!.slowestMs += 1))).checks.writeLatencyRecorded).toBe(false);
-    expect((await tampered((c) => void (c.facts.latency.rest!.timingsMs = c.facts.latency.rest!.timingsMs.map((x) => x + 1)))).checks.writeLatencyRecorded).toBe(false);
+    expect(
+      (await tampered((c) => void (c.facts.latency.rest!.timingsMs = c.facts.latency.rest!.timingsMs.map((x) => x + 1)))).checks.writeLatencyRecorded,
+    ).toBe(false);
     expect((await tampered((c) => void (c.facts.latency.rest = null))).checks.writeLatencyRecorded).toBe(false);
     // timings that are consistent in themselves (ten values, the right median and slowest) but are not the ones in the log
-    expect((await tampered((c) => void (c.facts.latency.rest = { timingsMs: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14], medianMs: 9.5, slowestMs: 14 }))).checks.writeLatencyRecorded).toBe(false);
+    expect(
+      (await tampered((c) => void (c.facts.latency.rest = { timingsMs: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14], medianMs: 9.5, slowestMs: 14 }))).checks
+        .writeLatencyRecorded,
+    ).toBe(false);
   });
 
   test("the two kill rules: a failed edit or a changed script is a kill; any other false check is a fail", async () => {
@@ -393,7 +524,8 @@ describe("when something goes wrong during the run", () => {
     expect(calls.facts.runs.every((r) => r.details === null)).toBe(true);
     const e = await evaluate(calls, result);
     expect(Object.values(e.checks).some((v) => v)).toBe(true); // the latency and some others can still hold
-    for (const name of ["oneWorkflowClassRanAllGraphs", "graphReadFromD1", "everyNodeRanInsideStepDo", "resultsMatchLocalInterpreter"]) expect(e.checks[name], name).toBe(false);
+    for (const name of ["oneWorkflowClassRanAllGraphs", "graphReadFromD1", "everyNodeRanInsideStepDo", "resultsMatchLocalInterpreter"])
+      expect(e.checks[name], name).toBe(false);
     expect(verdict(h11, { checks: e.checks }).verdict).not.toBe("pass");
   }, 120_000);
 
@@ -419,7 +551,10 @@ describe("when something goes wrong during the run", () => {
 
   test("a version list that comes back empty stops the protocol before any run", async () => {
     const w = await world();
-    w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/versions"), respond: { status: 404, body: { success: false, errors: [{ code: 10007, message: "no such Worker" }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/versions"),
+      respond: { status: 404, body: { success: false, errors: [{ code: 10007, message: "no such Worker" }] } },
+    });
     const { calls, result } = await runH11(w.deps);
     expect(result.completed).toBe(false);
     expect(calls.facts.runs).toEqual([]);
@@ -428,16 +563,29 @@ describe("when something goes wrong during the run", () => {
 
   test("the files of a failed run are still written with secrets hidden", async () => {
     const w = await world();
-    w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/versions"), respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: `no for ${TOKEN} ${ACCOUNT} ${KEY}` }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/versions"),
+      respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: `no for ${TOKEN} ${ACCOUNT} ${KEY}` }] } },
+    });
     const { calls, result } = await runH11(w.deps);
     expect(result.stoppedBecause).toContain("[hidden]");
-    expect(findSecrets(canonical11(calls) + JSON.stringify(result) + w.lines.join("\n"), { token: TOKEN, accountId: ACCOUNT, accessKey: KEY, signingSecret: SIGNING_SECRET })).toEqual([]);
+    expect(
+      findSecrets(canonical11(calls) + JSON.stringify(result) + w.lines.join("\n"), {
+        token: TOKEN,
+        accountId: ACCOUNT,
+        accessKey: KEY,
+        signingSecret: SIGNING_SECRET,
+      }),
+    ).toEqual([]);
   });
 });
 
 describe("the graph table in the local database is what the rehearsal edited", () => {
   test("the last row of the scratch id is the tenth REST write, so the timed writes really happened", async () => {
-    const row = await db.prepare(`SELECT graph FROM ${GRAPH_TABLE} WHERE workspace_id = ? AND id = ?`).bind(APP_WORKSPACE, H11_IDS.latency).first<{ graph: string }>();
+    const row = await db
+      .prepare(`SELECT graph FROM ${GRAPH_TABLE} WHERE workspace_id = ? AND id = ?`)
+      .bind(APP_WORKSPACE, H11_IDS.latency)
+      .first<{ graph: string }>();
     expect(JSON.parse(row!.graph)).toEqual({ write: 9 });
   });
 

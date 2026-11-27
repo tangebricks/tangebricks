@@ -23,10 +23,7 @@ export async function executeEntityCreateRecord(ctx: {
   readonly data: Readonly<Record<string, unknown>>;
   readonly inputs: Readonly<Record<string, unknown>>;
 }): Promise<Record<string, unknown>> {
-  const record =
-    ctx.inputs.in !== null && typeof ctx.inputs.in === "object" && !Array.isArray(ctx.inputs.in)
-      ? (ctx.inputs.in as Record<string, unknown>)
-      : {};
+  const record = ctx.inputs.in !== null && typeof ctx.inputs.in === "object" && !Array.isArray(ctx.inputs.in) ? (ctx.inputs.in as Record<string, unknown>) : {};
   return {
     out: {
       entity: typeof ctx.data.entity === "string" ? ctx.data.entity : "record",
@@ -35,4 +32,3 @@ export async function executeEntityCreateRecord(ctx: {
     },
   };
 }
-

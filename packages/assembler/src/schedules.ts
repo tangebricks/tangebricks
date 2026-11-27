@@ -2,9 +2,7 @@
 // and api) can use the exact rule the assembler applies (`@poc/assembler/schedules`).
 
 /** A condition on one of a brick's settings: it holds while the setting `equals` a value, or differs from `notEquals`. */
-export type ScheduleSettingCondition =
-  | { setting: string; equals: number | string | boolean }
-  | { setting: string; notEquals: number | string | boolean };
+export type ScheduleSettingCondition = { setting: string; equals: number | string | boolean } | { setting: string; notEquals: number | string | boolean };
 
 /** Whether a condition holds for a brick's settings; a setting missing from `settings` takes its manifest default. */
 export function settingConditionHolds(
@@ -24,5 +22,7 @@ export function enabledSchedules<S extends { enabledWhen?: ScheduleSettingCondit
   manifest: { settings?: Readonly<Record<string, { default?: unknown }>>; triggers?: { schedules?: readonly S[] | undefined } | undefined },
   settings: Readonly<Record<string, unknown>> = {},
 ): S[] {
-  return (manifest.triggers?.schedules ?? []).filter((sched) => !sched.enabledWhen || settingConditionHolds(sched.enabledWhen, settings, manifest.settings ?? {}));
+  return (manifest.triggers?.schedules ?? []).filter(
+    (sched) => !sched.enabledWhen || settingConditionHolds(sched.enabledWhen, settings, manifest.settings ?? {}),
+  );
 }

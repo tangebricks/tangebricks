@@ -21,7 +21,10 @@ async function freshDatabase() {
   for (const table of TABLES) await db.prepare(`DROP TABLE IF EXISTS "${table}"`).run();
   for (const path of Object.keys(sql).sort()) await applyMigration(db, sql[path]!);
 }
-const sendTo = (target: App, bindings: Record<string, unknown> = { DB: db }): Send => async (request) => target.fetch(request, bindings);
+const sendTo =
+  (target: App, bindings: Record<string, unknown> = { DB: db }): Send =>
+  async (request) =>
+    target.fetch(request, bindings);
 
 describe("the scripted check against the unbundled project", () => {
   beforeAll(async () => {

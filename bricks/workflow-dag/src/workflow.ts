@@ -46,11 +46,7 @@ export class WorkflowService {
   private readonly executors: ReadonlyMap<string, Executor>;
   private readonly db: D1Like;
 
-  constructor(
-    db: D1Like,
-    customRegistry?: Registry,
-    customExecutors?: ReadonlyMap<string, Executor>
-  ) {
+  constructor(db: D1Like, customRegistry?: Registry, customExecutors?: ReadonlyMap<string, Executor>) {
     this.db = db;
     this.registry = customRegistry || toyRegistry;
     // px-stub: quarantined: runs in-process with the SDK toy executors, not durable Cloudflare Workflows
@@ -63,7 +59,7 @@ export class WorkflowService {
   async createWorkflow(
     workspaceId: string,
     nameRaw: string,
-    graph: Graph
+    graph: Graph,
   ): Promise<{ ok: true; workflow: WorkflowRecord } | { ok: false; error: string; code: number }> {
     const name = nameRaw.trim();
     if (!name || name.length > 100) {
@@ -133,11 +129,7 @@ export class WorkflowService {
       updated_at: string;
     }
 
-    const row = await scoped(this.db, workspaceId).first<Row>(
-      "wf_definitions",
-      "id = ?",
-      [workflowId]
-    );
+    const row = await scoped(this.db, workspaceId).first<Row>("wf_definitions", "id = ?", [workflowId]);
 
     if (!row) return null;
     return {
@@ -167,12 +159,7 @@ export class WorkflowService {
       updated_at: string;
     }
 
-    const rows = await scoped(this.db, workspaceId).select<Row>(
-      "wf_definitions",
-      undefined,
-      [],
-      { orderBy: "updated_at DESC" }
-    );
+    const rows = await scoped(this.db, workspaceId).select<Row>("wf_definitions", undefined, [], { orderBy: "updated_at DESC" });
 
     return rows.map((r) => ({
       id: r.id,
@@ -193,7 +180,7 @@ export class WorkflowService {
     workspaceId: string,
     workflowId: string,
     inputPayload: Record<string, unknown> = {},
-    triggerType = "manual"
+    triggerType = "manual",
   ): Promise<{ ok: true; run: RunRecord; steps: StepLogRecord[] } | { ok: false; error: string; code: number }> {
     const wf = await this.getWorkflow(workspaceId, workflowId);
     if (!wf) return { ok: false, error: "Workflow not found", code: 404 };
@@ -273,7 +260,9 @@ export class WorkflowService {
         runStatus = "completed";
       } else {
         runStatus = "failed";
-        const failedNodes = Object.entries(result.failed).map(([k, v]) => `node ${k}: ${v}`).join("; ");
+        const failedNodes = Object.entries(result.failed)
+          .map(([k, v]) => `node ${k}: ${v}`)
+          .join("; ");
         errorText = failedNodes || "Graph execution failed";
       }
     } catch (err: unknown) {
@@ -287,22 +276,26 @@ export class WorkflowService {
     // Persist step logs into D1
     if (stepLogs.length > 0) {
       const stmts = stepLogs.map((s) =>
-        this.db.prepare(`
+        this.db
+          .prepare(
+            `
           INSERT INTO wf_step_logs (id, run_id, node_id, node_type, status, input_json, output_json, error_text, duration_ms, started_at, finished_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          s.id,
-          s.run_id,
-          s.node_id,
-          s.node_type,
-          s.status,
-          JSON.stringify(s.input || null),
-          JSON.stringify(s.output || null),
-          s.error || null,
-          s.duration_ms,
-          s.started_at,
-          s.finished_at
-        )
+        `,
+          )
+          .bind(
+            s.id,
+            s.run_id,
+            s.node_id,
+            s.node_type,
+            s.status,
+            JSON.stringify(s.input || null),
+            JSON.stringify(s.output || null),
+            s.error || null,
+            s.duration_ms,
+            s.started_at,
+            s.finished_at,
+          ),
       );
       await this.db.batch(stmts);
     }
@@ -318,7 +311,7 @@ export class WorkflowService {
         finished_at: finishedAtIso,
       },
       "id = ?",
-      [runId]
+      [runId],
     );
 
     const run: RunRecord = {
@@ -358,11 +351,7 @@ export class WorkflowService {
       created_at: string;
     }
 
-    const row = await scoped(this.db, workspaceId).first<RunRow>(
-      "wf_runs",
-      "id = ?",
-      [runId]
-    );
+    const row = await scoped(this.db, workspaceId).first<RunRow>("wf_runs", "id = ?", [runId]);
 
     if (!row) return null;
 
@@ -380,9 +369,14 @@ export class WorkflowService {
       finished_at: string | null;
     }
 
-    const stepRows = (await this.db.prepare(
-      "SELECT id, run_id, node_id, node_type, status, input_json, output_json, error_text, duration_ms, started_at, finished_at FROM wf_step_logs WHERE run_id = ? ORDER BY started_at ASC"
-    ).bind(runId).all<StepRow>()).results;
+    const stepRows = (
+      await this.db
+        .prepare(
+          "SELECT id, run_id, node_id, node_type, status, input_json, output_json, error_text, duration_ms, started_at, finished_at FROM wf_step_logs WHERE run_id = ? ORDER BY started_at ASC",
+        )
+        .bind(runId)
+        .all<StepRow>()
+    ).results;
 
     const run: RunRecord = {
       id: row.id,

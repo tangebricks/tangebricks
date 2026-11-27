@@ -8,12 +8,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import type { D1Like } from "@poc/sdk";
-import {
-  app as studioApp,
-  ensureStudioD1Schema,
-  getStudioSandboxPlatform,
-  resetStudioDeployTestState,
-} from "../src/index.ts";
+import { app as studioApp, ensureStudioD1Schema, getStudioSandboxPlatform, resetStudioDeployTestState } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { activateTestSandbox, dropAllTables, listTableNames } from "./sandbox-data-store.ts";
 
@@ -148,13 +143,9 @@ describe("story 17: generated-app entity tables stay out of STUDIO_DB", () => {
     expectNoAppTables(await listTableNames(studioDb));
 
     // Data browser list and read go to the sandbox D1.
-    const tablesRes = await user.req(
-      `/api/projects/${project}/environments/preview/data/tables?workspaceId=ws_s17&orgId=${user.orgId}`,
-    );
+    const tablesRes = await user.req(`/api/projects/${project}/environments/preview/data/tables?workspaceId=ws_s17&orgId=${user.orgId}`);
     expect(tablesRes.status).toBe(200);
-    const rowsRes = await user.req(
-      `/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_s17&orgId=${user.orgId}`,
-    );
+    const rowsRes = await user.req(`/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_s17&orgId=${user.orgId}`);
     expect(rowsRes.status).toBe(200);
 
     // SEED_SANDBOX: rows (real entity columns) land in the sandbox D1, not STUDIO_DB.
@@ -162,9 +153,7 @@ describe("story 17: generated-app entity tables stay out of STUDIO_DB", () => {
       body: {
         orgId: user.orgId,
         tables: {
-          ent_usage_ledgers: [
-            { id: "s17_row_1", workspace_id: "ws_s17", title: "Seeded into the sandbox", status: "active" },
-          ],
+          ent_usage_ledgers: [{ id: "s17_row_1", workspace_id: "ws_s17", title: "Seeded into the sandbox", status: "active" }],
         },
       },
     });
@@ -172,13 +161,9 @@ describe("story 17: generated-app entity tables stay out of STUDIO_DB", () => {
     const seedBody = (await seedRes.json()) as { insertedCount: number; dataStore: { kind: string; sandboxId: string } };
     expect(seedBody.insertedCount).toBe(1);
     expect(seedBody.dataStore).toEqual({ kind: "sandbox", sandboxId: deploy.sandboxId });
-    const sandboxRows = await sandboxDbA
-      .prepare("SELECT id, title, status FROM ent_usage_ledgers")
-      .all<{ id: string; title: string; status: string }>();
+    const sandboxRows = await sandboxDbA.prepare("SELECT id, title, status FROM ent_usage_ledgers").all<{ id: string; title: string; status: string }>();
     expect(sandboxRows.results).toEqual([{ id: "s17_row_1", title: "Seeded into the sandbox", status: "active" }]);
-    const readBackRes = await user.req(
-      `/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_s17&orgId=${user.orgId}`,
-    );
+    const readBackRes = await user.req(`/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_s17&orgId=${user.orgId}`);
     expect(readBackRes.status).toBe(200);
     const readBack = (await readBackRes.json()) as { rows: Array<{ id: string }> };
     expect(readBack.rows.map((r) => r.id)).toEqual(["s17_row_1"]);
@@ -300,9 +285,7 @@ describe("story 17: generated-app entity tables stay out of STUDIO_DB", () => {
       [alice, projectA, "A"],
       [bob, projectB, "B"],
     ] as const) {
-      const res = await user.req(
-        `/api/projects/${project}/environments/preview/data/tables/invoices/rows?workspaceId=ws_shared_name&orgId=${user.orgId}`,
-      );
+      const res = await user.req(`/api/projects/${project}/environments/preview/data/tables/invoices/rows?workspaceId=ws_shared_name&orgId=${user.orgId}`);
       expect(res.status).toBe(200);
       const ids = ((await res.json()) as { rows: Array<{ id: string }> }).rows.map((r) => r.id).sort();
       expect(ids).toEqual([`inv_${own}_1`, `inv_${own}_2`]);
@@ -320,9 +303,7 @@ describe("story 17: generated-app entity tables stay out of STUDIO_DB", () => {
     ]);
 
     // Org B cannot read org A's project at all.
-    const crossRes = await bob.req(
-      `/api/projects/${projectA}/environments/preview/data/tables/invoices/rows?workspaceId=ws_shared_name`,
-    );
+    const crossRes = await bob.req(`/api/projects/${projectA}/environments/preview/data/tables/invoices/rows?workspaceId=ws_shared_name`);
     expect([403, 404]).toContain(crossRes.status);
 
     expect(await listTableNames(studioDb)).toEqual(before);

@@ -1,16 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  IntegrationManifestSchema,
-  projectIntegrationToNodes,
-} from "@poc/assembler";
+import { IntegrationManifestSchema, projectIntegrationToNodes } from "@poc/assembler";
 import type { Catalog, IntegrationManifestFile } from "@poc/assembler";
 import { catalog as baseCatalog } from "@poc/assembler/catalog";
-import {
-  buildExecutorsFromCatalog,
-  buildRegistryFromCatalog,
-  rehearseStep,
-  runGraph,
-} from "../src/index.ts";
+import { buildExecutorsFromCatalog, buildRegistryFromCatalog, rehearseStep, runGraph } from "../src/index.ts";
 
 const slackManifest: IntegrationManifestFile = IntegrationManifestSchema.parse({
   manifestVersion: 2,
@@ -130,9 +122,7 @@ const resendManifest: IntegrationManifestFile = IntegrationManifestSchema.parse(
       summary: "Send transactional email via Resend",
       method: "POST",
       path: "/emails/{domainId}",
-      params: [
-        { name: "domainId", in: "path", dataType: "string", required: true },
-      ],
+      params: [{ name: "domainId", in: "path", dataType: "string", required: true }],
       body: {
         contentType: "application/json",
         fields: [
@@ -182,9 +172,7 @@ const twilioManifest: IntegrationManifestFile = IntegrationManifestSchema.parse(
       summary: "Send an SMS message via Twilio",
       method: "POST",
       path: "/Accounts/{accountSid}/Messages.json",
-      params: [
-        { name: "accountSid", in: "path", dataType: "string", required: true },
-      ],
+      params: [{ name: "accountSid", in: "path", dataType: "string", required: true }],
       body: {
         contentType: "application/x-www-form-urlencoded",
         fields: [
@@ -256,10 +244,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       body: string | null;
     }> = [];
 
-    const mockFetcher = async (
-      input: string | URL | Request,
-      init?: RequestInit,
-    ): Promise<Response> => {
+    const mockFetcher = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
       const url = String(input);
       const headersObj = new Headers(init?.headers);
       const headersRecord: Record<string, string> = {};
@@ -349,12 +334,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     };
 
     const slackRehearsal = await rehearseStep(
-      { workspaceId: "ws_test",
-        nodeId: "n_slack",
-        nodeType: "int:slack.post_message",
-        config: slackConfig,
-        input: slackInput,
-      },
+      { workspaceId: "ws_test", nodeId: "n_slack", nodeType: "int:slack.post_message", config: slackConfig, input: slackInput },
       { registry, executors, connections },
     );
     expect(slackRehearsal.ok).toBe(true);
@@ -370,7 +350,8 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       },
       registry,
       executors,
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         runId: "run_slack_integration",
         payload: slackInput,
         connections,
@@ -382,17 +363,11 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     );
     expect(slackGraphRun.ok).toBe(true);
     expect(stepDoCalls).toContain("n_slack");
-    expect(JSON.stringify(slackRehearsal.output)).toBe(
-      JSON.stringify(slackGraphRun.outputs.n_slack),
-    );
-    expect(capturedRequests[0]?.headers.authorization).toBe(
-      "Bearer xox" + "b-slack-oauth-token-12345",
-    );
+    expect(JSON.stringify(slackRehearsal.output)).toBe(JSON.stringify(slackGraphRun.outputs.n_slack));
+    expect(capturedRequests[0]?.headers.authorization).toBe("Bearer xox" + "b-slack-oauth-token-12345");
     expect(capturedRequests[0]?.headers.traceid).toBe("tr_001");
     // Manifest-declared idempotency header on write operation
-    expect(capturedRequests[1]?.headers["x-slack-req-id"]).toBe(
-      "run_slack_integration:n_slack",
-    );
+    expect(capturedRequests[1]?.headers["x-slack-req-id"]).toBe("run_slack_integration:n_slack");
 
     // 2. Custom Header API Key (Resend) + Case B workspace connection
     const resendConfig = {
@@ -410,12 +385,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
 
     const resendRehearsal = await rehearseStep(
       // the run's workspace is the tenant's; the selector's own workspaceId is never used (story 1.1)
-      { workspaceId: "ws_tenant_1",
-        nodeId: "n_resend",
-        nodeType: "int:resend.send_email",
-        config: resendConfig,
-        input: resendInput,
-      },
+      { workspaceId: "ws_tenant_1", nodeId: "n_resend", nodeType: "int:resend.send_email", config: resendConfig, input: resendInput },
       { registry, executors, connections },
     );
     const resendGraphRun = await runGraph(
@@ -428,23 +398,14 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       },
       registry,
       executors,
-      { workspaceId: "ws_tenant_1",
-        runId: "run_resend_integration",
-        payload: resendInput,
-        connections,
-        runStep: async (_id, fn) => fn(),
-      },
+      { workspaceId: "ws_tenant_1", runId: "run_resend_integration", payload: resendInput, connections, runStep: async (_id, fn) => fn() },
     );
     expect(resendRehearsal.ok).toBe(true);
     expect(resendGraphRun.ok).toBe(true);
-    expect(JSON.stringify(resendRehearsal.output)).toBe(
-      JSON.stringify(resendGraphRun.outputs.n_resend),
-    );
+    expect(JSON.stringify(resendRehearsal.output)).toBe(JSON.stringify(resendGraphRun.outputs.n_resend));
     expect(capturedRequests[2]?.headers["x-resend-key"]).toBe("re_live_apikey_67890");
     // AC2: A write integration node's outbound request carries the Idempotency-Key: <runId>:<nodeId> header
-    expect(capturedRequests[3]?.headers["idempotency-key"]).toBe(
-      "run_resend_integration:n_resend",
-    );
+    expect(capturedRequests[3]?.headers["idempotency-key"]).toBe("run_resend_integration:n_resend");
 
     // 3. HTTP Basic Auth + application/x-www-form-urlencoded (Twilio)
     const twilioConfig = {
@@ -458,12 +419,7 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     };
 
     const twilioRehearsal = await rehearseStep(
-      { workspaceId: "ws_test",
-        nodeId: "n_twilio",
-        nodeType: "int:twilio.send_sms",
-        config: twilioConfig,
-        input: twilioInput,
-      },
+      { workspaceId: "ws_test", nodeId: "n_twilio", nodeType: "int:twilio.send_sms", config: twilioConfig, input: twilioInput },
       { registry, executors, connections },
     );
     const twilioGraphRun = await runGraph(
@@ -476,27 +432,14 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       },
       registry,
       executors,
-      { workspaceId: "ws_test",
-        runId: "run_twilio_integration",
-        payload: twilioInput,
-        connections,
-        runStep: async (_id, fn) => fn(),
-      },
+      { workspaceId: "ws_test", runId: "run_twilio_integration", payload: twilioInput, connections, runStep: async (_id, fn) => fn() },
     );
     expect(twilioRehearsal.ok).toBe(true);
     expect(twilioGraphRun.ok).toBe(true);
-    expect(JSON.stringify(twilioRehearsal.output)).toBe(
-      JSON.stringify(twilioGraphRun.outputs.n_twilio),
-    );
-    expect(capturedRequests[4]?.headers.authorization).toBe(
-      `Basic ${btoa("AC_TWILIO_USER:TWILIO_SECRET_PASSWORD")}`,
-    );
-    expect(capturedRequests[5]?.headers["idempotency-key"]).toBe(
-      "run_twilio_integration:n_twilio",
-    );
-    expect(capturedRequests[4]?.headers["content-type"]).toBe(
-      "application/x-www-form-urlencoded",
-    );
+    expect(JSON.stringify(twilioRehearsal.output)).toBe(JSON.stringify(twilioGraphRun.outputs.n_twilio));
+    expect(capturedRequests[4]?.headers.authorization).toBe(`Basic ${btoa("AC_TWILIO_USER:TWILIO_SECRET_PASSWORD")}`);
+    expect(capturedRequests[5]?.headers["idempotency-key"]).toBe("run_twilio_integration:n_twilio");
+    expect(capturedRequests[4]?.headers["content-type"]).toBe("application/x-www-form-urlencoded");
     expect(capturedRequests[4]?.body).toContain("To=%2B15550001111");
   });
 
@@ -521,7 +464,8 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
 
     // 1. Protocol-relative metadata IP injection: //169.254.169.254/latest
     const metadataAttempt = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n1",
         nodeType: "int:slack.metadata_ip_test",
         config: {
@@ -545,7 +489,8 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       integration: { fetcher: urlParamFetcher },
     });
     const evilHostAttempt = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n1",
         nodeType: "int:slack.post_message",
         config: {
@@ -563,7 +508,8 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
 
     // 3. Path parameter traversal (../)
     const traversalAttempt = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n2",
         nodeType: "int:resend.send_email",
         config: {
@@ -580,7 +526,8 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
 
     // 4. Cross-app connection mismatch (passing Slack connection to Resend node)
     const mismatchAttempt = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n2",
         nodeType: "int:resend.send_email",
         config: {
@@ -654,7 +601,8 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
       },
       registry,
       retryExecutors,
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         connections,
         telemetry: {
           runId: "run_int_retry_1",
@@ -684,7 +632,8 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     });
 
     const expiredRes = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n_post",
         nodeType: "int:slack.post_message",
         config: {
@@ -721,7 +670,8 @@ describe("Story 10.1 — Generic integration.operation executor", () => {
     });
 
     const pageRes = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n_list",
         nodeType: "int:slack.list_channels",
         config: {

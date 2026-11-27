@@ -5,13 +5,7 @@ import { createBetterAuth } from "../bricks/core-auth/src/auth.ts";
 import { sealWorkspaceCredentials, unsealWorkspaceCredentials } from "../bricks/integration-connections/src/index.ts";
 import { unsealPxConnectionSecret } from "../bricks/webhook-gateway/src/index.ts";
 import { deriveConnectionVaultKey, sealConnectionCredentials } from "../packages/runtime/src/index.ts";
-import {
-  createStudioBetterAuth,
-  deriveAesGcmVaultKey,
-  encryptSecretValue,
-  requireTelemetrySecret,
-  sealDeployToken,
-} from "../apps/studio-api/src/index.ts";
+import { createStudioBetterAuth, deriveAesGcmVaultKey, encryptSecretValue, requireTelemetrySecret, sealDeployToken } from "../apps/studio-api/src/index.ts";
 import type { StudioApiEnv } from "../apps/studio-api/src/blueprint-do.ts";
 
 // Story 0.8: no secret falls back to a value written in source. Each SECRET_MISSING_* row of the plan's matrix is
@@ -73,17 +67,11 @@ describe("SECRET_MISSING_VAULT", () => {
 describe("SECRET_MISSING_CONN", () => {
   it("runtime connections refuse to derive a key without PX_CONN_KEY", async () => {
     expectMissing(await errorOf(() => deriveConnectionVaultKey(undefined)), "PX_CONN_KEY");
-    expectMissing(
-      await errorOf(() => sealConnectionCredentials({ app: "stripe", authType: "api_key", apiKey: "sk_test_x" } as never)),
-      "PX_CONN_KEY",
-    );
+    expectMissing(await errorOf(() => sealConnectionCredentials({ app: "stripe", authType: "api_key", apiKey: "sk_test_x" } as never)), "PX_CONN_KEY");
   });
 
   it("integration-connections refuses to seal or unseal without PX_CONN_KEY", async () => {
-    expectMissing(
-      await errorOf(() => sealWorkspaceCredentials({ provider: "github", accessToken: "gho_x" } as never, "ws_1")),
-      "PX_CONN_KEY",
-    );
+    expectMissing(await errorOf(() => sealWorkspaceCredentials({ provider: "github", accessToken: "gho_x" } as never, "ws_1")), "PX_CONN_KEY");
     expectMissing(await errorOf(() => unsealWorkspaceCredentials(JSON.stringify({ iv: "AAAAAAAAAAAAAAAA", ct: "AAAA" }), "ws_1")), "PX_CONN_KEY");
   });
 
@@ -97,10 +85,7 @@ describe("SECRET_MISSING_TOKEN_KEK", () => {
     const input = { orgId: "org_1", accountId: "acct_1", plaintextToken: "cf_token_value", createdBy: "usr_1" };
     const studioDb = env.STUDIO_DB as unknown as D1Like;
     expectMissing(await errorOf(() => sealDeployToken(studioDb, input)), "PX_TOKEN_KEK");
-    expectMissing(
-      await errorOf(() => sealDeployToken(studioDb, input, { STUDIO_DB: studioDb } as unknown as StudioApiEnv)),
-      "PX_TOKEN_KEK",
-    );
+    expectMissing(await errorOf(() => sealDeployToken(studioDb, input, { STUDIO_DB: studioDb } as unknown as StudioApiEnv)), "PX_TOKEN_KEK");
     expectMissing(await errorOf(() => sealDeployToken(studioDb, input, { currentKekVersion: 2 })), "PX_TOKEN_KEK");
   });
 });

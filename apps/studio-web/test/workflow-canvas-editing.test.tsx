@@ -80,9 +80,7 @@ describe("Editable Workflow Canvas, Searchable Node Palette, and Typed Port Vali
     await waitFor(() => {
       expect(useStudioStore.getState().projectState?.workflows).toHaveLength(1);
     });
-    expect(useStudioStore.getState().projectState?.workflows[0]?.id).toBe(
-      "wf-invoice-alert-flow",
-    );
+    expect(useStudioStore.getState().projectState?.workflows[0]?.id).toBe("wf-invoice-alert-flow");
 
     // Search palette for "webhook" and add core.webhook trigger node
     const paletteSearch = screen.getByTestId("palette-search-input");
@@ -90,22 +88,16 @@ describe("Editable Workflow Canvas, Searchable Node Palette, and Typed Port Vali
     fireEvent.click(screen.getByTestId("palette-add-node-core.webhook"));
 
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.nodes,
-      ).toHaveLength(1);
+      expect(useStudioStore.getState().projectState?.workflows[0]?.nodes).toHaveLength(1);
     });
 
     // Verify trigger limit warning appears and second trigger is blocked
     expect(screen.getByTestId("palette-trigger-limit-warning")).toBeDefined();
-    expect(
-      (screen.getByTestId("palette-add-node-core.webhook") as HTMLButtonElement).disabled,
-    ).toBe(true);
+    expect((screen.getByTestId("palette-add-node-core.webhook") as HTMLButtonElement).disabled).toBe(true);
 
     // Clear search and click a disabled brick action (credit-wallet.debit) -> opens Turn on Brick modal
     fireEvent.change(paletteSearch, { target: { value: "" } });
-    fireEvent.click(
-      screen.getByTestId("palette-disabled-brick-node-credit-wallet.debit"),
-    );
+    fireEvent.click(screen.getByTestId("palette-disabled-brick-node-credit-wallet.debit"));
 
     expect(screen.getByTestId("palette-enable-brick-modal")).toBeDefined();
     fireEvent.click(screen.getByTestId("palette-confirm-enable-brick"));
@@ -175,12 +167,8 @@ describe("Editable Workflow Canvas, Searchable Node Palette, and Typed Port Vali
     fireEvent.change(dstSelect, { target: { value: "node-loop-3::in" } });
 
     const errorBanner = screen.getByTestId("port-validation-error-banner");
-    expect(errorBanner.textContent).toContain(
-      "Cannot connect number output to array input",
-    );
-    expect(
-      (screen.getByTestId("wire-connect-button") as HTMLButtonElement).disabled,
-    ).toBe(true);
+    expect(errorBanner.textContent).toContain("Cannot connect number output to array input");
+    expect((screen.getByTestId("wire-connect-button") as HTMLButtonElement).disabled).toBe(true);
 
     // Now select a valid typed connection: core.webhook (out:object) -> core.field_map (in:object)
     fireEvent.change(srcSelect, { target: { value: "node-webhook-1::out" } });
@@ -192,9 +180,7 @@ describe("Editable Workflow Canvas, Searchable Node Palette, and Typed Port Vali
 
     fireEvent.click(connectBtn);
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.edges,
-      ).toHaveLength(1);
+      expect(useStudioStore.getState().projectState?.workflows[0]?.edges).toHaveLength(1);
     });
   });
 
@@ -253,48 +239,32 @@ describe("Editable Workflow Canvas, Searchable Node Palette, and Typed Port Vali
     fireEvent.click(pasteBtn);
 
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.nodes,
-      ).toHaveLength(3);
+      expect(useStudioStore.getState().projectState?.workflows[0]?.nodes).toHaveLength(3);
     });
-    const pastedNode = useStudioStore
-      .getState()
-      .projectState!.workflows[0]!.nodes.find((n) => n.id.startsWith("node-math-2-copy-"));
+    const pastedNode = useStudioStore.getState().projectState!.workflows[0]!.nodes.find((n) => n.id.startsWith("node-math-2-copy-"));
     expect(pastedNode).toBeDefined();
 
     // Delete the pasted node -> Undo toast appears -> Click Undo -> Node restored
     const deleteBtn = await screen.findByTestId("delete-selected-button");
     fireEvent.click(deleteBtn);
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.nodes,
-      ).toHaveLength(2);
+      expect(useStudioStore.getState().projectState?.workflows[0]?.nodes).toHaveLength(2);
     });
 
     const undoToastButton = await screen.findByTestId("canvas-undo-toast-button");
     fireEvent.click(undoToastButton);
 
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.nodes,
-      ).toHaveLength(3);
+      expect(useStudioStore.getState().projectState?.workflows[0]?.nodes).toHaveLength(3);
     });
 
     // Auto-Layout updates metadata.layout without changing semanticHash
-    const hashBeforeAutoLayout = semanticHash(
-      useStudioStore.getState().projectState!,
-    );
+    const hashBeforeAutoLayout = semanticHash(useStudioStore.getState().projectState!);
     fireEvent.click(screen.getByTestId("workflow-autolayout-button"));
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.metadata?.layout?.[
-          "node-webhook-1"
-        ],
-      ).toBeDefined();
+      expect(useStudioStore.getState().projectState?.metadata?.layout?.["node-webhook-1"]).toBeDefined();
     });
-    const hashAfterAutoLayout = semanticHash(
-      useStudioStore.getState().projectState!,
-    );
+    const hashAfterAutoLayout = semanticHash(useStudioStore.getState().projectState!);
     expect(hashAfterAutoLayout).toBe(hashBeforeAutoLayout);
   });
 });

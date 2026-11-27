@@ -1,11 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
-import {
-  createStudioQueryClient,
-  fetchAuthMe,
-  fetchStudioOrgs,
-  fetchStudioProjects,
-} from "./api.ts";
+import { createStudioQueryClient, fetchAuthMe, fetchStudioOrgs, fetchStudioProjects } from "./api.ts";
 import { AuthScreen } from "./components/AuthScreen.tsx";
 import { StudioShell } from "./components/StudioShell.tsx";
 import type { StudioShellProps } from "./components/StudioShell.tsx";
@@ -54,8 +49,7 @@ export function StudioApp(props: StudioShellProps = {}) {
         void (async () => {
           const me = await fetchAuthMe();
           if (cancelled || !me.user || useStudioStore.getState().user) return;
-          const orgs =
-            me.orgs.length > 0 ? me.orgs : await fetchStudioOrgs().catch(() => []);
+          const orgs = me.orgs.length > 0 ? me.orgs : await fetchStudioOrgs().catch(() => []);
           const projects = await fetchStudioProjects().catch(() => []);
           if (cancelled || useStudioStore.getState().user) return;
           let savedProject: string | null = params.get("project");
@@ -66,10 +60,7 @@ export function StudioApp(props: StudioShellProps = {}) {
               savedProject = null;
             }
           }
-          const matchedProject =
-            savedProject && projects.some((p) => p.project === savedProject)
-              ? savedProject
-              : projects[0]?.project ?? null;
+          const matchedProject = savedProject && projects.some((p) => p.project === savedProject) ? savedProject : (projects[0]?.project ?? null);
           useStudioStore.getState().setAuth(me.user, orgs, orgs[0]?.id ?? null);
           useStudioStore.getState().setProjects(projects, matchedProject);
           const urlNav = params.get("nav");
@@ -106,11 +97,7 @@ export function StudioApp(props: StudioShellProps = {}) {
     }
   }, []);
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      {user ? <StudioShell {...props} /> : <AuthScreen />}
-    </QueryClientProvider>
-  );
+  return <QueryClientProvider client={queryClient}>{user ? <StudioShell {...props} /> : <AuthScreen />}</QueryClientProvider>;
 }
 
 export default StudioApp;

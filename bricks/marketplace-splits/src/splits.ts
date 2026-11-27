@@ -76,11 +76,7 @@ export class MarketplaceSplitsService {
     const dest = input.payoutDestination?.trim() || null;
     const now = new Date().toISOString();
 
-    const existing = await scoped(this.db, input.workspaceId).first<VendorContract>(
-      "split_contracts",
-      "vendor_id = ?",
-      [input.vendorId.trim()]
-    );
+    const existing = await scoped(this.db, input.workspaceId).first<VendorContract>("split_contracts", "vendor_id = ?", [input.vendorId.trim()]);
 
     if (existing) {
       await scoped(this.db, input.workspaceId).update(
@@ -92,7 +88,7 @@ export class MarketplaceSplitsService {
           payout_destination: dest,
         },
         "vendor_id = ?",
-        [input.vendorId.trim()]
+        [input.vendorId.trim()],
       );
     } else {
       await scoped(this.db, input.workspaceId).insert("split_contracts", {
@@ -122,11 +118,7 @@ export class MarketplaceSplitsService {
    * Retrieves the contract for a vendor.
    */
   async getVendorContract(workspaceId: string, vendorId: string): Promise<VendorContract> {
-    const row = await scoped(this.db, workspaceId).first<VendorContract>(
-      "split_contracts",
-      "vendor_id = ?",
-      [vendorId.trim()]
-    );
+    const row = await scoped(this.db, workspaceId).first<VendorContract>("split_contracts", "vendor_id = ?", [vendorId.trim()]);
 
     if (row) return row;
 
@@ -146,13 +138,7 @@ export class MarketplaceSplitsService {
   /**
    * Splits an incoming payment gross amount between platform and vendor with escrow hold.
    */
-  async processSplit(
-    workspaceId: string,
-    vendorId: string,
-    orderId: string,
-    grossAmountCents: number,
-    currency = "usd"
-  ): Promise<SplitTransaction> {
+  async processSplit(workspaceId: string, vendorId: string, orderId: string, grossAmountCents: number, currency = "usd"): Promise<SplitTransaction> {
     const contract = await this.getVendorContract(workspaceId, vendorId);
 
     const platformFeeCents = Math.round(grossAmountCents * (contract.platform_fee_percent / 100));
@@ -198,12 +184,9 @@ export class MarketplaceSplitsService {
    */
   async releaseMaturedEscrows(workspaceId: string): Promise<number> {
     const nowIso = new Date().toISOString();
-    const res = await scoped(this.db, workspaceId).update(
-      "split_transactions",
-      { status: "available" },
-      "status = 'in_escrow' AND available_at <= ?",
-      [nowIso]
-    );
+    const res = await scoped(this.db, workspaceId).update("split_transactions", { status: "available" }, "status = 'in_escrow' AND available_at <= ?", [
+      nowIso,
+    ]);
 
     return res.meta.changes;
   }
@@ -211,11 +194,7 @@ export class MarketplaceSplitsService {
   /**
    * Calculates vendor financial balances across escrow, available, and paid out.
    */
-  async getVendorBalance(
-    workspaceId: string,
-    vendorId: string,
-    currency = "usd"
-  ): Promise<VendorBalance> {
+  async getVendorBalance(workspaceId: string, vendorId: string, currency = "usd"): Promise<VendorBalance> {
     // Release any escrows that matured before querying balance
     await this.releaseMaturedEscrows(workspaceId);
 
@@ -225,13 +204,17 @@ export class MarketplaceSplitsService {
       sum_cents: number;
     }
 
-    const rows = (await scoped(this.db, workspaceId).raw(
-      `SELECT status, SUM(vendor_amount_cents) as sum_cents
+    const rows = (
+      await scoped(this.db, workspaceId)
+        .raw(
+          `SELECT status, SUM(vendor_amount_cents) as sum_cents
        FROM split_transactions
        WHERE workspace_id = ? AND vendor_id = ? AND currency = ?
        GROUP BY status`,
-      [workspaceId, vendorId.trim(), curr]
-    ).all<SumRow>()).results;
+          [workspaceId, vendorId.trim(), curr],
+        )
+        .all<SumRow>()
+    ).results;
 
     let escrowCents = 0;
     let availableCents = 0;
@@ -260,7 +243,7 @@ export class MarketplaceSplitsService {
     workspaceId: string,
     vendorId: string,
     amountCents: number,
-    currency = "usd"
+    currency = "usd",
   ): Promise<{ ok: boolean; payout?: PayoutRecord; error?: string }> {
     const curr = currency.toLowerCase().slice(0, 3);
     const balance = await this.getVendorBalance(workspaceId, vendorId, curr);
@@ -286,17 +269,12 @@ export class MarketplaceSplitsService {
       "split_transactions",
       "vendor_id = ? AND currency = ? AND status = 'available'",
       [vendorId.trim(), curr],
-      { orderBy: "created_at ASC" }
+      { orderBy: "created_at ASC" },
     );
 
     for (const tx of availRows) {
       if (remainingToDeduct <= 0) break;
-      await scoped(this.db, workspaceId).update(
-        "split_transactions",
-        { status: "paid_out" },
-        "id = ?",
-        [tx.id]
-      );
+      await scoped(this.db, workspaceId).update("split_transactions", { status: "paid_out" }, "id = ?", [tx.id]);
       remainingToDeduct -= tx.vendor_amount_cents;
     }
 
@@ -332,11 +310,9 @@ export class MarketplaceSplitsService {
    * Lists past payout records.
    */
   async listPayouts(workspaceId: string, vendorId?: string): Promise<PayoutRecord[]> {
-    return scoped(this.db, workspaceId).select<PayoutRecord>(
-      "split_payouts",
-      vendorId ? "vendor_id = ?" : undefined,
-      vendorId ? [vendorId.trim()] : [],
-      { orderBy: "created_at DESC", limit: 50 }
-    );
+    return scoped(this.db, workspaceId).select<PayoutRecord>("split_payouts", vendorId ? "vendor_id = ?" : undefined, vendorId ? [vendorId.trim()] : [], {
+      orderBy: "created_at DESC",
+      limit: 50,
+    });
   }
 }

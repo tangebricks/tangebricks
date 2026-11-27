@@ -3,11 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { IntegrationManifestSchema } from "@poc/assembler";
-import {
-  importIntegrationSpec,
-  measureIntegrationTokenMetrics,
-  parseSpecDocument,
-} from "../src/index.ts";
+import { importIntegrationSpec, measureIntegrationTokenMetrics, parseSpecDocument } from "../src/index.ts";
 import { parseImportCliArgs, runOpenApiImportCli } from "../src/cli.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..", "..", "..");
@@ -98,10 +94,7 @@ paths:
       },
     });
 
-    expect(result.manifest.operations.map((o) => o.operationId)).toEqual([
-      "listItems",
-      "createItem",
-    ]);
+    expect(result.manifest.operations.map((o) => o.operationId)).toEqual(["listItems", "createItem"]);
     expect(result.manifest.operations[0]?.pagination?.style).toBe("cursor");
     expect(result.manifest.triggers).toHaveLength(1);
     expect(IntegrationManifestSchema.safeParse(result.manifest).success).toBe(true);

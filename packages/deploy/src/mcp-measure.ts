@@ -81,7 +81,8 @@ export function classifyBuild(status: number | null, body: string): { outcome: O
     const message = JSON.parse(body) as { result?: { isError?: boolean; content?: Array<{ type?: string; text?: string }> } };
     if (message.result?.isError === true) return { outcome: "other" };
     const summary = JSON.parse(message.result?.content?.[0]?.text ?? "") as { hash?: unknown; files?: unknown };
-    if (typeof summary.hash === "string" && /^[0-9a-f]{64}$/.test(summary.hash) && typeof summary.files === "number") return { outcome: "built", hash: summary.hash };
+    if (typeof summary.hash === "string" && /^[0-9a-f]{64}$/.test(summary.hash) && typeof summary.files === "number")
+      return { outcome: "built", hash: summary.hash };
   } catch {
     // not the shape of a build summary
   }
@@ -121,13 +122,28 @@ export interface McpFacts {
   schema: 1;
   commandStartedAt: string;
   url: string;
-  deploy: { bytes: number; gzipBytes: number; sha256: string; percentOfLimit: number; limitBytes: number; startupTimeMs: number | null; changes: string[]; reachableAfterMs: number | null } | null;
+  deploy: {
+    bytes: number;
+    gzipBytes: number;
+    sha256: string;
+    percentOfLimit: number;
+    limitBytes: number;
+    startupTimeMs: number | null;
+    changes: string[];
+    reachableAfterMs: number | null;
+  } | null;
   /** Set when Cloudflare refused the upload: the refusal is itself the finding, and nothing else could be measured. */
   uploadError: string | null;
   /** The project Worker (the one H10 to H12 describe) must not change: its versions before this story's deploy and after the measurement. */
   projectWorker: { before: string[] | null; after: string[] | null };
   closed: { noToken: number | null; wrongToken: number | null };
-  session: { connected: boolean; exchanges: Exchange[]; answers: Array<{ tool: string; isError: boolean; text: string; threw?: string }>; toolCalls: number; stoppedAt?: string };
+  session: {
+    connected: boolean;
+    exchanges: Exchange[];
+    answers: Array<{ tool: string; isError: boolean; text: string; threw?: string }>;
+    toolCalls: number;
+    stoppedAt?: string;
+  };
   storedAfterSession: StoredCheck | null;
   repeats: Attempt[];
   storedAfterRepeats: StoredCheck | null;
@@ -215,7 +231,17 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
   if (deps.uploadError) {
     facts.account = [...(deps.accountCalls?.() ?? [])];
     facts.projectWorker.after = (await deps.readProjectWorkerVersions?.().catch(() => null)) ?? null;
-    return { facts, result: { schema: 1, commandStartedAt: started, finishedAt: deps.nowIso(), completed: false, callsSha256: sha256(canonicalMcp(facts)), stoppedBecause: `Cloudflare did not accept the upload: ${deps.uploadError}` } };
+    return {
+      facts,
+      result: {
+        schema: 1,
+        commandStartedAt: started,
+        finishedAt: deps.nowIso(),
+        completed: false,
+        callsSha256: sha256(canonicalMcp(facts)),
+        stoppedBecause: `Cloudflare did not accept the upload: ${deps.uploadError}`,
+      },
+    };
   }
 
   const timed = async (what: string, request: () => Promise<Response>): Promise<Exchange & { response?: Response }> => {
@@ -225,7 +251,13 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
       const text = await response.clone().text();
       return { what, status: response.status, ms: Math.round((deps.clock() - t0) * 10) / 10, body: deps.hide(text.slice(0, EXCERPT)), response };
     } catch (error) {
-      return { what, status: null, ms: Math.round((deps.clock() - t0) * 10) / 10, body: "", error: deps.hide(error instanceof Error ? error.message : String(error)) };
+      return {
+        what,
+        status: null,
+        ms: Math.round((deps.clock() - t0) * 10) / 10,
+        body: "",
+        error: deps.hide(error instanceof Error ? error.message : String(error)),
+      };
     }
   };
   const headers = (token: string | null): Record<string, string> => ({
@@ -238,7 +270,12 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
   /** The exchange as recorded (body cut to an excerpt), and the whole answer text, which is never recorded. */
   const rpcWithText = async (what: string, method: string, params: unknown, token: string | null = deps.token) => {
     const { response, ...exchange } = await timed(what, () =>
-      deps.fetchUrl(endpoint, { method: "POST", headers: headers(token), body: JSON.stringify({ jsonrpc: "2.0", id: (nextId += 1), method, params }), signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
+      deps.fetchUrl(endpoint, {
+        method: "POST",
+        headers: headers(token),
+        body: JSON.stringify({ jsonrpc: "2.0", id: (nextId += 1), method, params }),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      }),
     );
     const full = response ? await response.text().catch(() => "") : "";
     return { exchange: exchange as Exchange, full };
@@ -283,7 +320,14 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
     if (!files) return { read: false, fileCount: 0, projectHash: null, directHash, sameFiles: false, differing: [] };
     const paths = new Set([...Object.keys(files), ...Object.keys(direct.files)]);
     const differing = [...paths].filter((p) => files[p] !== direct.files[p]).sort();
-    return { read: true, fileCount: Object.keys(files).length, projectHash: await projectHash(files), directHash, sameFiles: differing.length === 0, differing };
+    return {
+      read: true,
+      fileCount: Object.keys(files).length,
+      projectHash: await projectHash(files),
+      directHash,
+      sameFiles: differing.length === 0,
+      differing,
+    };
   };
 
   // 1. the endpoint without a token and with a wrong one
@@ -302,7 +346,14 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
     } catch {
       // a GET or DELETE has no body
     }
-    const exchange = await timed(what, () => deps.fetchUrl(request.url, { method: request.method, headers: Object.fromEntries(request.headers), body: body || undefined, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }));
+    const exchange = await timed(what, () =>
+      deps.fetchUrl(request.url, {
+        method: request.method,
+        headers: Object.fromEntries(request.headers),
+        body: body || undefined,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      }),
+    );
     const { response, ...recorded } = exchange;
     facts.session.exchanges.push(recorded);
     if (response) return response;
@@ -310,7 +361,9 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
   };
   const client = new McpClient({ name: "story-9-session", version: "1.0.0" });
   try {
-    await client.connect(new StreamableHTTPClientTransport(new URL(endpoint), { fetch: recording, requestInit: { headers: { authorization: `Bearer ${deps.token}` } } }));
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(endpoint), { fetch: recording, requestInit: { headers: { authorization: `Bearer ${deps.token}` } } }),
+    );
     facts.session.connected = true;
     await client.listTools();
     for (const step of FULL_STEPS) {
@@ -329,7 +382,12 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
           break;
         }
       } catch (error) {
-        facts.session.answers.push({ tool: step.tool, isError: true, text: "", threw: deps.hide(error instanceof Error ? error.message.slice(0, EXCERPT) : String(error)) });
+        facts.session.answers.push({
+          tool: step.tool,
+          isError: true,
+          text: "",
+          threw: deps.hide(error instanceof Error ? error.message.slice(0, EXCERPT) : String(error)),
+        });
         facts.session.toolCalls += 1;
         facts.session.stoppedAt = step.tool;
         deps.log(`session: ${step.tool} did not get an answer the client could read`);
@@ -346,7 +404,9 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
   const sessionBuilt = facts.session.answers.some((a) => a.tool === "build_project" && !a.isError);
   if (sessionBuilt) {
     facts.storedAfterSession = await stored(SESSION_PROJECT);
-    deps.log(`stored files read back: ${facts.storedAfterSession.read ? `${facts.storedAfterSession.fileCount} files, ${facts.storedAfterSession.sameFiles ? "equal to the direct assembly" : `DIFFERENT: ${facts.storedAfterSession.differing.join(", ")}`}` : "could not be read"}`);
+    deps.log(
+      `stored files read back: ${facts.storedAfterSession.read ? `${facts.storedAfterSession.fileCount} files, ${facts.storedAfterSession.sameFiles ? "equal to the direct assembly" : `DIFFERENT: ${facts.storedAfterSession.differing.join(", ")}`}` : "could not be read"}`,
+    );
   }
 
   // 4. the full project's build, again and again (needs the blueprint to be in place, which the session did unless it stopped early)
@@ -360,7 +420,8 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
       deps.log(`build_project ${n}/${repeats}: ${a.outcome}${a.outcome === "built" ? "" : ` (HTTP ${a.status})`} in ${a.ms} ms`);
     }
     if (facts.repeats.some((a) => a.outcome === "built")) facts.storedAfterRepeats = await stored(SESSION_PROJECT);
-  } else if (!stoppedBecause) stoppedBecause = `the session stopped before the project was in place (${facts.session.stoppedAt ?? "unknown"}), so the repeats were not made`;
+  } else if (!stoppedBecause)
+    stoppedBecause = `the session stopped before the project was in place (${facts.session.stoppedAt ?? "unknown"}), so the repeats were not made`;
 
   // 5. smaller projects, only if the full one did not build every time
   const fullBuiltEveryTime = sessionBuilt && facts.repeats.length === repeats && facts.repeats.every((a) => a.outcome === "built");
@@ -370,7 +431,12 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
     for (const rung of LADDER) {
       // AD-V8: the rung's bricks are proposed and the reviewer accepts them; the table is then declared directly.
       const proposeArgs = { project: rung.project, ops: rung.bricks.map((id) => ({ opId: `enable-${id}`, type: "enable_brick", brickId: id })) };
-      const { exchange: proposed, full } = await rpcWithText("tools/call apply_ops", "tools/call", { name: "apply_ops", arguments: proposeArgs }, tokenForArgs(proposeArgs));
+      const { exchange: proposed, full } = await rpcWithText(
+        "tools/call apply_ops",
+        "tools/call",
+        { name: "apply_ops", arguments: proposeArgs },
+        tokenForArgs(proposeArgs),
+      );
       const setup: Exchange[] = [proposed];
       const reviewed = proposed.status === 200 && !/"isError":true/.test(full) && (await acceptProposalIn(answerTextOf(full)));
       if (reviewed && rung.entities.length > 0) setup.push(await toolCall("define_entity", { project: rung.project, entities: rung.entities }));
@@ -380,16 +446,39 @@ export async function runMcpMeasurement(deps: McpDeps): Promise<{ facts: McpFact
         for (let n = 1; n <= ladderBuilds; n += 1) result.builds.push(attempt(n, await toolCall("build_project", { project: rung.project })));
       }
       facts.ladder.push(result);
-      deps.log(`${rung.label}: ${setupOk ? result.builds.map((b) => (b.outcome === "built" ? "built" : b.outcome === "resource_limit" ? "limit" : "other")).join(" ") : "could not be set up"}`);
+      deps.log(
+        `${rung.label}: ${setupOk ? result.builds.map((b) => (b.outcome === "built" ? "built" : b.outcome === "resource_limit" ? "limit" : "other")).join(" ") : "could not be set up"}`,
+      );
     }
   }
 
   facts.account = [...(deps.accountCalls?.() ?? [])];
   facts.projectWorker.after = (await deps.readProjectWorkerVersions?.().catch(() => null)) ?? null;
   const other = [...facts.repeats, ...facts.ladder.flatMap((r) => r.builds)].filter((a) => a.outcome === "other").length;
-  const completed = facts.session.connected && blueprintInPlace && facts.repeats.length === repeats && other === 0 && facts.closed.noToken === 401 && facts.closed.wrongToken === 401 && (!facts.ladderRun || facts.ladder.every((r) => r.setupOk));
-  if (!completed && !stoppedBecause) stoppedBecause = other > 0 ? `${other} builds ended some way that is neither a built project nor Cloudflare's resource limit: a fault to find, not a finding` : "something did not go as the plan expects; see the log";
-  return { facts, result: { schema: 1, commandStartedAt: started, finishedAt: deps.nowIso(), completed, callsSha256: sha256(canonicalMcp(facts)), ...(stoppedBecause ? { stoppedBecause } : {}) } };
+  const completed =
+    facts.session.connected &&
+    blueprintInPlace &&
+    facts.repeats.length === repeats &&
+    other === 0 &&
+    facts.closed.noToken === 401 &&
+    facts.closed.wrongToken === 401 &&
+    (!facts.ladderRun || facts.ladder.every((r) => r.setupOk));
+  if (!completed && !stoppedBecause)
+    stoppedBecause =
+      other > 0
+        ? `${other} builds ended some way that is neither a built project nor Cloudflare's resource limit: a fault to find, not a finding`
+        : "something did not go as the plan expects; see the log";
+  return {
+    facts,
+    result: {
+      schema: 1,
+      commandStartedAt: started,
+      finishedAt: deps.nowIso(),
+      completed,
+      callsSha256: sha256(canonicalMcp(facts)),
+      ...(stoppedBecause ? { stoppedBecause } : {}),
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -415,19 +504,44 @@ export function evaluateMcp(input: { callsText: string; result: McpResult }): Mc
   } catch {
     return { believed: false, notes: ["the calls file is not valid JSON; nothing in it is believed"], summary: null };
   }
-  if (sha256(input.callsText) !== input.result.callsSha256 || input.callsText !== canonicalMcp(facts)) return { believed: false, notes: ["the calls file does not match the hash in the result file (one of them was edited, or they come from different runs); nothing in them is believed"], summary: null };
+  if (sha256(input.callsText) !== input.result.callsSha256 || input.callsText !== canonicalMcp(facts))
+    return {
+      believed: false,
+      notes: [
+        "the calls file does not match the hash in the result file (one of them was edited, or they come from different runs); nothing in them is believed",
+      ],
+      summary: null,
+    };
   const attempts = [...facts.repeats, ...facts.ladder.flatMap((r) => r.builds)];
-  if (attempts.some((a) => a.outcome !== classifyBuild(a.status, a.body).outcome || a.hash !== classifyBuild(a.status, a.body).hash)) return { believed: false, notes: ["a recorded class disagrees with the answer recorded beside it: the file was edited, and nothing in it is believed"], summary: null };
+  if (attempts.some((a) => a.outcome !== classifyBuild(a.status, a.body).outcome || a.hash !== classifyBuild(a.status, a.body).hash))
+    return {
+      believed: false,
+      notes: ["a recorded class disagrees with the answer recorded beside it: the file was edited, and nothing in it is believed"],
+      summary: null,
+    };
 
   const worker = facts.projectWorker;
-  const unchanged = worker.before !== null && worker.after !== null && worker.before.length > 0 && worker.before.length === worker.after.length && worker.before.every((v, i) => v === worker.after![i]);
+  const unchanged =
+    worker.before !== null &&
+    worker.after !== null &&
+    worker.before.length > 0 &&
+    worker.before.length === worker.after.length &&
+    worker.before.every((v, i) => v === worker.after![i]);
   const notes: string[] = [`from the run that started ${facts.commandStartedAt}${input.result.completed ? "" : " (it did not complete)"}`];
   if (facts.uploadError) notes.push(`Cloudflare did not accept the upload: ${facts.uploadError}`);
   if (facts.deploy) {
     const d = facts.deploy;
-    notes.push(`the upload: bundle ${kib(d.bytes)} (${kib(d.gzipBytes)} gzipped), ${d.percentOfLimit}% of the ${d.limitBytes / 1024 / 1024} MiB limit${d.startupTimeMs === null ? "; Cloudflare gave no start-up time" : `; Cloudflare reported a start-up time of ${d.startupTimeMs} ms (limit 1000)`}${d.reachableAfterMs === null ? "" : `; the address answered ${(d.reachableAfterMs / 1000).toFixed(1)} seconds after the upload`}`);
+    notes.push(
+      `the upload: bundle ${kib(d.bytes)} (${kib(d.gzipBytes)} gzipped), ${d.percentOfLimit}% of the ${d.limitBytes / 1024 / 1024} MiB limit${d.startupTimeMs === null ? "; Cloudflare gave no start-up time" : `; Cloudflare reported a start-up time of ${d.startupTimeMs} ms (limit 1000)`}${d.reachableAfterMs === null ? "" : `; the address answered ${(d.reachableAfterMs / 1000).toFixed(1)} seconds after the upload`}`,
+    );
   }
-  notes.push(worker.before === null || worker.after === null ? "the project Worker's versions were not read before and after: it is not shown to be untouched" : unchanged ? `the project Worker (the one H10 to H12 describe) was not changed: ${worker.after.length} versions, newest ${worker.after[0]?.slice(0, 8)}, before and after` : "THE PROJECT WORKER'S VERSIONS CHANGED between the start and the end of this run");
+  notes.push(
+    worker.before === null || worker.after === null
+      ? "the project Worker's versions were not read before and after: it is not shown to be untouched"
+      : unchanged
+        ? `the project Worker (the one H10 to H12 describe) was not changed: ${worker.after.length} versions, newest ${worker.after[0]?.slice(0, 8)}, before and after`
+        : "THE PROJECT WORKER'S VERSIONS CHANGED between the start and the end of this run",
+  );
   notes.push(`without a token the endpoint answered ${facts.closed.noToken}, with a wrong one ${facts.closed.wrongToken}`);
   const s = facts.session;
   const exchangeLine = (what: string) => {
@@ -440,25 +554,44 @@ export function evaluateMcp(input: { callsText: string; result: McpResult }): Mc
   const sameAsDirect = facts.storedAfterSession ? facts.storedAfterSession.read && facts.storedAfterSession.sameFiles : null;
   if (facts.storedAfterSession) {
     const c = facts.storedAfterSession;
-    notes.push(`the files the endpoint stored, read back from its database: ${c.read ? `${c.fileCount} files, ${c.sameFiles ? `equal to the direct assembly in Node (project hash ${c.projectHash?.slice(0, 12)})` : `NOT equal to the direct assembly (${c.differing.join(", ")})`}` : "could not be read"}`);
+    notes.push(
+      `the files the endpoint stored, read back from its database: ${c.read ? `${c.fileCount} files, ${c.sameFiles ? `equal to the direct assembly in Node (project hash ${c.projectHash?.slice(0, 12)})` : `NOT equal to the direct assembly (${c.differing.join(", ")})`}` : "could not be read"}`,
+    );
   } else if (!sessionBuilt) notes.push("the session's build_project did not build the project, so no stored files could be compared");
   const count = (list: Attempt[], outcome: Outcome) => list.filter((a) => a.outcome === outcome).length;
   const full = { built: count(facts.repeats, "built"), limit: count(facts.repeats, "resource_limit"), other: count(facts.repeats, "other") };
   const times = (list: Attempt[]) => {
     const built = list.filter((a) => a.outcome === "built").map((a) => a.ms);
-    return built.length === 0 ? "" : `; built in a median of ${median(built)} ms (fastest ${Math.min(...built)}, slowest ${Math.max(...built)}), as seen from outside`;
+    return built.length === 0
+      ? ""
+      : `; built in a median of ${median(built)} ms (fastest ${Math.min(...built)}, slowest ${Math.max(...built)}), as seen from outside`;
   };
-  if (facts.repeats.length > 0) notes.push(`build_project on the full project, ${facts.repeats.length} more times: ${full.built} built, ${full.limit} stopped by Cloudflare's resource limit (error 1102), ${full.other} some other way${times(facts.repeats)}`);
-  if (facts.storedAfterRepeats) notes.push(`after those builds the stored files ${facts.storedAfterRepeats.read ? (facts.storedAfterRepeats.sameFiles ? "were still equal to the direct assembly" : `were NOT equal to the direct assembly (${facts.storedAfterRepeats.differing.join(", ")})`) : "could not be read"}`);
+  if (facts.repeats.length > 0)
+    notes.push(
+      `build_project on the full project, ${facts.repeats.length} more times: ${full.built} built, ${full.limit} stopped by Cloudflare's resource limit (error 1102), ${full.other} some other way${times(facts.repeats)}`,
+    );
+  if (facts.storedAfterRepeats)
+    notes.push(
+      `after those builds the stored files ${facts.storedAfterRepeats.read ? (facts.storedAfterRepeats.sameFiles ? "were still equal to the direct assembly" : `were NOT equal to the direct assembly (${facts.storedAfterRepeats.differing.join(", ")})`) : "could not be read"}`,
+    );
   for (const r of facts.ladder) {
     const b = r.builds;
-    notes.push(`smaller project, ${r.label}: ${r.setupOk ? `${count(b, "built")} built, ${count(b, "resource_limit")} stopped by the limit, ${count(b, "other")} other, of ${b.length}${times(b)}` : "could not be set up"}`);
+    notes.push(
+      `smaller project, ${r.label}: ${r.setupOk ? `${count(b, "built")} built, ${count(b, "resource_limit")} stopped by the limit, ${count(b, "other")} other, of ${b.length}${times(b)}` : "could not be set up"}`,
+    );
   }
   if (!facts.ladderRun) notes.push("the smaller projects were not built: the full project built every time");
   if (facts.account.length > 0) {
-    const writes = facts.account.filter((c) => c.method !== "GET" && !(c.method === "POST" && c.sqlKind === "select" && /\/d1\/database\/[^/]+\/query$/.test(c.path)));
-    const foreign = writes.filter((c) => (/\/workers\/scripts\//.test(c.path) && !/\/workers\/scripts\/projectx-poc-[0-9a-f]{8}-mcp(\/|\?|$)/.test(c.path)) || /\/workflows(\/|$)/.test(c.path));
-    notes.push(`calls to Cloudflare's API: ${facts.account.length}, of which ${writes.length} could write (${[...new Set(writes.map((c) => `${c.method} ${c.path.replace("/accounts/{account}", "")}`))].join(", ") || "none"}); ${foreign.length === 0 ? "none of them touched another Worker or any Workflow" : `${foreign.length} TOUCHED ANOTHER WORKER OR A WORKFLOW`}`);
+    const writes = facts.account.filter(
+      (c) => c.method !== "GET" && !(c.method === "POST" && c.sqlKind === "select" && /\/d1\/database\/[^/]+\/query$/.test(c.path)),
+    );
+    const foreign = writes.filter(
+      (c) =>
+        (/\/workers\/scripts\//.test(c.path) && !/\/workers\/scripts\/projectx-poc-[0-9a-f]{8}-mcp(\/|\?|$)/.test(c.path)) || /\/workflows(\/|$)/.test(c.path),
+    );
+    notes.push(
+      `calls to Cloudflare's API: ${facts.account.length}, of which ${writes.length} could write (${[...new Set(writes.map((c) => `${c.method} ${c.path.replace("/accounts/{account}", "")}`))].join(", ") || "none"}); ${foreign.length === 0 ? "none of them touched another Worker or any Workflow" : `${foreign.length} TOUCHED ANOTHER WORKER OR A WORKFLOW`}`,
+    );
   }
   notes.push("not shown: the CPU time itself (no analytics permission), whether an error 1102 was the CPU or the memory limit, any plan but the free one");
   return { believed: true, notes, summary: { fullBuilt: full.built, fullLimit: full.limit, fullOther: full.other, sessionBuilt, sameAsDirect } };

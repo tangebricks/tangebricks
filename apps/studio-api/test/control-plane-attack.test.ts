@@ -45,15 +45,7 @@ const studioEnv = env as unknown as StudioApiEnv;
 const REGISTRY_FILE = "control-plane-attack.known-failures.json";
 const registry: RegistryEntry[] = (knownFailuresFile as { entries: RegistryEntry[] }).entries;
 
-const MCP_ATTACKS = [
-  "TOKEN_OTHER_PROJECT",
-  "TOKEN_OTHER_ORG",
-  "NO_PROJECT_ARG",
-  "SCOPE_ESCALATION",
-  "ORG_HEADER_FORWARD",
-  "LEGACY_TOKEN",
-  "UNAUTH",
-] as const;
+const MCP_ATTACKS = ["TOKEN_OTHER_PROJECT", "TOKEN_OTHER_ORG", "NO_PROJECT_ARG", "SCOPE_ESCALATION", "ORG_HEADER_FORWARD", "LEGACY_TOKEN", "UNAUTH"] as const;
 const ROUTE_ATTACKS = ["TOKEN_MINTS_TOKEN", "TOKEN_CREATES_PROJECT", "BAD_SCOPE", "FOREIGN_PROJECT_ISSUE", "UNAUTH"] as const;
 const ALL_ATTACKS: readonly string[] = [
   ...MCP_ATTACKS,
@@ -135,12 +127,7 @@ async function call(
 }
 
 let rpcId = 1;
-function callTool(
-  bearer: string | null,
-  name: string,
-  args: Record<string, unknown>,
-  headers: Record<string, string> = {},
-) {
+function callTool(bearer: string | null, name: string, args: Record<string, unknown>, headers: Record<string, string> = {}) {
   return call("/api/mcp", {
     bearer,
     headers,
@@ -179,11 +166,7 @@ async function createProject(owner: Person, project: string, marker: string): Pr
   expect(seeded.status, seeded.text).toBe(200);
 }
 
-async function issueToken(
-  owner: Person,
-  projectId: string,
-  scopes: string[],
-): Promise<{ token: string; id: string }> {
+async function issueToken(owner: Person, projectId: string, scopes: string[]): Promise<{ token: string; id: string }> {
   const res = await call(`/api/orgs/${owner.orgId}/mcp-tokens`, {
     bearer: owner.token,
     body: { clientName: "attack-suite", projectId, scopes },
@@ -266,8 +249,7 @@ async function runMcpAttacks(): Promise<{ violations: RegistryViolation[]; cases
   const w = world;
   const violations: RegistryViolation[] = [];
   let cases = 0;
-  const flag = (route: string, attack: string, detail: string) =>
-    violations.push({ method: "MCP", route, attack, detail });
+  const flag = (route: string, attack: string, detail: string) => violations.push({ method: "MCP", route, attack, detail });
 
   for (const tool of TOOL_NAMES) {
     // TOKEN_OTHER_PROJECT: P1's token names P2 in the same org.
@@ -297,8 +279,7 @@ async function runMcpAttacks(): Promise<{ violations: RegistryViolation[]; cases
       const beforeB = await stateOf(w.bob, w.pb);
       const res = await callTool(w.full.token, tool, argsFor(tool));
       if (res.status !== 200) flag(tool, "NO_PROJECT_ARG", `status ${res.status}, expected 200 on the token's own project`);
-      if (res.text.includes(w.markers.p2) || res.text.includes(w.markers.pb))
-        flag(tool, "NO_PROJECT_ARG", "answer contains another project's data");
+      if (res.text.includes(w.markers.p2) || res.text.includes(w.markers.pb)) flag(tool, "NO_PROJECT_ARG", "answer contains another project's data");
       if ((await stateOf(w.alice, w.p2)) !== before2) flag(tool, "NO_PROJECT_ARG", "P2 changed");
       if ((await stateOf(w.bob, w.pb)) !== beforeB) flag(tool, "NO_PROJECT_ARG", "PB changed");
     }
@@ -345,9 +326,7 @@ async function runMcpAttacks(): Promise<{ violations: RegistryViolation[]; cases
   {
     cases += 1;
     const carol = await signUp("carol");
-    await studioEnv.STUDIO_DB.prepare(
-      "INSERT INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, 'builder', ?)",
-    )
+    await studioEnv.STUDIO_DB.prepare("INSERT INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, 'builder', ?)")
       .bind(w.bob.orgId, carol.userId, new Date().toISOString())
       .run();
     const rowless = `cpa-norow-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
@@ -356,14 +335,10 @@ async function runMcpAttacks(): Promise<{ violations: RegistryViolation[]; cases
     });
     if (res.status !== 200) flag("request_connection", "ORG_HEADER_FORWARD", `status ${res.status}, expected 200`);
     const rows =
-      (
-        await studioEnv.STUDIO_DB.prepare("SELECT org_id FROM studio_connection_requests WHERE project_id = ?")
-          .bind(rowless)
-          .all<{ org_id: string }>()
-      ).results ?? [];
+      (await studioEnv.STUDIO_DB.prepare("SELECT org_id FROM studio_connection_requests WHERE project_id = ?").bind(rowless).all<{ org_id: string }>())
+        .results ?? [];
     if (rows.length === 0) flag("request_connection", "ORG_HEADER_FORWARD", "the internal request was not made");
-    if (rows.some((r) => r.org_id === w.bob.orgId))
-      flag("request_connection", "ORG_HEADER_FORWARD", "the internal route used the forwarded x-org-id (org B)");
+    if (rows.some((r) => r.org_id === w.bob.orgId)) flag("request_connection", "ORG_HEADER_FORWARD", "the internal route used the forwarded x-org-id (org B)");
     if (rows.some((r) => r.org_id !== carol.orgId))
       flag("request_connection", "ORG_HEADER_FORWARD", `recorded under ${rows.map((r) => r.org_id).join(",")}, expected Carol's org`);
   }
@@ -377,12 +352,9 @@ async function runTokenRouteAttacks(): Promise<{ violations: RegistryViolation[]
   let cases = 0;
   const ISSUE = "/api/orgs/:orgId/mcp-tokens";
   const REVOKE = "/api/orgs/:orgId/mcp-tokens/:tokenId";
-  const flag = (method: string, route: string, attack: string, detail: string) =>
-    violations.push({ method, route, attack, detail });
+  const flag = (method: string, route: string, attack: string, detail: string) => violations.push({ method, route, attack, detail });
   const tokenCount = async () =>
-    (await studioEnv.STUDIO_DB.prepare("SELECT COUNT(*) AS n FROM studio_mcp_tokens WHERE org_id = ?")
-      .bind(w.alice.orgId)
-      .first<{ n: number }>())!.n;
+    (await studioEnv.STUDIO_DB.prepare("SELECT COUNT(*) AS n FROM studio_mcp_tokens WHERE org_id = ?").bind(w.alice.orgId).first<{ n: number }>())!.n;
 
   // TOKEN_MINTS_TOKEN: Alice owns her org, so her MCP tokens are admin-owned; none of them may issue or revoke.
   for (const bearer of [w.full.token, w.readOnly.token]) {
@@ -448,9 +420,7 @@ async function runTokenRouteAttacks(): Promise<{ violations: RegistryViolation[]
     const project = `cpa-new-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
     const res = await call(`/api/orgs/${w.alice.orgId}/projects`, { bearer, body: { project } });
     if (res.status !== 403) flag("POST", "/api/orgs/:orgId/projects", "TOKEN_CREATES_PROJECT", `status ${res.status}, expected 403`);
-    const row = await studioEnv.STUDIO_DB.prepare("SELECT project_id FROM projects WHERE project_id = ?")
-      .bind(project)
-      .first();
+    const row = await studioEnv.STUDIO_DB.prepare("SELECT project_id FROM projects WHERE project_id = ?").bind(project).first();
     if (row) flag("POST", "/api/orgs/:orgId/projects", "TOKEN_CREATES_PROJECT", "the project was created");
   }
 
@@ -477,10 +447,7 @@ describe("control-plane attack suite: Studio MCP and MCP token routes (story 0.1
     expect(await stateOf(w.alice, w.p1)).not.toBe(before);
     const history = await call(`/api/projects/${w.p1}/revisions`, { bearer: w.alice.token });
     expect(history.status).toBe(200);
-    const latest = await call(
-      `/api/projects/${w.p1}/revisions/${Number((await stateOf(w.alice, w.p1)).split(":")[0])}`,
-      { bearer: w.alice.token },
-    );
+    const latest = await call(`/api/projects/${w.p1}/revisions/${Number((await stateOf(w.alice, w.p1)).split(":")[0])}`, { bearer: w.alice.token });
     expect(latest.json().author).toMatchObject({ type: "agent", id: own.id, onBehalfOf: w.alice.userId });
   });
 
@@ -493,12 +460,7 @@ describe("control-plane attack suite: Studio MCP and MCP token routes (story 0.1
     };
 
     // A session caller over MCP: the author is the session user.
-    const viaMcp = await callTool(
-      w.alice.token,
-      "apply_ops",
-      { ...argsFor("apply_ops", w.p1), author: { type: "agent", id: "evil" } },
-      evilHeaders,
-    );
+    const viaMcp = await callTool(w.alice.token, "apply_ops", { ...argsFor("apply_ops", w.p1), author: { type: "agent", id: "evil" } }, evilHeaders);
     expect(viaMcp.status, viaMcp.text).toBe(200);
     expect(await latestAuthor()).toEqual({ type: "human", id: w.alice.userId });
 
@@ -555,23 +517,19 @@ describe("control-plane attack suite: Studio MCP and MCP token routes (story 0.1
     expect(registry).toEqual([]);
   });
 
-  test(
-    "every MCP tool and both token routes, under every attack class: 0 failures against the registry",
-    async () => {
-      const mcp = await runMcpAttacks();
-      const routes = await runTokenRouteAttacks();
-      const violations = [...mcp.violations, ...routes.violations];
-      const problems = describeComparison(compareWithRegistry(violations, registry), REGISTRY_FILE);
+  test("every MCP tool and both token routes, under every attack class: 0 failures against the registry", async () => {
+    const mcp = await runMcpAttacks();
+    const routes = await runTokenRouteAttacks();
+    const violations = [...mcp.violations, ...routes.violations];
+    const problems = describeComparison(compareWithRegistry(violations, registry), REGISTRY_FILE);
 
-      // Coverage: every tool the endpoint answers was attacked with every MCP attack class that applies to it.
-      expect(TOOL_NAMES.length).toBeGreaterThanOrEqual(ALL_TOOLS.length);
-      const expectedMcpCases = TOOL_NAMES.length * 6 + TOOL_NAMES.filter((t) => WRITE_TOOLS.has(t)).length + 1;
-      expect(mcp.cases).toBe(expectedMcpCases);
-      expect(routes.cases).toBeGreaterThanOrEqual(15);
-      expect(problems, problems.join("\n")).toEqual([]);
-    },
-    600_000,
-  );
+    // Coverage: every tool the endpoint answers was attacked with every MCP attack class that applies to it.
+    expect(TOOL_NAMES.length).toBeGreaterThanOrEqual(ALL_TOOLS.length);
+    const expectedMcpCases = TOOL_NAMES.length * 6 + TOOL_NAMES.filter((t) => WRITE_TOOLS.has(t)).length + 1;
+    expect(mcp.cases).toBe(expectedMcpCases);
+    expect(routes.cases).toBeGreaterThanOrEqual(15);
+    expect(problems, problems.join("\n")).toEqual([]);
+  }, 600_000);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -678,10 +636,7 @@ function enumerateRoutes(): Array<{ method: string; path: string }> {
   return out;
 }
 
-function materialize(
-  path: string,
-  ids: { project?: string; orgId?: string; ref?: string; userId?: string },
-): string {
+function materialize(path: string, ids: { project?: string; orgId?: string; ref?: string; userId?: string }): string {
   return path.replace(/:([A-Za-z]+)/g, (_m, name: string) => {
     switch (name) {
       case "project":
@@ -722,17 +677,13 @@ async function fingerprint(project: string, orgId: string): Promise<string> {
     const tables =
       (
         await db
-          .prepare(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name",
-          )
+          .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name")
           .all<{ name: string }>()
       ).results ?? [];
     for (const { name } of tables) {
       // Refusals are recorded in the project org's audit trail by design; that is not a change to the org's state.
       if (name === "studio_audit_log" || name === "studio_audit_logs") continue;
-      const cols = ((await db.prepare(`PRAGMA table_info("${name}")`).all<{ name: string }>()).results ?? []).map(
-        (c) => c.name,
-      );
+      const cols = ((await db.prepare(`PRAGMA table_info("${name}")`).all<{ name: string }>()).results ?? []).map((c) => c.name);
       const where: string[] = [];
       const binds: string[] = [];
       if (cols.includes("project_id")) {
@@ -745,7 +696,12 @@ async function fingerprint(project: string, orgId: string): Promise<string> {
       }
       if (where.length === 0) continue;
       const rows =
-        (await db.prepare(`SELECT * FROM "${name}" WHERE ${where.join(" OR ")}`).bind(...binds).all()).results ?? [];
+        (
+          await db
+            .prepare(`SELECT * FROM "${name}" WHERE ${where.join(" OR ")}`)
+            .bind(...binds)
+            .all()
+        ).results ?? [];
       const stable = rows
         .map((r) => JSON.stringify(r))
         .sort()
@@ -775,16 +731,12 @@ async function hit(
 }
 
 async function rowOrg(project: string): Promise<string | null> {
-  const row = await studioEnv.STUDIO_DB.prepare("SELECT org_id FROM projects WHERE project_id = ?")
-    .bind(project)
-    .first<{ org_id: string }>();
+  const row = await studioEnv.STUDIO_DB.prepare("SELECT org_id FROM projects WHERE project_id = ?").bind(project).first<{ org_id: string }>();
   return row?.org_id ?? null;
 }
 
 async function addMember(orgId: string, userId: string, role: string): Promise<void> {
-  await studioEnv.STUDIO_DB.prepare(
-    "INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)",
-  )
+  await studioEnv.STUDIO_DB.prepare("INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)")
     .bind(orgId, userId, role, new Date().toISOString())
     .run();
 }
@@ -808,8 +760,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
   const violations: RegistryViolation[] = [];
   const cases = new Map<string, number>();
   const count = (attack: string) => cases.set(attack, (cases.get(attack) ?? 0) + 1);
-  const flag = (method: string, route: string, attack: string, detail: string) =>
-    violations.push({ method, route, attack, detail });
+  const flag = (method: string, route: string, attack: string, detail: string) => violations.push({ method, route, attack, detail });
   const leaks = (text: string, ...markers: string[]) => markers.some((m) => text.includes(m));
   const isOk = (s: number) => s >= 200 && s < 300;
   const slugOf = (prefix: string) => `${prefix}-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
@@ -835,8 +786,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
         const before = await fingerprint(w.pb, w.bob.orgId);
         const res = await hit(method, onB, w.alice.token, { body: { orgId: w.alice.orgId } });
         const after = await fingerprint(w.pb, w.bob.orgId);
-        if (res.status !== 403 && res.status !== 404)
-          flag(method, path, "PROJECT_B", `status ${res.status}, expected 403/404`);
+        if (res.status !== 403 && res.status !== 404) flag(method, path, "PROJECT_B", `status ${res.status}, expected 403/404`);
         if (leaks(res.text, w.markers.pb)) flag(method, path, "PROJECT_B", "answer contains PB's data");
         if (before !== after) flag(method, path, "PROJECT_B", "PB / org B state changed");
       }
@@ -846,8 +796,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
         const before = await fingerprint(w.pb, w.bob.orgId);
         const res = await hit(method, onB, w.token.token);
         const after = await fingerprint(w.pb, w.bob.orgId);
-        if (res.status !== 403 && res.status !== 404)
-          flag(method, path, "TOKEN_OTHER_ORG", `status ${res.status}, expected 403/404`);
+        if (res.status !== 403 && res.status !== 404) flag(method, path, "TOKEN_OTHER_ORG", `status ${res.status}, expected 403/404`);
         if (leaks(res.text, w.markers.pb)) flag(method, path, "TOKEN_OTHER_ORG", "answer contains PB's data");
         if (before !== after) flag(method, path, "TOKEN_OTHER_ORG", "PB / org B state changed");
       }
@@ -890,8 +839,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
             headers: { "x-org-id": w.bob.orgId },
             body: { orgId: w.bob.orgId },
           });
-          if ((await rowOrg(slug)) === w.bob.orgId)
-            flag(method, path, "CLAIM_UNOWNED", "a projects row was created in org B");
+          if ((await rowOrg(slug)) === w.bob.orgId) flag(method, path, "CLAIM_UNOWNED", "a projects row was created in org B");
           if (isOk(res.status)) flag(method, path, "CLAIM_UNOWNED", `status ${res.status}, expected a refusal`);
         }
         // VIEWER_MUTATE: a viewer of org A on A's project PV.
@@ -932,12 +880,9 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       {
         count("ORG_B");
         const before = await fingerprint(w.pb, w.bob.orgId);
-        const res = await hit(
-          method,
-          materialize(path, { orgId: w.bob.orgId, userId: w.bob.userId, project: w.pb }),
-          w.alice.token,
-          { body: body(w.pb, w.alice.userId) },
-        );
+        const res = await hit(method, materialize(path, { orgId: w.bob.orgId, userId: w.bob.userId, project: w.pb }), w.alice.token, {
+          body: body(w.pb, w.alice.userId),
+        });
         const after = await fingerprint(w.pb, w.bob.orgId);
         if (res.status !== 403) flag(method, path, "ORG_B", `status ${res.status}, expected 403`);
         if (leaks(res.text, w.markers.pb)) flag(method, path, "ORG_B", "answer contains org B's data");
@@ -946,12 +891,9 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       // TOKEN_ORG_ROUTE: token(A, P1) on org A's own org-level route.
       {
         count("TOKEN_ORG_ROUTE");
-        const res = await hit(
-          method,
-          materialize(path, { orgId: w.alice.orgId, userId: w.alice.userId, project: w.p1 }),
-          w.token.token,
-          { body: body(w.p1, w.alice.userId) },
-        );
+        const res = await hit(method, materialize(path, { orgId: w.alice.orgId, userId: w.alice.userId, project: w.p1 }), w.token.token, {
+          body: body(w.p1, w.alice.userId),
+        });
         if (res.status !== 403) flag(method, path, "TOKEN_ORG_ROUTE", `status ${res.status}, expected 403`);
       }
       continue;
@@ -971,8 +913,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       }
       count("ADMIN_OPERATOR");
       const res = await hit(method, target, w.operator.token, { env: { PX_PLATFORM_OPERATORS: w.operator.userId } });
-      if (res.status === 401 || res.status === 403)
-        flag(method, path, "ADMIN_OPERATOR", `status ${res.status}, expected allowed`);
+      if (res.status === 401 || res.status === 403) flag(method, path, "ADMIN_OPERATOR", `status ${res.status}, expected allowed`);
       continue;
     }
   }
@@ -1004,17 +945,9 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
   for (const suffix of ["", `?orgId=${w.bob.orgId}`, `?orgId=${w.alice.orgId}`]) {
     count("LIST_TOKEN");
     const res = await hit("GET", `/api/projects${suffix}`, w.token.token, { headers: { "x-org-id": w.bob.orgId } });
-    const listed =
-      res.status === 200
-        ? (JSON.parse(res.text) as { projects: Array<{ project: string }> }).projects.map((p) => p.project)
-        : null;
+    const listed = res.status === 200 ? (JSON.parse(res.text) as { projects: Array<{ project: string }> }).projects.map((p) => p.project) : null;
     if (JSON.stringify(listed) !== JSON.stringify([w.p1]))
-      flag(
-        "GET",
-        "/api/projects",
-        "LIST_TOKEN",
-        `${suffix || "(no org)"}: status ${res.status}, listed ${JSON.stringify(listed)}, expected [P1]`,
-      );
+      flag("GET", "/api/projects", "LIST_TOKEN", `${suffix || "(no org)"}: status ${res.status}, listed ${JSON.stringify(listed)}, expected [P1]`);
   }
   // LIST_SESSION: Dana (orgs A and B) selecting A sees only A's projects; an org the caller is not in is 403.
   {
@@ -1023,15 +956,13 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
     const res = await hit("GET", `/api/projects?orgId=${w.alice.orgId}`, w.dana.token);
     const listed = res.status === 200 ? (JSON.parse(res.text) as Listed).projects : [];
     if (res.status !== 200) flag("GET", "/api/projects", "LIST_SESSION", `status ${res.status}, expected 200`);
-    if (listed.some((p) => p.orgId !== w.alice.orgId))
-      flag("GET", "/api/projects", "LIST_SESSION", "listed a project of another org");
+    if (listed.some((p) => p.orgId !== w.alice.orgId)) flag("GET", "/api/projects", "LIST_SESSION", "listed a project of another org");
     if (!listed.some((p) => p.project === w.p1)) flag("GET", "/api/projects", "LIST_SESSION", "org A's project missing");
 
     count("LIST_SESSION");
     const viaHeader = await hit("GET", "/api/projects", w.dana.token, { headers: { "x-org-id": w.alice.orgId } });
     const headerListed = viaHeader.status === 200 ? (JSON.parse(viaHeader.text) as Listed).projects : [];
-    if (headerListed.some((p) => p.orgId !== w.alice.orgId))
-      flag("GET", "/api/projects", "LIST_SESSION", "x-org-id A listed another org's project");
+    if (headerListed.some((p) => p.orgId !== w.alice.orgId)) flag("GET", "/api/projects", "LIST_SESSION", "x-org-id A listed another org's project");
 
     count("LIST_SESSION");
     const all = await hit("GET", "/api/projects", w.alice.token);
@@ -1041,8 +972,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
 
     count("LIST_SESSION");
     const foreign = await hit("GET", `/api/projects?orgId=${w.bob.orgId}`, w.alice.token);
-    if (foreign.status !== 403)
-      flag("GET", "/api/projects", "LIST_SESSION", `non-member org: status ${foreign.status}, expected 403`);
+    if (foreign.status !== 403) flag("GET", "/api/projects", "LIST_SESSION", `non-member org: status ${foreign.status}, expected 403`);
   }
 
   // CONN_DEFAULT: a connection stored under the 'default' project is never one of P1's.
@@ -1081,8 +1011,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
     const after = await pxRow(w.connB);
     if (before === "null") flag(method, route, "CONN_REF_OTHER", "fixture: Bob's connection row is missing");
     if (before !== after) flag(method, route, "CONN_REF_OTHER", "Bob's connection row changed");
-    if (res.status !== 404)
-      flag(method, route, "CONN_REF_OTHER", `status ${res.status}, expected 404`);
+    if (res.status !== 404) flag(method, route, "CONN_REF_OTHER", `status ${res.status}, expected 404`);
   }
   // ...and creating a connection under a ref another project holds is refused (409), never an overwrite.
   {
@@ -1108,9 +1037,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       .bind(new Date().toISOString().slice(0, 16), marker, w.pb)
       .run();
     const survives = async () =>
-      (await studioEnv.STUDIO_DB.prepare("SELECT COUNT(*) AS n FROM px_http_rollups WHERE route_prefix = ?")
-        .bind(marker)
-        .first<{ n: number }>())!.n > 0;
+      (await studioEnv.STUDIO_DB.prepare("SELECT COUNT(*) AS n FROM px_http_rollups WHERE route_prefix = ?").bind(marker).first<{ n: number }>())!.n > 0;
     for (const bearer of [w.alice.token, w.token.token]) {
       const res = await hit("POST", `/api/projects/${w.p1}/environments/preview/health/seed`, bearer, {
         body: { reset: true },
@@ -1157,16 +1084,46 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       const stamp = { projectId: project };
       await upsertRunRecord(
         db,
-        { runId, workflowId: `wf_${marker}`, revision: 0, triggerType: "manual", workspaceId: ws, status: "failed", durationMs: 1, retries: 0, errorStack: `Error: ${marker}`, startedAt: now, endedAt: now },
+        {
+          runId,
+          workflowId: `wf_${marker}`,
+          revision: 0,
+          triggerType: "manual",
+          workspaceId: ws,
+          status: "failed",
+          durationMs: 1,
+          retries: 0,
+          errorStack: `Error: ${marker}`,
+          startedAt: now,
+          endedAt: now,
+        },
         stamp,
       );
       await insertStepEvent(
         db,
-        { eventId: `${runId}:n1:failed:1`, runId, workflowId: `wf_${marker}`, revision: 0, workspaceId: ws, nodeId: "n1", status: "failed", durationMs: 1, retries: 0, inputPreview: JSON.stringify({ marker }), outputPreview: "{}", errorStack: `Error: ${marker}`, createdAt: now },
+        {
+          eventId: `${runId}:n1:failed:1`,
+          runId,
+          workflowId: `wf_${marker}`,
+          revision: 0,
+          workspaceId: ws,
+          nodeId: "n1",
+          status: "failed",
+          durationMs: 1,
+          retries: 0,
+          inputPreview: JSON.stringify({ marker }),
+          outputPreview: "{}",
+          errorStack: `Error: ${marker}`,
+          createdAt: now,
+        },
         stamp,
       );
       await insertStructuredLog(db, { level: "error", message: `log ${marker}`, runId, workspaceId: ws, envName: "preview" }, {}, stamp);
-      await upsertHttpRollup(db, { workspaceId: ws, bucketMinute: now, routePrefix: `/${marker}`, brickId: `brick_${marker}`, requestCount: 2, error5xxCount: 1, envName: "preview" }, stamp);
+      await upsertHttpRollup(
+        db,
+        { workspaceId: ws, bucketMinute: now, routePrefix: `/${marker}`, brickId: `brick_${marker}`, requestCount: 2, error5xxCount: 1, envName: "preview" },
+        stamp,
+      );
       await upsertQueueMetrics(db, { workspaceId: ws, queueName: `queue_${marker}`, depth: 3, dlqCount: 1, envName: "preview" }, stamp);
     }
     // P1's and PB's data and ledger rows, each in its project's own data store (the active sandbox database that
@@ -1178,11 +1135,12 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       const store = await activateTestSandbox(db, { project, orgId });
       await store.rawD1.batch([
         store.rawD1.prepare("CREATE TABLE IF NOT EXISTS cpa_items (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, label TEXT)"),
-        store.rawD1
-          .prepare(
-            "CREATE TABLE IF NOT EXISTS credit_ledger (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, type TEXT NOT NULL, amount INTEGER NOT NULL, balance_after INTEGER NOT NULL, reason TEXT NOT NULL, metadata TEXT, idempotency_key TEXT, created_at TEXT NOT NULL)",
-          ),
-        store.rawD1.prepare("CREATE TABLE IF NOT EXISTS credit_wallets (workspace_id TEXT PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)"),
+        store.rawD1.prepare(
+          "CREATE TABLE IF NOT EXISTS credit_ledger (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, type TEXT NOT NULL, amount INTEGER NOT NULL, balance_after INTEGER NOT NULL, reason TEXT NOT NULL, metadata TEXT, idempotency_key TEXT, created_at TEXT NOT NULL)",
+        ),
+        store.rawD1.prepare(
+          "CREATE TABLE IF NOT EXISTS credit_wallets (workspace_id TEXT PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)",
+        ),
         store.rawD1.prepare("INSERT INTO cpa_items (id, workspace_id, label) VALUES (?, ?, ?)").bind(`item_${marker}`, ws, marker),
         store.rawD1
           .prepare(
@@ -1201,7 +1159,21 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
     ] as const) {
       await insertStepEvent(
         db,
-        { eventId: `ev_up_${marker}`, runId: `run_up_${marker}`, workflowId: sharedWf, revision: 0, workspaceId: ws, nodeId: "n_up", status: "succeeded", durationMs: 1, retries: 0, inputPreview: "{}", outputPreview: JSON.stringify({ out: { upstream: marker } }), errorStack: null, createdAt: now },
+        {
+          eventId: `ev_up_${marker}`,
+          runId: `run_up_${marker}`,
+          workflowId: sharedWf,
+          revision: 0,
+          workspaceId: ws,
+          nodeId: "n_up",
+          status: "succeeded",
+          durationMs: 1,
+          retries: 0,
+          inputPreview: "{}",
+          outputPreview: JSON.stringify({ out: { upstream: marker } }),
+          errorStack: null,
+          createdAt: now,
+        },
         { projectId: project },
       );
     }
@@ -1232,9 +1204,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       ["P1 token", w.token.token],
     ] as const;
     const startedFrom = async (sourceRunId: string) =>
-      Number(
-        (await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE retry_of_run_id = ?").bind(sourceRunId).first<{ c: number }>())?.c ?? 0,
-      );
+      Number((await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE retry_of_run_id = ?").bind(sourceRunId).first<{ c: number }>())?.c ?? 0);
 
     for (const [who, bearer] of callers) {
       // TELEMETRY_CROSS_RUN
@@ -1272,13 +1242,16 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
         ["/api/projects/:project/environments/:envName/metrics", `/api/projects/${w.p1}/environments/preview/metrics?window=24h&workspaceId=${ws}`, true],
         ["/api/projects/:project/activity", `/api/projects/${w.p1}/activity`, true],
         ["/api/projects/:project/environments/:envName/data/tables", `/api/projects/${w.p1}/environments/preview/data/tables?workspaceId=${ws}`, false],
-        ["/api/projects/:project/environments/:envName/data/tables/:tableName/rows", `/api/projects/${w.p1}/environments/preview/data/tables/cpa_items/rows?workspaceId=${ws}`, true],
+        [
+          "/api/projects/:project/environments/:envName/data/tables/:tableName/rows",
+          `/api/projects/${w.p1}/environments/preview/data/tables/cpa_items/rows?workspaceId=${ws}`,
+          true,
+        ],
         ["/api/projects/:project/environments/:envName/data/ledger", `/api/projects/${w.p1}/environments/preview/data/ledger?workspaceId=${ws}`, true],
       ] as const) {
         count("TELEMETRY_LISTS");
         const res = await hit("GET", path, bearer);
-        if (leaks(res.text.split(path).join(""), pbMarker, pbRun))
-          flag("GET", listRoute, "TELEMETRY_LISTS", `${who}: ${path} contains PB's telemetry`);
+        if (leaks(res.text.split(path).join(""), pbMarker, pbRun)) flag("GET", listRoute, "TELEMETRY_LISTS", `${who}: ${path} contains PB's telemetry`);
         if (mustShowP1 && (res.status !== 200 || !(res.text.includes(p1Marker) || res.text.includes(p1Run))))
           flag("GET", listRoute, "TELEMETRY_LISTS", `${who}: fixture: ${path} does not show P1's own rows (status ${res.status})`);
       }
@@ -1303,7 +1276,18 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       const pbOnlyWs = `ws_pb_only_${tag}`;
       const pbRunId = `run_pbws_${tag}`;
       const pbRunMarker = `PB-RECONCILE-MARKER-${tag}`;
-      const pbRun = { runId: pbRunId, workflowId: "wf_pbws", revision: 0, triggerType: "manual", workspaceId: pbOnlyWs, status: "succeeded" as const, durationMs: 1, retries: 0, errorStack: pbRunMarker, startedAt: now };
+      const pbRun = {
+        runId: pbRunId,
+        workflowId: "wf_pbws",
+        revision: 0,
+        triggerType: "manual",
+        workspaceId: pbOnlyWs,
+        status: "succeeded" as const,
+        durationMs: 1,
+        retries: 0,
+        errorStack: pbRunMarker,
+        startedAt: now,
+      };
       await upsertRunRecord(db, pbRun, { projectId: w.pb });
       const p1Target = `https://p1-target-${tag}.example`;
       await db
@@ -1313,8 +1297,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
         )
         .bind(`dep_${crypto.randomUUID()}`, w.p1, w.alice.orgId, p1Target, now)
         .run();
-      const p1Rows = async () =>
-        Number((await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE project_id = ?").bind(w.p1).first<{ c: number }>())?.c ?? 0);
+      const p1Rows = async () => Number((await db.prepare("SELECT COUNT(*) AS c FROM px_runs WHERE project_id = ?").bind(w.p1).first<{ c: number }>())?.c ?? 0);
       const pulledFrom: string[] = [];
       const realFetch = globalThis.fetch;
       // P1's target answers with PB's run (as a compromised or confused worker might): its id is PB's.
@@ -1355,7 +1338,17 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       const payload = (project?: string) =>
         JSON.stringify({
           ...(project ? { project } : {}),
-          run: { runId, workflowId: "wf_wh", revision: 0, triggerType: "manual", workspaceId: ws, status: "succeeded", durationMs: 1, retries: 0, startedAt: now },
+          run: {
+            runId,
+            workflowId: "wf_wh",
+            revision: 0,
+            triggerType: "manual",
+            workspaceId: ws,
+            status: "succeeded",
+            durationMs: 1,
+            retries: 0,
+            startedAt: now,
+          },
           events: [],
         });
       for (const [label, body, project] of [
@@ -1401,10 +1394,8 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
     const route = "/api/projects/:project/environments/:envName/data/seed";
     const snapshot = async () =>
       JSON.stringify([
-        (await studioEnv.STUDIO_DB.prepare("SELECT * FROM studio_org_members WHERE org_id = ? ORDER BY user_id")
-          .bind(w.bob.orgId)
-          .all()).results,
-        (await studioEnv.STUDIO_DB.prepare("SELECT * FROM projects WHERE project_id = ?").bind(w.pb).first()),
+        (await studioEnv.STUDIO_DB.prepare("SELECT * FROM studio_org_members WHERE org_id = ? ORDER BY user_id").bind(w.bob.orgId).all()).results,
+        await studioEnv.STUDIO_DB.prepare("SELECT * FROM projects WHERE project_id = ?").bind(w.pb).first(),
       ]);
     for (const [label, body] of [
       ["studio_org_members", { tables: { studio_org_members: [{ org_id: w.bob.orgId, user_id: w.alice.userId, role: "owner", created_at: "2026-01-01" }] } }],
@@ -1417,8 +1408,7 @@ async function runRouteMatrix(): Promise<{ violations: RegistryViolation[]; case
       const res = await hit("POST", `/api/projects/${w.p1}/environments/preview/data/seed`, w.alice.token, {
         body: body as Record<string, unknown>,
       });
-      if (res.status !== 400 && res.status !== 403)
-        flag("POST", route, "SEED_CONTROL_PLANE", `${label}: status ${res.status}, expected 400/403`);
+      if (res.status !== 400 && res.status !== 403) flag("POST", route, "SEED_CONTROL_PLANE", `${label}: status ${res.status}, expected 400/403`);
       if ((await snapshot()) !== before) flag("POST", route, "SEED_CONTROL_PLANE", `${label}: control-plane rows changed`);
     }
   }
@@ -1467,29 +1457,25 @@ describe("control-plane attack suite: every studio-api route (story 16)", () => 
     for (const attack of ROUTE_MATRIX_ATTACKS) expect(ALL_ATTACKS, attack).toContain(attack);
   });
 
-  test(
-    "every studio-api route under every applicable matrix class: 0 failures against the registry",
-    async () => {
-      const { violations, cases } = await runRouteMatrix();
-      const problems = describeComparison(compareWithRegistry(violations, registry), REGISTRY_FILE);
-      const routes = enumerateRoutes().filter((r) => !isPublicRoute(r.method, r.path));
-      const projectRoutes = routes.filter((r) => isProjectRoute(r.path));
-      // Coverage: each class ran once for every route it applies to.
-      expect(cases.get("UNAUTH")).toBe(routes.length);
-      expect(cases.get("PROJECT_B")).toBe(projectRoutes.length);
-      expect(cases.get("TOKEN_OTHER_ORG")).toBe(projectRoutes.length);
-      expect(cases.get("TOKEN_OTHER_PROJECT")).toBe(projectRoutes.length);
-      expect(cases.get("ORG_HEADER_B")).toBe(projectRoutes.length);
-      expect(cases.get("CLAIM_UNOWNED")).toBe(projectRoutes.filter((r) => isWrite(r.method)).length);
-      expect(cases.get("VIEWER_MUTATE")).toBe(projectRoutes.filter((r) => isWrite(r.method)).length);
-      expect(cases.get("READ_UNKNOWN")).toBe(projectRoutes.filter((r) => !isWrite(r.method)).length);
-      expect(cases.get("ORG_B")).toBe(routes.filter((r) => isOrgRoute(r.path)).length);
-      expect(cases.get("TOKEN_ORG_ROUTE")).toBe(routes.filter((r) => isOrgRoute(r.path)).length);
-      expect(cases.get("ADMIN_ROUTES")).toBe(4);
-      expect(cases.get("ADMIN_OPERATOR")).toBe(4);
-      for (const attack of ROUTE_MATRIX_ATTACKS) expect(cases.get(attack) ?? 0, attack).toBeGreaterThan(0);
-      expect(problems, problems.join("\n")).toEqual([]);
-    },
-    900_000,
-  );
+  test("every studio-api route under every applicable matrix class: 0 failures against the registry", async () => {
+    const { violations, cases } = await runRouteMatrix();
+    const problems = describeComparison(compareWithRegistry(violations, registry), REGISTRY_FILE);
+    const routes = enumerateRoutes().filter((r) => !isPublicRoute(r.method, r.path));
+    const projectRoutes = routes.filter((r) => isProjectRoute(r.path));
+    // Coverage: each class ran once for every route it applies to.
+    expect(cases.get("UNAUTH")).toBe(routes.length);
+    expect(cases.get("PROJECT_B")).toBe(projectRoutes.length);
+    expect(cases.get("TOKEN_OTHER_ORG")).toBe(projectRoutes.length);
+    expect(cases.get("TOKEN_OTHER_PROJECT")).toBe(projectRoutes.length);
+    expect(cases.get("ORG_HEADER_B")).toBe(projectRoutes.length);
+    expect(cases.get("CLAIM_UNOWNED")).toBe(projectRoutes.filter((r) => isWrite(r.method)).length);
+    expect(cases.get("VIEWER_MUTATE")).toBe(projectRoutes.filter((r) => isWrite(r.method)).length);
+    expect(cases.get("READ_UNKNOWN")).toBe(projectRoutes.filter((r) => !isWrite(r.method)).length);
+    expect(cases.get("ORG_B")).toBe(routes.filter((r) => isOrgRoute(r.path)).length);
+    expect(cases.get("TOKEN_ORG_ROUTE")).toBe(routes.filter((r) => isOrgRoute(r.path)).length);
+    expect(cases.get("ADMIN_ROUTES")).toBe(4);
+    expect(cases.get("ADMIN_OPERATOR")).toBe(4);
+    for (const attack of ROUTE_MATRIX_ATTACKS) expect(cases.get(attack) ?? 0, attack).toBeGreaterThan(0);
+    expect(problems, problems.join("\n")).toEqual([]);
+  }, 900_000);
 });

@@ -88,10 +88,13 @@ describe("the generic features behind it (story 2.6)", () => {
   const parse = (option: unknown) =>
     ManifestSchema.safeParse({
       ...catalog.bricks["platform-admin"]!.manifest,
-      worker: { ...catalog.bricks["platform-admin"]!.manifest.worker, routes: [{ factory: "createPlatformAdminRoutes", mountAt: "/api", options: { x: option } }] },
+      worker: {
+        ...catalog.bricks["platform-admin"]!.manifest.worker,
+        routes: [{ factory: "createPlatformAdminRoutes", mountAt: "/api", options: { x: option } }],
+      },
     });
 
-  test("the schema accepts requiredWhen \"provided\" and $capabilitySetting, and refuses malformed ones", () => {
+  test('the schema accepts requiredWhen "provided" and $capabilitySetting, and refuses malformed ones', () => {
     expect(parse({ $capability: "credit-wallet.walletCharger", requiredWhen: "provided" }).success).toBe(true);
     expect(parse({ $capability: "credit-wallet.walletCharger", requiredWhen: "always" }).success).toBe(false);
     expect(parse({ $capabilitySetting: "feature-flags.allowWorkspaceOverrides" }).success).toBe(true);
@@ -101,7 +104,9 @@ describe("the generic features behind it (story 2.6)", () => {
 
   test("a $capabilitySetting naming a setting the provider does not have is refused at assembly", () => {
     const c: Catalog = JSON.parse(JSON.stringify(catalog));
-    (c.bricks["platform-admin"]!.manifest.worker.routes[0]!.options as Record<string, unknown>).flagOverridesAllowed = { $capabilitySetting: "feature-flags.noSuchSetting" };
+    (c.bricks["platform-admin"]!.manifest.worker.routes[0]!.options as Record<string, unknown>).flagOverridesAllowed = {
+      $capabilitySetting: "feature-flags.noSuchSetting",
+    };
     const result = assemble({ project: "ops", bricks: [...MIN, "feature-flags"] }, c);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.join("; ")).toContain('has no setting "noSuchSetting"');
@@ -140,7 +145,9 @@ describe("trust rules for the story 2.6 features", () => {
   test("an approval gate is refused unless its brick is first-party, not isolated and not quarantined", () => {
     const q = clone();
     quarantine(q.bricks["platform-admin"]!.manifest);
-    expect(errorsOf({ project: "ops", bricks: GATED }, q)).toContain('platform-admin: worker.approvalGuard "requireApprovedUser" is refused: platform-admin is quarantined');
+    expect(errorsOf({ project: "ops", bricks: GATED }, q)).toContain(
+      'platform-admin: worker.approvalGuard "requireApprovedUser" is refused: platform-admin is quarantined',
+    );
     const u = clone();
     Object.assign(u.bricks["platform-admin"]!.manifest, { trust: "untrusted", isolation: "dispatch" });
     expect(errorsOf({ project: "ops", bricks: GATED }, u)).toContain("only a first-party, non-isolated brick may mount an approval gate");
@@ -157,10 +164,14 @@ describe("trust rules for the story 2.6 features", () => {
     );
     const q = clone();
     quarantine(q.bricks["feature-flags"]!.manifest);
-    expect(errorsOf({ project: "ops", bricks: [...MIN, "feature-flags"] }, q)).toContain('"feature-flags.allowWorkspaceOverrides", but feature-flags is quarantined');
+    expect(errorsOf({ project: "ops", bricks: [...MIN, "feature-flags"] }, q)).toContain(
+      '"feature-flags.allowWorkspaceOverrides", but feature-flags is quarantined',
+    );
     const u = clone();
     Object.assign(u.bricks["feature-flags"]!.manifest, { trust: "untrusted", isolation: "dispatch" });
-    expect(errorsOf({ project: "ops", bricks: [...MIN, "feature-flags"] }, u)).toContain('"feature-flags.allowWorkspaceOverrides", but feature-flags is not a first-party, non-isolated brick');
+    expect(errorsOf({ project: "ops", bricks: [...MIN, "feature-flags"] }, u)).toContain(
+      '"feature-flags.allowWorkspaceOverrides", but feature-flags is not a first-party, non-isolated brick',
+    );
   });
 });
 
@@ -193,7 +204,9 @@ describe("platform-wide privacy tables (story 2.6)", () => {
     };
     const q = clone();
     q.bricks["platform-admin"]!.manifest.ui = { ...q.bricks["platform-admin"]!.manifest.ui!, maturity: "experimental", maturityReason: "QUARANTINED: test" };
-    expect(errorsOf(q)).toContain('privacy table "pa_user_approvals" is platformWide, which only a first-party, non-isolated, non-quarantined brick may declare');
+    expect(errorsOf(q)).toContain(
+      'privacy table "pa_user_approvals" is platformWide, which only a first-party, non-isolated, non-quarantined brick may declare',
+    );
     const u = clone();
     Object.assign(u.bricks["platform-admin"]!.manifest, { trust: "untrusted", isolation: "dispatch" });
     expect(errorsOf(u)).toContain("which only a first-party, non-isolated, non-quarantined brick may declare");

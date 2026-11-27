@@ -42,7 +42,12 @@ const base = { target, project: "demo", buildHash: "sha256_build_2", bundle: { c
 
 describe("Studio plan consumes the shared planner (UC8.8 AC3)", () => {
   it("reports migration classes, brick moves and setting changes from the shared diff when given a lock", async () => {
-    const plan = await provisioner().plan({ ...base, migrations: [M1, M2], lock: NEXT, envState: { databaseExists: true, appliedMigrations: ["0001_initial.sql"], previousLock: PREVIOUS } });
+    const plan = await provisioner().plan({
+      ...base,
+      migrations: [M1, M2],
+      lock: NEXT,
+      envState: { databaseExists: true, appliedMigrations: ["0001_initial.sql"], previousLock: PREVIOUS },
+    });
     expect(plan.lockPlan).toEqual({
       migrations: [{ name: "0002_add_col.sql", class: "additive" }],
       bricks: [{ id: "alpha", from: "1.0.0", to: "1.1.0", kind: "minor" }],
@@ -79,7 +84,10 @@ describe("formatPlan", () => {
       empty: false,
     };
     const text = formatPlan(plan);
-    for (const part of ["0002_add_col.sql", "additive", "alpha", "1.0.0", "1.1.0", "limit", "bundle", "bindings", "ver-1", "BLOCKED", "major version"]) expect(text).toContain(part);
-    expect(formatPlan({ ...plan, migrations: [], bricks: [], settings: [], worker: { changed: false, reasons: [] }, blocking: [], empty: true })).toMatch(/no changes/i);
+    for (const part of ["0002_add_col.sql", "additive", "alpha", "1.0.0", "1.1.0", "limit", "bundle", "bindings", "ver-1", "BLOCKED", "major version"])
+      expect(text).toContain(part);
+    expect(formatPlan({ ...plan, migrations: [], bricks: [], settings: [], worker: { changed: false, reasons: [] }, blocking: [], empty: true })).toMatch(
+      /no changes/i,
+    );
   });
 });

@@ -48,8 +48,12 @@ const TABLES = [
 
 async function reset(): Promise<void> {
   for (const t of TABLES) await db.prepare(`DROP TABLE IF EXISTS ${t}`).run();
-  for (const sql of [mwMigration, auditMigration, auditMigration0002, flagsMigration, wallet0001, wallet0002, wallet0003, wallet0004, paMigration]) await applyMigration(db, sql);
-  for (const [id, owner] of [[WS_A, "alice"], [WS_B, "bob"]] as const) {
+  for (const sql of [mwMigration, auditMigration, auditMigration0002, flagsMigration, wallet0001, wallet0002, wallet0003, wallet0004, paMigration])
+    await applyMigration(db, sql);
+  for (const [id, owner] of [
+    [WS_A, "alice"],
+    [WS_B, "bob"],
+  ] as const) {
     await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(id, `Workspace ${id}`, owner).run();
     await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").bind(id, owner).run();
   }
@@ -89,7 +93,11 @@ async function call(
   if (opts.user) headers["x-test-user"] = opts.user;
   if (opts.body !== undefined) headers["content-type"] = "application/json";
   const res = await app.fetch(
-    new Request(`https://example.test${path}`, { method, headers, ...(opts.body !== undefined ? { body: typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body) } : {}) }),
+    new Request(`https://example.test${path}`, {
+      method,
+      headers,
+      ...(opts.body !== undefined ? { body: typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body) } : {}),
+    }),
     (opts.env ?? OPERATOR_ENV) as never,
   );
   const text = await res.text();
@@ -100,7 +108,9 @@ async function call(
   }
 }
 
-async function auditRows(workspaceId: string): Promise<Array<{ actor_id: string; action: string; target_type: string; target_id: string; metadata: Record<string, any> }>> {
+async function auditRows(
+  workspaceId: string,
+): Promise<Array<{ actor_id: string; action: string; target_type: string; target_id: string; metadata: Record<string, any> }>> {
   const rows = (
     await db
       .prepare("SELECT actor_id, action, target_type, target_id, metadata_json FROM audit_events WHERE workspace_id = ? ORDER BY rowid")
@@ -110,7 +120,8 @@ async function auditRows(workspaceId: string): Promise<Array<{ actor_id: string;
   return rows.map(({ metadata_json, ...r }) => ({ ...r, metadata: JSON.parse(metadata_json) as Record<string, any> }));
 }
 
-const suspendedFlag = async (id: string) => (await db.prepare("SELECT suspended FROM mw_workspaces WHERE id = ?").bind(id).first<{ suspended: number }>())?.suspended;
+const suspendedFlag = async (id: string) =>
+  (await db.prepare("SELECT suspended FROM mw_workspaces WHERE id = ?").bind(id).first<{ suspended: number }>())?.suspended;
 
 /** Every operator route with a concrete path and a valid body. */
 const ROUTES: Array<{ method: string; path: string; body?: unknown }> = [
@@ -245,17 +256,25 @@ describe("credit grants", () => {
   test("a retry after a grant that took effect without its outcome row completes that row with applied", async () => {
     const app = appWith();
     // A first attempt whose outcome was never written: the pending row exists and the wallet already has the grant.
-    await auditRecorder.record(db, WS_A, {
-      actorId: OPERATOR,
-      action: "platform.credits.grant",
-      targetType: "workspace",
-      targetId: WS_A,
-      metadata: { status: "pending", reason: "r", amount: "7", idempotencyKey: "half-done", before: { balance: "0" } },
-    }, { dedupeKey: "platform.credits.grant:half-done" });
+    await auditRecorder.record(
+      db,
+      WS_A,
+      {
+        actorId: OPERATOR,
+        action: "platform.credits.grant",
+        targetType: "workspace",
+        targetId: WS_A,
+        metadata: { status: "pending", reason: "r", amount: "7", idempotencyKey: "half-done", before: { balance: "0" } },
+      },
+      { dedupeKey: "platform.credits.grant:half-done" },
+    );
     await walletCharger.grant(db, WS_A, 7000, "platform-grant:half-done", "r", OPERATOR);
     const [pending] = await auditRecorder.pendingWithoutOutcome(db, WS_A);
     expect(pending).toBeDefined();
-    const retry = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 7, reason: "r", idempotencyKey: "half-done" } });
+    const retry = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, {
+      user: OPERATOR,
+      body: { amount: 7, reason: "r", idempotencyKey: "half-done" },
+    });
     expect(retry.status).toBe(200);
     expect(retry.json).toMatchObject({ duplicate: true, auditId: pending!.id, balanceMilli: 7000 });
     expect(await auditRecorder.pendingWithoutOutcome(db, WS_A)).toEqual([]);
@@ -268,11 +287,20 @@ describe("credit grants", () => {
 
   test("the idempotency key is at most 177 characters, so the audit dedupe key always fits", async () => {
     const app = appWith();
-    const ok = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 1, reason: "r", idempotencyKey: "k".repeat(177) } });
+    const ok = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, {
+      user: OPERATOR,
+      body: { amount: 1, reason: "r", idempotencyKey: "k".repeat(177) },
+    });
     expect(ok.status, JSON.stringify(ok.json)).toBe(200);
-    const retry = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 1, reason: "r", idempotencyKey: "k".repeat(177) } });
+    const retry = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, {
+      user: OPERATOR,
+      body: { amount: 1, reason: "r", idempotencyKey: "k".repeat(177) },
+    });
     expect(retry.json).toMatchObject({ duplicate: true, auditId: ok.json.auditId });
-    const tooLong = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 1, reason: "r", idempotencyKey: "k".repeat(178) } });
+    const tooLong = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, {
+      user: OPERATOR,
+      body: { amount: 1, reason: "r", idempotencyKey: "k".repeat(178) },
+    });
     expect(tooLong.status).toBe(400);
     expect(await walletCharger.balanceMilli(db, WS_A)).toBe(1000);
   });
@@ -292,10 +320,20 @@ describe("credit grants", () => {
   test("GET /platform/audit/pending lists capability rows still waiting for an outcome, across workspaces, in bounded pages", async () => {
     const app = appWith();
     for (const ws of [WS_A, WS_B]) {
-      await auditRecorder.record(db, ws, { actorId: OPERATOR, action: "platform.credits.grant", targetType: "workspace", targetId: ws, metadata: { status: "pending", amount: "1" } }, { dedupeKey: `k-${ws}` });
+      await auditRecorder.record(
+        db,
+        ws,
+        { actorId: OPERATOR, action: "platform.credits.grant", targetType: "workspace", targetId: ws, metadata: { status: "pending", amount: "1" } },
+        { dedupeKey: `k-${ws}` },
+      );
     }
     // A row a member could have posted before the namespace was reserved (no capability marker) is never listed.
-    await db.prepare("INSERT INTO audit_events (id, workspace_id, actor_id, action, target_type, target_id, metadata_json) VALUES ('aud_planted', ?, 'm', 'platform.credits.grant', 'workspace', ?, ?)").bind(WS_A, WS_A, JSON.stringify({ status: "pending" })).run();
+    await db
+      .prepare(
+        "INSERT INTO audit_events (id, workspace_id, actor_id, action, target_type, target_id, metadata_json) VALUES ('aud_planted', ?, 'm', 'platform.credits.grant', 'workspace', ?, ?)",
+      )
+      .bind(WS_A, WS_A, JSON.stringify({ status: "pending" }))
+      .run();
     const first = await call(app, "GET", "/api/platform/audit/pending?limit=1", { user: OPERATOR });
     expect(first.status).toBe(200);
     expect(first.json.rows).toHaveLength(1);
@@ -309,19 +347,30 @@ describe("credit grants", () => {
 
   test("unknown workspace 404; no wallet in a suspended workspace 404 WALLET_NOT_FOUND; a reused key 409; no wallet brick 503", async () => {
     const app = appWith();
-    expect((await call(app, "POST", "/api/platform/workspaces/ws_nope/credits", { user: OPERATOR, body: { amount: 1, reason: "r", idempotencyKey: "k" } })).status).toBe(404);
+    expect(
+      (await call(app, "POST", "/api/platform/workspaces/ws_nope/credits", { user: OPERATOR, body: { amount: 1, reason: "r", idempotencyKey: "k" } })).status,
+    ).toBe(404);
     expect(await auditRows("ws_nope")).toEqual([]);
 
     await db.prepare("UPDATE mw_workspaces SET suspended = 1 WHERE id = ?").bind(WS_B).run();
-    const suspended = await call(app, "POST", `/api/platform/workspaces/${WS_B}/credits`, { user: OPERATOR, body: { amount: 1, reason: "r", idempotencyKey: "k" } });
+    const suspended = await call(app, "POST", `/api/platform/workspaces/${WS_B}/credits`, {
+      user: OPERATOR,
+      body: { amount: 1, reason: "r", idempotencyKey: "k" },
+    });
     expect(suspended.status).toBe(404);
     expect(suspended.json.code).toBe("WALLET_NOT_FOUND");
     expect((await db.prepare("SELECT COUNT(*) AS n FROM credit_wallets WHERE workspace_id = ?").bind(WS_B).first<{ n: number }>())?.n).toBe(0);
     expect((await auditRows(WS_B)).map((r) => r.metadata.status)).toEqual(["pending", "refused"]);
     expect((await auditRows(WS_B))[1]!.metadata).toMatchObject({ refusal: "WALLET_NOT_FOUND" });
 
-    expect((await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 2, reason: "r", idempotencyKey: "same" } })).status).toBe(200);
-    const reused = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 3, reason: "r", idempotencyKey: "same" } });
+    expect(
+      (await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 2, reason: "r", idempotencyKey: "same" } }))
+        .status,
+    ).toBe(200);
+    const reused = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, {
+      user: OPERATOR,
+      body: { amount: 3, reason: "r", idempotencyKey: "same" },
+    });
     expect(reused.status).toBe(409);
     expect(reused.json.code).toBe("IDEMPOTENCY_KEY_REUSED");
     expect(await walletCharger.balanceMilli(db, WS_A)).toBe(2000);
@@ -329,12 +378,18 @@ describe("credit grants", () => {
     expect((await auditRows(WS_A)).map((r) => r.metadata.status)).toEqual(["pending", "applied"]);
     // A tenant can use a "platform-grant:" key first: the grant then answers 409 (choose another key).
     await walletCharger.debit(db, WS_A, 1, "platform-grant:taken", "tenant's own use");
-    const taken = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 1, reason: "r", idempotencyKey: "taken" } });
+    const taken = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, {
+      user: OPERATOR,
+      body: { amount: 1, reason: "r", idempotencyKey: "taken" },
+    });
     expect(taken.status).toBe(409);
     expect(taken.json.code).toBe("IDEMPOTENCY_KEY_REUSED");
 
     const noWallet = appWith({ ...FULL, charger: undefined });
-    const res = await call(noWallet, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 1, reason: "r", idempotencyKey: "k2" } });
+    const res = await call(noWallet, "POST", `/api/platform/workspaces/${WS_A}/credits`, {
+      user: OPERATOR,
+      body: { amount: 1, reason: "r", idempotencyKey: "k2" },
+    });
     expect(res.status).toBe(503);
     expect(res.json.code).toBe("NOT_CONFIGURED");
   });
@@ -362,7 +417,10 @@ describe("suspension", () => {
       expect(res.status).toBe(200);
       if (action === "unsuspend") expect(res.json).toMatchObject({ changed: false, auditId: null });
     }
-    expect((await call(app, "POST", `/api/platform/workspaces/${WS_A}/suspend`, { user: OPERATOR, body: { reason: "again" } })).json).toMatchObject({ changed: false, auditId: null });
+    expect((await call(app, "POST", `/api/platform/workspaces/${WS_A}/suspend`, { user: OPERATOR, body: { reason: "again" } })).json).toMatchObject({
+      changed: false,
+      auditId: null,
+    });
     expect(await auditRows(WS_A)).toHaveLength(3);
   });
 
@@ -411,18 +469,41 @@ describe("suspension", () => {
 
   test("a suspension that loses a race (a delete fence, a removal) commits no audit row; alongside takes audit statements only", async () => {
     // The audit insert runs right after the update and only if it changed a row.
-    const raced = auditRecorder.statement(db, WS_B, { actorId: OPERATOR, action: "platform.workspace.suspend", targetType: "workspace", targetId: WS_B }, { afterChange: true });
+    const raced = auditRecorder.statement(
+      db,
+      WS_B,
+      { actorId: OPERATOR, action: "platform.workspace.suspend", targetType: "workspace", targetId: WS_B },
+      { afterChange: true },
+    );
     await db.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = 'deleting' WHERE id = ?").bind(WS_B).run();
-    await db.batch([db.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = 'operator' WHERE id = ? AND suspended = 0").bind(WS_B), raced.statement]);
+    await db.batch([
+      db.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = 'operator' WHERE id = ? AND suspended = 0").bind(WS_B),
+      raced.statement,
+    ]);
     expect(await auditRows(WS_B)).toEqual([]);
-    const gone = auditRecorder.statement(db, "ws_gone", { actorId: OPERATOR, action: "platform.workspace.suspend", targetType: "workspace", targetId: "ws_gone" }, { afterChange: true });
+    const gone = auditRecorder.statement(
+      db,
+      "ws_gone",
+      { actorId: OPERATOR, action: "platform.workspace.suspend", targetType: "workspace", targetId: "ws_gone" },
+      { afterChange: true },
+    );
     await db.batch([db.prepare("UPDATE mw_workspaces SET suspended = 1 WHERE id = 'ws_gone'"), gone.statement]);
     expect(await auditRows("ws_gone")).toEqual([]);
-    const applied = auditRecorder.statement(db, WS_A, { actorId: OPERATOR, action: "platform.workspace.suspend", targetType: "workspace", targetId: WS_A }, { afterChange: true });
+    const applied = auditRecorder.statement(
+      db,
+      WS_A,
+      { actorId: OPERATOR, action: "platform.workspace.suspend", targetType: "workspace", targetId: WS_A },
+      { afterChange: true },
+    );
     expect(await setWorkspaceSuspended(db, WS_A, true, [applied])).toMatchObject({ ok: true, changed: true });
     expect(await auditRows(WS_A)).toHaveLength(1);
     // Anything but an afterChange audit statement for this workspace is refused, before anything runs.
-    const forB = auditRecorder.statement(db, WS_B, { actorId: OPERATOR, action: "platform.workspace.unsuspend", targetType: "workspace", targetId: WS_B }, { afterChange: true });
+    const forB = auditRecorder.statement(
+      db,
+      WS_B,
+      { actorId: OPERATOR, action: "platform.workspace.unsuspend", targetType: "workspace", targetId: WS_B },
+      { afterChange: true },
+    );
     for (const bad of [{ id: "x", workspaceId: WS_A, statement: db.prepare("DELETE FROM mw_members") }, forB]) {
       await expect(setWorkspaceSuspended(db, WS_A, false, [bad as never])).rejects.toThrow(TypeError);
     }
@@ -486,7 +567,14 @@ describe("feature flag overrides", () => {
     expect(refused.status).toBe(409);
     expect(refused.json.code).toBe("OVERRIDES_DISABLED");
     expect((await call(locked, "DELETE", `/api/platform/workspaces/${WS_A}/flags/beta`, { user: OPERATOR, body: { reason: "r" } })).status).toBe(409);
-    expect((await call(appWith({ ...FULL, flagOverridesAllowed: undefined }), "PUT", `/api/platform/workspaces/${WS_A}/flags/beta`, { user: OPERATOR, body: { enabled: true, reason: "r" } })).status).toBe(409);
+    expect(
+      (
+        await call(appWith({ ...FULL, flagOverridesAllowed: undefined }), "PUT", `/api/platform/workspaces/${WS_A}/flags/beta`, {
+          user: OPERATOR,
+          body: { enabled: true, reason: "r" },
+        })
+      ).status,
+    ).toBe(409);
     expect(await flagOverrides.list(db, WS_A)).toEqual([]);
 
     expect((await call(app, "PUT", `/api/platform/workspaces/${WS_A}/flags/nope`, { user: OPERATOR, body: { enabled: true, reason: "r" } })).status).toBe(404);
@@ -495,7 +583,10 @@ describe("feature flag overrides", () => {
     // Refusals wrote no audit row.
     expect(await auditRows(WS_A)).toHaveLength(2);
 
-    const noFlags = await call(appWith({ ...FULL, flagOverrides: undefined }), "PUT", `/api/platform/workspaces/${WS_A}/flags/beta`, { user: OPERATOR, body: { enabled: true, reason: "r" } });
+    const noFlags = await call(appWith({ ...FULL, flagOverrides: undefined }), "PUT", `/api/platform/workspaces/${WS_A}/flags/beta`, {
+      user: OPERATOR,
+      body: { enabled: true, reason: "r" },
+    });
     expect(noFlags.status).toBe(503);
   });
 });
@@ -505,7 +596,10 @@ describe("audit guarantee", () => {
     await db.prepare("INSERT INTO flag_definitions (key, enabled_default) VALUES ('beta', 0)").run();
     await db.prepare("DROP TABLE audit_events").run();
     const app = appWith();
-    const grant = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, { user: OPERATOR, body: { amount: 5, reason: "r", idempotencyKey: "k" } });
+    const grant = await call(app, "POST", `/api/platform/workspaces/${WS_A}/credits`, {
+      user: OPERATOR,
+      body: { amount: 5, reason: "r", idempotencyKey: "k" },
+    });
     expect(grant.status).toBe(503);
     expect(grant.json.code).toBe("AUDIT_UNAVAILABLE");
     expect((await call(app, "POST", `/api/platform/workspaces/${WS_A}/suspend`, { user: OPERATOR, body: { reason: "r" } })).status).toBe(500);
@@ -515,7 +609,12 @@ describe("audit guarantee", () => {
     expect((await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger").first<{ n: number }>())?.n).toBe(0);
     expect(await suspendedFlag(WS_A)).toBe(0);
     expect(await flagOverrides.list(db, WS_A)).toEqual([]);
-    expect(await db.prepare("SELECT * FROM pa_user_approvals").all().then((r) => r.results)).toEqual([]);
+    expect(
+      await db
+        .prepare("SELECT * FROM pa_user_approvals")
+        .all()
+        .then((r) => r.results),
+    ).toEqual([]);
   });
 
   test("without an audit recorder every change answers 503 and nothing changes", async () => {
@@ -635,10 +734,14 @@ describe("user approval gate", () => {
         return db.batch(statements);
       },
     };
-    const res = await call(app, "POST", "/api/platform/users/gina/approve", { user: OPERATOR, body: { reason: "r" }, env: { DB: racing, PX_PLATFORM_OPERATORS: OPERATOR } });
+    const res = await call(app, "POST", "/api/platform/users/gina/approve", {
+      user: OPERATOR,
+      body: { reason: "r" },
+      env: { DB: racing, PX_PLATFORM_OPERATORS: OPERATOR },
+    });
     expect(res.status).toBe(409);
     expect(res.json.code).toBe("CHANGED_CONCURRENTLY");
-    expect((await db.prepare("SELECT status FROM pa_user_approvals WHERE user_id = 'gina'").first())).toEqual({ status: "rejected" });
+    expect(await db.prepare("SELECT status FROM pa_user_approvals WHERE user_id = 'gina'").first()).toEqual({ status: "rejected" });
     expect(await auditRows(PLATFORM_AUDIT_SCOPE)).toEqual([]);
     // A user with no row yet: a concurrent first row makes the guarded insert write nothing either.
     const racingNew: D1Like = {
@@ -649,7 +752,11 @@ describe("user approval gate", () => {
         return db.batch(statements);
       },
     };
-    const fresh = await call(app, "POST", "/api/platform/users/hal/reject", { user: OPERATOR, body: { reason: "r" }, env: { DB: racingNew, PX_PLATFORM_OPERATORS: OPERATOR } });
+    const fresh = await call(app, "POST", "/api/platform/users/hal/reject", {
+      user: OPERATOR,
+      body: { reason: "r" },
+      env: { DB: racingNew, PX_PLATFORM_OPERATORS: OPERATOR },
+    });
     expect(fresh.status).toBe(409);
     expect(await auditRows(PLATFORM_AUDIT_SCOPE)).toEqual([]);
   });
@@ -681,10 +788,16 @@ describe("no impersonation", () => {
   });
 
   test("the brick's code never sets an identity, a workspace context, a session or a token", () => {
-    for (const [file, text] of [["routes.ts", routesSource], ["approvals.ts", approvalsSource]] as const) {
+    for (const [file, text] of [
+      ["routes.ts", routesSource],
+      ["approvals.ts", approvalsSource],
+    ] as const) {
       // The only variable it sets is the operator's own id, after the operator check.
       const sets = [...text.matchAll(/c\.set\(\s*["']([^"']+)["']/g)].map((m) => m[1]);
-      expect(sets.filter((name) => name !== "operatorId"), file).toEqual([]);
+      expect(
+        sets.filter((name) => name !== "operatorId"),
+        file,
+      ).toEqual([]);
       expect(text, file).not.toMatch(/set-cookie|setCookie|createSession|signToken|session_token|x-test-user|authenticatedBy/i);
       expect(text, file).not.toMatch(PATTERN);
     }

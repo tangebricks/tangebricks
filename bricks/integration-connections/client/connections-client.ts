@@ -57,7 +57,10 @@ export interface IntegrationConnectionsClientOptions {
 
 export interface IntegrationConnectionsClient {
   listIntegrations(): Promise<WorkspaceIntegrationRecord[]>;
-  startConnect(provider: string, redirectUri?: string): Promise<{
+  startConnect(
+    provider: string,
+    redirectUri?: string,
+  ): Promise<{
     authorizeUrl: string;
     state: string;
     provider: string;
@@ -71,17 +74,11 @@ export interface IntegrationConnectionsClient {
   }>;
 }
 
-export function createIntegrationConnectionsClient(
-  options: IntegrationConnectionsClientOptions,
-): IntegrationConnectionsClient {
+export function createIntegrationConnectionsClient(options: IntegrationConnectionsClientOptions): IntegrationConnectionsClient {
   const base = options.baseUrl.replace(/\/+$/, "");
   const doFetch = options.fetch ?? ((input, init) => fetch(input, init));
 
-  async function request<T>(
-    path: string,
-    init: RequestInit,
-    schema: z.ZodType<T>,
-  ): Promise<T> {
+  async function request<T>(path: string, init: RequestInit, schema: z.ZodType<T>): Promise<T> {
     let response: Response;
     try {
       response = await doFetch(`${base}${path}`, {
@@ -101,17 +98,11 @@ export function createIntegrationConnectionsClient(
     try {
       body = await response.json();
     } catch {
-      throw new IntegrationConnectionsClientError(
-        "The server's answer was not understood",
-        response.status,
-      );
+      throw new IntegrationConnectionsClientError("The server's answer was not understood", response.status);
     }
 
     if (!response.ok) {
-      const errObj =
-        typeof body === "object" && body !== null
-          ? (body as { error?: string | { message?: string } }).error
-          : undefined;
+      const errObj = typeof body === "object" && body !== null ? (body as { error?: string | { message?: string } }).error : undefined;
       const message =
         typeof errObj === "string"
           ? errObj
@@ -123,10 +114,7 @@ export function createIntegrationConnectionsClient(
 
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      throw new IntegrationConnectionsClientError(
-        "The server's answer was not understood",
-        response.status,
-      );
+      throw new IntegrationConnectionsClientError("The server's answer was not understood", response.status);
     }
     return parsed.data;
   }
@@ -138,17 +126,8 @@ export function createIntegrationConnectionsClient(
     },
     startConnect: async (provider: string, redirectUri?: string) => {
       const qs = redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : "";
-      return request(
-        `/integrations/${encodeURIComponent(provider)}/connect${qs}`,
-        { method: "GET" },
-        StartConnectResponseSchema,
-      );
+      return request(`/integrations/${encodeURIComponent(provider)}/connect${qs}`, { method: "GET" }, StartConnectResponseSchema);
     },
-    disconnect: async (provider: string) =>
-      request(
-        `/integrations/${encodeURIComponent(provider)}/disconnect`,
-        { method: "POST" },
-        DisconnectResponseSchema,
-      ),
+    disconnect: async (provider: string) => request(`/integrations/${encodeURIComponent(provider)}/disconnect`, { method: "POST" }, DisconnectResponseSchema),
   };
 }

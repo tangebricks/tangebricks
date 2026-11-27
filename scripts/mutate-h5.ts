@@ -14,10 +14,19 @@ function h5Row(): string {
   const run = spawnSync(process.execPath, [join(root, "scripts", "verify.ts"), "H5"], { cwd: root, encoding: "utf8" });
   const lines = stripVTControlCharacters(run.stdout + run.stderr).split(/\r?\n/);
   const at = lines.findIndex((l) => l.startsWith("H5 "));
-  const row = at >= 0 ? lines.slice(at, at + 8).filter((l) => /^H5 |^\s+- /.test(l)).map((l) => l.trim().replace(/\s{2,}/g, "  ")) : ["(no H5 row)"];
+  const row =
+    at >= 0
+      ? lines
+          .slice(at, at + 8)
+          .filter((l) => /^H5 |^\s+- /.test(l))
+          .map((l) => l.trim().replace(/\s{2,}/g, "  "))
+      : ["(no H5 row)"];
   // The H5 row alone cannot show a failing test while the row is already `fail` for another reason, so the test count is printed too.
   const tests = lines.find((l) => l.startsWith("Tests:"))?.replace(/\. Verdicts.*$/, "") ?? "Tests: (not printed)";
-  const short = row.filter((l) => !/graphDeductChangesBalanceOnce/.test(l)).join(" | ").slice(0, 260);
+  const short = row
+    .filter((l) => !/graphDeductChangesBalanceOnce/.test(l))
+    .join(" | ")
+    .slice(0, 260);
   return `${tests} | ${short}`;
 }
 
@@ -67,7 +76,9 @@ const cases: Case[] = [
     from: "balance_after INTEGER NOT NULL CHECK (balance_after >= 0),",
     to: "balance_after INTEGER NOT NULL,",
     also: [["balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),", "balance INTEGER NOT NULL DEFAULT 0,"]],
-    alsoIn: [{ file: LEDGER_MIGRATION, from: "balance_after_milli INTEGER NOT NULL CHECK (balance_after_milli >= 0),", to: "balance_after_milli INTEGER NOT NULL," }],
+    alsoIn: [
+      { file: LEDGER_MIGRATION, from: "balance_after_milli INTEGER NOT NULL CHECK (balance_after_milli >= 0),", to: "balance_after_milli INTEGER NOT NULL," },
+    ],
   },
   {
     name: "deduction writes a wrong balance_after into the ledger",
@@ -96,8 +107,8 @@ const cases: Case[] = [
   {
     name: "amounts are no longer checked to be whole positive numbers",
     file: WALLET,
-    from: "const isWholeAmount = (n: unknown): n is number => typeof n === \"number\" && Number.isSafeInteger(n) && n > 0;",
-    to: "const isWholeAmount = (n: unknown): n is number => typeof n === \"number\";",
+    from: 'const isWholeAmount = (n: unknown): n is number => typeof n === "number" && Number.isSafeInteger(n) && n > 0;',
+    to: 'const isWholeAmount = (n: unknown): n is number => typeof n === "number";',
   },
   {
     name: "the audit's unsafe design: conditional debit (WHERE balance >= ?) plus an unconditional ledger insert",
@@ -108,7 +119,7 @@ const cases: Case[] = [
   {
     name: "runtime hands out any binding, ignoring the manifest",
     file: RUN,
-    from: "if (!declaredBindings.includes(name)) throw new Error(`binding \"${name}\" is not declared by ${node.type}`);",
+    from: 'if (!declaredBindings.includes(name)) throw new Error(`binding "${name}" is not declared by ${node.type}`);',
     to: "",
   },
   {
@@ -126,7 +137,7 @@ const cases: Case[] = [
   {
     name: "runtime treats a declared but missing binding as undefined instead of failing",
     file: RUN,
-    from: "if (value === undefined || value === null) throw new Error(`binding \"${name}\" is declared by ${node.type} but was not provided`);",
+    from: 'if (value === undefined || value === null) throw new Error(`binding "${name}" is declared by ${node.type} but was not provided`);',
     to: "",
   },
   {
@@ -163,7 +174,7 @@ const cases: Case[] = [
     name: "the caller's claimed role is trusted over the database's",
     file: MW_MIDDLEWARE,
     from: "role: member.role, suspended",
-    to: "role: (c.req.header(\"x-workspace-role\") as WorkspaceRole | undefined) ?? member.role, suspended",
+    to: 'role: (c.req.header("x-workspace-role") as WorkspaceRole | undefined) ?? member.role, suspended',
   },
   {
     name: "the suspended flag is never read",
@@ -180,13 +191,13 @@ const cases: Case[] = [
   {
     name: "the database's own error text is returned to the caller",
     file: MW_MIDDLEWARE,
-    from: "console.error(\"workspaceMiddleware:\", error);\n    return c.json(INTERNAL, 500);",
+    from: 'console.error("workspaceMiddleware:", error);\n    return c.json(INTERNAL, 500);',
     to: "return c.json({ error: String(error) }, 500);",
   },
   {
     name: "no identity is accepted as an identity",
     file: MW_MIDDLEWARE,
-    from: "if (!user) return c.json({ error: \"Unauthorized\" }, 401);\n\n  const requested",
+    from: 'if (!user) return c.json({ error: "Unauthorized" }, 401);\n\n  const requested',
     to: "const requested",
   },
   {
@@ -284,7 +295,10 @@ for (const c of cases) {
     console.log(`${c.name.padEnd(60)}-> MUTATION DID NOT APPLY`);
     continue;
   }
-  write(c.file, edits.reduce((text, [from, to]) => text.replace(from, to), original));
+  write(
+    c.file,
+    edits.reduce((text, [from, to]) => text.replace(from, to), original),
+  );
   for (const o of others) write(o.file, o.original.replace(o.from, o.to));
   try {
     console.log(`${c.name.padEnd(60)}-> ${h5Row()}`);

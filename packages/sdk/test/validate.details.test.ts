@@ -33,10 +33,20 @@ describe("checkWire (the live wire-drop guard)", () => {
 
   test("an 'any' port connects to anything", () => {
     const registry = createRegistry([
-      { type: "a", category: "trigger", inputs: [], outputs: [{ id: "out", dataType: "any" }], configSchema: toyRegistry.get("sink.text")!.configSchema, secrets: [] },
+      {
+        type: "a",
+        category: "trigger",
+        inputs: [],
+        outputs: [{ id: "out", dataType: "any" }],
+        configSchema: toyRegistry.get("sink.text")!.configSchema,
+        secrets: [],
+      },
       ...[...toyRegistry.values()].filter((b) => b.type === "sink.text"),
     ]);
-    const graph: GraphNode[] = [{ id: "a", type: "a", data: {} }, { id: "s", type: "sink.text", data: {} }];
+    const graph: GraphNode[] = [
+      { id: "a", type: "a", data: {} },
+      { id: "s", type: "sink.text", data: {} },
+    ];
     expect(checkWire(edge("a", "s"), graph, registry)).toBeNull();
   });
 });
@@ -50,20 +60,12 @@ describe("validateGraph details beyond the nine fixtures", () => {
   });
 
   test("orphans are warnings; everything else is an error", () => {
-    const { issues } = validateGraph(
-      [...nodes.slice(0, 2), { id: "lonely", type: "transform.pick", data: { path: "a" } }],
-      [edge("t", "p")],
-      toyRegistry,
-    );
+    const { issues } = validateGraph([...nodes.slice(0, 2), { id: "lonely", type: "transform.pick", data: { path: "a" } }], [edge("t", "p")], toyRegistry);
     expect(issues).toEqual([expect.objectContaining({ code: "orphan_node", nodeId: "lonely", severity: "warning" })]);
   });
 
   test("a reference to a node that does not exist is reported", () => {
-    const { issues } = validateGraph(
-      [nodes[0]!, { id: "p", type: "transform.pick", data: { path: "{{$node.ghost.x}}" } }],
-      [edge("t", "p")],
-      toyRegistry,
-    );
+    const { issues } = validateGraph([nodes[0]!, { id: "p", type: "transform.pick", data: { path: "{{$node.ghost.x}}" } }], [edge("t", "p")], toyRegistry);
     expect(issues.map((i) => i.code)).toEqual(["bad_ref"]);
   });
 

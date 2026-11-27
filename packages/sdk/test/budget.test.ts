@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-  checkGraphBudget,
-  createRegistry,
-  parseEntities,
-  toyRegistry,
-  type GraphEdge,
-  type GraphNode,
-} from "../src/index.ts";
+import { checkGraphBudget, createRegistry, parseEntities, toyRegistry, type GraphEdge, type GraphNode } from "../src/index.ts";
 
 describe("Story UC7.4 — Assembly-time static budget check for graphs and entities", () => {
   const customRegistry = createRegistry([
@@ -55,9 +48,7 @@ describe("Story UC7.4 — Assembly-time static budget check for graphs and entit
   it("red case 1: graph with 1,200 nodes on plan 'free' yields BUDGET_STEPS_EXCEEDED (AC1)", () => {
     // 1 trigger node + 1,199 action nodes = 1,200 nodes.
     // Plus 1 load step = 1,201 total steps (free limit is 1,024).
-    const nodes: GraphNode[] = [
-      { id: "trigger_0", type: "trigger.manual", data: {} },
-    ];
+    const nodes: GraphNode[] = [{ id: "trigger_0", type: "trigger.manual", data: {} }];
     const edges: GraphEdge[] = [];
 
     for (let i = 1; i < 1200; i++) {
@@ -98,9 +89,7 @@ describe("Story UC7.4 — Assembly-time static budget check for graphs and entit
         },
       },
     ];
-    const edges: GraphEdge[] = [
-      { id: "e1", source: "trig", target: "bulk_search", sourceHandle: "out", targetHandle: "in" },
-    ];
+    const edges: GraphEdge[] = [{ id: "e1", source: "trig", target: "bulk_search", sourceHandle: "out", targetHandle: "in" }];
 
     const issues = checkGraphBudget({ nodes, edges }, customRegistry, "free");
     const subreqErrors = issues.filter((i) => i.code === "BUDGET_SUBREQUESTS_EXCEEDED");
@@ -151,9 +140,7 @@ describe("Story UC7.4 — Assembly-time static budget check for graphs and entit
       { id: "trig", type: "trigger.manual", data: {} },
       { id: "broadcaster", type: "transform.pick", data: { path: "val" } },
     ];
-    const edges: GraphEdge[] = [
-      { id: "e0", source: "trig", target: "broadcaster", sourceHandle: "out", targetHandle: "in" },
-    ];
+    const edges: GraphEdge[] = [{ id: "e0", source: "trig", target: "broadcaster", sourceHandle: "out", targetHandle: "in" }];
 
     for (let i = 0; i < 300; i++) {
       const targetId = `leaf_${i}`;
@@ -190,9 +177,7 @@ describe("Story UC7.4 — Assembly-time static budget check for graphs and entit
         data: {}, // no maxOutputBytes declared
       },
     ];
-    const edges: GraphEdge[] = [
-      { id: "e1", source: "trig", target: "fetch_db", sourceHandle: "out", targetHandle: "in" },
-    ];
+    const edges: GraphEdge[] = [{ id: "e1", source: "trig", target: "fetch_db", sourceHandle: "out", targetHandle: "in" }];
 
     const issues = checkGraphBudget({ nodes, edges }, customRegistry, "free");
     const warnings = issues.filter((i) => i.code === "BUDGET_PAYLOAD_UNBOUNDED_WARNING");
@@ -205,9 +190,7 @@ describe("Story UC7.4 — Assembly-time static budget check for graphs and entit
 
   it("paid plan accommodates 1,200 steps and 60 pages subrequests within limits", () => {
     // 1. 1,200 steps on paid (limit 4,096) -> passes steps check
-    const stepNodes: GraphNode[] = [
-      { id: "trigger_0", type: "trigger.manual", data: {} },
-    ];
+    const stepNodes: GraphNode[] = [{ id: "trigger_0", type: "trigger.manual", data: {} }];
     const stepEdges: GraphEdge[] = [];
     for (let i = 1; i < 1200; i++) {
       const prevId = i === 1 ? "trigger_0" : `step_${i - 1}`;
@@ -237,9 +220,7 @@ describe("Story UC7.4 — Assembly-time static budget check for graphs and entit
         },
       },
     ];
-    const subreqEdges: GraphEdge[] = [
-      { id: "e1", source: "trig", target: "bulk_search", sourceHandle: "out", targetHandle: "in" },
-    ];
+    const subreqEdges: GraphEdge[] = [{ id: "e1", source: "trig", target: "bulk_search", sourceHandle: "out", targetHandle: "in" }];
 
     const paidSubreqIssues = checkGraphBudget({ nodes: subreqNodes, edges: subreqEdges }, customRegistry, "paid");
     expect(paidSubreqIssues.filter((i) => i.code === "BUDGET_SUBREQUESTS_EXCEEDED")).toHaveLength(0);
@@ -257,9 +238,7 @@ describe("Story UC7.4 — Assembly-time static budget check for graphs and entit
         },
       },
     ];
-    const edges: GraphEdge[] = [
-      { id: "e1", source: "trig", target: "batch_sender", sourceHandle: "out", targetHandle: "in" },
-    ];
+    const edges: GraphEdge[] = [{ id: "e1", source: "trig", target: "batch_sender", sourceHandle: "out", targetHandle: "in" }];
 
     const issues = checkGraphBudget({ nodes, edges }, customRegistry, "free");
     expect(issues.filter((i) => i.code === "BUDGET_SUBREQUESTS_EXCEEDED")).toHaveLength(0);

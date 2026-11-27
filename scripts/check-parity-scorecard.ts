@@ -33,7 +33,10 @@ interface PlaywrightSuiteNode {
 }
 
 function stripBackticks(value: string): string {
-  return value.trim().replace(/^`+|`+$/g, "").trim();
+  return value
+    .trim()
+    .replace(/^`+|`+$/g, "")
+    .trim();
 }
 
 function parseMarkdownTableSection(markdown: string, headingText: string): string[][] {
@@ -72,10 +75,7 @@ function parseMarkdownTableSection(markdown: string, headingText: string): strin
   return rows;
 }
 
-function collectPlaywrightSpecs(
-  suites: PlaywrightSuiteNode[],
-  acc: PlaywrightSpecResult[] = [],
-): PlaywrightSpecResult[] {
+function collectPlaywrightSpecs(suites: PlaywrightSuiteNode[], acc: PlaywrightSpecResult[] = []): PlaywrightSpecResult[] {
   for (const suite of suites) {
     if (Array.isArray(suite.specs)) {
       for (const spec of suite.specs) {
@@ -83,12 +83,7 @@ function collectPlaywrightSpecs(
           Boolean(spec.ok) &&
           Array.isArray(spec.tests) &&
           spec.tests.length > 0 &&
-          spec.tests.every(
-            (t) =>
-              t.status === "expected" ||
-              (Array.isArray(t.results) &&
-                t.results.some((r) => r.status === "passed")),
-          );
+          spec.tests.every((t) => t.status === "expected" || (Array.isArray(t.results) && t.results.some((r) => r.status === "passed")));
         acc.push({
           title: spec.title,
           file: spec.file.replace(/\\/g, "/"),
@@ -117,22 +112,15 @@ function main(): void {
   const markdown = readFileSync(scorecardPath, "utf8");
   const cp3RawRows = parseMarkdownTableSection(markdown, "CP3 Build Rows");
   const cp4RawRows = parseMarkdownTableSection(markdown, "CP4 Run Rows");
-  const oosRawRows = parseMarkdownTableSection(
-    markdown,
-    "Explicit Out-of-Scope Rows",
-  );
+  const oosRawRows = parseMarkdownTableSection(markdown, "Explicit Out-of-Scope Rows");
 
   if (cp3RawRows.length < 16) {
-    console.error(
-      `[scorecard] FAIL: Expected at least 16 CP3 Build Rows, found ${cp3RawRows.length}`,
-    );
+    console.error(`[scorecard] FAIL: Expected at least 16 CP3 Build Rows, found ${cp3RawRows.length}`);
     process.exit(1);
   }
 
   if (cp4RawRows.length < 6) {
-    console.error(
-      `[scorecard] FAIL: Expected at least 6 CP4 Run Rows, found ${cp4RawRows.length}`,
-    );
+    console.error(`[scorecard] FAIL: Expected at least 6 CP4 Run Rows, found ${cp4RawRows.length}`);
     process.exit(1);
   }
 
@@ -170,18 +158,12 @@ function main(): void {
   let executedSpecs = loadExecutedSpecs();
   const hasAllReferencedSpecs = allVerifiedRows.every((row) => {
     const normalizedBasename = row.specFile.replace(/\\/g, "/").split("/").pop()!;
-    return executedSpecs.some(
-      (s) =>
-        (s.file === row.specFile || s.file.endsWith(normalizedBasename)) &&
-        s.title === row.testName,
-    );
+    return executedSpecs.some((s) => (s.file === row.specFile || s.file.endsWith(normalizedBasename)) && s.title === row.testName);
   });
 
   if (!hasAllReferencedSpecs) {
     const specFiles = Array.from(new Set(allVerifiedRows.map((r) => r.specFile)));
-    console.log(
-      "[scorecard] Partial or missing Playwright JSON report detected; running CP3/CP4 Playwright E2E suite to refresh report...",
-    );
+    console.log("[scorecard] Partial or missing Playwright JSON report detected; running CP3/CP4 Playwright E2E suite to refresh report...");
     execSync(`pnpm playwright test ${specFiles.join(" ")}`, {
       cwd: rootDir,
       stdio: "inherit",
@@ -191,53 +173,32 @@ function main(): void {
 
   const errors: string[] = [];
 
-  const verifyRowGroup = (
-    rows: ScorecardRow[],
-    expectedPrefix: string,
-    expectedStatus: string,
-  ) => {
+  const verifyRowGroup = (rows: ScorecardRow[], expectedPrefix: string, expectedStatus: string) => {
     for (const row of rows) {
       if (!row.id.startsWith(expectedPrefix)) {
         errors.push(`Row "${row.id}" does not start with ${expectedPrefix}`);
       }
       if (row.status !== expectedStatus) {
-        errors.push(
-          `Row ${row.id} (${row.capability}) has status "${row.status}" instead of "${expectedStatus}"`,
-        );
+        errors.push(`Row ${row.id} (${row.capability}) has status "${row.status}" instead of "${expectedStatus}"`);
       }
       const absSpecPath = resolve(rootDir, row.specFile);
       if (!existsSync(absSpecPath)) {
-        errors.push(
-          `Row ${row.id} (${row.capability}) references missing spec file "${row.specFile}"`,
-        );
+        errors.push(`Row ${row.id} (${row.capability}) references missing spec file "${row.specFile}"`);
         continue;
       }
 
       const specSource = readFileSync(absSpecPath, "utf8");
       if (!specSource.includes(row.testName)) {
-        errors.push(
-          `Row ${row.id} (${row.capability}): test name "${row.testName}" not found in source file "${row.specFile}"`,
-        );
+        errors.push(`Row ${row.id} (${row.capability}): test name "${row.testName}" not found in source file "${row.specFile}"`);
       }
 
-      const normalizedBasename = row.specFile
-        .replace(/\\/g, "/")
-        .split("/")
-        .pop()!;
-      const matchingReportSpec = executedSpecs.find(
-        (s) =>
-          (s.file === row.specFile || s.file.endsWith(normalizedBasename)) &&
-          s.title === row.testName,
-      );
+      const normalizedBasename = row.specFile.replace(/\\/g, "/").split("/").pop()!;
+      const matchingReportSpec = executedSpecs.find((s) => (s.file === row.specFile || s.file.endsWith(normalizedBasename)) && s.title === row.testName);
 
       if (!matchingReportSpec) {
-        errors.push(
-          `Row ${row.id} (${row.capability}): test "${row.testName}" (${row.specFile}) was not found in ${reportPath}`,
-        );
+        errors.push(`Row ${row.id} (${row.capability}): test "${row.testName}" (${row.specFile}) was not found in ${reportPath}`);
       } else if (!matchingReportSpec.passed) {
-        errors.push(
-          `Row ${row.id} (${row.capability}): test "${row.testName}" (${row.specFile}) did not pass in latest Playwright report`,
-        );
+        errors.push(`Row ${row.id} (${row.capability}): test "${row.testName}" (${row.specFile}) did not pass in latest Playwright report`);
       }
     }
   };
@@ -249,9 +210,7 @@ function main(): void {
     const id = cells[0] ?? "";
     const decision = cells[2] ?? "";
     if (decision !== "out-of-scope") {
-      errors.push(
-        `Out-of-scope row ${id} has decision "${decision}" instead of "out-of-scope"`,
-      );
+      errors.push(`Out-of-scope row ${id} has decision "${decision}" instead of "out-of-scope"`);
     }
   }
 

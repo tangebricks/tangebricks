@@ -150,7 +150,10 @@ async function loadPrimaryKeys(): Promise<void> {
     let cols: string[] = [];
     try {
       const info = await db.prepare(`PRAGMA table_info("${table}")`).all<{ name: string; pk: number }>();
-      cols = (info.results ?? []).filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+      cols = (info.results ?? [])
+        .filter((c) => c.pk > 0)
+        .sort((a, b) => a.pk - b.pk)
+        .map((c) => c.name);
     } catch {
       // fall back below
     }
@@ -357,8 +360,14 @@ const PUBLIC_ROUTES: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /^\/(healthz|readyz|openapi\.json)$/, reason: "health and OpenAPI endpoints, no tenant data" },
   { pattern: /^\/api\/auth(\/|$)/, reason: "core-auth sign-up/sign-in/session endpoints (Better Auth) are public by design" },
   { pattern: /^\/api\/webhooks\/(in|ingress)\//, reason: "webhook ingress is called by third parties and authenticated by signature" },
-  { pattern: /^\/api\/(payments|checkout)\/webhook$/, reason: "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature" },
-  { pattern: /^\/api\/message-webhooks\/:[^/]+$/, reason: "outbound delivery-status webhooks (story 2.4) are called by the provider and authenticated by the channel's signature" },
+  {
+    pattern: /^\/api\/(payments|checkout)\/webhook$/,
+    reason: "payment provider webhooks (story 2.3) are called by the provider and authenticated by signature",
+  },
+  {
+    pattern: /^\/api\/message-webhooks\/:[^/]+$/,
+    reason: "outbound delivery-status webhooks (story 2.4) are called by the provider and authenticated by the channel's signature",
+  },
   { pattern: /^\/api\/sso\/(discover|authorize|callback)(\/|$)/, reason: "public SSO login/callback" },
   { pattern: /^\/api\/users\/:[^/]+\/profile$/, reason: "user-profile public profile lookup by design (returns only public fields)" },
 ];
@@ -366,7 +375,6 @@ const PUBLIC_ROUTES: Array<{ pattern: RegExp; reason: string }> = [
 function publicReason(route: RouteInfo): string | undefined {
   return PUBLIC_ROUTES.find((p) => p.pattern.test(route.path))?.reason;
 }
-
 
 // ---------------------------------------------------------------------------------------------------------------------
 // World: Alice owns A, Bob owns B, Carol is a plain member of A; both workspaces hold data in as many bricks as possible
@@ -450,7 +458,10 @@ function bodyFor(route: RouteInfo, seed: string): Record<string, unknown> {
   const specPath = route.path.replace(/:([A-Za-z0-9_]+)/g, "{$1}");
   const op = (spec.paths as any)[specPath]?.[route.method.toLowerCase()];
   const fromSpec = generateBody(op?.requestBody?.content?.["application/json"]?.schema, seed);
-  const slug = seed.replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 40);
+  const slug = seed
+    .replace(/[^a-z0-9]/gi, "")
+    .toLowerCase()
+    .slice(0, 40);
   return {
     name: `name-${seed}`,
     title: `title-${seed}`,
@@ -488,11 +499,7 @@ function bodyFor(route: RouteInfo, seed: string): Record<string, unknown> {
 
 /** Routes never called while seeding: they would destroy the seeded data or are not tenant data. */
 function skipWhenSeeding(route: RouteInfo): boolean {
-  return (
-    route.path.startsWith("/api/auth") ||
-    route.path === "/api/workspaces" ||
-    /erasure|erase|revoke|delete|sign-out/i.test(route.path)
-  );
+  return route.path.startsWith("/api/auth") || route.path === "/api/workspaces" || /erasure|erase|revoke|delete|sign-out/i.test(route.path);
 }
 
 async function seedTenant(target: App, user: string, ws: string, marker: string): Promise<{ attempted: number; created: number }> {
@@ -662,16 +669,19 @@ const DENIAL = [400, 401, 403, 404];
  */
 function judge(attack: Attack, route: RouteInfo, obs: Observation, secrets: string[]): string[] {
   const problems: string[] = [];
-  if (attack === "HEADER_B" && route.guarded && !DENIAL.includes(obs.status)) problems.push(`status ${obs.status} not in {400, 401, 403, 404} on a guarded route`);
+  if (attack === "HEADER_B" && route.guarded && !DENIAL.includes(obs.status))
+    problems.push(`status ${obs.status} not in {400, 401, 403, 404} on a guarded route`);
   // Story 2.4: a provider status webhook answers an id it cannot match with 200 "ignored" (so the provider stops
   // retrying) and changes nothing; the leak and mutation checks below still apply to it.
-  const ignoredWebhook = route.path === "/api/message-webhooks/:channelId" && obs.status === 200 && /"status":"ignored"/.test(obs.body) && /"updated":0/.test(obs.body);
+  const ignoredWebhook =
+    route.path === "/api/message-webhooks/:channelId" && obs.status === 200 && /"status":"ignored"/.test(obs.body) && /"updated":0/.test(obs.body);
   if (attack === "ID_GUESS" && !DENIAL.includes(obs.status) && !ignoredWebhook) problems.push(`status ${obs.status} not in {400, 401, 403, 404}`);
   // A spec-only path has no handler, so the router's 404 is the only answer it can give; it serves no data.
   const noHandler = obs.status === 404 && route.specOnly === true;
   if (attack === "ROLE_ESCALATION" && ![401, 403].includes(obs.status) && !noHandler) problems.push(`member got status ${obs.status}, expected 401/403`);
   if (attack === "NOT_OPERATOR" && obs.viaKey) {
-    if (obs.status !== 401 && !(obs.status === 403 && /"code":"API_KEY_FORBIDDEN"/.test(obs.body))) problems.push(`API key got status ${obs.status}, expected 401 or 403 API_KEY_FORBIDDEN`);
+    if (obs.status !== 401 && !(obs.status === 403 && /"code":"API_KEY_FORBIDDEN"/.test(obs.body)))
+      problems.push(`API key got status ${obs.status}, expected 401 or 403 API_KEY_FORBIDDEN`);
   } else if (attack === "NOT_OPERATOR" && (obs.status !== 403 || !/"code":"NOT_PLATFORM_OPERATOR"/.test(obs.body))) {
     problems.push(`non-operator got status ${obs.status}, expected 403 NOT_PLATFORM_OPERATOR`);
   }
@@ -687,7 +697,8 @@ function judge(attack: Attack, route: RouteInfo, obs: Observation, secrets: stri
     }
   }
   if (obs.bAfter !== obs.bBefore) problems.push("workspace B tenant rows changed");
-  if ((attack === "ROLE_ESCALATION" || attack === "NOT_OPERATOR") && obs.aBefore !== undefined && obs.aAfter !== obs.aBefore) problems.push("workspace A tenant rows changed");
+  if ((attack === "ROLE_ESCALATION" || attack === "NOT_OPERATOR") && obs.aBefore !== undefined && obs.aAfter !== obs.aBefore)
+    problems.push("workspace A tenant rows changed");
   return problems;
 }
 
@@ -713,7 +724,10 @@ interface SuiteResult {
 /** Run order inside one class: DELETEs last (they remove what other routes read), workspace delete very last. */
 function runOrder(routes: RouteInfo[]): RouteInfo[] {
   const rank = (r: RouteInfo) => (r.method === "DELETE" ? (/^\/api\/workspaces\/:[^/]+$/.test(r.path) ? 2 : 1) : 0);
-  return routes.map((r, i) => ({ r, i })).sort((x, y) => rank(x.r) - rank(y.r) || x.i - y.i).map((x) => x.r);
+  return routes
+    .map((r, i) => ({ r, i }))
+    .sort((x, y) => rank(x.r) - rank(y.r) || x.i - y.i)
+    .map((x) => x.r);
 }
 
 const MUTATING = new Set(["POST", "PUT", "PATCH"]);
@@ -754,7 +768,12 @@ async function runAttackClass(target: App, attack: Attack, routes: RouteInfo[], 
       reqs.push({ path: `${path}${join}workspaceId=${world.wsB}&workspace_id=${world.wsB}`, user: "alice", ws: world.wsA, body });
     } else if (attack === "BODY_B") {
       if (!mutating) continue;
-      reqs.push({ path: ownPath(route, world), user: "alice", ws: world.wsA, body: { ...body, workspaceId: world.wsB, workspace_id: world.wsB, workspace: world.wsB, id: world.bRecordId } });
+      reqs.push({
+        path: ownPath(route, world),
+        user: "alice",
+        ws: world.wsA,
+        body: { ...body, workspaceId: world.wsB, workspace_id: world.wsB, workspace: world.wsB, id: world.bRecordId },
+      });
     } else if (attack === "ID_GUESS") {
       if (paramsOf(route.path).length === 0) continue;
       const paths = fillPaths(route, world.bIds, world.wsB, MAX_GUESSES);
@@ -804,18 +823,23 @@ async function runAttackClass(target: App, attack: Attack, routes: RouteInfo[], 
       }
       const bAfter = await snapshotTenantTables(world.wsB);
       const aAfter = aSnap !== undefined ? await snapshotTenantTables(world.wsA) : undefined;
-      const problems = judge(attack, route, {
-        status,
-        body: text,
-        sent: `${req.path} ${req.ws ?? ""} ${JSON.stringify(req.body ?? "")}`,
-        bBefore: bSnap,
-        bAfter,
-        aBefore: aSnap,
-        aAfter,
-        platformBefore,
-        platformAfter: attack === "NOT_OPERATOR" ? await platformState() : undefined,
-        viaKey: req.headers?.["x-api-key"] !== undefined,
-      }, world.bSecrets);
+      const problems = judge(
+        attack,
+        route,
+        {
+          status,
+          body: text,
+          sent: `${req.path} ${req.ws ?? ""} ${JSON.stringify(req.body ?? "")}`,
+          bBefore: bSnap,
+          bAfter,
+          aBefore: aSnap,
+          aAfter,
+          platformBefore,
+          platformAfter: attack === "NOT_OPERATOR" ? await platformState() : undefined,
+          viaKey: req.headers?.["x-api-key"] !== undefined,
+        },
+        world.bSecrets,
+      );
       if (problems.length > 0) {
         const detail = `${req.path}: ${problems.join("; ")}`;
         result.violations.push({ method: route.method, route: route.path, attack, detail });
@@ -889,7 +913,10 @@ describe("cross-tenant fuzz over every assembled route", () => {
     expect(honoApp, "the assembled Hono app must be captured so its route table can be enumerated").toBeDefined();
     expect(tenantTables.length, "must have discovered tenant tables in max-compatible").toBeGreaterThan(10);
     expect(allRoutes.length, "must have enumerated the assembled app's routes").toBeGreaterThan(50);
-    expect(allRoutes.filter((r) => r.brick === "unknown"), "every mounted sub-app must map to a catalog brick").toEqual([]);
+    expect(
+      allRoutes.filter((r) => r.brick === "unknown"),
+      "every mounted sub-app must map to a catalog brick",
+    ).toEqual([]);
   });
 
   test("AC2 — deliberately unscoped handler is caught by the fuzz harness and names the route", async () => {
@@ -899,13 +926,18 @@ describe("cross-tenant fuzz over every assembled route", () => {
     // Alice requests Bob's record through the unscoped route: the leak must be caught by the oracle.
     const before = await snapshotTenantTables(world.wsB);
     const res = await call(fixtureApp, "GET", `/api/fixture-leaky/${world.bRecordId}`, { user: "alice", ws: world.wsA });
-    const problems = judge("ID_GUESS", LEAKY_ROUTE, {
-      status: res.status,
-      body: res.text,
-      sent: `/api/fixture-leaky/${world.bRecordId} ${world.wsA}`,
-      bBefore: before,
-      bAfter: await snapshotTenantTables(world.wsB),
-    }, world.bSecrets);
+    const problems = judge(
+      "ID_GUESS",
+      LEAKY_ROUTE,
+      {
+        status: res.status,
+        body: res.text,
+        sent: `/api/fixture-leaky/${world.bRecordId} ${world.wsA}`,
+        bBefore: before,
+        bAfter: await snapshotTenantTables(world.wsB),
+      },
+      world.bSecrets,
+    );
     expect(problems.length).toBeGreaterThan(0);
 
     // SEEDED_LEAK: the same route through the attack runner (ID_GUESS with B's harvested ids, and UNAUTH) is reported
@@ -950,64 +982,63 @@ describe("cross-tenant fuzz over every assembled route", () => {
     }
   });
 
-  test(
-    "AC1 & AC3 — fuzz covers 100% of paths in generateOpenApiSpec",
-    async ({ task }) => {
-      expect.hasAssertions();
+  test("AC1 & AC3 — fuzz covers 100% of paths in generateOpenApiSpec", async ({ task }) => {
+    expect.hasAssertions();
 
-      // AC1: every OpenAPI path is a real route of the app or the prefix of one, so attacking the enumerated routes
-      // covers every documented path.
-      const totalPaths = Object.keys(spec.paths).length;
-      const suite = await runAttackSuite(app!, [...allRoutes, ...specOnlyRoutes]);
-      for (const d of enumerated.dropped) suite.notAttacked.push({ method: d.method, route: d.path, attack: "*", reason: d.reason });
-      // AC1: an OpenAPI path counts as covered only when that exact path (with {x} mapped to :x) was attacked.
-      const attackedPaths = new Set(suite.results.filter((r) => r.cases > 0).map((r) => r.route));
-      const coveredPaths = Object.keys(spec.paths).filter((p) => attackedPaths.has(specPathToHono(p)));
-      expect(coveredPaths.length).toBe(totalPaths);
-      const comparison = compareWithRegistry(suite.violations, registry);
-      const problems = describeComparison(comparison);
-      const adminRoutes = allRoutes.filter((r) => adminClassOf(r));
-      // Story 2.6: every platform-admin route is in the operator class, and the class was attacked.
-      const operatorRoutes = allRoutes.filter((r) => operatorClassOf(r));
-      const platformRoutes = allRoutes.filter((r) => r.brick === "platform-admin");
-      expect(platformRoutes.length, "platform-admin is in max-compatible").toBeGreaterThanOrEqual(10);
-      expect(platformRoutes.filter((r) => !operatorClassOf(r)), "platform-admin routes outside OPERATOR_CLASS").toEqual([]);
-      expect(suite.casesByAttack.NOT_OPERATOR).toBe(operatorRoutes.length * 6);
-      const unmountedAdmin = ADMIN_CLASS.filter((a) => !allRoutes.some((r) => (a.method === "*" || a.method === r.method) && a.pattern.test(r.path))).map(
-        (a) => `${a.method} ${a.pattern.source} (${a.why})`,
-      );
+    // AC1: every OpenAPI path is a real route of the app or the prefix of one, so attacking the enumerated routes
+    // covers every documented path.
+    const totalPaths = Object.keys(spec.paths).length;
+    const suite = await runAttackSuite(app!, [...allRoutes, ...specOnlyRoutes]);
+    for (const d of enumerated.dropped) suite.notAttacked.push({ method: d.method, route: d.path, attack: "*", reason: d.reason });
+    // AC1: an OpenAPI path counts as covered only when that exact path (with {x} mapped to :x) was attacked.
+    const attackedPaths = new Set(suite.results.filter((r) => r.cases > 0).map((r) => r.route));
+    const coveredPaths = Object.keys(spec.paths).filter((p) => attackedPaths.has(specPathToHono(p)));
+    expect(coveredPaths.length).toBe(totalPaths);
+    const comparison = compareWithRegistry(suite.violations, registry);
+    const problems = describeComparison(comparison);
+    const adminRoutes = allRoutes.filter((r) => adminClassOf(r));
+    // Story 2.6: every platform-admin route is in the operator class, and the class was attacked.
+    const operatorRoutes = allRoutes.filter((r) => operatorClassOf(r));
+    const platformRoutes = allRoutes.filter((r) => r.brick === "platform-admin");
+    expect(platformRoutes.length, "platform-admin is in max-compatible").toBeGreaterThanOrEqual(10);
+    expect(
+      platformRoutes.filter((r) => !operatorClassOf(r)),
+      "platform-admin routes outside OPERATOR_CLASS",
+    ).toEqual([]);
+    expect(suite.casesByAttack.NOT_OPERATOR).toBe(operatorRoutes.length * 6);
+    const unmountedAdmin = ADMIN_CLASS.filter((a) => !allRoutes.some((r) => (a.method === "*" || a.method === r.method) && a.pattern.test(r.path))).map(
+      (a) => `${a.method} ${a.pattern.source} (${a.why})`,
+    );
 
-      const fuzzReport = {
-        routeCount: totalPaths,
-        honoRouteCount: allRoutes.length,
-        specOnlyRoutes: specOnlyRoutes.map((r) => `${r.method} ${r.path}`),
-        cases: suite.cases,
-        casesByAttack: suite.casesByAttack,
-        attacks: ATTACKS,
-        // Failures outside the registry plus stale registry entries: must be 0.
-        failures: problems.length,
-        knownFailures: comparison.known.length,
-        violations: suite.violations.length,
-        adminClassRoutes: adminRoutes.map((r) => `${r.method} ${r.path}`),
-        adminClassNotMounted: unmountedAdmin,
-        operatorClassRoutes: operatorRoutes.map((r) => `${r.method} ${r.path}`),
-        publicRoutes: allRoutes.filter((r) => publicReason(r)).map((r) => ({ route: `${r.method} ${r.path}`, reason: publicReason(r) })),
-        notAttacked: suite.notAttacked,
-        problems,
-        routes: suite.results,
-      };
+    const fuzzReport = {
+      routeCount: totalPaths,
+      honoRouteCount: allRoutes.length,
+      specOnlyRoutes: specOnlyRoutes.map((r) => `${r.method} ${r.path}`),
+      cases: suite.cases,
+      casesByAttack: suite.casesByAttack,
+      attacks: ATTACKS,
+      // Failures outside the registry plus stale registry entries: must be 0.
+      failures: problems.length,
+      knownFailures: comparison.known.length,
+      violations: suite.violations.length,
+      adminClassRoutes: adminRoutes.map((r) => `${r.method} ${r.path}`),
+      adminClassNotMounted: unmountedAdmin,
+      operatorClassRoutes: operatorRoutes.map((r) => `${r.method} ${r.path}`),
+      publicRoutes: allRoutes.filter((r) => publicReason(r)).map((r) => ({ route: `${r.method} ${r.path}`, reason: publicReason(r) })),
+      notAttacked: suite.notAttacked,
+      problems,
+      routes: suite.results,
+    };
 
-      attach(task, "cross-tenant-fuzz", fuzzReport);
-      record(task, {
-        id: "UC6.4",
-        checks: {
-          coversAllRoutes: coveredPaths.length === totalPaths,
-          crossTenantIsolated: problems.length === 0,
-        },
-      });
+    attach(task, "cross-tenant-fuzz", fuzzReport);
+    record(task, {
+      id: "UC6.4",
+      checks: {
+        coversAllRoutes: coveredPaths.length === totalPaths,
+        crossTenantIsolated: problems.length === 0,
+      },
+    });
 
-      expect(problems).toEqual([]);
-    },
-    600_000,
-  );
+    expect(problems).toEqual([]);
+  }, 600_000);
 });

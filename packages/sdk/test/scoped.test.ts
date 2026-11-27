@@ -17,7 +17,7 @@ async function resetDb(): Promise<void> {
         task_type TEXT NOT NULL,
         payload_json TEXT NOT NULL DEFAULT '{}',
         status TEXT NOT NULL DEFAULT 'queued'
-      )`
+      )`,
     )
     .run();
   await db
@@ -26,7 +26,7 @@ async function resetDb(): Promise<void> {
         id TEXT PRIMARY KEY,
         setting_key TEXT NOT NULL,
         setting_value TEXT NOT NULL
-      )`
+      )`,
     )
     .run();
 }
@@ -75,7 +75,7 @@ describe("packages/sdk scoped() and global()", () => {
         queue_name: "default",
         task_type: "sync",
         payload_json: "{}",
-      })
+      }),
     ).rejects.toThrow(/TENANT_ID_CONFLICT/);
   });
 
@@ -117,9 +117,7 @@ describe("packages/sdk scoped() and global()", () => {
     const sA = scoped(db, "ws_a");
     const over100Params = Array.from({ length: 101 }, (_, i) => `val_${i}`);
 
-    await expect(sA.select("job_queues", "id IN (" + over100Params.map(() => "?").join(",") + ")", over100Params)).rejects.toThrow(
-      /D1_BIND_LIMIT/
-    );
+    await expect(sA.select("job_queues", "id IN (" + over100Params.map(() => "?").join(",") + ")", over100Params)).rejects.toThrow(/D1_BIND_LIMIT/);
   });
 
   it("update and delete respect tenant boundary and reject cross-tenant mutations", async () => {
@@ -138,9 +136,7 @@ describe("packages/sdk scoped() and global()", () => {
     expect(updateRes.meta.changes).toBe(0);
 
     // Update with conflicting workspace_id throws TENANT_ID_CONFLICT
-    await expect(
-      sA.update("job_queues", { workspace_id: "ws_other", status: "completed" }, "id = ?", ["job_b_2"])
-    ).rejects.toThrow(/TENANT_ID_CONFLICT/);
+    await expect(sA.update("job_queues", { workspace_id: "ws_other", status: "completed" }, "id = ?", ["job_b_2"])).rejects.toThrow(/TENANT_ID_CONFLICT/);
 
     // ws_a cannot delete ws_b row
     const deleteRes = await sA.delete("job_queues", "id = ?", ["job_b_2"]);

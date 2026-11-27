@@ -36,9 +36,9 @@ export function sha256Sync(ascii: string): string {
   }
   const bitLength = utf8.length * 8;
   utf8.push(0x80);
-  while ((utf8.length % 64) !== 56) utf8.push(0);
+  while (utf8.length % 64 !== 56) utf8.push(0);
   for (let b = 7; b >= 0; b--) {
-    utf8.push((b >= 4 ? 0 : (bitLength >>> (b * 8))) & 0xff);
+    utf8.push((b >= 4 ? 0 : bitLength >>> (b * 8)) & 0xff);
   }
   for (i = 0; i < utf8.length; i += 4) {
     words.push(((utf8[i] ?? 0) << 24) | ((utf8[i + 1] ?? 0) << 16) | ((utf8[i + 2] ?? 0) << 8) | (utf8[i + 3] ?? 0));
@@ -66,11 +66,18 @@ export function sha256Sync(ascii: string): string {
     for (let t = 0; t < 64; t++) {
       const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
       const ch = (e & f) ^ (~e & g);
-      const temp1 = (((h + S1) | 0) + (((ch + (k[t] ?? 0)) | 0) + (w[t] ?? 0)) | 0) | 0;
+      const temp1 = (((h + S1) | 0) + (((ch + (k[t] ?? 0)) | 0) + (w[t] ?? 0))) | 0 | 0;
       const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
       const maj = (a & b) ^ (a & c) ^ (b & c);
       const temp2 = (S0 + maj) | 0;
-      h = g; g = f; f = e; e = (d + temp1) | 0; d = c; c = b; b = a; a = (temp1 + temp2) | 0;
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temp1) | 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temp1 + temp2) | 0;
     }
     hash[0] = ((hash[0] ?? 0) + a) | 0;
     hash[1] = ((hash[1] ?? 0) + b) | 0;
@@ -136,21 +143,12 @@ function extractWorkflowSchedules(workflows: unknown[]): string[] {
       trigger?: { type?: string; config?: Record<string, unknown> };
       nodes?: Array<{ type?: string; data?: Record<string, unknown>; config?: Record<string, unknown> }>;
     };
-    if (
-      wfObj.trigger?.type === "schedule" &&
-      typeof wfObj.trigger.config?.cron === "string" &&
-      wfObj.trigger.config.cron.trim().length > 0
-    ) {
+    if (wfObj.trigger?.type === "schedule" && typeof wfObj.trigger.config?.cron === "string" && wfObj.trigger.config.cron.trim().length > 0) {
       crons.add(wfObj.trigger.config.cron.trim());
     }
     for (const node of wfObj.nodes ?? []) {
       const cronVal = node.data?.cron ?? node.config?.cron;
-      if (
-        typeof node.type === "string" &&
-        node.type.includes("schedule") &&
-        typeof cronVal === "string" &&
-        cronVal.trim().length > 0
-      ) {
+      if (typeof node.type === "string" && node.type.includes("schedule") && typeof cronVal === "string" && cronVal.trim().length > 0) {
         crons.add(cronVal.trim());
       }
     }
@@ -210,9 +208,7 @@ export async function computeGraphHash(
   }
   const canonicalSchedules = [...scheduleSet].sort();
 
-  return sha256Hex(
-    `workflows:${workflowsRaw}\nschedules:${JSON.stringify(canonicalSchedules)}`,
-  );
+  return sha256Hex(`workflows:${workflowsRaw}\nschedules:${JSON.stringify(canonicalSchedules)}`);
 }
 
 export interface CompositeBuildHashInput {
@@ -221,9 +217,7 @@ export interface CompositeBuildHashInput {
   catalogVersion?: string | undefined;
 }
 
-function isCompositeBuildHashInput(
-  input: Record<string, string> | CompositeBuildHashInput,
-): input is CompositeBuildHashInput {
+function isCompositeBuildHashInput(input: Record<string, string> | CompositeBuildHashInput): input is CompositeBuildHashInput {
   return (
     typeof (input as CompositeBuildHashInput).codeHash === "string" &&
     typeof (input as CompositeBuildHashInput).graphHash === "string" &&
@@ -238,30 +232,20 @@ function isCompositeBuildHashInput(
  * Accepts either assembled files Record<string, string> or precomputed { codeHash, graphHash, catalogVersion }.
  */
 export async function computeBuildHash(
-  filesOrCompositeOrCodeHash:
-    | Record<string, string>
-    | CompositeBuildHashInput
-    | string,
+  filesOrCompositeOrCodeHash: Record<string, string> | CompositeBuildHashInput | string,
   catalogVersionOrGraphHash: string = DEFAULT_CATALOG_VERSION,
   catalogVersionArg: string = DEFAULT_CATALOG_VERSION,
 ): Promise<string> {
   if (typeof filesOrCompositeOrCodeHash === "string") {
-    return sha256Hex(
-      `codeHash:${filesOrCompositeOrCodeHash}\ngraphHash:${catalogVersionOrGraphHash}\ncatalogVersion:${catalogVersionArg}`,
-    );
+    return sha256Hex(`codeHash:${filesOrCompositeOrCodeHash}\ngraphHash:${catalogVersionOrGraphHash}\ncatalogVersion:${catalogVersionArg}`);
   }
   if (isCompositeBuildHashInput(filesOrCompositeOrCodeHash)) {
-    const ver =
-      filesOrCompositeOrCodeHash.catalogVersion ?? catalogVersionOrGraphHash;
-    return sha256Hex(
-      `codeHash:${filesOrCompositeOrCodeHash.codeHash}\ngraphHash:${filesOrCompositeOrCodeHash.graphHash}\ncatalogVersion:${ver}`,
-    );
+    const ver = filesOrCompositeOrCodeHash.catalogVersion ?? catalogVersionOrGraphHash;
+    return sha256Hex(`codeHash:${filesOrCompositeOrCodeHash.codeHash}\ngraphHash:${filesOrCompositeOrCodeHash.graphHash}\ncatalogVersion:${ver}`);
   }
   const codeHash = await computeCodeHash(filesOrCompositeOrCodeHash);
   const graphHash = await computeGraphHash(filesOrCompositeOrCodeHash);
-  return sha256Hex(
-    `codeHash:${codeHash}\ngraphHash:${graphHash}\ncatalogVersion:${catalogVersionOrGraphHash}`,
-  );
+  return sha256Hex(`codeHash:${codeHash}\ngraphHash:${graphHash}\ncatalogVersion:${catalogVersionOrGraphHash}`);
 }
 
 export interface ArtifactHashes {
@@ -290,4 +274,3 @@ export async function computeArtifactHashes(
     catalogVersion,
   };
 }
-

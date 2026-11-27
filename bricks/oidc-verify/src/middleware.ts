@@ -4,61 +4,33 @@ import { OidcVerificationError, type AuthUser, type OidcVerifyConfig } from "./t
 import { verifyJwt } from "./verify.ts";
 
 export function resolveOidcConfigFromSettings(settings: Record<string, unknown> = {}): OidcVerifyConfig {
-  const issuer =
-    typeof settings.issuer === "string" && settings.issuer
-      ? settings.issuer
-      : "https://auth.example.com";
+  const issuer = typeof settings.issuer === "string" && settings.issuer ? settings.issuer : "https://auth.example.com";
 
-  const audience =
-    typeof settings.audience === "string" && settings.audience
-      ? settings.audience
-      : "authenticated";
+  const audience = typeof settings.audience === "string" && settings.audience ? settings.audience : "authenticated";
 
-  const jwksUri =
-    typeof settings.jwksUri === "string" && settings.jwksUri
-      ? settings.jwksUri
-      : undefined;
+  const jwksUri = typeof settings.jwksUri === "string" && settings.jwksUri ? settings.jwksUri : undefined;
 
-  const rawAlgs =
-    typeof settings.algorithms === "string" && settings.algorithms
-      ? settings.algorithms
-      : "RS256";
+  const rawAlgs = typeof settings.algorithms === "string" && settings.algorithms ? settings.algorithms : "RS256";
   const algorithms = Array.isArray(rawAlgs)
     ? rawAlgs
-    : rawAlgs.split(",").map((s) => s.trim()).filter(Boolean);
+    : rawAlgs
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
 
   const rawSkew =
-    typeof settings.clockSkewSec === "number"
-      ? settings.clockSkewSec
-      : typeof settings.clockSkewSec === "string"
-        ? parseInt(settings.clockSkewSec, 10)
-        : 60;
+    typeof settings.clockSkewSec === "number" ? settings.clockSkewSec : typeof settings.clockSkewSec === "string" ? parseInt(settings.clockSkewSec, 10) : 60;
   const clockSkewSec = Number.isFinite(rawSkew) ? Number(rawSkew) : 60;
 
-  const userIdClaim =
-    typeof settings.userIdClaim === "string" && settings.userIdClaim
-      ? settings.userIdClaim
-      : "sub";
+  const userIdClaim = typeof settings.userIdClaim === "string" && settings.userIdClaim ? settings.userIdClaim : "sub";
 
-  const workspaceClaim =
-    typeof settings.workspaceClaim === "string" && settings.workspaceClaim
-      ? settings.workspaceClaim
-      : undefined;
+  const workspaceClaim = typeof settings.workspaceClaim === "string" && settings.workspaceClaim ? settings.workspaceClaim : undefined;
 
-  const rolesClaim =
-    typeof settings.rolesClaim === "string" && settings.rolesClaim
-      ? settings.rolesClaim
-      : undefined;
+  const rolesClaim = typeof settings.rolesClaim === "string" && settings.rolesClaim ? settings.rolesClaim : undefined;
 
-  const audienceClaim =
-    typeof settings.audienceClaim === "string" && settings.audienceClaim
-      ? settings.audienceClaim
-      : "aud";
+  const audienceClaim = typeof settings.audienceClaim === "string" && settings.audienceClaim ? settings.audienceClaim : "aud";
 
-  const hs256SecretName =
-    typeof settings.hs256SecretName === "string" && settings.hs256SecretName
-      ? settings.hs256SecretName
-      : undefined;
+  const hs256SecretName = typeof settings.hs256SecretName === "string" && settings.hs256SecretName ? settings.hs256SecretName : undefined;
 
   return {
     issuer,
@@ -74,10 +46,7 @@ export function resolveOidcConfigFromSettings(settings: Record<string, unknown> 
   };
 }
 
-export function createOidcMiddleware(
-  config: Partial<OidcVerifyConfig> = {},
-  options: { fetcher?: typeof fetch; now?: () => number } = {},
-): MiddlewareHandler {
+export function createOidcMiddleware(config: Partial<OidcVerifyConfig> = {}, options: { fetcher?: typeof fetch; now?: () => number } = {}): MiddlewareHandler {
   return async (c, next) => {
     const authHeader = c.req.header("authorization") || c.req.header("Authorization");
     if (!authHeader) {
@@ -113,11 +82,7 @@ export function createOidcMiddleware(
       algorithms: config.algorithms ?? runtimeSettings.algorithms,
     };
 
-    const fetcher =
-      options.fetcher ??
-      (contextMap && typeof contextMap["fetcher"] === "function"
-        ? (contextMap["fetcher"] as typeof fetch)
-        : undefined);
+    const fetcher = options.fetcher ?? (contextMap && typeof contextMap["fetcher"] === "function" ? (contextMap["fetcher"] as typeof fetch) : undefined);
     const now = options.now;
 
     let verified: Awaited<ReturnType<typeof verifyJwt>>;

@@ -71,9 +71,7 @@ export function ProposalReviewBar() {
   const proposals = useStudioStore((s) => s.proposals);
   const activeProposalId = useStudioStore((s) => s.activeProposalId);
   const selectedProposalOpIds = useStudioStore((s) => s.selectedProposalOpIds);
-  const proposalValidationError = useStudioStore(
-    (s) => s.proposalValidationError,
-  );
+  const proposalValidationError = useStudioStore((s) => s.proposalValidationError);
   const isMutating = useStudioStore((s) => s.isMutating);
   const orgs = useStudioStore((s) => s.orgs);
   const activeOrgId = useStudioStore((s) => s.activeOrgId);
@@ -81,9 +79,7 @@ export function ProposalReviewBar() {
 
   const startProposalReview = useStudioStore((s) => s.startProposalReview);
   const toggleProposalOp = useStudioStore((s) => s.toggleProposalOp);
-  const setAllProposalOpsSelected = useStudioStore(
-    (s) => s.setAllProposalOpsSelected,
-  );
+  const setAllProposalOpsSelected = useStudioStore((s) => s.setAllProposalOpsSelected);
   const exitProposalReview = useStudioStore((s) => s.exitProposalReview);
   const acceptActiveProposal = useStudioStore((s) => s.acceptActiveProposal);
   const rejectActiveProposal = useStudioStore((s) => s.rejectActiveProposal);
@@ -93,8 +89,7 @@ export function ProposalReviewBar() {
   const isViewer = activeRole === "viewer";
 
   const pendingProposals = proposals.filter((p) => p.status === "pending");
-  const activeProposal =
-    proposals.find((p) => p.proposalId === activeProposalId) ?? null;
+  const activeProposal = proposals.find((p) => p.proposalId === activeProposalId) ?? null;
 
   if (!activeProposal) {
     if (pendingProposals.length === 0) return null;
@@ -115,17 +110,10 @@ export function ProposalReviewBar() {
             {pendingProposals.length} Pending Proposal
             {pendingProposals.length === 1 ? "" : "s"}
           </span>
-          <AuthorBadge
-            testId={`pending-proposal-author-${latest.proposalId}`}
-            authorLabel={authorInfo.displayName}
-            isAgent={authorInfo.isAgent}
-          />
-          <span className="font-semibold text-text-primary">
-            {latest.summary}
-          </span>
+          <AuthorBadge testId={`pending-proposal-author-${latest.proposalId}`} authorLabel={authorInfo.displayName} isAgent={authorInfo.isAgent} />
+          <span className="font-semibold text-text-primary">{latest.summary}</span>
           <span className="font-mono text-[11px] text-text-muted">
-            ({latest.ops.length} op{latest.ops.length === 1 ? "" : "s"} on base
-            r{latest.baseRev})
+            ({latest.ops.length} op{latest.ops.length === 1 ? "" : "s"} on base r{latest.baseRev})
           </span>
         </div>
 
@@ -134,11 +122,7 @@ export function ProposalReviewBar() {
             <button
               key={prop.proposalId}
               type="button"
-              data-testid={
-                idx === 0
-                  ? "review-latest-proposal-button"
-                  : `review-proposal-button-${prop.proposalId}`
-              }
+              data-testid={idx === 0 ? "review-latest-proposal-button" : `review-proposal-button-${prop.proposalId}`}
               onClick={() => startProposalReview(prop.proposalId)}
               className="px-3 py-1 rounded bg-sky-400 text-slate-950 font-bold text-xs hover:bg-sky-300 transition"
             >
@@ -168,10 +152,7 @@ export function ProposalReviewBar() {
           >
             ☍ Visual Diff Review Mode
           </span>
-          <span
-            data-testid="proposal-review-id"
-            className="font-mono font-bold text-accent"
-          >
+          <span data-testid="proposal-review-id" className="font-mono font-bold text-accent">
             {activeProposal.proposalId}
           </span>
           <span
@@ -180,15 +161,8 @@ export function ProposalReviewBar() {
           >
             Base: r{activeProposal.baseRev}
           </span>
-          <AuthorBadge
-            testId="proposal-review-author-badge"
-            authorLabel={authorInfo.displayName}
-            isAgent={authorInfo.isAgent}
-          />
-          <span
-            data-testid="proposal-review-summary"
-            className="font-bold text-text-primary"
-          >
+          <AuthorBadge testId="proposal-review-author-badge" authorLabel={authorInfo.displayName} isAgent={authorInfo.isAgent} />
+          <span data-testid="proposal-review-summary" className="font-bold text-text-primary">
             {activeProposal.summary}
           </span>
         </div>
@@ -201,9 +175,7 @@ export function ProposalReviewBar() {
               data-testid="proposal-jump-workflows"
               onClick={() => setActiveNav("workflows")}
               className={`px-2 py-1 rounded text-[11px] font-semibold border ${
-                activeNav === "workflows"
-                  ? "bg-accent/20 border-accent text-accent"
-                  : "bg-surface-control border-border text-text-secondary"
+                activeNav === "workflows" ? "bg-accent/20 border-accent text-accent" : "bg-surface-control border-border text-text-secondary"
               }`}
             >
               Workflows Diff
@@ -213,9 +185,7 @@ export function ProposalReviewBar() {
               data-testid="proposal-jump-bricks"
               onClick={() => setActiveNav("bricks")}
               className={`px-2 py-1 rounded text-[11px] font-semibold border ${
-                activeNav === "bricks"
-                  ? "bg-accent/20 border-accent text-accent"
-                  : "bg-surface-control border-border text-text-secondary"
+                activeNav === "bricks" ? "bg-accent/20 border-accent text-accent" : "bg-surface-control border-border text-text-secondary"
               }`}
             >
               Bricks Diff
@@ -225,9 +195,7 @@ export function ProposalReviewBar() {
               data-testid="proposal-jump-entities"
               onClick={() => setActiveNav("data")}
               className={`px-2 py-1 rounded text-[11px] font-semibold border ${
-                activeNav === "data"
-                  ? "bg-accent/20 border-accent text-accent"
-                  : "bg-surface-control border-border text-text-secondary"
+                activeNav === "data" ? "bg-accent/20 border-accent text-accent" : "bg-surface-control border-border text-text-secondary"
               }`}
             >
               Entities Diff
@@ -238,11 +206,7 @@ export function ProposalReviewBar() {
             type="button"
             data-testid="proposal-accept-all"
             disabled={isViewer || isMutating}
-            onClick={() =>
-              void acceptActiveProposal(
-                activeProposal.ops.map((op) => op.opId),
-              )
-            }
+            onClick={() => void acceptActiveProposal(activeProposal.ops.map((op) => op.opId))}
             className="px-3 py-1.5 rounded bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             ✓ Accept all ({totalOps})
@@ -251,12 +215,7 @@ export function ProposalReviewBar() {
           <button
             type="button"
             data-testid="proposal-accept-selected"
-            disabled={
-              isViewer ||
-              isMutating ||
-              selectedCount === 0 ||
-              Boolean(proposalValidationError)
-            }
+            disabled={isViewer || isMutating || selectedCount === 0 || Boolean(proposalValidationError)}
             onClick={() => void acceptActiveProposal(selectedProposalOpIds)}
             className="px-3 py-1.5 rounded bg-sky-400 text-slate-950 font-bold text-xs hover:bg-sky-300 disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -285,10 +244,7 @@ export function ProposalReviewBar() {
       </div>
 
       {/* Per-Op Checkboxes for Selective Accept + Live Preview */}
-      <div
-        data-testid="proposal-ops-list"
-        className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/60"
-      >
+      <div data-testid="proposal-ops-list" className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/60">
         <div className="flex items-center gap-1.5 mr-1">
           <span className="text-[11px] font-semibold text-text-muted">
             Operations ({selectedCount}/{totalOps} selected):
@@ -320,20 +276,13 @@ export function ProposalReviewBar() {
               : desc.badge === "removed"
                 ? "text-rose-300 border-rose-500/40 bg-rose-500/10"
                 : "text-amber-300 border-amber-500/40 bg-amber-500/10";
-          const badgeSign =
-            desc.badge === "added"
-              ? "+"
-              : desc.badge === "removed"
-                ? "-"
-                : "~";
+          const badgeSign = desc.badge === "added" ? "+" : desc.badge === "removed" ? "-" : "~";
           return (
             <label
               key={op.opId}
               data-testid={`proposal-op-item-${op.opId}`}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border font-mono text-[11px] cursor-pointer select-none transition ${
-                checked
-                  ? badgeColor
-                  : "bg-surface-base border-border text-text-muted opacity-60"
+                checked ? badgeColor : "bg-surface-base border-border text-text-muted opacity-60"
               }`}
             >
               <input
@@ -359,12 +308,8 @@ export function ProposalReviewBar() {
           data-testid="proposal-validation-error"
           className="p-2.5 rounded bg-rose-950/90 border border-rose-500/60 text-rose-200 font-semibold text-xs flex items-center justify-between gap-2"
         >
-          <span>
-            ✕ Invalid partial operation selection: {proposalValidationError}
-          </span>
-          <span className="font-mono text-[10px] text-rose-300 shrink-0">
-            422 VALIDATION_FAILED
-          </span>
+          <span>✕ Invalid partial operation selection: {proposalValidationError}</span>
+          <span className="font-mono text-[10px] text-rose-300 shrink-0">422 VALIDATION_FAILED</span>
         </div>
       )}
     </section>

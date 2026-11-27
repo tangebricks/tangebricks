@@ -29,11 +29,7 @@ export function authUserId(user: unknown): string | undefined {
  * middleware (`ctx`), never anything the caller sent. Returns the refusal to send, or undefined when the caller may
  * proceed. Run it before reading or validating the body, so a low-role caller gets 403 and not 400.
  */
-export function workspaceRoleRefusal(
-  user: unknown,
-  ctx: RequestContext | undefined,
-  allowed: readonly string[],
-): AuthRefusal | undefined {
+export function workspaceRoleRefusal(user: unknown, ctx: RequestContext | undefined, allowed: readonly string[]): AuthRefusal | undefined {
   if (!authUserId(user) && !ctx) return UNAUTHORIZED;
   if (!ctx || !allowed.includes(ctx.role)) return FORBIDDEN;
   return undefined;

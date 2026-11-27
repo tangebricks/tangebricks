@@ -41,9 +41,7 @@ const sampleBlueprint: BlueprintState = {
       id: "wf-deal-won",
       name: "When Deal Won Notify Team",
       trigger: { kind: "event", event: "deals.updated" },
-      nodes: [
-        { id: "n1", type: "trigger.manual", label: "Deal Event", data: { entity: "deals" } },
-      ],
+      nodes: [{ id: "n1", type: "trigger.manual", label: "Deal Event", data: { entity: "deals" } }],
       edges: [],
     },
   ],
@@ -71,40 +69,22 @@ describe("Story 2.4: Read-only Bricks and Entities views with maturity badges", 
     render(<StudioApp />);
 
     // Production badge on dynamic-entities, Beta on core-auth
-    expect(screen.getByTestId("enabled-brick-maturity-dynamic-entities").textContent).toBe(
-      "Production ✓",
-    );
-    expect(screen.getByTestId("enabled-brick-maturity-core-auth").textContent).toBe(
-      "Beta ◆",
-    );
+    expect(screen.getByTestId("enabled-brick-maturity-dynamic-entities").textContent).toBe("Production ✓");
+    expect(screen.getByTestId("enabled-brick-maturity-core-auth").textContent).toBe("Beta ◆");
 
     // Beta badge + maturityReason on llm-gateway (agent-sandbox, used here before, is quarantined since story 0.11)
-    expect(screen.getByTestId("enabled-brick-maturity-llm-gateway").textContent).toBe(
-      "Beta ◆",
-    );
-    expect(screen.getByTestId("enabled-brick-reason-llm-gateway").textContent).toContain(
-      "Persists prompt templates and token usage logs in D1",
-    );
+    expect(screen.getByTestId("enabled-brick-maturity-llm-gateway").textContent).toBe("Beta ◆");
+    expect(screen.getByTestId("enabled-brick-reason-llm-gateway").textContent).toContain("Persists prompt templates and token usage logs in D1");
 
     // "Needs scheduling / queues" marker on cron-alarms and queue-jobs
-    expect(screen.getByTestId("enabled-brick-scheduling-cron-alarms").textContent).toContain(
-      "Needs scheduling / queues",
-    );
-    expect(screen.getByTestId("catalog-brick-scheduling-queue-jobs").textContent).toContain(
-      "Needs scheduling / queues",
-    );
+    expect(screen.getByTestId("enabled-brick-scheduling-cron-alarms").textContent).toContain("Needs scheduling / queues");
+    expect(screen.getByTestId("catalog-brick-scheduling-queue-jobs").textContent).toContain("Needs scheduling / queues");
 
     // Enable experimental toggle to verify Experimental ⚠ badge and maturityReason
     fireEvent.click(screen.getByTestId("bricks-experimental-toggle"));
-    expect(screen.getByTestId("catalog-brick-maturity-scripting-sandbox").textContent).toBe(
-      "Experimental ⚠",
-    );
-    expect(screen.getByTestId("catalog-brick-reason-scripting-sandbox").textContent).toContain(
-      "Executes in isolated Worker",
-    );
-    expect(screen.getByTestId("catalog-brick-scheduling-workflow-dag").textContent).toContain(
-      "Needs scheduling / queues",
-    );
+    expect(screen.getByTestId("catalog-brick-maturity-scripting-sandbox").textContent).toBe("Experimental ⚠");
+    expect(screen.getByTestId("catalog-brick-reason-scripting-sandbox").textContent).toContain("Executes in isolated Worker");
+    expect(screen.getByTestId("catalog-brick-scheduling-workflow-dag").textContent).toContain("Needs scheduling / queues");
   });
 
   it("2. hides experimental bricks in the Brick Catalog by default until toggled on, and filters by search and category (AC 1, AC 3)", () => {
@@ -166,20 +146,12 @@ describe("Story 2.4: Read-only Bricks and Entities views with maturity badges", 
     expect(screen.getByTestId("inspector-brick-detail")).toBeDefined();
     expect(screen.getByTestId("inspector-brick-provides").textContent).toContain("user-identity");
     expect(screen.getByTestId("inspector-brick-routes").textContent).toContain("/api/auth");
-    expect(screen.getByTestId("inspector-brick-migrations").textContent).toContain(
-      "migrations/0001_core_auth.sql",
-    );
-    expect(screen.getByTestId("inspector-brick-secrets").textContent).toContain(
-      "BETTER_AUTH_SECRET",
-    );
+    expect(screen.getByTestId("inspector-brick-migrations").textContent).toContain("migrations/0001_core_auth.sql");
+    expect(screen.getByTestId("inspector-brick-secrets").textContent).toContain("BETTER_AUTH_SECRET");
 
     // Verify read-only setting value (7200) and schema constraints (300..2592000, default 86400)
-    expect(screen.getByTestId("inspector-setting-value-sessionDuration").textContent).toBe(
-      "7200",
-    );
-    expect(screen.getByTestId("inspector-setting-sessionDuration").textContent).toContain(
-      "integer (300..2592000, default 86400)",
-    );
+    expect(screen.getByTestId("inspector-setting-value-sessionDuration").textContent).toBe("7200");
+    expect(screen.getByTestId("inspector-setting-sessionDuration").textContent).toContain("integer (300..2592000, default 86400)");
   });
 
   it("4. renders declared entities, field table with constraints/relations, 'Used by' references, and workspace_id-scoped SQLite DDL + REST route preview in Data view (AC 2, AC 3)", () => {
@@ -199,15 +171,9 @@ describe("Story 2.4: Read-only Bricks and Entities views with maturity badges", 
 
     // First entity ("deals") is selected by default; verify its fields and constraints
     expect(screen.getByTestId("entity-field-row-title").textContent).toContain("maxLength: 160");
-    expect(screen.getByTestId("entity-field-row-value_cents").textContent).toContain(
-      "min: 0 · max: 100000000",
-    );
-    expect(screen.getByTestId("entity-field-row-stage").textContent).toContain(
-      "values: [lead, qualified, won, lost]",
-    );
-    expect(screen.getByTestId("entity-field-row-account_id").textContent).toContain(
-      "relation: accounts.id",
-    );
+    expect(screen.getByTestId("entity-field-row-value_cents").textContent).toContain("min: 0 · max: 100000000");
+    expect(screen.getByTestId("entity-field-row-stage").textContent).toContain("values: [lead, qualified, won, lost]");
+    expect(screen.getByTestId("entity-field-row-account_id").textContent).toContain("relation: accounts.id");
 
     // Verify "Used by" panel lists dynamic-entities brick and wf-deal-won workflow
     expect(screen.getByTestId("entity-used-by-brick-dynamic-entities")).toBeDefined();
@@ -222,18 +188,12 @@ describe("Story 2.4: Read-only Bricks and Entities views with maturity badges", 
     const ddlText = screen.getByTestId("inspector-entity-ddl").textContent ?? "";
     expect(ddlText).toContain('CREATE TABLE IF NOT EXISTS "ent_deals"');
     expect(ddlText).toContain('"workspace_id" TEXT NOT NULL');
-    expect(ddlText).toContain(
-      'CREATE INDEX IF NOT EXISTS "ent_deals_workspace_idx" ON "ent_deals"("workspace_id", "created_at")',
-    );
+    expect(ddlText).toContain('CREATE INDEX IF NOT EXISTS "ent_deals_workspace_idx" ON "ent_deals"("workspace_id", "created_at")');
 
     // Switch to "accounts" entity and verify its unique constraint and DDL
     fireEvent.click(screen.getByTestId("entity-list-item-accounts"));
-    expect(screen.getByTestId("entity-field-row-company_name").textContent).toContain(
-      "✓ Unique",
-    );
-    expect(screen.getByTestId("inspector-entity-ddl").textContent).toContain(
-      'CREATE TABLE IF NOT EXISTS "ent_accounts"',
-    );
+    expect(screen.getByTestId("entity-field-row-company_name").textContent).toContain("✓ Unique");
+    expect(screen.getByTestId("inspector-entity-ddl").textContent).toContain('CREATE TABLE IF NOT EXISTS "ent_accounts"');
   });
 
   it("5. renders integration beta badge with maturityReason as tooltip (Story UC5.1 AC 3)", () => {
@@ -246,13 +206,7 @@ describe("Story 2.4: Read-only Bricks and Entities views with maturity badges", 
       expect(integration?.ui.maturity).toBe("beta");
       expect(integration?.ui.maturityReason).toBe(reason);
 
-      render(
-        <MaturityBadge
-          testId={`integration-maturity-badge-${app}`}
-          tier={integration?.ui.maturity}
-          reason={integration?.ui.maturityReason}
-        />,
-      );
+      render(<MaturityBadge testId={`integration-maturity-badge-${app}`} tier={integration?.ui.maturity} reason={integration?.ui.maturityReason} />);
 
       const badge = screen.getByTestId(`integration-maturity-badge-${app}`);
       expect(badge.textContent).toBe("Beta ◆");

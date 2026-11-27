@@ -74,7 +74,7 @@ export const PRESETS: Record<string, WebhookSignatureScheme> = {
     encoding: "hex",
     toleranceSec: 300,
   },
-  "ed25519": {
+  ed25519: {
     algorithm: "ed25519",
     signedPayload: "{timestamp}{body}",
     signatureHeader: "x-signature-ed25519",
@@ -120,10 +120,7 @@ export function mapToDbVerifier(
   return "hmac-sha256";
 }
 
-export function getDefaultSignatureHeader(
-  verifierInput?: string,
-  schemeObj?: WebhookSignatureScheme,
-): string {
+export function getDefaultSignatureHeader(verifierInput?: string, schemeObj?: WebhookSignatureScheme): string {
   if (schemeObj?.signatureHeader) return schemeObj.signatureHeader;
   const preset = verifierInput ? PRESETS[verifierInput] : undefined;
   if (preset?.signatureHeader) return preset.signatureHeader;

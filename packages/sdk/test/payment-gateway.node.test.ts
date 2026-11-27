@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { PAYMENT_CURRENCIES, checkGatewayOrder, fromMinorUnits, isPaymentCurrency, minorUnitExponent, readBoundedText, toMinorUnits } from "../src/payment-gateway.ts";
+import {
+  PAYMENT_CURRENCIES,
+  checkGatewayOrder,
+  fromMinorUnits,
+  isPaymentCurrency,
+  minorUnitExponent,
+  readBoundedText,
+  toMinorUnits,
+} from "../src/payment-gateway.ts";
 
 // Story 2.3: the one provider-neutral comparison credit-wallet and checkout-gateway both run before acting on a payment.
 const expected = { orderId: "order_1", amountMinor: 150, currency: "INR", customerId: "user-1" };

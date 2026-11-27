@@ -7,11 +7,7 @@ import {
   isDataStoreNotConfiguredError,
   mutateDataBrowserRow,
 } from "../api.ts";
-import type {
-  DataBrowserAuditEntryPayload,
-  DataBrowserColumnPayload,
-  DataBrowserTablePayload,
-} from "../api.ts";
+import type { DataBrowserAuditEntryPayload, DataBrowserColumnPayload, DataBrowserTablePayload } from "../api.ts";
 import { getActiveOrg, getActiveRole, useStudioStore } from "../store.ts";
 
 interface PendingWriteAction {
@@ -57,11 +53,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
   const activeRole = getActiveRole({ orgs, activeOrgId });
   const isViewer = activeRole === "viewer";
 
-  const project =
-    props.project ??
-    projectState?.project ??
-    activeProjectId ??
-    "default-project";
+  const project = props.project ?? projectState?.project ?? activeProjectId ?? "default-project";
   const orgId = props.orgId ?? activeOrg?.id;
 
   const [envName, setEnvName] = useState<"preview" | "production">(() => {
@@ -71,14 +63,10 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
   });
 
   const [workspaces, setWorkspaces] = useState<string[]>([]);
-  const [selectedWorkspace, setSelectedWorkspace] = useState<string>(() =>
-    readSessionValue("studio:dataBrowser:workspace", ""),
-  );
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string>(() => readSessionValue("studio:dataBrowser:workspace", ""));
 
   const [tables, setTables] = useState<DataBrowserTablePayload[]>([]);
-  const [selectedTableName, setSelectedTableName] = useState<string>(() =>
-    readSessionValue("studio:dataBrowser:table", ""),
-  );
+  const [selectedTableName, setSelectedTableName] = useState<string>(() => readSessionValue("studio:dataBrowser:table", ""));
 
   const [columns, setColumns] = useState<DataBrowserColumnPayload[]>([]);
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
@@ -115,15 +103,11 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
   const [editRowDraft, setEditRowDraft] = useState<Record<string, string>>({});
 
   // Confirmation modal state
-  const [pendingWrite, setPendingWrite] = useState<PendingWriteAction | null>(
-    null,
-  );
+  const [pendingWrite, setPendingWrite] = useState<PendingWriteAction | null>(null);
   const [submittingWrite, setSubmittingWrite] = useState<boolean>(false);
 
   // Audit log entries
-  const [auditEntries, setAuditEntries] = useState<
-    DataBrowserAuditEntryPayload[]
-  >([]);
+  const [auditEntries, setAuditEntries] = useState<DataBrowserAuditEntryPayload[]>([]);
 
   const catalogReqIdRef = useRef(0);
   const rowsReqIdRef = useRef(0);
@@ -212,9 +196,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
         setRows([]);
         setTotalCount(0);
       } else if (reqId === catalogReqIdRef.current) {
-        setErrorBanner(
-          err instanceof Error ? err.message : "Failed to load Data Browser catalog",
-        );
+        setErrorBanner(err instanceof Error ? err.message : "Failed to load Data Browser catalog");
       }
     }
   }, [project, envName, orgId, selectedWorkspace, selectedTableName]);
@@ -223,10 +205,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
     void loadCatalog();
   }, [loadCatalog]);
 
-  const activeTable = useMemo(
-    () => tables.find((t) => t.name === selectedTableName) ?? tables[0] ?? null,
-    [tables, selectedTableName],
-  );
+  const activeTable = useMemo(() => tables.find((t) => t.name === selectedTableName) ?? tables[0] ?? null, [tables, selectedTableName]);
 
   // Load rows and audit log when workspace, table, sort, filter, or pagination changes
   const loadRowsAndAudit = useCallback(async () => {
@@ -265,66 +244,28 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
         setRows([]);
         setTotalCount(0);
       } else if (reqId === rowsReqIdRef.current) {
-        setErrorBanner(
-          err instanceof Error ? err.message : "Failed to load table rows",
-        );
+        setErrorBanner(err instanceof Error ? err.message : "Failed to load table rows");
       }
     } finally {
       if (reqId === rowsReqIdRef.current) {
         setLoading(false);
       }
     }
-  }, [
-    project,
-    envName,
-    orgId,
-    selectedWorkspace,
-    activeTable,
-    appliedFilter,
-    sortCol,
-    sortDir,
-    limit,
-    offset,
-  ]);
+  }, [project, envName, orgId, selectedWorkspace, activeTable, appliedFilter, sortCol, sortDir, limit, offset]);
 
   useEffect(() => {
     void loadRowsAndAudit();
   }, [loadRowsAndAudit]);
 
-  const entityTables = useMemo(
-    () => tables.filter((t) => t.category === "entity"),
-    [tables],
-  );
-  const brickTables = useMemo(
-    () => tables.filter((t) => t.category === "brick"),
-    [tables],
-  );
+  const entityTables = useMemo(() => tables.filter((t) => t.category === "entity"), [tables]);
+  const brickTables = useMemo(() => tables.filter((t) => t.category === "brick"), [tables]);
 
-  const canWriteActiveTable =
-    envName === "preview" &&
-    !isViewer &&
-    Boolean(activeTable) &&
-    activeTable?.category === "entity" &&
-    !activeTable?.readOnly;
+  const canWriteActiveTable = envName === "preview" && !isViewer && Boolean(activeTable) && activeTable?.category === "entity" && !activeTable?.readOnly;
 
-  const effectiveColumns = useMemo(
-    () =>
-      activeTable?.columns && activeTable.columns.length > 0
-        ? activeTable.columns
-        : columns,
-    [activeTable, columns],
-  );
+  const effectiveColumns = useMemo(() => (activeTable?.columns && activeTable.columns.length > 0 ? activeTable.columns : columns), [activeTable, columns]);
 
   const editableColumns = useMemo(
-    () =>
-      effectiveColumns.filter(
-        (c) =>
-          !c.readOnly &&
-          c.name !== "id" &&
-          c.name !== "workspace_id" &&
-          c.name !== "created_at" &&
-          c.name !== "updated_at",
-      ),
+    () => effectiveColumns.filter((c) => !c.readOnly && c.name !== "id" && c.name !== "workspace_id" && c.name !== "created_at" && c.name !== "updated_at"),
     [effectiveColumns],
   );
 
@@ -376,11 +317,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
     const rowPayload: Record<string, unknown> = {};
     for (const col of editableColumns) {
       const raw = newRowDraft[col.name] ?? "";
-      if (
-        col.type.includes("INT") ||
-        col.type.includes("NUM") ||
-        col.type.includes("REAL")
-      ) {
+      if (col.type.includes("INT") || col.type.includes("NUM") || col.type.includes("REAL")) {
         rowPayload[col.name] = raw === "" ? 0 : Number(raw);
       } else {
         rowPayload[col.name] = raw;
@@ -414,11 +351,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
     const patchPayload: Record<string, unknown> = {};
     for (const col of editableColumns) {
       const raw = editRowDraft[col.name] ?? "";
-      if (
-        col.type.includes("INT") ||
-        col.type.includes("NUM") ||
-        col.type.includes("REAL")
-      ) {
+      if (col.type.includes("INT") || col.type.includes("NUM") || col.type.includes("REAL")) {
         patchPayload[col.name] = raw === "" ? 0 : Number(raw);
       } else {
         patchPayload[col.name] = raw;
@@ -450,32 +383,20 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
     setStatusNotice(null);
 
     try {
-      const method =
-        pendingWrite.operation === "insert"
-          ? "POST"
-          : pendingWrite.operation === "update"
-            ? "PATCH"
-            : "DELETE";
+      const method = pendingWrite.operation === "insert" ? "POST" : pendingWrite.operation === "update" ? "PATCH" : "DELETE";
 
-      const result = await mutateDataBrowserRow(
-        project,
-        envName,
-        pendingWrite.tableName,
-        {
-          method,
-          workspaceId: pendingWrite.workspaceId,
-          confirmWrite: true,
-          rowId: pendingWrite.rowId,
-          row: pendingWrite.row,
-          patch: pendingWrite.patch,
-          orgId,
-        },
-      );
+      const result = await mutateDataBrowserRow(project, envName, pendingWrite.tableName, {
+        method,
+        workspaceId: pendingWrite.workspaceId,
+        confirmWrite: true,
+        rowId: pendingWrite.rowId,
+        row: pendingWrite.row,
+        patch: pendingWrite.patch,
+        orgId,
+      });
 
       if (!result.ok) {
-        setErrorBanner(
-          `${result.error?.code ?? "ERROR"}: ${result.error?.message ?? "Write rejected"}`,
-        );
+        setErrorBanner(`${result.error?.code ?? "ERROR"}: ${result.error?.message ?? "Write rejected"}`);
         setPendingWrite(null);
         return;
       }
@@ -483,15 +404,11 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
       setPendingWrite(null);
       setAddingRow(false);
       setEditingRowId(null);
-      setStatusNotice(
-        `Committed ${pendingWrite.operation} on ${pendingWrite.tableName} (audit ${result.auditId ?? "recorded"})`,
-      );
+      setStatusNotice(`Committed ${pendingWrite.operation} on ${pendingWrite.tableName} (audit ${result.auditId ?? "recorded"})`);
       await loadCatalog();
       await loadRowsAndAudit();
     } catch (err) {
-      setErrorBanner(
-        err instanceof Error ? err.message : "Failed to commit row mutation",
-      );
+      setErrorBanner(err instanceof Error ? err.message : "Failed to commit row mutation");
       setPendingWrite(null);
     } finally {
       setSubmittingWrite(false);
@@ -507,32 +424,21 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
       >
         <div className="flex flex-wrap items-center gap-3">
           <div>
-            <h2 className="text-base font-bold text-text-primary">
-              Workspace Data Browser
-            </h2>
+            <h2 className="text-base font-bold text-text-primary">Workspace Data Browser</h2>
             <p className="text-xs text-text-muted mt-0.5">
-              Inspect deployed entity &amp; brick rows strictly scoped by{" "}
-              <span className="font-mono text-emerald-400">
-                WHERE workspace_id = ?1
-              </span>
-              . Secret columns are excluded.
+              Inspect deployed entity &amp; brick rows strictly scoped by <span className="font-mono text-emerald-400">WHERE workspace_id = ?1</span>. Secret
+              columns are excluded.
             </p>
           </div>
 
           {/* Environment Toggle */}
-          <div
-            role="group"
-            aria-label="Data Browser Environment"
-            className="inline-flex rounded-lg bg-surface-base p-1 border border-border"
-          >
+          <div role="group" aria-label="Data Browser Environment" className="inline-flex rounded-lg bg-surface-base p-1 border border-border">
             <button
               type="button"
               data-testid="data-browser-env-preview"
               onClick={() => handleSelectEnv("preview")}
               className={`px-3 py-1 rounded text-xs font-bold transition ${
-                envName === "preview"
-                  ? "bg-sky-400 text-slate-950"
-                  : "text-text-secondary hover:text-text-primary"
+                envName === "preview" ? "bg-sky-400 text-slate-950" : "text-text-secondary hover:text-text-primary"
               }`}
             >
               preview
@@ -542,9 +448,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
               data-testid="data-browser-env-production"
               onClick={() => handleSelectEnv("production")}
               className={`px-3 py-1 rounded text-xs font-bold transition ${
-                envName === "production"
-                  ? "bg-amber-400 text-slate-950"
-                  : "text-text-secondary hover:text-text-primary"
+                envName === "production" ? "bg-amber-400 text-slate-950" : "text-text-secondary hover:text-text-primary"
               }`}
             >
               production
@@ -580,10 +484,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
 
         {/* Mandatory Workspace Selector */}
         <div className="flex items-center gap-2">
-          <label
-            htmlFor="data-browser-workspace-select"
-            className="text-xs font-bold uppercase tracking-wider text-text-muted"
-          >
+          <label htmlFor="data-browser-workspace-select" className="text-xs font-bold uppercase tracking-wider text-text-muted">
             Workspace:
           </label>
           <select
@@ -619,9 +520,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
           data-testid="data-browser-no-data-store"
           className="p-4 rounded-lg bg-surface-base border border-border text-text-secondary text-xs flex flex-col gap-1"
         >
-          <span className="font-semibold text-text-primary">
-            No data store for this environment
-          </span>
+          <span className="font-semibold text-text-primary">No data store for this environment</span>
           <span>
             {envName === "production"
               ? "Studio cannot reach production data. Browse data in a preview sandbox instead."
@@ -666,18 +565,11 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
 
       <div className="grid grid-cols-12 gap-4">
         {/* Left Sidebar: Grouped Entities & Brick Tables */}
-        <aside
-          data-testid="data-browser-tables-sidebar"
-          className="col-span-3 space-y-4 p-3 rounded-lg bg-surface-raised border border-border"
-        >
+        <aside data-testid="data-browser-tables-sidebar" className="col-span-3 space-y-4 p-3 rounded-lg bg-surface-raised border border-border">
           <div data-testid="data-browser-group-entities" className="space-y-1.5">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted px-1">
-              Entities ({entityTables.length})
-            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted px-1">Entities ({entityTables.length})</div>
             {entityTables.length === 0 ? (
-              <div className="text-xs text-text-muted px-1 py-1">
-                No dynamic entities
-              </div>
+              <div className="text-xs text-text-muted px-1 py-1">No dynamic entities</div>
             ) : (
               entityTables.map((tbl) => {
                 const active = activeTable?.name === tbl.name;
@@ -695,9 +587,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
                   >
                     <div className="truncate">
                       <div className="font-mono">{tbl.name}</div>
-                      <div className="text-[10px] text-text-muted font-mono">
-                        {tbl.tableName}
-                      </div>
+                      <div className="text-[10px] text-text-muted font-mono">{tbl.tableName}</div>
                     </div>
                     <span className="px-1.5 py-0.5 rounded bg-surface-base border border-border text-[10px] font-mono text-text-secondary">
                       {tbl.rowCount ?? "—"}
@@ -708,17 +598,10 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
             )}
           </div>
 
-          <div
-            data-testid="data-browser-group-bricks"
-            className="space-y-1.5 pt-2 border-t border-border"
-          >
-            <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted px-1">
-              Brick Tables ({brickTables.length})
-            </div>
+          <div data-testid="data-browser-group-bricks" className="space-y-1.5 pt-2 border-t border-border">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted px-1">Brick Tables ({brickTables.length})</div>
             {brickTables.length === 0 ? (
-              <div className="text-xs text-text-muted px-1 py-1">
-                No brick tables
-              </div>
+              <div className="text-xs text-text-muted px-1 py-1">No brick tables</div>
             ) : (
               brickTables.map((tbl) => {
                 const active = activeTable?.name === tbl.name;
@@ -736,9 +619,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
                   >
                     <div className="truncate">
                       <div className="font-mono">{tbl.name}</div>
-                      <div className="text-[10px] text-amber-300/90 font-sans">
-                        Read-only
-                      </div>
+                      <div className="text-[10px] text-amber-300/90 font-sans">Read-only</div>
                     </div>
                     <span className="px-1.5 py-0.5 rounded bg-surface-base border border-border text-[10px] font-mono text-text-secondary">
                       {tbl.rowCount ?? "—"}
@@ -756,19 +637,14 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
             {/* Table Title & Filter Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <h3
-                  data-testid="data-browser-active-table-title"
-                  className="text-sm font-bold font-mono text-text-primary"
-                >
+                <h3 data-testid="data-browser-active-table-title" className="text-sm font-bold font-mono text-text-primary">
                   {activeTable ? activeTable.label : "Select a table"}
                 </h3>
                 {activeTable && (
                   <span
                     data-testid="data-browser-table-mode-badge"
                     className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                      canWriteActiveTable
-                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                        : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                      canWriteActiveTable ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" : "bg-amber-500/10 border-amber-500/30 text-amber-300"
                     }`}
                   >
                     {canWriteActiveTable ? "Editable (Preview)" : "Read-only"}
@@ -793,9 +669,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
               data-testid="data-browser-filter-bar"
               className="p-2.5 rounded-lg bg-surface-base border border-border flex flex-wrap items-center gap-2 text-xs"
             >
-              <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                Filter:
-              </span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Filter:</span>
               <select
                 aria-label="Filter column"
                 data-testid="data-browser-filter-column"
@@ -814,11 +688,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
                 aria-label="Filter operator"
                 data-testid="data-browser-filter-op"
                 value={filterOp}
-                onChange={(e) =>
-                  setFilterOp(
-                    e.target.value as "eq" | "contains" | "gt" | "lt",
-                  )
-                }
+                onChange={(e) => setFilterOp(e.target.value as "eq" | "contains" | "gt" | "lt")}
                 className="px-2 py-1 rounded bg-surface-control border border-border-strong font-mono text-xs text-sky-300"
               >
                 <option value="eq">= (eq)</option>
@@ -860,20 +730,10 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
 
             {/* Add Row Form */}
             {addingRow && canWriteActiveTable && (
-              <div
-                data-testid="data-browser-add-row-form"
-                className="p-3 rounded-lg bg-surface-base border border-accent/50 space-y-3"
-              >
+              <div data-testid="data-browser-add-row-form" className="p-3 rounded-lg bg-surface-base border border-accent/50 space-y-3">
                 <div className="text-xs font-bold text-text-primary">
-                  New Row in{" "}
-                  <span className="font-mono text-accent">
-                    {activeTable?.name}
-                  </span>{" "}
-                  (workspace:{" "}
-                  <span className="font-mono text-emerald-400">
-                    {selectedWorkspace}
-                  </span>
-                  )
+                  New Row in <span className="font-mono text-accent">{activeTable?.name}</span> (workspace:{" "}
+                  <span className="font-mono text-emerald-400">{selectedWorkspace}</span>)
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   {editableColumns.map((col) => (
@@ -919,10 +779,7 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
 
             {/* Data Grid */}
             <div className="overflow-x-auto">
-              <table
-                data-testid="data-browser-grid"
-                className="w-full text-left border-collapse text-xs"
-              >
+              <table data-testid="data-browser-grid" className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-border text-[11px] uppercase tracking-wider text-text-muted">
                     {effectiveColumns.map((col) => (
@@ -934,40 +791,24 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
                           className="inline-flex items-center gap-1 hover:text-text-primary"
                         >
                           <span>{col.name}</span>
-                          {sortCol === col.name && (
-                            <span className="text-accent">
-                              {sortDir === "asc" ? "↑" : "↓"}
-                            </span>
-                          )}
+                          {sortCol === col.name && <span className="text-accent">{sortDir === "asc" ? "↑" : "↓"}</span>}
                         </button>
                       </th>
                     ))}
-                    {canWriteActiveTable && (
-                      <th className="py-2 px-2.5 text-right">Actions</th>
-                    )}
+                    {canWriteActiveTable && <th className="py-2 px-2.5 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border font-mono">
                   {loading ? (
                     <tr>
-                      <td
-                        colSpan={effectiveColumns.length + (canWriteActiveTable ? 1 : 0)}
-                        className="py-6 text-center text-text-muted font-sans"
-                      >
+                      <td colSpan={effectiveColumns.length + (canWriteActiveTable ? 1 : 0)} className="py-6 text-center text-text-muted font-sans">
                         Loading rows for workspace {selectedWorkspace}…
                       </td>
                     </tr>
                   ) : rows.length === 0 ? (
                     <tr data-testid="data-browser-empty-rows">
-                      <td
-                        colSpan={effectiveColumns.length + (canWriteActiveTable ? 1 : 0)}
-                        className="py-6 text-center text-text-muted font-sans"
-                      >
-                        No rows found in workspace{" "}
-                        <span className="font-mono text-text-primary">
-                          {selectedWorkspace}
-                        </span>
-                        .
+                      <td colSpan={effectiveColumns.length + (canWriteActiveTable ? 1 : 0)} className="py-6 text-center text-text-muted font-sans">
+                        No rows found in workspace <span className="font-mono text-text-primary">{selectedWorkspace}</span>.
                       </td>
                     </tr>
                   ) : (
@@ -975,22 +816,12 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
                       const rowId = String(row.id ?? `idx_${rIdx}`);
                       const isEditing = editingRowId === rowId;
                       return (
-                        <tr
-                          key={rowId}
-                          data-testid={`data-browser-row-${rowId}`}
-                          className="hover:bg-surface-base/40"
-                        >
+                        <tr key={rowId} data-testid={`data-browser-row-${rowId}`} className="hover:bg-surface-base/40">
                           {effectiveColumns.map((col) => {
                             const cellVal = row[col.name];
-                            const canEditCol =
-                              isEditing &&
-                              editableColumns.some((c) => c.name === col.name);
+                            const canEditCol = isEditing && editableColumns.some((c) => c.name === col.name);
                             return (
-                              <td
-                                key={col.name}
-                                data-testid={`data-browser-cell-${rowId}-${col.name}`}
-                                className="py-2 px-2.5 text-text-primary"
-                              >
+                              <td key={col.name} data-testid={`data-browser-cell-${rowId}-${col.name}`} className="py-2 px-2.5 text-text-primary">
                                 {canEditCol ? (
                                   <input
                                     type="text"
@@ -1071,15 +902,8 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
             {/* Pagination Footer */}
             <div className="pt-2 border-t border-border flex flex-wrap items-center justify-between gap-3 text-xs text-text-muted">
               <div data-testid="data-browser-page-info">
-                Showing {rows.length} of {totalCount} rows in{" "}
-                <span className="font-mono text-text-primary">
-                  {selectedWorkspace}
-                </span>
-                {compiledSql && (
-                  <span className="ml-2 font-mono text-[10px] text-text-muted">
-                    ({compiledSql})
-                  </span>
-                )}
+                Showing {rows.length} of {totalCount} rows in <span className="font-mono text-text-primary">{selectedWorkspace}</span>
+                {compiledSql && <span className="ml-2 font-mono text-[10px] text-text-muted">({compiledSql})</span>}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1106,23 +930,15 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
 
           {/* Preview Audit Log Panel */}
           {envName === "preview" && (
-            <div
-              data-testid="data-browser-audit-panel"
-              className="p-4 rounded-lg bg-surface-raised border border-border space-y-2"
-            >
+            <div data-testid="data-browser-audit-panel" className="p-4 rounded-lg bg-surface-raised border border-border space-y-2">
               <div className="text-xs font-bold text-text-primary flex items-center justify-between">
-                <span>
-                  Preview Write Audit Trail (`data_browser_audit_log`)
-                </span>
+                <span>Preview Write Audit Trail (`data_browser_audit_log`)</span>
                 <span className="font-mono text-[11px] text-text-muted">
-                  {auditEntries.length} recorded{" "}
-                  {auditEntries.length === 1 ? "mutation" : "mutations"}
+                  {auditEntries.length} recorded {auditEntries.length === 1 ? "mutation" : "mutations"}
                 </span>
               </div>
               {auditEntries.length === 0 ? (
-                <div className="text-xs text-text-muted">
-                  No preview row mutations recorded for this workspace/table yet.
-                </div>
+                <div className="text-xs text-text-muted">No preview row mutations recorded for this workspace/table yet.</div>
               ) : (
                 <div className="space-y-1.5 max-h-44 overflow-y-auto">
                   {auditEntries.map((entry) => (
@@ -1132,15 +948,11 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
                       className="p-2 rounded bg-surface-base border border-border text-[11px] font-mono flex flex-wrap items-center justify-between gap-2"
                     >
                       <div>
-                        <span className="font-bold uppercase text-emerald-400">
-                          {entry.operation}
-                        </span>{" "}
+                        <span className="font-bold uppercase text-emerald-400">{entry.operation}</span>{" "}
                         <span className="text-text-primary">
                           {entry.tableName}/{entry.rowId}
                         </span>{" "}
-                        <span className="text-text-muted">
-                          (workspace: {entry.workspaceId})
-                        </span>
+                        <span className="text-text-muted">(workspace: {entry.workspaceId})</span>
                       </div>
                       <div className="text-text-muted">
                         actor: {entry.actor} · {entry.auditId}
@@ -1165,20 +977,11 @@ export function DataBrowserView(props: DataBrowserViewProps = {}) {
         >
           <div className="max-w-md w-full p-5 rounded-xl bg-surface-raised border border-border-strong space-y-4 shadow-2xl">
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-text-primary">
-                Confirm Preview Entity Write ({pendingWrite.operation.toUpperCase()})
-              </h3>
+              <h3 className="text-sm font-bold text-text-primary">Confirm Preview Entity Write ({pendingWrite.operation.toUpperCase()})</h3>
               <p className="text-xs text-text-secondary">
-                This mutation on table{" "}
-                <span className="font-mono font-bold text-accent">
-                  {pendingWrite.tableName}
-                </span>{" "}
-                is scoped strictly to{" "}
-                <span className="font-mono font-bold text-emerald-400">
-                  workspace_id = &quot;{pendingWrite.workspaceId}&quot;
-                </span>{" "}
-                and will record an immutable before/after snapshot in{" "}
-                <span className="font-mono">data_browser_audit_log</span>.
+                This mutation on table <span className="font-mono font-bold text-accent">{pendingWrite.tableName}</span> is scoped strictly to{" "}
+                <span className="font-mono font-bold text-emerald-400">workspace_id = &quot;{pendingWrite.workspaceId}&quot;</span> and will record an immutable
+                before/after snapshot in <span className="font-mono">data_browser_audit_log</span>.
               </p>
             </div>
 

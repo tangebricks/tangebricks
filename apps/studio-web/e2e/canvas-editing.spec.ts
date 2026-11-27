@@ -29,9 +29,7 @@ test.describe("Editable Workflow Canvas: searchable palette, typed-port validati
     await page.getByTestId("create-workflow-confirm").click();
 
     await expect(page.getByTestId("topbar-revision-badge")).toHaveText("r1");
-    await expect(
-      page.getByTestId("workflow-selector-card-wf-invoice-processing-dag"),
-    ).toBeVisible();
+    await expect(page.getByTestId("workflow-selector-card-wf-invoice-processing-dag")).toBeVisible();
 
     // 2. Search palette for "webhook" and add core.webhook trigger node
     const paletteSearch = page.getByTestId("palette-search-input");
@@ -70,8 +68,7 @@ test.describe("Editable Workflow Canvas: searchable palette, typed-port validati
       const b1 = n1.getBoundingClientRect();
       const b2 = n2.getBoundingClientRect();
       const b3 = n3.getBoundingClientRect();
-      const overlaps = (a: DOMRect, b: DOMRect) =>
-        !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+      const overlaps = (a: DOMRect, b: DOMRect) => !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
 
       return {
         paletteBg: window.getComputedStyle(palette).backgroundColor,
@@ -95,9 +92,7 @@ test.describe("Editable Workflow Canvas: searchable palette, typed-port validati
     await page.getByTestId("wire-source-select").selectOption("node-math-2::out");
     await page.getByTestId("wire-target-select").selectOption("node-loop-3::in");
 
-    await expect(page.getByTestId("port-validation-error-banner")).toContainText(
-      "Cannot connect number output to array input",
-    );
+    await expect(page.getByTestId("port-validation-error-banner")).toContainText("Cannot connect number output to array input");
     await expect(page.getByTestId("wire-connect-button")).toBeDisabled();
 
     // 6. Connect valid typed ports: core.webhook (out:object) -> core.field_map (in:object)

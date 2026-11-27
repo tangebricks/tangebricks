@@ -16,10 +16,7 @@ import {
   sealDeployToken,
 } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
-import {
-  MockCloudflareControlPlane,
-  createByocProvisioner,
-} from "../../../packages/deploy/src/target.ts";
+import { MockCloudflareControlPlane, createByocProvisioner } from "../../../packages/deploy/src/target.ts";
 import type { DeployTarget } from "../../../packages/deploy/src/target.ts";
 
 const rawEnv = env as unknown as StudioApiEnv;
@@ -114,20 +111,13 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
         accountId,
         accountName: "Acme Production Account",
         plaintextToken: canaryToken,
-        scopes: [
-          "workers_scripts:write",
-          "d1:write",
-          "queues:write",
-          "account:read",
-        ],
+        scopes: ["workers_scripts:write", "d1:write", "queues:write", "account:read"],
         createdBy: "user_owner_1",
       },
       TEST_ENV,
     );
 
-    expect(metadata.tokenRef).toMatch(
-      /^tok_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-    );
+    expect(metadata.tokenRef).toMatch(/^tok_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     expect(metadata.accountId).toBe(accountId);
     expect(metadata.accountName).toBe("Acme Production Account");
     expect(metadata.tokenLast4).toBe("9900");
@@ -137,9 +127,7 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
 
     // Inspect raw D1 row: ciphertext and wrapped_dek must not contain plaintext token
     const rawRow = await studioDb
-      .prepare(
-        "SELECT ciphertext, iv, wrapped_dek, dek_iv, kek_version, status FROM deploy_tokens WHERE token_ref = ?",
-      )
+      .prepare("SELECT ciphertext, iv, wrapped_dek, dek_iv, kek_version, status FROM deploy_tokens WHERE token_ref = ?")
       .bind(metadata.tokenRef)
       .first<{
         ciphertext: string;
@@ -220,51 +208,30 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
     );
 
     const originalRow = await studioDb
-      .prepare(
-        "SELECT ciphertext, wrapped_dek FROM deploy_tokens WHERE token_ref = ?",
-      )
+      .prepare("SELECT ciphertext, wrapped_dek FROM deploy_tokens WHERE token_ref = ?")
       .bind(metadata.tokenRef)
       .first<{ ciphertext: string; wrapped_dek: string }>();
 
     // 1. Flip a bit in ciphertext
-    const tamperedCiphertext = flipFirstCiphertextBitBase64(
-      originalRow!.ciphertext,
-    );
-    await studioDb
-      .prepare("UPDATE deploy_tokens SET ciphertext = ? WHERE token_ref = ?")
-      .bind(tamperedCiphertext, metadata.tokenRef)
-      .run();
+    const tamperedCiphertext = flipFirstCiphertextBitBase64(originalRow!.ciphertext);
+    await studioDb.prepare("UPDATE deploy_tokens SET ciphertext = ? WHERE token_ref = ?").bind(tamperedCiphertext, metadata.tokenRef).run();
 
     await expect(
-      decryptToken(
-        studioDb,
-        metadata.tokenRef,
-        { actor: "user_owner_1", deployId: "dep_tamper_1", action: "plan" },
-        TEST_ENV,
-      ),
+      decryptToken(studioDb, metadata.tokenRef, { actor: "user_owner_1", deployId: "dep_tamper_1", action: "plan" }, TEST_ENV),
     ).rejects.toMatchObject({
       name: "DeployTokenVaultError",
       code: "TOKEN_TAMPERED",
     });
 
     // Restore ciphertext and flip a bit in wrapped_dek
-    const tamperedWrappedDek = flipFirstCiphertextBitBase64(
-      originalRow!.wrapped_dek,
-    );
+    const tamperedWrappedDek = flipFirstCiphertextBitBase64(originalRow!.wrapped_dek);
     await studioDb
-      .prepare(
-        "UPDATE deploy_tokens SET ciphertext = ?, wrapped_dek = ? WHERE token_ref = ?",
-      )
+      .prepare("UPDATE deploy_tokens SET ciphertext = ?, wrapped_dek = ? WHERE token_ref = ?")
       .bind(originalRow!.ciphertext, tamperedWrappedDek, metadata.tokenRef)
       .run();
 
     await expect(
-      decryptToken(
-        studioDb,
-        metadata.tokenRef,
-        { actor: "user_owner_1", deployId: "dep_tamper_2", action: "plan" },
-        TEST_ENV,
-      ),
+      decryptToken(studioDb, metadata.tokenRef, { actor: "user_owner_1", deployId: "dep_tamper_2", action: "plan" }, TEST_ENV),
     ).rejects.toMatchObject({
       name: "DeployTokenVaultError",
       code: "TOKEN_TAMPERED",
@@ -305,9 +272,7 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
     );
 
     const beforeRowA = await studioDb
-      .prepare(
-        "SELECT ciphertext, wrapped_dek, kek_version FROM deploy_tokens WHERE token_ref = ?",
-      )
+      .prepare("SELECT ciphertext, wrapped_dek, kek_version FROM deploy_tokens WHERE token_ref = ?")
       .bind(metaA.tokenRef)
       .first<{ ciphertext: string; wrapped_dek: string; kek_version: number }>();
     expect(beforeRowA!.kek_version).toBe(1);
@@ -321,14 +286,10 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
     });
 
     expect(rotation.rotatedCount).toBe(2);
-    expect(rotation.rotatedTokenRefs.sort()).toEqual(
-      [metaA.tokenRef, metaB.tokenRef].sort(),
-    );
+    expect(rotation.rotatedTokenRefs.sort()).toEqual([metaA.tokenRef, metaB.tokenRef].sort());
 
     const afterRowA = await studioDb
-      .prepare(
-        "SELECT ciphertext, wrapped_dek, kek_version FROM deploy_tokens WHERE token_ref = ?",
-      )
+      .prepare("SELECT ciphertext, wrapped_dek, kek_version FROM deploy_tokens WHERE token_ref = ?")
       .bind(metaA.tokenRef)
       .first<{ ciphertext: string; wrapped_dek: string; kek_version: number }>();
 
@@ -343,18 +304,8 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
       PX_TOKEN_KEK_VERSION: "2",
     };
 
-    const decryptedA = await decryptToken(
-      studioDb,
-      metaA.tokenRef,
-      { actor: "user_owner_1", deployId: "dep_rot_1", action: "plan" },
-      rotatedEnv,
-    );
-    const decryptedB = await decryptToken(
-      studioDb,
-      metaB.tokenRef,
-      { actor: "user_owner_1", deployId: "dep_rot_2", action: "apply" },
-      rotatedEnv,
-    );
+    const decryptedA = await decryptToken(studioDb, metaA.tokenRef, { actor: "user_owner_1", deployId: "dep_rot_1", action: "plan" }, rotatedEnv);
+    const decryptedB = await decryptToken(studioDb, metaB.tokenRef, { actor: "user_owner_1", deployId: "dep_rot_2", action: "apply" }, rotatedEnv);
 
     expect(decryptedA).toBe(tokenA);
     expect(decryptedB).toBe(tokenB);
@@ -458,21 +409,16 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
       body: { accountId, accountName: "CP5 BYOC Account", token: liveToken },
     });
     expect(mcpCreateRes.status).toBe(403);
-    expect(((await mcpCreateRes.json()) as { error: { code: string } }).error.code).toBe(
-      "FORBIDDEN_TOKEN_CALLER",
-    );
+    expect(((await mcpCreateRes.json()) as { error: { code: string } }).error.code).toBe("FORBIDDEN_TOKEN_CALLER");
 
-    const createTokenRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens`,
-      {
-        token: builderData.token,
-        body: {
-          accountId,
-          accountName: "CP5 BYOC Account",
-          token: liveToken,
-        },
+    const createTokenRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens`, {
+      token: builderData.token,
+      body: {
+        accountId,
+        accountName: "CP5 BYOC Account",
+        token: liveToken,
       },
-    );
+    });
     expect(createTokenRes.status).toBe(201);
     const createdBody = (await createTokenRes.json()) as {
       tokenRef: string;
@@ -485,23 +431,17 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
     expect(createdBody.status).toBe("active");
 
     // 5. Viewer cannot revoke (403 FORBIDDEN_ROLE)
-    const viewerDeleteRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`,
-      {
-        method: "DELETE",
-        token: viewerData.token,
-      },
-    );
+    const viewerDeleteRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`, {
+      method: "DELETE",
+      token: viewerData.token,
+    });
     expect(viewerDeleteRes.status).toBe(403);
 
     // 6. MCP token without 'connect' scope cannot revoke (403; story 16: no MCP token may use an org-level route)
-    const mcpNoScopeDeleteRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`,
-      {
-        method: "DELETE",
-        token: mcpNoConnect.token,
-      },
-    );
+    const mcpNoScopeDeleteRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`, {
+      method: "DELETE",
+      token: mcpNoConnect.token,
+    });
     expect(mcpNoScopeDeleteRes.status).toBe(403);
     const noScopeErr = (await mcpNoScopeDeleteRes.json()) as {
       error: { code: string };
@@ -551,13 +491,10 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
     expect(controlPlane.calls.length).toBeGreaterThan(0);
 
     // 8. The builder (signed in; role >= editor) revokes the token via DELETE /api/orgs/:orgId/cloudflare-tokens/:tokenRef
-    const revokeRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`,
-      {
-        method: "DELETE",
-        token: builderData.token,
-      },
-    );
+    const revokeRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`, {
+      method: "DELETE",
+      token: builderData.token,
+    });
     expect(revokeRes.status).toBe(200);
     const revokeBody = (await revokeRes.json()) as {
       ok: boolean;
@@ -571,15 +508,11 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
     expect(revokeBody.tokenRef).toBe(tokenRef);
     expect(revokeBody.orgId).toBe(orgId);
     expect(revokeBody.status).toBe("revoked");
-    expect(revokeBody.cloudflareDashboardUrl).toBe(
-      CLOUDFLARE_API_TOKENS_DASHBOARD_URL,
-    );
+    expect(revokeBody.cloudflareDashboardUrl).toBe(CLOUDFLARE_API_TOKENS_DASHBOARD_URL);
 
     // 9. Verify D1 row has status = 'revoked' and ciphertext + wrapped_dek overwritten with NULL
     const revokedRow = await studioDb
-      .prepare(
-        "SELECT status, ciphertext, iv, wrapped_dek, dek_iv, revoked_at FROM deploy_tokens WHERE token_ref = ?",
-      )
+      .prepare("SELECT status, ciphertext, iv, wrapped_dek, dek_iv, revoked_at FROM deploy_tokens WHERE token_ref = ?")
       .bind(tokenRef)
       .first<{
         status: string;
@@ -652,13 +585,10 @@ describe("Story 5.1 — Token Vault AES-256-GCM Envelope Encryption, Audit Log &
     expect(controlPlane.calls).toHaveLength(0);
 
     // 11. Verify deploy_token_audit_log has both the pre-revoke 'plan' decrypt and the 'revoke' entry
-    const auditRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}/audit`,
-      {
-        method: "GET",
-        token: ownerData.token,
-      },
-    );
+    const auditRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}/audit`, {
+      method: "GET",
+      token: ownerData.token,
+    });
     expect(auditRes.status).toBe(200);
     const auditData = (await auditRes.json()) as {
       entries: Array<{

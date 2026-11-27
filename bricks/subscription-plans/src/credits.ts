@@ -41,7 +41,8 @@ export const PLAN_CREDITS_PATTERN = /^(|[a-z0-9][a-z0-9_.-]{0,63}:[0-9]{1,9}(,[a
 export function parsePlanCredits(spec: string | undefined): ReadonlyMap<string, number> {
   const credits = new Map<string, number>();
   if (spec === undefined || spec === "") return credits;
-  if (!PLAN_CREDITS_PATTERN.test(spec)) throw new RangeError(`planCredits: "${spec.slice(0, 80)}" is not tier:credits[,tier:credits] (for example free:100,pro:1000)`);
+  if (!PLAN_CREDITS_PATTERN.test(spec))
+    throw new RangeError(`planCredits: "${spec.slice(0, 80)}" is not tier:credits[,tier:credits] (for example free:100,pro:1000)`);
   for (const entry of spec.split(",")) {
     const colon = entry.lastIndexOf(":");
     const tier = entry.slice(0, colon);
@@ -110,12 +111,7 @@ export interface SubscriptionForCredits {
  * mid-period: `IDEMPOTENCY_KEY_REUSED`) both count as already granted, never as an error. Neither ever takes credits
  * away.
  */
-export async function grantPlanCredits(
-  db: D1Like,
-  config: PlanCreditsConfig,
-  sub: SubscriptionForCredits,
-  nowMs: number,
-): Promise<PlanCreditOutcome> {
+export async function grantPlanCredits(db: D1Like, config: PlanCreditsConfig, sub: SubscriptionForCredits, nowMs: number): Promise<PlanCreditOutcome> {
   if (!config.charger || !config.planCredits) return { status: "skipped", reason: "credits_off" };
   if (sub.status !== "active" && sub.status !== "trialing") return { status: "skipped", reason: "not_active" };
   const credits = parsePlanCredits(config.planCredits).get(sub.plan_id) ?? 0;
@@ -124,7 +120,14 @@ export async function grantPlanCredits(
   const milli = credits * 1000;
   // The marker is only set after a real grant (or a duplicate of one) for this plan and period: nothing to do.
   if (sub.credits_granted_period === period) return { status: "already_granted", period, milli };
-  const result = await config.charger.grant(db, sub.workspace_id, milli, planCreditKey(sub.plan_id, period), `plan credits: ${sub.plan_id} period ${period}`, "system");
+  const result = await config.charger.grant(
+    db,
+    sub.workspace_id,
+    milli,
+    planCreditKey(sub.plan_id, period),
+    `plan credits: ${sub.plan_id} period ${period}`,
+    "system",
+  );
   if (!result.ok && result.code !== "IDEMPOTENCY_KEY_REUSED") return { status: "wallet_not_found", period };
   await markGranted(db, sub.workspace_id, sub.plan_id, period);
   return { status: result.ok && !result.duplicate ? "granted" : "already_granted", period, milli };
@@ -208,7 +211,8 @@ export async function runPlanCreditSweep(context: PlanCreditSweepContext): Promi
   const retryAt = new Date(nowMs + PLAN_CREDIT_RETRY_DELAY_MS).toISOString();
   // Only real grants are marked. A failed one (no wallet can be opened yet, or an error) is retried after a delay, so a
   // few such rows can never fill every run's window.
-  const retryLater = (row: SubscriptionForCredits) => scoped(db, row.workspace_id).update("sub_subscriptions", { credits_retry_after: retryAt }, "plan_id = ?", [row.plan_id]);
+  const retryLater = (row: SubscriptionForCredits) =>
+    scoped(db, row.workspace_id).update("sub_subscriptions", { credits_retry_after: retryAt }, "plan_id = ?", [row.plan_id]);
   for (const row of rows) {
     result.scanned += 1;
     try {
@@ -221,7 +225,9 @@ export async function runPlanCreditSweep(context: PlanCreditSweepContext): Promi
       }
     } catch (error) {
       result.failed += 1;
-      console.error(JSON.stringify({ brick: "subscription-plans", event: "plan_credit_sweep_error", message: error instanceof Error ? error.message : String(error) }));
+      console.error(
+        JSON.stringify({ brick: "subscription-plans", event: "plan_credit_sweep_error", message: error instanceof Error ? error.message : String(error) }),
+      );
       await retryLater(row).catch(() => {});
     }
   }

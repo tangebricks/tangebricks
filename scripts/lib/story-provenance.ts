@@ -9,9 +9,7 @@ const defaultRepoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url))
 export const StoryProvenanceSchema = z.object({
   agent: z.string().min(1, "missing provenance.agent"),
   model: z.string().min(1, "missing provenance.model"),
-  commits: z
-    .array(z.string().regex(/^[0-9a-f]{7,40}$/i, "commit must be 7-40 hex chars"))
-    .min(1, "missing provenance.commits"),
+  commits: z.array(z.string().regex(/^[0-9a-f]{7,40}$/i, "commit must be 7-40 hex chars")).min(1, "missing provenance.commits"),
   evidence: z.string().min(1, "missing provenance.evidence"),
 });
 
@@ -156,9 +154,7 @@ export function parseStoryFile(filePath: string): { frontMatter: Record<string, 
   return parseStoryFrontMatter(content);
 }
 
-export function loadLegacyStories(
-  legacyPath: string = resolve(defaultRepoRoot, "scripts/story-gate.legacy.json")
-): Map<string, string> {
+export function loadLegacyStories(legacyPath: string = resolve(defaultRepoRoot, "scripts/story-gate.legacy.json")): Map<string, string> {
   const map = new Map<string, string>();
   if (!existsSync(legacyPath)) return map;
   try {
@@ -352,7 +348,10 @@ export function validateStoryFile(filePath: string, options: ValidateStoryOption
   };
 }
 
-export function validateStoryGate(storyFiles: string[], options: ValidateStoryOptions = {}): {
+export function validateStoryGate(
+  storyFiles: string[],
+  options: ValidateStoryOptions = {},
+): {
   total: number;
   grandfathered: number;
   passed: number;
@@ -440,10 +439,7 @@ export function commitBelongsToStory(subject: string, storyId: string): boolean 
   return false;
 }
 
-export function validateTaskFileStory(
-  story: TaskFileStory,
-  options: ValidateStoryOptions = {}
-): StoryValidationResult {
+export function validateTaskFileStory(story: TaskFileStory, options: ValidateStoryOptions = {}): StoryValidationResult {
   const repoRoot = options.repoRoot || defaultRepoRoot;
   const targetRef = options.targetRef || "HEAD";
   const errors: string[] = [];
@@ -577,7 +573,7 @@ export function validateTaskFileStory(
 
 export function validateTaskFile(
   taskFilePath: string,
-  options: ValidateStoryOptions = {}
+  options: ValidateStoryOptions = {},
 ): {
   total: number;
   checked: number;

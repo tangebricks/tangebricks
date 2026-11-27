@@ -46,12 +46,7 @@ export class TrafficArmorService {
   /**
    * Adds or updates an IP access rule (allow/block/challenge).
    */
-  async addIpRule(
-    workspaceId: string,
-    ipOrCidrRaw: string,
-    action: IpAction,
-    reason?: string
-  ): Promise<IpRule> {
+  async addIpRule(workspaceId: string, ipOrCidrRaw: string, action: IpAction, reason?: string): Promise<IpRule> {
     const id = `rule_${crypto.randomUUID().replace(/-/g, "")}`;
     const ip = ipOrCidrRaw.trim();
     const now = new Date().toISOString();
@@ -109,11 +104,7 @@ export class TrafficArmorService {
    * Checks if an IP is explicitly blocked or allowed for a workspace.
    */
   async checkIp(workspaceId: string, clientIp: string): Promise<IpAction | null> {
-    const row = await scoped(this.db, workspaceId).first<{ action: IpAction }>(
-      "arm_ip_rules",
-      "ip_or_cidr = ?",
-      [clientIp.trim()],
-    );
+    const row = await scoped(this.db, workspaceId).first<{ action: IpAction }>("arm_ip_rules", "ip_or_cidr = ?", [clientIp.trim()]);
 
     return row?.action || null;
   }
@@ -121,11 +112,7 @@ export class TrafficArmorService {
   /**
    * Sliding/fixed window rate limit check.
    */
-  async checkRateLimit(
-    keyRaw: string,
-    limit = 60,
-    windowSeconds = 60
-  ): Promise<RateLimitResult> {
+  async checkRateLimit(keyRaw: string, limit = 60, windowSeconds = 60): Promise<RateLimitResult> {
     const key = keyRaw.trim();
     const nowSec = Math.floor(Date.now() / 1000);
     const windowStart = nowSec - (nowSec % windowSeconds);
@@ -133,16 +120,22 @@ export class TrafficArmorService {
     const retryAfter = Math.max(1, reset - nowSec);
 
     // Upsert count
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO arm_rate_limits (key, window_start, request_count)
       VALUES (?, ?, 1)
       ON CONFLICT(key, window_start) DO UPDATE SET
         request_count = request_count + 1
-    `).bind(key, windowStart).run();
+    `,
+      )
+      .bind(key, windowStart)
+      .run();
 
-    const row = await this.db.prepare(
-      "SELECT request_count FROM arm_rate_limits WHERE key = ? AND window_start = ?"
-    ).bind(key, windowStart).first<{ request_count: number }>();
+    const row = await this.db
+      .prepare("SELECT request_count FROM arm_rate_limits WHERE key = ? AND window_start = ?")
+      .bind(key, windowStart)
+      .first<{ request_count: number }>();
 
     const current = row?.request_count || 1;
     const allowed = current <= limit;
@@ -161,11 +154,7 @@ export class TrafficArmorService {
   /**
    * Verifies a Cloudflare Turnstile token via the Cloudflare siteverify API.
    */
-  async verifyTurnstile(
-    token: string,
-    secretKey: string,
-    remoteIp?: string
-  ): Promise<{ success: boolean; errorCodes?: string[] }> {
+  async verifyTurnstile(token: string, secretKey: string, remoteIp?: string): Promise<{ success: boolean; errorCodes?: string[] }> {
     if (!token) return { success: false, errorCodes: ["missing-input-response"] };
 
     try {
@@ -193,13 +182,7 @@ export class TrafficArmorService {
   /**
    * Logs a security block incident.
    */
-  async logBlockedRequest(
-    workspaceId: string | null,
-    ipAddress: string,
-    path: string,
-    reason: BlockReason,
-    userAgent?: string
-  ): Promise<BlockedIncident> {
+  async logBlockedRequest(workspaceId: string | null, ipAddress: string, path: string, reason: BlockReason, userAgent?: string): Promise<BlockedIncident> {
     const id = `inc_${crypto.randomUUID().replace(/-/g, "")}`;
     const now = new Date().toISOString();
 
@@ -240,15 +223,12 @@ export class TrafficArmorService {
    */
   async listIncidents(workspaceId?: string): Promise<BlockedIncident[]> {
     if (workspaceId) {
-      return scoped(this.db, workspaceId).select<BlockedIncident>(
-        "arm_blocked_requests",
-        undefined,
-        [],
-        { orderBy: "created_at DESC", limit: 50 },
-      );
+      return scoped(this.db, workspaceId).select<BlockedIncident>("arm_blocked_requests", undefined, [], { orderBy: "created_at DESC", limit: 50 });
     }
 
-    return global(this.db, "arm_blocked_requests", "list global security incidents")
-      .select<BlockedIncident>(undefined, [], { orderBy: "created_at DESC", limit: 50 });
+    return global(this.db, "arm_blocked_requests", "list global security incidents").select<BlockedIncident>(undefined, [], {
+      orderBy: "created_at DESC",
+      limit: 50,
+    });
   }
 }

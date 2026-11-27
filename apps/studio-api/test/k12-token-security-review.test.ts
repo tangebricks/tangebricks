@@ -45,23 +45,13 @@ function buildCanaryVariants(canary: string): string[] {
 
 const CANARY_VARIANTS = buildCanaryVariants(CANARY_CF_TOKEN);
 
-function assertZeroCanaryLeakage(
-  surfaceName: string,
-  payloadText: string,
-  extraForbiddenStrings: string[] = [],
-): void {
+function assertZeroCanaryLeakage(surfaceName: string, payloadText: string, extraForbiddenStrings: string[] = []): void {
   for (const variant of CANARY_VARIANTS) {
-    expect(
-      payloadText.includes(variant),
-      `[K12 SECURITY LEAK] Surface "${surfaceName}" leaked canary token variant "${variant}"`,
-    ).toBe(false);
+    expect(payloadText.includes(variant), `[K12 SECURITY LEAK] Surface "${surfaceName}" leaked canary token variant "${variant}"`).toBe(false);
   }
   for (const extra of extraForbiddenStrings) {
     if (!extra) continue;
-    expect(
-      payloadText.includes(extra),
-      `[K12 SECURITY LEAK] Surface "${surfaceName}" leaked internal ciphertext/key material "${extra}"`,
-    ).toBe(false);
+    expect(payloadText.includes(extra), `[K12 SECURITY LEAK] Surface "${surfaceName}" leaked internal ciphertext/key material "${extra}"`).toBe(false);
   }
 }
 
@@ -245,11 +235,7 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
 
     const wsFrames: string[] = [];
     wsClient.addEventListener("message", (event) => {
-      wsFrames.push(
-        typeof event.data === "string"
-          ? event.data
-          : new TextDecoder().decode(event.data as ArrayBuffer),
-      );
+      wsFrames.push(typeof event.data === "string" ? event.data : new TextDecoder().decode(event.data as ArrayBuffer));
     });
 
     // 3. Seed Blueprint r1 with bricks, entity, and workflow + required brick secrets
@@ -339,11 +325,7 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     });
     expect(seedOpsRes.status).toBe(200);
 
-    for (const secName of [
-      "BETTER_AUTH_SECRET",
-      "GITHUB_CLIENT_ID",
-      "GITHUB_CLIENT_SECRET",
-    ]) {
+    for (const secName of ["BETTER_AUTH_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) {
       const secRes = await callStudio(`/api/projects/${project}/secrets`, {
         token: ownerToken,
         orgId,
@@ -375,19 +357,16 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
       body: { step: "template_link_clicked", projectId: project },
     });
 
-    const connectRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {
-          token: CANARY_CF_TOKEN,
-          accountId: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
-          accountName: "K12 Canary BYOC Account",
-          projectId: project,
-        },
+    const connectRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      token: ownerToken,
+      orgId,
+      body: {
+        token: CANARY_CF_TOKEN,
+        accountId: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+        accountName: "K12 Canary BYOC Account",
+        projectId: project,
       },
-    );
+    });
     expect(connectRes.status).toBe(201);
     const connectBody = connectRes.json<{
       ok: true;
@@ -430,10 +409,7 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     expect(atob(preRevokeTokenRow!.dek_iv!).length).toBe(12);
     expect(preRevokeTokenRow!.kek_version).toBe(1);
     expect(preRevokeTokenRow!.revoked_at).toBeNull();
-    assertZeroCanaryLeakage(
-      "D1 deploy_tokens row (active pre-revocation)",
-      JSON.stringify(preRevokeTokenRow),
-    );
+    assertZeroCanaryLeakage("D1 deploy_tokens row (active pre-revocation)", JSON.stringify(preRevokeTokenRow));
 
     const activeCiphertext = preRevokeTokenRow!.ciphertext!;
     const activeWrappedDek = preRevokeTokenRow!.wrapped_dek!;
@@ -452,29 +428,20 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     expect(unsealedInStep).toBe(CANARY_CF_TOKEN);
 
     // 6. Run Pre-deploy `plan` on preview
-    const planRes = await callStudio(
-      `/api/projects/${project}/environments/preview/plan`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {},
-      },
-    );
+    const planRes = await callStudio(`/api/projects/${project}/environments/preview/plan`, {
+      token: ownerToken,
+      orgId,
+      body: {},
+    });
     expect(planRes.status).toBe(200);
-    assertZeroCanaryLeakage("POST /environments/preview/plan", planRes.text, [
-      activeCiphertext,
-      activeWrappedDek,
-    ]);
+    assertZeroCanaryLeakage("POST /environments/preview/plan", planRes.text, [activeCiphertext, activeWrappedDek]);
 
     // 7. Run `deploy` to `preview` (v1)
-    const deployPreviewV1Res = await callStudio(
-      `/api/projects/${project}/environments/preview/deploy`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {},
-      },
-    );
+    const deployPreviewV1Res = await callStudio(`/api/projects/${project}/environments/preview/deploy`, {
+      token: ownerToken,
+      orgId,
+      body: {},
+    });
     expect(deployPreviewV1Res.status).toBe(200);
     const deployPreviewV1 = deployPreviewV1Res.json<{
       ok: true;
@@ -486,14 +453,11 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     expect(deployPreviewV1.ok).toBe(true);
 
     // 8. Run `promote` from `preview` to `production`
-    const promoteProdRes = await callStudio(
-      `/api/projects/${project}/environments/production/promote`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {},
-      },
-    );
+    const promoteProdRes = await callStudio(`/api/projects/${project}/environments/production/promote`, {
+      token: ownerToken,
+      orgId,
+      body: {},
+    });
     expect(promoteProdRes.status).toBe(200);
     const promoteProd = promoteProdRes.json<{
       ok: true;
@@ -523,14 +487,11 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     });
     expect(wfEditRes.status).toBe(200);
 
-    const hotApplyRes = await callStudio(
-      `/api/projects/${project}/environments/preview/deploy`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {},
-      },
-    );
+    const hotApplyRes = await callStudio(`/api/projects/${project}/environments/preview/deploy`, {
+      token: ownerToken,
+      orgId,
+      body: {},
+    });
     expect(hotApplyRes.status).toBe(200);
     const hotApplyBody = hotApplyRes.json<{
       ok: true;
@@ -565,27 +526,21 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     });
 
     // 10. Run `check-drift` on `preview`
-    const checkDriftRes = await callStudio(
-      `/api/projects/${project}/environments/preview/check-drift`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {},
-      },
-    );
+    const checkDriftRes = await callStudio(`/api/projects/${project}/environments/preview/check-drift`, {
+      token: ownerToken,
+      orgId,
+      body: {},
+    });
     expect(checkDriftRes.status).toBe(200);
 
     // 11. Run `rollback` on `preview` back to v1 deployment
-    const rollbackRes = await callStudio(
-      `/api/projects/${project}/environments/preview/rollback`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {
-          targetDeploymentId: deployPreviewV1.deployId,
-        },
+    const rollbackRes = await callStudio(`/api/projects/${project}/environments/preview/rollback`, {
+      token: ownerToken,
+      orgId,
+      body: {
+        targetDeploymentId: deployPreviewV1.deployId,
       },
-    );
+    });
     expect(rollbackRes.status).toBe(200);
     const rollbackBody = rollbackRes.json<{
       ok: true;
@@ -607,18 +562,15 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     expect(exportRes.status).toBe(200);
 
     // 13. Execute a workflow run (`POST /api/projects/:project/workflows/:workflowId/runs`) to populate `px_runs` and `px_step_events`
-    const runWorkflowRes = await callStudio(
-      `/api/projects/${project}/workflows/wf_k12_orders/runs`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {
-          runId: "run_k12_canary_audit_1",
-          triggerType: "manual",
-          triggerPayload: { orderId: "ord_k12_100" },
-        },
+    const runWorkflowRes = await callStudio(`/api/projects/${project}/workflows/wf_k12_orders/runs`, {
+      token: ownerToken,
+      orgId,
+      body: {
+        runId: "run_k12_canary_audit_1",
+        triggerType: "manual",
+        triggerPayload: { orderId: "ord_k12_100" },
       },
-    );
+    });
     expect(runWorkflowRes.status).toBe(200);
 
     const listRunsRes = await callStudio(`/api/projects/${project}/runs`, {
@@ -628,71 +580,43 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     });
     expect(listRunsRes.status).toBe(200);
 
-    const runDetailRes = await callStudio(
-      `/api/projects/${project}/runs/run_k12_canary_audit_1`,
-      {
-        method: "GET",
-        token: ownerToken,
-        orgId,
-      },
-    );
+    const runDetailRes = await callStudio(`/api/projects/${project}/runs/run_k12_canary_audit_1`, {
+      method: "GET",
+      token: ownerToken,
+      orgId,
+    });
     expect(runDetailRes.status).toBe(200);
 
     // 14. Call MCP `get_project` and `get_history`
-    const mcpGetProject = await callStudioMcp(
-      "get_project",
-      { project },
-      mcpToken,
-      orgId,
-    );
+    const mcpGetProject = await callStudioMcp("get_project", { project }, mcpToken, orgId);
     expect(mcpGetProject.status).toBe(200);
-    assertZeroCanaryLeakage("MCP get_project", mcpGetProject.text, [
-      activeCiphertext,
-      activeWrappedDek,
-    ]);
+    assertZeroCanaryLeakage("MCP get_project", mcpGetProject.text, [activeCiphertext, activeWrappedDek]);
 
-    const mcpGetHistory = await callStudioMcp(
-      "get_history",
-      { project },
-      mcpToken,
-      orgId,
-    );
+    const mcpGetHistory = await callStudioMcp("get_history", { project }, mcpToken, orgId);
     expect(mcpGetHistory.status).toBe(200);
-    assertZeroCanaryLeakage("MCP get_history", mcpGetHistory.text, [
-      activeCiphertext,
-      activeWrappedDek,
-    ]);
+    assertZeroCanaryLeakage("MCP get_history", mcpGetHistory.text, [activeCiphertext, activeWrappedDek]);
 
     // Also inspect token metadata and audit log endpoints over HTTP
-    const listTokensRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens`,
-      {
-        method: "GET",
-        token: ownerToken,
-        orgId,
-      },
-    );
+    const listTokensRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens`, {
+      method: "GET",
+      token: ownerToken,
+      orgId,
+    });
     expect(listTokensRes.status).toBe(200);
 
-    const tokenAuditRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}/audit`,
-      {
-        method: "GET",
-        token: ownerToken,
-        orgId,
-      },
-    );
+    const tokenAuditRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}/audit`, {
+      method: "GET",
+      token: ownerToken,
+      orgId,
+    });
     expect(tokenAuditRes.status).toBe(200);
 
     // 15. Revoke the token via `DELETE /api/orgs/:orgId/cloudflare-tokens/:tokenRef`
-    const revokeRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`,
-      {
-        method: "DELETE",
-        token: ownerToken,
-        orgId,
-      },
-    );
+    const revokeRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`, {
+      method: "DELETE",
+      token: ownerToken,
+      orgId,
+    });
     expect(revokeRes.status).toBe(200);
     const revokeBody = revokeRes.json<{
       ok: true;
@@ -704,15 +628,10 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     expect(revokeBody.status).toBe("revoked");
 
     // 16. Assert #2: 0 occurrences of canary token in `deploy_tokens` and `ciphertext IS NULL AND wrapped_dek IS NULL` after revocation
-    const postRevokeTokensDump = await studioDb
-      .prepare("SELECT * FROM deploy_tokens")
-      .all<Record<string, unknown>>();
+    const postRevokeTokensDump = await studioDb.prepare("SELECT * FROM deploy_tokens").all<Record<string, unknown>>();
     const deployTokenRows = postRevokeTokensDump.results ?? [];
     expect(deployTokenRows).toHaveLength(1);
-    assertZeroCanaryLeakage(
-      "D1 deploy_tokens (post-revocation dump)",
-      JSON.stringify(deployTokenRows),
-    );
+    assertZeroCanaryLeakage("D1 deploy_tokens (post-revocation dump)", JSON.stringify(deployTokenRows));
     expect(deployTokenRows[0]).toMatchObject({
       token_ref: tokenRef,
       org_id: orgId,
@@ -726,16 +645,10 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     // 17. Assert #1: 0 occurrences of `cf_canary_secret_token_9f8e7d6c5b4a` (raw, Base64, Base64URL, URL-encoded) in raw SQLite dumps
     const doId = TEST_ENV.BLUEPRINT_DO.idFromName(project);
     const doStub = TEST_ENV.BLUEPRINT_DO.get(doId);
-    const doDumpRes = await doStub.fetch(
-      `http://blueprint-do/sqlite-dump?project=${encodeURIComponent(project)}`,
-      { method: "GET" },
-    );
+    const doDumpRes = await doStub.fetch(`http://blueprint-do/sqlite-dump?project=${encodeURIComponent(project)}`, { method: "GET" });
     expect(doDumpRes.status).toBe(200);
     const doSqliteDumpText = await doDumpRes.text();
-    assertZeroCanaryLeakage("BlueprintDO raw SQLite dump", doSqliteDumpText, [
-      activeCiphertext,
-      activeWrappedDek,
-    ]);
+    assertZeroCanaryLeakage("BlueprintDO raw SQLite dump", doSqliteDumpText, [activeCiphertext, activeWrappedDek]);
 
     const d1TablesToScan = [
       "builds",
@@ -752,19 +665,10 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     ] as const;
 
     for (const tableName of d1TablesToScan) {
-      const dump = await studioDb
-        .prepare(`SELECT * FROM ${tableName}`)
-        .all<Record<string, unknown>>();
+      const dump = await studioDb.prepare(`SELECT * FROM ${tableName}`).all<Record<string, unknown>>();
       const rows = dump.results ?? [];
-      expect(
-        rows.length,
-        `Expected table "${tableName}" to have been populated during the lifecycle test`,
-      ).toBeGreaterThan(0);
-      assertZeroCanaryLeakage(
-        `D1 raw SQLite table "${tableName}"`,
-        JSON.stringify(rows),
-        [activeCiphertext, activeWrappedDek],
-      );
+      expect(rows.length, `Expected table "${tableName}" to have been populated during the lifecycle test`).toBeGreaterThan(0);
+      assertZeroCanaryLeakage(`D1 raw SQLite table "${tableName}"`, JSON.stringify(rows), [activeCiphertext, activeWrappedDek]);
     }
 
     // Verify deploy_token_audit_log recorded every token decrypt + the final revoke
@@ -778,90 +682,58 @@ describe("Story 5.6 — K12 Cloudflare Token Custody Security Review & End-to-En
     // 18. Assert #3: 0 occurrences of canary token across all HTTP responses from `studio-api`, WebSocket broadcast frames, and MCP tool responses
     expect(recordedHttpResponses.length).toBeGreaterThanOrEqual(15);
     for (const httpEntry of recordedHttpResponses) {
-      assertZeroCanaryLeakage(
-        `HTTP response (${httpEntry.label})`,
-        httpEntry.text,
-        [activeCiphertext, activeWrappedDek],
-      );
+      assertZeroCanaryLeakage(`HTTP response (${httpEntry.label})`, httpEntry.text, [activeCiphertext, activeWrappedDek]);
     }
 
     expect(wsFrames.length).toBeGreaterThan(0);
     for (let i = 0; i < wsFrames.length; i += 1) {
-      assertZeroCanaryLeakage(`WebSocket broadcast frame #${i + 1}`, wsFrames[i]!, [
-        activeCiphertext,
-        activeWrappedDek,
-      ]);
+      assertZeroCanaryLeakage(`WebSocket broadcast frame #${i + 1}`, wsFrames[i]!, [activeCiphertext, activeWrappedDek]);
     }
 
     // 19. Assert #4: After revocation, every call that requires the token (`plan`, `deploy`, `promote`, `check-drift`, `rollback`) immediately fails with `TOKEN_REVOKED` and makes `0` outbound calls to `CloudflareApiClient`
     controlPlane.clearCalls();
 
-    const postRevokePlan = await callStudio(
-      `/api/projects/${project}/environments/preview/plan`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {},
-      },
-    );
+    const postRevokePlan = await callStudio(`/api/projects/${project}/environments/preview/plan`, {
+      token: ownerToken,
+      orgId,
+      body: {},
+    });
     expect(postRevokePlan.status).toBe(422);
-    expect(
-      postRevokePlan.json<{ error: { code: string } }>().error.code,
-    ).toBe("TOKEN_REVOKED");
+    expect(postRevokePlan.json<{ error: { code: string } }>().error.code).toBe("TOKEN_REVOKED");
 
-    const postRevokeDeploy = await callStudio(
-      `/api/projects/${project}/environments/preview/deploy`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {},
-      },
-    );
+    const postRevokeDeploy = await callStudio(`/api/projects/${project}/environments/preview/deploy`, {
+      token: ownerToken,
+      orgId,
+      body: {},
+    });
     expect(postRevokeDeploy.status).toBe(422);
-    expect(
-      postRevokeDeploy.json<{ error: { code: string } }>().error.code,
-    ).toBe("TOKEN_REVOKED");
+    expect(postRevokeDeploy.json<{ error: { code: string } }>().error.code).toBe("TOKEN_REVOKED");
 
-    const postRevokePromote = await callStudio(
-      `/api/projects/${project}/environments/production/promote`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {},
-      },
-    );
+    const postRevokePromote = await callStudio(`/api/projects/${project}/environments/production/promote`, {
+      token: ownerToken,
+      orgId,
+      body: {},
+    });
     expect(postRevokePromote.status).toBe(422);
-    expect(
-      postRevokePromote.json<{ error: { code: string } }>().error.code,
-    ).toBe("TOKEN_REVOKED");
+    expect(postRevokePromote.json<{ error: { code: string } }>().error.code).toBe("TOKEN_REVOKED");
 
-    const postRevokeCheckDrift = await callStudio(
-      `/api/projects/${project}/environments/preview/check-drift`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {},
-      },
-    );
+    const postRevokeCheckDrift = await callStudio(`/api/projects/${project}/environments/preview/check-drift`, {
+      token: ownerToken,
+      orgId,
+      body: {},
+    });
     expect(postRevokeCheckDrift.status).toBe(422);
-    expect(
-      postRevokeCheckDrift.json<{ error: { code: string } }>().error.code,
-    ).toBe("TOKEN_REVOKED");
+    expect(postRevokeCheckDrift.json<{ error: { code: string } }>().error.code).toBe("TOKEN_REVOKED");
 
-    const postRevokeRollback = await callStudio(
-      `/api/projects/${project}/environments/preview/rollback`,
-      {
-        token: ownerToken,
-        orgId,
-        body: {
-          targetDeploymentId: deployPreviewV1.deployId,
-        },
+    const postRevokeRollback = await callStudio(`/api/projects/${project}/environments/preview/rollback`, {
+      token: ownerToken,
+      orgId,
+      body: {
+        targetDeploymentId: deployPreviewV1.deployId,
       },
-    );
+    });
     expect(postRevokeRollback.status).toBe(422);
-    expect(
-      postRevokeRollback.json<{ error: { code: string } }>().error.code,
-    ).toBe("TOKEN_REVOKED");
+    expect(postRevokeRollback.json<{ error: { code: string } }>().error.code).toBe("TOKEN_REVOKED");
 
     expect(controlPlane.calls).toHaveLength(0);
 

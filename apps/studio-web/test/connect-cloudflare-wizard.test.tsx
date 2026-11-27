@@ -24,12 +24,7 @@ describe("Story 5.2 — Connect Cloudflare Wizard Modal & Deploy Target Card (ap
     const funnelSteps: string[] = [];
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
 
       if (url.includes("/secrets")) {
         return new Response(JSON.stringify({ secrets: [] }), { status: 200 });
@@ -49,12 +44,10 @@ describe("Story 5.2 — Connect Cloudflare Wizard Modal & Deploy Target Card (ap
         return new Response(
           JSON.stringify({
             orgId: "org_acme",
-            templateUrl:
-              "https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=test&name=ProjectX+Studio+Deploy",
+            templateUrl: "https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=test&name=ProjectX+Studio+Deploy",
             dashboardUrl: "https://dash.cloudflare.com/profile/api-tokens",
             tokenName: "ProjectX Studio Deploy",
-            explanation:
-              "Your backend runs in your own Cloudflare account. We never host it.",
+            explanation: "Your backend runs in your own Cloudflare account. We never host it.",
             permissions: [],
           }),
           { status: 200 },
@@ -92,49 +85,40 @@ describe("Story 5.2 — Connect Cloudflare Wizard Modal & Deploy Target Card (ap
                     label: "Account Settings: Read",
                     required: true,
                     granted: true,
-                    remediationUrl:
-                      "https://dash.cloudflare.com/profile/api-tokens",
+                    remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
                   },
                   {
                     id: "workers_scripts_edit",
                     label: "Workers Scripts: Edit",
                     required: true,
                     granted: false,
-                    remediationUrl:
-                      "https://dash.cloudflare.com/profile/api-tokens",
-                    plainError:
-                      "Workers Scripts: Edit missing ✕ — required to upload Worker scripts.",
+                    remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
+                    plainError: "Workers Scripts: Edit missing ✕ — required to upload Worker scripts.",
                   },
                   {
                     id: "d1_edit",
                     label: "D1: Edit",
                     required: true,
                     granted: true,
-                    remediationUrl:
-                      "https://dash.cloudflare.com/profile/api-tokens",
+                    remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
                   },
                   {
                     id: "queues_edit",
                     label: "Queues: Edit",
                     required: true,
                     granted: true,
-                    remediationUrl:
-                      "https://dash.cloudflare.com/profile/api-tokens",
+                    remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
                   },
                 ],
                 missingPermissionIds: ["workers_scripts_edit"],
                 missingPermissionLabels: ["Workers Scripts: Edit"],
-                remediationUrl:
-                  "https://dash.cloudflare.com/profile/api-tokens",
-                summaryMessage:
-                  "Missing required permissions: Workers Scripts: Edit missing ✕",
+                remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
+                summaryMessage: "Missing required permissions: Workers Scripts: Edit missing ✕",
               },
               error: {
                 code: "MISSING_REQUIRED_PERMISSIONS",
-                message:
-                  "Missing required permissions: Workers Scripts: Edit missing ✕",
-                remediationUrl:
-                  "https://dash.cloudflare.com/profile/api-tokens",
+                message: "Missing required permissions: Workers Scripts: Edit missing ✕",
+                remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
               },
             }),
             { status: 422 },
@@ -153,12 +137,7 @@ describe("Story 5.2 — Connect Cloudflare Wizard Modal & Deploy Target Card (ap
               accountId: "abcdef0123456789abcdef0123456789",
               accountName: "Acme Production",
               tokenLast4: "7788",
-              scopes: [
-                "Account Settings: Read",
-                "Workers Scripts: Edit",
-                "D1: Edit",
-                "Queues: Edit",
-              ],
+              scopes: ["Account Settings: Read", "Workers Scripts: Edit", "D1: Edit", "Queues: Edit"],
               status: "active",
               createdAt: "2026-10-30T00:00:00.000Z",
               lastVerifiedAt: "2026-10-30T00:00:00.000Z",
@@ -175,32 +154,28 @@ describe("Story 5.2 — Connect Cloudflare Wizard Modal & Deploy Target Card (ap
                   label: "Account Settings: Read",
                   required: true,
                   granted: true,
-                  remediationUrl:
-                    "https://dash.cloudflare.com/profile/api-tokens",
+                  remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
                 },
                 {
                   id: "workers_scripts_edit",
                   label: "Workers Scripts: Edit",
                   required: true,
                   granted: true,
-                  remediationUrl:
-                    "https://dash.cloudflare.com/profile/api-tokens",
+                  remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
                 },
                 {
                   id: "d1_edit",
                   label: "D1: Edit",
                   required: true,
                   granted: true,
-                  remediationUrl:
-                    "https://dash.cloudflare.com/profile/api-tokens",
+                  remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
                 },
                 {
                   id: "queues_edit",
                   label: "Queues: Edit",
                   required: true,
                   granted: true,
-                  remediationUrl:
-                    "https://dash.cloudflare.com/profile/api-tokens",
+                  remediationUrl: "https://dash.cloudflare.com/profile/api-tokens",
                 },
               ],
               missingPermissionIds: [],
@@ -258,10 +233,8 @@ describe("Story 5.2 — Connect Cloudflare Wizard Modal & Deploy Target Card (ap
             tokenRef: "tok_0192b8e4-5a6c-7f12-8b3d-0123456789ab",
             status: "revoked",
             revokedAt: "2026-10-30T00:01:00.000Z",
-            cloudflareDashboardUrl:
-              "https://dash.cloudflare.com/profile/api-tokens",
-            workersKeepRunningMessage:
-              "Disconnected. Deployed Workers keep running in your Cloudflare account.",
+            cloudflareDashboardUrl: "https://dash.cloudflare.com/profile/api-tokens",
+            workersKeepRunningMessage: "Disconnected. Deployed Workers keep running in your Cloudflare account.",
           }),
           { status: 200 },
         );
@@ -272,19 +245,13 @@ describe("Story 5.2 — Connect Cloudflare Wizard Modal & Deploy Target Card (ap
 
     render(<ConnectionsView />);
 
-    expect(screen.getByTestId("cloudflare-byoc-explanation").textContent).toBe(
-      "Your backend runs in your own Cloudflare account. We never host it.",
-    );
-    expect(screen.getByTestId("cloudflare-connection-status").textContent).toContain(
-      "Not connected",
-    );
+    expect(screen.getByTestId("cloudflare-byoc-explanation").textContent).toBe("Your backend runs in your own Cloudflare account. We never host it.");
+    expect(screen.getByTestId("cloudflare-connection-status").textContent).toContain("Not connected");
 
     // Open Connect Cloudflare wizard
     fireEvent.click(screen.getByTestId("connect-cloudflare-button"));
     expect(screen.getByTestId("connect-cloudflare-modal")).toBeDefined();
-    expect(screen.getByTestId("cf-wizard-explanation").textContent).toBe(
-      "Your backend runs in your own Cloudflare account. We never host it.",
-    );
+    expect(screen.getByTestId("cf-wizard-explanation").textContent).toBe("Your backend runs in your own Cloudflare account. We never host it.");
 
     // Click Create token in Cloudflare link
     fireEvent.click(screen.getByTestId("cf-create-token-link"));
@@ -298,12 +265,8 @@ describe("Story 5.2 — Connect Cloudflare Wizard Modal & Deploy Target Card (ap
     await waitFor(() => {
       expect(screen.getByTestId("cf-verification-error")).toBeDefined();
     });
-    expect(
-      screen.getByTestId("cf-perm-status-account_settings_read").textContent,
-    ).toBe("Account found ✓");
-    expect(
-      screen.getByTestId("cf-perm-status-workers_scripts_edit").textContent,
-    ).toBe("Workers Scripts: Edit missing ✕");
+    expect(screen.getByTestId("cf-perm-status-account_settings_read").textContent).toBe("Account found ✓");
+    expect(screen.getByTestId("cf-perm-status-workers_scripts_edit").textContent).toBe("Workers Scripts: Edit missing ✕");
     expect(screen.getByTestId("cf-fix-in-cloudflare-link")).toBeDefined();
     // Multi-account selector rendered when multiple accounts returned
     expect(screen.getByTestId("cf-account-selector")).toBeDefined();
@@ -319,28 +282,18 @@ describe("Story 5.2 — Connect Cloudflare Wizard Modal & Deploy Target Card (ap
     });
 
     // Connected card shows account name, preview & production badges, Replace token & Disconnect
-    expect(
-      screen.getByTestId("cloudflare-connected-account-name").textContent,
-    ).toBe("Acme Production");
-    expect(screen.getByTestId("cloudflare-env-badge-preview").textContent).toContain(
-      "preview",
-    );
-    expect(
-      screen.getByTestId("cloudflare-env-badge-production").textContent,
-    ).toContain("production");
+    expect(screen.getByTestId("cloudflare-connected-account-name").textContent).toBe("Acme Production");
+    expect(screen.getByTestId("cloudflare-env-badge-preview").textContent).toContain("preview");
+    expect(screen.getByTestId("cloudflare-env-badge-production").textContent).toContain("production");
 
     // Disconnect flow explains that deployed Workers keep running in user's Cloudflare account
     fireEvent.click(screen.getByTestId("cloudflare-disconnect-button"));
-    const confirmPanel = screen.getByTestId(
-      "cloudflare-disconnect-confirm-panel",
-    );
+    const confirmPanel = screen.getByTestId("cloudflare-disconnect-confirm-panel");
     expect(confirmPanel.textContent).toContain("keep running in your Cloudflare account");
 
     fireEvent.click(screen.getByTestId("cloudflare-confirm-disconnect-button"));
     await waitFor(() => {
-      expect(
-        screen.getByTestId("cloudflare-connection-status").textContent,
-      ).toContain("Not connected");
+      expect(screen.getByTestId("cloudflare-connection-status").textContent).toContain("Not connected");
     });
 
     expect(funnelSteps).toContain("wizard_opened");

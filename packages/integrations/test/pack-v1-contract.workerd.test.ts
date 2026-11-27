@@ -2,20 +2,10 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IntegrationManifestSchema, type Catalog } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
-import {
-  buildExecutorsFromCatalog,
-  buildRegistryFromCatalog,
-  GraphWorkflow,
-  rehearseStep,
-  runGraph,
-} from "@poc/runtime";
+import { buildExecutorsFromCatalog, buildRegistryFromCatalog, GraphWorkflow, rehearseStep, runGraph } from "@poc/runtime";
 import { applyMigration, createMemoryBlobStore } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import {
-  WebhookService,
-  signHmacSha256,
-  signStripeWebhookPayload,
-} from "../../../bricks/webhook-gateway/src/index.ts";
+import { WebhookService, signHmacSha256, signStripeWebhookPayload } from "../../../bricks/webhook-gateway/src/index.ts";
 import webhookGatewayMigrationSql from "../../../bricks/webhook-gateway/migrations/0001_webhook_gateway.sql?raw";
 
 const PACK_V1_APPS = ["discord", "stripe", "slack", "google", "github"] as const;
@@ -54,9 +44,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
       expect(manifest.ui.maturityReason).toBe(
         "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
       );
-      expect(manifest.ui.behaviourTest).toBe(
-        "packages/integrations/test/pack-v1-contract.workerd.test.ts",
-      );
+      expect(manifest.ui.behaviourTest).toBe("packages/integrations/test/pack-v1-contract.workerd.test.ts");
 
       expect(manifest.errorMappings).toBeDefined();
       const mappings = manifest.errorMappings as Record<string, { code: string; hint?: string }>;
@@ -78,10 +66,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
       body: string | null;
     }> = [];
 
-    const recordedFixtureFetcher = async (
-      input: string | URL | Request,
-      init?: RequestInit,
-    ): Promise<Response> => {
+    const recordedFixtureFetcher = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
       const urlStr = String(input);
       const u = new URL(urlStr);
       const headersObj = new Headers(init?.headers);
@@ -225,10 +210,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
           const page = Number(u.searchParams.get("page") ?? "1");
           const headers = new Headers({ "content-type": "application/json" });
           if (page < 3) {
-            headers.set(
-              "Link",
-              `<https://api.github.com/repos/acme/platform/issues?page=${page + 1}>; rel="next"`,
-            );
+            headers.set("Link", `<https://api.github.com/repos/acme/platform/issues?page=${page + 1}>; rel="next"`);
           }
           return new Response(
             JSON.stringify({
@@ -256,10 +238,11 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // A) Discord createMessage + getChannelMessages pagination
     const discordCreateRehearsal = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n_discord_msg",
         nodeType: "int:discord.createMessage",
-        config: { },
+        config: {},
         input: {
           channelId: "ch_101",
           content: "Build succeeded!",
@@ -275,14 +258,15 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
           {
             id: "n_discord_msg",
             type: "int:discord.createMessage",
-            data: { },
+            data: {},
           },
         ],
         edges: [{ id: "e1", source: "t", target: "n_discord_msg" }],
       },
       registry,
       executors,
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         payload: {
           channelId: "ch_101",
           content: "Build succeeded!",
@@ -296,12 +280,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     expect(discordCreateRehearsal.output).toEqual(discordCreateGraph.outputs.n_discord_msg);
 
     const discordListRes = await rehearseStep(
-      { workspaceId: "ws_test",
-        nodeId: "n_discord_list",
-        nodeType: "int:discord.getChannelMessages",
-        config: { },
-        input: { channelId: "ch_101" },
-      },
+      { workspaceId: "ws_test", nodeId: "n_discord_list", nodeType: "int:discord.getChannelMessages", config: {}, input: { channelId: "ch_101" } },
       { registry, executors, connections },
     );
     expect(discordListRes.ok).toBe(true);
@@ -309,29 +288,23 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // B) Stripe form-urlencoded createCustomer + cursor-paginated listCustomers
     const stripeCustomerRes = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n_stripe_cus",
         nodeType: "int:stripe.createCustomer",
-        config: { },
+        config: {},
         input: { email: "billing@acme.dev", name: "Acme Corp" },
       },
       { registry, executors, connections },
     );
     expect(stripeCustomerRes.ok).toBe(true);
     expect(stripeCustomerRes.output.id).toBe("cus_stripe_1");
-    const stripePostReq = capturedRequests.find(
-      (r) => r.url === "https://api.stripe.com/v1/customers" && r.method === "POST",
-    );
+    const stripePostReq = capturedRequests.find((r) => r.url === "https://api.stripe.com/v1/customers" && r.method === "POST");
     expect(stripePostReq?.headers["content-type"]).toBe("application/x-www-form-urlencoded");
     expect(stripePostReq?.body).toContain("email=billing%40acme.dev");
 
     const stripeListRes = await rehearseStep(
-      { workspaceId: "ws_test",
-        nodeId: "n_stripe_list",
-        nodeType: "int:stripe.listCustomers",
-        config: { },
-        input: {},
-      },
+      { workspaceId: "ws_test", nodeId: "n_stripe_list", nodeType: "int:stripe.listCustomers", config: {}, input: {} },
       { registry, executors, connections },
     );
     expect(stripeListRes.ok).toBe(true);
@@ -339,24 +312,14 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // C) Slack chat_postMessage + conversations_list cursor pagination
     const slackPostRes = await rehearseStep(
-      { workspaceId: "ws_test",
-        nodeId: "n_slack_post",
-        nodeType: "int:slack.chat_postMessage",
-        config: { },
-        input: { channel: "C_OPS", text: "Hello Slack" },
-      },
+      { workspaceId: "ws_test", nodeId: "n_slack_post", nodeType: "int:slack.chat_postMessage", config: {}, input: { channel: "C_OPS", text: "Hello Slack" } },
       { registry, executors, connections },
     );
     expect(slackPostRes.ok).toBe(true);
     expect(slackPostRes.output.ts).toBe("1730000100.0001");
 
     const slackListRes = await rehearseStep(
-      { workspaceId: "ws_test",
-        nodeId: "n_slack_list",
-        nodeType: "int:slack.conversations_list",
-        config: { },
-        input: {},
-      },
+      { workspaceId: "ws_test", nodeId: "n_slack_list", nodeType: "int:slack.conversations_list", config: {}, input: {} },
       { registry, executors, connections },
     );
     expect(slackListRes.ok).toBe(true);
@@ -364,22 +327,18 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // D) Google Calendar list (Discovery imported) + Sheets append + Gmail send
     const googleCalRes = await rehearseStep(
-      { workspaceId: "ws_test",
-        nodeId: "n_gcal_list",
-        nodeType: "int:google.calendar_events_list",
-        config: { },
-        input: { calendarId: "primary" },
-      },
+      { workspaceId: "ws_test", nodeId: "n_gcal_list", nodeType: "int:google.calendar_events_list", config: {}, input: { calendarId: "primary" } },
       { registry, executors, connections },
     );
     expect(googleCalRes.ok).toBe(true);
     expect(googleCalRes.output.items).toHaveLength(2);
 
     const googleSheetsRes = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n_gsheets_append",
         nodeType: "int:google.sheets_values_append",
-        config: { },
+        config: {},
         input: {
           spreadsheetId: "sheet_123",
           range: "Sheet1!A1:B1",
@@ -391,10 +350,11 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     expect(googleSheetsRes.ok).toBe(true);
 
     const googleGmailRes = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n_gmail_send",
         nodeType: "int:google.gmail_messages_send",
-        config: { },
+        config: {},
         input: { userId: "me", raw: "SGVsbG8gR21haWw=" },
       },
       { registry, executors, connections },
@@ -404,10 +364,11 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
 
     // E) GitHub createIssue + RFC 5988 Link-header pagination on listIssues
     const githubIssueRes = await rehearseStep(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         nodeId: "n_gh_issue",
         nodeType: "int:github.createIssue",
-        config: { },
+        config: {},
         input: { owner: "acme", repo: "platform", title: "Ship Pack v1" },
       },
       { registry, executors, connections },
@@ -416,12 +377,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     expect(githubIssueRes.output.number).toBe(42);
 
     const githubListRes = await rehearseStep(
-      { workspaceId: "ws_test",
-        nodeId: "n_gh_list",
-        nodeType: "int:github.listIssues",
-        config: { },
-        input: { owner: "acme", repo: "platform" },
-      },
+      { workspaceId: "ws_test", nodeId: "n_gh_list", nodeType: "int:github.listIssues", config: {}, input: { owner: "acme", repo: "platform" } },
       { registry, executors, connections },
     );
     expect(githubListRes.ok).toBe(true);
@@ -481,12 +437,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
         integration: { fetcher: retryFetcher, sleep: sleepSpy },
       });
       const retryRes = await rehearseStep(
-        { workspaceId: "ws_test",
-          nodeId: `n_${item.app}_retry`,
-          nodeType: item.nodeType,
-          config: {},
-          input: item.input,
-        },
+        { workspaceId: "ws_test", nodeId: `n_${item.app}_retry`, nodeType: item.nodeType, config: {}, input: item.input },
         { registry, executors: retryExecutors, connections },
       );
       expect(retryRes.ok, `${item.app} 429 retry should succeed`).toBe(true);
@@ -494,19 +445,13 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
       expect(sleepSpy).toHaveBeenCalledWith(0);
 
       // 2. 401 -> CONNECTION_EXPIRED with hint
-      const unauthorizedFetcher = async (): Promise<Response> =>
-        new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+      const unauthorizedFetcher = async (): Promise<Response> => new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
 
       const unauthExecutors = buildExecutorsFromCatalog(catalog, {
         integration: { fetcher: unauthorizedFetcher },
       });
       const unauthRes = await rehearseStep(
-        { workspaceId: "ws_test",
-          nodeId: `n_${item.app}_401`,
-          nodeType: item.nodeType,
-          config: {},
-          input: item.input,
-        },
+        { workspaceId: "ws_test", nodeId: `n_${item.app}_401`, nodeType: item.nodeType, config: {}, input: item.input },
         { registry, executors: unauthExecutors, connections },
       );
       expect(unauthRes.ok).toBe(false);
@@ -522,11 +467,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     const secret = "whsec_pack_v1_shared_signing_secret_0123456789";
     const nowSec = 1730000000;
 
-    const discordKeyPair = (await crypto.subtle.generateKey(
-      { name: "Ed25519" },
-      true,
-      ["sign", "verify"],
-    )) as unknown as {
+    const discordKeyPair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"])) as unknown as {
       publicKey: Awaited<ReturnType<typeof crypto.subtle.importKey>>;
       privateKey: Awaited<ReturnType<typeof crypto.subtle.importKey>>;
     };
@@ -572,11 +513,7 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
       } else if (app === "github" || trigger.verifier === "github-hmac-sha256") {
         validSigHeader = `sha256=${await signHmacSha256(rawBody, subSecret)}`;
       } else if (trigger.verifier === "ed25519" || trigger.verifier === "discord-ed25519") {
-        const sigBuf = await crypto.subtle.sign(
-          "Ed25519",
-          discordKeyPair.privateKey,
-          new TextEncoder().encode(rawBody),
-        );
+        const sigBuf = await crypto.subtle.sign("Ed25519", discordKeyPair.privateKey, new TextEncoder().encode(rawBody));
         validSigHeader = Array.from(new Uint8Array(sigBuf))
           .map((b) => b.toString(16).padStart(2, "0"))
           .join("");
@@ -592,20 +529,15 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
       }
 
       // 1. Valid delivery starts workflow
-      const firstDelivery = await gateway.ingestSubscriptionWebhook(
-        sub.id,
-        rawBody,
-        deliveryHeaders,
-        {
-          adapter: {
-            nowSeconds: () => nowSec,
-            onTriggerWorkflow: ({ app: triggeredApp, triggerId, eventId }) => {
-              dispatchedRuns.push({ app: triggeredApp, triggerId, eventId });
-              return { runId: `run_${triggeredApp}_1` };
-            },
+      const firstDelivery = await gateway.ingestSubscriptionWebhook(sub.id, rawBody, deliveryHeaders, {
+        adapter: {
+          nowSeconds: () => nowSec,
+          onTriggerWorkflow: ({ app: triggeredApp, triggerId, eventId }) => {
+            dispatchedRuns.push({ app: triggeredApp, triggerId, eventId });
+            return { runId: `run_${triggeredApp}_1` };
           },
         },
-      );
+      });
       expect(firstDelivery.ok, `${app} webhook delivery should pass`).toBe(true);
       if (firstDelivery.ok) {
         expect(firstDelivery.deduplicated).toBe(false);
@@ -613,19 +545,14 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
       }
 
       // 2. Duplicate delivery is deduplicated
-      const secondDelivery = await gateway.ingestSubscriptionWebhook(
-        sub.id,
-        rawBody,
-        deliveryHeaders,
-        {
-          adapter: {
-            nowSeconds: () => nowSec,
-            onTriggerWorkflow: () => {
-              throw new Error("Should not trigger on duplicate delivery");
-            },
+      const secondDelivery = await gateway.ingestSubscriptionWebhook(sub.id, rawBody, deliveryHeaders, {
+        adapter: {
+          nowSeconds: () => nowSec,
+          onTriggerWorkflow: () => {
+            throw new Error("Should not trigger on duplicate delivery");
           },
         },
-      );
+      });
       expect(secondDelivery.ok).toBe(true);
       if (secondDelivery.ok) {
         expect(secondDelivery.deduplicated).toBe(true);
@@ -729,7 +656,8 @@ describe("Story 10.4 — Curated Integration Pack v1 Contract Suite in workerd (
     });
 
     const workflow = new GraphWorkflow(registry, executors);
-    const result = await workflow.start({ workspaceId: "ws_test",
+    const result = await workflow.start({
+      workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "t", type: "trigger.manual", data: {} },

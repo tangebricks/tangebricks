@@ -20,24 +20,14 @@ import { fileURLToPath } from "node:url";
 import { assemble, hashFiles, sha256Hex } from "../packages/assembler/src/index.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
 import { checkGraphBudget, toyRegistry } from "../packages/sdk/src/index.ts";
-import {
-  buildCatalogNodeRegistry,
-  computeReadiness,
-  normalizeBlueprintState,
-  toAssemblerBlueprint,
-} from "../packages/blueprint/src/index.ts";
+import { buildCatalogNodeRegistry, computeReadiness, normalizeBlueprintState, toAssemblerBlueprint } from "../packages/blueprint/src/index.ts";
 import type { BlueprintState } from "../packages/blueprint/src/index.ts";
 import { OUT_DIR, writeProject } from "../test/support/emitted.ts";
 import { getBootBlueprints } from "../test/support/global-setup.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-export const STARTER_TEMPLATE_IDS = [
-  "ai-credits-saas",
-  "b2b-workspace-app",
-  "marketplace",
-  "stripe-discord-ops",
-] as const;
+export const STARTER_TEMPLATE_IDS = ["ai-credits-saas", "b2b-workspace-app", "marketplace", "stripe-discord-ops"] as const;
 
 export type StarterTemplateId = (typeof STARTER_TEMPLATE_IDS)[number];
 
@@ -64,7 +54,7 @@ function coercePresetToBlueprintState(raw: Record<string, unknown>): BlueprintSt
       ? { id: b, config: {} }
       : {
           id: String((b as { id: unknown }).id),
-          config: ((b as { config?: Record<string, string | number | boolean> }).config ?? {}),
+          config: (b as { config?: Record<string, string | number | boolean> }).config ?? {},
         },
   );
   const entities = (Array.isArray(raw.entities) ? raw.entities : []).map((e) => {
@@ -95,9 +85,7 @@ function coercePresetToBlueprintState(raw: Record<string, unknown>): BlueprintSt
     entities: entities as BlueprintState["entities"],
     workflows: (Array.isArray(raw.workflows) ? raw.workflows : []) as BlueprintState["workflows"],
     secretRefs: (Array.isArray(raw.secretRefs) ? raw.secretRefs : []) as BlueprintState["secretRefs"],
-    metadata: (typeof raw.metadata === "object" && raw.metadata !== null
-      ? raw.metadata
-      : {}) as BlueprintState["metadata"],
+    metadata: (typeof raw.metadata === "object" && raw.metadata !== null ? raw.metadata : {}) as BlueprintState["metadata"],
   });
 }
 
@@ -110,9 +98,7 @@ export async function verifyStarterTemplates(rootDir = ROOT): Promise<{
   const rows: TemplateVerificationRow[] = [];
 
   const presetsDataPath = join(rootDir, "apps", "studio-web", "src", "presets-data.json");
-  const presetsData = existsSync(presetsDataPath)
-    ? (JSON.parse(readFileSync(presetsDataPath, "utf8")) as Record<string, unknown>)
-    : {};
+  const presetsData = existsSync(presetsDataPath) ? (JSON.parse(readFileSync(presetsDataPath, "utf8")) as Record<string, unknown>) : {};
 
   for (const id of STARTER_TEMPLATE_IDS) {
     const presetPath = join(rootDir, "presets", `${id}.blueprint.json`);
@@ -140,19 +126,11 @@ export async function verifyStarterTemplates(rootDir = ROOT): Promise<{
     // Verify layout coordinates exist for every workflow node
     for (const wf of state.workflows) {
       for (const node of wf.nodes) {
-        const hasNodePos =
-          node.position !== undefined &&
-          Number.isFinite(node.position.x) &&
-          Number.isFinite(node.position.y);
+        const hasNodePos = node.position !== undefined && Number.isFinite(node.position.x) && Number.isFinite(node.position.y);
         const layoutPos = state.metadata?.layout?.[node.id];
-        const hasMetaLayout =
-          layoutPos !== undefined &&
-          Number.isFinite(layoutPos.x) &&
-          Number.isFinite(layoutPos.y);
+        const hasMetaLayout = layoutPos !== undefined && Number.isFinite(layoutPos.x) && Number.isFinite(layoutPos.y);
         if (!hasNodePos && !hasMetaLayout) {
-          errors.push(
-            `${id}: workflow "${wf.id}" node "${node.id}" is missing layout coordinates`,
-          );
+          errors.push(`${id}: workflow "${wf.id}" node "${node.id}" is missing layout coordinates`);
         }
       }
     }
@@ -164,9 +142,7 @@ export async function verifyStarterTemplates(rootDir = ROOT): Promise<{
       const maturity = catEntry?.manifest.ui?.maturity;
       if (maturity !== "production" && maturity !== "beta") {
         allProductionMaturity = false;
-        errors.push(
-          `${id}: brick "${brick.id}" has maturity "${maturity ?? "unknown"}" (expected "production" or "beta")`,
-        );
+        errors.push(`${id}: brick "${brick.id}" has maturity "${maturity ?? "unknown"}" (expected "production" or "beta")`);
       }
     }
 
@@ -175,9 +151,7 @@ export async function verifyStarterTemplates(rootDir = ROOT): Promise<{
     let readinessOk = false;
     if (id === "stripe-discord-ops") {
       const onlyDiscordUnbound =
-        readiness.needs.length === 1 &&
-        readiness.needs[0]?.code === "UNBOUND_CONNECTION" &&
-        readiness.needs[0]?.message.includes("sec_discord_bot");
+        readiness.needs.length === 1 && readiness.needs[0]?.code === "UNBOUND_CONNECTION" && readiness.needs[0]?.message.includes("sec_discord_bot");
       const boundState = normalizeBlueprintState({
         ...state,
         secretRefs: [
@@ -193,16 +167,12 @@ export async function verifyStarterTemplates(rootDir = ROOT): Promise<{
       const boundReadiness = computeReadiness(boundState, catalog);
       readinessOk = onlyDiscordUnbound && boundReadiness.ready;
       if (!readinessOk) {
-        errors.push(
-          `${id}: expected only UNBOUND_CONNECTION for sec_discord_bot in readiness.needs (got: ${JSON.stringify(readiness.needs)})`,
-        );
+        errors.push(`${id}: expected only UNBOUND_CONNECTION for sec_discord_bot in readiness.needs (got: ${JSON.stringify(readiness.needs)})`);
       }
     } else {
       readinessOk = readiness.ready && readiness.needs.length === 0;
       if (!readinessOk) {
-        errors.push(
-          `${id}: expected readiness.ready === true (needs: ${JSON.stringify(readiness.needs)})`,
-        );
+        errors.push(`${id}: expected readiness.ready === true (needs: ${JSON.stringify(readiness.needs)})`);
       }
     }
 
@@ -219,16 +189,10 @@ export async function verifyStarterTemplates(rootDir = ROOT): Promise<{
     // Verify static budget check on paid plan (UC7.4 AC2)
     const nodeRegistry = buildCatalogNodeRegistry(catalog, toyRegistry);
     for (const wf of state.workflows) {
-      const budgetIssues = checkGraphBudget(
-        { nodes: wf.nodes, edges: wf.edges },
-        nodeRegistry,
-        "paid",
-      );
+      const budgetIssues = checkGraphBudget({ nodes: wf.nodes, edges: wf.edges }, nodeRegistry, "paid");
       const errorsFound = budgetIssues.filter((i) => i.severity === "error");
       if (errorsFound.length > 0) {
-        errors.push(
-          `${id}: workflow "${wf.id}" failed budget check on paid: ${errorsFound.map((i) => `${i.code}: ${i.message}`).join("; ")}`,
-        );
+        errors.push(`${id}: workflow "${wf.id}" failed budget check on paid: ${errorsFound.map((i) => `${i.code}: ${i.message}`).join("; ")}`);
       }
     }
 
@@ -284,11 +248,7 @@ async function main(): Promise<void> {
   let workerdPassed = true;
   if (!skipWorkerd) {
     const vitestCli = join(ROOT, "node_modules", "vitest", "vitest.mjs");
-    const run = spawnSync(
-      process.execPath,
-      [vitestCli, "run", "-c", "vitest.workers.config.ts", "test/boot-presets.test.ts"],
-      { cwd: ROOT, stdio: "inherit" },
-    );
+    const run = spawnSync(process.execPath, [vitestCli, "run", "-c", "vitest.workers.config.ts", "test/boot-presets.test.ts"], { cwd: ROOT, stdio: "inherit" });
     workerdPassed = run.status === 0;
   }
 

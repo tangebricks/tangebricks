@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import {
-  runGraph,
-  signControlPlaneRequest,
-  stepPolicyFor,
-} from "@poc/runtime";
+import { runGraph, signControlPlaneRequest, stepPolicyFor } from "@poc/runtime";
 import type { Graph } from "@poc/runtime";
 import { createRegistry } from "@poc/sdk";
 import type { Executor } from "@poc/sdk";
-import { APP_WORKSPACE, GRAPH_MIGRATIONS, GRAPH_TABLE, LOAD_STEP, TELEMETRY_MIGRATION, nodeStepName, readStoredGraph, runStoredGraph } from "../src/worker/graph-run.ts";
+import {
+  APP_WORKSPACE,
+  GRAPH_MIGRATIONS,
+  GRAPH_TABLE,
+  LOAD_STEP,
+  TELEMETRY_MIGRATION,
+  nodeStepName,
+  readStoredGraph,
+  runStoredGraph,
+} from "../src/worker/graph-run.ts";
 import type { StepConfig, StepLike } from "../src/worker/graph-run.ts";
 import { proofExecutors, proofRegistry } from "../src/worker/proof-bricks.ts";
 import { createProofRoutes } from "../src/worker/proof-routes.ts";
@@ -19,12 +24,33 @@ import { sqliteD1 } from "../../../test/support/sqlite-d1.ts";
 // that the class is wired to it, is checked in workerd by graph-workflow.node.test.ts. Both are needed.
 
 const node = (id: string, type: string, data: Record<string, unknown> = {}) => ({ id, type, data });
-const wire = (source: string, sourceHandle: string, target: string, targetHandle: string) => ({ id: `${source}.${sourceHandle}-${target}.${targetHandle}`, source, target, sourceHandle, targetHandle });
+const wire = (source: string, sourceHandle: string, target: string, targetHandle: string) => ({
+  id: `${source}.${sourceHandle}-${target}.${targetHandle}`,
+  source,
+  target,
+  sourceHandle,
+  targetHandle,
+});
 
 // (a + b) * c
 const ADD_THEN_MULTIPLY: Graph = {
-  nodes: [node("t", "trigger.manual"), node("pa", "transform.pick", { path: "a" }), node("pb", "transform.pick", { path: "b" }), node("pc", "transform.pick", { path: "c" }), node("add", "proof.add"), node("mul", "proof.multiply")],
-  edges: [wire("t", "out", "pa", "in"), wire("t", "out", "pb", "in"), wire("t", "out", "pc", "in"), wire("pa", "out", "add", "a"), wire("pb", "out", "add", "b"), wire("add", "out", "mul", "a"), wire("pc", "out", "mul", "b")],
+  nodes: [
+    node("t", "trigger.manual"),
+    node("pa", "transform.pick", { path: "a" }),
+    node("pb", "transform.pick", { path: "b" }),
+    node("pc", "transform.pick", { path: "c" }),
+    node("add", "proof.add"),
+    node("mul", "proof.multiply"),
+  ],
+  edges: [
+    wire("t", "out", "pa", "in"),
+    wire("t", "out", "pb", "in"),
+    wire("t", "out", "pc", "in"),
+    wire("pa", "out", "add", "a"),
+    wire("pb", "out", "add", "b"),
+    wire("add", "out", "mul", "a"),
+    wire("pc", "out", "mul", "b"),
+  ],
 };
 // The same shape with the multiplier swapped for an adder: an "edit".
 const ADD_THEN_ADD: Graph = { ...ADD_THEN_MULTIPLY, nodes: ADD_THEN_MULTIPLY.nodes.map((n) => (n.id === "mul" ? node("mul", "proof.add") : n)) };
@@ -63,9 +89,25 @@ let world: ReturnType<typeof sqliteD1>;
 /** The verified workspace these runs are for (story 1.1: a run without one is refused). Graphs stay app-wide rows. */
 const RUN_WS = "ws-run";
 const store = (id: string, graph: unknown, workspaceId: string = APP_WORKSPACE) =>
-  world.db.prepare(`INSERT INTO ${GRAPH_TABLE} (workspace_id, id, graph, updated_at) VALUES (?, ?, ?, 'now') ON CONFLICT(workspace_id, id) DO UPDATE SET graph = excluded.graph`).run(workspaceId, id, typeof graph === "string" ? graph : JSON.stringify(graph));
-const start = (stepper: ReturnType<typeof fakeStep>, graphId = "g1", over: { executors?: ReadonlyMap<string, Executor>; payload?: unknown; workspaceId?: string } = {}) =>
-  runStoredGraph({ step: stepper.step, db: world.d1, params: { graphId, workspaceId: over.workspaceId ?? RUN_WS, payload: "payload" in over ? over.payload : PAYLOAD }, env: {}, registry: proofRegistry, executors: over.executors ?? proofExecutors, nonRetryable });
+  world.db
+    .prepare(
+      `INSERT INTO ${GRAPH_TABLE} (workspace_id, id, graph, updated_at) VALUES (?, ?, ?, 'now') ON CONFLICT(workspace_id, id) DO UPDATE SET graph = excluded.graph`,
+    )
+    .run(workspaceId, id, typeof graph === "string" ? graph : JSON.stringify(graph));
+const start = (
+  stepper: ReturnType<typeof fakeStep>,
+  graphId = "g1",
+  over: { executors?: ReadonlyMap<string, Executor>; payload?: unknown; workspaceId?: string } = {},
+) =>
+  runStoredGraph({
+    step: stepper.step,
+    db: world.d1,
+    params: { graphId, workspaceId: over.workspaceId ?? RUN_WS, payload: "payload" in over ? over.payload : PAYLOAD },
+    env: {},
+    registry: proofRegistry,
+    executors: over.executors ?? proofExecutors,
+    nonRetryable,
+  });
 
 beforeEach(() => {
   world = sqliteD1();
@@ -135,7 +177,13 @@ describe("running a stored graph", () => {
 
   test("a graph with a branch that fails: the failure is recorded, what depends on it is skipped, the other branch still ran, as in the local interpreter", async () => {
     const graph: Graph = {
-      nodes: [node("t", "trigger.manual"), node("pa", "transform.pick", { path: "a" }), node("bad", "util.boom"), node("after", "util.delay", { ms: 0 }), node("pb", "transform.pick", { path: "b" })],
+      nodes: [
+        node("t", "trigger.manual"),
+        node("pa", "transform.pick", { path: "a" }),
+        node("bad", "util.boom"),
+        node("after", "util.delay", { ms: 0 }),
+        node("pb", "transform.pick", { path: "b" }),
+      ],
       edges: [wire("t", "out", "pa", "in"), wire("t", "out", "bad", "in"), wire("bad", "out", "after", "in"), wire("t", "out", "pb", "in")],
     };
     store("g1", graph);
@@ -243,7 +291,10 @@ describe("a graph that cannot run is refused before any node does", () => {
   };
 
   test("a graph with a cycle", async () => {
-    const cyclic: Graph = { nodes: [node("t", "trigger.manual"), node("x", "proof.add"), node("y", "proof.add")], edges: [wire("t", "out", "x", "a"), wire("x", "out", "y", "a"), wire("y", "out", "x", "b")] };
+    const cyclic: Graph = {
+      nodes: [node("t", "trigger.manual"), node("x", "proof.add"), node("y", "proof.add")],
+      edges: [wire("t", "out", "x", "a"), wire("x", "out", "y", "a"), wire("y", "out", "x", "b")],
+    };
     store("g1", cyclic);
     expect(await refused("g1", /graph is invalid: .*cycle/)).toContain("cycle");
   });
@@ -264,7 +315,10 @@ describe("a graph that cannot run is refused before any node does", () => {
   });
 
   test("a graph wired port to a port of the wrong kind", async () => {
-    store("g1", { nodes: [node("t", "trigger.manual"), node("s", "sink.text"), node("add", "proof.add")], edges: [wire("add", "out", "s", "in"), wire("t", "out", "add", "a")] });
+    store("g1", {
+      nodes: [node("t", "trigger.manual"), node("s", "sink.text"), node("add", "proof.add")],
+      edges: [wire("add", "out", "s", "in"), wire("t", "out", "add", "a")],
+    });
     await refused("g1", /incompatible_wire/);
   });
 
@@ -346,9 +400,7 @@ describe("readStoredGraph", () => {
   });
   test("refuses graphs that exceed platform budget limits (UC7.4)", () => {
     // 1 trigger + 300 targets connected to it exceeds 256 fan-out
-    const nodes = [
-      { id: "trig", type: "trigger.manual", data: {} },
-    ];
+    const nodes = [{ id: "trig", type: "trigger.manual", data: {} }];
     const edges = [];
     for (let i = 0; i < 300; i++) {
       nodes.push({ id: `target_${i}`, type: "transform.pick", data: { path: "x" } });
@@ -394,9 +446,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
     expect(result.ok).toBe(true);
     expect(result.outputs.mul).toEqual({ out: 20 });
 
-    const runRows = world.db
-      .prepare("SELECT run_id, workflow_id, revision, status FROM px_runs WHERE run_id = ?")
-      .all("run_stored_graph_1") as Array<{
+    const runRows = world.db.prepare("SELECT run_id, workflow_id, revision, status FROM px_runs WHERE run_id = ?").all("run_stored_graph_1") as Array<{
       run_id: string;
       workflow_id: string;
       revision: number;
@@ -411,9 +461,10 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
       },
     ]);
 
-    const stepRows = world.db
-      .prepare("SELECT node_id, status FROM px_step_events WHERE run_id = ?")
-      .all("run_stored_graph_1") as Array<{ node_id: string; status: string }>;
+    const stepRows = world.db.prepare("SELECT node_id, status FROM px_step_events WHERE run_id = ?").all("run_stored_graph_1") as Array<{
+      node_id: string;
+      status: string;
+    }>;
     expect(stepRows.length).toBeGreaterThanOrEqual(ADD_THEN_MULTIPLY.nodes.length);
 
     const routes = createProofRoutes();
@@ -455,11 +506,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
 
     // 2. POST /__px/runs (with a failing branch for rerun testing)
     const boomGraph: Graph = {
-      nodes: [
-        node("t", "trigger.manual"),
-        node("pa", "transform.pick", { path: "a" }),
-        node("bad", "util.boom"),
-      ],
+      nodes: [node("t", "trigger.manual"), node("pa", "transform.pick", { path: "a" }), node("bad", "util.boom")],
       edges: [wire("t", "out", "pa", "in"), wire("pa", "out", "bad", "in")],
     };
     const runBody = JSON.stringify({
@@ -489,11 +536,7 @@ describe("TELEMETRY_MIGRATION, runStoredGraph telemetry, and /__px/* proof route
 
     // 3. POST /__px/runs/rerun (swap util.boom for transform.pick so rerun from 'bad' succeeds)
     const fixedGraph: Graph = {
-      nodes: [
-        node("t", "trigger.manual"),
-        node("pa", "transform.pick", { path: "a" }),
-        node("bad", "util.delay", { ms: 0 }),
-      ],
+      nodes: [node("t", "trigger.manual"), node("pa", "transform.pick", { path: "a" }), node("bad", "util.delay", { ms: 0 })],
       edges: [wire("t", "out", "pa", "in"), wire("pa", "out", "bad", "in")],
     };
     const rerunBody = JSON.stringify({

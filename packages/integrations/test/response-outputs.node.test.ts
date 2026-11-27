@@ -3,10 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { IntegrationManifestSchema, projectIntegrationToNodes } from "@poc/assembler";
-import {
-  extractGoogleDiscoveryOperations,
-  extractOpenApi3Operations,
-} from "../src/importer.ts";
+import { extractGoogleDiscoveryOperations, extractOpenApi3Operations } from "../src/importer.ts";
 import { ReportCollector } from "../src/report.ts";
 
 const spec = {
@@ -155,9 +152,7 @@ describe("UC3.2 packs", () => {
   const packs = ["stripe", "github", "discord", "slack", "google"];
 
   it("AC1: projected int:stripe.createCustomer exposes typed output port id:string", () => {
-    const manifest = IntegrationManifestSchema.parse(
-      JSON.parse(readFileSync(resolve(root, "integrations/stripe/integration.json"), "utf8")),
-    );
+    const manifest = IntegrationManifestSchema.parse(JSON.parse(readFileSync(resolve(root, "integrations/stripe/integration.json"), "utf8")));
     const node = projectIntegrationToNodes(manifest).find((n) => n.type === "int:stripe.createCustomer");
     expect(node).toBeDefined();
     expect(node!.outputs).toContainEqual(expect.objectContaining({ id: "id", dataType: "string" }));
@@ -165,12 +160,8 @@ describe("UC3.2 packs", () => {
 
   it("AC4: no pack curation keeps a RESPONSE_SCHEMA_IGNORED acknowledgement", () => {
     for (const app of packs) {
-      const curation = JSON.parse(
-        readFileSync(resolve(root, `integrations/${app}/curation.config.json`), "utf8"),
-      );
-      const stale = (curation.acknowledge ?? []).filter(
-        (a: { code: string }) => a.code === "RESPONSE_SCHEMA_IGNORED",
-      );
+      const curation = JSON.parse(readFileSync(resolve(root, `integrations/${app}/curation.config.json`), "utf8"));
+      const stale = (curation.acknowledge ?? []).filter((a: { code: string }) => a.code === "RESPONSE_SCHEMA_IGNORED");
       expect(stale, `${app} keeps RESPONSE_SCHEMA_IGNORED acknowledgements`).toEqual([]);
     }
   });

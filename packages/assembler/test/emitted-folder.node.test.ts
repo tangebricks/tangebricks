@@ -25,10 +25,18 @@ describe("writing a project and checking it later", () => {
   test.each([
     ["a changed byte", (dir: string) => writeFileSync(join(dir, "src/index.ts"), "export default 2;\n"), { changed: ["src/index.ts"], missing: [], extra: [] }],
     ["an appended newline", (dir: string) => writeFileSync(join(dir, "package.json"), "{}\n\n"), { changed: ["package.json"], missing: [], extra: [] }],
-    ["a line-ending change", (dir: string) => writeFileSync(join(dir, "migrations/0001_a.sql"), "SELECT 1;\r\n"), { changed: ["migrations/0001_a.sql"], missing: [], extra: [] }],
+    [
+      "a line-ending change",
+      (dir: string) => writeFileSync(join(dir, "migrations/0001_a.sql"), "SELECT 1;\r\n"),
+      { changed: ["migrations/0001_a.sql"], missing: [], extra: [] },
+    ],
     ["a deleted file", (dir: string) => rmSync(join(dir, "package.json")), { changed: [], missing: ["package.json"], extra: [] }],
     ["an added file", (dir: string) => writeFileSync(join(dir, "src/extra.ts"), "x"), { changed: [], missing: [], extra: ["src/extra.ts"] }],
-    ["an added folder with a file", (dir: string) => (mkdirSync(join(dir, "hand-edit")), writeFileSync(join(dir, "hand-edit/fix.ts"), "x")), { changed: [], missing: [], extra: ["hand-edit/fix.ts"] }],
+    [
+      "an added folder with a file",
+      (dir: string) => (mkdirSync(join(dir, "hand-edit")), writeFileSync(join(dir, "hand-edit/fix.ts"), "x")),
+      { changed: [], missing: [], extra: ["hand-edit/fix.ts"] },
+    ],
   ])("%s is reported", async (_label, tamper, expected) => {
     const out = scratch();
     const dir = join(out, "p");

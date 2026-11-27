@@ -5,10 +5,7 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration1 from "../migrations/0001_identity_federation.sql?raw";
 import migration2 from "../migrations/0002_auth_requests.sql?raw";
-import {
-  IdentityFederationService,
-  createSsoRoutes,
-} from "../src/index.ts";
+import { IdentityFederationService, createSsoRoutes } from "../src/index.ts";
 
 const db = env.DB as D1Like;
 const WS_TEST = "ws_sso_oidc_test";
@@ -28,10 +25,7 @@ async function generateRsaKeyPair() {
 }
 
 function base64UrlEncode(bytes: Uint8Array | string): string {
-  const binary =
-    typeof bytes === "string"
-      ? btoa(bytes)
-      : btoa(String.fromCharCode(...bytes));
+  const binary = typeof bytes === "string" ? btoa(bytes) : btoa(String.fromCharCode(...bytes));
   return binary.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
@@ -40,11 +34,7 @@ type Jwk = webcrypto.JsonWebKey & { kid?: string };
 /** The key type crypto.subtle.sign takes (CryptoKey is only a value in the Node globals). */
 type SigningKey = webcrypto.CryptoKey;
 
-async function signJwt(
-  header: Record<string, unknown>,
-  payload: Record<string, unknown>,
-  privateKey: SigningKey,
-): Promise<string> {
+async function signJwt(header: Record<string, unknown>, payload: Record<string, unknown>, privateKey: SigningKey): Promise<string> {
   const encHeader = base64UrlEncode(JSON.stringify(header));
   const encPayload = base64UrlEncode(JSON.stringify(payload));
   const data = new TextEncoder().encode(`${encHeader}.${encPayload}`);
@@ -99,18 +89,24 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
       const url = new URL(urlStr);
 
       if (url.pathname === "/.well-known/openid-configuration") {
-        return new Response(JSON.stringify({
-          issuer,
-          jwks_uri: `${issuer}/oauth2/v1/keys`,
-          token_endpoint: `${issuer}/oauth2/v1/token`,
-          authorization_endpoint: `${issuer}/oauth2/v1/authorize`,
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            issuer,
+            jwks_uri: `${issuer}/oauth2/v1/keys`,
+            token_endpoint: `${issuer}/oauth2/v1/token`,
+            authorization_endpoint: `${issuer}/oauth2/v1/authorize`,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
 
       if (url.pathname === "/oauth2/v1/keys") {
-        return new Response(JSON.stringify({
-          keys: [publicJwk],
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            keys: [publicJwk],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
 
       if (url.pathname === "/oauth2/v1/token") {
@@ -130,12 +126,15 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
           keyPair.privateKey,
         );
 
-        return new Response(JSON.stringify({
-          access_token: "mock_access_token_abc",
-          id_token: idToken,
-          token_type: "Bearer",
-          expires_in: 3600,
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            access_token: "mock_access_token_abc",
+            id_token: idToken,
+            token_type: "Bearer",
+            expires_in: 3600,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
 
       return new Response("Not found", { status: 404 });
@@ -145,17 +144,21 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
     const app = createSsoRoutes({ adapter: { service: fedService } });
 
     // 1. POST /sso/authorize stores state, nonce, and hashed code_verifier
-    const authRes = await app.request("/sso/authorize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        domain: "acme.corp",
-        redirectUri: "https://app.projectx.dev/sso/callback",
-      }),
-    }, { DB: db });
+    const authRes = await app.request(
+      "/sso/authorize",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: "acme.corp",
+          redirectUri: "https://app.projectx.dev/sso/callback",
+        }),
+      },
+      { DB: db },
+    );
 
     expect(authRes.status).toBe(200);
-    const authBody = await authRes.json() as { authorize_url: string };
+    const authBody = (await authRes.json()) as { authorize_url: string };
     expect(authBody.authorize_url).toBeDefined();
 
     const authUrl = new URL(authBody.authorize_url);
@@ -186,12 +189,16 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
     expect(storedReq?.expires_at).toBeGreaterThan(Date.now() + 500 * 1000); // ~10 minutes
 
     // 2. GET /sso/callback?code&state exchanges code, verifies id_token via verifyJwt, links identity, and creates session
-    const callbackRes = await app.request(`/sso/callback?code=mock_auth_code_789&state=${encodeURIComponent(state!)}`, {
-      method: "GET",
-    }, { DB: db });
+    const callbackRes = await app.request(
+      `/sso/callback?code=mock_auth_code_789&state=${encodeURIComponent(state!)}`,
+      {
+        method: "GET",
+      },
+      { DB: db },
+    );
 
     expect(callbackRes.status).toBe(200);
-    const callbackBody = await callbackRes.json() as {
+    const callbackBody = (await callbackRes.json()) as {
       ok: boolean;
       identity: { id: string; email: string; external_subject_id: string; user_id: string };
       session: { id: string; userId: string };
@@ -204,7 +211,8 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
     expect(callbackBody.session.userId).toBe(callbackBody.identity.user_id);
 
     // Verify linked identity in DB
-    const fidRow = await db.prepare("SELECT * FROM sso_federated_identities WHERE connection_id = ? AND external_subject_id = ?")
+    const fidRow = await db
+      .prepare("SELECT * FROM sso_federated_identities WHERE connection_id = ? AND external_subject_id = ?")
       .bind(conn.id, "okta_sub_alice_456")
       .first<{ email: string; user_id: string }>();
 
@@ -231,16 +239,20 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
 
     const app = createSsoRoutes({ adapter: { service } });
 
-    const authRes = await app.request("/sso/authorize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        domain: "acme.corp",
-        redirectUri: "https://app.projectx.dev/sso/callback",
-        state: "state_replay_test_123",
-      }),
-    }, { DB: db });
-    const { authorize_url } = await authRes.json() as { authorize_url: string };
+    const authRes = await app.request(
+      "/sso/authorize",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: "acme.corp",
+          redirectUri: "https://app.projectx.dev/sso/callback",
+          state: "state_replay_test_123",
+        }),
+      },
+      { DB: db },
+    );
+    const { authorize_url } = (await authRes.json()) as { authorize_url: string };
     const state = new URL(authorize_url).searchParams.get("state")!;
 
     // First attempt consumes state
@@ -276,11 +288,14 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
       const url = new URL(urlStr);
 
       if (url.pathname === "/.well-known/openid-configuration") {
-        return new Response(JSON.stringify({
-          issuer,
-          jwks_uri: `${issuer}/oauth2/v1/keys`,
-          token_endpoint: `${issuer}/oauth2/v1/token`,
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            issuer,
+            jwks_uri: `${issuer}/oauth2/v1/keys`,
+            token_endpoint: `${issuer}/oauth2/v1/token`,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
 
       if (url.pathname === "/oauth2/v1/keys") {
@@ -303,11 +318,14 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
           keyPair.privateKey,
         );
 
-        return new Response(JSON.stringify({
-          access_token: "mock_access_token",
-          id_token: idToken,
-          token_type: "Bearer",
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            access_token: "mock_access_token",
+            id_token: idToken,
+            token_type: "Bearer",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
 
       return new Response("Not found", { status: 404 });
@@ -316,16 +334,20 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
     const fedService = new IdentityFederationService(db, mockFetcher);
     const app = createSsoRoutes({ adapter: { service: fedService } });
 
-    const authRes = await app.request("/sso/authorize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        domain: "acme.corp",
-        redirectUri: "https://app.projectx.dev/sso/callback",
-        state: "state_wrong_nonce_test_456",
-      }),
-    }, { DB: db });
-    const { authorize_url } = await authRes.json() as { authorize_url: string };
+    const authRes = await app.request(
+      "/sso/authorize",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: "acme.corp",
+          redirectUri: "https://app.projectx.dev/sso/callback",
+          state: "state_wrong_nonce_test_456",
+        }),
+      },
+      { DB: db },
+    );
+    const { authorize_url } = (await authRes.json()) as { authorize_url: string };
     const state = new URL(authorize_url).searchParams.get("state")!;
 
     const callbackRes = await app.request(`/sso/callback?code=mock_code&state=${encodeURIComponent(state)}`, {}, { DB: db });
@@ -345,20 +367,25 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
 
     // Directly insert an expired request into sso_auth_requests
     const expiredState = "expired_state_12345";
-    await db.prepare(`
+    await db
+      .prepare(
+        `
       INSERT INTO sso_auth_requests (state, connection_id, workspace_id, redirect_uri, nonce, code_verifier, code_challenge, code_challenge_method, expires_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      expiredState,
-      conn.id,
-      WS_TEST,
-      "https://app.projectx.dev/sso/callback",
-      "nonce_exp",
-      "verifier_exp",
-      "challenge_exp",
-      "S256",
-      Date.now() - 60000, // expired 1 minute ago
-    ).run();
+    `,
+      )
+      .bind(
+        expiredState,
+        conn.id,
+        WS_TEST,
+        "https://app.projectx.dev/sso/callback",
+        "nonce_exp",
+        "verifier_exp",
+        "challenge_exp",
+        "S256",
+        Date.now() - 60000, // expired 1 minute ago
+      )
+      .run();
 
     const app = createSsoRoutes({ adapter: { service } });
 
@@ -368,14 +395,18 @@ describe("UC9.7 — Enterprise SSO OIDC callback & authorization-code flow", () 
 
   it("Task 1 & AC3: SAML POST /sso/saml/acs returns 501 SSO_SAML_UNSUPPORTED", async () => {
     const app = createSsoRoutes();
-    const res = await app.request("/sso/saml/acs", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: "SAMLResponse=PHNhbWxwOlJlc3BvbnNlPjwvc2FtbHA6UmVzcG9uc2U+",
-    }, { DB: db });
+    const res = await app.request(
+      "/sso/saml/acs",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "SAMLResponse=PHNhbWxwOlJlc3BvbnNlPjwvc2FtbHA6UmVzcG9uc2U+",
+      },
+      { DB: db },
+    );
 
     expect(res.status).toBe(501);
-    const body = await res.json() as { error: string; code?: string };
+    const body = (await res.json()) as { error: string; code?: string };
     expect(body.error === "SSO_SAML_UNSUPPORTED" || body.code === "SSO_SAML_UNSUPPORTED").toBe(true);
   });
 });

@@ -105,7 +105,9 @@ export interface H10Deps {
   ledger: Ledger;
   accessKey: string;
   /** Assembles and bundles the project; "changed" is the same project with one brick setting changed. */
-  build(variant: "base" | "changed"): Promise<{ bundle: { code: string; sha256: string; bytes: number }; migrations: Migration[]; compatibilityFlags?: string[] }>;
+  build(
+    variant: "base" | "changed",
+  ): Promise<{ bundle: { code: string; sha256: string; bytes: number }; migrations: Migration[]; compatibilityFlags?: string[] }>;
   fetchUrl(request: Request): Promise<Response>;
   compatibilityDate: string;
   hide(text: string): string;
@@ -138,14 +140,26 @@ export const GATE_PROBES: Array<{ note: string; method: string; path: string; ke
   { note: "demo-post-refused", method: "POST", path: "/demo", key: "none", expect: 401 },
 ];
 
-const errorFacts = (error: unknown, hide: (t: string) => string) => (error instanceof CloudflareApiError ? { status: error.status, codes: error.codes, body: hide(error.body).slice(0, 4000) } : undefined);
+const errorFacts = (error: unknown, hide: (t: string) => string) =>
+  error instanceof CloudflareApiError ? { status: error.status, codes: error.codes, body: hide(error.body).slice(0, 4000) } : undefined;
 
 export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: H10Result }> {
   const rel = () => deps.clock() - deps.commandStart;
   const say = deps.log ?? (() => undefined);
   const clients: ClientLog[] = [];
   const urlEvents: UrlEvent[] = [];
-  const facts: H10Facts = { names: deps.names, url: null, builds: {}, runs: {}, upload: { outcome: "not_attempted" }, bindingsReadBack: { bindings: null, workflowsListed: null }, readings: {}, observations: {}, timedCheckPhase: null, attempts: [] };
+  const facts: H10Facts = {
+    names: deps.names,
+    url: null,
+    builds: {},
+    runs: {},
+    upload: { outcome: "not_attempted" },
+    bindingsReadBack: { bindings: null, workflowsListed: null },
+    readings: {},
+    observations: {},
+    timedCheckPhase: null,
+    attempts: [],
+  };
   const commandStartedAt = deps.nowIso();
   let secondsToCorrectAnswer: number | null = null;
   let stoppedBecause: string | undefined;
@@ -179,23 +193,42 @@ export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: 
   const reading = async (label: string) => readAccountState(newClient(label), deps.names);
 
   /** Sends to the deployed address, writing down every request. */
-  const sendFor = (phase: string, note?: string) => async (request: Request): Promise<Response> => {
-    const started = rel();
-    const url = new URL(request.url);
-    const event: UrlEvent = { n: urlEvents.length + 1, atMs: Math.round(started), ms: 0, phase, ...(note ? { note } : {}), method: request.method, path: `${url.pathname}${url.search}`, status: null };
-    urlEvents.push(event);
-    try {
-      const response = await deps.fetchUrl(request);
-      event.status = response.status;
-      return response;
-    } finally {
-      event.ms = Math.round(rel() - started);
-    }
-  };
+  const sendFor =
+    (phase: string, note?: string) =>
+    async (request: Request): Promise<Response> => {
+      const started = rel();
+      const url = new URL(request.url);
+      const event: UrlEvent = {
+        n: urlEvents.length + 1,
+        atMs: Math.round(started),
+        ms: 0,
+        phase,
+        ...(note ? { note } : {}),
+        method: request.method,
+        path: `${url.pathname}${url.search}`,
+        status: null,
+      };
+      urlEvents.push(event);
+      try {
+        const response = await deps.fetchUrl(request);
+        event.status = response.status;
+        return response;
+      } finally {
+        event.ms = Math.round(rel() - started);
+      }
+    };
 
   const finish = (completed: boolean): { calls: H10Calls; result: H10Result } => {
     const calls: H10Calls = { schema: 1, commandStartedAt, clients, urlEvents, facts };
-    const result: H10Result = { schema: 1, commandStartedAt, finishedAt: deps.nowIso(), completed, secondsToCorrectAnswer, callsSha256: sha256(canonical(calls)), ...(stoppedBecause ? { stoppedBecause } : {}) };
+    const result: H10Result = {
+      schema: 1,
+      commandStartedAt,
+      finishedAt: deps.nowIso(),
+      completed,
+      secondsToCorrectAnswer,
+      callsSha256: sha256(canonical(calls)),
+      ...(stoppedBecause ? { stoppedBecause } : {}),
+    };
     return { calls, result };
   };
 
@@ -215,7 +248,12 @@ export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: 
   try {
     first = await deploy(input(newClient("first-deploy"), base));
     facts.upload = { outcome: "accepted" };
-    facts.runs.first = { client: "first-deploy", changes: first.changes.map((c) => c.kind), uploadFingerprint: first.uploadFingerprint, bundleSha256: base.bundle.sha256 };
+    facts.runs.first = {
+      client: "first-deploy",
+      changes: first.changes.map((c) => c.kind),
+      uploadFingerprint: first.uploadFingerprint,
+      bundleSha256: base.bundle.sha256,
+    };
     facts.url = first.url;
     attempt("first deploy", "ok", first.changes.map((c) => c.kind).join(", "));
   } catch (error) {
@@ -223,7 +261,9 @@ export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: 
       facts.upload = {
         outcome: error.classification,
         refusal: errorFacts(error.withWorkflow, deps.hide),
-        ...(error.control ? { control: { accepted: error.control.accepted, ...(error.control.error ? { refusal: errorFacts(error.control.error, deps.hide) } : {}) } } : {}),
+        ...(error.control
+          ? { control: { accepted: error.control.accepted, ...(error.control.error ? { refusal: errorFacts(error.control.error, deps.hide) } : {}) } }
+          : {}),
         message: deps.hide(error.message).slice(0, 1000),
       };
     }
@@ -306,7 +346,12 @@ export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: 
     facts.builds.rebuilt = { sha256: rebuilt.bundle.sha256 };
     facts.readings.beforeSecond = await reading("reader-before-second");
     const second = await deploy(input(newClient("second-deploy"), rebuilt));
-    facts.runs.second = { client: "second-deploy", changes: second.changes.map((c) => c.kind), uploadFingerprint: second.uploadFingerprint, bundleSha256: rebuilt.bundle.sha256 };
+    facts.runs.second = {
+      client: "second-deploy",
+      changes: second.changes.map((c) => c.kind),
+      uploadFingerprint: second.uploadFingerprint,
+      bundleSha256: rebuilt.bundle.sha256,
+    };
     facts.readings.afterSecond = await reading("reader-after-second");
     attempt("second run", "ok", `${second.changes.length} change(s) reported`);
 
@@ -315,14 +360,24 @@ export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: 
     facts.builds.changed = { sha256: changed.bundle.sha256 };
     facts.readings.beforeThird = await reading("reader-before-third");
     const third = await deploy(input(newClient("third-deploy"), changed));
-    facts.runs.third = { client: "third-deploy", changes: third.changes.map((c) => c.kind), uploadFingerprint: third.uploadFingerprint, bundleSha256: changed.bundle.sha256 };
+    facts.runs.third = {
+      client: "third-deploy",
+      changes: third.changes.map((c) => c.kind),
+      uploadFingerprint: third.uploadFingerprint,
+      bundleSha256: changed.bundle.sha256,
+    };
     facts.readings.afterThird = await reading("reader-after-third");
     attempt("third run (one setting changed)", "ok", third.changes.map((c) => c.kind).join(", "));
     facts.observations.third = await runScriptedCheck(sendFor("third-check"), { origin: url, headers: keyHeader }).catch(() => []);
 
     // ---- 5. the fourth run: the setting put back, so the final script is the first one again ----------------------
     const fourth = await deploy(input(newClient("fourth-deploy"), base));
-    facts.runs.fourth = { client: "fourth-deploy", changes: fourth.changes.map((c) => c.kind), uploadFingerprint: fourth.uploadFingerprint, bundleSha256: base.bundle.sha256 };
+    facts.runs.fourth = {
+      client: "fourth-deploy",
+      changes: fourth.changes.map((c) => c.kind),
+      uploadFingerprint: fourth.uploadFingerprint,
+      bundleSha256: base.bundle.sha256,
+    };
     facts.readings.afterFourth = await reading("reader-after-fourth");
     attempt("fourth run (setting restored)", "ok", fourth.changes.map((c) => c.kind).join(", "));
     facts.observations.fourth = await runScriptedCheck(sendFor("fourth-check"), { origin: url, headers: keyHeader }).catch(() => []);
@@ -336,7 +391,10 @@ export async function runH10(deps: H10Deps): Promise<{ calls: H10Calls; result: 
   for (const probe of GATE_PROBES) {
     try {
       const headers: Record<string, string> = probe.key === "wrong" ? { "x-poc-key": WRONG_KEY } : {};
-      const response = await sendFor("gate", probe.note)(new Request(`${url}${probe.path}`, { method: probe.method, headers, body: probe.method === "POST" ? "{}" : null }));
+      const response = await sendFor(
+        "gate",
+        probe.note,
+      )(new Request(`${url}${probe.path}`, { method: probe.method, headers, body: probe.method === "POST" ? "{}" : null }));
       await response.arrayBuffer();
     } catch (error) {
       attempt("gate probe", "failed", `${probe.method} ${probe.path}: ${error instanceof Error ? error.message : String(error)}`);
@@ -390,7 +448,12 @@ export function evaluateH10(input: EvaluationInput): Evaluation {
     return { checks, notes: ["the calls file is not valid JSON; nothing in it is believed"] };
   }
   if (sha256(input.callsText) !== input.result.callsSha256 || input.callsText !== canonical(calls)) {
-    return { checks, notes: ["the calls file does not match the hash in the result file (one of them was edited, or they come from different runs); nothing in them is believed"] };
+    return {
+      checks,
+      notes: [
+        "the calls file does not match the hash in the result file (one of them was edited, or they come from different runs); nothing in them is believed",
+      ],
+    };
   }
   const f = calls.facts;
   notes.push(`from the run that started ${calls.commandStartedAt}${input.result.completed ? "" : " (it did not complete)"}`);
@@ -404,26 +467,62 @@ export function evaluateH10(input: EvaluationInput): Evaluation {
     const recomputed = Math.round(last.atMs + last.ms) / 1000;
     const firstDeploy = logOf(calls, "first-deploy");
     const deployEnd = firstDeploy ? firstDeploy.startedAtMs + Math.max(0, ...firstDeploy.calls.map((c) => c.atMs + c.ms)) : Infinity;
-    if (input.result.secondsToCorrectAnswer !== recomputed) notes.push(`the result file claims ${input.result.secondsToCorrectAnswer} seconds but the calls file gives ${recomputed}; the claim is not believed`);
+    if (input.result.secondsToCorrectAnswer !== recomputed)
+      notes.push(`the result file claims ${input.result.secondsToCorrectAnswer} seconds but the calls file gives ${recomputed}; the claim is not believed`);
     else if (!(events[0]!.atMs >= deployEnd - 5)) notes.push("the scripted check starts before the first deploy's last call ends; the clock is not believed");
     else measured = recomputed;
   } else notes.push("the calls file has no complete scripted check that ended the clock");
 
   // ---- restUploadAccepted: only a refusal by Cloudflare itself, with a plain upload accepted, makes this false
-  const putOk = (label: string) => logOf(calls, label)?.calls.some((c) => c.method === "PUT" && c.path === `/accounts/{account}/workers/scripts/${f.names.script}` && c.status === 200 && c.outcome === "ok") === true;
-  const bound = f.bindingsReadBack.bindings?.some((b) => b.type === "workflow" && b.className === WORKFLOW_CLASS) === true || f.bindingsReadBack.workflowsListed?.includes(f.names.workflow) === true;
-  if (f.upload.outcome === "platform_refusal" && f.upload.control?.accepted === true && f.upload.refusal && f.upload.refusal.body.length > 0 && !putOk("first-deploy")) checks.restUploadAccepted = false;
+  const putOk = (label: string) =>
+    logOf(calls, label)?.calls.some(
+      (c) => c.method === "PUT" && c.path === `/accounts/{account}/workers/scripts/${f.names.script}` && c.status === 200 && c.outcome === "ok",
+    ) === true;
+  const bound =
+    f.bindingsReadBack.bindings?.some((b) => b.type === "workflow" && b.className === WORKFLOW_CLASS) === true ||
+    f.bindingsReadBack.workflowsListed?.includes(f.names.workflow) === true;
+  if (
+    f.upload.outcome === "platform_refusal" &&
+    f.upload.control?.accepted === true &&
+    f.upload.refusal &&
+    f.upload.refusal.body.length > 0 &&
+    !putOk("first-deploy")
+  )
+    checks.restUploadAccepted = false;
   else if (f.upload.outcome === "accepted" && putOk("first-deploy") && bound) checks.restUploadAccepted = true;
-  else notes.push("restUploadAccepted is not established either way (the upload was not refused by Cloudflare with a plain upload accepted, and it was not shown accepted with the Workflow binding)");
+  else
+    notes.push(
+      "restUploadAccepted is not established either way (the upload was not refused by Cloudflare with a plain upload accepted, and it was not shown accepted with the Workflow binding)",
+    );
 
   // ---- deployedOverRestOnly
   const apiOnly = calls.clients.every((c) => c.calls.every((x) => x.path.startsWith("/accounts/{account}/")));
-  const sourcesClean = Object.keys(input.sources).length >= 8 && Object.entries(input.sources).every(([, text]) => !STARTS_A_PROGRAM.test(codeLines(text).map((l) => l.text).join("\n")));
+  const sourcesClean =
+    Object.keys(input.sources).length >= 8 &&
+    Object.entries(input.sources).every(
+      ([, text]) =>
+        !STARTS_A_PROGRAM.test(
+          codeLines(text)
+            .map((l) => l.text)
+            .join("\n"),
+        ),
+    );
   checks.deployedOverRestOnly = apiOnly && sourcesClean && (logOf(calls, "first-deploy")?.calls.length ?? 0) > 0;
 
   // ---- urlAnswersCorrectly
   const observed = f.observations.first;
-  checks.urlAnswersCorrectly = observed !== undefined && scriptedCheckPasses(observed) && events.length === EXPECTED_STATUSES.length && same(events.map((e) => e.status), EXPECTED_STATUSES) && same(observed.map((o) => o.status), EXPECTED_STATUSES);
+  checks.urlAnswersCorrectly =
+    observed !== undefined &&
+    scriptedCheckPasses(observed) &&
+    events.length === EXPECTED_STATUSES.length &&
+    same(
+      events.map((e) => e.status),
+      EXPECTED_STATUSES,
+    ) &&
+    same(
+      observed.map((o) => o.status),
+      EXPECTED_STATUSES,
+    );
 
   // ---- secondRunChangesNothing
   const b2 = f.readings.beforeSecond;
@@ -431,7 +530,9 @@ export function evaluateH10(input: EvaluationInput): Evaluation {
   const second = logOf(calls, "second-deploy");
   if (b2 && a2 && second) {
     const real = b2.databaseId !== null && b2.versionCount >= 1 && b2.latestVersionId !== null && b2.appliedMigrations.length >= 1;
-    const readersReadOnly = ["reader-before-second", "reader-after-second"].every((l) => (logOf(calls, l)?.calls.length ?? 0) > 0 && writes(logOf(calls, l)!.calls).length === 0);
+    const readersReadOnly = ["reader-before-second", "reader-after-second"].every(
+      (l) => (logOf(calls, l)?.calls.length ?? 0) > 0 && writes(logOf(calls, l)!.calls).length === 0,
+    );
     checks.secondRunChangesNothing = real && same(b2, a2) && writes(second.calls).length === 0 && second.calls.length > 0 && readersReadOnly;
   }
 
@@ -440,26 +541,56 @@ export function evaluateH10(input: EvaluationInput): Evaluation {
   const a3 = f.readings.afterThird;
   const third = logOf(calls, "third-deploy");
   if (b3 && a3 && third) {
-    const uploads = third.calls.filter((c) => ((c.method === "PUT" && c.path === `/accounts/{account}/workers/scripts/${f.names.script}`) || (c.method === "POST" && c.path === `/accounts/{account}/workers/scripts/${f.names.script}/versions`)) && c.status === 200).length;
-    checks.changedProjectChangesOneThing = b3.latestVersionId !== null && a3.latestVersionId !== null && a3.latestVersionId !== b3.latestVersionId && a3.versionCount === b3.versionCount + 1 && uploads === 1 && b3.databaseId !== null && a3.databaseId === b3.databaseId && same(a3.appliedMigrations, b3.appliedMigrations) && b3.appliedMigrations.length >= 1 && f.builds.changed?.sha256 !== f.builds.base?.sha256;
+    const uploads = third.calls.filter(
+      (c) =>
+        ((c.method === "PUT" && c.path === `/accounts/{account}/workers/scripts/${f.names.script}`) ||
+          (c.method === "POST" && c.path === `/accounts/{account}/workers/scripts/${f.names.script}/versions`)) &&
+        c.status === 200,
+    ).length;
+    checks.changedProjectChangesOneThing =
+      b3.latestVersionId !== null &&
+      a3.latestVersionId !== null &&
+      a3.latestVersionId !== b3.latestVersionId &&
+      a3.versionCount === b3.versionCount + 1 &&
+      uploads === 1 &&
+      b3.databaseId !== null &&
+      a3.databaseId === b3.databaseId &&
+      same(a3.appliedMigrations, b3.appliedMigrations) &&
+      b3.appliedMigrations.length >= 1 &&
+      f.builds.changed?.sha256 !== f.builds.base?.sha256;
   }
 
   // ---- publicAccessGated
   const gate = calls.urlEvents.filter((e) => e.phase === "gate");
-  checks.publicAccessGated = gate.length === GATE_PROBES.length && GATE_PROBES.every((p, i) => gate[i]?.note === p.note && gate[i]?.method === p.method && gate[i]?.path === p.path && gate[i]?.status === p.expect);
+  checks.publicAccessGated =
+    gate.length === GATE_PROBES.length &&
+    GATE_PROBES.every((p, i) => gate[i]?.note === p.note && gate[i]?.method === p.method && gate[i]?.path === p.path && gate[i]?.status === p.expect);
 
   // ---- tokenNeverLeaked
   const scan = input.result.leakScan;
   // Hashes (a bundle's, a fingerprint) are 64 hexadecimal characters like the access key, so a pattern cannot tell them apart;
   // what is checked here is the shape of a credential being recorded (an Authorization value, a key header with a value).
   const structural = input.evidenceTexts.every((t) => !/Bearer\s+\S/i.test(t) && !/x-poc-key["']?\s*:/i.test(t));
-  if (scan) checks.tokenNeverLeaked = scan.found.length === 0 && scan.filesScanned >= 50 && ["token", "accountId", "accessKey"].every((n) => scan.scannedFor.includes(n)) && structural;
+  if (scan)
+    checks.tokenNeverLeaked =
+      scan.found.length === 0 && scan.filesScanned >= 50 && ["token", "accountId", "accessKey"].every((n) => scan.scannedFor.includes(n)) && structural;
   else notes.push("no leak scan is recorded");
 
   // ---- informational, not checks
-  if (f.bindingsReadBack.workflowsListed !== null && !f.bindingsReadBack.workflowsListed.includes(f.names.workflow)) notes.push("the Workflow is not in Cloudflare's Workflows list: a run cannot be started (found on the real service on the first attempt)");
-  if (f.builds.rebuilt) notes.push(f.builds.rebuilt.sha256 === f.builds.base?.sha256 ? "the project bundles to the same bytes on a rebuild" : "the rebuilt bundle differs from the first one");
-  if (f.runs.fourth && f.runs.first) notes.push(f.runs.fourth.bundleSha256 === f.runs.first.bundleSha256 ? "the fourth run uploaded the same bundle as the first" : "the fourth run's bundle is not the first one's");
+  if (f.bindingsReadBack.workflowsListed !== null && !f.bindingsReadBack.workflowsListed.includes(f.names.workflow))
+    notes.push("the Workflow is not in Cloudflare's Workflows list: a run cannot be started (found on the real service on the first attempt)");
+  if (f.builds.rebuilt)
+    notes.push(
+      f.builds.rebuilt.sha256 === f.builds.base?.sha256
+        ? "the project bundles to the same bytes on a rebuild"
+        : "the rebuilt bundle differs from the first one",
+    );
+  if (f.runs.fourth && f.runs.first)
+    notes.push(
+      f.runs.fourth.bundleSha256 === f.runs.first.bundleSha256
+        ? "the fourth run uploaded the same bundle as the first"
+        : "the fourth run's bundle is not the first one's",
+    );
   return { ...(measured !== undefined ? { measured } : {}), checks, notes };
 }
 

@@ -1,20 +1,9 @@
 import { projectIntegrationToNodes } from "@poc/assembler";
-import type {
-  Catalog,
-  IntegrationManifestFile,
-  IntegrationOperation,
-} from "@poc/assembler";
+import type { Catalog, IntegrationManifestFile, IntegrationOperation } from "@poc/assembler";
 import type { BlobStore, ExecutionContext, Executor } from "@poc/sdk";
-import {
-  redactTelemetryPayload,
-  redactTelemetryString,
-} from "@poc/telemetry";
+import { redactTelemetryPayload, redactTelemetryString } from "@poc/telemetry";
 import { callOperation, IntegrationCallError } from "./call-operation.ts";
-import type {
-  CallOperationOptions,
-  CallOperationResult,
-  IntegrationFetcher,
-} from "./call-operation.ts";
+import type { CallOperationOptions, CallOperationResult, IntegrationFetcher } from "./call-operation.ts";
 import {
   DEFAULT_SECRET_HEADER_AND_FIELD_NAMES,
   NON_SECRET_CONNECTION_METADATA_KEYS,
@@ -37,10 +26,7 @@ import {
   validatePathSegmentValue,
   validateRawPathTemplate,
 } from "./integration/request-build.ts";
-import {
-  isRetryable,
-  parseRetryDelayMs,
-} from "./integration/retry.ts";
+import { isRetryable, parseRetryDelayMs } from "./integration/retry.ts";
 import type { ParseRetryDelayResult } from "./integration/retry.ts";
 
 export type { IntegrationFetcher };
@@ -86,11 +72,7 @@ export {
   validatePathSegmentValue,
   validateRawPathTemplate,
 };
-export type {
-  CallOperationOptions,
-  CallOperationResult,
-  ParseRetryDelayResult,
-};
+export type { CallOperationOptions, CallOperationResult, ParseRetryDelayResult };
 
 export function registerIntegrationManifest(manifest: IntegrationManifestFile): void {
   for (const operation of manifest.operations) {
@@ -105,9 +87,7 @@ export function registerCatalogIntegrations(catalog: Catalog): void {
   }
 }
 
-export function getRegisteredIntegrationOperation(
-  nodeType: string,
-): RegisteredIntegrationOperation | undefined {
+export function getRegisteredIntegrationOperation(nodeType: string): RegisteredIntegrationOperation | undefined {
   return registeredOperationsByNodeType.get(nodeType);
 }
 
@@ -121,10 +101,7 @@ export function getRegisteredTokenUrlsByApp(): Record<string, string> {
   return urls;
 }
 
-function mapOutputPorts(
-  operation: IntegrationOperation,
-  res: CallOperationResult,
-): Record<string, unknown> {
+function mapOutputPorts(operation: IntegrationOperation, res: CallOperationResult): Record<string, unknown> {
   const raw: Record<string, unknown> = {};
   if (isPlainObject(res.data)) {
     Object.assign(raw, res.data);
@@ -161,12 +138,8 @@ export function createIntegrationOperationExecutor(
       (e) => (e.op === operation.operationId || e.op === null || e.op === "*") && e.blocking,
     );
     if (blockingEntries.length > 0) {
-      const details = blockingEntries
-        .map((e) => (e.pointer ? `${e.code} at ${e.pointer}` : e.code))
-        .join(", ");
-      throw new Error(
-        `INTEGRATION_UNSUPPORTED_FEATURE: Integration "${manifest.app}" operation "${operation.operationId}" cannot run faithfully: ${details}`,
-      );
+      const details = blockingEntries.map((e) => (e.pointer ? `${e.code} at ${e.pointer}` : e.code)).join(", ");
+      throw new Error(`INTEGRATION_UNSUPPORTED_FEATURE: Integration "${manifest.app}" operation "${operation.operationId}" cannot run faithfully: ${details}`);
     }
 
     assertNoReservedDataKeys(ctx);
@@ -218,26 +191,24 @@ export function createIntegrationOperationExecutor(
       const redactOpts = { secretValues: trackedSecrets, secretFieldNames };
       const scrubbed = redactTelemetryPayload(rawOutput, redactOpts) as Record<string, unknown>;
 
-      await ctx.log?.info(
-        `Executed integration operation int:${manifest.app}.${operation.operationId}`,
-        {
-          app: manifest.app,
-          operationId: operation.operationId,
-          method: operation.method,
-          status: callResult.status,
-          pagesFetched: callResult.pagesFetched,
-        },
-      );
+      await ctx.log?.info(`Executed integration operation int:${manifest.app}.${operation.operationId}`, {
+        app: manifest.app,
+        operationId: operation.operationId,
+        method: operation.method,
+        status: callResult.status,
+        pagesFetched: callResult.pagesFetched,
+      });
 
       return scrubbed;
     } catch (err) {
       const redactOpts = { secretValues: trackedSecrets, secretFieldNames };
       const rawMessage = err instanceof Error ? err.message : String(err);
       const safeMessage = redactTelemetryString(rawMessage, redactOpts);
-      await ctx.log?.error(
-        `Integration operation int:${manifest.app}.${operation.operationId} failed: ${safeMessage}`,
-        { app: manifest.app, operationId: operation.operationId, method: operation.method },
-      );
+      await ctx.log?.error(`Integration operation int:${manifest.app}.${operation.operationId} failed: ${safeMessage}`, {
+        app: manifest.app,
+        operationId: operation.operationId,
+        method: operation.method,
+      });
       if (safeMessage !== rawMessage) {
         const redactedErr = new Error(safeMessage);
         if (err && typeof err === "object") {
@@ -251,18 +222,14 @@ export function createIntegrationOperationExecutor(
   };
 }
 
-export const executeIntegrationOperation: Executor = async (
-  ctx: ExecutionContext,
-): Promise<Record<string, unknown>> => {
+export const executeIntegrationOperation: Executor = async (ctx: ExecutionContext): Promise<Record<string, unknown>> => {
   assertNoReservedDataKeys(ctx);
 
   const ctxWithMeta = ctx as ExecutionContext & { nodeType?: string };
   const nodeType =
     ctxWithMeta.nodeType ??
     (typeof ctx.data.nodeType === "string" ? ctx.data.nodeType : undefined) ??
-    (typeof ctx.data.app === "string" && typeof ctx.data.operationId === "string"
-      ? `int:${ctx.data.app}.${ctx.data.operationId}`
-      : undefined);
+    (typeof ctx.data.app === "string" && typeof ctx.data.operationId === "string" ? `int:${ctx.data.app}.${ctx.data.operationId}` : undefined);
 
   if (nodeType) {
     const reg = registeredOperationsByNodeType.get(nodeType);
@@ -272,14 +239,10 @@ export const executeIntegrationOperation: Executor = async (
     }
   }
 
-  throw new Error(
-    `INTEGRATION_OPERATION_NOT_FOUND: No registered integration operation found for node "${ctx.nodeId}"${nodeType ? ` (${nodeType})` : ""}`,
-  );
+  throw new Error(`INTEGRATION_OPERATION_NOT_FOUND: No registered integration operation found for node "${ctx.nodeId}"${nodeType ? ` (${nodeType})` : ""}`);
 };
 
-export function projectCatalogIntegrations(
-  catalog: Catalog,
-): Array<{
+export function projectCatalogIntegrations(catalog: Catalog): Array<{
   app: string;
   manifest: IntegrationManifestFile;
   nodes: ReturnType<typeof projectIntegrationToNodes>;

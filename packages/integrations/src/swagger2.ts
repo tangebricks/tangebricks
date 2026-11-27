@@ -23,9 +23,8 @@ function deepRewriteRefs(val: unknown): unknown {
   const obj = val as Record<string, any>;
   const res: Record<string, any> = {};
   for (const [k, v] of Object.entries(obj)) {
-    res[k] = k === "$ref" && typeof v === "string" && v.startsWith("#/definitions/")
-      ? v.replace(/^#\/definitions\//, "#/components/schemas/")
-      : deepRewriteRefs(v);
+    res[k] =
+      k === "$ref" && typeof v === "string" && v.startsWith("#/definitions/") ? v.replace(/^#\/definitions\//, "#/components/schemas/") : deepRewriteRefs(v);
   }
   return res;
 }
@@ -62,9 +61,7 @@ export function swagger2ToOpenApi3(rawSwagger: Record<string, any>): Swagger2Con
   // 1. host / basePath / schemes -> servers
   const schemes = Array.isArray(rawSwagger.schemes) && rawSwagger.schemes.length > 0 ? rawSwagger.schemes : ["https"];
   const host = typeof rawSwagger.host === "string" ? rawSwagger.host : "";
-  const basePath = typeof rawSwagger.basePath === "string"
-    ? (rawSwagger.basePath.startsWith("/") ? rawSwagger.basePath : `/${rawSwagger.basePath}`)
-    : "";
+  const basePath = typeof rawSwagger.basePath === "string" ? (rawSwagger.basePath.startsWith("/") ? rawSwagger.basePath : `/${rawSwagger.basePath}`) : "";
   let serverUrl = "/";
   let swaggerServerPtr = "#/basePath";
   if (host) {
@@ -137,15 +134,13 @@ export function swagger2ToOpenApi3(rawSwagger: Record<string, any>): Swagger2Con
       const opConsumes = Array.isArray(opRaw.consumes) && opRaw.consumes.length > 0 ? opRaw.consumes : rootConsumes;
       const opProduces = Array.isArray(opRaw.produces) && opRaw.produces.length > 0 ? opRaw.produces : rootProduces;
 
-      const opParams: Array<{ param: any; origIndex: number }> = (
-        Array.isArray(opRaw.parameters) ? opRaw.parameters : []
-      ).map((param: any, origIndex: number) => ({ param, origIndex }));
+      const opParams: Array<{ param: any; origIndex: number }> = (Array.isArray(opRaw.parameters) ? opRaw.parameters : []).map(
+        (param: any, origIndex: number) => ({ param, origIndex }),
+      );
 
       const bodyParams = opParams.filter((p) => isPlainObject(p.param) && p.param.in === "body");
       const formDataParams = opParams.filter((p) => isPlainObject(p.param) && p.param.in === "formData");
-      const standardParams = opParams.filter(
-        (p) => isPlainObject(p.param) && p.param.in !== "body" && p.param.in !== "formData",
-      );
+      const standardParams = opParams.filter((p) => isPlainObject(p.param) && p.param.in !== "body" && p.param.in !== "formData");
 
       const oas3Params: any[] = [];
       let newParamIdx = 0;
@@ -218,7 +213,9 @@ export function swagger2ToOpenApi3(rawSwagger: Record<string, any>): Swagger2Con
         const hasFile = formDataParams.some((fp) => fp.param.type === "file");
         const contentType = hasFile
           ? "multipart/form-data"
-          : (opConsumes.includes("multipart/form-data") ? "multipart/form-data" : "application/x-www-form-urlencoded");
+          : opConsumes.includes("multipart/form-data")
+            ? "multipart/form-data"
+            : "application/x-www-form-urlencoded";
 
         const properties: Record<string, any> = {};
         const required: string[] = [];
@@ -228,21 +225,19 @@ export function swagger2ToOpenApi3(rawSwagger: Record<string, any>): Swagger2Con
           const origParamPtr = `#/paths/${opEsc}/parameters/${fp.origIndex}`;
           if (p.required === true) required.push(p.name);
 
-          properties[p.name] = p.type === "file"
-            ? { type: "string", format: "binary", ...(p.description ? { description: p.description } : {}) }
-            : {
-                ...(p.type ? { type: p.type } : { type: "string" }),
-                ...(p.format ? { format: p.format } : {}),
-                ...(p.items ? { items: deepRewriteRefs(p.items) } : {}),
-                ...(p.description ? { description: p.description } : {}),
-                ...(p.enum ? { enum: p.enum } : {}),
-                ...(p.default !== undefined ? { default: p.default } : {}),
-              };
+          properties[p.name] =
+            p.type === "file"
+              ? { type: "string", format: "binary", ...(p.description ? { description: p.description } : {}) }
+              : {
+                  ...(p.type ? { type: p.type } : { type: "string" }),
+                  ...(p.format ? { format: p.format } : {}),
+                  ...(p.items ? { items: deepRewriteRefs(p.items) } : {}),
+                  ...(p.description ? { description: p.description } : {}),
+                  ...(p.enum ? { enum: p.enum } : {}),
+                  ...(p.default !== undefined ? { default: p.default } : {}),
+                };
 
-          pointerMap.set(
-            `#/paths/${opEsc}/requestBody/content/${escapeJsonPointer(contentType)}/schema/properties/${escapeJsonPointer(p.name)}`,
-            origParamPtr,
-          );
+          pointerMap.set(`#/paths/${opEsc}/requestBody/content/${escapeJsonPointer(contentType)}/schema/properties/${escapeJsonPointer(p.name)}`, origParamPtr);
         }
 
         const schema: Record<string, any> = {

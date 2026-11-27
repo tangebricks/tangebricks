@@ -7,7 +7,8 @@ import { executeHttpRequestNode } from "../src/index.ts";
 const originalFetch = globalThis.fetch;
 
 function ctxFor(data: Record<string, unknown>): ExecutionContext {
-  return { workspaceId: "ws_test",
+  return {
+    workspaceId: "ws_test",
     nodeId: "n_http",
     runId: "run_ssrf",
     idempotencyKey: "idem_ssrf",
@@ -17,7 +18,7 @@ function ctxFor(data: Record<string, unknown>): ExecutionContext {
     secret: (name: string) => {
       throw new Error(`undeclared secret ${name}`);
     },
-    binding: <T,>(name: string): T => {
+    binding: <T>(name: string): T => {
       throw new Error(`undeclared binding ${name}`);
     },
   };
@@ -87,9 +88,7 @@ describe("core.http_request live path SSRF guard", () => {
       calls.push(String(input));
       return new Response("x", { status: 200 });
     }) as typeof fetch;
-    const err = await Promise.resolve(
-      executeHttpRequestNode(ctxFor({ liveFetch: true, method: "get", url: "http://fixture.local:8080/x" })),
-    ).then(
+    const err = await Promise.resolve(executeHttpRequestNode(ctxFor({ liveFetch: true, method: "get", url: "http://fixture.local:8080/x" }))).then(
       () => null,
       (e: unknown) => e,
     );
@@ -98,11 +97,8 @@ describe("core.http_request live path SSRF guard", () => {
   });
 
   it("does not follow redirects from the fixture host", async () => {
-    globalThis.fetch = (async () =>
-      new Response(null, { status: 302, headers: { location: "http://127.0.0.1/" } })) as typeof fetch;
-    await expect(executeHttpRequestNode(ctxFor({ method: "get", url: "http://fixture.local/x" }))).rejects.toThrow(
-      /redirects from the fixture host/,
-    );
+    globalThis.fetch = (async () => new Response(null, { status: 302, headers: { location: "http://127.0.0.1/" } })) as typeof fetch;
+    await expect(executeHttpRequestNode(ctxFor({ method: "get", url: "http://fixture.local/x" }))).rejects.toThrow(/redirects from the fixture host/);
   });
 
   it("does not treat look-alike hosts as the fixture host", async () => {
@@ -112,9 +108,7 @@ describe("core.http_request live path SSRF guard", () => {
       return new Response("x", { status: 200 });
     }) as typeof fetch;
     // Not the fixture host and live fetch off: nothing is sent and no 200 is fabricated (story 0.9).
-    await expect(executeHttpRequestNode(ctxFor({ url: "http://fixture.local.attacker.example/x" }))).rejects.toThrow(
-      /^NOT_CONFIGURED: core\.http_request/,
-    );
+    await expect(executeHttpRequestNode(ctxFor({ url: "http://fixture.local.attacker.example/x" }))).rejects.toThrow(/^NOT_CONFIGURED: core\.http_request/);
     expect(calls).toHaveLength(0);
   });
 

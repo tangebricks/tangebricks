@@ -1,13 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  DEPLOY_HISTORY_TABLE,
-  DEPLOY_TABLE,
-  createClient,
-  deploy,
-  memoryStore,
-  openLedger,
-  resourceNames,
-} from "../src/provisioner/index.ts";
+import { DEPLOY_HISTORY_TABLE, DEPLOY_TABLE, createClient, deploy, memoryStore, openLedger, resourceNames } from "../src/provisioner/index.ts";
 import * as provisioner from "../src/provisioner/index.ts";
 import type { DeployInput, Migration } from "../src/provisioner/index.ts";
 import { createFakeCloudflare } from "./support/fake-cloudflare.ts";
@@ -38,7 +30,11 @@ function setup() {
     timeMs += 1000;
     return new Date(timeMs);
   };
-  const ledger = openLedger(store, () => SUFFIX, () => nextTime());
+  const ledger = openLedger(
+    store,
+    () => SUFFIX,
+    () => nextTime(),
+  );
   const names = resourceNames(SUFFIX);
   const input = (over: Partial<DeployInput> = {}): DeployInput => ({
     client,
@@ -59,9 +55,7 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
     const { fake, client, names, input } = setup();
 
     // 1. First deploy (v1): establishes the script and baseline schema
-    const v1Migrations: Migration[] = [
-      { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" },
-    ];
+    const v1Migrations: Migration[] = [{ name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" }];
     await deploy(input({ migrations: v1Migrations, bundle: BUNDLE_V1 }));
 
     const dbs = await client.listDatabases(names.database);
@@ -69,10 +63,7 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
     expect(databaseId).toBeDefined();
 
     // 2. Second deploy (v2): additive migration + code change
-    const v2Migrations: Migration[] = [
-      ...v1Migrations,
-      { name: "0002_add_col.sql", sql: "ALTER TABLE items ADD COLUMN note TEXT;" },
-    ];
+    const v2Migrations: Migration[] = [...v1Migrations, { name: "0002_add_col.sql", sql: "ALTER TABLE items ADD COLUMN note TEXT;" }];
 
     const callsBeforeV2 = client.calls.length;
     await deploy(input({ migrations: v2Migrations, bundle: BUNDLE_V2 }));
@@ -81,42 +72,30 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
 
     // Assert call sequence order:
     // (1) bookmark
-    const bookmarkCallIndex = v2Calls.findIndex(
-      (c) => c.method === "GET" && c.path.includes("/time_travel/bookmark"),
-    );
+    const bookmarkCallIndex = v2Calls.findIndex((c) => c.method === "GET" && c.path.includes("/time_travel/bookmark"));
     expect(bookmarkCallIndex, "must call time_travel/bookmark").toBeGreaterThanOrEqual(0);
 
     // (2) additive migrations
-    const migrationWriteIndex = v2Calls.findIndex(
-      (c) => c.method === "POST" && c.path.includes("/query") && c.sqlKind === "write",
-    );
+    const migrationWriteIndex = v2Calls.findIndex((c) => c.method === "POST" && c.path.includes("/query") && c.sqlKind === "write");
     expect(migrationWriteIndex, "must execute additive migration write").toBeGreaterThanOrEqual(0);
     expect(bookmarkCallIndex, "bookmark must happen before migration write").toBeLessThan(migrationWriteIndex);
 
     // (3) POST /workers/scripts/{name}/versions (uploadVersion)
-    const uploadVersionIndex = v2Calls.findIndex(
-      (c) => c.method === "POST" && c.path.includes(`/workers/scripts/${names.script}/versions`),
-    );
+    const uploadVersionIndex = v2Calls.findIndex((c) => c.method === "POST" && c.path.includes(`/workers/scripts/${names.script}/versions`));
     expect(uploadVersionIndex, "must call POST .../versions (uploadVersion)").toBeGreaterThanOrEqual(0);
     expect(migrationWriteIndex, "migration write must happen before uploadVersion").toBeLessThan(uploadVersionIndex);
 
     // (4) smoke request with header Cloudflare-Workers-Version-Overrides: {name}="{version}"
-    const smokeCallIndex = v2Calls.findIndex(
-      (c) => (c.path === "/healthz" || c.path === "/readyz" || c.path.includes("healthz") || c.path.includes("readyz")),
-    );
+    const smokeCallIndex = v2Calls.findIndex((c) => c.path === "/healthz" || c.path === "/readyz" || c.path.includes("healthz") || c.path.includes("readyz"));
     expect(smokeCallIndex, "must execute smoke check").toBeGreaterThanOrEqual(0);
     expect(uploadVersionIndex, "uploadVersion must happen before smoke check").toBeLessThan(smokeCallIndex);
 
     // Check request bodies / headers recorded by fake for the smoke call
-    const smokeReq = (fake as any).requests?.find(
-      (r: any) => r.path?.includes("healthz") || r.path === "/healthz",
-    );
+    const smokeReq = (fake as any).requests?.find((r: any) => r.path?.includes("healthz") || r.path === "/healthz");
     expect(smokeReq, "fake must receive smoke request").toBeDefined();
 
     // (5) POST …/deployments at 100%
-    const deploymentCallIndex = v2Calls.findIndex(
-      (c) => c.method === "POST" && c.path.includes(`/workers/scripts/${names.script}/deployments`),
-    );
+    const deploymentCallIndex = v2Calls.findIndex((c) => c.method === "POST" && c.path.includes(`/workers/scripts/${names.script}/deployments`));
     expect(deploymentCallIndex, "must call POST .../deployments to shift traffic").toBeGreaterThanOrEqual(0);
     expect(smokeCallIndex, "smoke check must happen before createDeployment").toBeLessThan(deploymentCallIndex);
 
@@ -141,18 +120,19 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
 
-    const [v1DeployRow] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [v1DeployRow] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     const v1VersionId = String(v1DeployRow!.results[0]!.version_id);
     expect(v1VersionId).toBeDefined();
 
     // 2. Configure fake smoke route to fail with 500
     if (typeof (fake as any).setHealthStub === "function") {
-      (fake as any).setHealthStub(() => new Response(JSON.stringify({ error: "crash_on_boot" }), {
-        status: 500,
-        headers: { "content-type": "application/json" },
-      }));
+      (fake as any).setHealthStub(
+        () =>
+          new Response(JSON.stringify({ error: "crash_on_boot" }), {
+            status: 500,
+            headers: { "content-type": "application/json" },
+          }),
+      );
     } else {
       (fake as any).fail({
         when: (_m: string, p: string) => p.includes("healthz") || p === "/healthz",
@@ -176,16 +156,12 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
       const deployments = await (client as any).listDeployments(names.script);
       if (deployments && deployments.length > 0) {
         const latest = deployments[0]!;
-        expect(latest.versions).toEqual(
-          expect.arrayContaining([{ versionId: v1VersionId, percentage: 100 }]),
-        );
+        expect(latest.versions).toEqual(expect.arrayContaining([{ versionId: v1VersionId, percentage: 100 }]));
       }
     }
 
     // Deploy table must not be updated to the failed version
-    const [deployRowAfter] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowAfter] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     expect(deployRowAfter!.results[0]!.version_id).toBe(v1VersionId);
 
     // Deploy history must record status: smoke_failed
@@ -207,16 +183,12 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
 
-    const [v1DeployRow] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [v1DeployRow] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     const v1VersionId = String(v1DeployRow!.results[0]!.version_id);
 
     // 2. Deploy v2
     await deploy(input({ bundle: BUNDLE_V2 }));
-    const [v2DeployRow] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [v2DeployRow] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     const v2VersionId = String(v2DeployRow!.results[0]!.version_id);
     expect(v2VersionId).not.toBe(v1VersionId);
 
@@ -228,9 +200,7 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
 
     // AC3: Exactly 1 deployment call and 0 upload calls
     const rollbackCalls = client.calls.slice(callsBeforeRollback);
-    const deploymentCalls = rollbackCalls.filter(
-      (c) => c.method === "POST" && c.path.includes("/deployments"),
-    );
+    const deploymentCalls = rollbackCalls.filter((c) => c.method === "POST" && c.path.includes("/deployments"));
     expect(deploymentCalls.length, "rollback makes exactly 1 deployment call").toBe(1);
 
     const uploadCalls = rollbackCalls.filter(
@@ -239,9 +209,7 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
     expect(uploadCalls.length, "rollback makes 0 uploads").toBe(0);
 
     // Deploy table reflects v1 is active again
-    const [deployRowAfterRollback] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowAfterRollback] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     expect(deployRowAfterRollback!.results[0]!.version_id).toBe(v1VersionId);
   });
 
@@ -249,27 +217,18 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
     const { client, names, input } = setup();
 
     // 1. Deploy v1 with initial migration
-    const v1Migrations: Migration[] = [
-      { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY);" },
-    ];
+    const v1Migrations: Migration[] = [{ name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY);" }];
     await deploy(input({ bundle: BUNDLE_V1, migrations: v1Migrations }));
 
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
-    const [v1Row] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [v1Row] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     const v1VersionId = String(v1Row!.results[0]!.version_id);
 
     // 2. Deploy v2 with additive migration
-    const v2Migrations: Migration[] = [
-      ...v1Migrations,
-      { name: "0002_extra.sql", sql: "ALTER TABLE items ADD COLUMN info TEXT;" },
-    ];
+    const v2Migrations: Migration[] = [...v1Migrations, { name: "0002_extra.sql", sql: "ALTER TABLE items ADD COLUMN info TEXT;" }];
     await deploy(input({ bundle: BUNDLE_V2, migrations: v2Migrations }));
-    const [v2Row] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [v2Row] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     const v2VersionId = String(v2Row!.results[0]!.version_id);
     expect(v2VersionId).not.toBe(v1VersionId);
 
@@ -288,9 +247,7 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
     expect(dryRun.warning).toContain("0002_extra.sql");
 
     // Traffic unchanged in dry run
-    const [deployRowDry] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowDry] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     expect(deployRowDry!.results[0]!.version_id).toBe(v2VersionId);
 
     // 4. Real run with yes
@@ -307,9 +264,7 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
 
     // AC3 check on calls made by runRollback
     const yesCalls = client.calls.slice(callsBeforeYes);
-    const deploymentsCalls = yesCalls.filter(
-      (c) => c.method === "POST" && c.path.includes("/deployments"),
-    );
+    const deploymentsCalls = yesCalls.filter((c) => c.method === "POST" && c.path.includes("/deployments"));
     expect(deploymentsCalls.length).toBe(1);
     const uploadsCalls = yesCalls.filter(
       (c) => (c.method === "PUT" || c.method === "POST") && c.path.includes("/workers/scripts") && !c.path.includes("/deployments"),
@@ -317,9 +272,7 @@ describe("Safe deploy order and rollback (UC8.6)", () => {
     expect(uploadsCalls.length).toBe(0);
 
     // Deploy table active version is updated to v1
-    const [deployRowReal] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` },
-    ]);
+    const [deployRowReal] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id FROM ${DEPLOY_TABLE} WHERE id = 1;` }]);
     expect(deployRowReal!.results[0]!.version_id).toBe(v1VersionId);
   });
 });

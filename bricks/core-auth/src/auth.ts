@@ -36,12 +36,7 @@ function requireSecret(name: string, value: string | undefined): string {
  * explicit, from `hardenedBetterAuthOptions`; session tokens are stored as sha256 digests (`hashedSessionDatabase`).
  * `requestHeaders` lets the rate limiter key on the Cloudflare client address when there is one.
  */
-export function createBetterAuth(
-  env: AuthEnv,
-  requestUrl?: string,
-  sessionDurationSeconds = 86400,
-  requestHeaders?: Headers,
-) {
+export function createBetterAuth(env: AuthEnv, requestUrl?: string, sessionDurationSeconds = 86400, requestHeaders?: Headers) {
   const requestOrigin = requestUrl ? new URL(requestUrl).origin : "https://example.test";
   // No fallback: a missing signing secret must fail loudly, never sign sessions with a value written in source.
   const secret = requireSecret("BETTER_AUTH_SECRET", env.BETTER_AUTH_SECRET);
@@ -68,10 +63,7 @@ export function createBetterAuth(
       minPasswordLength: 8,
     },
     // GitHub sign-in is configured only when both credentials are provided.
-    socialProviders:
-      githubClientId && githubClientSecret
-        ? { github: { clientId: githubClientId, clientSecret: githubClientSecret } }
-        : {},
+    socialProviders: githubClientId && githubClientSecret ? { github: { clientId: githubClientId, clientSecret: githubClientSecret } } : {},
     plugins: [bearer()],
   });
 }
@@ -81,15 +73,10 @@ export function normalizeAuthHeaders(rawHeaders: Headers): { headers: Headers; p
   const authHeader = headers.get("authorization")?.trim() ?? "";
   const cookieHeader = headers.get("cookie") ?? "";
   const hasBearer = authHeader.length > 0;
-  const hasSessionCookie =
-    cookieHeader.includes("better-auth.session_token=") ||
-    cookieHeader.includes("__Secure-better-auth.session_token=");
+  const hasSessionCookie = cookieHeader.includes("better-auth.session_token=") || cookieHeader.includes("__Secure-better-auth.session_token=");
 
   if (cookieHeader.includes("__Secure-better-auth.session_token=") && !cookieHeader.includes("; better-auth.session_token=")) {
-    headers.set(
-      "cookie",
-      cookieHeader.replaceAll("__Secure-better-auth.session_token=", "better-auth.session_token="),
-    );
+    headers.set("cookie", cookieHeader.replaceAll("__Secure-better-auth.session_token=", "better-auth.session_token="));
   }
 
   return {
@@ -118,19 +105,13 @@ export async function resolveAuthSession(
     return { user: null, session: null, presentedCredentials: true };
   }
 
-  const expiresAtIso =
-    resolved.session.expiresAt instanceof Date
-      ? resolved.session.expiresAt.toISOString()
-      : String(resolved.session.expiresAt);
+  const expiresAtIso = resolved.session.expiresAt instanceof Date ? resolved.session.expiresAt.toISOString() : String(resolved.session.expiresAt);
   const expiresAtMs = Date.parse(expiresAtIso);
   if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
     return { user: null, session: null, presentedCredentials: true };
   }
 
-  const createdAtIso =
-    resolved.user.createdAt instanceof Date
-      ? resolved.user.createdAt.toISOString()
-      : String(resolved.user.createdAt);
+  const createdAtIso = resolved.user.createdAt instanceof Date ? resolved.user.createdAt.toISOString() : String(resolved.user.createdAt);
 
   return {
     user: {

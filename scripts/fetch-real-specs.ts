@@ -22,8 +22,7 @@ const repoRoot = resolve(__dirname, "..");
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  let manifestPath =
-    process.env.CORPUS_MANIFEST_PATH || resolve(repoRoot, "corpus/real-specs/manifest.json");
+  let manifestPath = process.env.CORPUS_MANIFEST_PATH || resolve(repoRoot, "corpus/real-specs/manifest.json");
   let cacheDir = process.env.CORPUS_CACHE_DIR || resolve(repoRoot, "corpus/real-specs/.cache");
   let updateId: string | null = null;
 
@@ -123,8 +122,7 @@ async function updateSpec(manifestPath: string, cacheDir: string, specId: string
   entry.bytes = newBytes;
 
   if (entry.snapshot || entry.format === "google-discovery") {
-    const snapshotRel =
-      entry.snapshot || `corpus/real-specs/snapshots/${entry.id}.json.gz`;
+    const snapshotRel = entry.snapshot || `corpus/real-specs/snapshots/${entry.id}.json.gz`;
     const snapshotPath = resolveSnapshotPath(manifestPath, snapshotRel);
     mkdirSync(dirname(snapshotPath), { recursive: true });
     const gz = gzipSync(buf, { level: 9 });
@@ -169,9 +167,7 @@ async function main() {
       const existingHash = computeSha256(existingBuf);
 
       if (existingHash !== entry.sha256 || existingBuf.length !== entry.bytes) {
-        console.error(
-          `CORPUS_HASH_MISMATCH: ${entry.id} (cached sha256 ${existingHash} != expected ${entry.sha256})`
-        );
+        console.error(`CORPUS_HASH_MISMATCH: ${entry.id} (cached sha256 ${existingHash} != expected ${entry.sha256})`);
         process.exitCode = 1;
         return;
       }
@@ -196,9 +192,7 @@ async function main() {
 
     const hash = computeSha256(contentBuf);
     if (hash !== entry.sha256 || contentBuf.length !== entry.bytes) {
-      console.error(
-        `CORPUS_HASH_MISMATCH: ${entry.id} (downloaded sha256 ${hash} != expected ${entry.sha256})`
-      );
+      console.error(`CORPUS_HASH_MISMATCH: ${entry.id} (downloaded sha256 ${hash} != expected ${entry.sha256})`);
       process.exitCode = 1;
       return;
     }

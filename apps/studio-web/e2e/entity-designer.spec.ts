@@ -33,9 +33,7 @@ test.describe("Visual Entity Designer with SQL migration, route, and workspace_i
     await page.getByTestId("new-entity-button").click();
     const entityNameInput = page.getByTestId("entity-name-input");
     await entityNameInput.fill("wallet");
-    await expect(page.getByTestId("entity-name-error")).toContainText(
-      "collides with a reserved brick route prefix (/api/wallet)",
-    );
+    await expect(page.getByTestId("entity-name-error")).toContainText("collides with a reserved brick route prefix (/api/wallet)");
     await expect(page.getByTestId("save-entity-button")).toBeDisabled();
 
     // 3. Enter valid entity name "invoices" and configure 4 fields:
@@ -90,20 +88,14 @@ test.describe("Visual Entity Designer with SQL migration, route, and workspace_i
     const ddlCode = page.getByTestId("entity-sql-ddl-code");
     await expect(ddlCode).toContainText('CREATE TABLE IF NOT EXISTS "ent_invoices"');
     await expect(ddlCode).toContainText('"workspace_id" TEXT NOT NULL');
-    await expect(ddlCode).toContainText(
-      `"status" TEXT NOT NULL CHECK ("status" IN ('draft', 'paid', 'void'))`,
-    );
+    await expect(ddlCode).toContainText(`"status" TEXT NOT NULL CHECK ("status" IN ('draft', 'paid', 'void'))`);
     await expect(ddlCode).toContainText('UNIQUE("workspace_id", "customer_email")');
     await expect(ddlCode).toContainText(
       'CREATE INDEX IF NOT EXISTS "idx_ent_invoices_workspace_customer_email" ON "ent_invoices"("workspace_id", "customer_email")',
     );
 
-    await expect(page.getByTestId("entity-crud-routes-preview")).toContainText(
-      "POST /api/entities/invoices",
-    );
-    await expect(page.getByTestId("entity-isolation-sql-code")).toContainText(
-      'WHERE "workspace_id" = :ctx.workspaceId',
-    );
+    await expect(page.getByTestId("entity-crud-routes-preview")).toContainText("POST /api/entities/invoices");
+    await expect(page.getByTestId("entity-isolation-sql-code")).toContainText('WHERE "workspace_id" = :ctx.workspaceId');
 
     // 6. Save entity -> persists add_entity to BlueprintDO
     await expect(page.getByTestId("save-entity-button")).toBeEnabled();
@@ -126,16 +118,12 @@ test.describe("Visual Entity Designer with SQL migration, route, and workspace_i
 
     // 8. Drop paid_at field -> verify live ALTER TABLE DROP COLUMN preview and Destructive Migration Confirmation modal
     await page.getByTestId("field-remove-button-3").click();
-    await expect(page.getByTestId("entity-sql-ddl-code")).toContainText(
-      'ALTER TABLE "ent_invoices" DROP COLUMN "paid_at";',
-    );
+    await expect(page.getByTestId("entity-sql-ddl-code")).toContainText('ALTER TABLE "ent_invoices" DROP COLUMN "paid_at";');
 
     await page.getByTestId("save-entity-button").click();
     const destructiveModal = page.getByTestId("destructive-entity-modal");
     await expect(destructiveModal).toBeVisible();
-    await expect(page.getByTestId("destructive-entity-reasons")).toContainText(
-      'Drops column "paid_at"',
-    );
+    await expect(page.getByTestId("destructive-entity-reasons")).toContainText('Drops column "paid_at"');
 
     await page.getByTestId("destructive-entity-confirm").click();
     await expect(destructiveModal).toHaveCount(0);

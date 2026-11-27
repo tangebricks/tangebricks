@@ -19,11 +19,7 @@ export interface JwksFetchOptions {
   now?: () => number;
 }
 
-export async function resolveJwksUri(
-  issuer: string,
-  configuredUri?: string,
-  fetcher: typeof fetch = fetch,
-): Promise<string> {
+export async function resolveJwksUri(issuer: string, configuredUri?: string, fetcher: typeof fetch = fetch): Promise<string> {
   if (configuredUri && configuredUri.trim().length > 0) {
     return configuredUri.trim();
   }
@@ -48,46 +44,29 @@ export async function resolveJwksUri(
   return `${cleanIssuer}/.well-known/jwks.json`;
 }
 
-export async function fetchJwksFromNetwork(
-  jwksUri: string,
-  fetcher: typeof fetch,
-  now: number,
-  existingEntry?: JwksCacheEntry,
-): Promise<JwksCacheEntry> {
+export async function fetchJwksFromNetwork(jwksUri: string, fetcher: typeof fetch, now: number, existingEntry?: JwksCacheEntry): Promise<JwksCacheEntry> {
   let res: Response;
   try {
     res = await fetcher(jwksUri, {
       headers: { Accept: "application/json" },
     });
   } catch (err) {
-    throw new OidcVerificationError(
-      "jwks_unavailable",
-      `Failed to contact JWKS endpoint: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    throw new OidcVerificationError("jwks_unavailable", `Failed to contact JWKS endpoint: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   if (!res.ok) {
-    throw new OidcVerificationError(
-      "jwks_unavailable",
-      `JWKS endpoint returned HTTP status ${res.status}`,
-    );
+    throw new OidcVerificationError("jwks_unavailable", `JWKS endpoint returned HTTP status ${res.status}`);
   }
 
   let body: { keys?: JsonWebKey[] };
   try {
     body = (await res.json()) as { keys?: JsonWebKey[] };
   } catch (err) {
-    throw new OidcVerificationError(
-      "jwks_unavailable",
-      `Invalid JSON from JWKS endpoint: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    throw new OidcVerificationError("jwks_unavailable", `Invalid JSON from JWKS endpoint: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   if (!body || !Array.isArray(body.keys)) {
-    throw new OidcVerificationError(
-      "jwks_unavailable",
-      "JWKS endpoint response missing keys array",
-    );
+    throw new OidcVerificationError("jwks_unavailable", "JWKS endpoint response missing keys array");
   }
 
   // Parse Cache-Control header: clamp between min 60s and max 24h (86400s)
@@ -133,11 +112,7 @@ export async function fetchJwksFromNetwork(
   return entry;
 }
 
-export async function getJwksKey(
-  jwksUri: string,
-  kid?: string,
-  options: JwksFetchOptions = {},
-): Promise<JsonWebKey> {
+export async function getJwksKey(jwksUri: string, kid?: string, options: JwksFetchOptions = {}): Promise<JsonWebKey> {
   const fetcher = options.fetcher ?? fetch;
   const now = options.now ? options.now() : Date.now();
 
@@ -160,10 +135,7 @@ export async function getJwksKey(
         entry.lastUnknownKidRefetch = now;
         const refetched = entry.keys.find((k) => k.kid === kid);
         if (refetched) return refetched;
-        throw new OidcVerificationError(
-          "kid_unknown",
-          `Key identifier "${kid}" not found in refreshed JWKS`,
-        );
+        throw new OidcVerificationError("kid_unknown", `Key identifier "${kid}" not found in refreshed JWKS`);
       } catch (err) {
         if (err instanceof OidcVerificationError) throw err;
         // If refetch fails, try serving stale if within window

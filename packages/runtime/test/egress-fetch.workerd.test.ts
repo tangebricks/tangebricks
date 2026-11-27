@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createHardenedFetch,
-  isPrivateAddress,
-} from "../src/index.ts";
+import { createHardenedFetch, isPrivateAddress } from "../src/index.ts";
 
 describe("UC1.3 — Hardened Egress Fetch", () => {
   const allowedHosts = ["api.github.com", "api.stripe.com"];
@@ -176,14 +173,7 @@ describe("UC1.3 — Hardened Egress Fetch", () => {
   });
 
   it("(f) throws INTEGRATION_PRIVATE_ADDRESS when resolveHost returns private, loopback, link-local, CGNAT, or metadata IP", async () => {
-    const privateIps = [
-      "10.0.0.5",
-      "169.254.169.254",
-      "127.0.0.1",
-      "::1",
-      "fc00::1",
-      "100.64.0.1",
-    ];
+    const privateIps = ["10.0.0.5", "169.254.169.254", "127.0.0.1", "::1", "fc00::1", "100.64.0.1"];
 
     for (const badIp of privateIps) {
       const baseFetcher = vi.fn();

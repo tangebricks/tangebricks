@@ -124,7 +124,9 @@ describe("story 1.17: executing control-plane routes are replay-resistant", () =
       expect(await status({ [TELEMETRY_SIGNATURE_HEADER]: legacy })).toBe(401);
       expect(await status({ [TELEMETRY_SIGNATURE_HEADER]: legacy, [SIGNED_AT_HEADER]: String(Math.floor(Date.now() / 1000)) })).toBe(401);
       // A telemetry webhook signature over the same body (cross-purpose).
-      expect(await status({ [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryWebhook(body, secretA), [SIGNED_AT_HEADER]: String(Math.floor(Date.now() / 1000)) })).toBe(401);
+      expect(
+        await status({ [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryWebhook(body, secretA), [SIGNED_AT_HEADER]: String(Math.floor(Date.now() / 1000)) }),
+      ).toBe(401);
       // Signed with project B's derived secret, or with Studio's root secret: refused by project A's worker.
       expect(await status(await signControlPlaneRequest(secretB, "POST", path, body))).toBe(401);
       expect(await status(await signControlPlaneRequest(ROOT, "POST", path, body))).toBe(401);

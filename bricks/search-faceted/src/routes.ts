@@ -35,14 +35,7 @@ export function createSearchRoutes(): Hono<SearchEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("searchService") || new FacetedSearchService(c.env.DB);
-    const doc = await service.indexDocument(
-      workspaceId,
-      parsed.data.entityType,
-      parsed.data.entityId,
-      parsed.data.title,
-      parsed.data.body,
-      parsed.data.facets
-    );
+    const doc = await service.indexDocument(workspaceId, parsed.data.entityType, parsed.data.entityId, parsed.data.title, parsed.data.body, parsed.data.facets);
 
     return c.json({ document: doc }, 201);
   });

@@ -33,11 +33,11 @@ describe("studio-web production bundle has no test hooks or fake values (PROPOSE
 
   beforeAll(() => {
     outDir = mkdtempSync(join(tmpdir(), "studio-web-prod-build-"));
-    execFileSync(
-      process.execPath,
-      [viteBin, "build", "--mode", "production", "--outDir", outDir, "--emptyOutDir", "--logLevel", "error"],
-      { cwd: studioWebDir, stdio: "pipe", env: { ...process.env, NODE_ENV: "production" } },
-    );
+    execFileSync(process.execPath, [viteBin, "build", "--mode", "production", "--outDir", outDir, "--emptyOutDir", "--logLevel", "error"], {
+      cwd: studioWebDir,
+      stdio: "pipe",
+      env: { ...process.env, NODE_ENV: "production" },
+    });
     emitted = listFiles(outDir)
       .filter((p) => /\.(js|mjs|html)$/.test(p))
       .map((path) => ({ path, text: readFileSync(path, "utf8") }));

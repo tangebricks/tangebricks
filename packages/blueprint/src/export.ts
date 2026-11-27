@@ -20,15 +20,7 @@ import {
   normalizeBlueprintState,
   sortRecordKeys,
 } from "./schema.ts";
-import type {
-  BlueprintMetadata,
-  BlueprintState,
-  BrickEntry,
-  Entity,
-  SecretRef,
-  SettingValue,
-  Workflow,
-} from "./schema.ts";
+import type { BlueprintMetadata, BlueprintState, BrickEntry, Entity, SecretRef, SettingValue, Workflow } from "./schema.ts";
 
 const RAW_SECRET_VALUE_PATTERN =
   /^(?:sk_live_|sk_test_|pk_live_|pk_test_|rk_live_|rk_test_|whsec_|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|xox[baprs]-|AKIA[0-9A-Z]{8,}|AIza[0-9A-Za-z_-]{10,}|eyJ[A-Za-z0-9_-]{5,}\.|Bearer\s|Basic\s|token\s|-----BEGIN\s)/i;
@@ -61,19 +53,14 @@ export class BlueprintExportError extends Error {
   }
 }
 
-function scanValueForRawSecrets(
-  value: unknown,
-  path: string,
-  issues: BlueprintValidationError[],
-): void {
+function scanValueForRawSecrets(value: unknown, path: string, issues: BlueprintValidationError[]): void {
   if (typeof value === "string") {
     if (RAW_SECRET_VALUE_PATTERN.test(value.trim())) {
       issues.push({
         code: "INVALID_SECRET_REF",
         path,
         message: `raw credential value detected at "${path}"; blueprint bundles may only contain secret reference handles`,
-        suggestedFix:
-          "Replace the raw secret string with a secret reference handle via bind_secret_ref",
+        suggestedFix: "Replace the raw secret string with a secret reference handle via bind_secret_ref",
       });
     }
     return;
@@ -99,8 +86,7 @@ export function validateBundleNoRawSecrets(state: BlueprintState): BlueprintVali
         code: "INVALID_SECRET_REF",
         path: `secretRefs.${s.targetKind}.${s.targetId}.${s.secretName}`,
         message: check.reason,
-        suggestedFix:
-          'Pass a clean secret reference handle (such as "sec_stripe_key" or "STRIPE_API_KEY_REF"), never a raw secret value',
+        suggestedFix: 'Pass a clean secret reference handle (such as "sec_stripe_key" or "STRIPE_API_KEY_REF"), never a raw secret value',
       });
     }
   }
@@ -122,10 +108,7 @@ export function validateBundleNoRawSecrets(state: BlueprintState): BlueprintVali
   return issues;
 }
 
-export function exportBlueprintBundle(
-  state: BlueprintState,
-  revisionMeta?: Partial<ExportedRevisionMeta>,
-): BlueprintBundle {
+export function exportBlueprintBundle(state: BlueprintState, revisionMeta?: Partial<ExportedRevisionMeta>): BlueprintBundle {
   const secretIssues = validateBundleNoRawSecrets(state);
   if (secretIssues.length > 0) {
     throw new BlueprintExportError(secretIssues);
@@ -159,10 +142,7 @@ export function exportBlueprintBundle(
   };
 }
 
-export function serializeBlueprintBundle(
-  state: BlueprintState,
-  revisionMeta?: Partial<ExportedRevisionMeta>,
-): string {
+export function serializeBlueprintBundle(state: BlueprintState, revisionMeta?: Partial<ExportedRevisionMeta>): string {
   return JSON.stringify(exportBlueprintBundle(state, revisionMeta), null, 2);
 }
 
@@ -198,11 +178,7 @@ const RawBlueprintBundleSchema = z.strictObject({
     .optional(),
 });
 
-export function buildImportOps(
-  targetState: BlueprintState,
-  currentState?: BlueprintState,
-  opPrefix = "import",
-): Op[] {
+export function buildImportOps(targetState: BlueprintState, currentState?: BlueprintState, opPrefix = "import"): Op[] {
   const normTarget = normalizeBlueprintState(targetState);
   const ops: Op[] = [];
   let seq = 0;
@@ -323,11 +299,7 @@ export function buildImportOps(
       });
     }
 
-    if (
-      Object.keys(normTarget.metadata).length > 0 ||
-      Object.keys(normCurrent.metadata).length > 0 ||
-      ops.length === 0
-    ) {
+    if (Object.keys(normTarget.metadata).length > 0 || Object.keys(normCurrent.metadata).length > 0 || ops.length === 0) {
       ops.push({
         opId: nextId("metadata"),
         type: "set_metadata",

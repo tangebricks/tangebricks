@@ -6,14 +6,7 @@ import type { StudioNavTab, StudioSelection } from "../types.ts";
 
 export interface CommandPaletteItem {
   key: string;
-  group:
-    | "Enabled Bricks"
-    | "Catalog Bricks"
-    | "Entities"
-    | "Workflows"
-    | "Workflow Nodes"
-    | "Revisions"
-    | "Navigation";
+  group: "Enabled Bricks" | "Catalog Bricks" | "Entities" | "Workflows" | "Workflow Nodes" | "Revisions" | "Navigation";
   title: string;
   subtitle: string;
   badge?: string;
@@ -45,15 +38,8 @@ export function CommandPalette() {
   useEffect(() => {
     if (open) {
       shouldRestoreFocusRef.current = false;
-      const currentActive =
-        typeof document !== "undefined"
-          ? (document.activeElement as HTMLElement | null)
-          : null;
-      if (
-        currentActive &&
-        !modalRef.current?.contains(currentActive) &&
-        currentActive !== document.body
-      ) {
+      const currentActive = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+      if (currentActive && !modalRef.current?.contains(currentActive) && currentActive !== document.body) {
         triggerElementRef.current = currentActive;
       }
       inputRef.current?.focus();
@@ -151,10 +137,7 @@ export function CommandPalette() {
     }
 
     for (const rev of revisions) {
-      const authorLabel =
-        rev.author.type === "agent"
-          ? `agent:${rev.author.client ?? rev.author.id}`
-          : `human:${rev.author.id}`;
+      const authorLabel = rev.author.type === "agent" ? `agent:${rev.author.client ?? rev.author.id}` : `human:${rev.author.id}`;
       list.push({
         key: `revision:${rev.revision}`,
         group: "Revisions",
@@ -201,21 +184,8 @@ export function CommandPalette() {
     const q = query.trim().toLowerCase();
     if (!q) return list.slice(0, 30);
 
-    return list.filter(
-      (item) =>
-        item.title.toLowerCase().includes(q) ||
-        item.subtitle.toLowerCase().includes(q) ||
-        item.group.toLowerCase().includes(q),
-    );
-  }, [
-    projectState,
-    catalog,
-    revisions,
-    query,
-    setActiveNav,
-    workflowOutlineMode,
-    setWorkflowOutlineMode,
-  ]);
+    return list.filter((item) => item.title.toLowerCase().includes(q) || item.subtitle.toLowerCase().includes(q) || item.group.toLowerCase().includes(q));
+  }, [projectState, catalog, revisions, query, setActiveNav, workflowOutlineMode, setWorkflowOutlineMode]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -256,9 +226,7 @@ export function CommandPalette() {
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex((idx) =>
-        items.length === 0 ? 0 : (idx - 1 + items.length) % items.length,
-      );
+      setActiveIndex((idx) => (items.length === 0 ? 0 : (idx - 1 + items.length) % items.length));
       return;
     }
     if (e.key === "Enter" && items[activeIndex]) {
@@ -308,9 +276,7 @@ export function CommandPalette() {
           className="max-h-80 overflow-y-auto divide-y divide-border"
         >
           {items.length === 0 ? (
-            <li className="p-4 text-center text-text-muted text-xs">
-              No matching bricks, entities, workflows, nodes, or revisions.
-            </li>
+            <li className="p-4 text-center text-text-muted text-xs">No matching bricks, entities, workflows, nodes, or revisions.</li>
           ) : (
             items.map((item, idx) => {
               const isSelected = idx === activeIndex;
@@ -322,23 +288,15 @@ export function CommandPalette() {
                   data-testid={`command-palette-item-${item.key}`}
                   onClick={() => chooseItem(item)}
                   className={`px-3 py-2.5 cursor-pointer flex items-center justify-between text-xs transition ${
-                    isSelected
-                      ? "bg-surface-control text-text-primary ring-1 ring-inset ring-accent"
-                      : "hover:bg-surface-control/60 text-text-secondary"
+                    isSelected ? "bg-surface-control text-text-primary ring-1 ring-inset ring-accent" : "hover:bg-surface-control/60 text-text-secondary"
                   }`}
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-surface-base text-text-muted">
-                        {item.group}
-                      </span>
-                      <span className="font-semibold text-text-primary truncate">
-                        {item.title}
-                      </span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-surface-base text-text-muted">{item.group}</span>
+                      <span className="font-semibold text-text-primary truncate">{item.title}</span>
                     </div>
-                    <div className="text-[11px] text-text-muted font-mono truncate mt-0.5">
-                      {item.subtitle}
-                    </div>
+                    <div className="text-[11px] text-text-muted font-mono truncate mt-0.5">{item.subtitle}</div>
                   </div>
                   {item.badge && (
                     <span className="ml-2 shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-surface-base border border-border-strong text-text-secondary">

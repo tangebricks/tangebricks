@@ -3,10 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync, existsSync } from "node:fs";
 import { importIntegrationSpec } from "../src/importer.ts";
-import {
-  runOpenApiImportCli,
-  runOpenApiImportFile,
-} from "../src/cli.ts";
+import { runOpenApiImportCli, runOpenApiImportFile } from "../src/cli.ts";
 import type { CurationConfig } from "../src/curation.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -73,9 +70,7 @@ describe("UC2.5 — Strict mode by default, curation acknowledge, and overlay re
     expect(thrownError?.message).toContain("OPENAPI_IMPORT_UNACKNOWLEDGED_LOSS");
     expect(thrownError?.message).toContain("lossyOp");
     expect(thrownError?.message).toContain("CONTENT_TYPE_UNSUPPORTED");
-    expect(thrownError?.message).toContain(
-      "#/paths/~1v1~1unsupported/post/requestBody/content",
-    );
+    expect(thrownError?.message).toContain("#/paths/~1v1~1unsupported/post/requestBody/content");
   });
 
   it("(b) The same import with acknowledge: [{op, code, reason}] succeeds with fidelity.level === 'partial'", () => {
@@ -85,8 +80,7 @@ describe("UC2.5 — Strict mode by default, curation acknowledge, and overlay re
         {
           op: "lossyOp",
           code: "CONTENT_TYPE_UNSUPPORTED",
-          pointer:
-            "#/paths/~1v1~1unsupported/post/requestBody/content",
+          pointer: "#/paths/~1v1~1unsupported/post/requestBody/content",
           reason: "XML content type is unsupported and deferred to future release",
         },
       ],
@@ -99,18 +93,14 @@ describe("UC2.5 — Strict mode by default, curation acknowledge, and overlay re
     });
 
     expect(result.manifest.fidelity?.level).toBe("partial");
-    const lossEntry = result.report.entries.find(
-      (e) => e.op === "lossyOp" && e.code === "CONTENT_TYPE_UNSUPPORTED",
-    );
+    const lossEntry = result.report.entries.find((e) => e.op === "lossyOp" && e.code === "CONTENT_TYPE_UNSUPPORTED");
     expect(lossEntry).toBeDefined();
     expect(lossEntry?.status).toBe("unsupported");
     expect(lossEntry?.acknowledged).toEqual({
       reason: "XML content type is unsupported and deferred to future release",
     });
 
-    const fidelityUnsupported = result.manifest.fidelity?.unsupported.find(
-      (e) => e.op === "lossyOp" && e.code === "CONTENT_TYPE_UNSUPPORTED",
-    );
+    const fidelityUnsupported = result.manifest.fidelity?.unsupported.find((e) => e.op === "lossyOp" && e.code === "CONTENT_TYPE_UNSUPPORTED");
     expect(fidelityUnsupported).toBeDefined();
   });
 
@@ -232,17 +222,9 @@ describe("UC2.5 — Strict mode by default, curation acknowledge, and overlay re
       }),
     ).toThrow(/OPENAPI_IMPORT_LENIENT_OUTPUT_FORBIDDEN/);
 
-    expect(() =>
-      runOpenApiImportCli([
-        "--spec",
-        tmpSpecPath,
-        "--curation",
-        tmpCurationPath,
-        "--out",
-        forbiddenOutPath,
-        "--lenient",
-      ]),
-    ).toThrow(/OPENAPI_IMPORT_LENIENT_OUTPUT_FORBIDDEN/);
+    expect(() => runOpenApiImportCli(["--spec", tmpSpecPath, "--curation", tmpCurationPath, "--out", forbiddenOutPath, "--lenient"])).toThrow(
+      /OPENAPI_IMPORT_LENIENT_OUTPUT_FORBIDDEN/,
+    );
   });
 
   it("throws OPENAPI_IMPORT_OVERLAY_CONTRADICTS_SPEC when overlay method or path contradicts spec", () => {
@@ -324,9 +306,7 @@ describe("UC2.5 — Strict mode by default, curation acknowledge, and overlay re
       curation: curationWithCustomOp,
     });
 
-    const curatedOpEntry = result.report.entries.find(
-      (e) => e.op === "customOp" && e.code === "OPERATION_CURATED_ONLY",
-    );
+    const curatedOpEntry = result.report.entries.find((e) => e.op === "customOp" && e.code === "OPERATION_CURATED_ONLY");
     expect(curatedOpEntry).toBeDefined();
     expect(curatedOpEntry?.status).toBe("curated");
   });
@@ -342,13 +322,9 @@ describe("UC2.5 — Strict mode by default, curation acknowledge, and overlay re
 
       const curationPath = join(appDir, "curation.config.json");
       const curation = JSON.parse(readFileSync(curationPath, "utf8"));
-      const specPath = existsSync(join(appDir, "discovery.json"))
-        ? join(appDir, "discovery.json")
-        : join(appDir, "openapi.json");
+      const specPath = existsSync(join(appDir, "discovery.json")) ? join(appDir, "discovery.json") : join(appDir, "openapi.json");
       const specText = readFileSync(specPath, "utf8");
-      const format = existsSync(join(appDir, "discovery.json"))
-        ? "google-discovery"
-        : (curation.format ?? "openapi3");
+      const format = existsSync(join(appDir, "discovery.json")) ? "google-discovery" : (curation.format ?? "openapi3");
 
       const result = importIntegrationSpec({
         spec: specText,
@@ -357,9 +333,7 @@ describe("UC2.5 — Strict mode by default, curation acknowledge, and overlay re
         mode: "lenient",
       });
 
-      const overlayEntries = result.report.entries.filter(
-        (e) => e.code === "OVERLAY_ADDED" || e.code === "OVERLAY_OVERRIDE",
-      );
+      const overlayEntries = result.report.entries.filter((e) => e.code === "OVERLAY_ADDED" || e.code === "OVERLAY_OVERRIDE");
       overlayCounts[app] = overlayEntries.length;
     }
 

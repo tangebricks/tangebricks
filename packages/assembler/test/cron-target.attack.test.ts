@@ -30,47 +30,43 @@ async function scheduleRows(ws: string): Promise<{ cron: number; px: number }> {
 }
 
 describe("cron-alarms Workflow target allowlist on the assembled max-compatible app (story 0.20)", () => {
-  test(
-    "a workspace owner cannot schedule one of the app's own bindings as a Workflow target",
-    async () => {
-      // test/support/global-setup.ts assembles out/max-compatible before the workers project runs.
-      expect(app, "out/max-compatible/src/index.ts was not assembled").toBeDefined();
-      const bindings = appBindings();
-      expect(bindings, "bindings read from out/max-compatible/wrangler.jsonc").toContain("DB");
-      await resetAndMigrate(db, sql);
+  test("a workspace owner cannot schedule one of the app's own bindings as a Workflow target", async () => {
+    // test/support/global-setup.ts assembles out/max-compatible before the workers project runs.
+    expect(app, "out/max-compatible/src/index.ts was not assembled").toBeDefined();
+    const bindings = appBindings();
+    expect(bindings, "bindings read from out/max-compatible/wrangler.jsonc").toContain("DB");
+    await resetAndMigrate(db, sql);
 
-      const created = await call(app!, "POST", "/api/workspaces", { user: "alice", body: { name: "Workspace A" } });
-      expect(created.status).toBe(201);
-      const wsA = (JSON.parse(created.text) as { workspace: { id: string } }).workspace.id;
+    const created = await call(app!, "POST", "/api/workspaces", { user: "alice", body: { name: "Workspace A" } });
+    expect(created.status).toBe(201);
+    const wsA = (JSON.parse(created.text) as { workspace: { id: string } }).workspace.id;
 
-      const allowlisted = { ...(env as unknown as Record<string, unknown>), CRON_WORKFLOW_TARGETS: "REPORTS_WF" };
-      for (const [label, requestEnv] of [
-        ["no CRON_WORKFLOW_TARGETS", undefined],
-        ["CRON_WORKFLOW_TARGETS=REPORTS_WF", allowlisted],
-      ] as const) {
-        for (const target of [...bindings, "CRON_WORKFLOW_TARGETS", "GRAPH_RUNNER", "WORKFLOW"]) {
-          const res = await call(app!, "POST", "/api/schedules", {
-            user: "alice",
-            ws: wsA,
-            body: { cronExpression: "*/5 * * * *", targetWorkflowId: target },
-            ...(requestEnv ? { env: requestEnv } : {}),
-          });
-          expect(res.status, `${label}: ${target}`).toBe(400);
-          expect((JSON.parse(res.text) as { code: string }).code, `${label}: ${target}`).toBe("WORKFLOW_TARGET_NOT_ALLOWED");
-        }
+    const allowlisted = { ...(env as unknown as Record<string, unknown>), CRON_WORKFLOW_TARGETS: "REPORTS_WF" };
+    for (const [label, requestEnv] of [
+      ["no CRON_WORKFLOW_TARGETS", undefined],
+      ["CRON_WORKFLOW_TARGETS=REPORTS_WF", allowlisted],
+    ] as const) {
+      for (const target of [...bindings, "CRON_WORKFLOW_TARGETS", "GRAPH_RUNNER", "WORKFLOW"]) {
+        const res = await call(app!, "POST", "/api/schedules", {
+          user: "alice",
+          ws: wsA,
+          body: { cronExpression: "*/5 * * * *", targetWorkflowId: target },
+          ...(requestEnv ? { env: requestEnv } : {}),
+        });
+        expect(res.status, `${label}: ${target}`).toBe(400);
+        expect((JSON.parse(res.text) as { code: string }).code, `${label}: ${target}`).toBe("WORKFLOW_TARGET_NOT_ALLOWED");
       }
-      expect(await scheduleRows(wsA)).toEqual({ cron: 0, px: 0 });
+    }
+    expect(await scheduleRows(wsA)).toEqual({ cron: 0, px: 0 });
 
-      // The allowlisted name is still accepted, so the refusals above are the allowlist and not a broken route.
-      const ok = await call(app!, "POST", "/api/schedules", {
-        user: "alice",
-        ws: wsA,
-        body: { cronExpression: "*/5 * * * *", targetWorkflowId: "REPORTS_WF" },
-        env: allowlisted,
-      });
-      expect(ok.status).toBe(201);
-      expect(await scheduleRows(wsA)).toEqual({ cron: 1, px: 1 });
-    },
-    120_000,
-  );
+    // The allowlisted name is still accepted, so the refusals above are the allowlist and not a broken route.
+    const ok = await call(app!, "POST", "/api/schedules", {
+      user: "alice",
+      ws: wsA,
+      body: { cronExpression: "*/5 * * * *", targetWorkflowId: "REPORTS_WF" },
+      env: allowlisted,
+    });
+    expect(ok.status).toBe(201);
+    expect(await scheduleRows(wsA)).toEqual({ cron: 1, px: 1 });
+  }, 120_000);
 });

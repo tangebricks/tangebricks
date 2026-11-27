@@ -29,11 +29,7 @@ const mcpStudioEnv: StudioApiEnv = {
 const mcpApp = createMcpApp({ catalog, callsPerMinute: 10_000, verifyToken: testTokenVerifier });
 
 let rpcId = 1;
-async function callMcpTool(
-  name: string,
-  args: Record<string, unknown>,
-  headers: Record<string, string> = {},
-) {
+async function callMcpTool(name: string, args: Record<string, unknown>, headers: Record<string, string> = {}) {
   const response = await mcpApp.fetch(
     new Request("http://localhost/mcp", {
       method: "POST",
@@ -106,17 +102,12 @@ async function mcpApplyReviewed(args: Record<string, unknown>) {
  * configure_brick with replace for an enabled one, in the listed order) is proposed and the token's user accepts it.
  * Returns what enable_brick answers: project, revision, enabled, entities and needs.
  */
-async function mcpEnableBrickReviewed(args: {
-  project: string;
-  bricks: Array<string | { id: string; config?: Record<string, unknown> }>;
-}) {
+async function mcpEnableBrickReviewed(args: { project: string; bricks: Array<string | { id: string; config?: Record<string, unknown> }> }) {
   const direct = await callMcpTool("enable_brick", args);
   expect(direct.isError).toBe(true);
   expect(direct.json<{ error: { code: string } }>().error.code).toBe("PROPOSAL_REQUIRED");
   const summary = await callMcpTool("get_blueprint_summary", { project: args.project });
-  const enabledBefore = new Set(
-    summary.isError ? [] : (summary.json<{ bricks?: string[] }>().bricks ?? []),
-  );
+  const enabledBefore = new Set(summary.isError ? [] : (summary.json<{ bricks?: string[] }>().bricks ?? []));
   const ops = args.bricks.map((item, idx) => {
     const { id, config } = typeof item === "string" ? { id: item, config: {} } : { id: item.id, config: item.config ?? {} };
     return enabledBefore.has(id)
@@ -341,16 +332,8 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
 
     // Verify revision 1..6 parent chains, state, and semanticHash match identically on both surfaces
     for (let rev = 1; rev <= 6; rev += 1) {
-      const mcpRevRes = await studioApp.request(
-        `/api/projects/${mcpProject}/revisions/${rev}`,
-        { method: "GET", headers: authHeaders },
-        mcpStudioEnv,
-      );
-      const httpRevRes = await studioApp.request(
-        `/api/projects/${httpProject}/revisions/${rev}`,
-        { method: "GET", headers: authHeaders },
-        studioEnv,
-      );
+      const mcpRevRes = await studioApp.request(`/api/projects/${mcpProject}/revisions/${rev}`, { method: "GET", headers: authHeaders }, mcpStudioEnv);
+      const httpRevRes = await studioApp.request(`/api/projects/${httpProject}/revisions/${rev}`, { method: "GET", headers: authHeaders }, studioEnv);
       expect(mcpRevRes.status).toBe(200);
       expect(httpRevRes.status).toBe(200);
 
@@ -384,11 +367,7 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
     expect(mcpBuildJson.revision).toBe(6);
     expect(mcpBuildJson.files).toBe(17); // story 0.21: credit-wallet's rate limits add the px_rate_limits migration; story 2.3 its 0003; story 2.5 its 0004
 
-    const httpBuild = await studioApp.request(
-      `/api/projects/${httpProject}/build`,
-      { method: "POST", headers: authHeaders },
-      studioEnv,
-    );
+    const httpBuild = await studioApp.request(`/api/projects/${httpProject}/build`, { method: "POST", headers: authHeaders }, studioEnv);
     expect(httpBuild.status).toBe(200);
     const httpBuildJson = (await httpBuild.json()) as {
       project: string;
@@ -403,9 +382,7 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
     expect(httpBuildJson.bytes).toBe(mcpBuildJson.bytes);
 
     // Verify mcp_projects has 0 rows (AC 5)
-    const mcpProjectsCount = await mcpDb
-      .prepare("SELECT COUNT(*) AS n FROM mcp_projects")
-      .first<{ n: number }>();
+    const mcpProjectsCount = await mcpDb.prepare("SELECT COUNT(*) AS n FROM mcp_projects").first<{ n: number }>();
     expect(mcpProjectsCount?.n).toBe(0);
   });
 
@@ -561,9 +538,7 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
       expect(mcpErrPayload.error.code).toBe("VALIDATION_FAILED");
       expect(httpErrPayload.error.code).toBe("VALIDATION_FAILED");
       expect(mcpErrPayload.error.issues.map((i) => i.code)).toContain(fixture.expectedCode);
-      expect(httpErrPayload.error.issues.map((i) => i.code)).toEqual(
-        mcpErrPayload.error.issues.map((i) => i.code),
-      );
+      expect(httpErrPayload.error.issues.map((i) => i.code)).toEqual(mcpErrPayload.error.issues.map((i) => i.code));
       expect(mcpErrPayload.error.issues[0]?.path).toBe(httpErrPayload.error.issues[0]?.path);
       expect(mcpErrPayload.error.issues[0]?.suggestedFix).toBeDefined();
     }
@@ -572,18 +547,10 @@ describe("Story 1.4 — Stateless MCP server over BlueprintDO & dual-surface con
     const { headers: mcpProjHeaders } = await ensureTestProjectToken(studioEnv, mcpProj);
     const { headers: authHeaders } = await ensureTestProjectToken(studioEnv, httpProj);
     const mcpStateAfter = (await (
-      await studioApp.request(
-        `/api/projects/${mcpProj}`,
-        { method: "GET", headers: mcpProjHeaders },
-        mcpStudioEnv,
-      )
+      await studioApp.request(`/api/projects/${mcpProj}`, { method: "GET", headers: mcpProjHeaders }, mcpStudioEnv)
     ).json()) as ProjectStatePayload;
     const httpStateAfter = (await (
-      await studioApp.request(
-        `/api/projects/${httpProj}`,
-        { method: "GET", headers: authHeaders },
-        studioEnv,
-      )
+      await studioApp.request(`/api/projects/${httpProj}`, { method: "GET", headers: authHeaders }, studioEnv)
     ).json()) as ProjectStatePayload;
     expect(mcpStateAfter.revision).toBe(1);
     expect(httpStateAfter.revision).toBe(1);

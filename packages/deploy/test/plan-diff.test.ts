@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  MockCloudflareControlPlane,
-  computeDeployPlan,
-  createByocProvisioner,
-  validateDeployPlan,
-} from "../src/index.ts";
+import { MockCloudflareControlPlane, computeDeployPlan, createByocProvisioner, validateDeployPlan } from "../src/index.ts";
 import type { DeployTarget } from "../src/index.ts";
 
 describe("Story 5.3 — Deterministic Pre-Deploy Plan & Diff (plan-diff)", () => {
@@ -61,9 +56,7 @@ describe("Story 5.3 — Deterministic Pre-Deploy Plan & Diff (plan-diff)", () =>
         queues: ["px-acme-saas-preview-events"],
         cronTriggers: ["0 * * * *"],
         workflows: [{ workflowName: "invoice-flow", className: "GraphRunner" }],
-        requiredSecrets: [
-          { name: "STRIPE_SECRET_KEY", requiredByBrick: "stripe-billing" },
-        ],
+        requiredSecrets: [{ name: "STRIPE_SECRET_KEY", requiredByBrick: "stripe-billing" }],
         configuredSecrets: ["STRIPE_SECRET_KEY"],
       },
       {
@@ -80,14 +73,9 @@ describe("Story 5.3 — Deterministic Pre-Deploy Plan & Diff (plan-diff)", () =>
       changed: true,
     });
     expect(initialPlan.d1.createDatabase).toBe(true);
-    expect(initialPlan.d1.pendingMigrations).toEqual([
-      "0001_core_auth.sql",
-      "0002_entity__invoices.sql",
-    ]);
+    expect(initialPlan.d1.pendingMigrations).toEqual(["0001_core_auth.sql", "0002_entity__invoices.sql"]);
     expect(initialPlan.d1.destructiveWarnings).toEqual([]);
-    expect(initialPlan.queues).toEqual([
-      { queueName: "px-acme-saas-preview-events", action: "create" },
-    ]);
+    expect(initialPlan.queues).toEqual([{ queueName: "px-acme-saas-preview-events", action: "create" }]);
     expect(initialPlan.cronTriggers).toEqual({
       currentCrons: [],
       nextCrons: ["0 * * * *"],
@@ -133,9 +121,7 @@ describe("Story 5.3 — Deterministic Pre-Deploy Plan & Diff (plan-diff)", () =>
         queues: ["px-acme-saas-preview-events"],
         cronTriggers: ["0 * * * *"],
         workflows: [{ workflowName: "invoice-flow", className: "GraphRunner" }],
-        requiredSecrets: [
-          { name: "STRIPE_SECRET_KEY", requiredByBrick: "stripe-billing" },
-        ],
+        requiredSecrets: [{ name: "STRIPE_SECRET_KEY", requiredByBrick: "stripe-billing" }],
       },
       {
         deployedRev: 1,
@@ -146,9 +132,7 @@ describe("Story 5.3 — Deterministic Pre-Deploy Plan & Diff (plan-diff)", () =>
         appliedMigrations: ["0001_core_auth.sql", "0002_entity__invoices.sql"],
         existingQueues: ["px-acme-saas-preview-events"],
         currentCrons: ["0 * * * *"],
-        existingWorkflows: [
-          { workflowName: "invoice-flow", className: "GraphRunner" },
-        ],
+        existingWorkflows: [{ workflowName: "invoice-flow", className: "GraphRunner" }],
         configuredSecrets: ["STRIPE_SECRET_KEY"],
       },
     );
@@ -195,9 +179,7 @@ describe("Story 5.3 — Deterministic Pre-Deploy Plan & Diff (plan-diff)", () =>
         appliedMigrations: ["0001_core_auth.sql", "0002_entity__invoices.sql"],
         existingQueues: ["px-acme-saas-preview-events"],
         currentCrons: ["0 * * * *"],
-        existingWorkflows: [
-          { workflowName: "invoice-flow", className: "GraphRunner" },
-        ],
+        existingWorkflows: [{ workflowName: "invoice-flow", className: "GraphRunner" }],
       },
     );
 
@@ -251,9 +233,7 @@ describe("Story 5.3 — Deterministic Pre-Deploy Plan & Diff (plan-diff)", () =>
         project: "acme-saas",
         buildHash: "sha256_build_prod_1",
         identity: "stub",
-        requiredSecrets: [
-          { name: "STRIPE_WEBHOOK_SECRET", requiredByBrick: "stripe-billing" },
-        ],
+        requiredSecrets: [{ name: "STRIPE_WEBHOOK_SECRET", requiredByBrick: "stripe-billing" }],
         configuredSecrets: [],
         readinessIssues: [
           {
@@ -279,9 +259,7 @@ describe("Story 5.3 — Deterministic Pre-Deploy Plan & Diff (plan-diff)", () =>
         project: "acme-saas",
         buildHash: "sha256_build_prod_2",
         identity: "core-auth",
-        requiredSecrets: [
-          { name: "STRIPE_WEBHOOK_SECRET", requiredByBrick: "stripe-billing" },
-        ],
+        requiredSecrets: [{ name: "STRIPE_WEBHOOK_SECRET", requiredByBrick: "stripe-billing" }],
         configuredSecrets: ["STRIPE_WEBHOOK_SECRET"],
         readinessIssues: [],
       },
@@ -295,9 +273,7 @@ describe("Story 5.3 — Deterministic Pre-Deploy Plan & Diff (plan-diff)", () =>
 
   it("refuses over-budget graph deploy plan with blockers and validateDeployPlan throws (AC3)", () => {
     // 1 trigger + 1,199 steps = 1,200 steps (1,201 with load step)
-    const nodes = [
-      { id: "trig", type: "trigger.manual", data: {} },
-    ];
+    const nodes = [{ id: "trig", type: "trigger.manual", data: {} }];
     const edges = [];
     for (let i = 1; i < 1200; i++) {
       const prevId = i === 1 ? "trig" : `n_${i - 1}`;

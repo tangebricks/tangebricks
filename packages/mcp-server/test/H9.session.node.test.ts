@@ -31,15 +31,19 @@ async function measure(steps: typeof FULL_SESSION, bricks: string[], blueprint: 
 
 const full = await measure(FULL_SESSION, ["multi-workspace", "credit-wallet", "dynamic-entities"], { ...INVOICE_FLOW_BLUEPRINT, entities: [INVOICES] });
 const filteredFull = await measure(
-  [
-    { tool: "list_bricks", args: { query: "workspace" } },
-    ...FULL_SESSION.slice(1),
-  ],
+  [{ tool: "list_bricks", args: { query: "workspace" } }, ...FULL_SESSION.slice(1)],
   ["multi-workspace", "credit-wallet", "dynamic-entities"],
   { ...INVOICE_FLOW_BLUEPRINT, entities: [INVOICES] },
 );
-const small = await measure(SMALL_SESSION, ["multi-workspace", "dynamic-entities"], { project: "invoice-lite", bricks: ["multi-workspace", "dynamic-entities"], entities: [INVOICES] });
-const oneAtATime = await measure(ONE_AT_A_TIME_SESSION, ["multi-workspace", "credit-wallet", "dynamic-entities"], { ...INVOICE_FLOW_BLUEPRINT, entities: [INVOICES] });
+const small = await measure(SMALL_SESSION, ["multi-workspace", "dynamic-entities"], {
+  project: "invoice-lite",
+  bricks: ["multi-workspace", "dynamic-entities"],
+  entities: [INVOICES],
+});
+const oneAtATime = await measure(ONE_AT_A_TIME_SESSION, ["multi-workspace", "credit-wallet", "dynamic-entities"], {
+  ...INVOICE_FLOW_BLUEPRINT,
+  entities: [INVOICES],
+});
 
 const TEN_BRICKS = [
   "multi-workspace",
@@ -65,7 +69,11 @@ const tenPercent = (tenSession.rawTokens / tenSource.total) * 100;
 // A larger project, for information: the three bricks and eight tables, asked for in lists and one item per call.
 const TABLES = ["invoices", "clients", "projects", "tasks", "receipts", "notes", "tags", "files"].map((name) => ({
   name,
-  fields: [{ name: "title", type: "text", required: true }, { name: "amount", type: "number" }, { name: "status", type: "enum", values: ["open", "done"] }],
+  fields: [
+    { name: "title", type: "text", required: true },
+    { name: "amount", type: "number" },
+    { name: "status", type: "enum", values: ["open", "done"] },
+  ],
 }));
 const BRICKS = ["multi-workspace", "credit-wallet", "dynamic-entities"];
 const bigBatched = await runSession([
@@ -87,7 +95,12 @@ const round = (n: number, places = 1) => Math.round(n * 10 ** places) / 10 ** pl
 describe("the scored session: the whole invoices project", () => {
   test("every call succeeded, and the build produced the project's nine files", () => {
     expect(full.session.answers.every((a) => !a.isError)).toBe(true);
-    expect(full.session.summary).toMatchObject({ project: "invoice-flow", files: 15, bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"], entities: ["invoices"] });
+    expect(full.session.summary).toMatchObject({
+      project: "invoice-flow",
+      files: 15,
+      bricks: ["multi-workspace", "credit-wallet", "dynamic-entities"],
+      entities: ["invoices"],
+    });
     expect(Object.keys(full.session.stored)).toHaveLength(15); // story 2.3: credit-wallet's order currency migration
   });
 
@@ -148,7 +161,10 @@ test("H9 report", ({ task }) => {
     fiveToolCallsOrFewer: full.session.toolCalls <= 5,
     sessionBuiltTheDirectProject: full.sameFiles && full.sameHash && full.session.summary !== null,
     // Both sides came from the one countTokens, over non-empty texts; the denominator is not zero and not smaller than the conversation's own parts.
-    bothSidesCountedTheSameWay: full.session.rawTokens > 0 && full.source.total > 0 && full.session.rawTokens === full.session.exchanges.reduce((s, e) => s + countTokens(e.requestBody) + countTokens(e.responseBody), 0),
+    bothSidesCountedTheSameWay:
+      full.session.rawTokens > 0 &&
+      full.source.total > 0 &&
+      full.session.rawTokens === full.session.exchanges.reduce((s, e) => s + countTokens(e.requestBody) + countTokens(e.responseBody), 0),
   };
   attach(task, "h9-session", {
     tokenizer: TOKENIZER,
@@ -165,7 +181,9 @@ test("H9 report", ({ task }) => {
       modelVisibleRatioPercent: round((full.session.modelVisibleTokens / full.source.total) * 100),
       projectHash: full.session.summary?.hash,
       files: Object.keys(full.session.stored).length,
-      byMessage: full.session.exchanges.filter((e) => e.requestBody || e.responseBody).map((e) => ({ what: e.tool ? `tools/call ${e.tool}` : (e.rpc ?? e.httpMethod), requestTokens: e.requestTokens, responseTokens: e.responseTokens })),
+      byMessage: full.session.exchanges
+        .filter((e) => e.requestBody || e.responseBody)
+        .map((e) => ({ what: e.tool ? `tools/call ${e.tool}` : (e.rpc ?? e.httpMethod), requestTokens: e.requestTokens, responseTokens: e.responseTokens })),
       sourceByFile: full.source.files.map((f) => ({ path: f.path, tokens: f.tokens, ...(f.duplicateOf ? { countedOnceAs: f.duplicateOf } : {}) })),
     },
     forInformation: {

@@ -1,14 +1,6 @@
-import type {
-  IntegrationErrorMapping,
-  IntegrationManifestFile,
-  IntegrationOperation,
-  Predicate,
-} from "@poc/assembler";
+import type { IntegrationErrorMapping, IntegrationManifestFile, IntegrationOperation, Predicate } from "@poc/assembler";
 import type { BlobStore } from "@poc/sdk";
-import {
-  redactTelemetryPayload,
-  redactTelemetryString,
-} from "@poc/telemetry";
+import { redactTelemetryPayload, redactTelemetryString } from "@poc/telemetry";
 import { IntegrationCallError } from "./errors.ts";
 import { getByDotPath } from "./request-build.ts";
 
@@ -63,11 +55,7 @@ export function evaluatePredicate(predicate: Predicate, body: unknown): boolean 
   return false;
 }
 
-export function findErrorMappingForStatus(
-  status: number,
-  opMappings?: any,
-  manifestMappings?: any,
-): IntegrationErrorMapping | undefined {
+export function findErrorMappingForStatus(status: number, opMappings?: any, manifestMappings?: any): IntegrationErrorMapping | undefined {
   const lookup = (mappings?: any): IntegrationErrorMapping | undefined => {
     if (!mappings) return undefined;
     if (Array.isArray(mappings)) {
@@ -128,27 +116,15 @@ export async function decodeResponseBody(
       secretValues: trackedSecrets,
       secretFieldNames,
     });
-    const mappedErr = findErrorMappingForStatus(
-      response.status,
-      operation.errorMappings,
-      manifest.errorMappings,
-    );
-    const errPrefix =
-      mappedErr?.code ??
-      (response.status === 429 ? "RATE_LIMITED" : "INTEGRATION_HTTP_ERROR");
+    const mappedErr = findErrorMappingForStatus(response.status, operation.errorMappings, manifest.errorMappings);
+    const errPrefix = mappedErr?.code ?? (response.status === 429 ? "RATE_LIMITED" : "INTEGRATION_HTTP_ERROR");
     const hintSuffix = mappedErr?.hint ? ` (${mappedErr.hint})` : "";
     const redactOptsForBody = { secretValues: trackedSecrets, secretFieldNames };
     const shape = operation.response?.errorShape;
-    const providerCode = shape?.codePath
-      ? providerErrorField(parsedBody, shape.codePath, redactOptsForBody)
-      : undefined;
-    const providerMessage = shape?.messagePath
-      ? providerErrorField(parsedBody, shape.messagePath, redactOptsForBody)
-      : undefined;
+    const providerCode = shape?.codePath ? providerErrorField(parsedBody, shape.codePath, redactOptsForBody) : undefined;
+    const providerMessage = shape?.messagePath ? providerErrorField(parsedBody, shape.messagePath, redactOptsForBody) : undefined;
     const hasProviderFields = providerCode !== undefined || providerMessage !== undefined;
-    const detail = hasProviderFields
-      ? [providerCode, providerMessage].filter((v) => v !== undefined).join(": ")
-      : safeBodyText;
+    const detail = hasProviderFields ? [providerCode, providerMessage].filter((v) => v !== undefined).join(": ") : safeBodyText;
     throw new IntegrationCallError(
       `${errPrefix}: Integration "${manifest.app}" operation "${operation.operationId}" failed with HTTP ${response.status}${hintSuffix}: ${detail}`,
       {
@@ -164,10 +140,7 @@ export async function decodeResponseBody(
 
   if (isBinaryOp) {
     if (!options.blobStore) {
-      throw new IntegrationCallError(
-        "INTEGRATION_BLOBSTORE_MISSING: blobStore is required for binary responses",
-        { code: "INTEGRATION_BLOBSTORE_MISSING" },
-      );
+      throw new IntegrationCallError("INTEGRATION_BLOBSTORE_MISSING: blobStore is required for binary responses", { code: "INTEGRATION_BLOBSTORE_MISSING" });
     }
     const maxBytes = operation.response?.maxBytes ?? 10 * 1024 * 1024;
     if (!response.body) {
@@ -192,10 +165,7 @@ export async function decodeResponseBody(
         throw err;
       }
     }
-  } else if (
-    operation.response?.contentType?.startsWith("text/") ||
-    respContentType.startsWith("text/")
-  ) {
+  } else if (operation.response?.contentType?.startsWith("text/") || respContentType.startsWith("text/")) {
     rawText = await response.text();
     parsedBody = rawText;
   } else {
@@ -219,16 +189,10 @@ export async function decodeResponseBody(
     });
     const redactOptsForBody = { secretValues: trackedSecrets, secretFieldNames };
     const shape = operation.response?.errorShape;
-    const providerCode = shape?.codePath
-      ? providerErrorField(parsedBody, shape.codePath, redactOptsForBody)
-      : undefined;
-    const providerMessage = shape?.messagePath
-      ? providerErrorField(parsedBody, shape.messagePath, redactOptsForBody)
-      : undefined;
+    const providerCode = shape?.codePath ? providerErrorField(parsedBody, shape.codePath, redactOptsForBody) : undefined;
+    const providerMessage = shape?.messagePath ? providerErrorField(parsedBody, shape.messagePath, redactOptsForBody) : undefined;
     const hasProviderFields = providerCode !== undefined || providerMessage !== undefined;
-    const detail = hasProviderFields
-      ? [providerCode, providerMessage].filter((v) => v !== undefined).join(": ")
-      : safeBodyText;
+    const detail = hasProviderFields ? [providerCode, providerMessage].filter((v) => v !== undefined).join(": ") : safeBodyText;
     throw new IntegrationCallError(
       `INTEGRATION_PROVIDER_ERROR: Integration "${manifest.app}" operation "${operation.operationId}" failed with provider error: ${detail}`,
       {
@@ -250,16 +214,10 @@ export async function decodeResponseBody(
     });
     const redactOptsForBody = { secretValues: trackedSecrets, secretFieldNames };
     const shape = operation.response?.errorShape;
-    const providerCode = shape?.codePath
-      ? providerErrorField(parsedBody, shape.codePath, redactOptsForBody)
-      : undefined;
-    const providerMessage = shape?.messagePath
-      ? providerErrorField(parsedBody, shape.messagePath, redactOptsForBody)
-      : undefined;
+    const providerCode = shape?.codePath ? providerErrorField(parsedBody, shape.codePath, redactOptsForBody) : undefined;
+    const providerMessage = shape?.messagePath ? providerErrorField(parsedBody, shape.messagePath, redactOptsForBody) : undefined;
     const hasProviderFields = providerCode !== undefined || providerMessage !== undefined;
-    const detail = hasProviderFields
-      ? [providerCode, providerMessage].filter((v) => v !== undefined).join(": ")
-      : safeBodyText;
+    const detail = hasProviderFields ? [providerCode, providerMessage].filter((v) => v !== undefined).join(": ") : safeBodyText;
     throw new IntegrationCallError(
       `INTEGRATION_PROVIDER_ERROR: Integration "${manifest.app}" operation "${operation.operationId}" failed success predicate: ${detail}`,
       {

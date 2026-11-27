@@ -1,15 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { OP_TYPES } from "@poc/blueprint";
-import {
-  DESTRUCTIVE_OP_KINDS,
-  MONEY_AFFECTING_BRICKS,
-  OP_SAFETY_METADATA,
-  TOOLS,
-} from "../src/index.ts";
-import {
-  extractStudioApiRoutes,
-  verifyMcpParity,
-} from "../../../scripts/mcp-parity.ts";
+import { DESTRUCTIVE_OP_KINDS, MONEY_AFFECTING_BRICKS, OP_SAFETY_METADATA, TOOLS } from "../src/index.ts";
+import { extractStudioApiRoutes, verifyMcpParity } from "../../../scripts/mcp-parity.ts";
 
 describe("Story 7.1 — MCP Dual-Surface Parity Gate (AC 2, AC 4, AC 6)", () => {
   it("passes full parity across all Blueprint Op kinds, studio-api routes, and MCP tools (AC 4)", () => {
@@ -61,12 +53,8 @@ describe("Story 7.1 — MCP Dual-Surface Parity Gate (AC 2, AC 4, AC 6)", () => 
     });
 
     expect(result.ok).toBe(false);
-    expect(result.orphanStudioRoutes).toContain(
-      "POST /api/projects/:project/ui-only-shadow-mutation",
-    );
-    expect(result.errors.join("\n")).toContain(
-      'Orphan UI route "POST /api/projects/:project/ui-only-shadow-mutation"',
-    );
+    expect(result.orphanStudioRoutes).toContain("POST /api/projects/:project/ui-only-shadow-mutation");
+    expect(result.errors.join("\n")).toContain('Orphan UI route "POST /api/projects/:project/ui-only-shadow-mutation"');
   });
 
   it("fails parity (exits 1) and names the orphan Op kind when an unmapped Op kind is added to Blueprint (AC 6)", () => {
@@ -76,9 +64,7 @@ describe("Story 7.1 — MCP Dual-Surface Parity Gate (AC 2, AC 4, AC 6)", () => 
 
     expect(result.ok).toBe(false);
     expect(result.orphanOps).toContain("orphan_drop_all_tables_op");
-    expect(result.errors.join("\n")).toContain(
-      'Orphan Op kind "orphan_drop_all_tables_op"',
-    );
+    expect(result.errors.join("\n")).toContain('Orphan Op kind "orphan_drop_all_tables_op"');
   });
 
   it("fails parity (exits 1) and names the orphan MCP tool when an MCP-only mutation has no shared Op or studio-api command (AC 4, AC 6)", () => {
@@ -105,8 +91,6 @@ describe("Story 7.1 — MCP Dual-Surface Parity Gate (AC 2, AC 4, AC 6)", () => 
 
     expect(result.ok).toBe(false);
     expect(result.orphanMcpTools).toContain("mcp_only_unmapped_mutation");
-    expect(result.errors.join("\n")).toContain(
-      'Orphan MCP tool "mcp_only_unmapped_mutation"',
-    );
+    expect(result.errors.join("\n")).toContain('Orphan MCP tool "mcp_only_unmapped_mutation"');
   });
 });

@@ -1,24 +1,9 @@
 import { describe, expect, test } from "vitest";
-import {
-  ManifestSchema,
-  NodePackManifestSchema,
-  assemble,
-  hashFiles,
-} from "@poc/assembler";
+import { ManifestSchema, NodePackManifestSchema, assemble, hashFiles } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
-import {
-  applyOp,
-  buildCatalogNodeRegistry,
-  createEmptyBlueprint,
-  toAssemblerBlueprint,
-} from "@poc/blueprint";
+import { applyOp, buildCatalogNodeRegistry, createEmptyBlueprint, toAssemblerBlueprint } from "@poc/blueprint";
 import * as coreNodesModule from "../src/index.ts";
-import {
-  CORE_NODE_TYPES,
-  coreNodeDefinitions,
-  coreNodeExecutors,
-  coreNodesManifest,
-} from "../src/index.ts";
+import { CORE_NODE_TYPES, coreNodeDefinitions, coreNodeExecutors, coreNodesManifest } from "../src/index.ts";
 import { PLACEHOLDER_BRICK_EXECUTOR_MODULES, buildExecutorsFromCatalog, buildRegistryFromCatalog, runGraph } from "@poc/runtime";
 import { GraphWorkflow } from "@poc/sdk";
 import * as creditWalletMod from "../../../bricks/credit-wallet/src/index.ts";
@@ -56,14 +41,7 @@ const EXPECTED_19_CORE_NODES = [
   "core.batch",
 ] as const;
 
-const WORKFLOW_BRICKS = [
-  "credit-wallet",
-  "dynamic-entities",
-  "omnichannel-outbound",
-  "in-app-notifications",
-  "webhook-gateway",
-  "scripting-sandbox",
-] as const;
+const WORKFLOW_BRICKS = ["credit-wallet", "dynamic-entities", "omnichannel-outbound", "in-app-notifications", "webhook-gateway", "scripting-sandbox"] as const;
 
 const BRICK_EXPORTS: Record<string, Readonly<Record<string, unknown>>> = {
   "@poc/credit-wallet": creditWalletMod,
@@ -121,10 +99,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
       const pkgExports = BRICK_EXPORTS[entry!.manifest.worker.package];
       expect(pkgExports, `exports for ${entry!.manifest.worker.package}`).toBeDefined();
       for (const node of entry!.manifest.nodes ?? []) {
-        expect(
-          typeof pkgExports![node.executor],
-          `${brickId} node ${node.type} executor ${node.executor}`,
-        ).toBe("function");
+        expect(typeof pkgExports![node.executor], `${brickId} node ${node.type} executor ${node.executor}`).toBe("function");
       }
     }
   });
@@ -248,7 +223,8 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
 
     // 1. Trigger core.webhook -> core.field_map -> core.rename_keys -> core.format_template -> core.json_transform -> core.noop
     const wf1Runner = new GraphWorkflow(registry, executors);
-    const res1 = await wf1Runner.start({ workspaceId: "ws_test",
+    const res1 = await wf1Runner.start({
+      workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "t1", type: "core.webhook", data: { method: "post" } },
@@ -320,7 +296,8 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
       },
       registry,
       executors,
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         payload: {
           items: [
             { active: true, points: 10 },
@@ -382,9 +359,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
       },
       registry,
       executors,
-      { workspaceId: "ws_test",
-        payload: { severity: "high", channel: "email" },
-      },
+      { workspaceId: "ws_test", payload: { severity: "high", channel: "email" } },
     );
     // Story 0.9 (R-B): live fetch is off and no fixture is injected, so the HTTP step fails with
     // NOT_CONFIGURED instead of reporting a fabricated 200.
@@ -422,9 +397,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
         ...BRICK_EXPORTS,
         "@poc/credit-wallet": PLACEHOLDER_BRICK_EXECUTOR_MODULES["@poc/credit-wallet"]!,
       }),
-      { workspaceId: "ws_test",
-        payload: { invoiceId: "inv_1" },
-      },
+      { workspaceId: "ws_test", payload: { invoiceId: "inv_1" } },
     );
     // Story 0.9 (B11): the real omnichannel-outbound export has no delivery adapter, so the send step fails
     // NOT_CONFIGURED and nothing downstream runs. It never reports dispatched: true.
@@ -434,7 +407,11 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
     expect(wfBricks.outputs.oo).toBeUndefined();
     // The real credit export never fakes a balance.
     await expect(
-      (BRICK_EXPORTS["@poc/credit-wallet"]!.executeWalletCredit as (ctx: unknown) => Promise<unknown>)({ nodeId: "cw", data: { amount: 5 }, inputs: { in: {} } }),
+      (BRICK_EXPORTS["@poc/credit-wallet"]!.executeWalletCredit as (ctx: unknown) => Promise<unknown>)({
+        nodeId: "cw",
+        data: { amount: 5 },
+        inputs: { in: {} },
+      }),
     ).rejects.toThrow(/^NOT_CONFIGURED: credit-wallet\.credit/);
     expect(wfBricks.failed.oo).toMatch(/^NOT_CONFIGURED: omnichannel-outbound\.send_message/);
 
@@ -476,9 +453,7 @@ describe("ManifestSchema v2 and @poc/core-nodes conformance", () => {
       },
       registry,
       executors,
-      { workspaceId: "ws_test",
-        payload: { id: "rec_1", title: "Ship CP3" },
-      },
+      { workspaceId: "ws_test", payload: { id: "rec_1", title: "Ship CP3" } },
     );
     expect(wfEntityTrigger.ok).toBe(true);
     expect(wfEntityTrigger.outputs.np?.out).toEqual({

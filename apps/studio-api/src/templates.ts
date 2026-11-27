@@ -1,26 +1,12 @@
 import { catalog } from "@poc/assembler/catalog";
-import {
-  computeReadiness,
-  exportBlueprintBundle,
-  normalizeBlueprintState,
-  semanticHash,
-} from "@poc/blueprint";
-import type {
-  BlueprintBundle,
-  BlueprintState,
-  ReadinessResult,
-} from "@poc/blueprint";
+import { computeReadiness, exportBlueprintBundle, normalizeBlueprintState, semanticHash } from "@poc/blueprint";
+import type { BlueprintBundle, BlueprintState, ReadinessResult } from "@poc/blueprint";
 import aiCreditsPreset from "../../../presets/ai-credits-saas.blueprint.json" with { type: "json" };
 import b2bPreset from "../../../presets/b2b-workspace-app.blueprint.json" with { type: "json" };
 import marketplacePreset from "../../../presets/marketplace.blueprint.json" with { type: "json" };
 import stripeDiscordOpsPreset from "../../../presets/stripe-discord-ops.blueprint.json" with { type: "json" };
 
-export const STARTER_TEMPLATE_IDS = [
-  "ai-credits-saas",
-  "b2b-workspace-app",
-  "marketplace",
-  "stripe-discord-ops",
-] as const;
+export const STARTER_TEMPLATE_IDS = ["ai-credits-saas", "b2b-workspace-app", "marketplace", "stripe-discord-ops"] as const;
 
 export type StarterTemplateId = (typeof STARTER_TEMPLATE_IDS)[number];
 
@@ -46,10 +32,7 @@ const RAW_PRESETS: Record<StarterTemplateId, Record<string, unknown>> = {
   "stripe-discord-ops": stripeDiscordOpsPreset as unknown as Record<string, unknown>,
 };
 
-function coercePresetToBlueprintState(
-  raw: Record<string, unknown>,
-  projectOverride?: string,
-): BlueprintState {
+function coercePresetToBlueprintState(raw: Record<string, unknown>, projectOverride?: string): BlueprintState {
   const bricks = (Array.isArray(raw.bricks) ? raw.bricks : []).map((b) =>
     typeof b === "string"
       ? { id: b, config: {} }
@@ -86,9 +69,7 @@ function coercePresetToBlueprintState(
     entities: entities as BlueprintState["entities"],
     workflows: (Array.isArray(raw.workflows) ? raw.workflows : []) as BlueprintState["workflows"],
     secretRefs: (Array.isArray(raw.secretRefs) ? raw.secretRefs : []) as BlueprintState["secretRefs"],
-    metadata: (typeof raw.metadata === "object" && raw.metadata !== null
-      ? raw.metadata
-      : {}) as BlueprintState["metadata"],
+    metadata: (typeof raw.metadata === "object" && raw.metadata !== null ? raw.metadata : {}) as BlueprintState["metadata"],
   });
 }
 

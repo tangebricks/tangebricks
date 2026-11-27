@@ -133,17 +133,21 @@ export function readStoredGraph(text: unknown, registry: Registry, plan: "free" 
   if (!Array.isArray(nodes) || !Array.isArray(edges)) return { ok: false, reason: "the stored graph needs a list of nodes and a list of edges" };
   for (const node of nodes) {
     const n = node as { id?: unknown; type?: unknown; data?: unknown };
-    if (typeof n?.id !== "string" || typeof n.type !== "string" || typeof n.data !== "object" || n.data === null || Array.isArray(n.data)) return { ok: false, reason: "every node needs a text id, a text type and a data object" };
+    if (typeof n?.id !== "string" || typeof n.type !== "string" || typeof n.data !== "object" || n.data === null || Array.isArray(n.data))
+      return { ok: false, reason: "every node needs a text id, a text type and a data object" };
   }
   for (const edge of edges) {
     const e = edge as { id?: unknown; source?: unknown; target?: unknown };
-    if (typeof e?.id !== "string" || typeof e.source !== "string" || typeof e.target !== "string") return { ok: false, reason: "every edge needs a text id, source and target" };
+    if (typeof e?.id !== "string" || typeof e.source !== "string" || typeof e.target !== "string")
+      return { ok: false, reason: "every edge needs a text id, source and target" };
   }
   const graph = parsed as Graph;
   const errors = validateGraph(graph.nodes, graph.edges, registry).issues.filter((i) => i.severity === "error");
-  if (errors.length > 0) return { ok: false, reason: `graph is invalid: ${errors.map((i) => `${i.code} at ${i.nodeId || "the graph"} (${i.message})`).join("; ")}` };
+  if (errors.length > 0)
+    return { ok: false, reason: `graph is invalid: ${errors.map((i) => `${i.code} at ${i.nodeId || "the graph"} (${i.message})`).join("; ")}` };
   const budgetErrors = checkGraphBudget(graph, registry, plan).filter((i) => i.severity === "error");
-  if (budgetErrors.length > 0) return { ok: false, reason: `graph exceeds budget: ${budgetErrors.map((i) => `${i.code} at ${i.nodeId || "the graph"} (${i.message})`).join("; ")}` };
+  if (budgetErrors.length > 0)
+    return { ok: false, reason: `graph exceeds budget: ${budgetErrors.map((i) => `${i.code} at ${i.nodeId || "the graph"} (${i.message})`).join("; ")}` };
   return { ok: true, graph };
 }
 
@@ -168,20 +172,21 @@ export async function runStoredGraph(run: StoredGraphRun): Promise<RunResult> {
     run.runId ??
     params?.runId ??
     explicitTelemetry?.runId ??
-    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? `run_${crypto.randomUUID()}`
-      : `run_${Date.now()}`);
+    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? `run_${crypto.randomUUID()}` : `run_${Date.now()}`);
   if (typeof params?.graphId !== "string" || !ID_PATTERN.test(params.graphId)) throw run.nonRetryable("the run was started without a usable graph id");
   // A run executes for one verified tenant workspace. With none, or with the reserved APP_WORKSPACE (nobody's workspace),
   // it is refused before the table is read and before any node runs. There is no default workspace (AD-S19).
-  if (params.workspaceId === undefined || params.workspaceId === APP_WORKSPACE) throw run.nonRetryable("NO_WORKSPACE: the run was started without a verified workspace");
+  if (params.workspaceId === undefined || params.workspaceId === APP_WORKSPACE)
+    throw run.nonRetryable("NO_WORKSPACE: the run was started without a verified workspace");
   if (!isTenantWorkspaceId(params.workspaceId)) throw run.nonRetryable("the run was started without a usable workspace id");
   const workspaceId = params.workspaceId;
 
   // Only the run's own workspace and the app-wide graphs are visible; the workspace's own row wins over the app's.
   const graph = await step.do(LOAD_STEP, async () => {
     const row = await db
-      .prepare(`SELECT graph FROM ${GRAPH_TABLE} WHERE id = ?1 AND workspace_id IN (?2, '${APP_WORKSPACE}') ORDER BY CASE WHEN workspace_id = ?2 THEN 0 ELSE 1 END LIMIT 1`)
+      .prepare(
+        `SELECT graph FROM ${GRAPH_TABLE} WHERE id = ?1 AND workspace_id IN (?2, '${APP_WORKSPACE}') ORDER BY CASE WHEN workspace_id = ?2 THEN 0 ELSE 1 END LIMIT 1`,
+      )
       .bind(params.graphId, workspaceId)
       .first<{ graph: string }>();
     if (row === null) throw run.nonRetryable(`no graph is stored under "${params.graphId}"`);
@@ -190,18 +195,9 @@ export async function runStoredGraph(run: StoredGraphRun): Promise<RunResult> {
     return read.graph;
   });
 
-  const envTelemetrySecret =
-    typeof run.env?.PX_TELEMETRY_SECRET === "string"
-      ? run.env.PX_TELEMETRY_SECRET
-      : undefined;
-  const envWebhookUrl =
-    typeof run.env?.PX_TELEMETRY_WEBHOOK_URL === "string"
-      ? run.env.PX_TELEMETRY_WEBHOOK_URL
-      : undefined;
-  const envTelemetryEnabled =
-    Boolean(run.env?.PX_TELEMETRY_ENABLED) ||
-    Boolean(envTelemetrySecret) ||
-    Boolean(envWebhookUrl);
+  const envTelemetrySecret = typeof run.env?.PX_TELEMETRY_SECRET === "string" ? run.env.PX_TELEMETRY_SECRET : undefined;
+  const envWebhookUrl = typeof run.env?.PX_TELEMETRY_WEBHOOK_URL === "string" ? run.env.PX_TELEMETRY_WEBHOOK_URL : undefined;
+  const envTelemetryEnabled = Boolean(run.env?.PX_TELEMETRY_ENABLED) || Boolean(envTelemetrySecret) || Boolean(envWebhookUrl);
   const telemetry: TelemetryRunOptions | undefined =
     explicitTelemetry || envTelemetryEnabled
       ? {

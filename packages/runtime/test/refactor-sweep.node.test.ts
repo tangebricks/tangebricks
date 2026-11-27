@@ -13,25 +13,13 @@ describe("UC1.8 — Refactor sweep (UC1)", () => {
     expect(existsSync(executorPath)).toBe(true);
     const content = readFileSync(executorPath, "utf-8");
     const lines = content.split(/\r?\n/).length;
-    expect(
-      lines,
-      `integration-executor.ts must be <= 900 lines (actual: ${lines})`,
-    ).toBeLessThanOrEqual(900);
+    expect(lines, `integration-executor.ts must be <= 900 lines (actual: ${lines})`).toBeLessThanOrEqual(900);
   });
 
   it("Task 3: split modules exist under packages/runtime/src/integration/", () => {
-    expect(
-      existsSync(requestBuildPath),
-      "src/integration/request-build.ts must exist",
-    ).toBe(true);
-    expect(
-      existsSync(retryPath),
-      "src/integration/retry.ts must exist",
-    ).toBe(true);
-    expect(
-      existsSync(redactionPath),
-      "src/integration/redaction.ts must exist",
-    ).toBe(true);
+    expect(existsSync(requestBuildPath), "src/integration/request-build.ts must exist").toBe(true);
+    expect(existsSync(retryPath), "src/integration/retry.ts must exist").toBe(true);
+    expect(existsSync(redactionPath), "src/integration/redaction.ts must exist").toBe(true);
   });
 
   it("Task 3: split modules export their modular responsibilities", async () => {
@@ -73,10 +61,7 @@ describe("UC1.8 — Refactor sweep (UC1)", () => {
     };
 
     const staleHits = checkDir(srcDir);
-    expect(
-      staleHits,
-      `No file in packages/runtime/src should contain __fetcher, but found in: ${staleHits.join(", ")}`,
-    ).toEqual([]);
+    expect(staleHits, `No file in packages/runtime/src should contain __fetcher, but found in: ${staleHits.join(", ")}`).toEqual([]);
   });
 
   it("AC1: public exports of @poc/runtime remain intact and identical to expected baseline", async () => {
@@ -112,10 +97,7 @@ describe("UC1.8 — Refactor sweep (UC1)", () => {
     ];
 
     for (const name of expectedExportNames) {
-      expect(
-        runtimeExports,
-        `@poc/runtime must export ${name}`,
-      ).toHaveProperty(name);
+      expect(runtimeExports, `@poc/runtime must export ${name}`).toHaveProperty(name);
     }
   });
 });

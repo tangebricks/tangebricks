@@ -79,10 +79,6 @@ export function hardenedBetterAuthOptions(input: BetterAuthHardeningInput) {
  * Better Auth's `database` option with hashed session tokens: a function adapter that builds Better Auth's own
  * adapter for `db` (pass `getAdapter` from "better-auth/db/adapter") and wraps it with `withHashedSessionTokens`.
  */
-export function hashedSessionDatabase(
-  getAdapter: (options: any) => Promise<unknown>,
-  db: D1Like,
-): (options: Record<string, unknown>) => SessionAdapterLike {
-  return (options) =>
-    withHashedSessionTokens(getAdapter({ ...options, database: db }) as Promise<SessionAdapterLike>, db);
+export function hashedSessionDatabase(getAdapter: (options: any) => Promise<unknown>, db: D1Like): (options: Record<string, unknown>) => SessionAdapterLike {
+  return (options) => withHashedSessionTokens(getAdapter({ ...options, database: db }) as Promise<SessionAdapterLike>, db);
 }

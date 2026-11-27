@@ -11,18 +11,13 @@ import { postOpsWithReview } from "./human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 
-async function apiRequest(
-  path: string,
-  init?: { method?: string; body?: unknown },
-): Promise<{ status: number; body: Record<string, any> }> {
+async function apiRequest(path: string, init?: { method?: string; body?: unknown }): Promise<{ status: number; body: Record<string, any> }> {
   // Story 0.15: the author is the verified caller. A body `author` names the actor, who calls with a project token of
   // its own; the body `author` itself is ignored by the server.
   const actor = (init?.body as { author?: { id?: string } } | undefined)?.author?.id;
   const projectMatch = /^\/api\/projects\/([^/?]+)/.exec(path);
   const { headers: authHeaders } =
-    actor && projectMatch?.[1]
-      ? await ensureTestProjectToken(studioEnv, projectMatch[1], { clientName: actor })
-      : await ensureTestAuthForPath(studioEnv, path);
+    actor && projectMatch?.[1] ? await ensureTestProjectToken(studioEnv, projectMatch[1], { clientName: actor }) : await ensureTestAuthForPath(studioEnv, path);
   // AD-V8: a token's edit applies directly when preview-safe, else goes through a proposal the owner accepts.
   const opsMatch = /^\/api\/projects\/([^/?]+)\/ops$/.exec(path);
   if (opsMatch?.[1] && init?.body !== undefined && (init.method ?? "POST") === "POST") {
@@ -59,10 +54,7 @@ describe("BlueprintDO SQLite ops log and apps/studio-api command bus (Story 1.2)
     expect(initialGet.body.revision).toBe(0);
     expect(initialGet.body.readiness.ready).toBe(false);
 
-    const committedSnapshots = new Map<
-      number,
-      { state: BlueprintState; semanticHash: string }
-    >();
+    const committedSnapshots = new Map<number, { state: BlueprintState; semanticHash: string }>();
 
     // Revision 1: enable multi-workspace (human)
     const rev1 = await apiRequest(`/api/projects/${project}/ops`, {
@@ -113,9 +105,7 @@ describe("BlueprintDO SQLite ops log and apps/studio-api command bus (Story 1.2)
     // Revisions 3..55: alternate configuring credit-wallet and updating metadata
     for (let rev = 3; rev <= 55; rev += 1) {
       const isHuman = rev % 2 === 1;
-      const author = isHuman
-        ? { type: "human" as const, id: `user-${rev}` }
-        : { type: "agent" as const, id: `agent-${rev}`, client: "cursor" };
+      const author = isHuman ? { type: "human" as const, id: `user-${rev}` } : { type: "agent" as const, id: `agent-${rev}`, client: "cursor" };
 
       const op: Op =
         rev % 3 === 0
@@ -159,12 +149,8 @@ describe("BlueprintDO SQLite ops log and apps/studio-api command bus (Story 1.2)
     expect(snapsRes.status).toBe(200);
     expect(snapsRes.body.snapshots).toHaveLength(1);
     expect(snapsRes.body.snapshots[0].revision).toBe(50);
-    expect(snapsRes.body.snapshots[0].semanticHash).toBe(
-      committedSnapshots.get(50)?.semanticHash,
-    );
-    expect(snapsRes.body.snapshots[0].state).toEqual(
-      committedSnapshots.get(50)?.state,
-    );
+    expect(snapsRes.body.snapshots[0].semanticHash).toBe(committedSnapshots.get(50)?.semanticHash);
+    expect(snapsRes.body.snapshots[0].state).toEqual(committedSnapshots.get(50)?.state);
 
     // Reconstruct state at revision 12 (replayed from revision 0 + ops 1..12)
     const rev12Res = await apiRequest(`/api/projects/${project}/revisions/12`);
@@ -187,16 +173,11 @@ describe("BlueprintDO SQLite ops log and apps/studio-api command bus (Story 1.2)
     // Verify D1 projects index has current_revision = 55. Story 16: an MCP token lists only the project it is bound to,
     // so the listing is read with this project's own token.
     const projectToken = await ensureTestProjectToken(studioEnv, project);
-    const listResponse = await app.fetch(
-      new Request("http://localhost/api/projects", { headers: projectToken.headers }),
-      studioEnv,
-    );
+    const listResponse = await app.fetch(new Request("http://localhost/api/projects", { headers: projectToken.headers }), studioEnv);
     const listRes = { status: listResponse.status, body: (await listResponse.json()) as Record<string, any> };
     expect(listRes.status).toBe(200);
     expect(listRes.body.projects.map((p: { project: string }) => p.project)).toEqual([project]);
-    const indexed = listRes.body.projects.find(
-      (p: { project: string }) => p.project === project,
-    );
+    const indexed = listRes.body.projects.find((p: { project: string }) => p.project === project);
     expect(indexed).toBeDefined();
     expect(indexed.revision).toBe(55);
     expect(indexed.semanticHash).toBe(committedSnapshots.get(55)?.semanticHash);
@@ -270,9 +251,7 @@ describe("BlueprintDO SQLite ops log and apps/studio-api command bus (Story 1.2)
     const afterFailed = await apiRequest(`/api/projects/${project}`);
     expect(afterFailed.status).toBe(200);
     expect(afterFailed.body.revision).toBe(1);
-    expect(afterFailed.body.state.bricks.map((b: { id: string }) => b.id)).toEqual([
-      "multi-workspace",
-    ]);
+    expect(afterFailed.body.state.bricks.map((b: { id: string }) => b.id)).toEqual(["multi-workspace"]);
   });
 
   test("building an unready project returns 422, and building a ready project returns a deterministic buildHash matching assemble()", async () => {

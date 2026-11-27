@@ -63,15 +63,9 @@ describe("Story 2.7: Live WebSocket Sync Store Reconciliation, Follow AI, and Hi
     expect(useStudioStore.getState().currentRevision).toBe(2);
     // Follow AI navigated to Data view for the latest entity mutation
     expect(useStudioStore.getState().activeNav).toBe("data");
-    expect(
-      screen.getByTestId("entity-list-item-invoices").getAttribute("data-highlighted"),
-    ).toBe("true");
-    expect(screen.getByTestId("entity-author-badge-invoices").textContent).toContain(
-      "agent:Claude Desktop",
-    );
-    expect(screen.getByTestId("live-sync-announcer").textContent).toContain(
-      "agent:Claude Desktop made 1 change in revision r2",
-    );
+    expect(screen.getByTestId("entity-list-item-invoices").getAttribute("data-highlighted")).toBe("true");
+    expect(screen.getByTestId("entity-author-badge-invoices").textContent).toContain("agent:Claude Desktop");
+    expect(screen.getByTestId("live-sync-announcer").textContent).toContain("agent:Claude Desktop made 1 change in revision r2");
 
     // Apply revision r3 adding a workflow node -> Follow AI switches to Workflows canvas and highlights the node
     act(() => {
@@ -87,9 +81,7 @@ describe("Story 2.7: Live WebSocket Sync Store Reconciliation, Follow AI, and Hi
             workflow: {
               id: "wf-unit",
               name: "Unit Billing Flow",
-              nodes: [
-                { id: "node-t1", type: "trigger.manual", label: "Trigger", data: {} },
-              ],
+              nodes: [{ id: "node-t1", type: "trigger.manual", label: "Trigger", data: {} }],
               edges: [],
             },
           },
@@ -99,11 +91,7 @@ describe("Story 2.7: Live WebSocket Sync Store Reconciliation, Follow AI, and Hi
 
     expect(useStudioStore.getState().currentRevision).toBe(3);
     expect(useStudioStore.getState().activeNav).toBe("workflows");
-    expect(
-      screen.getByTestId("canvas-node-node-t1").getAttribute("data-highlighted"),
-    ).toBe("true");
-    expect(screen.getByTestId("node-author-badge-node-t1").textContent).toContain(
-      "agent:Claude Desktop",
-    );
+    expect(screen.getByTestId("canvas-node-node-t1").getAttribute("data-highlighted")).toBe("true");
+    expect(screen.getByTestId("node-author-badge-node-t1").textContent).toContain("agent:Claude Desktop");
   });
 });

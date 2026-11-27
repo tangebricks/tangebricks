@@ -84,18 +84,13 @@ describe("studio-api session hardening (story 0.14)", () => {
 
   test("HASHED_STORE and DB_ROW_REPLAY: the row holds sha256(token); the stored value is refused as bearer and cookie", async () => {
     const { token, userId } = await signUp("hashed");
-    const row = await studioDb
-      .prepare('SELECT "token" FROM "session" WHERE "userId" = ?')
-      .bind(userId)
-      .first<{ token: string }>();
+    const row = await studioDb.prepare('SELECT "token" FROM "session" WHERE "userId" = ?').bind(userId).first<{ token: string }>();
     expect(row!.token).toBe(await sha256HexString(token));
     expect(row!.token).not.toBe(token);
 
     expect((await call("/api/auth/me", { headers: { authorization: `Bearer ${token}` } })).status).toBe(200);
     expect((await call("/api/auth/me", { headers: { authorization: `Bearer ${row!.token}` } })).status).toBe(401);
-    expect(
-      (await call("/api/auth/me", { headers: { cookie: `better-auth.session_token=${row!.token}` } })).status,
-    ).toBe(401);
+    expect((await call("/api/auth/me", { headers: { cookie: `better-auth.session_token=${row!.token}` } })).status).toBe(401);
   });
 
   test("MIGRATED_SESSION: a row written before the change keeps working with its original token after the schema step", async () => {
@@ -106,10 +101,7 @@ describe("studio-api session hardening (story 0.14)", () => {
     // The schema step's sweep runs once per isolate (already done here), so this row is rewritten on first use.
     await ensureStudioD1Schema(studioDb);
     expect((await call("/api/auth/me", { headers: { authorization: `Bearer ${legacyToken}` } })).status).toBe(200);
-    const row = await studioDb
-      .prepare('SELECT "token" FROM "session" WHERE "userId" = ?')
-      .bind(userId)
-      .first<{ token: string }>();
+    const row = await studioDb.prepare('SELECT "token" FROM "session" WHERE "userId" = ?').bind(userId).first<{ token: string }>();
     expect(row!.token).toBe(await sha256HexString(legacyToken));
     expect((await call("/api/auth/me", { headers: { authorization: `Bearer ${legacyToken}` } })).status).toBe(200);
 

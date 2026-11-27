@@ -75,11 +75,14 @@ export function createApiKeyRoutes(_options: ApiKeyRouteOptions = {}): Hono<ApiK
       return c.json({ error: result.error }, result.code as 400 | 403 | 500);
     }
 
-    return c.json({
-      rawKey: result.rawKey,
-      key: result.key,
-      warning: "This secret key will not be shown again. Please store it safely.",
-    }, 201);
+    return c.json(
+      {
+        rawKey: result.rawKey,
+        key: result.key,
+        warning: "This secret key will not be shown again. Please store it safely.",
+      },
+      201,
+    );
   });
 
   // Revoke key

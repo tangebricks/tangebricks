@@ -133,15 +133,9 @@ export function computeInputsHash(rootDir: string, fallbackRootDir?: string): In
   return { inputsHash, fileHashes };
 }
 
-export function findModifiedInputFiles(
-  rootDir: string,
-  fallbackRootDir?: string,
-  baselineFileHashes?: Record<string, string>,
-): string[] {
+export function findModifiedInputFiles(rootDir: string, fallbackRootDir?: string, baselineFileHashes?: Record<string, string>): string[] {
   const current = computeInputsHash(rootDir, fallbackRootDir).fileHashes;
-  const baseline =
-    baselineFileHashes ??
-    (fallbackRootDir ? computeInputsHash(fallbackRootDir).fileHashes : {});
+  const baseline = baselineFileHashes ?? (fallbackRootDir ? computeInputsHash(fallbackRootDir).fileHashes : {});
   const allKeys = new Set<string>([...Object.keys(current), ...Object.keys(baseline)]);
   const changed: string[] = [];
   for (const key of [...allKeys].sort()) {

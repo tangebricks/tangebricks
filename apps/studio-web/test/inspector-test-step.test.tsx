@@ -104,9 +104,7 @@ describe("RightDock Inspector — I/O & Test Step tab", () => {
     });
 
     globalThis.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
-      expect(url).toContain(
-        "/api/projects/acme-saas/workflows/wf_order_created/nodes/step_debit/test-step",
-      );
+      expect(url).toContain("/api/projects/acme-saas/workflows/wf_order_created/nodes/step_debit/test-step");
       const reqBody = JSON.parse(String(init?.body ?? "{}")) as {
         input: { balance: number; workspaceId: string };
       };
@@ -149,9 +147,7 @@ describe("RightDock Inspector — I/O & Test Step tab", () => {
     fireEvent.click(ioTab);
 
     expect(screen.getByTestId("inspector-test-step-panel")).toBeDefined();
-    expect(screen.getByTestId("test-step-input-source-badge").textContent).toContain(
-      "Last output from step_trigger",
-    );
+    expect(screen.getByTestId("test-step-input-source-badge").textContent).toContain("Last output from step_trigger");
 
     const editor = screen.getByTestId("test-step-input-editor") as HTMLTextAreaElement;
     expect(JSON.parse(editor.value)).toEqual({
@@ -168,14 +164,10 @@ describe("RightDock Inspector — I/O & Test Step tab", () => {
     fireEvent.click(screen.getByTestId("run-test-step-button"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("test-step-status-badge").textContent).toContain(
-        "✓ Succeeded",
-      );
+      expect(screen.getByTestId("test-step-status-badge").textContent).toContain("✓ Succeeded");
     });
 
-    expect(screen.getByTestId("test-step-duration-badge").textContent).toContain(
-      "11 ms",
-    );
+    expect(screen.getByTestId("test-step-duration-badge").textContent).toContain("11 ms");
 
     const jsonOutput = screen.getByTestId("test-step-output-json");
     expect(JSON.parse(jsonOutput.textContent ?? "{}")).toEqual({
@@ -214,8 +206,7 @@ describe("RightDock Inspector — I/O & Test Step tab", () => {
             message: "credit-wallet.debit (step_debit): insufficient balance (2 < 10)",
             whatHappened: 'Step "step_debit" (credit-wallet.debit) failed during rehearsal.',
             why: "credit-wallet.debit (step_debit): insufficient balance (2 < 10)",
-            whatToDo:
-              'Increase the input "balance" value or lower the configured "amount" setting in the Params tab.',
+            whatToDo: 'Increase the input "balance" value or lower the configured "amount" setting in the Params tab.',
             field: "amount",
           },
         }),
@@ -231,28 +222,18 @@ describe("RightDock Inspector — I/O & Test Step tab", () => {
     fireEvent.keyDown(editor, { key: "Enter", ctrlKey: true });
 
     await waitFor(() => {
-      expect(screen.getByTestId("test-step-status-badge").textContent).toContain(
-        "✕ Failed",
-      );
+      expect(screen.getByTestId("test-step-status-badge").textContent).toContain("✕ Failed");
     });
 
     const errCard = screen.getByTestId("test-step-error-card");
     expect(errCard).toBeDefined();
-    expect(screen.getByTestId("test-step-error-what").textContent).toContain(
-      'Step "step_debit" (credit-wallet.debit) failed during rehearsal.',
-    );
-    expect(screen.getByTestId("test-step-error-why").textContent).toContain(
-      "insufficient balance (2 < 10)",
-    );
-    expect(screen.getByTestId("test-step-error-todo").textContent).toContain(
-      'lower the configured "amount" setting in the Params tab',
-    );
+    expect(screen.getByTestId("test-step-error-what").textContent).toContain('Step "step_debit" (credit-wallet.debit) failed during rehearsal.');
+    expect(screen.getByTestId("test-step-error-why").textContent).toContain("insufficient balance (2 < 10)");
+    expect(screen.getByTestId("test-step-error-todo").textContent).toContain('lower the configured "amount" setting in the Params tab');
 
     // Click Focus field button to jump to Params tab and highlight "amount"
     fireEvent.click(screen.getByTestId("test-step-error-focus-field"));
     expect(useStudioStore.getState().highlightedInspectorField).toBe("amount");
-    expect(
-      screen.getByTestId("inspector-highlighted-field").getAttribute("data-field-key"),
-    ).toBe("amount");
+    expect(screen.getByTestId("inspector-highlighted-field").getAttribute("data-field-key")).toBe("amount");
   });
 });

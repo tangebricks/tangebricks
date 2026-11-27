@@ -23,7 +23,9 @@ export function resolveWorkerUrl(url: string, stateDir: string, env: Record<stri
   const file = join(resolve(stateDir), WORKERS_SUBDOMAIN_FILE);
   const sub = (existsSync(file) ? readFileSync(file, "utf8").trim() : "") || env.PX_WORKERS_SUBDOMAIN?.trim() || "";
   if (!/^[a-z0-9-]+$/i.test(sub)) {
-    throw new Error(`the H10 evidence shows the Worker's address with the account's workers.dev subdomain redacted; put the subdomain in ${WORKERS_SUBDOMAIN_FILE} in the state folder (scripts/poc-deploy.ts writes it) or set PX_WORKERS_SUBDOMAIN`);
+    throw new Error(
+      `the H10 evidence shows the Worker's address with the account's workers.dev subdomain redacted; put the subdomain in ${WORKERS_SUBDOMAIN_FILE} in the state folder (scripts/poc-deploy.ts writes it) or set PX_WORKERS_SUBDOMAIN`,
+    );
   }
   return url.split(ACCOUNT_SUBDOMAIN_PLACEHOLDER).join(sub);
 }
@@ -40,17 +42,28 @@ export interface Deployment {
 export function loadDeployment(options: { root: string; planRepo: string; stateDir: string; env: Record<string, string | undefined> }): Deployment {
   const stateDir = resolve(options.stateDir);
   const inside = (child: string, parent: string) => (child + sep).toLowerCase().startsWith((resolve(parent) + sep).toLowerCase());
-  if (inside(stateDir, options.root) || inside(stateDir, options.planRepo)) throw new Error("the state folder must be outside both repositories: it holds the access key");
+  if (inside(stateDir, options.root) || inside(stateDir, options.planRepo))
+    throw new Error("the state folder must be outside both repositories: it holds the access key");
   const credentials = loadCredentials(options.env);
   const h10Path = join(options.root, "evidence", "deployed", "h10-calls.json");
   if (!existsSync(h10Path)) throw new Error("evidence/deployed/h10-calls.json is missing: run scripts/poc-deploy.ts first");
-  const h10 = JSON.parse(readFileSync(h10Path, "utf8")) as { facts: { url: string | null; names: ResourceNames; readings: { afterFourth?: { databaseId: string | null; latestVersionId: string | null } } } };
+  const h10 = JSON.parse(readFileSync(h10Path, "utf8")) as {
+    facts: { url: string | null; names: ResourceNames; readings: { afterFourth?: { databaseId: string | null; latestVersionId: string | null } } };
+  };
   const { url, names } = h10.facts;
   const databaseId = h10.facts.readings.afterFourth?.databaseId ?? null;
   const ledger = fileStore(join(stateDir, "ledger.json")).read();
-  if (!url || !databaseId || !ledger || ledger.suffix !== names.suffix || ledger.entries.some((e) => e.status !== "created")) throw new Error("the H10 evidence, the ledger and the account do not describe one finished deployment: run scripts/poc-deploy.ts again");
+  if (!url || !databaseId || !ledger || ledger.suffix !== names.suffix || ledger.entries.some((e) => e.status !== "created"))
+    throw new Error("the H10 evidence, the ledger and the account do not describe one finished deployment: run scripts/poc-deploy.ts again");
   const accessKey = loadOrCreateAccessKey(fileKeyStore(join(stateDir, "access-key.txt")), () => {
     throw new Error("the access key is missing: this Worker cannot be reached");
   });
-  return { credentials, accessKey, names, url: resolveWorkerUrl(url, stateDir, options.env), databaseId, deployedVersionId: h10.facts.readings.afterFourth?.latestVersionId ?? null };
+  return {
+    credentials,
+    accessKey,
+    names,
+    url: resolveWorkerUrl(url, stateDir, options.env),
+    databaseId,
+    deployedVersionId: h10.facts.readings.afterFourth?.latestVersionId ?? null,
+  };
 }

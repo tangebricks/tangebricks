@@ -18,11 +18,7 @@ const TEST_ENV: StudioApiEnv = {
   GITHUB_CLIENT_SECRET: "studio-gh-test-client-secret",
 };
 
-const CANARY_SECRETS = [
-  "px_canary_secret_alpha_99182",
-  "sk_live_canary_beta_77341",
-  "whsec_canary_gamma_55129",
-] as const;
+const CANARY_SECRETS = ["px_canary_secret_alpha_99182", "sk_live_canary_beta_77341", "whsec_canary_gamma_55129"] as const;
 
 interface CallOptions {
   method?: string;
@@ -82,23 +78,13 @@ async function callStudioMcp(
   return { status: res.status, body, rawText };
 }
 
-function assertZeroCanaryLeakage(
-  surfaceName: string,
-  payloadText: string,
-  extraForbiddenStrings: string[] = [],
-) {
+function assertZeroCanaryLeakage(surfaceName: string, payloadText: string, extraForbiddenStrings: string[] = []) {
   for (const canary of CANARY_SECRETS) {
-    expect(
-      payloadText.includes(canary),
-      `Surface "${surfaceName}" leaked canary secret "${canary}"`,
-    ).toBe(false);
+    expect(payloadText.includes(canary), `Surface "${surfaceName}" leaked canary secret "${canary}"`).toBe(false);
   }
   for (const extra of extraForbiddenStrings) {
     if (!extra) continue;
-    expect(
-      payloadText.includes(extra),
-      `Surface "${surfaceName}" leaked ciphertext/internal value "${extra}"`,
-    ).toBe(false);
+    expect(payloadText.includes(extra), `Surface "${surfaceName}" leaked ciphertext/internal value "${extra}"`).toBe(false);
   }
 }
 
@@ -319,9 +305,7 @@ describe("AES-GCM Secret Vault, bind_secret_ref, RBAC/Agent Protection, and Zero
 
     // 6. Inspect raw D1 `studio_secret_vault` rows to verify AES-GCM encryption & decrypt round-trip
     const vaultRows = await studioDb
-      .prepare(
-        "SELECT ref, ciphertext_b64, iv_b64, key_hint FROM studio_secret_vault WHERE project_id = ? ORDER BY ref ASC",
-      )
+      .prepare("SELECT ref, ciphertext_b64, iv_b64, key_hint FROM studio_secret_vault WHERE project_id = ? ORDER BY ref ASC")
       .bind(projectSlug)
       .all<{
         ref: string;
@@ -335,11 +319,7 @@ describe("AES-GCM Secret Vault, bind_secret_ref, RBAC/Agent Protection, and Zero
     const ciphertexts = rawVaultRows.map((r) => r.ciphertext_b64);
     for (const row of rawVaultRows) {
       assertZeroCanaryLeakage(`D1 studio_secret_vault row ${row.ref}`, JSON.stringify(row));
-      const decrypted = await decryptSecretValue(
-        row.ciphertext_b64,
-        row.iv_b64,
-        TEST_ENV.PX_VAULT_KEY,
-      );
+      const decrypted = await decryptSecretValue(row.ciphertext_b64, row.iv_b64, TEST_ENV.PX_VAULT_KEY);
       if (row.ref === "sec_webhook_alpha") expect(decrypted).toBe(CANARY_SECRETS[0]);
       if (row.ref === "sec_billing_api_beta") expect(decrypted).toBe(CANARY_SECRETS[1]);
       if (row.ref === "sec_secondary_wh_gamma") expect(decrypted).toBe(CANARY_SECRETS[2]);
@@ -361,11 +341,7 @@ describe("AES-GCM Secret Vault, bind_secret_ref, RBAC/Agent Protection, and Zero
     });
     expect(revRes.status).toBe(200);
     const revText = await revRes.text();
-    assertZeroCanaryLeakage(
-      "Surface #2: GET /api/projects/:project/revisions",
-      revText,
-      ciphertexts,
-    );
+    assertZeroCanaryLeakage("Surface #2: GET /api/projects/:project/revisions", revText, ciphertexts);
 
     // 9. Scan Surface #3: GET /api/projects/:project/export bundle
     const exportRes = await callStudio(`/api/projects/${projectSlug}/export`, {
@@ -373,11 +349,7 @@ describe("AES-GCM Secret Vault, bind_secret_ref, RBAC/Agent Protection, and Zero
     });
     expect(exportRes.status).toBe(200);
     const exportText = await exportRes.text();
-    assertZeroCanaryLeakage(
-      "Surface #3: GET /api/projects/:project/export",
-      exportText,
-      ciphertexts,
-    );
+    assertZeroCanaryLeakage("Surface #3: GET /api/projects/:project/export", exportText, ciphertexts);
 
     // 10. Scan Surface #4: GET /api/projects/:project/secrets response
     const listSecretsRes = await callStudio(`/api/projects/${projectSlug}/secrets`, {
@@ -385,11 +357,7 @@ describe("AES-GCM Secret Vault, bind_secret_ref, RBAC/Agent Protection, and Zero
     });
     expect(listSecretsRes.status).toBe(200);
     const listSecretsText = await listSecretsRes.text();
-    assertZeroCanaryLeakage(
-      "Surface #4: GET /api/projects/:project/secrets",
-      listSecretsText,
-      ciphertexts,
-    );
+    assertZeroCanaryLeakage("Surface #4: GET /api/projects/:project/secrets", listSecretsText, ciphertexts);
     const listSecretsBody = JSON.parse(listSecretsText) as {
       secrets: Array<{
         ref: string;
@@ -409,11 +377,7 @@ describe("AES-GCM Secret Vault, bind_secret_ref, RBAC/Agent Protection, and Zero
     ]);
 
     // 11. Scan Surface #5: All MCP tool responses (`get_project`, `list_bricks`, `build_project`, `apply_ops`)
-    const mcpGet = await callStudioMcp(
-      "get_project",
-      { project: projectSlug },
-      { token: mcpToken },
-    );
+    const mcpGet = await callStudioMcp("get_project", { project: projectSlug }, { token: mcpToken });
     expect(mcpGet.status).toBe(200);
     assertZeroCanaryLeakage("Surface #5a: MCP get_project", mcpGet.rawText, ciphertexts);
 
@@ -438,50 +402,28 @@ describe("AES-GCM Secret Vault, bind_secret_ref, RBAC/Agent Protection, and Zero
     expect(mcpApply.status).toBe(200);
     assertZeroCanaryLeakage("Surface #5c: MCP apply_ops", mcpApply.rawText, ciphertexts);
 
-    const mcpBuild = await callStudioMcp(
-      "build_project",
-      { project: projectSlug },
-      { token: mcpToken },
-    );
+    const mcpBuild = await callStudioMcp("build_project", { project: projectSlug }, { token: mcpToken });
     expect(mcpBuild.status).toBe(200);
     assertZeroCanaryLeakage("Surface #5d: MCP build_project", mcpBuild.rawText, ciphertexts);
 
     // Also scan `studio_audit_log` and `studio_builds` in D1
-    const auditDump = await studioDb
-      .prepare("SELECT * FROM studio_audit_log")
-      .all<Record<string, unknown>>();
-    assertZeroCanaryLeakage(
-      "D1 studio_audit_log",
-      JSON.stringify(auditDump.results ?? []),
-      ciphertexts,
-    );
+    const auditDump = await studioDb.prepare("SELECT * FROM studio_audit_log").all<Record<string, unknown>>();
+    assertZeroCanaryLeakage("D1 studio_audit_log", JSON.stringify(auditDump.results ?? []), ciphertexts);
 
-    const buildsDump = await studioDb
-      .prepare("SELECT * FROM studio_builds")
-      .all<Record<string, unknown>>();
-    assertZeroCanaryLeakage(
-      "D1 studio_builds",
-      JSON.stringify(buildsDump.results ?? []),
-      ciphertexts,
-    );
+    const buildsDump = await studioDb.prepare("SELECT * FROM studio_builds").all<Record<string, unknown>>();
+    assertZeroCanaryLeakage("D1 studio_builds", JSON.stringify(buildsDump.results ?? []), ciphertexts);
 
     // 12. Verify MCP agent is forbidden from DELETE /secrets/:ref (403), while Owner can delete + unbind
-    const agentDel = await callStudio(
-      `/api/projects/${projectSlug}/secrets/sec_webhook_alpha`,
-      {
-        method: "DELETE",
-        token: mcpToken,
-      },
-    );
+    const agentDel = await callStudio(`/api/projects/${projectSlug}/secrets/sec_webhook_alpha`, {
+      method: "DELETE",
+      token: mcpToken,
+    });
     expect(agentDel.status).toBe(403);
 
-    const ownerDel = await callStudio(
-      `/api/projects/${projectSlug}/secrets/sec_webhook_alpha?unbind=true`,
-      {
-        method: "DELETE",
-        cookie: aliceCookie,
-      },
-    );
+    const ownerDel = await callStudio(`/api/projects/${projectSlug}/secrets/sec_webhook_alpha?unbind=true`, {
+      method: "DELETE",
+      cookie: aliceCookie,
+    });
     expect(ownerDel.status).toBe(200);
   });
 });

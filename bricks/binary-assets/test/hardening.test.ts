@@ -5,14 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_binary_assets.sql?raw";
-import {
-  AssetService,
-  MemoryR2,
-  contentDispositionAttachment,
-  createAssetRoutes,
-  isActiveContentType,
-  sanitizeFilename,
-} from "../src/index.ts";
+import { AssetService, MemoryR2, contentDispositionAttachment, createAssetRoutes, isActiveContentType, sanitizeFilename } from "../src/index.ts";
 import type { AssetEnv, AssetRouteOptions } from "../src/index.ts";
 
 const db = env.DB as D1Like;
@@ -47,7 +40,7 @@ function upload(
   body: NonNullable<RequestInit["body"]>,
   headers: Record<string, string> = { "Content-Type": "application/octet-stream" },
   query = "filename=f.bin",
-  database: D1Like = db
+  database: D1Like = db,
 ) {
   return app.fetch(new Request(`http://localhost/api/assets/upload?${query}`, { method: "POST", headers, body }), {
     DB: database,
@@ -77,7 +70,7 @@ describe("A14: size precheck, bounded streaming read, per-workspace quota", () =
           if (pulls >= 5) controller.close();
         },
       },
-      { highWaterMark: 0 }
+      { highWaterMark: 0 },
     );
     const req = new Request("http://localhost/api/assets/upload?filename=big.bin", {
       method: "POST",
@@ -106,7 +99,7 @@ describe("A14: size precheck, bounded streaming read, per-workspace quota", () =
           else controller.enqueue(new Uint8Array(512));
         },
       },
-      { highWaterMark: 0 }
+      { highWaterMark: 0 },
     );
     const res = await upload(app, bucket, stream);
     expect(res.status).toBe(413);
@@ -181,7 +174,19 @@ describe("A15: Content-Type allowlist and active types", () => {
   });
 
   it("isActiveContentType covers the script-capable types, including XSLT", () => {
-    for (const type of ["text/html", "application/xhtml+xml", "image/svg+xml", "text/xml", "application/xml", "text/xsl", "application/xslt+xml", "application/rss+xml", "text/javascript", "application/ecmascript", "TEXT/XSL; charset=utf-8"]) {
+    for (const type of [
+      "text/html",
+      "application/xhtml+xml",
+      "image/svg+xml",
+      "text/xml",
+      "application/xml",
+      "text/xsl",
+      "application/xslt+xml",
+      "application/rss+xml",
+      "text/javascript",
+      "application/ecmascript",
+      "TEXT/XSL; charset=utf-8",
+    ]) {
       expect(isActiveContentType(type), type).toBe(true);
     }
     for (const type of ["image/png", "text/plain", "text/csv", "application/json", "application/pdf"]) {
@@ -196,7 +201,7 @@ describe("A15: Content-Type allowlist and active types", () => {
     await bucket.put(key, "<script>alert(1)</script>", { httpMetadata: { contentType: "text/html" } });
     await db
       .prepare(
-        "INSERT INTO asset_files (id, workspace_id, uploaded_by, filename, content_type, size_bytes, r2_key, public_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO asset_files (id, workspace_id, uploaded_by, filename, content_type, size_bytes, r2_key, public_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .bind("ast_oldhtml", WS, USER, "page.html", "text/html", 25, key, `https://cdn.example.com/${key}`, new Date().toISOString())
       .run();
@@ -252,16 +257,14 @@ describe("A17: download headers", () => {
     await bucket.put(key, "legacy bytes", { httpMetadata: { contentType: "text/plain" } });
     await db
       .prepare(
-        "INSERT INTO asset_files (id, workspace_id, uploaded_by, filename, content_type, size_bytes, r2_key, public_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)"
+        "INSERT INTO asset_files (id, workspace_id, uploaded_by, filename, content_type, size_bytes, r2_key, public_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)",
       )
       .bind("ast_legacy", WS, USER, name, "text/plain", 12, key, new Date().toISOString())
       .run();
 
     const res = await app.fetch(new Request("http://localhost/api/assets/ast_legacy/download"), { DB: db, BUCKET: bucket });
     expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Disposition")).toBe(
-      `attachment; filename="abc _.txt"; filename*=UTF-8''a%22b%5Cc%20%C3%A9.txt`
-    );
+    expect(res.headers.get("Content-Disposition")).toBe(`attachment; filename="abc _.txt"; filename*=UTF-8''a%22b%5Cc%20%C3%A9.txt`);
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(res.headers.get("Content-Type")).toBe("text/plain");
     expect(res.headers.get("Content-Length")).toBe("12");
@@ -279,7 +282,18 @@ describe("A18: bounded paging and redacted errors", () => {
   it("answers 400 for limit/offset outside their ranges or not whole numbers", async () => {
     const bucket = new MemoryR2();
     const app = makeApp();
-    for (const query of ["limit=-1", "limit=0", "limit=1000", "limit=abc", "limit=1.5", "limit=", "offset=-1", "offset=Infinity", "offset=100001", "offset=1e3"]) {
+    for (const query of [
+      "limit=-1",
+      "limit=0",
+      "limit=1000",
+      "limit=abc",
+      "limit=1.5",
+      "limit=",
+      "offset=-1",
+      "offset=Infinity",
+      "offset=100001",
+      "offset=1e3",
+    ]) {
       const res = await app.fetch(new Request(`http://localhost/api/assets?${query}`), { DB: db, BUCKET: bucket });
       expect(res.status, query).toBe(400);
     }

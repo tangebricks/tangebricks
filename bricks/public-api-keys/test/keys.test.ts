@@ -80,12 +80,10 @@ describe("Public API Key Infrastructure Core Logic", () => {
     const ownerKey = await service.createKey(WS_A, { name: "k", role: "owner" as never, creator: OWNER });
     expect(ownerKey.ok).toBe(false);
     // The schema refuses an owner key even when written directly.
-    await expect(
-      db.prepare("UPDATE key_api_keys SET role = 'owner' WHERE workspace_id = ?").bind(WS_A).run(),
-    ).rejects.toThrow();
+    await expect(db.prepare("UPDATE key_api_keys SET role = 'owner' WHERE workspace_id = ?").bind(WS_A).run()).rejects.toThrow();
   });
 
-  it("accepts only the scope sets [\"*\"] and [\"read\"], and expiresDays from 1 to 3650", async () => {
+  it('accepts only the scope sets ["*"] and ["read"], and expiresDays from 1 to 3650', async () => {
     const service = new ApiKeyService(db);
     for (const bad of [["read", "write"], ["records:read"], ["Read"], ["*", "read"], []]) {
       const res = await service.createKey(WS_A, { name: "k", scopes: bad, creator: OWNER });
@@ -127,7 +125,10 @@ describe("Public API Key Infrastructure Core Logic", () => {
   it("rejects expired API keys", async () => {
     const service = new ApiKeyService(db);
     const created = await mint({ name: "Expiring Key", expiresDays: 1, creator: OWNER });
-    await db.prepare("UPDATE key_api_keys SET expires_at = ? WHERE id = ?").bind(new Date(Date.now() - 1000).toISOString(), created.key.id).run();
+    await db
+      .prepare("UPDATE key_api_keys SET expires_at = ? WHERE id = ?")
+      .bind(new Date(Date.now() - 1000).toISOString(), created.key.id)
+      .run();
 
     expect(await service.validateKey(created.rawKey)).toBeNull();
   });
@@ -193,9 +194,7 @@ describe("API Key Middleware & Route Protection", () => {
     app.route("/api", createApiKeyRoutes());
     app.get("/api/whoami", (c) => c.json({ user: c.get("user")?.uid ?? null, ctx: c.get("ctx") ?? null }, 200));
     app.post("/api/whoami", (c) => c.json({ user: c.get("user")?.uid ?? null }, 200));
-    app.get("/api/v1/data", apiKeyMiddleware, requireScope("data:read"), (c) =>
-      c.json({ secret_data: 42, workspace: c.get("ctx")?.workspaceId }, 200),
-    );
+    app.get("/api/v1/data", apiKeyMiddleware, requireScope("data:read"), (c) => c.json({ secret_data: 42, workspace: c.get("ctx")?.workspaceId }, 200));
     return app;
   };
 
@@ -301,14 +300,23 @@ describe("API Key Middleware & Route Protection", () => {
     expect(adminKey.status).toBe(201);
     const created = (await adminKey.json()) as { rawKey: string; key: { id: string; role: string; created_by: string } };
     expect(created.key).toMatchObject({ role: "admin", created_by: "adam" });
-    for (const body of [{ name: "x", role: "owner" }, { name: "x", scopes: ["records:read"] }, { name: "x", expiresDays: 3651 }, { name: "x", expiresDays: 1e12 }]) {
+    for (const body of [
+      { name: "x", role: "owner" },
+      { name: "x", scopes: ["records:read"] },
+      { name: "x", expiresDays: 3651 },
+      { name: "x", expiresDays: 1e12 },
+    ]) {
       const res = await fetchApp("/api/api-keys", asSession("owner", { method: "POST", body: JSON.stringify(body) }));
       expect(res.status, JSON.stringify(body)).toBe(400);
     }
 
     // The key itself cannot list, mint or revoke keys.
     const keyHeaders = { "content-type": "application/json", "X-API-Key": created.rawKey };
-    for (const [method, path] of [["GET", "/api/api-keys"], ["POST", "/api/api-keys"], ["DELETE", `/api/api-keys/${created.key.id}`]] as const) {
+    for (const [method, path] of [
+      ["GET", "/api/api-keys"],
+      ["POST", "/api/api-keys"],
+      ["DELETE", `/api/api-keys/${created.key.id}`],
+    ] as const) {
       const res = await fetchApp(path, { method, headers: keyHeaders, ...(method === "POST" ? { body: JSON.stringify({ name: "y", role: "member" }) } : {}) });
       expect(res.status, `${method} ${path}`).toBe(403);
       expect(((await res.json()) as { code: string }).code).toBe("API_KEY_FORBIDDEN");

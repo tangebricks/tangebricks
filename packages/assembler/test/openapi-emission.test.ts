@@ -1,13 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, test } from "vitest";
-import {
-  assemble,
-  computeBuildHash,
-  computeCodeHash,
-  computeGraphHash,
-  generateOpenApiSpec,
-  hashFiles,
-} from "../src/index.ts";
+import { assemble, computeBuildHash, computeCodeHash, computeGraphHash, generateOpenApiSpec, hashFiles } from "../src/index.ts";
 import { catalog } from "../catalog.generated.ts";
 import aiCreditsPreset from "../../../presets/ai-credits-saas.blueprint.json";
 import b2bWorkspacePreset from "../../../presets/b2b-workspace-app.blueprint.json";
@@ -202,9 +195,7 @@ describe("Story 10.5 — Outbound OpenAPI 3.1.0 spec generation and /openapi.jso
     const codeHashA = await computeCodeHash(first.files);
     const codeHashB = await computeCodeHash(second.files);
     const graphHash = await computeGraphHash([]);
-    expect(await computeBuildHash({ codeHash: codeHashA, graphHash })).toBe(
-      await computeBuildHash({ codeHash: codeHashB, graphHash }),
-    );
+    expect(await computeBuildHash({ codeHash: codeHashA, graphHash })).toBe(await computeBuildHash({ codeHash: codeHashB, graphHash }));
   });
 
   test("AC 2 & 3: booted Worker in workerd serves GET /openapi.json with 200, Cache-Control, and 100% route prefix coverage", async () => {
@@ -335,9 +326,7 @@ describe("Story 10.5 — Outbound OpenAPI 3.1.0 spec generation and /openapi.jso
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
-    expect(res.headers.get("content-disposition")).toContain(
-      'attachment; filename="invoice-flow-openapi.json"',
-    );
+    expect(res.headers.get("content-disposition")).toContain('attachment; filename="invoice-flow-openapi.json"');
     const spec = (await res.json()) as { openapi: string; info: { title: string } };
     expect(spec.openapi).toBe("3.1.0");
     expect(spec.info.title).toBe("invoice-flow");

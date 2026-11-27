@@ -1,27 +1,9 @@
 import { scoped, systemScope, type D1Like } from "@poc/sdk";
-import {
-  WebhookSignatureSchemeSchema,
-  type IntegrationManifestFile,
-  type WebhookVerifierPreset,
-} from "@poc/assembler";
+import { WebhookSignatureSchemeSchema, type IntegrationManifestFile, type WebhookVerifierPreset } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
-import {
-  generateWebhookSecret,
-  sha256HexString,
-  unsealPxConnectionSecret,
-  verifySharedSecret,
-} from "./crypto.ts";
-import {
-  verifyWithScheme,
-  type WebhookSignatureScheme,
-} from "./signature-scheme.ts";
-import {
-  getDefaultSignatureHeader,
-  getPreset,
-  mapToDbVerifier,
-  PRESETS,
-  type PresetName,
-} from "./presets.ts";
+import { generateWebhookSecret, sha256HexString, unsealPxConnectionSecret, verifySharedSecret } from "./crypto.ts";
+import { verifyWithScheme, type WebhookSignatureScheme } from "./signature-scheme.ts";
+import { getDefaultSignatureHeader, getPreset, mapToDbVerifier, PRESETS, type PresetName } from "./presets.ts";
 
 export interface EndpointRecord {
   id: string;
@@ -117,9 +99,7 @@ export interface WebhookGatewayAdapter {
   connKey?: string;
   integrations?: Record<string, { manifest: IntegrationManifestFile }>;
   schemes?: Record<string, WebhookSignatureScheme>;
-  onTriggerWorkflow?: (
-    ctx: WebhookTriggerDispatchContext,
-  ) => Promise<{ runId?: string } | void> | { runId?: string } | void;
+  onTriggerWorkflow?: (ctx: WebhookTriggerDispatchContext) => Promise<{ runId?: string } | void> | { runId?: string } | void;
   onTelemetryEvent?: (event: WebhookGatewayTelemetryEvent) => Promise<void> | void;
   onEmitTelemetry?: (event: WebhookGatewayTelemetryEvent) => Promise<void> | void;
 }
@@ -141,10 +121,7 @@ function extractByDotPath(obj: unknown, dotPath: string | null | undefined): str
   return null;
 }
 
-function getHeaderCaseInsensitive(
-  headers: Record<string, string>,
-  headerName: string,
-): string | undefined {
+function getHeaderCaseInsensitive(headers: Record<string, string>, headerName: string): string | undefined {
   const lower = headerName.toLowerCase();
   for (const [k, v] of Object.entries(headers)) {
     if (k.toLowerCase() === lower && typeof v === "string" && v.trim().length > 0) {
@@ -166,11 +143,7 @@ export class WebhookService {
   private readonly subscriptionSchemes = new Map<string, WebhookSignatureScheme>();
   private static readonly globalSubscriptionSchemes = new Map<string, WebhookSignatureScheme>();
 
-  constructor(
-    db: D1Like,
-    optionsOrGrace: number | WebhookServiceOptions = 24,
-    allowUnsignedForDev = false,
-  ) {
+  constructor(db: D1Like, optionsOrGrace: number | WebhookServiceOptions = 24, allowUnsignedForDev = false) {
     this.db = db;
     if (typeof optionsOrGrace === "number") {
       this.rotationGraceHours = optionsOrGrace;
@@ -184,26 +157,16 @@ export class WebhookService {
   /**
    * Creates or updates a Case A webhook subscription (`wh_subscriptions`).
    */
-  async registerSubscription(
-    input: CreateSubscriptionInput,
-  ): Promise<WebhookSubscriptionRecord> {
+  async registerSubscription(input: CreateSubscriptionInput): Promise<WebhookSubscriptionRecord> {
     const id = input.id?.trim() || `whsub_${crypto.randomUUID().replace(/-/g, "")}`;
     const workspaceId = input.workspaceId?.trim() || "default";
 
     let rawScheme =
       input.scheme ??
-      (typeof input.verifier === "object"
-        ? input.verifier
-        : typeof input.verificationScheme === "object"
-          ? input.verificationScheme
-          : undefined);
+      (typeof input.verifier === "object" ? input.verifier : typeof input.verificationScheme === "object" ? input.verificationScheme : undefined);
 
     const verifierInput =
-      typeof input.verifier === "string"
-        ? input.verifier
-        : typeof input.verificationScheme === "string"
-          ? input.verificationScheme
-          : undefined;
+      typeof input.verifier === "string" ? input.verifier : typeof input.verificationScheme === "string" ? input.verificationScheme : undefined;
 
     let resolvedScheme: WebhookSignatureScheme | undefined;
     let schemeJson: string;
@@ -279,25 +242,16 @@ export class WebhookService {
       WebhookService.globalSubscriptionSchemes.set(id, resolvedScheme);
     }
 
-    const verifier: string =
-      verifierInput ??
-      (rawScheme ? rawScheme.algorithm : "hmac-sha256");
+    const verifier: string = verifierInput ?? (rawScheme ? rawScheme.algorithm : "hmac-sha256");
 
-    const signatureHeader =
-      input.signatureHeader?.trim() ||
-      resolvedScheme?.signatureHeader ||
-      getDefaultSignatureHeader(verifierInput, rawScheme);
+    const signatureHeader = input.signatureHeader?.trim() || resolvedScheme?.signatureHeader || getDefaultSignatureHeader(verifierInput, rawScheme);
 
     const eventIdPath = input.eventIdPath === null ? null : (input.eventIdPath ?? "id");
     const enabled = input.enabled !== false;
     const now = new Date().toISOString();
     const s = scoped(this.db, workspaceId);
 
-    const existing = await s.first<WebhookSubscriptionRecord>(
-      "wh_subscriptions",
-      "id = ?",
-      [id]
-    );
+    const existing = await s.first<WebhookSubscriptionRecord>("wh_subscriptions", "id = ?", [id]);
 
     const baseRow: Record<string, unknown> = {
       workflow_id: input.workflowId,
@@ -321,17 +275,12 @@ export class WebhookService {
             disabled_reason: null,
           },
           "id = ?",
-          [id]
+          [id],
         );
       } catch (err: any) {
         if (err?.message?.includes("no column named scheme_json")) {
           const fallbackVerifier = mapToDbVerifier(verifierInput, rawScheme);
-          await s.update(
-            "wh_subscriptions",
-            { ...baseRow, verifier: fallbackVerifier },
-            "id = ?",
-            [id]
-          );
+          await s.update("wh_subscriptions", { ...baseRow, verifier: fallbackVerifier }, "id = ?", [id]);
         } else {
           throw err;
         }
@@ -397,11 +346,7 @@ export class WebhookService {
     }
 
     const sys = systemScope(this.db, "inbound webhook subscription lookup by public subscription id");
-    const row = await sys.first<SubRow>(
-      "wh_subscriptions",
-      "id = ?",
-      [subscriptionId]
-    );
+    const row = await sys.first<SubRow>("wh_subscriptions", "id = ?", [subscriptionId]);
 
     if (!row) return null;
     return {
@@ -477,19 +422,11 @@ export class WebhookService {
 
     if (subscription.connection_ref) {
       const sys = systemScope(this.db, "unseal webhook signing secret from px_connections");
-      const connRow = await sys.first<{ ciphertext_b64: string; iv_b64: string; status: string }>(
-        "px_connections",
-        "ref = ?",
-        [subscription.connection_ref]
-      );
+      const connRow = await sys.first<{ ciphertext_b64: string; iv_b64: string; status: string }>("px_connections", "ref = ?", [subscription.connection_ref]);
 
       if (connRow && connRow.status !== "revoked") {
         try {
-          const unsealed = await unsealPxConnectionSecret(
-            connRow.ciphertext_b64,
-            connRow.iv_b64,
-            effectiveConnKey,
-          );
+          const unsealed = await unsealPxConnectionSecret(connRow.ciphertext_b64, connRow.iv_b64, effectiveConnKey);
           if (unsealed) {
             resolvedSecret = unsealed;
           }
@@ -504,8 +441,7 @@ export class WebhookService {
     }
 
     let scheme: WebhookSignatureScheme | undefined =
-      this.subscriptionSchemes.get(subscription.id) ??
-      WebhookService.globalSubscriptionSchemes.get(subscription.id);
+      this.subscriptionSchemes.get(subscription.id) ?? WebhookService.globalSubscriptionSchemes.get(subscription.id);
 
     if (!scheme && subscription.scheme_json) {
       try {
@@ -530,10 +466,7 @@ export class WebhookService {
       scheme = getPreset(subscription.verifier);
     }
 
-    if (
-      subscription.verifier === "none" ||
-      (subscription.scheme_json && subscription.scheme_json.includes('"preset":"none"'))
-    ) {
+    if (subscription.verifier === "none" || (subscription.scheme_json && subscription.scheme_json.includes('"preset":"none"'))) {
       if (!this.allowUnsignedForDev) {
         return {
           ok: false,
@@ -550,17 +483,12 @@ export class WebhookService {
         };
       }
 
-      const integrations =
-        options.adapter?.integrations ??
-        (catalog.integrations as Record<string, { manifest: IntegrationManifestFile }> | undefined);
+      const integrations = options.adapter?.integrations ?? (catalog.integrations as Record<string, { manifest: IntegrationManifestFile }> | undefined);
       const manifest = integrations?.[subscription.app]?.manifest;
       const trigger = manifest?.triggers?.find((t) => t.id === subscription.trigger_id);
 
       if (options.adapter?.integrations && trigger?.verifier) {
-        scheme =
-          typeof trigger.verifier === "object"
-            ? (trigger.verifier as WebhookSignatureScheme)
-            : getPreset(trigger.verifier) ?? scheme;
+        scheme = typeof trigger.verifier === "object" ? (trigger.verifier as WebhookSignatureScheme) : (getPreset(trigger.verifier) ?? scheme);
       }
 
       if (!scheme) {
@@ -575,11 +503,7 @@ export class WebhookService {
         } else if (subscription.verifier === "hmac-sha256") {
           const sigHeaderName = subscription.signature_header || "x-hub-signature-256";
           const rawSig = getHeaderCaseInsensitive(headers, sigHeaderName) ?? "";
-          const detectedPrefix = rawSig.startsWith("sha256=")
-            ? "sha256="
-            : rawSig.startsWith("v0=")
-              ? "v0="
-              : undefined;
+          const detectedPrefix = rawSig.startsWith("sha256=") ? "sha256=" : rawSig.startsWith("v0=") ? "v0=" : undefined;
           scheme = {
             algorithm: "hmac-sha256",
             signedPayload: "{body}",
@@ -588,11 +512,8 @@ export class WebhookService {
             prefix: detectedPrefix,
           };
         } else if (subscription.verifier === "ed25519") {
-          const sigHeaderName =
-            subscription.signature_header || "x-signature-ed25519";
-          const hasTimestamp = Boolean(
-            getHeaderCaseInsensitive(headers, "x-signature-timestamp"),
-          );
+          const sigHeaderName = subscription.signature_header || "x-signature-ed25519";
+          const hasTimestamp = Boolean(getHeaderCaseInsensitive(headers, "x-signature-timestamp"));
           scheme = {
             algorithm: "ed25519",
             signedPayload: hasTimestamp ? "{timestamp}{body}" : "{body}",
@@ -608,11 +529,7 @@ export class WebhookService {
       }
 
       if (scheme) {
-        if (
-          scheme.algorithm === "ed25519" &&
-          scheme.timestampHeader &&
-          !getHeaderCaseInsensitive(headers, scheme.timestampHeader)
-        ) {
+        if (scheme.algorithm === "ed25519" && scheme.timestampHeader && !getHeaderCaseInsensitive(headers, scheme.timestampHeader)) {
           scheme = {
             ...scheme,
             signedPayload: "{body}",
@@ -621,29 +538,13 @@ export class WebhookService {
           };
         }
 
-        const nowSec = options.adapter?.nowSeconds
-          ? options.adapter.nowSeconds()
-          : Math.floor(Date.now() / 1000);
-        const schemeResult = await verifyWithScheme(
-          scheme,
-          { rawBody, headers },
-          resolvedSecret,
-          nowSec,
-        );
+        const nowSec = options.adapter?.nowSeconds ? options.adapter.nowSeconds() : Math.floor(Date.now() / 1000);
+        const schemeResult = await verifyWithScheme(scheme, { rawBody, headers }, resolvedSecret, nowSec);
         if (!schemeResult.ok) {
           // If default hmac-sha256 scheme failed with malformed due to prefix, try without prefix for raw hex callers
-          if (
-            subscription.verifier === "hmac-sha256" &&
-            schemeResult.reason === "WEBHOOK_SIGNATURE_MALFORMED" &&
-            scheme.prefix
-          ) {
+          if (subscription.verifier === "hmac-sha256" && schemeResult.reason === "WEBHOOK_SIGNATURE_MALFORMED" && scheme.prefix) {
             const fallbackScheme = { ...scheme, prefix: undefined };
-            const fallbackResult = await verifyWithScheme(
-              fallbackScheme,
-              { rawBody, headers },
-              resolvedSecret,
-              nowSec,
-            );
+            const fallbackResult = await verifyWithScheme(fallbackScheme, { rawBody, headers }, resolvedSecret, nowSec);
             if (!fallbackResult.ok) {
               return {
                 ok: false,
@@ -661,13 +562,8 @@ export class WebhookService {
             };
           }
         }
-      } else if (
-        subscription.verifier === "shared-secret" ||
-        (subscription.scheme_json && subscription.scheme_json.includes('"shared-secret"'))
-      ) {
-        const sigHeaderVal =
-          getHeaderCaseInsensitive(headers, subscription.signature_header) ??
-          getHeaderCaseInsensitive(headers, "x-webhook-secret");
+      } else if (subscription.verifier === "shared-secret" || (subscription.scheme_json && subscription.scheme_json.includes('"shared-secret"'))) {
+        const sigHeaderVal = getHeaderCaseInsensitive(headers, subscription.signature_header) ?? getHeaderCaseInsensitive(headers, "x-webhook-secret");
 
         if (!sigHeaderVal) {
           return {
@@ -697,9 +593,7 @@ export class WebhookService {
       parsedPayload = { rawBody };
     }
 
-    const dotPathId = subscription.event_id_path
-      ? extractByDotPath(parsedPayload, subscription.event_id_path)
-      : null;
+    const dotPathId = subscription.event_id_path ? extractByDotPath(parsedPayload, subscription.event_id_path) : null;
 
     const headerDeliveryId =
       getHeaderCaseInsensitive(headers, "x-webhook-delivery") ??
@@ -707,10 +601,7 @@ export class WebhookService {
       getHeaderCaseInsensitive(headers, "x-event-id") ??
       getHeaderCaseInsensitive(headers, "x-request-id");
 
-    const sigHeaderName =
-      scheme?.signatureHeader ||
-      subscription.signature_header ||
-      "x-hub-signature-256";
+    const sigHeaderName = scheme?.signatureHeader || subscription.signature_header || "x-hub-signature-256";
     const sigHeaderVal =
       getHeaderCaseInsensitive(headers, sigHeaderName) ??
       getHeaderCaseInsensitive(headers, "x-signature-ed25519") ??
@@ -732,11 +623,10 @@ export class WebhookService {
     const s = scoped(this.db, subscription.workspace_id);
 
     // Check deduplication in px_webhook_deliveries
-    const existingDelivery = await s.first<{ id: string; run_id: string | null }>(
-      "px_webhook_deliveries",
-      "subscription_id = ? AND provider_event_id = ?",
-      [subscription.id, extractedId]
-    );
+    const existingDelivery = await s.first<{ id: string; run_id: string | null }>("px_webhook_deliveries", "subscription_id = ? AND provider_event_id = ?", [
+      subscription.id,
+      extractedId,
+    ]);
 
     if (existingDelivery) {
       return {
@@ -799,12 +689,7 @@ export class WebhookService {
       });
       if (triggerRes && typeof triggerRes.runId === "string" && triggerRes.runId) {
         runId = triggerRes.runId;
-        await s.update(
-          "px_webhook_deliveries",
-          { run_id: runId },
-          "id = ?",
-          [deliveryId]
-        );
+        await s.update("px_webhook_deliveries", { run_id: runId }, "id = ?", [deliveryId]);
       }
     }
 
@@ -907,7 +792,10 @@ export class WebhookService {
       return { ok: false, error: "Endpoint name must be between 1 and 100 characters", code: 400 };
     }
 
-    const slug = slugRaw.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    const slug = slugRaw
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, "");
     if (!slug || slug.length > 64) {
       return { ok: false, error: "Slug must be alphanumeric (up to 64 chars)", code: 400 };
     }
@@ -970,11 +858,7 @@ export class WebhookService {
     }
 
     const s = scoped(this.db, workspaceId);
-    const row = await s.first<Row>(
-      "wh_endpoints",
-      "(id = ? OR slug = ?)",
-      [idOrSlug, idOrSlug]
-    );
+    const row = await s.first<Row>("wh_endpoints", "(id = ? OR slug = ?)", [idOrSlug, idOrSlug]);
 
     if (!row) return null;
     return {
@@ -1001,12 +885,7 @@ export class WebhookService {
     }
 
     const s = scoped(this.db, workspaceId);
-    const rows = await s.select<Row>(
-      "wh_endpoints",
-      undefined,
-      [],
-      { orderBy: "created_at DESC" }
-    );
+    const rows = await s.select<Row>("wh_endpoints", undefined, [], { orderBy: "created_at DESC" });
 
     return rows.map((r) => ({
       ...r,
@@ -1017,10 +896,7 @@ export class WebhookService {
   /**
    * Rotates an endpoint's signing secret gracefully, preserving the previous secret for a grace period.
    */
-  async rotateSecret(
-    workspaceId: string,
-    endpointId: string,
-  ): Promise<{ ok: true; newSecret: string; expiresAt: string } | { ok: false; error: string }> {
+  async rotateSecret(workspaceId: string, endpointId: string): Promise<{ ok: true; newSecret: string; expiresAt: string } | { ok: false; error: string }> {
     const endpoint = await this.getEndpoint(workspaceId, endpointId);
     if (!endpoint) return { ok: false, error: "Endpoint not found" };
 
@@ -1036,7 +912,7 @@ export class WebhookService {
         previous_secret_expires_at: expiresAt,
       },
       "id = ?",
-      [endpoint.id]
+      [endpoint.id],
     );
 
     return { ok: true, newSecret, expiresAt };
@@ -1064,11 +940,7 @@ export class WebhookService {
     }
 
     const sys = systemScope(this.db, "inbound webhook endpoint lookup by public slug");
-    const endpoint = await sys.first<IngestRow>(
-      "wh_endpoints",
-      "slug = ?",
-      [slug.toLowerCase().trim()]
-    );
+    const endpoint = await sys.first<IngestRow>("wh_endpoints", "slug = ?", [slug.toLowerCase().trim()]);
 
     if (!endpoint || endpoint.active !== 1) {
       return { ok: false, error: "Webhook endpoint not found or inactive", status: 404 };
@@ -1077,11 +949,7 @@ export class WebhookService {
     // Verify signature
     let verified = false;
     if (signatureHeader) {
-      const prefix = signatureHeader.startsWith("sha256=")
-        ? "sha256="
-        : signatureHeader.startsWith("v0=")
-          ? "v0="
-          : undefined;
+      const prefix = signatureHeader.startsWith("sha256=") ? "sha256=" : signatureHeader.startsWith("v0=") ? "v0=" : undefined;
       const scheme: WebhookSignatureScheme = {
         algorithm: "hmac-sha256",
         signedPayload: "{body}",
@@ -1090,21 +958,13 @@ export class WebhookService {
         ...(prefix ? { prefix } : {}),
       };
 
-      const verifyRes = await verifyWithScheme(
-        scheme,
-        { rawBody: payloadText, headers: { "x-signature": signatureHeader } },
-        endpoint.signing_secret,
-      );
+      const verifyRes = await verifyWithScheme(scheme, { rawBody: payloadText, headers: { "x-signature": signatureHeader } }, endpoint.signing_secret);
       verified = verifyRes.ok;
 
       // If not verified with current, check previous secret if within grace period
       if (!verified && endpoint.previous_secret && endpoint.previous_secret_expires_at) {
         if (new Date(endpoint.previous_secret_expires_at).getTime() > Date.now()) {
-          const prevRes = await verifyWithScheme(
-            scheme,
-            { rawBody: payloadText, headers: { "x-signature": signatureHeader } },
-            endpoint.previous_secret,
-          );
+          const prevRes = await verifyWithScheme(scheme, { rawBody: payloadText, headers: { "x-signature": signatureHeader } }, endpoint.previous_secret);
           verified = prevRes.ok;
         }
       }
@@ -1123,9 +983,7 @@ export class WebhookService {
 
     // Check payload length and truncate if needed to prevent D1 exhaustion
     const isTruncated = payloadText.length > MAX_PAYLOAD_STORE_BYTES;
-    const storedPayload = isTruncated
-      ? payloadText.substring(0, MAX_PAYLOAD_STORE_BYTES)
-      : payloadText;
+    const storedPayload = isTruncated ? payloadText.substring(0, MAX_PAYLOAD_STORE_BYTES) : payloadText;
 
     const s = scoped(this.db, endpoint.workspace_id);
     await s.insert("wh_deliveries", {
@@ -1146,11 +1004,7 @@ export class WebhookService {
   /**
    * Lists deliveries for an endpoint.
    */
-  async listDeliveries(
-    workspaceId: string,
-    endpointId?: string,
-    limit = 50,
-  ): Promise<DeliveryRecord[]> {
+  async listDeliveries(workspaceId: string, endpointId?: string, limit = 50): Promise<DeliveryRecord[]> {
     interface Row {
       id: string;
       endpoint_id: string;
@@ -1165,12 +1019,10 @@ export class WebhookService {
     }
 
     const s = scoped(this.db, workspaceId);
-    const rows = await s.select<Row>(
-      "wh_deliveries",
-      endpointId ? "endpoint_id = ?" : undefined,
-      endpointId ? [endpointId] : [],
-      { orderBy: "received_at DESC", limit }
-    );
+    const rows = await s.select<Row>("wh_deliveries", endpointId ? "endpoint_id = ?" : undefined, endpointId ? [endpointId] : [], {
+      orderBy: "received_at DESC",
+      limit,
+    });
 
     return rows.map((r) => ({
       ...r,

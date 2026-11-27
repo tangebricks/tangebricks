@@ -8,12 +8,7 @@
  * `ownerStory` names the UC3 story that removes the loss, or null when the code is not a loss
  * a UC3 story is expected to remove.
  */
-export type FidelityCodeStatus =
-  | "mapped"
-  | "normalized"
-  | "curated"
-  | "approximated"
-  | "unsupported";
+export type FidelityCodeStatus = "mapped" | "normalized" | "curated" | "approximated" | "unsupported";
 
 export interface FidelityCodeInfo<C extends string = string> {
   readonly code: C;
@@ -22,9 +17,7 @@ export interface FidelityCodeInfo<C extends string = string> {
   readonly ownerStory: string | null;
 }
 
-function defineCodes<const T extends { readonly [K in keyof T & string]: FidelityCodeInfo<K> }>(
-  codes: T,
-): T {
+function defineCodes<const T extends { readonly [K in keyof T & string]: FidelityCodeInfo<K> }>(codes: T): T {
   return codes;
 }
 
@@ -67,7 +60,7 @@ export const FIDELITY_CODES = defineCodes({
   PARAM_DEFAULT_DROPPED: { code: "PARAM_DEFAULT_DROPPED", defaultStatus: "approximated", blocking: false, ownerStory: "UC3.4" },
   PARAM_ENUM_DROPPED: { code: "PARAM_ENUM_DROPPED", defaultStatus: "approximated", blocking: false, ownerStory: "UC3.4" },
   PARAM_ENUM_TRUNCATED: { code: "PARAM_ENUM_TRUNCATED", defaultStatus: "approximated", blocking: false, ownerStory: "UC3.4" },
-  PARAM_LOCATION_UNSUPPORTED: { code: "PARAM_LOCATION_UNSUPPORTED", defaultStatus: "unsupported", blocking: false, ownerStory: "UC3.7" },  // blocking is per-site (a required swagger2/body parameter blocks)
+  PARAM_LOCATION_UNSUPPORTED: { code: "PARAM_LOCATION_UNSUPPORTED", defaultStatus: "unsupported", blocking: false, ownerStory: "UC3.7" }, // blocking is per-site (a required swagger2/body parameter blocks)
   PARAM_MAPPED: { code: "PARAM_MAPPED", defaultStatus: "mapped", blocking: false, ownerStory: null },
   PARAM_STYLE_UNHONOURED: { code: "PARAM_STYLE_UNHONOURED", defaultStatus: "unsupported", blocking: true, ownerStory: "UC3.4" },
   REF_DEPTH_EXCEEDED: { code: "REF_DEPTH_EXCEEDED", defaultStatus: "approximated", blocking: false, ownerStory: null },

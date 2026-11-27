@@ -3,13 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StudioShell } from "../src/components/StudioShell.tsx";
 import { MAX_UNDO_STACK_DEPTH, useStudioStore } from "../src/store.ts";
-import {
-  DEFAULT_CATALOG,
-  applyStudioOps,
-  computeStudioReadiness,
-  computeStudioValidationIssues,
-  createEmptyBlueprintState,
-} from "../src/types.ts";
+import { DEFAULT_CATALOG, applyStudioOps, computeStudioReadiness, computeStudioValidationIssues, createEmptyBlueprintState } from "../src/types.ts";
 import type { BlueprintState, RevisionSummary } from "../src/types.ts";
 
 describe("Inline Validation, Undo/Redo, Visual Diff & Conflict Card", () => {
@@ -125,9 +119,7 @@ describe("Inline Validation, Undo/Redo, Visual Diff & Conflict Card", () => {
 
     const highlighted = screen.getByTestId("inspector-highlighted-field");
     expect(highlighted.getAttribute("data-field-key")).toBe("template");
-    expect(screen.getByTestId("inline-issue-badge-node-tpl-1").textContent).toContain(
-      "deleted_node",
-    );
+    expect(screen.getByTestId("inline-issue-badge-node-tpl-1").textContent).toContain("deleted_node");
 
     // Fix the broken expression in the Inspector and save
     const tplInput = screen.getByTestId("node-config-input-template");
@@ -266,62 +258,38 @@ describe("Inline Validation, Undo/Redo, Visual Diff & Conflict Card", () => {
     );
 
     expect(useStudioStore.getState().undoStack.length).toBe(3);
-    expect(
-      useStudioStore.getState().projectState?.workflows[0]?.nodes.find(
-        (n) => n.id === "node-http-1",
-      )?.label,
-    ).toBe("Call Webhook v2");
+    expect(useStudioStore.getState().projectState?.workflows[0]?.nodes.find((n) => n.id === "node-http-1")?.label).toBe("Call Webhook v2");
 
     // Undo all 3 steps via Top Bar Undo button + Ctrl+Z
     fireEvent.click(screen.getByTestId("topbar-undo-button"));
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.nodes.find(
-          (n) => n.id === "node-http-1",
-        )?.label,
-      ).toBe("Call Webhook");
+      expect(useStudioStore.getState().projectState?.workflows[0]?.nodes.find((n) => n.id === "node-http-1")?.label).toBe("Call Webhook");
     });
 
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.edges.length,
-      ).toBe(0);
+      expect(useStudioStore.getState().projectState?.workflows[0]?.edges.length).toBe(0);
     });
 
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.nodes.some(
-          (n) => n.id === "node-http-1",
-        ),
-      ).toBe(false);
+      expect(useStudioStore.getState().projectState?.workflows[0]?.nodes.some((n) => n.id === "node-http-1")).toBe(false);
     });
 
     // Redo all 3 steps via Redo button + Ctrl+Shift+Z
     fireEvent.click(screen.getByTestId("topbar-redo-button"));
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.nodes.some(
-          (n) => n.id === "node-http-1",
-        ),
-      ).toBe(true);
+      expect(useStudioStore.getState().projectState?.workflows[0]?.nodes.some((n) => n.id === "node-http-1")).toBe(true);
     });
 
     fireEvent.keyDown(window, { key: "z", ctrlKey: true, shiftKey: true });
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.edges.length,
-      ).toBe(1);
+      expect(useStudioStore.getState().projectState?.workflows[0]?.edges.length).toBe(1);
     });
 
     fireEvent.keyDown(window, { key: "z", ctrlKey: true, shiftKey: true });
     await waitFor(() => {
-      expect(
-        useStudioStore.getState().projectState?.workflows[0]?.nodes.find(
-          (n) => n.id === "node-http-1",
-        )?.label,
-      ).toBe("Call Webhook v2");
+      expect(useStudioStore.getState().projectState?.workflows[0]?.nodes.find((n) => n.id === "node-http-1")?.label).toBe("Call Webhook v2");
     });
   });
 
@@ -486,15 +454,9 @@ describe("Inline Validation, Undo/Redo, Visual Diff & Conflict Card", () => {
     });
 
     // Verify + Added, - Removed (ghosted), and ~ Changed badges on the canvas
-    expect(screen.getByTestId("diff-badge-added-node-added-step").textContent).toContain(
-      "+ Added",
-    );
-    expect(screen.getByTestId("diff-badge-removed-node-legacy").textContent).toContain(
-      "- Removed",
-    );
-    expect(screen.getByTestId("diff-badge-changed-node-transform").textContent).toContain(
-      "~ Changed",
-    );
+    expect(screen.getByTestId("diff-badge-added-node-added-step").textContent).toContain("+ Added");
+    expect(screen.getByTestId("diff-badge-removed-node-legacy").textContent).toContain("- Removed");
+    expect(screen.getByTestId("diff-badge-changed-node-transform").textContent).toContain("~ Changed");
 
     // Click the ~ Changed node to inspect its side-by-side field diff in the Right Dock Inspector
     fireEvent.click(screen.getByTestId("canvas-node-node-transform"));
@@ -621,9 +583,7 @@ describe("Inline Validation, Undo/Redo, Visual Diff & Conflict Card", () => {
 
     await waitFor(() => {
       expect(useStudioStore.getState().pendingConflict).toBeNull();
-      const updatedNode = useStudioStore
-        .getState()
-        .projectState?.workflows[0]?.nodes.find((n) => n.id === "node-http-1");
+      const updatedNode = useStudioStore.getState().projectState?.workflows[0]?.nodes.find((n) => n.id === "node-http-1");
       expect(updatedNode?.data?.url).toBe("https://human.example.com/v2");
       expect(updatedNode?.data?.body).toBe("ai-updated-body");
     });

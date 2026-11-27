@@ -1,13 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, test } from "vitest";
-import {
-  createClient,
-  deploy,
-  isWriteCall,
-  memoryStore,
-  openLedger,
-  resourceNames,
-} from "../src/provisioner/index.ts";
+import { createClient, deploy, isWriteCall, memoryStore, openLedger, resourceNames } from "../src/provisioner/index.ts";
 import type { DeployInput, Migration } from "../src/provisioner/index.ts";
 import { createFakeCloudflare } from "./support/fake-cloudflare.ts";
 import type { FakeOptions } from "./support/fake-cloudflare.ts";
@@ -26,7 +19,11 @@ function world(options: Partial<FakeOptions> = {}) {
   const credentials = { token: TOKEN, accountId: ACCOUNT };
   const client = createClient({ credentials, fetch: fake.fetch, sleep: async () => {}, alsoHide: [KEY] });
   const store = memoryStore();
-  const ledger = openLedger(store, () => SUFFIX, () => new Date("2026-10-21T00:00:00Z"));
+  const ledger = openLedger(
+    store,
+    () => SUFFIX,
+    () => new Date("2026-10-21T00:00:00Z"),
+  );
   const names = resourceNames(SUFFIX);
   const input = (over: Partial<DeployInput> = {}): DeployInput => ({
     client,
@@ -45,46 +42,31 @@ function world(options: Partial<FakeOptions> = {}) {
 describe("migration classification (UC8.4)", () => {
   describe("additive migrations", () => {
     test("CREATE TABLE classifies as additive", () => {
-      const res = lintMigration(
-        "0001_create.sql",
-        "CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT);"
-      );
+      const res = lintMigration("0001_create.sql", "CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT);");
       expect(res.class).toBe("additive");
       expect(res.findings).toHaveLength(0);
     });
 
     test("ADD COLUMN nullable classifies as additive", () => {
-      const res = lintMigration(
-        "0002_add_col.sql",
-        "ALTER TABLE users ADD COLUMN age INTEGER;"
-      );
+      const res = lintMigration("0002_add_col.sql", "ALTER TABLE users ADD COLUMN age INTEGER;");
       expect(res.class).toBe("additive");
       expect(res.findings).toHaveLength(0);
     });
 
     test("ADD COLUMN with default classifies as additive", () => {
-      const res = lintMigration(
-        "0003_add_default.sql",
-        "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active';"
-      );
+      const res = lintMigration("0003_add_default.sql", "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active';");
       expect(res.class).toBe("additive");
       expect(res.findings).toHaveLength(0);
     });
 
     test("ADD COLUMN NOT NULL with default classifies as additive", () => {
-      const res = lintMigration(
-        "0004_add_not_null_default.sql",
-        "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'viewer';"
-      );
+      const res = lintMigration("0004_add_not_null_default.sql", "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'viewer';");
       expect(res.class).toBe("additive");
       expect(res.findings).toHaveLength(0);
     });
 
     test("CREATE INDEX classifies as additive", () => {
-      const res = lintMigration(
-        "0005_idx.sql",
-        "CREATE INDEX idx_users_name ON users(name);\nCREATE UNIQUE INDEX idx_users_role ON users(role);"
-      );
+      const res = lintMigration("0005_idx.sql", "CREATE INDEX idx_users_name ON users(name);\nCREATE UNIQUE INDEX idx_users_role ON users(role);");
       expect(res.class).toBe("additive");
       expect(res.findings).toHaveLength(0);
     });
@@ -119,19 +101,13 @@ describe("migration classification (UC8.4)", () => {
     });
 
     test("DROP COLUMN classifies as destructive", () => {
-      const res = lintMigration(
-        "0009_drop_col.sql",
-        "ALTER TABLE users DROP COLUMN age;"
-      );
+      const res = lintMigration("0009_drop_col.sql", "ALTER TABLE users DROP COLUMN age;");
       expect(res.class).toBe("destructive");
       expect(res.findings.some((f) => f.kind === "drop_column")).toBe(true);
     });
 
     test("ADD COLUMN NOT NULL without default classifies as destructive", () => {
-      const res = lintMigration(
-        "0010_add_not_null_no_default.sql",
-        "ALTER TABLE users ADD COLUMN email TEXT NOT NULL;"
-      );
+      const res = lintMigration("0010_add_not_null_no_default.sql", "ALTER TABLE users ADD COLUMN email TEXT NOT NULL;");
       expect(res.class).toBe("destructive");
       expect(res.findings.length).toBeGreaterThan(0);
     });
@@ -143,24 +119,15 @@ describe("migration classification (UC8.4)", () => {
     });
 
     test("narrowed type classifies as destructive", () => {
-      const res = lintMigration(
-        "0012_narrow.sql",
-        "ALTER TABLE users MODIFY COLUMN bio VARCHAR(50);",
-        { users: { bio: "VARCHAR(255)" } }
-      );
+      const res = lintMigration("0012_narrow.sql", "ALTER TABLE users MODIFY COLUMN bio VARCHAR(50);", { users: { bio: "VARCHAR(255)" } });
       expect(res.class).toBe("destructive");
       expect(res.findings.some((f) => f.kind === "type_narrowing")).toBe(true);
     });
 
     test("ALTER TABLE RENAME TO outside rebuild pattern classifies as destructive", () => {
-      const res = lintMigration(
-        "0013_rename_table.sql",
-        "ALTER TABLE users RENAME TO users_old;"
-      );
+      const res = lintMigration("0013_rename_table.sql", "ALTER TABLE users RENAME TO users_old;");
       expect(res.class).toBe("destructive");
-      expect(
-        res.findings.some((f) => f.kind === "rename_table" || f.kind === "drop_table")
-      ).toBe(true);
+      expect(res.findings.some((f) => f.kind === "rename_table" || f.kind === "drop_table")).toBe(true);
     });
   });
 });
@@ -209,10 +176,8 @@ describe("deploy() migration linter gate (UC8.4)", () => {
     // Deploy expand migration in first deploy
     await deploy(
       w.input({
-        migrations: [
-          { name: "0001_expand.sql", sql: "CREATE TABLE t (id TEXT PRIMARY KEY, old_col TEXT, new_col TEXT);" },
-        ],
-      })
+        migrations: [{ name: "0001_expand.sql", sql: "CREATE TABLE t (id TEXT PRIMARY KEY, old_col TEXT, new_col TEXT);" }],
+      }),
     );
 
     // Second deploy has contract migration with expand header
@@ -225,7 +190,7 @@ describe("deploy() migration linter gate (UC8.4)", () => {
             sql: "-- projectx: phase=contract expands=0001_expand.sql\nALTER TABLE t DROP COLUMN old_col;",
           },
         ],
-      })
+      }),
     );
 
     expect(contractDeploy.changes.some((c) => c.what.includes("0002_contract.sql"))).toBe(true);

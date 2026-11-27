@@ -9,10 +9,7 @@ import mwMigration from "../../../multi-workspace/migrations/0001_multi_workspac
 import { stubIdentity } from "../../../multi-workspace/test/support/stub-identity.ts";
 import intMigration from "../../migrations/0001_integration_connections.sql?raw";
 import { createIntegrationConnectionsRoutes } from "../../src/index.ts";
-import {
-  ConnectAccountWidget,
-  createIntegrationConnectionsClient,
-} from "../index.ts";
+import { ConnectAccountWidget, createIntegrationConnectionsClient } from "../index.ts";
 
 const db = createSqliteD1();
 const pxConnKey = "widget-test-conn-key-2026";
@@ -46,18 +43,12 @@ function clientFor(workspaceId: string, user = "alice") {
     baseUrl: "http://app.test/api",
     workspaceId,
     headers: { "x-test-user": user },
-    fetch: async (input, init) =>
-      app.fetch(new Request(input, init), { DB: db, PX_CONN_KEY: pxConnKey }),
+    fetch: async (input, init) => app.fetch(new Request(input, init), { DB: db, PX_CONN_KEY: pxConnKey }),
   });
 }
 
 beforeEach(async () => {
-  for (const table of [
-    "int_connections",
-    "int_oauth_states",
-    "mw_members",
-    "mw_workspaces",
-  ]) {
+  for (const table of ["int_connections", "int_oauth_states", "mw_members", "mw_workspaces"]) {
     await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   }
   await applyMigration(db, mwMigration);
@@ -66,14 +57,8 @@ beforeEach(async () => {
     ["ws-a", "alice"],
     ["ws-b", "bob"],
   ] as const) {
-    await db
-      .prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)")
-      .bind(id, id, user)
-      .run();
-    await db
-      .prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')")
-      .bind(id, user)
-      .run();
+    await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(id, id, user).run();
+    await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").bind(id, user).run();
   }
 });
 
@@ -84,14 +69,7 @@ describe("ConnectAccountWidget against bricks/integration-connections routes (AC
     const clientA = clientFor("ws-a", "alice");
 
     let resolveAuthorizeCallback: (() => void) | undefined;
-    const onAuthorizeRedirect = async ({
-      provider,
-      state,
-    }: {
-      provider: string;
-      authorizeUrl: string;
-      state: string;
-    }) => {
+    const onAuthorizeRedirect = async ({ provider, state }: { provider: string; authorizeUrl: string; state: string }) => {
       await new Promise<void>((resolve) => {
         resolveAuthorizeCallback = resolve;
       });
@@ -139,15 +117,11 @@ describe("ConnectAccountWidget against bricks/integration-connections routes (AC
       },
       { timeout: 10_000 },
     );
-    expect(
-      (await screen.findByTestId("provider-account-google", {}, { timeout: 10_000 })).textContent,
-    ).toContain("alice@acme.io");
+    expect((await screen.findByTestId("provider-account-google", {}, { timeout: 10_000 })).textContent).toContain("alice@acme.io");
     expect(await screen.findByTestId("provider-disconnect-btn-google", {}, { timeout: 10_000 })).toBeTruthy();
 
     // 4. Mark connection as expired in D1 and re-render -> shows Expired + Reconnect button
-    await db
-      .prepare("UPDATE int_connections SET status = 'expired' WHERE workspace_id = 'ws-a' AND provider = 'google'")
-      .run();
+    await db.prepare("UPDATE int_connections SET status = 'expired' WHERE workspace_id = 'ws-a' AND provider = 'google'").run();
     cleanup();
     render(
       <ConnectAccountWidget

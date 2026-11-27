@@ -23,7 +23,16 @@ describe("runGraph behaviour", () => {
 
   test("an invalid graph is refused before anything runs, with the validator's issues", async () => {
     let called = false;
-    const spy = new Map([...toyExecutors, ["trigger.manual", () => { called = true; return { out: 1 }; }]]);
+    const spy = new Map([
+      ...toyExecutors,
+      [
+        "trigger.manual",
+        () => {
+          called = true;
+          return { out: 1 };
+        },
+      ],
+    ]);
     const cyclic = {
       nodes: [node("t", "trigger.manual"), node("p1", "transform.pick", { path: "a" }), node("p2", "transform.pick", { path: "a" })],
       edges: [wire("t", "p1"), wire("p1", "p2"), wire("p2", "p1")],
@@ -68,7 +77,12 @@ describe("runGraph behaviour", () => {
       ],
     ]);
     const graph = {
-      nodes: [node("t", "trigger.manual"), node("a", "transform.pick", { path: "v" }), node("b", "transform.pick", { path: "v" }), node("c", "transform.pick", { path: "v" })],
+      nodes: [
+        node("t", "trigger.manual"),
+        node("a", "transform.pick", { path: "v" }),
+        node("b", "transform.pick", { path: "v" }),
+        node("c", "transform.pick", { path: "v" }),
+      ],
       edges: [wire("t", "a"), wire("t", "b"), wire("a", "c"), wire("b", "c")],
     };
     await runGraph(graph, toyRegistry, executors, { workspaceId: "ws_test", payload: {} });

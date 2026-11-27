@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { projectIntegrationToNodes } from "@poc/assembler";
-import {
-  analyzeSpec,
-  extractGoogleDiscoveryOperations,
-  extractOpenApi3Operations,
-  importIntegrationSpec,
-} from "../src/importer.ts";
+import { analyzeSpec, extractGoogleDiscoveryOperations, extractOpenApi3Operations, importIntegrationSpec } from "../src/importer.ts";
 
 describe("UC3.4 Parameter fidelity importer tests", () => {
   const openApiSpec = {
@@ -179,19 +174,12 @@ describe("UC3.4 Parameter fidelity importer tests", () => {
       appName: "test-openapi",
     });
 
-    const disallowedOpenApiCodes = [
-      "PARAM_ENUM_DROPPED",
-      "PARAM_DEFAULT_DROPPED",
-      "PARAM_ITEMS_TYPE_DROPPED",
-      "PARAM_STYLE_UNHONOURED",
-    ];
+    const disallowedOpenApiCodes = ["PARAM_ENUM_DROPPED", "PARAM_DEFAULT_DROPPED", "PARAM_ITEMS_TYPE_DROPPED", "PARAM_STYLE_UNHONOURED"];
     for (const code of disallowedOpenApiCodes) {
       const found = openApiReport.entries.filter((e) => e.code === code);
       expect(found, `Expected 0 entries for ${code}`).toHaveLength(0);
     }
-    const cookieUnsupported = openApiReport.entries.filter(
-      (e) => e.code === "PARAM_LOCATION_UNSUPPORTED" && e.from === "cookie",
-    );
+    const cookieUnsupported = openApiReport.entries.filter((e) => e.code === "PARAM_LOCATION_UNSUPPORTED" && e.from === "cookie");
     expect(cookieUnsupported).toHaveLength(0);
 
     const discoveryReport = analyzeSpec({
@@ -199,12 +187,7 @@ describe("UC3.4 Parameter fidelity importer tests", () => {
       format: "google-discovery",
       appName: "test-discovery",
     });
-    const disallowedDiscoveryCodes = [
-      "PARAM_ENUM_DROPPED",
-      "PARAM_DEFAULT_DROPPED",
-      "PARAM_STYLE_UNHONOURED",
-      "PATH_RESERVED_EXPANSION_LOST",
-    ];
+    const disallowedDiscoveryCodes = ["PARAM_ENUM_DROPPED", "PARAM_DEFAULT_DROPPED", "PARAM_STYLE_UNHONOURED", "PATH_RESERVED_EXPANSION_LOST"];
     for (const code of disallowedDiscoveryCodes) {
       const found = discoveryReport.entries.filter((e) => e.code === code);
       expect(found, `Expected 0 entries for ${code}`).toHaveLength(0);

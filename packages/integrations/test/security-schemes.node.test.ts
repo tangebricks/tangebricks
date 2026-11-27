@@ -1,10 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  IntegrationAuthSchema,
-  IntegrationManifestSchema,
-} from "@poc/assembler";
+import { IntegrationAuthSchema, IntegrationManifestSchema } from "@poc/assembler";
 import { analyzeSpec, importIntegrationSpec } from "../src/index.ts";
 
 const FIXTURES_DIR = resolve(__dirname, "fixtures/security");
@@ -52,15 +49,10 @@ describe("Story UC3.3 — Security schemes, auth requirements model, and curatio
         scheme: "bearer",
       },
     });
-    expect(result.manifest.auth.requirements).toEqual([
-      [{ scheme: "basicAuth" }],
-      [{ scheme: "bearerAuth" }],
-    ]);
+    expect(result.manifest.auth.requirements).toEqual([[{ scheme: "basicAuth" }], [{ scheme: "bearerAuth" }]]);
 
     // Curation satisfies bearerAuth alternative -> mapped AUTH_SCHEME
-    const authReport = result.report.entries.find(
-      (e) => e.element === "auth" && e.code === "AUTH_SCHEME",
-    );
+    const authReport = result.report.entries.find((e) => e.element === "auth" && e.code === "AUTH_SCHEME");
     expect(authReport).toBeDefined();
     expect(authReport?.status).toBe("mapped");
   });
@@ -111,17 +103,9 @@ describe("Story UC3.3 — Security schemes, auth requirements model, and curatio
         in: "header",
       },
     });
-    expect(result.manifest.auth.requirements).toEqual([
-      [
-        { scheme: "XClientId" },
-        { scheme: "XClientSecret" },
-        { scheme: "XApiVersion" },
-      ],
-    ]);
+    expect(result.manifest.auth.requirements).toEqual([[{ scheme: "XClientId" }, { scheme: "XClientSecret" }, { scheme: "XApiVersion" }]]);
 
-    const authReport = result.report.entries.find(
-      (e) => e.element === "auth" && e.code === "AUTH_SCHEME",
-    );
+    const authReport = result.report.entries.find((e) => e.element === "auth" && e.code === "AUTH_SCHEME");
     expect(authReport).toBeDefined();
     expect(authReport?.status).toBe("mapped");
   });
@@ -161,9 +145,7 @@ describe("Story UC3.3 — Security schemes, auth requirements model, and curatio
       type: "oauth2",
     });
 
-    const authReport = result.report.entries.find(
-      (e) => e.element === "auth" && e.code === "AUTH_SCHEME",
-    );
+    const authReport = result.report.entries.find((e) => e.element === "auth" && e.code === "AUTH_SCHEME");
     expect(authReport).toBeDefined();
     expect(authReport?.status).toBe("mapped");
   });
@@ -192,16 +174,12 @@ describe("Story UC3.3 — Security schemes, auth requirements model, and curatio
     });
 
     // Public op getHealth has security: [] -> mapped AUTH_NONE
-    const publicReport = report.entries.find(
-      (e) => e.op === "getHealth" && e.code === "AUTH_NONE",
-    );
+    const publicReport = report.entries.find((e) => e.op === "getHealth" && e.code === "AUTH_NONE");
     expect(publicReport).toBeDefined();
     expect(publicReport?.status).toBe("mapped");
 
     // Cookie auth op checkSession -> unsupported AUTH_SCHEME_UNSUPPORTED with blocking: true
-    const cookieReport = report.entries.find(
-      (e) => e.op === "checkSession" && e.code === "AUTH_SCHEME_UNSUPPORTED",
-    );
+    const cookieReport = report.entries.find((e) => e.op === "checkSession" && e.code === "AUTH_SCHEME_UNSUPPORTED");
     expect(cookieReport).toBeDefined();
     expect(cookieReport?.status).toBe("unsupported");
     expect(cookieReport?.blocking).toBe(true);
@@ -231,9 +209,7 @@ describe("Story UC3.3 — Security schemes, auth requirements model, and curatio
       },
     });
 
-    const curationReport = report.entries.find(
-      (e) => e.element === "auth" && e.code === "AUTH_FROM_CURATION",
-    );
+    const curationReport = report.entries.find((e) => e.element === "auth" && e.code === "AUTH_FROM_CURATION");
     expect(curationReport).toBeDefined();
     expect(curationReport?.status).toBe("curated");
   });

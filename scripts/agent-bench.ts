@@ -103,13 +103,16 @@ export const ReviewFileSchema = z.strictObject({
   decisions: z
     .array(
       z.strictObject({
-        match: z.string().min(1).superRefine((match, ctx) => {
-          try {
-            decisionPattern(match);
-          } catch (error) {
-            ctx.addIssue({ code: "custom", message: `not a valid regular expression: ${error instanceof Error ? error.message : String(error)}` });
-          }
-        }),
+        match: z
+          .string()
+          .min(1)
+          .superRefine((match, ctx) => {
+            try {
+              decisionPattern(match);
+            } catch (error) {
+              ctx.addIssue({ code: "custom", message: `not a valid regular expression: ${error instanceof Error ? error.message : String(error)}` });
+            }
+          }),
         reply: z.string().min(1),
       }),
     )
@@ -140,7 +143,8 @@ export function loadReview(dir: string, catalog: Catalog = defaultCatalog): Revi
     throw new BenchRefusal(`${path} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
   const parsed = ReviewFileSchema.safeParse(raw);
-  if (!parsed.success) throw new BenchRefusal(`${path} is not a valid review file: ${parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`);
+  if (!parsed.success)
+    throw new BenchRefusal(`${path} is not a valid review file: ${parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`);
   const unknown = parsed.data.bricks.filter((id) => !catalog.bricks[id]);
   if (unknown.length > 0) throw new BenchRefusal(`${path} names brick(s) not in the catalog: ${unknown.map((id) => `"${id}"`).join(", ")}`);
   return parsed.data;
@@ -182,8 +186,8 @@ export function briefPrompt(project: string, brief: LoadedBrief): string {
     "- Discover what exists with search_bricks, get_brick, search_nodes and get_node; read the project with get_blueprint_summary and get_blueprint_slice.",
     "- Change the blueprint with apply_ops (enable_brick, add_entity, set_identity, add_workflow and the other ops the tools describe). The product's records are entities (dynamic-entities), kept per workspace (multi-workspace).",
     "- Some changes (money bricks, destructive ops) come back as a pending proposal. The owner reviews proposals in Studio within seconds; check get_blueprint_summary and carry on once it is accepted.",
-    "- Check the project with validate_blueprint, then deploy it with deploy_plan and deploy_apply, env \"preview\". The first deploy_apply answers APPROVAL_REQUIRED with an approvalId: the owner approves it in Studio within seconds. Call deploy_apply again with that approvalId (if it answers APPROVAL_PENDING, call it again).",
-    "- Deploy to preview only, never production. The preview keeps the stub identity (leave identity as \"stub\").",
+    '- Check the project with validate_blueprint, then deploy it with deploy_plan and deploy_apply, env "preview". The first deploy_apply answers APPROVAL_REQUIRED with an approvalId: the owner approves it in Studio within seconds. Call deploy_apply again with that approvalId (if it answers APPROVAL_PENDING, call it again).',
+    '- Deploy to preview only, never production. The preview keeps the stub identity (leave identity as "stub").',
     "- This Cloudflare account offers D1, Workers and Workflows only: a brick that needs KV or R2 cannot be deployed.",
     "",
     "The owner answered the setup questions up front; there is no interview. The answers were written for another tool: where they conflict with these instructions (about deploying, a database driver or a local setup), these instructions win. When the preview deploy succeeds, end your reply with one line `PREVIEW: <workerUrl>`.",
@@ -206,7 +210,7 @@ export function changeLiveAppPrompt(project: string): string {
     `1. The workflow that produces the app's reports must charge ${CHANGE_DEBIT_CREDITS} credits per run: add a credit-wallet debit of ${CHANGE_DEBIT_CREDITS} to it. If the app has no such workflow, add one (a manual trigger, then the debit) named for reports.`,
     "2. Set the free plan to 100 credits.",
     "",
-    "Make the change live on preview with deploy_plan and deploy_apply (env \"preview\"); a change to workflows only goes live without a redeploy. The first deploy_apply answers APPROVAL_REQUIRED with an approvalId: the owner approves it in Studio within seconds, then call deploy_apply again with that approvalId. A change that comes back as a pending proposal is reviewed by the owner within seconds.",
+    'Make the change live on preview with deploy_plan and deploy_apply (env "preview"); a change to workflows only goes live without a redeploy. The first deploy_apply answers APPROVAL_REQUIRED with an approvalId: the owner approves it in Studio within seconds, then call deploy_apply again with that approvalId. A change that comes back as a pending proposal is reviewed by the owner within seconds.',
     "",
     "If part of the request cannot be done with ProjectX, say so on its own line: `UNSUPPORTED: <part>: <why>`.",
     "",
@@ -294,7 +298,8 @@ export function createClaudeCliRunner(bin: string): ClaudeRunner {
   const viaShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(bin);
   const command = (args: string[]): [string, string[]] => {
     if (!viaShell) return [bin, args];
-    for (const a of [bin, ...args]) if (/["%!\r\n]/.test(a)) throw new BenchRefusal(`cannot pass ${JSON.stringify(a)} safely through cmd.exe: give --claude-bin the claude.exe path`);
+    for (const a of [bin, ...args])
+      if (/["%!\r\n]/.test(a)) throw new BenchRefusal(`cannot pass ${JSON.stringify(a)} safely through cmd.exe: give --claude-bin the claude.exe path`);
     return [`"${bin}"`, args.map((a) => `"${a}"`)];
   };
   const childEnv = () => {
@@ -415,13 +420,26 @@ export function parseCliResult(stdout: string): CliNumbers {
 // The scripted owner
 
 /** One thing the scripted owner did. Details hold names and refs, never a secret value or a brief's text. */
-export const OWNER_ACTION_KINDS = ["accept", "reject", "accept-unreviewed", "approve", "bind-secret", "reply", "stop", "accept-failed", "reject-failed", "approve-failed"] as const;
+export const OWNER_ACTION_KINDS = [
+  "accept",
+  "reject",
+  "accept-unreviewed",
+  "approve",
+  "bind-secret",
+  "reply",
+  "stop",
+  "accept-failed",
+  "reject-failed",
+  "approve-failed",
+] as const;
 /** The "-failed" kinds: the route refused the owner's click (detail: HTTP status and id); the request is tried again on the next poll. */
 export type OwnerActionKind = (typeof OWNER_ACTION_KINDS)[number];
 export type OwnerAct = (kind: OwnerActionKind, detail: string) => void;
 
 const entityAllowed = (allowed: string[], name: string) =>
-  allowed.some((pattern) => (pattern.endsWith("*") ? name.toLowerCase().startsWith(pattern.slice(0, -1).toLowerCase()) : name.toLowerCase() === pattern.toLowerCase()));
+  allowed.some((pattern) =>
+    pattern.endsWith("*") ? name.toLowerCase().startsWith(pattern.slice(0, -1).toLowerCase()) : name.toLowerCase() === pattern.toLowerCase(),
+  );
 
 /** What an op touches: the bricks (by id, and by the brick a workflow node type belongs to) and the entities it names. */
 export function opTouches(op: Record<string, unknown>, catalog: Catalog = defaultCatalog): { bricks: string[]; entities: string[] } {
@@ -453,7 +471,7 @@ export function opTouches(op: Record<string, unknown>, catalog: Catalog = defaul
       if (str(op.name)) entities.add(op.name as string);
       break;
     case "add_workflow":
-      for (const node of ((op.workflow as { nodes?: Array<{ type?: unknown }> } | undefined)?.nodes ?? [])) nodeBrick(node?.type);
+      for (const node of (op.workflow as { nodes?: Array<{ type?: unknown }> } | undefined)?.nodes ?? []) nodeBrick(node?.type);
       break;
     case "add_node":
       nodeBrick((op.node as { type?: unknown } | undefined)?.type);
@@ -482,7 +500,8 @@ export function reviewProposal(review: ReviewFile, ops: unknown[], catalog: Cata
     const op = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
     const kind = String(op.type ?? "unknown");
     // an op kind the owner does not know cannot be judged, so it is outside the brief
-    if (!(OP_KINDS as readonly string[]).includes(kind)) return { accept: false, reason: `op ${JSON.stringify(String(op.opId ?? "?"))} (${kind}) is not an op kind the owner knows, so it is outside the brief` };
+    if (!(OP_KINDS as readonly string[]).includes(kind))
+      return { accept: false, reason: `op ${JSON.stringify(String(op.opId ?? "?"))} (${kind}) is not an op kind the owner knows, so it is outside the brief` };
     if (review.allowOps?.includes(kind as (typeof OP_KINDS)[number])) continue;
     const touched = opTouches(op, catalog);
     const brick = touched.bricks.find((b) => !review.bricks.includes(b));
@@ -527,10 +546,28 @@ export interface OwnerStats {
  * recorded as unreviewed. Preview deploy approvals are approved; any other approval is rejected. Nothing here touches the
  * approval gates themselves.
  */
-export function startOwnerLoop(params: { call: StudioCall; session: string; orgId: string; project: string; intervalMs: number; now: () => number; review?: ReviewFile | null; act?: OwnerAct; catalog?: Catalog }) {
+export function startOwnerLoop(params: {
+  call: StudioCall;
+  session: string;
+  orgId: string;
+  project: string;
+  intervalMs: number;
+  now: () => number;
+  review?: ReviewFile | null;
+  act?: OwnerAct;
+  catalog?: Catalog;
+}) {
   const { call, session, orgId, project } = params;
   const act: OwnerAct = params.act ?? (() => {});
-  const stats: OwnerStats = { proposalsAccepted: 0, proposalsRejected: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 };
+  const stats: OwnerStats = {
+    proposalsAccepted: 0,
+    proposalsRejected: 0,
+    approvalsApproved: 0,
+    refused: 0,
+    secretsBound: [],
+    rejectedNotPreview: [],
+    waitMs: 0,
+  };
   /** Every approval decision, in order, so a reply can say what the owner actually did. */
   const approvalLog: ApprovalOutcome[] = [];
   let stopped = false;
@@ -567,7 +604,8 @@ export function startOwnerLoop(params: { call: StudioCall; session: string; orgI
       }
     }
     const approvals = await call("GET", `/api/projects/${project}/approvals?status=pending`, undefined, session, orgId);
-    for (const a of (approvals.body.approvals as Array<{ approvalId?: string; status?: string; createdAt?: string; action?: string; env?: string | null }> | undefined) ?? []) {
+    for (const a of (approvals.body.approvals as
+      Array<{ approvalId?: string; status?: string; createdAt?: string; action?: string; env?: string | null }> | undefined) ?? []) {
       if (a.status !== "pending" || !a.approvalId) continue;
       const base = { approvalId: a.approvalId, action: String(a.action ?? "deploy"), env: a.env ?? null };
       // Preview only: anything that is not a preview deploy is rejected, the way a person would decline it.
@@ -647,7 +685,10 @@ export function namedSecrets(agentText: string | null): string[] {
   const text = agentText ?? "";
   const names = new Set<string>();
   for (const m of text.matchAll(SECRET_CODES)) {
-    const rest = text.slice(m.index! + m[0].length).split(/\r?\n/)[0]!.slice(0, 300);
+    const rest = text
+      .slice(m.index! + m[0].length)
+      .split(/\r?\n/)[0]!
+      .slice(0, 300);
     for (const token of rest.match(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g) ?? []) if (!NOT_SECRET_NAMES.has(token)) names.add(token);
   }
   return [...names];
@@ -690,12 +731,17 @@ export interface SecretNeed {
  * on approval, or optional). A name no brick needs now is "bound" when the owner bound it earlier, else what the catalog
  * declares for it.
  */
-export function secretStatusFor(name: string, ctx: { needs: SecretNeed[]; boundNow: string[]; failedNow: string[]; boundBefore: string[]; catalog?: Catalog }): SecretStatus {
+export function secretStatusFor(
+  name: string,
+  ctx: { needs: SecretNeed[]; boundNow: string[]; failedNow: string[]; boundBefore: string[]; catalog?: Catalog },
+): SecretStatus {
   const ns = ctx.needs.filter((n) => n.secretName === name);
   const key = (n: SecretNeed) => `${n.brickId}.${n.secretName}`;
   if (ns.length === 0) {
     if (ctx.boundBefore.some((b) => b.endsWith(`.${name}`))) return "bound";
-    const declared = Object.values((ctx.catalog ?? defaultCatalog).bricks).flatMap((b) => secretDeclarations(b.manifest)).filter((d) => d.name === name);
+    const declared = Object.values((ctx.catalog ?? defaultCatalog).bricks)
+      .flatMap((b) => secretDeclarations(b.manifest))
+      .filter((d) => d.name === name);
     if (declared.length > 0 && declared.every((d) => d.generate)) return "generated";
     if (declared.length > 0 && declared.every((d) => d.optional)) return "optional";
     return "unknown";
@@ -712,16 +758,23 @@ export function secretStatusFor(name: string, ctx: { needs: SecretNeed[]; boundN
 function approvalSentence(approvals: ApprovalOutcome[]): { text: string; section: string } {
   const ids = (list: ApprovalOutcome[]) => list.map((a) => a.approvalId).join(", ");
   const approved = approvals.filter((a) => a.outcome === "approved");
-  if (approved.length > 0) return { text: `I approved the preview deploy in Studio (${ids(approved)}): call deploy_apply again with the approvalId.`, section: "approved" };
+  if (approved.length > 0)
+    return { text: `I approved the preview deploy in Studio (${ids(approved)}): call deploy_apply again with the approvalId.`, section: "approved" };
   const rejected = approvals.filter((a) => a.outcome === "rejected-not-preview");
   if (rejected.length > 0) {
     const a = rejected.at(-1)!;
-    return { text: `I did not approve ${a.approvalId}: it is a ${a.action} on ${a.env ?? "no environment"}, and this app deploys to preview only. Deploy to preview instead.`, section: "not-preview" };
+    return {
+      text: `I did not approve ${a.approvalId}: it is a ${a.action} on ${a.env ?? "no environment"}, and this app deploys to preview only. Deploy to preview instead.`,
+      section: "not-preview",
+    };
   }
   const refused = approvals.filter((a) => a.outcome === "refused");
   if (refused.length > 0) {
     const a = refused.at(-1)!;
-    return { text: `I tried to approve ${a.approvalId}, but Studio refused (HTTP ${a.status}). I will try again: call deploy_apply again with the approvalId in a moment.`, section: "refused" };
+    return {
+      text: `I tried to approve ${a.approvalId}, but Studio refused (HTTP ${a.status}). I will try again: call deploy_apply again with the approvalId in a moment.`,
+      section: "refused",
+    };
   }
   return { text: "I found no deploy approval waiting for me in Studio: call deploy_apply on preview to request one.", section: "none" };
 }
@@ -736,7 +789,11 @@ function approvalSentence(approvals: ApprovalOutcome[]): { text: string; section
  * 4. the answer under `## <n>. <title>` in the brief's answers when a question in the message names that title;
  * then the generic line. With none of them, the generic line alone. Never a secret value.
  */
-export function ownerReply(answers: string | undefined, agentText: string | null, context: OwnerReplyContext = {}): { text: string; source: ReplySource; section: string | null } {
+export function ownerReply(
+  answers: string | undefined,
+  agentText: string | null,
+  context: OwnerReplyContext = {},
+): { text: string; source: ReplySource; section: string | null } {
   const withGeneric = (text: string) => `${text}\n\n${GENERIC_OWNER_REPLY}`;
   const named = namedSecrets(agentText);
   if (named.length > 0) {
@@ -750,15 +807,22 @@ export function ownerReply(answers: string | undefined, agentText: string | null
   const lower = (agentText ?? "").toLowerCase();
   for (const [i, d] of (context.decisions ?? []).entries()) {
     const pattern = decisionPattern(d.match);
-    if (pattern ? pattern.test(agentText ?? "") : lower.includes(d.match.toLowerCase())) return { text: withGeneric(d.reply.trim()), source: "decision", section: `decision ${i + 1}` };
+    if (pattern ? pattern.test(agentText ?? "") : lower.includes(d.match.toLowerCase()))
+      return { text: withGeneric(d.reply.trim()), source: "decision", section: `decision ${i + 1}` };
   }
-  const questions = (agentText ?? "").split(/(?<=[?.!])\s+|\n+/).filter((q) => q.includes("?")).map((q) => q.toLowerCase());
+  const questions = (agentText ?? "")
+    .split(/(?<=[?.!])\s+|\n+/)
+    .filter((q) => q.includes("?"))
+    .map((q) => q.toLowerCase());
   if (answers && questions.length > 0) {
     const sections = [...answers.matchAll(/^## (\d+)\.\s*(.+)$/gm)];
     for (let i = 0; i < sections.length; i += 1) {
       const heading = sections[i]!;
       const title = heading[2]!.trim();
-      const words = title.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
+      const words = title
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length >= 4);
       if (words.length === 0 || !questions.some((q) => words.some((w) => q.includes(w)))) continue;
       const end = sections[i + 1]?.index ?? answers.length;
       const body = answers.slice(heading.index! + heading[0].length, end).trim();
@@ -776,7 +840,15 @@ export function ownerReply(answers: string | undefined, agentText: string | null
  * Story 1.19: only required secrets a person must supply. A secret the brick's manifest marks `generate` is made by Studio
  * when the owner approves the preview deploy, and an `optional` one is left unset, so neither gets a made-up value here.
  */
-export async function bindUnboundSecrets(params: { call: StudioCall; session: string; orgId: string; project: string; randomHex: (bytes: number) => string; hideValues: Record<string, string>; catalog?: Catalog }): Promise<{ bound: string[]; failed: string[]; needs: SecretNeed[] }> {
+export async function bindUnboundSecrets(params: {
+  call: StudioCall;
+  session: string;
+  orgId: string;
+  project: string;
+  randomHex: (bytes: number) => string;
+  hideValues: Record<string, string>;
+  catalog?: Catalog;
+}): Promise<{ bound: string[]; failed: string[]; needs: SecretNeed[] }> {
   const { call, session, orgId, project } = params;
   const bricks = (params.catalog ?? defaultCatalog).bricks;
   const kindOf = (brickId: string, secretName: string): SecretNeed["kind"] => {
@@ -784,7 +856,9 @@ export async function bindUnboundSecrets(params: { call: StudioCall; session: st
     return !declared || (!declared.optional && !declared.generate) ? "owner" : declared.generate ? "generated" : "optional";
   };
   const state = await call("GET", `/api/projects/${project}`, undefined, session, orgId);
-  const needs = ((state.body.readiness as { needs?: Array<{ code?: string; path?: string }> } | undefined)?.needs ?? []).filter((n) => n.code === "UNBOUND_BRICK_SECRET");
+  const needs = ((state.body.readiness as { needs?: Array<{ code?: string; path?: string }> } | undefined)?.needs ?? []).filter(
+    (n) => n.code === "UNBOUND_BRICK_SECRET",
+  );
   const bound: string[] = [];
   const failed: string[] = [];
   const listed: SecretNeed[] = [];
@@ -798,7 +872,13 @@ export async function bindUnboundSecrets(params: { call: StudioCall; session: st
     const value = params.randomHex(32);
     params.hideValues[`secret_${brickId}_${secretName}`] = value;
     const ref = `sec_${brickId}_${secretName}`.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-    const res = await call("POST", `/api/projects/${project}/secrets`, { ref, kind: "brick_secret", label: secretName, appOrBrick: brickId, value, bindTarget: { targetKind: "brick", targetId: brickId, secretName } }, session, orgId);
+    const res = await call(
+      "POST",
+      `/api/projects/${project}/secrets`,
+      { ref, kind: "brick_secret", label: secretName, appOrBrick: brickId, value, bindTarget: { targetKind: "brick", targetId: brickId, secretName } },
+      session,
+      orgId,
+    );
     (res.status === 200 || res.status === 201 ? bound : failed).push(`${brickId}.${secretName}`);
   }
   return { bound, failed, needs: listed };
@@ -808,7 +888,12 @@ export async function bindUnboundSecrets(params: { call: StudioCall; session: st
 // The record
 
 const OutcomeSchema = z.enum(["pass", "partial", "n/a", "fail"]);
-export const CheckSchema = z.strictObject({ line: z.number().int().min(1).max(12), name: z.string().min(1), outcome: OutcomeSchema, evidence: z.string().min(1) });
+export const CheckSchema = z.strictObject({
+  line: z.number().int().min(1).max(12),
+  name: z.string().min(1),
+  outcome: OutcomeSchema,
+  evidence: z.string().min(1),
+});
 export type Check = z.infer<typeof CheckSchema>;
 
 const TeardownSchema = z.object({
@@ -831,7 +916,10 @@ export const RunRecordSchema = z.strictObject({
   task: z.enum(["brief", "change-live-app"]),
   briefId: z.string().min(1),
   briefSha256: z.string().regex(/^[0-9a-f]{64}$/),
-  answersSha256: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
+  answersSha256: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .nullable(),
   fromRunId: z.string().nullable(),
   startedAt: z.string(),
   finishedAt: z.string(),
@@ -903,7 +991,15 @@ export const RunRecordSchema = z.strictObject({
   deployed: z.boolean(),
   deployRefusal: z.string().nullable(),
   checks: z.array(CheckSchema).length(12).nullable(),
-  score: z.strictObject({ passes: z.number().int(), partials: z.number().int(), notApplicable: z.number().int(), fails: z.number().int(), applicable: z.number().int() }).nullable(),
+  score: z
+    .strictObject({
+      passes: z.number().int(),
+      partials: z.number().int(),
+      notApplicable: z.number().int(),
+      fails: z.number().int(),
+      applicable: z.number().int(),
+    })
+    .nullable(),
   change: ChangeSchema.nullable(),
   /** The final blueprint (Studio's export bundle), so change-live-app can stand the same app up again. Private. */
   blueprint: z.unknown().nullable(),
@@ -926,7 +1022,16 @@ export const KillRuleSchema = z.strictObject({
   iterations: z.array(
     z.strictObject({
       iteration: z.number().int(),
-      perBrief: z.array(z.strictObject({ briefId: z.string(), runId: z.string(), runs: z.number().int(), deployed: z.boolean(), applicableLines: VerdictSchema, literalAsWritten: VerdictSchema })),
+      perBrief: z.array(
+        z.strictObject({
+          briefId: z.string(),
+          runId: z.string(),
+          runs: z.number().int(),
+          deployed: z.boolean(),
+          applicableLines: VerdictSchema,
+          literalAsWritten: VerdictSchema,
+        }),
+      ),
       anyBriefMet: z.strictObject({ applicableLines: z.boolean(), literalAsWritten: z.boolean() }),
     }),
   ),
@@ -952,7 +1057,9 @@ export type BenchmarkFile = z.infer<typeof BenchmarkFileSchema>;
  */
 export function evaluateKillRule(runs: RunRecord[]): z.infer<typeof KillRuleSchema> {
   const scored = runs.filter((r) => r.task === "brief" && r.score);
-  const excludedRuns = scored.filter((r) => r.incompleteKind === "infra").map((r) => ({ runId: r.runId, briefId: r.briefId, iteration: r.iteration, reason: r.incompleteReason ?? "infra" }));
+  const excludedRuns = scored
+    .filter((r) => r.incompleteKind === "infra")
+    .map((r) => ({ runId: r.runId, briefId: r.briefId, iteration: r.iteration, reason: r.incompleteReason ?? "infra" }));
   const evidence = scored.filter((r) => r.incompleteKind !== "infra");
   const verdicts = (r: RunRecord) => {
     const { passes, applicable } = r.score!;
@@ -968,12 +1075,19 @@ export function evaluateKillRule(runs: RunRecord[]): z.infer<typeof KillRuleSche
     for (const r of evidence.filter((x) => x.iteration === iteration)) byBrief.set(r.briefId, [...(byBrief.get(r.briefId) ?? []), r]);
     const perBrief = [...byBrief.entries()].map(([briefId, list]) => {
       // the run shown is the brief's best in this iteration: met first, then the most passes
-      const best = [...list].sort((x, y) => Number(verdicts(y).applicableLines.met) - Number(verdicts(x).applicableLines.met) || y.score!.passes - x.score!.passes)[0]!;
+      const best = [...list].sort(
+        (x, y) => Number(verdicts(y).applicableLines.met) - Number(verdicts(x).applicableLines.met) || y.score!.passes - x.score!.passes,
+      )[0]!;
       return { briefId, runId: best.runId, runs: list.length, deployed: best.deployed, ...verdicts(best) };
     });
-    return { iteration, perBrief, anyBriefMet: { applicableLines: perBrief.some((x) => x.applicableLines.met), literalAsWritten: perBrief.some((x) => x.literalAsWritten.met) } };
+    return {
+      iteration,
+      perBrief,
+      anyBriefMet: { applicableLines: perBrief.some((x) => x.applicableLines.met), literalAsWritten: perBrief.some((x) => x.literalAsWritten.met) },
+    };
   });
-  const statusOf = (key: "applicableLines" | "literalAsWritten"): "met" | "not-met" | "no-runs" => (iterations.length === 0 ? "no-runs" : iterations.some((i) => i.anyBriefMet[key]) ? "met" : "not-met");
+  const statusOf = (key: "applicableLines" | "literalAsWritten"): "met" | "not-met" | "no-runs" =>
+    iterations.length === 0 ? "no-runs" : iterations.some((i) => i.anyBriefMet[key]) ? "met" : "not-met";
   return {
     rule: KILL_RULE,
     ruleVersion: KILL_RULE_VERSION,
@@ -990,7 +1104,8 @@ export function evaluateKillRule(runs: RunRecord[]): z.infer<typeof KillRuleSche
 
 /** Adds (or replaces, by run id) a run in the private results file, re-evaluates the kill rule, validates, and writes. */
 export const UPGRADED_PRE_AGENT_CALLS = "upgraded from a pre-agentCalls record: one agent call, no per-call data, no secrets bound by the owner";
-export const UPGRADED_PRE_OWNER_ACTIONS = "upgraded from a pre-ownerActions record: owner actions were not recorded, and no proposal was rejected (the owner accepted every one)";
+export const UPGRADED_PRE_OWNER_ACTIONS =
+  "upgraded from a pre-ownerActions record: owner actions were not recorded, and no proposal was rejected (the owner accepted every one)";
 
 /**
  * An older run record brought up to the current schema. A record from before agent calls were recorded made exactly one
@@ -1037,7 +1152,9 @@ export function upgradeRunRecord(raw: unknown): unknown {
   // A call recorded before costUsdReported existed recorded the CLI's raw value as costUsd; it is kept as that raw value.
   // repairRunCosts (--repair-costs) then recomputes the per-call costs and the total from it.
   if (Array.isArray(r.agentCalls)) {
-    r.agentCalls = (r.agentCalls as Array<Record<string, unknown>>).map((c) => (c && typeof c === "object" && !("costUsdReported" in c) ? { ...c, costUsdReported: c.costUsd ?? null } : c));
+    r.agentCalls = (r.agentCalls as Array<Record<string, unknown>>).map((c) =>
+      c && typeof c === "object" && !("costUsdReported" in c) ? { ...c, costUsdReported: c.costUsd ?? null } : c,
+    );
   }
   return r;
 }
@@ -1064,7 +1181,12 @@ export function repairRunCosts(record: RunRecord): { record: RunRecord; before: 
   const same = (x: number | null, y: number | null) => (x === null || y === null ? x === y : Math.abs(x - y) < 1e-9);
   const changed = !same(before, after) || calls.some((c, i) => !same(c.costUsd, record.agentCalls[i]!.costUsd));
   if (!changed) return { record, before, after, changed: false };
-  return { record: RunRecordSchema.parse({ ...record, agentCalls: calls, cli: { ...record.cli, costUsd: after }, costNote: COST_NOTE }), before, after, changed: true };
+  return {
+    record: RunRecordSchema.parse({ ...record, agentCalls: calls, cli: { ...record.cli, costUsd: after }, costNote: COST_NOTE }),
+    before,
+    after,
+    changed: true,
+  };
 }
 
 /** --repair-costs: corrects the totals in every per-run file under <out dir>/runs/ and in the results file. */
@@ -1072,7 +1194,9 @@ export function repairCostsInFolder(out: string): Array<{ where: string; runId: 
   const repaired: Array<{ where: string; runId: string; before: number | null; after: number | null }> = [];
   const runsDir = join(dirname(resolve(out)), "runs");
   if (existsSync(runsDir)) {
-    for (const name of readdirSync(runsDir).filter((f) => f.endsWith(".json")).sort()) {
+    for (const name of readdirSync(runsDir)
+      .filter((f) => f.endsWith(".json"))
+      .sort()) {
       const path = join(runsDir, name);
       const record = RunRecordSchema.parse(upgradeRunRecord(JSON.parse(readFileSync(path, "utf8"))));
       const fixed = repairRunCosts(record);
@@ -1155,7 +1279,10 @@ export function saveRun(params: {
 
 /** change-live-app's default from-run: the brief's latest deployed brief run that recorded a blueprint. */
 export function latestDeployedRun(runs: RunRecord[], briefId: string): RunRecord | undefined {
-  return runs.filter((r) => r.task === "brief" && r.briefId === briefId && r.deployed && r.blueprint).sort((a, b) => a.startedAt.localeCompare(b.startedAt)).at(-1);
+  return runs
+    .filter((r) => r.task === "brief" && r.briefId === briefId && r.deployed && r.blueprint)
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+    .at(-1);
 }
 
 /**
@@ -1163,7 +1290,10 @@ export function latestDeployedRun(runs: RunRecord[], briefId: string): RunRecord
  * revision. The owner binding a secret or approving does not count as the agent moving.
  */
 export function agentProgress(revisions: Array<{ revision?: number; author?: { type?: string } }>, previewDeployedRev: number | null): string {
-  const newest = revisions.filter((r) => r.author?.type !== "human").map((r) => Number(r.revision ?? 0)).reduce((x, y) => Math.max(x, y), 0);
+  const newest = revisions
+    .filter((r) => r.author?.type !== "human")
+    .map((r) => Number(r.revision ?? 0))
+    .reduce((x, y) => Math.max(x, y), 0);
   return `agent r${newest}:preview ${String(previewDeployedRev)}`;
 }
 
@@ -1183,7 +1313,17 @@ type Entity = { name: string; fields: EntityField[] };
 
 /** A value a field accepts, from its blueprint type. */
 /** A field as the blueprint (min, max, maxLength) or the OpenAPI schema (minimum, maximum, maxLength) describes it. */
-export type FieldLike = { type?: unknown; values?: unknown; enum?: unknown; format?: unknown; min?: unknown; max?: unknown; minimum?: unknown; maximum?: unknown; maxLength?: unknown };
+export type FieldLike = {
+  type?: unknown;
+  values?: unknown;
+  enum?: unknown;
+  format?: unknown;
+  min?: unknown;
+  max?: unknown;
+  minimum?: unknown;
+  maximum?: unknown;
+  maxLength?: unknown;
+};
 
 const numberOr = (...vs: unknown[]) => vs.find((v): v is number => typeof v === "number" && Number.isFinite(v));
 /** An integer inside the field's [min, max]. */
@@ -1234,10 +1374,20 @@ export function updatedValue(field: FieldLike, current: unknown): unknown {
 }
 
 const NOT_APPLICABLE: Record<number, { name: string; reason: string }> = {
-  1: { name: "landing copy", reason: "ProjectX deploys an API Worker from the blueprint; it generates no landing page or marketing copy, so there is nothing to check (recon)." },
+  1: {
+    name: "landing copy",
+    reason: "ProjectX deploys an API Worker from the blueprint; it generates no landing page or marketing copy, so there is nothing to check (recon).",
+  },
   3: { name: "password-reset mail", reason: "The preview runs the stub identity: there is no password, no mail provider and no reset flow to check (recon)." },
-  8: { name: "interview read-back", reason: "ProjectX has no interview: the owner's answers are given up front in the prompt, so there is nothing read back (recon)." },
-  11: { name: "audit CLI", reason: "The line asks for a command-line audit of the built app; ProjectX ships no command-line tool for the apps it builds (its build log is line 7) (recon)." },
+  8: {
+    name: "interview read-back",
+    reason: "ProjectX has no interview: the owner's answers are given up front in the prompt, so there is nothing read back (recon).",
+  },
+  11: {
+    name: "audit CLI",
+    reason:
+      "The line asks for a command-line audit of the built app; ProjectX ships no command-line tool for the apps it builds (its build log is line 7) (recon).",
+  },
 };
 const CHECK_NAMES: Record<number, string> = {
   1: NOT_APPLICABLE[1]!.name,
@@ -1259,7 +1409,9 @@ export function unscoredChecks(reason: string): Check[] {
   return Array.from({ length: 12 }, (_, i) => {
     const line = i + 1;
     const na = NOT_APPLICABLE[line];
-    return na ? { line, name: na.name, outcome: "n/a" as const, evidence: na.reason } : { line, name: CHECK_NAMES[line]!, outcome: "fail" as const, evidence: `not scored: ${reason}` };
+    return na
+      ? { line, name: na.name, outcome: "n/a" as const, evidence: na.reason }
+      : { line, name: CHECK_NAMES[line]!, outcome: "fail" as const, evidence: `not scored: ${reason}` };
   });
 }
 
@@ -1309,16 +1461,31 @@ export async function readPreviewState(ctx: Pick<ScoreContext, "call" | "session
   // The last refused or failed preview deploy, from Studio's own audit log (the code the deploy was refused with).
   const audit = await ctx.call("GET", `/api/projects/${ctx.project}/audit-logs?limit=500`, undefined, ctx.session, ctx.orgId);
   const entries = (audit.body.entries as Array<Record<string, unknown>> | undefined) ?? [];
-  const isPreview = (e: Record<string, unknown>) => (e.details as { envName?: unknown } | undefined)?.envName === "preview" || String(e.targetRef ?? e.target_ref ?? "").endsWith(":preview");
+  const isPreview = (e: Record<string, unknown>) =>
+    (e.details as { envName?: unknown } | undefined)?.envName === "preview" || String(e.targetRef ?? e.target_ref ?? "").endsWith(":preview");
   const failed = entries.find((e) => e.action === "environment.deploy" && e.status !== "succeeded" && isPreview(e));
   const details = (failed?.details ?? {}) as { code?: unknown; error?: unknown; message?: unknown };
-  const refusal = failed ? `${String(failed.status)}: ${String(details.code ?? (details.error as { code?: unknown } | undefined)?.code ?? details.message ?? "no code recorded")}` : null;
-  return { deployed: typeof rev === "number" && url !== null, url, deployedRev: typeof rev === "number" ? rev : null, productionDeployedRev: typeof prodRev === "number" ? prodRev : null, refusal };
+  const refusal = failed
+    ? `${String(failed.status)}: ${String(details.code ?? (details.error as { code?: unknown } | undefined)?.code ?? details.message ?? "no code recorded")}`
+    : null;
+  return {
+    deployed: typeof rev === "number" && url !== null,
+    url,
+    deployedRev: typeof rev === "number" ? rev : null,
+    productionDeployedRev: typeof prodRev === "number" ? prodRev : null,
+    refusal,
+  };
 }
 
 /** Calls a Studio MCP tool as the owner's session (Studio's /mcp takes a session caller too), in-process. */
 async function ownerTool(ctx: Pick<ScoreContext, "call" | "session" | "orgId" | "project">, name: string, args: Record<string, unknown>) {
-  const res = await ctx.call("POST", "/mcp", { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: { project: ctx.project, ...args } } }, ctx.session, ctx.orgId);
+  const res = await ctx.call(
+    "POST",
+    "/mcp",
+    { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: { project: ctx.project, ...args } } },
+    ctx.session,
+    ctx.orgId,
+  );
   const result = res.body.result as { content?: Array<{ text?: string }>; isError?: boolean } | undefined;
   let body: Record<string, unknown> = {};
   try {
@@ -1354,9 +1521,16 @@ export async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promis
 
   // ---- 4, 9 and 2: dynamic-entities CRUD on the preview Worker as a stub user in a fresh workspace
   const worker = async (method: string, path: string, user: string | null, workspace: string | null, body?: unknown) => {
-    const headers: Record<string, string> = { [KEY_HEADER]: ctx.accessKey, ...(user ? { "x-test-user": user } : {}), ...(workspace ? { "x-workspace-id": workspace } : {}), ...(body !== undefined ? { "content-type": "application/json" } : {}) };
+    const headers: Record<string, string> = {
+      [KEY_HEADER]: ctx.accessKey,
+      ...(user ? { "x-test-user": user } : {}),
+      ...(workspace ? { "x-workspace-id": workspace } : {}),
+      ...(body !== undefined ? { "content-type": "application/json" } : {}),
+    };
     try {
-      const res = await ctx.workerFetch(new Request(`${preview.url}${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }));
+      const res = await ctx.workerFetch(
+        new Request(`${preview.url}${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+      );
       return { status: res.status, body: await readJson(res) };
     } catch (error) {
       return { status: 0, body: { error: error instanceof Error ? error.message : String(error) } };
@@ -1381,7 +1555,9 @@ export async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promis
       const entity = entities[0]!;
       const row: Record<string, unknown> = {};
       for (const f of entity.fields) if (f.required) row[f.name] = sampleValue(f, `bench ${f.name}`);
-      const editable = entity.fields.find((f) => ["text", "string"].includes(f.type) && !(Array.isArray(f.values) && f.values.length > 0)) ?? entity.fields.find((f) => ["number", "integer"].includes(f.type));
+      const editable =
+        entity.fields.find((f) => ["text", "string"].includes(f.type) && !(Array.isArray(f.values) && f.values.length > 0)) ??
+        entity.fields.find((f) => ["number", "integer"].includes(f.type));
       if (editable && !(editable.name in row)) row[editable.name] = sampleValue(editable, `bench ${editable.name}`);
       const base = `/api/${entity.name}`;
       const steps: string[] = [];
@@ -1397,7 +1573,9 @@ export async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promis
         ok.list = list.status === 200 && ((list.body.items as Array<{ id?: unknown }> | undefined) ?? []).some((i) => i.id === id);
         steps.push(`list ${list.status}`);
         if (editable) {
-          const patched = await worker("PATCH", `${base}/${encodeURIComponent(String(id))}`, "bench-owner", wsId as string, { [editable.name]: updatedValue(editable, row[editable.name]) });
+          const patched = await worker("PATCH", `${base}/${encodeURIComponent(String(id))}`, "bench-owner", wsId as string, {
+            [editable.name]: updatedValue(editable, row[editable.name]),
+          });
           ok.update = patched.status === 200;
           steps.push(`update ${patched.status}`);
         }
@@ -1436,12 +1614,22 @@ export async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promis
     noop = again.status === 200 && again.body.action === "noop" && again.body.mutatingCallCount === 0;
     redeployEvidence = `redeploy answered ${again.status}, action ${String(again.body.action ?? (again.body.error as { code?: string } | undefined)?.code)}, ${String(again.body.mutatingCallCount ?? "?")} mutating calls`;
   }
-  set(5, valid && noop ? "pass" : "fail", `validate_blueprint ${valid ? "ready" : `not ready (${JSON.stringify(validated.body.needs ?? validated.body.issues ?? validated.body).slice(0, 200)})`}; ${redeployEvidence}`);
+  set(
+    5,
+    valid && noop ? "pass" : "fail",
+    `validate_blueprint ${valid ? "ready" : `not ready (${JSON.stringify(validated.body.needs ?? validated.body.issues ?? validated.body).slice(0, 200)})`}; ${redeployEvidence}`,
+  );
 
   // ---- 6: at least one revision per build stage, and nothing on production
   const revisions: Array<{ revision: number; ops?: Array<{ type?: string }> }> = [];
   for (let before: number | null = null, pages = 0; pages < 1000; pages += 1) {
-    const revs = await ctx.call("GET", `/api/projects/${ctx.project}/revisions?limit=100${before !== null ? `&beforeRevision=${before}` : ""}`, undefined, ctx.session, ctx.orgId);
+    const revs = await ctx.call(
+      "GET",
+      `/api/projects/${ctx.project}/revisions?limit=100${before !== null ? `&beforeRevision=${before}` : ""}`,
+      undefined,
+      ctx.session,
+      ctx.orgId,
+    );
     revisions.push(...((revs.body.revisions as typeof revisions | undefined) ?? []));
     const next = revs.body.nextBeforeRevision;
     if (revs.body.hasMore !== true || typeof next !== "number") break;
@@ -1452,10 +1640,16 @@ export async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promis
     { stage: "entities", present: entities.length > 0, ops: /entit|field/ },
     { stage: "workflows", present: workflows.length > 0, ops: /workflow|node|edge/ },
   ];
-  const stageResults = stages.filter((s) => s.present).map((s) => ({ stage: s.stage, revisions: revisions.filter((r) => (r.ops ?? []).some((op) => s.ops.test(String(op.type ?? "")))).length }));
+  const stageResults = stages
+    .filter((s) => s.present)
+    .map((s) => ({ stage: s.stage, revisions: revisions.filter((r) => (r.ops ?? []).some((op) => s.ops.test(String(op.type ?? "")))).length }));
   const perStage = stageResults.length > 0 && stageResults.every((s) => s.revisions >= 1);
   const nothingPushed = preview.productionDeployedRev === null;
-  set(6, perStage && nothingPushed ? "pass" : "fail", `${revisions.length} revision(s) (current r${currentRevision}); per stage: ${stageResults.map((s) => `${s.stage} ${s.revisions}`).join(", ") || "no stage built"}; production ${nothingPushed ? "never deployed" : `deployed at r${preview.productionDeployedRev}`}`);
+  set(
+    6,
+    perStage && nothingPushed ? "pass" : "fail",
+    `${revisions.length} revision(s) (current r${currentRevision}); per stage: ${stageResults.map((s) => `${s.stage} ${s.revisions}`).join(", ") || "no stage built"}; production ${nothingPushed ? "never deployed" : `deployed at r${preview.productionDeployedRev}`}`,
+  );
 
   // ---- 7: the build log: activity rows for the revisions, audit rows for each review the owner made
   const activity = await ctx.call("GET", `/api/projects/${ctx.project}/activity?limit=500`, undefined, ctx.session, ctx.orgId);
@@ -1469,17 +1663,33 @@ export async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promis
   const agentRows = entries.filter((e) => typeof e.action === "string" && e.action.startsWith("mcp.")).length;
   // Every proposal the owner reviewed (accepted or rejected) is in the activity, and each reject has its audit row.
   const reviewed = ctx.ownerStats.proposalsAccepted + ctx.ownerStats.proposalsRejected;
-  const logged = revisionEvents >= Math.min(revisions.length, 1) && revisionEvents > 0 && approveRows >= ctx.ownerStats.approvalsApproved && proposalEvents >= reviewed && rejectRows >= ctx.ownerStats.proposalsRejected && agentRows > 0;
-  set(7, logged ? "pass" : "fail", `activity: ${revisionEvents} revision and ${proposalEvents} proposal event(s); audit: ${agentRows} agent tool row(s), ${approveRows} approval row(s) for ${ctx.ownerStats.approvalsApproved} approval(s), ${rejectRows} reject row(s) for ${ctx.ownerStats.proposalsRejected} rejected proposal(s); ${ctx.ownerStats.proposalsAccepted} accepted proposal(s)`);
+  const logged =
+    revisionEvents >= Math.min(revisions.length, 1) &&
+    revisionEvents > 0 &&
+    approveRows >= ctx.ownerStats.approvalsApproved &&
+    proposalEvents >= reviewed &&
+    rejectRows >= ctx.ownerStats.proposalsRejected &&
+    agentRows > 0;
+  set(
+    7,
+    logged ? "pass" : "fail",
+    `activity: ${revisionEvents} revision and ${proposalEvents} proposal event(s); audit: ${agentRows} agent tool row(s), ${approveRows} approval row(s) for ${ctx.ownerStats.approvalsApproved} approval(s), ${rejectRows} reject row(s) for ${ctx.ownerStats.proposalsRejected} rejected proposal(s); ${ctx.ownerStats.proposalsAccepted} accepted proposal(s)`,
+  );
 
   // ---- 12: a second HTTP client finds the entity routes in /openapi.json, creates a row and reads it back
   if (!preview.url || healthz !== 200) set(12, "fail", "the preview does not answer");
   else {
     const spec = await worker("GET", "/openapi.json", null, null);
-    const paths = (spec.body.paths ?? {}) as Record<string, Record<string, { operationId?: string; requestBody?: { content?: Record<string, { schema?: { $ref?: string } }> } }>>;
-    const schemas = ((spec.body.components as { schemas?: Record<string, { properties?: Record<string, Record<string, unknown>>; required?: string[] }> } | undefined)?.schemas ?? {});
+    const paths = (spec.body.paths ?? {}) as Record<
+      string,
+      Record<string, { operationId?: string; requestBody?: { content?: Record<string, { schema?: { $ref?: string } }> } }>
+    >;
+    const schemas =
+      (spec.body.components as { schemas?: Record<string, { properties?: Record<string, Record<string, unknown>>; required?: string[] }> } | undefined)
+        ?.schemas ?? {};
     const createPath = Object.keys(paths).find((p) => paths[p]?.post?.operationId?.startsWith("create_") && paths[`${p}/{id}`]?.get);
-    if (spec.status !== 200 || !createPath) set(12, "fail", `GET /openapi.json answered ${spec.status}; ${createPath ? "" : "no entity create route found"}`.trim());
+    if (spec.status !== 200 || !createPath)
+      set(12, "fail", `GET /openapi.json answered ${spec.status}; ${createPath ? "" : "no entity create route found"}`.trim());
     else {
       const ref = paths[createPath]!.post!.requestBody?.content?.["application/json"]?.schema?.$ref ?? "";
       const schema = schemas[ref.split("/").pop() ?? ""] ?? {};
@@ -1487,11 +1697,19 @@ export async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promis
       for (const name of schema.required ?? []) row[name] = sampleValue(schema.properties?.[name] ?? {}, `second agent ${name}`);
       const ws = await worker("POST", "/api/workspaces", "second-agent", null, { name: "Second agent" });
       const wsId = (ws.body.workspace as { id?: unknown } | undefined)?.id;
-      const created = typeof wsId === "string" ? await worker("POST", createPath, "second-agent", wsId, row) : { status: 0, body: {} as Record<string, unknown> };
+      const created =
+        typeof wsId === "string" ? await worker("POST", createPath, "second-agent", wsId, row) : { status: 0, body: {} as Record<string, unknown> };
       const id = (created.body.item as { id?: unknown } | undefined)?.id;
-      const read = typeof id === "string" ? await worker("GET", `${createPath}/${encodeURIComponent(id)}`, "second-agent", wsId as string) : { status: 0, body: {} as Record<string, unknown> };
+      const read =
+        typeof id === "string"
+          ? await worker("GET", `${createPath}/${encodeURIComponent(id)}`, "second-agent", wsId as string)
+          : { status: 0, body: {} as Record<string, unknown> };
       const readBack = read.status === 200 && (read.body.item as { id?: unknown } | undefined)?.id === id;
-      set(12, readBack ? "partial" : "fail", `openapi.json lists ${createPath}; workspace ${ws.status}, create ${created.status}, read back ${read.status}${readBack ? " (same id). Partial: a plain HTTP client with the access key and stub identity, not a second agent over the app's own MCP server" : ""}`);
+      set(
+        12,
+        readBack ? "partial" : "fail",
+        `openapi.json lists ${createPath}; workspace ${ws.status}, create ${created.status}, read back ${read.status}${readBack ? " (same id). Partial: a plain HTTP client with the access key and stub identity, not a second agent over the app's own MCP server" : ""}`,
+      );
     }
   }
   return [...checks.values()].sort((a, b) => a.line - b.line);
@@ -1542,14 +1760,23 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
   const wallTimeCapMs = deps.wallTimeCapMs ?? WALL_TIME_CAP_MS;
   const maxAgentCalls = deps.maxAgentCalls ?? DEFAULT_MAX_AGENT_CALLS;
   const { token, accountId } = deps.credentials;
-  if (GLOBAL_API_KEY.test(token.trim())) throw new BenchRefusal("CLOUDFLARE_API_TOKEN looks like a Global API Key (37 hex characters): use a scoped API token; nothing was sent");
-  if (typeof deps.rootSecret !== "string" || deps.rootSecret.trim().length < 16) throw new BenchRefusal("PX_TELEMETRY_SECRET (Studio's root secret, 16+ characters) is required");
-  if (deps.task === "brief" && (deps.brief.brief === undefined || deps.brief.answers === undefined)) throw new BenchRefusal("a brief run needs the brief and the owner's answers");
+  if (GLOBAL_API_KEY.test(token.trim()))
+    throw new BenchRefusal("CLOUDFLARE_API_TOKEN looks like a Global API Key (37 hex characters): use a scoped API token; nothing was sent");
+  if (typeof deps.rootSecret !== "string" || deps.rootSecret.trim().length < 16)
+    throw new BenchRefusal("PX_TELEMETRY_SECRET (Studio's root secret, 16+ characters) is required");
+  if (deps.task === "brief" && (deps.brief.brief === undefined || deps.brief.answers === undefined))
+    throw new BenchRefusal("a brief run needs the brief and the owner's answers");
   if (deps.task === "change-live-app" && !deps.fromRun?.blueprint) throw new BenchRefusal("change-live-app needs a recorded run with a blueprint (--from-run)");
 
-  const ledger = openLedger(deps.ledgerStore, () => deps.randomHex(4), () => new Date(), STUDIO_TEST_NAME_POLICY);
+  const ledger = openLedger(
+    deps.ledgerStore,
+    () => deps.randomHex(4),
+    () => new Date(),
+    STUDIO_TEST_NAME_POLICY,
+  );
   const live = ledger.entries().filter((e) => e.status !== "removed");
-  if (live.length > 0) throw new BenchRefusal(`the ledger lists ${live.length} resource(s) not yet removed (${live.map((e) => e.name).join(", ")}): run with --teardown first`);
+  if (live.length > 0)
+    throw new BenchRefusal(`the ledger lists ${live.length} resource(s) not yet removed (${live.map((e) => e.name).join(", ")}): run with --teardown first`);
   const project = studioTestProject(ledger.suffix);
   const ownPrefix = `px-${project}-`;
   const accessKey = await deriveWorkerAccessKey(deps.rootSecret, project, "preview");
@@ -1559,11 +1786,26 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
 
   let phase = "preflight";
   const calls: CallLine[] = [];
-  const guarded = openGuardedStudio({ credentials: deps.credentials, cloudflareFetch: deps.cloudflareFetch, workerFetch: deps.workerFetch, bundle: deps.bundle, rootSecret: deps.rootSecret, ownPrefix, ledger, calls, phase: () => phase, sleep, ...(deps.budget ? { budget: deps.budget } : {}), alsoHide: Object.values(secrets) });
+  const guarded = openGuardedStudio({
+    credentials: deps.credentials,
+    cloudflareFetch: deps.cloudflareFetch,
+    workerFetch: deps.workerFetch,
+    bundle: deps.bundle,
+    rootSecret: deps.rootSecret,
+    ownPrefix,
+    ledger,
+    calls,
+    phase: () => phase,
+    sleep,
+    ...(deps.budget ? { budget: deps.budget } : {}),
+    alsoHide: Object.values(secrets),
+  });
   const { rest } = guarded;
   const unledgered = await findUnledgered(rest, ledger, STUDIO_TEST_NAME_POLICY);
   if (unledgered.length > 0) {
-    throw new BenchRefusal(`the account already holds ${unledgered.length} px-tangebricks-test-* resource(s) this ledger does not list (${unledgered.map((u) => `${u.kind} ${u.name}`).join(", ")}); nothing was created`);
+    throw new BenchRefusal(
+      `the account already holds ${unledgered.length} px-tangebricks-test-* resource(s) this ledger does not list (${unledgered.map((u) => `${u.kind} ${u.name}`).join(", ")}); nothing was created`,
+    );
   }
 
   const record: RunRecord = {
@@ -1579,12 +1821,36 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     incompleteReason: null,
     incompleteKind: null,
     iteration: deps.iteration ?? 1,
-    cli: { version: null, exitCode: null, timedOut: false, subtype: null, isError: null, modelIds: [], modelIdSource: "missing", requestedModel: deps.model ?? null, costUsd: null, costLabel: "client-estimated", numTurns: null, durationMs: null, missingFields: [], agentCalls: 0 },
+    cli: {
+      version: null,
+      exitCode: null,
+      timedOut: false,
+      subtype: null,
+      isError: null,
+      modelIds: [],
+      modelIdSource: "missing",
+      requestedModel: deps.model ?? null,
+      costUsd: null,
+      costLabel: "client-estimated",
+      numTurns: null,
+      durationMs: null,
+      missingFields: [],
+      agentCalls: 0,
+    },
     agentCalls: [],
     limits: { maxBudgetUsd, wallTimeCapMs, maxAgentCalls },
     wallTimeMs: 0,
     agentWallTimeMs: null,
-    ownerReview: { count: 0, proposalsAccepted: 0, proposalsRejected: 0, approvalsApproved: 0, refused: 0, secretsBound: [], rejectedNotPreview: [], waitMs: 0 },
+    ownerReview: {
+      count: 0,
+      proposalsAccepted: 0,
+      proposalsRejected: 0,
+      approvalsApproved: 0,
+      refused: 0,
+      secretsBound: [],
+      rejectedNotPreview: [],
+      waitMs: 0,
+    },
     ownerActions: [],
     project,
     previewUrl: null,
@@ -1599,7 +1865,11 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
   /** Why the run is incomplete. "infra": the harness or the CLI process failed, so the run is no evidence about the model; "agent": a cap or the CLI's own error result; "owner-stalled": the agent stayed blocked through two identical owner replies; "cleanup": teardown, after scoring. */
   const reasons: Array<{ text: string; kind: NonNullable<RunRecord["incompleteKind"]> }> = [];
   const act: OwnerAct = (kind, detail) => record.ownerActions.push({ at: new Date(now()).toISOString(), kind, detail: hide(detail) });
-  const ownerReviewOf = (stats: OwnerStats): RunRecord["ownerReview"] => ({ count: stats.proposalsAccepted + stats.proposalsRejected + stats.approvalsApproved + stats.secretsBound.length, ...stats, waitMs: Math.round(stats.waitMs) });
+  const ownerReviewOf = (stats: OwnerStats): RunRecord["ownerReview"] => ({
+    count: stats.proposalsAccepted + stats.proposalsRejected + stats.approvalsApproved + stats.secretsBound.length,
+    ...stats,
+    waitMs: Math.round(stats.waitMs),
+  });
   const { studio, app, call } = guarded.boot();
   const must = (what: string, ok: boolean, detail: unknown) => {
     if (!ok) throw new BenchRefusal(`${what} failed: ${hide(JSON.stringify(detail)).slice(0, 1200)}`);
@@ -1610,10 +1880,24 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
 
   try {
     phase = "connect";
-    const connected = await connectStudioOwner({ call, suffix: ledger.suffix, project, token, accountId, randomHex: deps.randomHex, name: "Tangebricks Benchmark", must });
+    const connected = await connectStudioOwner({
+      call,
+      suffix: ledger.suffix,
+      project,
+      token,
+      accountId,
+      randomHex: deps.randomHex,
+      name: "Tangebricks Benchmark",
+      must,
+    });
     const { session, orgId } = connected;
     secrets.session = session;
-    const issued = await call("POST", `/api/orgs/${orgId}/mcp-tokens`, { clientName: "agent-bench", projectId: project, scopes: ["read", "edit", "deploy"] }, session);
+    const issued = await call(
+      "POST",
+      `/api/orgs/${orgId}/mcp-tokens`,
+      { clientName: "agent-bench", projectId: project, scopes: ["read", "edit", "deploy"] },
+      session,
+    );
     must("issuing the agent's MCP token", issued.status === 201 && typeof issued.body.token === "string", issued);
     const mcpToken = String(issued.body.token);
     secrets.mcpToken = mcpToken;
@@ -1688,7 +1972,16 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
       approvalsSeen = owner.approvalLog.length;
       let out: ClaudeRunOutput | null = null;
       try {
-        out = await deps.runner.run({ prompt: nextPrompt, cwd, mcpConfigPath, mcp, ...(deps.model ? { model: deps.model } : {}), maxBudgetUsd: remainingUsd, timeoutMs: remainingMs, ...(sessionId ? { resumeSessionId: sessionId } : {}) });
+        out = await deps.runner.run({
+          prompt: nextPrompt,
+          cwd,
+          mcpConfigPath,
+          mcp,
+          ...(deps.model ? { model: deps.model } : {}),
+          maxBudgetUsd: remainingUsd,
+          timeoutMs: remainingMs,
+          ...(sessionId ? { resumeSessionId: sessionId } : {}),
+        });
       } catch (error) {
         reasons.push({ kind: "infra", text: `the CLI failed: ${hide(error instanceof Error ? error.message : String(error))}` });
         break;
@@ -1740,7 +2033,9 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
         missingFields: [...new Set([...record.cli.missingFields, ...numbers.missingFields])],
         agentCalls: record.agentCalls.length,
       };
-      say(`4.${n} CLI call ${n}: exit ${String(out.exitCode)}, ${numbers.subtype ?? "?"}, ${numbers.numTurns ?? "?"} turns, $${numbers.costUsd ?? "?"} (client-estimated), models ${numbers.modelIds.join(", ") || "not reported"}`);
+      say(
+        `4.${n} CLI call ${n}: exit ${String(out.exitCode)}, ${numbers.subtype ?? "?"}, ${numbers.numTurns ?? "?"} turns, $${numbers.costUsd ?? "?"} (client-estimated), models ${numbers.modelIds.join(", ") || "not reported"}`,
+      );
       if (out.timedOut) {
         reasons.push({ kind: "agent", text: `wall-time cap hit: the CLI was stopped after ${Math.round(wallTimeCapMs / 60_000)} min` });
         break;
@@ -1770,9 +2065,14 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
       // An approval the agent waits on is reviewed now, so the reply says what is true.
       if (/\bAPPROVAL_(?:REQUIRED|PENDING)\b/.test(numbers.resultText ?? "")) await owner.passNow();
       await deps.ownerStep?.({ call, session, orgId, project, call_: n });
-      const secretStatus = (name: string): SecretStatus => secretStatusFor(name, { needs: secrets_.needs, boundNow: secrets_.bound, failedNow: secrets_.failed, boundBefore });
+      const secretStatus = (name: string): SecretStatus =>
+        secretStatusFor(name, { needs: secrets_.needs, boundNow: secrets_.bound, failedNow: secrets_.failed, boundBefore });
       const approvals = owner.approvalLog.slice(approvalsSeen);
-      const r = ownerReply(deps.task === "brief" ? deps.brief.answers : undefined, numbers.resultText, { decisions: deps.brief.review?.decisions ?? [], secretStatus, approvals });
+      const r = ownerReply(deps.task === "brief" ? deps.brief.answers : undefined, numbers.resultText, {
+        decisions: deps.brief.review?.decisions ?? [],
+        secretStatus,
+        approvals,
+      });
       // The stop rule: the same reply to an agent that has made no progress since the last one is sent at most twice.
       const progress = await progressNow();
       const count: number = lastReply && lastReply.text === r.text && lastReply.progress === progress ? lastReply.count + 1 : 1;
@@ -1794,7 +2094,15 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     const stats = await owner.stop();
     owner = null;
     record.ownerReview = ownerReviewOf(stats);
-    if (deps.task === "change-live-app") record.change = { timeToLiveMs: null, redeploys: 0, hotApplies: 0, noops: 0, parts: [], agentFlaggedUnsupported: texts.some((t) => /^\s*UNSUPPORTED:/im.test(t)) };
+    if (deps.task === "change-live-app")
+      record.change = {
+        timeToLiveMs: null,
+        redeploys: 0,
+        hotApplies: 0,
+        noops: 0,
+        parts: [],
+        agentFlaggedUnsupported: texts.some((t) => /^\s*UNSUPPORTED:/im.test(t)),
+      };
 
     // ---- scoring, on whatever exists now
     phase = "score";
@@ -1815,8 +2123,13 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
       const exported = await call("GET", `/api/projects/${project}/export`, undefined, session, orgId);
       if (exported.status === 200) record.blueprint = exported.body.bundle ?? exported.body;
     } else {
-      record.change = { ...(record.change ?? { timeToLiveMs: null, redeploys: 0, hotApplies: 0, noops: 0, parts: [], agentFlaggedUnsupported: false }), ...(await evaluateChange(ctx, preview, agentStarted)) };
-      say(`5. change: ${record.change.parts.map((p) => `${p.part} ${p.outcome}`).join("; ")}; ${record.change.hotApplies} hot-apply, ${record.change.redeploys} redeploy`);
+      record.change = {
+        ...(record.change ?? { timeToLiveMs: null, redeploys: 0, hotApplies: 0, noops: 0, parts: [], agentFlaggedUnsupported: false }),
+        ...(await evaluateChange(ctx, preview, agentStarted)),
+      };
+      say(
+        `5. change: ${record.change.parts.map((p) => `${p.part} ${p.outcome}`).join("; ")}; ${record.change.hotApplies} hot-apply, ${record.change.redeploys} redeploy`,
+      );
     }
   } catch (error) {
     reasons.push({ kind: "infra", text: hide(error instanceof Error ? error.message : String(error)) });
@@ -1833,8 +2146,11 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
     phase = "teardown";
     try {
       record.teardown = await teardownAndVerify(rest, ledger);
-      if (record.teardown.leftBehind.length > 0) reasons.push({ kind: "cleanup", text: `teardown left ${record.teardown.leftBehind.length} resource(s) behind` });
-      say(`6. teardown: ${record.teardown.removed.length} removed, ${record.teardown.alreadyGone.length} already gone, ${record.teardown.leftBehind.length} left behind`);
+      if (record.teardown.leftBehind.length > 0)
+        reasons.push({ kind: "cleanup", text: `teardown left ${record.teardown.leftBehind.length} resource(s) behind` });
+      say(
+        `6. teardown: ${record.teardown.removed.length} removed, ${record.teardown.alreadyGone.length} already gone, ${record.teardown.leftBehind.length} left behind`,
+      );
     } catch (error) {
       reasons.push({ kind: "cleanup", text: `teardown failed: ${hide(error instanceof Error ? error.message : String(error))} (run again with --teardown)` });
     }
@@ -1856,21 +2172,47 @@ export async function runAgentBench(deps: AgentBenchDeps): Promise<RunRecord> {
 }
 
 /** change-live-app: is the 5-credit debit in a workflow and live on preview, and how did it get there. */
-async function evaluateChange(ctx: ScoreContext, preview: PreviewState, agentStarted: number): Promise<Omit<NonNullable<RunRecord["change"]>, "agentFlaggedUnsupported">> {
+async function evaluateChange(
+  ctx: ScoreContext,
+  preview: PreviewState,
+  agentStarted: number,
+): Promise<Omit<NonNullable<RunRecord["change"]>, "agentFlaggedUnsupported">> {
   const stateRes = await ctx.call("GET", `/api/projects/${ctx.project}`, undefined, ctx.session, ctx.orgId);
-  const state = (stateRes.body.state ?? {}) as { workflows?: Array<{ id?: string; name?: string; nodes?: Array<{ type?: string; data?: { amount?: unknown } }> }> };
+  const state = (stateRes.body.state ?? {}) as {
+    workflows?: Array<{ id?: string; name?: string; nodes?: Array<{ type?: string; data?: { amount?: unknown } }> }>;
+  };
   const revision = Number(stateRes.body.revision ?? 0);
-  const withDebit = (state.workflows ?? []).filter((w) => (w.nodes ?? []).some((n) => n.type === "credit-wallet.debit" && Number(n.data?.amount) === CHANGE_DEBIT_CREDITS));
+  const withDebit = (state.workflows ?? []).filter((w) =>
+    (w.nodes ?? []).some((n) => n.type === "credit-wallet.debit" && Number(n.data?.amount) === CHANGE_DEBIT_CREDITS),
+  );
   const audit = await ctx.call("GET", `/api/projects/${ctx.project}/audit-logs?limit=500`, undefined, ctx.session, ctx.orgId);
-  const entries = (audit.body.entries as Array<{ action?: string; status?: string; actorType?: string; ts?: string; createdAt?: string; details?: { envName?: string; planAction?: string; revision?: number; noChanges?: boolean } }> | undefined) ?? [];
+  const entries =
+    (audit.body.entries as
+      | Array<{
+          action?: string;
+          status?: string;
+          actorType?: string;
+          ts?: string;
+          createdAt?: string;
+          details?: { envName?: string; planAction?: string; revision?: number; noChanges?: boolean };
+        }>
+      | undefined) ?? [];
   const at = (e: { ts?: string; createdAt?: string }) => Date.parse(String(e.ts ?? e.createdAt ?? ""));
   // The agent's own deploys (made with its MCP token), not the owner's baseline deploy before it started.
-  const deploys = entries.filter((e) => e.action === "environment.deploy" && e.status === "succeeded" && e.actorType === "agent" && e.details?.envName === "preview");
+  const deploys = entries.filter(
+    (e) => e.action === "environment.deploy" && e.status === "succeeded" && e.actorType === "agent" && e.details?.envName === "preview",
+  );
   const hotApplies = deploys.filter((e) => e.details?.planAction === "hot_apply_graphs").length;
   const noops = deploys.filter((e) => e.details?.planAction === "noop").length;
   const redeploys = deploys.length - hotApplies - noops;
   const live = withDebit.length > 0 && preview.deployedRev === revision;
-  const liveAt = live ? deploys.filter((e) => e.details?.revision === revision).map(at).filter(Number.isFinite).sort((a, b) => a - b)[0] : undefined;
+  const liveAt = live
+    ? deploys
+        .filter((e) => e.details?.revision === revision)
+        .map(at)
+        .filter(Number.isFinite)
+        .sort((a, b) => a - b)[0]
+    : undefined;
   return {
     timeToLiveMs: liveAt !== undefined ? Math.max(0, Math.round(liveAt - agentStarted)) : null,
     redeploys,
@@ -1880,7 +2222,12 @@ async function evaluateChange(ctx: ScoreContext, preview: PreviewState, agentSta
       {
         part: `debit ${CHANGE_DEBIT_CREDITS} credits in the report workflow`,
         outcome: live ? "done" : "not-done",
-        reason: withDebit.length === 0 ? `no workflow has a credit-wallet.debit of ${CHANGE_DEBIT_CREDITS}` : live ? `workflow ${withDebit.map((w) => w.id ?? w.name).join(", ")} has the debit and preview runs r${revision}` : `the debit is in r${revision} but preview runs r${String(preview.deployedRev)}`,
+        reason:
+          withDebit.length === 0
+            ? `no workflow has a credit-wallet.debit of ${CHANGE_DEBIT_CREDITS}`
+            : live
+              ? `workflow ${withDebit.map((w) => w.id ?? w.name).join(", ")} has the debit and preview runs r${revision}`
+              : `the debit is in r${revision} but preview runs r${String(preview.deployedRev)}`,
       },
       { part: "free plan 100 credits", outcome: "unsupported", reason: FREE_PLAN_UNSUPPORTED_REASON },
     ],
@@ -1895,7 +2242,11 @@ async function evaluateChange(ctx: ScoreContext, preview: PreviewState, agentSta
  * be spawned without a shell, so: claude.exe on the PATH, else the native binary next to an npm `claude.cmd` shim on the
  * PATH (or under %APPDATA%\npm), else the claude.cmd shim itself (run through cmd.exe with quoted arguments).
  */
-export function defaultClaudeBin(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform, exists: (path: string) => boolean = existsSync): string {
+export function defaultClaudeBin(
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+  exists: (path: string) => boolean = existsSync,
+): string {
   if (platform !== "win32") return "claude";
   const dirs = (env.PATH ?? env.Path ?? "").split(";").filter(Boolean);
   if (env.APPDATA) dirs.push(join(env.APPDATA, "npm"));
@@ -1915,8 +2266,10 @@ export function defaultClaudeBin(env: NodeJS.ProcessEnv = process.env, platform:
 export function privatePathRefusal(path: string, root: string, isIgnored: (path: string) => boolean): string | null {
   const full = resolve(path);
   const within = (child: string, parent: string) => (resolve(child) + sep).toLowerCase().startsWith((resolve(parent) + sep).toLowerCase());
-  if (resolve(dirname(full)).toLowerCase() === resolve(root, "evidence").toLowerCase()) return `${full} is at the top level of evidence/, which evidence:refresh owns`;
-  if (within(full, root) && !isIgnored(full)) return `${full} is inside the repository but not git-ignored: add it to .gitignore (or .git/info/exclude) first, so it can never be committed`;
+  if (resolve(dirname(full)).toLowerCase() === resolve(root, "evidence").toLowerCase())
+    return `${full} is at the top level of evidence/, which evidence:refresh owns`;
+  if (within(full, root) && !isIgnored(full))
+    return `${full} is inside the repository but not git-ignored: add it to .gitignore (or .git/info/exclude) first, so it can never be committed`;
   return null;
 }
 
@@ -1982,7 +2335,8 @@ async function main(argv: string[]): Promise<number> {
   /** A ledger whose resources are all removed is set aside, so the next run starts a fresh one (a new suffix). */
   const rotateLedger = () => {
     const previous = ledgerStore.read();
-    if (previous && previous.entries.every((e) => e.status === "removed")) renameSync(ledgerPath, `${ledgerPath}.${new Date().toISOString().replace(/[:.]/g, "-")}.done`);
+    if (previous && previous.entries.every((e) => e.status === "removed"))
+      renameSync(ledgerPath, `${ledgerPath}.${new Date().toISOString().replace(/[:.]/g, "-")}.done`);
   };
 
   const out = resolve(arg("--out") ?? DEFAULT_OUT);
@@ -2068,8 +2422,13 @@ async function main(argv: string[]): Promise<number> {
     const saved = saveRun({ out, record, refusal: (path) => privatePathRefusal(path, repoRoot, gitIgnores) });
     if (!saved.ok) return 1;
     const { file } = saved;
-    if (record.score) console.log(`score (iteration ${record.iteration}): ${record.score.passes}/${record.score.applicable} applicable lines pass; literal (as written) ${record.score.passes}/12; deployed: ${record.deployed}`);
-    console.log(`kill rule (${file.killRule.ruleVersion}): applicable lines ${file.killRule.status.applicableLines}, literal (as written) ${file.killRule.status.literalAsWritten}; decision left to the owner; written to ${out}`);
+    if (record.score)
+      console.log(
+        `score (iteration ${record.iteration}): ${record.score.passes}/${record.score.applicable} applicable lines pass; literal (as written) ${record.score.passes}/12; deployed: ${record.deployed}`,
+      );
+    console.log(
+      `kill rule (${file.killRule.ruleVersion}): applicable lines ${file.killRule.status.applicableLines}, literal (as written) ${file.killRule.status.literalAsWritten}; decision left to the owner; written to ${out}`,
+    );
     if (record.status !== "complete") allComplete = false;
     // A run that left something behind stops the set: the next would refuse to start anyway.
     if (record.teardown === null || record.teardown.leftBehind.length > 0) return 1;

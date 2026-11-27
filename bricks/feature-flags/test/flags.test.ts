@@ -4,12 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_feature_flags.sql?raw";
-import {
-  FeatureFlagService,
-  hashToBucket,
-  createFlagRoutes,
-  requireFlag,
-} from "../src/index.ts";
+import { FeatureFlagService, hashToBucket, createFlagRoutes, requireFlag } from "../src/index.ts";
 import type { FlagEnv } from "../src/middleware.ts";
 
 const db = env.DB as D1Like;
@@ -123,7 +118,10 @@ describe("Feature Flags Service Core Logic", () => {
     const locked = new FeatureFlagService(db, false);
     expect(await locked.clearOverride(WS_ALPHA, "beta_ui")).toBe(false);
     expect(await locked.setOverride(WS_ALPHA, "beta_ui", false)).toBe(false);
-    const row = await db.prepare("SELECT enabled FROM flag_overrides WHERE workspace_id = ? AND flag_key = ?").bind(WS_ALPHA, "beta_ui").first<{ enabled: number }>();
+    const row = await db
+      .prepare("SELECT enabled FROM flag_overrides WHERE workspace_id = ? AND flag_key = ?")
+      .bind(WS_ALPHA, "beta_ui")
+      .first<{ enabled: number }>();
     expect(row?.enabled).toBe(1);
     // The open service still clears it.
     expect(await open.clearOverride(WS_ALPHA, "beta_ui")).toBe(true);
@@ -142,16 +140,20 @@ describe("Feature Flags HTTP API & Route Guards", () => {
     app.route("/api", createFlagRoutes({ allowOverrides: true }));
 
     // 1. Define flag (usr_tester is a platform operator)
-    const createRes = await app.request("/api/flags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        key: "dark_mode",
-        description: "Dark mode theme",
-        enabledDefault: false,
-        percentageRollout: 100,
-      }),
-    }, { DB: db, PX_PLATFORM_OPERATORS: "usr_tester" });
+    const createRes = await app.request(
+      "/api/flags",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "dark_mode",
+          description: "Dark mode theme",
+          enabledDefault: false,
+          percentageRollout: 100,
+        }),
+      },
+      { DB: db, PX_PLATFORM_OPERATORS: "usr_tester" },
+    );
     expect(createRes.status).toBe(201);
 
     // 2. Evaluate flag -> should be false
@@ -161,11 +163,15 @@ describe("Feature Flags HTTP API & Route Guards", () => {
     expect(evalJson1.enabled).toBe(false);
 
     // 3. Set override for workspace
-    const overrideRes = await app.request("/api/flags/dark_mode/override", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled: true }),
-    }, { DB: db });
+    const overrideRes = await app.request(
+      "/api/flags/dark_mode/override",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: true }),
+      },
+      { DB: db },
+    );
     expect(overrideRes.status).toBe(200);
 
     // 4. Re-evaluate flag -> should now be true
@@ -175,9 +181,13 @@ describe("Feature Flags HTTP API & Route Guards", () => {
     expect(evalJson2.enabled).toBe(true);
 
     // 5. Delete override
-    const delRes = await app.request("/api/flags/dark_mode/override", {
-      method: "DELETE",
-    }, { DB: db });
+    const delRes = await app.request(
+      "/api/flags/dark_mode/override",
+      {
+        method: "DELETE",
+      },
+      { DB: db },
+    );
     expect(delRes.status).toBe(200);
 
     // 6. Re-evaluate -> reverted to false

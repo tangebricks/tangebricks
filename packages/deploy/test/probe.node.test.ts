@@ -21,7 +21,11 @@ function world(options: Partial<FakeOptions> = {}) {
   const client = createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, sleep: async () => undefined });
   return { fake, client, probe: () => runProbe({ client, now: () => NOW }) };
 }
-const denied = (match: (path: string) => boolean) => ({ when: (m: string, p: string) => m === "GET" && match(p), respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: "Authentication error" }] } } }) as const;
+const denied = (match: (path: string) => boolean) =>
+  ({
+    when: (m: string, p: string) => m === "GET" && match(p),
+    respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: "Authentication error" }] } },
+  }) as const;
 
 describe("a ready account", () => {
   test("is reported ready, with the name, the counts and the existing names, and the token's own list unreadable, as for a scoped token", async () => {
@@ -86,7 +90,14 @@ describe("it changes nothing", () => {
   test("the requests are exactly: the token check, the token's own policies, the database list, the Worker list, the account's name, the Workflow list", async () => {
     const w = world();
     await w.probe();
-    expect(w.fake.requests.map((r) => r.path.replace("/client/v4/accounts/{account}", ""))).toEqual(["/tokens/verify", "/tokens/fake-token-id", "/d1/database", "/workers/scripts", "/workers/subdomain", "/workflows"]);
+    expect(w.fake.requests.map((r) => r.path.replace("/client/v4/accounts/{account}", ""))).toEqual([
+      "/tokens/verify",
+      "/tokens/fake-token-id",
+      "/d1/database",
+      "/workers/scripts",
+      "/workers/subdomain",
+      "/workflows",
+    ]);
   });
 
   test("an account with no workers.dev name is reported as such, and the probe does not create one", async () => {
@@ -137,7 +148,10 @@ describe("what is missing", () => {
 
   test("a Workflow list that is 'not found' is a wrong guess about the address, not a missing permission", async () => {
     const w = world();
-    w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/workflows"), respond: { status: 404, body: { success: false, errors: [{ code: 7003, message: "No route for that URI" }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/workflows"),
+      respond: { status: 404, body: { success: false, errors: [{ code: 7003, message: "No route for that URI" }] } },
+    });
     const report = await w.probe();
     expect(report.checks.workflows.state).toBe("not_found");
     expect(report.missing).toEqual([]);
@@ -148,7 +162,10 @@ describe("what is missing", () => {
   test("a network failure or a server error is 'failed', which is neither a missing permission nor a pass", async () => {
     const w = world();
     w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/d1/database"), respond: "network-error" });
-    w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/workflows"), respond: { status: 500, body: { success: false, errors: [{ code: 1000, message: "internal" }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/workflows"),
+      respond: { status: 500, body: { success: false, errors: [{ code: 1000, message: "internal" }] } },
+    });
     const report = await w.probe();
     expect(report.checks.d1.state).toBe("failed");
     expect(report.checks.workflows.state).toBe("failed");
@@ -169,7 +186,11 @@ describe("what is missing", () => {
 describe("the token", () => {
   test("a token Cloudflare does not accept stops the probe after the two verify requests (account, then user endpoint), with nothing else attempted", async () => {
     const w = world();
-    const wrong = createClient({ credentials: { token: "cfut_wrong_wrong_wrong_wrong_wrong_wrong_wrong_1234", accountId: ACCOUNT }, fetch: w.fake.fetch, sleep: async () => undefined });
+    const wrong = createClient({
+      credentials: { token: "cfut_wrong_wrong_wrong_wrong_wrong_wrong_wrong_1234", accountId: ACCOUNT },
+      fetch: w.fake.fetch,
+      sleep: async () => undefined,
+    });
     const report = await runProbe({ client: wrong, now: () => NOW });
     expect(report.token.reachable).toBe(false);
     expect(report.ready).toBe(false);
@@ -180,7 +201,10 @@ describe("the token", () => {
 
   test("a token that is not active stops the probe after the check", async () => {
     const w = world();
-    w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/tokens/verify"), respond: { status: 200, body: { success: true, errors: [], result: { id: "fake-token-id", status: "disabled" } } } });
+    w.fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/tokens/verify"),
+      respond: { status: 200, body: { success: true, errors: [], result: { id: "fake-token-id", status: "disabled" } } },
+    });
     const report = await w.probe();
     expect(report.token).toMatchObject({ reachable: true, status: "disabled" });
     expect(report.token.note).toMatch(/"disabled", not "active"/);
@@ -198,7 +222,10 @@ describe("the token", () => {
 
   test("a token without an expiry date is reported as having none", async () => {
     const w = world();
-    w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/tokens/verify"), respond: { status: 200, body: { success: true, errors: [], result: { id: "fake-token-id", status: "active" } } } });
+    w.fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/tokens/verify"),
+      respond: { status: 200, body: { success: true, errors: [], result: { id: "fake-token-id", status: "active" } } },
+    });
     const report = await w.probe();
     expect(report.token.expiresOn).toBeNull();
     expect(report.token.daysLeft).toBeNull();
@@ -227,7 +254,12 @@ describe("what it prints and writes", () => {
     w.fake.seedScript("billing-worker");
     w.fake.seedScript("projectx-poc-deadbeef");
     const report = await w.probe();
-    const shown = describeProbe(report, { databases: report.checks.d1.value, scripts: report.checks.scripts.value, workflows: report.checks.workflows.value, subdomain: report.checks.subdomain.value }).join("\n");
+    const shown = describeProbe(report, {
+      databases: report.checks.d1.value,
+      scripts: report.checks.scripts.value,
+      workflows: report.checks.workflows.value,
+      subdomain: report.checks.subdomain.value,
+    }).join("\n");
     expect(shown).toContain("customers-prod");
     expect(shown).toContain("billing-worker");
     expect(shown).toContain("fake-subdomain.workers.dev");
@@ -246,9 +278,14 @@ describe("what it prints and writes", () => {
 
   test("neither the token nor the account id appears in the report, the text, the evidence or the call log, even when Cloudflare echoes them back", async () => {
     const w = world({ tokenGroups: GOOD_GROUPS });
-    w.fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/workflows"), respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: `denied for ${TOKEN} on account ${ACCOUNT}` }] } } });
+    w.fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/workflows"),
+      respond: { status: 403, body: { success: false, errors: [{ code: 10000, message: `denied for ${TOKEN} on account ${ACCOUNT}` }] } },
+    });
     const report = await w.probe();
-    const everything = [JSON.stringify(report), JSON.stringify(forEvidence(report)), describeProbe(report).join("\n"), JSON.stringify(w.client.calls)].join("\n");
+    const everything = [JSON.stringify(report), JSON.stringify(forEvidence(report)), describeProbe(report).join("\n"), JSON.stringify(w.client.calls)].join(
+      "\n",
+    );
     expect(findSecrets(everything, { token: TOKEN, accountId: ACCOUNT })).toEqual([]);
     expect(report.checks.workflows.note).toContain("[hidden]");
   });
@@ -267,7 +304,10 @@ describe("what it prints and writes", () => {
 });
 
 describe("the probe's own source and command", () => {
-  const code = (rel: string) => codeLines(readFileSync(join(root, rel), "utf8")).map((l) => l.text).join("\n");
+  const code = (rel: string) =>
+    codeLines(readFileSync(join(root, rel), "utf8"))
+      .map((l) => l.text)
+      .join("\n");
 
   test("the probe library calls only the client's read methods", () => {
     const source = code("packages/deploy/src/provisioner/probe.ts");
@@ -285,7 +325,13 @@ describe("the probe's own source and command", () => {
     expect(source).toContain("findSecrets(text");
   });
 
-  const run = (env: Record<string, string>) => spawnSync(process.execPath, [join(root, "scripts", "poc-probe.ts")], { cwd: root, env: { PATH: process.env.PATH ?? "", SystemRoot: process.env.SystemRoot ?? "", ...env }, encoding: "utf8", timeout: 30_000 });
+  const run = (env: Record<string, string>) =>
+    spawnSync(process.execPath, [join(root, "scripts", "poc-probe.ts")], {
+      cwd: root,
+      env: { PATH: process.env.PATH ?? "", SystemRoot: process.env.SystemRoot ?? "", ...env },
+      encoding: "utf8",
+      timeout: 30_000,
+    });
 
   test("with no credentials it stops before any request and names the missing variables", () => {
     const result = run({});

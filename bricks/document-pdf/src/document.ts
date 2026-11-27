@@ -55,10 +55,7 @@ interface RawRenderRow {
 /**
  * Lightweight template hydration engine supporting variables and each-loops.
  */
-export function hydrateTemplate(
-  template: string,
-  variables: Record<string, unknown>
-): string {
+export function hydrateTemplate(template: string, variables: Record<string, unknown>): string {
   let result = template;
 
   // 1. Process each-loops: {{#each list}}...{{prop}}...{{/each}}
@@ -67,17 +64,19 @@ export function hydrateTemplate(
     const list = variables[listKey];
     if (!Array.isArray(list)) return "";
 
-    return list.map((item) => {
-      let itemBlock = blockContent;
-      if (typeof item === "object" && item !== null) {
-        Object.entries(item).forEach(([k, v]) => {
-          itemBlock = itemBlock.replaceAll(`{{${k}}}`, String(v ?? ""));
-        });
-      } else {
-        itemBlock = itemBlock.replaceAll("{{this}}", String(item ?? ""));
-      }
-      return itemBlock;
-    }).join("");
+    return list
+      .map((item) => {
+        let itemBlock = blockContent;
+        if (typeof item === "object" && item !== null) {
+          Object.entries(item).forEach(([k, v]) => {
+            itemBlock = itemBlock.replaceAll(`{{${k}}}`, String(v ?? ""));
+          });
+        } else {
+          itemBlock = itemBlock.replaceAll("{{this}}", String(item ?? ""));
+        }
+        return itemBlock;
+      })
+      .join("");
   });
 
   // 2. Process simple variables: {{varName}}
@@ -99,11 +98,7 @@ export function hydrateTemplate(
 /**
  * Pure edge-compatible PDF binary builder generating standard PDF-1.4 stream.
  */
-export function generatePdfBinary(options: {
-  title: string;
-  lines: string[];
-  watermark?: string;
-}): Uint8Array<ArrayBuffer> {
+export function generatePdfBinary(options: { title: string; lines: string[]; watermark?: string }): Uint8Array<ArrayBuffer> {
   const sanitize = (text: string) => text.replace(/[()\\]/g, "");
 
   // Build PDF content stream
@@ -162,12 +157,7 @@ export class DocumentPdfService {
   /**
    * Registers a reusable document template.
    */
-  async createTemplate(
-    workspaceId: string,
-    nameRaw: string,
-    templateHtml: string,
-    defaultMetadata?: Record<string, unknown>
-  ): Promise<DocTemplate> {
+  async createTemplate(workspaceId: string, nameRaw: string, templateHtml: string, defaultMetadata?: Record<string, unknown>): Promise<DocTemplate> {
     const id = `tmpl_${crypto.randomUUID().replace(/-/g, "")}`;
     const name = nameRaw.trim();
     const now = new Date().toISOString();
@@ -224,12 +214,7 @@ export class DocumentPdfService {
    * Lists templates for a workspace.
    */
   async listTemplates(workspaceId: string): Promise<DocTemplate[]> {
-    const rows = await scoped(this.db, workspaceId).select<RawTemplateRow>(
-      "doc_templates",
-      undefined,
-      [],
-      { orderBy: "name ASC" },
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawTemplateRow>("doc_templates", undefined, [], { orderBy: "name ASC" });
 
     return rows.map((r) => ({
       ...r,
@@ -248,7 +233,7 @@ export class DocumentPdfService {
       variables?: Record<string, unknown>;
       lines?: string[];
       watermark?: string;
-    }
+    },
   ): Promise<RenderResult> {
     let lines = options.lines || [];
 
@@ -259,7 +244,10 @@ export class DocumentPdfService {
       if (!tmpl) throw new TemplateNotFoundError(options.templateId);
       const hydrated = hydrateTemplate(tmpl.template_html, options.variables || {});
       // Split hydrated text into lines for PDF generator
-      lines = hydrated.split("\n").map((l) => l.trim()).filter(Boolean);
+      lines = hydrated
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
     }
 
     // Generate binary PDF stream
@@ -301,12 +289,7 @@ export class DocumentPdfService {
    * Lists rendered documents for workspace.
    */
   async listRenders(workspaceId: string): Promise<RenderedDocRecord[]> {
-    const rows = await scoped(this.db, workspaceId).select<RawRenderRow>(
-      "doc_renders",
-      undefined,
-      [],
-      { orderBy: "created_at DESC", limit: 50 },
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawRenderRow>("doc_renders", undefined, [], { orderBy: "created_at DESC", limit: 50 });
 
     return rows.map((r) => ({
       ...r,

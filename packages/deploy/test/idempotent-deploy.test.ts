@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  MockCloudflareControlPlane,
-  createByocProvisioner,
-} from "../src/index.ts";
+import { MockCloudflareControlPlane, createByocProvisioner } from "../src/index.ts";
 import type { DeployTarget } from "../src/index.ts";
 
 describe("Story 5.4 — Idempotent Re-Deploy & Step-by-Step Ledger (packages/deploy)", () => {

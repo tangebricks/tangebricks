@@ -16,10 +16,7 @@ export const ALLOWED_ORIGINS_ENV = "PX_ALLOWED_ORIGINS";
 export const CSRF_ORIGIN_MISMATCH = "CSRF_ORIGIN_MISMATCH";
 
 /** The session cookie names Better Auth uses (plain, and with the `__Secure-` prefix). */
-export const DEFAULT_SESSION_COOKIE_NAMES: readonly string[] = [
-  "better-auth.session_token",
-  "__Secure-better-auth.session_token",
-];
+export const DEFAULT_SESSION_COOKIE_NAMES: readonly string[] = ["better-auth.session_token", "__Secure-better-auth.session_token"];
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 // Only these two: the session cookie may drop Secure, and loopback origins are trusted, on exactly these hosts.

@@ -1,10 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { RightDock } from "../src/components/RightDock.tsx";
 import { WorkflowCanvasView } from "../src/components/WorkflowCanvasView.tsx";
@@ -118,194 +112,186 @@ describe("Pin Step Output, Use Pinned Data Toggle & Re-Run From Node UI", () => 
       stepCount: 1,
     };
 
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input);
-        const method = (init?.method ?? "GET").toUpperCase();
+    globalThis.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
 
-        if (url.endsWith("/workflows/wf_orders/pins") && method === "GET") {
-          return new Response(
-            JSON.stringify({
-              project: "acme-pin-rerun",
-              workflowId: "wf_orders",
-              pinnedOutputs: isTriggerPinned
-                ? {
-                    step_trigger: {
-                      output: { orderId: "ord_pinned_ui", amount: 40 },
-                      pinnedAt: "2026-10-30T14:00:00.000Z",
-                    },
-                  }
-                : {},
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
-        }
+      if (url.endsWith("/workflows/wf_orders/pins") && method === "GET") {
+        return new Response(
+          JSON.stringify({
+            project: "acme-pin-rerun",
+            workflowId: "wf_orders",
+            pinnedOutputs: isTriggerPinned
+              ? {
+                  step_trigger: {
+                    output: { orderId: "ord_pinned_ui", amount: 40 },
+                    pinnedAt: "2026-10-30T14:00:00.000Z",
+                  },
+                }
+              : {},
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
 
-        if (
-          url.endsWith("/workflows/wf_orders/nodes/step_trigger/pin") &&
-          method === "PUT"
-        ) {
-          isTriggerPinned = true;
-          return new Response(
-            JSON.stringify({
-              project: "acme-pin-rerun",
-              workflowId: "wf_orders",
-              nodeId: "step_trigger",
-              pin: {
-                output: { orderId: "ord_pinned_ui", amount: 40 },
-                pinnedAt: "2026-10-30T14:00:00.000Z",
+      if (url.endsWith("/workflows/wf_orders/nodes/step_trigger/pin") && method === "PUT") {
+        isTriggerPinned = true;
+        return new Response(
+          JSON.stringify({
+            project: "acme-pin-rerun",
+            workflowId: "wf_orders",
+            nodeId: "step_trigger",
+            pin: {
+              output: { orderId: "ord_pinned_ui", amount: 40 },
+              pinnedAt: "2026-10-30T14:00:00.000Z",
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url.endsWith("/workflows/wf_orders/nodes/step_trigger/pin") && method === "DELETE") {
+        isTriggerPinned = false;
+        return new Response(
+          JSON.stringify({
+            project: "acme-pin-rerun",
+            workflowId: "wf_orders",
+            nodeId: "step_trigger",
+            removed: true,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url.includes("/runs/run_failed_101/rerun") && method === "POST") {
+        rerunTriggered = true;
+        return new Response(
+          JSON.stringify({
+            runId: "run_retry_202",
+            retryOfRunId: "run_failed_101",
+            fromNodeId: "step_debit",
+            workflowId: "wf_orders",
+            revision: 1,
+            env: "preview",
+            status: "succeeded",
+            durationMs: 18,
+            failedNodeId: null,
+            reusedNodeIds: ["step_trigger"],
+            outputs: {
+              step_trigger: { out: { orderId: "ord_pinned_ui", amount: 40 } },
+              step_debit: { out: { debited: 40, remainingBalance: 160 } },
+            },
+            frames: [],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      if (url.includes("/runs/run_failed_101")) {
+        return new Response(
+          JSON.stringify({
+            project: "acme-pin-rerun",
+            env: "preview",
+            run: {
+              ...failedRunSummary,
+              resolvedByRunId: rerunTriggered ? "run_retry_202" : null,
+            },
+            currentRevision: 1,
+            historicalRevision: 1,
+            isHistoricalRevision: false,
+            historicalState: SAMPLE_BLUEPRINT,
+            historicalWorkflow: SAMPLE_BLUEPRINT.workflows[0],
+            stepEvents: [
+              {
+                eventId: "ev_trig",
+                runId: "run_failed_101",
+                workflowId: "wf_orders",
+                revision: 1,
+                nodeId: "step_trigger",
+                status: "succeeded",
+                durationMs: 4,
+                retries: 0,
+                inputPreview: "{}",
+                outputPreview: '{"out":{"orderId":"ord_pinned_ui","amount":40}}',
+                createdAt: "2026-10-30T14:00:00.004Z",
               },
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
-        }
-
-        if (
-          url.endsWith("/workflows/wf_orders/nodes/step_trigger/pin") &&
-          method === "DELETE"
-        ) {
-          isTriggerPinned = false;
-          return new Response(
-            JSON.stringify({
-              project: "acme-pin-rerun",
-              workflowId: "wf_orders",
-              nodeId: "step_trigger",
-              removed: true,
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
-        }
-
-        if (url.includes("/runs/run_failed_101/rerun") && method === "POST") {
-          rerunTriggered = true;
-          return new Response(
-            JSON.stringify({
-              runId: "run_retry_202",
-              retryOfRunId: "run_failed_101",
-              fromNodeId: "step_debit",
-              workflowId: "wf_orders",
-              revision: 1,
-              env: "preview",
-              status: "succeeded",
-              durationMs: 18,
-              failedNodeId: null,
-              reusedNodeIds: ["step_trigger"],
-              outputs: {
-                step_trigger: { out: { orderId: "ord_pinned_ui", amount: 40 } },
-                step_debit: { out: { debited: 40, remainingBalance: 160 } },
+              {
+                eventId: "ev_debit",
+                runId: "run_failed_101",
+                workflowId: "wf_orders",
+                revision: 1,
+                nodeId: "step_debit",
+                status: "failed",
+                durationMs: 88,
+                retries: 1,
+                inputPreview: '{"amount":40}',
+                outputPreview: "{}",
+                errorStack: "Error: Debit service timeout",
+                createdAt: "2026-10-30T14:00:00.092Z",
               },
-              frames: [],
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
-        }
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
 
-        if (url.includes("/runs/run_failed_101")) {
-          return new Response(
-            JSON.stringify({
-              project: "acme-pin-rerun",
-              env: "preview",
-              run: {
-                ...failedRunSummary,
-                resolvedByRunId: rerunTriggered ? "run_retry_202" : null,
+      if (url.includes("/runs/run_retry_202")) {
+        return new Response(
+          JSON.stringify({
+            project: "acme-pin-rerun",
+            env: "preview",
+            run: retryRunSummary,
+            currentRevision: 1,
+            historicalRevision: 1,
+            isHistoricalRevision: false,
+            historicalState: SAMPLE_BLUEPRINT,
+            historicalWorkflow: SAMPLE_BLUEPRINT.workflows[0],
+            stepEvents: [
+              {
+                eventId: "ev_retry_debit",
+                runId: "run_retry_202",
+                workflowId: "wf_orders",
+                revision: 1,
+                nodeId: "step_debit",
+                status: "succeeded",
+                durationMs: 18,
+                retries: 0,
+                inputPreview: '{"amount":40}',
+                outputPreview: '{"out":{"debited":40,"remainingBalance":160}}',
+                createdAt: "2026-10-30T14:01:00.018Z",
               },
-              currentRevision: 1,
-              historicalRevision: 1,
-              isHistoricalRevision: false,
-              historicalState: SAMPLE_BLUEPRINT,
-              historicalWorkflow: SAMPLE_BLUEPRINT.workflows[0],
-              stepEvents: [
-                {
-                  eventId: "ev_trig",
-                  runId: "run_failed_101",
-                  workflowId: "wf_orders",
-                  revision: 1,
-                  nodeId: "step_trigger",
-                  status: "succeeded",
-                  durationMs: 4,
-                  retries: 0,
-                  inputPreview: "{}",
-                  outputPreview: '{"out":{"orderId":"ord_pinned_ui","amount":40}}',
-                  createdAt: "2026-10-30T14:00:00.004Z",
-                },
-                {
-                  eventId: "ev_debit",
-                  runId: "run_failed_101",
-                  workflowId: "wf_orders",
-                  revision: 1,
-                  nodeId: "step_debit",
-                  status: "failed",
-                  durationMs: 88,
-                  retries: 1,
-                  inputPreview: '{"amount":40}',
-                  outputPreview: "{}",
-                  errorStack: "Error: Debit service timeout",
-                  createdAt: "2026-10-30T14:00:00.092Z",
-                },
-              ],
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
-        }
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
 
-        if (url.includes("/runs/run_retry_202")) {
-          return new Response(
-            JSON.stringify({
-              project: "acme-pin-rerun",
-              env: "preview",
-              run: retryRunSummary,
-              currentRevision: 1,
-              historicalRevision: 1,
-              isHistoricalRevision: false,
-              historicalState: SAMPLE_BLUEPRINT,
-              historicalWorkflow: SAMPLE_BLUEPRINT.workflows[0],
-              stepEvents: [
-                {
-                  eventId: "ev_retry_debit",
-                  runId: "run_retry_202",
-                  workflowId: "wf_orders",
-                  revision: 1,
-                  nodeId: "step_debit",
-                  status: "succeeded",
-                  durationMs: 18,
-                  retries: 0,
-                  inputPreview: '{"amount":40}',
-                  outputPreview: '{"out":{"debited":40,"remainingBalance":160}}',
-                  createdAt: "2026-10-30T14:01:00.018Z",
-                },
-              ],
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
-        }
+      if (url.includes("/runs")) {
+        return new Response(
+          JSON.stringify({
+            project: "acme-pin-rerun",
+            env: "preview",
+            runs: rerunTriggered
+              ? [
+                  retryRunSummary,
+                  {
+                    ...failedRunSummary,
+                    resolvedByRunId: "run_retry_202",
+                  },
+                ]
+              : [failedRunSummary],
+            nextCursor: null,
+            hasMore: false,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
 
-        if (url.includes("/runs")) {
-          return new Response(
-            JSON.stringify({
-              project: "acme-pin-rerun",
-              env: "preview",
-              runs: rerunTriggered
-                ? [
-                    retryRunSummary,
-                    {
-                      ...failedRunSummary,
-                      resolvedByRunId: "run_retry_202",
-                    },
-                  ]
-                : [failedRunSummary],
-              nextCursor: null,
-              hasMore: false,
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
-        }
-
-        return new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
       });
+    });
 
     render(
       <div>
@@ -329,15 +315,11 @@ describe("Pin Step Output, Use Pinned Data Toggle & Re-Run From Node UI", () => 
     // 2. Select downstream node `step_debit` -> verify test step input defaults to pinned output from `step_trigger`
     fireEvent.click(screen.getByTestId("canvas-node-step_debit"));
     await waitFor(() => {
-      expect(
-        screen.getByTestId("test-step-input-source-badge").textContent,
-      ).toContain("Pinned output from step_trigger");
+      expect(screen.getByTestId("test-step-input-source-badge").textContent).toContain("Pinned output from step_trigger");
     });
 
     // 3. Toggle `use-pinned-data-toggle` on canvas toolbar
-    const usePinnedCheckbox = screen.getByTestId(
-      "use-pinned-data-toggle",
-    ) as HTMLInputElement;
+    const usePinnedCheckbox = screen.getByTestId("use-pinned-data-toggle") as HTMLInputElement;
     expect(usePinnedCheckbox.checked).toBe(true);
     fireEvent.click(usePinnedCheckbox);
     expect(usePinnedCheckbox.checked).toBe(false);
@@ -370,13 +352,8 @@ describe("Pin Step Output, Use Pinned Data Toggle & Re-Run From Node UI", () => 
 
     // 6. Verify `run-resolved-by-retry-badge-run_failed_101` appears on the original failed run in Run History
     await waitFor(() => {
-      expect(
-        screen.getByTestId("run-resolved-by-retry-badge-run_failed_101"),
-      ).toBeTruthy();
+      expect(screen.getByTestId("run-resolved-by-retry-badge-run_failed_101")).toBeTruthy();
     });
-    expect(
-      screen.getByTestId("run-resolved-by-retry-badge-run_failed_101")
-        .textContent,
-    ).toContain("Resolved by retry (run_retry_202)");
+    expect(screen.getByTestId("run-resolved-by-retry-badge-run_failed_101").textContent).toContain("Resolved by retry (run_retry_202)");
   });
 });

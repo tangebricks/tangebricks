@@ -106,11 +106,7 @@ export class UserOnboardingService {
     const stepsJson = JSON.stringify(input.steps);
     const active = input.isActive !== false ? 1 : 0;
 
-    const existing = await scoped(this.db, input.workspaceId).first<RawFlowRow>(
-      "onb_flows",
-      "key = ?",
-      [key]
-    );
+    const existing = await scoped(this.db, input.workspaceId).first<RawFlowRow>("onb_flows", "key = ?", [key]);
 
     if (existing) {
       await scoped(this.db, input.workspaceId).update(
@@ -122,7 +118,7 @@ export class UserOnboardingService {
           is_active: active,
         },
         "key = ?",
-        [key]
+        [key],
       );
     } else {
       await scoped(this.db, input.workspaceId).insert("onb_flows", {
@@ -144,11 +140,7 @@ export class UserOnboardingService {
    * Retrieves an onboarding flow by key.
    */
   async getFlow(workspaceId: string, flowKey: string): Promise<OnboardingFlow | null> {
-    const row = await scoped(this.db, workspaceId).first<RawFlowRow>(
-      "onb_flows",
-      "key = ?",
-      [flowKey.trim().toLowerCase()]
-    );
+    const row = await scoped(this.db, workspaceId).first<RawFlowRow>("onb_flows", "key = ?", [flowKey.trim().toLowerCase()]);
 
     return row ? this.mapFlow(row) : null;
   }
@@ -157,12 +149,7 @@ export class UserOnboardingService {
    * Lists all onboarding flows for workspace.
    */
   async listFlows(workspaceId: string): Promise<OnboardingFlow[]> {
-    const rows = await scoped(this.db, workspaceId).select<RawFlowRow>(
-      "onb_flows",
-      undefined,
-      [],
-      { orderBy: "created_at ASC" }
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawFlowRow>("onb_flows", undefined, [], { orderBy: "created_at ASC" });
 
     return rows.map((r) => this.mapFlow(r));
   }
@@ -176,11 +163,7 @@ export class UserOnboardingService {
       throw new Error(`Onboarding flow '${flowKey}' not found`);
     }
 
-    let row = await scoped(this.db, workspaceId).first<RawProgressRow>(
-      "onb_user_progress",
-      "flow_id = ? AND user_id = ?",
-      [flow.id, userId.trim()]
-    );
+    let row = await scoped(this.db, workspaceId).first<RawProgressRow>("onb_user_progress", "flow_id = ? AND user_id = ?", [flow.id, userId.trim()]);
 
     const now = new Date().toISOString();
 
@@ -238,12 +221,7 @@ export class UserOnboardingService {
   /**
    * Completes a step in the user's checklist.
    */
-  async completeStep(
-    workspaceId: string,
-    flowKey: string,
-    userId: string,
-    stepKey: string
-  ): Promise<UserProgress> {
+  async completeStep(workspaceId: string, flowKey: string, userId: string, stepKey: string): Promise<UserProgress> {
     const flow = await this.getFlow(workspaceId, flowKey);
     if (!flow) {
       throw new Error(`Flow '${flowKey}' not found`);
@@ -274,7 +252,7 @@ export class UserOnboardingService {
         completed_at: completedAt,
       },
       "flow_id = ? AND user_id = ?",
-      [flow.id, userId.trim()]
+      [flow.id, userId.trim()],
     );
 
     return this.getUserProgress(workspaceId, flowKey, userId);
@@ -294,7 +272,7 @@ export class UserOnboardingService {
         dismissed_at: now,
       },
       "flow_id = ? AND user_id = ?",
-      [current.flow_id, userId.trim()]
+      [current.flow_id, userId.trim()],
     );
 
     return this.getUserProgress(workspaceId, flowKey, userId);
@@ -322,7 +300,7 @@ export class UserOnboardingService {
         dismissed_at: null,
       },
       "flow_id = ? AND user_id = ?",
-      [flow.id, userId.trim()]
+      [flow.id, userId.trim()],
     );
 
     return this.getUserProgress(workspaceId, flowKey, userId);

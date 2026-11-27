@@ -31,11 +31,7 @@ describe("UC0.7 clean tree evidence separation and refresh", () => {
     const preStatus = execSync("git status --porcelain evidence/", { cwd: repoRoot, encoding: "utf8" }).trim();
     expect(preStatus).toBe("");
 
-    const res = spawnSync(
-      process.execPath,
-      [vitestBin, "run", fixtureTest, "--config", "vitest.config.ts"],
-      { cwd: repoRoot, encoding: "utf8" },
-    );
+    const res = spawnSync(process.execPath, [vitestBin, "run", fixtureTest, "--config", "vitest.config.ts"], { cwd: repoRoot, encoding: "utf8" });
     expect(res.status).toBe(0);
 
     // Tracked evidence/ directory must have ZERO changes
@@ -50,15 +46,11 @@ describe("UC0.7 clean tree evidence separation and refresh", () => {
   it("POC_EVIDENCE_DIR override redirects reporter output to specified directory", () => {
     const customDir = mkdtempSync(join(tmpdir(), "poc-evidence-override-"));
     try {
-      const res = spawnSync(
-        process.execPath,
-        [vitestBin, "run", fixtureTest, "--config", "vitest.config.ts"],
-        {
-          cwd: repoRoot,
-          encoding: "utf8",
-          env: { ...process.env, POC_EVIDENCE_DIR: customDir },
-        },
-      );
+      const res = spawnSync(process.execPath, [vitestBin, "run", fixtureTest, "--config", "vitest.config.ts"], {
+        cwd: repoRoot,
+        encoding: "utf8",
+        env: { ...process.env, POC_EVIDENCE_DIR: customDir },
+      });
       expect(res.status).toBe(0);
       expect(existsSync(join(customDir, "h5-control.json"))).toBe(true);
       expect(existsSync(join(customDir, "raw-results.json"))).toBe(true);

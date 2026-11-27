@@ -31,7 +31,9 @@ import { openSqliteD1 } from "./lib/sqlite-d1.ts";
 
 function usage(message: string): never {
   console.error(`import-wallet-balances: ${message}`);
-  console.error("usage: node scripts/import-wallet-balances.ts <file.json|file.csv> [--sqlite <database.sqlite>] [--apply] [--round half-up|down] [--allow-existing] [--create-wallets] [--out <report.json>]");
+  console.error(
+    "usage: node scripts/import-wallet-balances.ts <file.json|file.csv> [--sqlite <database.sqlite>] [--apply] [--round half-up|down] [--allow-existing] [--create-wallets] [--out <report.json>]",
+  );
   process.exit(2);
 }
 

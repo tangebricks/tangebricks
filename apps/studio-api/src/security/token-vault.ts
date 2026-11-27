@@ -8,13 +8,9 @@ export interface TokenResolutionContext {
   action: string;
 }
 
-export type TokenResolver = (
-  tokenRef: string,
-  context: TokenResolutionContext,
-) => Promise<string>;
+export type TokenResolver = (tokenRef: string, context: TokenResolutionContext) => Promise<string>;
 
-export const CLOUDFLARE_API_TOKENS_DASHBOARD_URL =
-  "https://dash.cloudflare.com/profile/api-tokens";
+export const CLOUDFLARE_API_TOKENS_DASHBOARD_URL = "https://dash.cloudflare.com/profile/api-tokens";
 
 function missingKek(): never {
   // No fallback KEK: deploy tokens must never be wrapped with a value written in source.
@@ -24,12 +20,7 @@ function missingKek(): never {
 export type DeployTokenStatus = "active" | "revoked" | "expired";
 
 export type OnboardingFunnelStep =
-  | "wizard_opened"
-  | "template_link_clicked"
-  | "token_submitted"
-  | "verification_failed"
-  | "verification_succeeded"
-  | "token_disconnected";
+  "wizard_opened" | "template_link_clicked" | "token_submitted" | "verification_failed" | "verification_succeeded" | "token_disconnected";
 
 export const STUDIO_ONBOARDING_STEPS = [
   "signup_completed",
@@ -128,22 +119,13 @@ export interface ProjectEnvironmentTargetRecord {
   updatedAt: string;
 }
 
-export type DeployTokenVaultErrorCode =
-  | "TOKEN_NOT_FOUND"
-  | "TOKEN_REVOKED"
-  | "TOKEN_TAMPERED"
-  | "KEK_VERSION_NOT_FOUND"
-  | "INVALID_TOKEN_INPUT";
+export type DeployTokenVaultErrorCode = "TOKEN_NOT_FOUND" | "TOKEN_REVOKED" | "TOKEN_TAMPERED" | "KEK_VERSION_NOT_FOUND" | "INVALID_TOKEN_INPUT";
 
 export class DeployTokenVaultError extends Error {
   readonly code: DeployTokenVaultErrorCode;
   readonly tokenRef?: string;
 
-  constructor(
-    code: DeployTokenVaultErrorCode,
-    message: string,
-    tokenRef?: string,
-  ) {
+  constructor(code: DeployTokenVaultErrorCode, message: string, tokenRef?: string) {
     super(message);
     this.name = "DeployTokenVaultError";
     this.code = code;
@@ -255,10 +237,7 @@ function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
   try {
     binary = atob(b64);
   } catch {
-    throw new DeployTokenVaultError(
-      "TOKEN_TAMPERED",
-      "Invalid base64 encoding in encrypted token record",
-    );
+    throw new DeployTokenVaultError("TOKEN_TAMPERED", "Invalid base64 encoding in encrypted token record");
   }
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) {
@@ -299,45 +278,23 @@ async function deriveKekCryptoKey(rawKekSecret: string) {
   const normalized = rawKekSecret.trim();
   const keyMaterial = new TextEncoder().encode(normalized);
   const digest = await crypto.subtle.digest("SHA-256", keyMaterial);
-  return crypto.subtle.importKey(
-    "raw",
-    digest,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
+  return crypto.subtle.importKey("raw", digest, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 
-async function importRawDekCryptoKey(
-  rawDekBytes: Uint8Array<ArrayBuffer>,
-) {
-  return crypto.subtle.importKey(
-    "raw",
-    rawDekBytes,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
+async function importRawDekCryptoKey(rawDekBytes: Uint8Array<ArrayBuffer>) {
+  return crypto.subtle.importKey("raw", rawDekBytes, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 
-function resolveKekConfig(
-  envOrConfig?: StudioApiEnv | TokenKekConfig,
-): Required<TokenKekConfig> {
+function resolveKekConfig(envOrConfig?: StudioApiEnv | TokenKekConfig): Required<TokenKekConfig> {
   if (!envOrConfig) {
     return missingKek();
   }
 
   if ("STUDIO_DB" in envOrConfig || "BLUEPRINT_DO" in envOrConfig) {
     const env = envOrConfig as StudioApiEnv;
-    const versionRaw = env.PX_TOKEN_KEK_VERSION
-      ? Number.parseInt(env.PX_TOKEN_KEK_VERSION, 10)
-      : 1;
-    const currentKekVersion =
-      Number.isFinite(versionRaw) && versionRaw >= 1 ? versionRaw : 1;
-    const currentKek =
-      env.PX_TOKEN_KEK && env.PX_TOKEN_KEK.trim().length > 0
-        ? env.PX_TOKEN_KEK.trim()
-        : missingKek();
+    const versionRaw = env.PX_TOKEN_KEK_VERSION ? Number.parseInt(env.PX_TOKEN_KEK_VERSION, 10) : 1;
+    const currentKekVersion = Number.isFinite(versionRaw) && versionRaw >= 1 ? versionRaw : 1;
+    const currentKek = env.PX_TOKEN_KEK && env.PX_TOKEN_KEK.trim().length > 0 ? env.PX_TOKEN_KEK.trim() : missingKek();
     const keyring: Record<number, string> = {
       ...env.PX_TOKEN_KEK_MAP,
       [currentKekVersion]: currentKek,
@@ -350,14 +307,8 @@ function resolveKekConfig(
   }
 
   const cfg = envOrConfig as TokenKekConfig;
-  const currentKekVersion =
-    cfg.currentKekVersion && cfg.currentKekVersion >= 1
-      ? cfg.currentKekVersion
-      : 1;
-  const currentKek =
-    cfg.currentKek && cfg.currentKek.trim().length > 0
-      ? cfg.currentKek.trim()
-      : (cfg.keyring?.[currentKekVersion] ?? missingKek());
+  const currentKekVersion = cfg.currentKekVersion && cfg.currentKekVersion >= 1 ? cfg.currentKekVersion : 1;
+  const currentKek = cfg.currentKek && cfg.currentKek.trim().length > 0 ? cfg.currentKek.trim() : (cfg.keyring?.[currentKekVersion] ?? missingKek());
   const keyring: Record<number, string> = {
     ...cfg.keyring,
     [currentKekVersion]: currentKek,
@@ -369,19 +320,11 @@ function resolveKekConfig(
   };
 }
 
-function resolveKekForVersion(
-  kekVersion: number,
-  envOrConfig?: StudioApiEnv | TokenKekConfig,
-  tokenRef?: string,
-): string {
+function resolveKekForVersion(kekVersion: number, envOrConfig?: StudioApiEnv | TokenKekConfig, tokenRef?: string): string {
   const resolved = resolveKekConfig(envOrConfig);
   const secret = resolved.keyring[kekVersion];
   if (!secret || secret.trim().length === 0) {
-    throw new DeployTokenVaultError(
-      "KEK_VERSION_NOT_FOUND",
-      `No Key Encryption Key configured for kekVersion ${kekVersion}`,
-      tokenRef,
-    );
+    throw new DeployTokenVaultError("KEK_VERSION_NOT_FOUND", `No Key Encryption Key configured for kekVersion ${kekVersion}`, tokenRef);
   }
   return secret;
 }
@@ -438,15 +381,7 @@ async function recordTokenAuditEntry(
         audit_id, token_ref, org_id, actor, deploy_id, action, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(
-      auditId,
-      entry.tokenRef,
-      entry.orgId,
-      entry.actor,
-      entry.deployId,
-      entry.action,
-      createdAt,
-    )
+    .bind(auditId, entry.tokenRef, entry.orgId, entry.actor, entry.deployId, entry.action, createdAt)
     .run();
 
   return {
@@ -460,26 +395,16 @@ async function recordTokenAuditEntry(
   };
 }
 
-export async function sealDeployToken(
-  db: D1Like,
-  input: SealDeployTokenInput,
-  envOrKek?: StudioApiEnv | TokenKekConfig,
-): Promise<DeployTokenMetadata> {
+export async function sealDeployToken(db: D1Like, input: SealDeployTokenInput, envOrKek?: StudioApiEnv | TokenKekConfig): Promise<DeployTokenMetadata> {
   await ensureStudioD1Schema(db);
 
   const plaintext = input.plaintextToken.trim();
   if (!plaintext) {
-    throw new DeployTokenVaultError(
-      "INVALID_TOKEN_INPUT",
-      "Cloudflare API token value must not be empty",
-    );
+    throw new DeployTokenVaultError("INVALID_TOKEN_INPUT", "Cloudflare API token value must not be empty");
   }
   const accountId = input.accountId.trim();
   if (!accountId) {
-    throw new DeployTokenVaultError(
-      "INVALID_TOKEN_INPUT",
-      "Cloudflare accountId must not be empty",
-    );
+    throw new DeployTokenVaultError("INVALID_TOKEN_INPUT", "Cloudflare accountId must not be empty");
   }
 
   const { currentKek, currentKekVersion } = resolveKekConfig(envOrKek);
@@ -489,20 +414,12 @@ export async function sealDeployToken(
   const tokenIv = crypto.getRandomValues(new Uint8Array(12));
   const dekKey = await importRawDekCryptoKey(rawDek);
   const encodedPlaintext = new TextEncoder().encode(plaintext);
-  const ciphertextBuffer = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: tokenIv },
-    dekKey,
-    encodedPlaintext,
-  );
+  const ciphertextBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv: tokenIv }, dekKey, encodedPlaintext);
 
   // 2. Wrap the 256-bit DEK using the master KEK with its own fresh 96-bit IV
   const kekKey = await deriveKekCryptoKey(currentKek);
   const dekIv = crypto.getRandomValues(new Uint8Array(12));
-  const wrappedDekBuffer = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: dekIv },
-    kekKey,
-    rawDek,
-  );
+  const wrappedDekBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv: dekIv }, kekKey, rawDek);
 
   // Zero out raw DEK bytes in memory after wrapping
   rawDek.fill(0);
@@ -511,14 +428,8 @@ export async function sealDeployToken(
   const nowIso = new Date().toISOString();
   const accountName = input.accountName?.trim() || `Account ${accountId.slice(0, 6)}`;
   const tokenLast4 = computeTokenLast4(plaintext);
-  const scopes = input.scopes ?? [
-    "workers_scripts:write",
-    "d1:write",
-    "queues:write",
-    "account:read",
-  ];
-  const lastVerifiedAt =
-    input.lastVerifiedAt !== undefined ? input.lastVerifiedAt : nowIso;
+  const scopes = input.scopes ?? ["workers_scripts:write", "d1:write", "queues:write", "account:read"];
+  const lastVerifiedAt = input.lastVerifiedAt !== undefined ? input.lastVerifiedAt : nowIso;
 
   await db
     .prepare(
@@ -562,12 +473,7 @@ export async function sealDeployToken(
   };
 }
 
-export async function decryptToken(
-  db: D1Like,
-  tokenRef: string,
-  context: TokenResolutionContext,
-  envOrKek?: StudioApiEnv | TokenKekConfig,
-): Promise<string> {
+export async function decryptToken(db: D1Like, tokenRef: string, context: TokenResolutionContext, envOrKek?: StudioApiEnv | TokenKekConfig): Promise<string> {
   await ensureStudioD1Schema(db);
 
   const row = await db
@@ -584,43 +490,21 @@ export async function decryptToken(
     .first<DeployTokenRow>();
 
   if (!row) {
-    throw new DeployTokenVaultError(
-      "TOKEN_NOT_FOUND",
-      `Deploy token "${tokenRef}" was not found`,
-      tokenRef,
-    );
+    throw new DeployTokenVaultError("TOKEN_NOT_FOUND", `Deploy token "${tokenRef}" was not found`, tokenRef);
   }
 
-  if (
-    row.status !== "active" ||
-    row.ciphertext === null ||
-    row.iv === null ||
-    row.wrapped_dek === null ||
-    row.dek_iv === null
-  ) {
-    throw new DeployTokenVaultError(
-      "TOKEN_REVOKED",
-      `TOKEN_REVOKED: Deploy token "${tokenRef}" has been revoked and cannot be used`,
-      tokenRef,
-    );
+  if (row.status !== "active" || row.ciphertext === null || row.iv === null || row.wrapped_dek === null || row.dek_iv === null) {
+    throw new DeployTokenVaultError("TOKEN_REVOKED", `TOKEN_REVOKED: Deploy token "${tokenRef}" has been revoked and cannot be used`, tokenRef);
   }
 
-  const kekSecret = resolveKekForVersion(
-    Number(row.kek_version),
-    envOrKek,
-    tokenRef,
-  );
+  const kekSecret = resolveKekForVersion(Number(row.kek_version), envOrKek, tokenRef);
   const kekKey = await deriveKekCryptoKey(kekSecret);
 
   let rawDekBytes: Uint8Array<ArrayBuffer>;
   try {
     const wrappedDekBytes = base64ToBytes(row.wrapped_dek);
     const dekIvBytes = base64ToBytes(row.dek_iv);
-    const unwrappedBuffer = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: dekIvBytes },
-      kekKey,
-      wrappedDekBytes,
-    );
+    const unwrappedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: dekIvBytes }, kekKey, wrappedDekBytes);
     rawDekBytes = new Uint8Array(unwrappedBuffer);
   } catch (err) {
     if (err instanceof DeployTokenVaultError) {
@@ -638,22 +522,14 @@ export async function decryptToken(
     const dekKey = await importRawDekCryptoKey(rawDekBytes);
     const cipherBytes = base64ToBytes(row.ciphertext);
     const ivBytes = base64ToBytes(row.iv);
-    const plainBuffer = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: ivBytes },
-      dekKey,
-      cipherBytes,
-    );
+    const plainBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: ivBytes }, dekKey, cipherBytes);
     plaintext = new TextDecoder().decode(plainBuffer);
   } catch (err) {
     rawDekBytes.fill(0);
     if (err instanceof DeployTokenVaultError) {
       throw err;
     }
-    throw new DeployTokenVaultError(
-      "TOKEN_TAMPERED",
-      `Failed to decrypt ciphertext for token "${tokenRef}" (AES-GCM authentication tag mismatch)`,
-      tokenRef,
-    );
+    throw new DeployTokenVaultError("TOKEN_TAMPERED", `Failed to decrypt ciphertext for token "${tokenRef}" (AES-GCM authentication tag mismatch)`, tokenRef);
   }
 
   rawDekBytes.fill(0);
@@ -669,31 +545,18 @@ export async function decryptToken(
   return plaintext;
 }
 
-export async function revokeDeployToken(
-  db: D1Like,
-  tokenRef: string,
-  options: RevokeDeployTokenOptions,
-): Promise<RevokeDeployTokenResult> {
+export async function revokeDeployToken(db: D1Like, tokenRef: string, options: RevokeDeployTokenOptions): Promise<RevokeDeployTokenResult> {
   await ensureStudioD1Schema(db);
 
-  const row = await db
-    .prepare(
-      "SELECT token_ref, org_id, status, revoked_at FROM deploy_tokens WHERE token_ref = ? LIMIT 1",
-    )
-    .bind(tokenRef)
-    .first<{
-      token_ref: string;
-      org_id: string;
-      status: DeployTokenStatus;
-      revoked_at: string | null;
-    }>();
+  const row = await db.prepare("SELECT token_ref, org_id, status, revoked_at FROM deploy_tokens WHERE token_ref = ? LIMIT 1").bind(tokenRef).first<{
+    token_ref: string;
+    org_id: string;
+    status: DeployTokenStatus;
+    revoked_at: string | null;
+  }>();
 
   if (!row || (options.orgId && row.org_id !== options.orgId)) {
-    throw new DeployTokenVaultError(
-      "TOKEN_NOT_FOUND",
-      `Deploy token "${tokenRef}" not found`,
-      tokenRef,
-    );
+    throw new DeployTokenVaultError("TOKEN_NOT_FOUND", `Deploy token "${tokenRef}" not found`, tokenRef);
   }
 
   const nowIso = new Date().toISOString();
@@ -749,9 +612,7 @@ export async function rotateDeployTokenKek(
        FROM deploy_tokens
        WHERE status = 'active' AND kek_version = ?`;
 
-  const stmt = options.orgId
-    ? db.prepare(query).bind(options.fromKekVersion, options.orgId)
-    : db.prepare(query).bind(options.fromKekVersion);
+  const stmt = options.orgId ? db.prepare(query).bind(options.fromKekVersion, options.orgId) : db.prepare(query).bind(options.fromKekVersion);
 
   const rows = await stmt.all<{
     token_ref: string;
@@ -774,26 +635,14 @@ export async function rotateDeployTokenKek(
     const dekIvBytes = base64ToBytes(row.dek_iv);
     let rawDekBytes: Uint8Array<ArrayBuffer>;
     try {
-      const unwrappedBuffer = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: dekIvBytes },
-        oldKekKey,
-        wrappedDekBytes,
-      );
+      const unwrappedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: dekIvBytes }, oldKekKey, wrappedDekBytes);
       rawDekBytes = new Uint8Array(unwrappedBuffer);
     } catch {
-      throw new DeployTokenVaultError(
-        "TOKEN_TAMPERED",
-        `Failed to unwrap DEK for token "${row.token_ref}" during KEK rotation`,
-        row.token_ref,
-      );
+      throw new DeployTokenVaultError("TOKEN_TAMPERED", `Failed to unwrap DEK for token "${row.token_ref}" during KEK rotation`, row.token_ref);
     }
 
     const nextDekIv = crypto.getRandomValues(new Uint8Array(12));
-    const rewrappedDekBuffer = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: nextDekIv },
-      newKekKey,
-      rawDekBytes,
-    );
+    const rewrappedDekBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nextDekIv }, newKekKey, rawDekBytes);
     rawDekBytes.fill(0);
 
     await db
@@ -802,12 +651,7 @@ export async function rotateDeployTokenKek(
          SET wrapped_dek = ?, dek_iv = ?, kek_version = ?
          WHERE token_ref = ?`,
       )
-      .bind(
-        bytesToBase64(new Uint8Array(rewrappedDekBuffer)),
-        bytesToBase64(nextDekIv),
-        options.toKekVersion,
-        row.token_ref,
-      )
+      .bind(bytesToBase64(new Uint8Array(rewrappedDekBuffer)), bytesToBase64(nextDekIv), options.toKekVersion, row.token_ref)
       .run();
 
     rotatedTokenRefs.push(row.token_ref);
@@ -821,11 +665,7 @@ export async function rotateDeployTokenKek(
   };
 }
 
-export async function getDeployTokenMetadata(
-  db: D1Like,
-  tokenRef: string,
-  orgId?: string,
-): Promise<DeployTokenMetadata | null> {
+export async function getDeployTokenMetadata(db: D1Like, tokenRef: string, orgId?: string): Promise<DeployTokenMetadata | null> {
   await ensureStudioD1Schema(db);
   const row = await db
     .prepare(
@@ -845,10 +685,7 @@ export async function getDeployTokenMetadata(
   return rowToMetadata(row);
 }
 
-export async function listOrgDeployTokens(
-  db: D1Like,
-  orgId: string,
-): Promise<DeployTokenMetadata[]> {
+export async function listOrgDeployTokens(db: D1Like, orgId: string): Promise<DeployTokenMetadata[]> {
   await ensureStudioD1Schema(db);
   const rows = await db
     .prepare(
@@ -866,10 +703,7 @@ export async function listOrgDeployTokens(
   return (rows.results ?? []).map(rowToMetadata);
 }
 
-export async function listDeployTokenAuditLog(
-  db: D1Like,
-  filter: { tokenRef?: string; orgId?: string },
-): Promise<DeployTokenAuditEntry[]> {
+export async function listDeployTokenAuditLog(db: D1Like, filter: { tokenRef?: string; orgId?: string }): Promise<DeployTokenAuditEntry[]> {
   await ensureStudioD1Schema(db);
 
   let sql = `SELECT audit_id, token_ref, org_id, actor, deploy_id, action, created_at
@@ -904,53 +738,26 @@ export async function listDeployTokenAuditLog(
   }));
 }
 
-export function createStudioTokenResolver(
-  db: D1Like,
-  envOrKek?: StudioApiEnv | TokenKekConfig,
-): TokenResolver {
-  return async (tokenRef: string, context: TokenResolutionContext) =>
-    decryptToken(db, tokenRef, context, envOrKek);
+export function createStudioTokenResolver(db: D1Like, envOrKek?: StudioApiEnv | TokenKekConfig): TokenResolver {
+  return async (tokenRef: string, context: TokenResolutionContext) => decryptToken(db, tokenRef, context, envOrKek);
 }
 
 export interface StudioTokenVault {
   sealToken(input: SealDeployTokenInput): Promise<DeployTokenMetadata>;
-  decryptToken(
-    tokenRef: string,
-    context: TokenResolutionContext,
-  ): Promise<string>;
-  revokeToken(
-    tokenRef: string,
-    options: RevokeDeployTokenOptions,
-  ): Promise<RevokeDeployTokenResult>;
-  rotateKek(options: {
-    fromKekVersion: number;
-    fromKek: string;
-    toKekVersion: number;
-    toKek: string;
-    orgId?: string;
-  }): Promise<RotateKekResult>;
-  getMetadata(
-    tokenRef: string,
-    orgId?: string,
-  ): Promise<DeployTokenMetadata | null>;
+  decryptToken(tokenRef: string, context: TokenResolutionContext): Promise<string>;
+  revokeToken(tokenRef: string, options: RevokeDeployTokenOptions): Promise<RevokeDeployTokenResult>;
+  rotateKek(options: { fromKekVersion: number; fromKek: string; toKekVersion: number; toKek: string; orgId?: string }): Promise<RotateKekResult>;
+  getMetadata(tokenRef: string, orgId?: string): Promise<DeployTokenMetadata | null>;
   listOrgTokens(orgId: string): Promise<DeployTokenMetadata[]>;
-  listAuditLog(filter: {
-    tokenRef?: string;
-    orgId?: string;
-  }): Promise<DeployTokenAuditEntry[]>;
+  listAuditLog(filter: { tokenRef?: string; orgId?: string }): Promise<DeployTokenAuditEntry[]>;
   createTokenResolver(): TokenResolver;
 }
 
-export function createTokenVault(
-  db: D1Like,
-  envOrKek?: StudioApiEnv | TokenKekConfig,
-): StudioTokenVault {
+export function createTokenVault(db: D1Like, envOrKek?: StudioApiEnv | TokenKekConfig): StudioTokenVault {
   return {
     sealToken: (input) => sealDeployToken(db, input, envOrKek),
-    decryptToken: (tokenRef, context) =>
-      decryptToken(db, tokenRef, context, envOrKek),
-    revokeToken: (tokenRef, options) =>
-      revokeDeployToken(db, tokenRef, options),
+    decryptToken: (tokenRef, context) => decryptToken(db, tokenRef, context, envOrKek),
+    revokeToken: (tokenRef, options) => revokeDeployToken(db, tokenRef, options),
     rotateKek: (options) => rotateDeployTokenKek(db, options),
     getMetadata: (tokenRef, orgId) => getDeployTokenMetadata(db, tokenRef, orgId),
     listOrgTokens: (orgId) => listOrgDeployTokens(db, orgId),
@@ -982,15 +789,7 @@ export async function recordOnboardingFunnelEvent(
         event_id, org_id, project_id, actor_id, step, metadata_json, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(
-      eventId,
-      input.orgId,
-      projectId,
-      input.actorId,
-      input.step,
-      metadataJson,
-      createdAt,
-    )
+    .bind(eventId, input.orgId, projectId, input.actorId, input.step, metadataJson, createdAt)
     .run();
 
   const stepMap: Partial<Record<OnboardingFunnelStep, StudioOnboardingStep>> = {
@@ -1072,10 +871,7 @@ export async function recordStudioOnboardingEvent(
       } catch {
         parsedMeta = {};
       }
-      if (
-        metadataObj.templateId &&
-        (!parsedMeta.templateId || parsedMeta.source === "blank")
-      ) {
+      if (metadataObj.templateId && (!parsedMeta.templateId || parsedMeta.source === "blank")) {
         const mergedMeta = { ...parsedMeta, ...metadataObj };
         await db
           .prepare(
@@ -1106,15 +902,7 @@ export async function recordStudioOnboardingEvent(
         event_id, org_id, project_id, actor_id, step, metadata_json, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(
-      eventId,
-      input.orgId,
-      projectId,
-      input.actorId,
-      input.step,
-      metadataJson,
-      createdAt,
-    )
+    .bind(eventId, input.orgId, projectId, input.actorId, input.step, metadataJson, createdAt)
     .run();
 
   return {
@@ -1203,28 +991,17 @@ function computePercentile(sortedAsc: number[], p: number): number | null {
   if (sortedAsc.length === 1) return Number(sortedAsc[0]!.toFixed(2));
   if (p === 0.5) {
     const mid = Math.floor(sortedAsc.length / 2);
-    const val =
-      sortedAsc.length % 2 === 1
-        ? sortedAsc[mid]!
-        : (sortedAsc[mid - 1]! + sortedAsc[mid]!) / 2;
+    const val = sortedAsc.length % 2 === 1 ? sortedAsc[mid]! : (sortedAsc[mid - 1]! + sortedAsc[mid]!) / 2;
     return Number(val.toFixed(2));
   }
-  const idx = Math.min(
-    sortedAsc.length - 1,
-    Math.max(0, Math.ceil(p * sortedAsc.length) - 1),
-  );
+  const idx = Math.min(sortedAsc.length - 1, Math.max(0, Math.ceil(p * sortedAsc.length) - 1));
   return Number(sortedAsc[idx]!.toFixed(2));
 }
 
-export async function computeOnboardingFunnelAnalytics(
-  db: D1Like,
-  filter?: { orgId?: string },
-): Promise<OnboardingFunnelAnalytics> {
+export async function computeOnboardingFunnelAnalytics(db: D1Like, filter?: { orgId?: string }): Promise<OnboardingFunnelAnalytics> {
   const events = await listStudioOnboardingEvents(db, filter?.orgId ? { orgId: filter.orgId } : {});
 
-  const stepCounts = Object.fromEntries(
-    STUDIO_ONBOARDING_STEPS.map((s) => [s, 0]),
-  ) as Record<StudioOnboardingStep, number>;
+  const stepCounts = Object.fromEntries(STUDIO_ONBOARDING_STEPS.map((s) => [s, 0])) as Record<StudioOnboardingStep, number>;
   const actorsByStep = new Map<StudioOnboardingStep, Set<string>>();
   for (const s of STUDIO_ONBOARDING_STEPS) {
     actorsByStep.set(s, new Set<string>());
@@ -1249,9 +1026,10 @@ export async function computeOnboardingFunnelAnalytics(
     }
   }
 
-  const uniqueActorsByStep = Object.fromEntries(
-    STUDIO_ONBOARDING_STEPS.map((s) => [s, actorsByStep.get(s)?.size ?? 0]),
-  ) as Record<StudioOnboardingStep, number>;
+  const uniqueActorsByStep = Object.fromEntries(STUDIO_ONBOARDING_STEPS.map((s) => [s, actorsByStep.get(s)?.size ?? 0])) as Record<
+    StudioOnboardingStep,
+    number
+  >;
 
   const actorTtfdMinutes: Array<{
     actorId: string;
@@ -1282,19 +1060,15 @@ export async function computeOnboardingFunnelAnalytics(
     }
   }
 
-  const sortedMinutes = actorTtfdMinutes
-    .map((a) => a.minutes)
-    .sort((a, b) => a - b);
+  const sortedMinutes = actorTtfdMinutes.map((a) => a.minutes).sort((a, b) => a - b);
   const medianTtfdMinutes = computePercentile(sortedMinutes, 0.5);
   const p90TtfdMinutes = computePercentile(sortedMinutes, 0.9);
   const ttfdTargetMinutes = 30 as const;
-  const ttfdPassed =
-    medianTtfdMinutes !== null ? medianTtfdMinutes <= ttfdTargetMinutes : true;
+  const ttfdPassed = medianTtfdMinutes !== null ? medianTtfdMinutes <= ttfdTargetMinutes : true;
 
   const wizardOpenedCount = stepCounts.connect_cf_wizard_opened;
   const verifiedCount = stepCounts.connect_cf_verified;
-  const rawDropOff =
-    wizardOpenedCount > 0 ? 1 - verifiedCount / wizardOpenedCount : 0;
+  const rawDropOff = wizardOpenedCount > 0 ? 1 - verifiedCount / wizardOpenedCount : 0;
   const dropOffRate = Number(Math.max(0, Math.min(1, rawDropOff)).toFixed(4));
   const dropOffThreshold = 0.25 as const;
   const cp9TriggerFired = dropOffRate > dropOffThreshold;
@@ -1425,15 +1199,7 @@ export async function upsertProjectDeployEnvironments(
             status = 'connected',
             updated_at = excluded.updated_at`,
         )
-        .bind(
-          projectId,
-          input.orgId,
-          envName,
-          input.accountId,
-          input.accountName,
-          input.tokenRef,
-          nowIso,
-        )
+        .bind(projectId, input.orgId, envName, input.accountId, input.accountName, input.tokenRef, nowIso)
         .run();
 
       records.push({
@@ -1460,10 +1226,7 @@ export async function upsertProjectDeployEnvironments(
   return records;
 }
 
-export async function listProjectDeployEnvironments(
-  db: D1Like,
-  filter: { orgId?: string; projectId?: string },
-): Promise<ProjectEnvironmentTargetRecord[]> {
+export async function listProjectDeployEnvironments(db: D1Like, filter: { orgId?: string; projectId?: string }): Promise<ProjectEnvironmentTargetRecord[]> {
   await ensureStudioD1Schema(db);
 
   const clauses: string[] = [];
@@ -1510,10 +1273,7 @@ export async function listProjectDeployEnvironments(
     let deployedState: Record<string, unknown> | null = null;
     if (r.deployed_state_json) {
       try {
-        deployedState = JSON.parse(r.deployed_state_json) as Record<
-          string,
-          unknown
-        >;
+        deployedState = JSON.parse(r.deployed_state_json) as Record<string, unknown>;
       } catch {
         deployedState = null;
       }
@@ -1549,18 +1309,9 @@ export async function markDeployTokenVerificationStatus(
   await ensureStudioD1Schema(db);
   const nowIso = lastVerifiedAt ?? new Date().toISOString();
   if (status === "active") {
-    await db
-      .prepare(
-        "UPDATE deploy_tokens SET status = 'active', last_verified_at = ? WHERE token_ref = ?",
-      )
-      .bind(nowIso, tokenRef)
-      .run();
+    await db.prepare("UPDATE deploy_tokens SET status = 'active', last_verified_at = ? WHERE token_ref = ?").bind(nowIso, tokenRef).run();
   } else {
-    await db
-      .prepare("UPDATE deploy_tokens SET status = ? WHERE token_ref = ?")
-      .bind(status, tokenRef)
-      .run();
+    await db.prepare("UPDATE deploy_tokens SET status = ? WHERE token_ref = ?").bind(status, tokenRef).run();
   }
   return getDeployTokenMetadata(db, tokenRef);
 }
-

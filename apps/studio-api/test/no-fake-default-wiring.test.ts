@@ -109,9 +109,9 @@ describe("BUILD_MODE: brick package executors an isolated brick worker would wir
         },
       } as never),
     ).rejects.toThrow(/binding DB not provided/);
-    await expect(
-      creditWallet.executeWalletCredit({ nodeId: "cw", data: { amount: 5 }, inputs: { in: { balance: 0 } } } as never),
-    ).rejects.toThrow(/^NOT_CONFIGURED: credit-wallet\.credit/);
+    await expect(creditWallet.executeWalletCredit({ nodeId: "cw", data: { amount: 5 }, inputs: { in: { balance: 0 } } } as never)).rejects.toThrow(
+      /^NOT_CONFIGURED: credit-wallet\.credit/,
+    );
   });
 
   test("agent-sandbox: a non-built-in tool is not reported as executed", () => {
@@ -138,11 +138,13 @@ describe("BUILD_MODE: production refusals", () => {
       await next();
     });
     app.route("/api", routes);
-    for (const [path, body] of [["/api/payments/create-order", { amount: 100 }], ["/api/payments/verify", { order_id: "order_x" }]] as const) {
+    for (const [path, body] of [
+      ["/api/payments/create-order", { amount: 100 }],
+      ["/api/payments/verify", { order_id: "order_x" }],
+    ] as const) {
       const res = await app.request(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }, { DB: {} });
       expect(res.status, path).toBe(503);
       expect(((await res.json()) as { code: string }).code).toBe("NOT_CONFIGURED");
     }
   });
 });
-

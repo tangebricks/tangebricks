@@ -21,12 +21,7 @@ export const chainPayload = { a: { b: 5 } };
 
 /** trigger fans out to two slow branches that a join waits for. */
 export const diamondGraph: Graph = {
-  nodes: [
-    node("t", "trigger.manual"),
-    node("a", "util.delay", { ms: BRANCH_MS }),
-    node("b", "util.delay", { ms: BRANCH_MS }),
-    node("j", "util.join"),
-  ],
+  nodes: [node("t", "trigger.manual"), node("a", "util.delay", { ms: BRANCH_MS }), node("b", "util.delay", { ms: BRANCH_MS }), node("j", "util.join")],
   edges: [wire("t", "a"), wire("t", "b"), wire("a", "j", "out", "a"), wire("b", "j", "out", "b")],
 };
 

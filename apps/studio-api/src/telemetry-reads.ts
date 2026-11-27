@@ -54,11 +54,7 @@ export async function signedDataBrowserRequest(params: {
     try {
       const parsedBody = JSON.parse(params.rawBody) as { workspaceId?: unknown; workspace_id?: unknown };
       const bodyWorkspace =
-        typeof parsedBody?.workspaceId === "string"
-          ? parsedBody.workspaceId
-          : typeof parsedBody?.workspace_id === "string"
-            ? parsedBody.workspace_id
-            : "";
+        typeof parsedBody?.workspaceId === "string" ? parsedBody.workspaceId : typeof parsedBody?.workspace_id === "string" ? parsedBody.workspace_id : "";
       if (bodyWorkspace.trim()) workerUrl.searchParams.set("workspaceId", bodyWorkspace.trim());
     } catch {
       // not JSON: the worker answers INVALID_JSON

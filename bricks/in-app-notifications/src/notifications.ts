@@ -143,19 +143,14 @@ export class NotificationService {
       params.push(workspaceId);
     }
 
-    const row = await global(this.db, "notif_notifications", "user unread notifications count")
-      .raw(query, params)
-      .first<CountRow>();
+    const row = await global(this.db, "notif_notifications", "user unread notifications count").raw(query, params).first<CountRow>();
     return row?.count || 0;
   }
 
   /**
    * Lists notifications for a user with optional workspace and read filters.
    */
-  async list(
-    userId: string,
-    options: { workspaceId?: string; unreadOnly?: boolean; limit?: number; offset?: number } = {}
-  ): Promise<Notification[]> {
+  async list(userId: string, options: { workspaceId?: string; unreadOnly?: boolean; limit?: number; offset?: number } = {}): Promise<Notification[]> {
     // A user's inbox: their own rows (user_id bound) in the caller's workspace plus platform-wide rows, which have
     // workspace_id NULL and belong to no workspace. Every route that calls this passes the caller's workspace.
     // tenant-lint: allow user-addressed inbox: user_id bound, plus platform-wide rows whose workspace_id is NULL by design
@@ -179,9 +174,7 @@ export class NotificationService {
     query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     params.push(options.limit || 20, options.offset || 0);
 
-    const rows = (await global(this.db, "notif_notifications", "user notifications list")
-      .raw(query, params)
-      .all<RawNotificationRow>()).results;
+    const rows = (await global(this.db, "notif_notifications", "user notifications list").raw(query, params).all<RawNotificationRow>()).results;
     return rows.map((r) => this.parseRow(r));
   }
 
@@ -206,11 +199,16 @@ export class NotificationService {
     // PATCH/DELETE /notifications/:id carry no workspace context (they are not behind the workspace guard): the row is
     // matched by its random id and bound to its owner's user_id, so another user's id changes nothing.
     // tenant-lint: allow owner-only change by notification id on a route without workspace context; user_id is bound
-    const res = await global(this.db, "notif_notifications", "mark notification read").raw(`
+    const res = await global(this.db, "notif_notifications", "mark notification read")
+      .raw(
+        `
       UPDATE notif_notifications
       SET is_read = 1, read_at = ?
       WHERE id = ? AND user_id = ? AND is_read = 0
-    `, [now, notificationId, userId.trim()]).run();
+    `,
+        [now, notificationId, userId.trim()],
+      )
+      .run();
 
     return res.meta.changes > 0;
   }
@@ -246,10 +244,9 @@ export class NotificationService {
     // PATCH/DELETE /notifications/:id carry no workspace context (they are not behind the workspace guard): the row is
     // matched by its random id and bound to its owner's user_id, so another user's id changes nothing.
     // tenant-lint: allow owner-only change by notification id on a route without workspace context; user_id is bound
-    const res = await global(this.db, "notif_notifications", "delete notification").raw(
-      "DELETE FROM notif_notifications WHERE id = ? AND user_id = ?",
-      [notificationId, userId.trim()],
-    ).run();
+    const res = await global(this.db, "notif_notifications", "delete notification")
+      .raw("DELETE FROM notif_notifications WHERE id = ? AND user_id = ?", [notificationId, userId.trim()])
+      .run();
 
     return res.meta.changes > 0;
   }

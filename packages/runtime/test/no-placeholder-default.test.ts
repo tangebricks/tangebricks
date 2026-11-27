@@ -12,9 +12,7 @@ import {
 
 // Story 0.9 (R-B): brick action nodes never default to placeholder executors.
 describe("brick action executors: no placeholder default", () => {
-  const brickNodeTypes = Object.values(catalog.bricks ?? {}).flatMap((b) =>
-    (b.manifest.nodes ?? []).map((n) => n.type),
-  );
+  const brickNodeTypes = Object.values(catalog.bricks ?? {}).flatMap((b) => (b.manifest.nodes ?? []).map((n) => n.type));
 
   test("PLACEHOLDER_DEFAULT: with no executors configured, a brick action node fails NOT_CONFIGURED (no arithmetic fake)", async () => {
     const executors = buildExecutorsFromCatalog(catalog);
@@ -52,13 +50,11 @@ describe("brick action executors: no placeholder default", () => {
   });
 
   test("PLACEHOLDER_PROD: loading placeholder executors when PX_ENVIRONMENT is production is refused at load", () => {
-    expect(() =>
-      buildExecutorsFromCatalog(catalog, PLACEHOLDER_BRICK_EXECUTOR_MODULES, { environment: "production" }),
-    ).toThrow(/^NOT_CONFIGURED: placeholder executor .* refused/);
+    expect(() => buildExecutorsFromCatalog(catalog, PLACEHOLDER_BRICK_EXECUTOR_MODULES, { environment: "production" })).toThrow(
+      /^NOT_CONFIGURED: placeholder executor .* refused/,
+    );
     // Not production: the explicit injection still loads (tests, local rehearsal).
-    expect(() =>
-      buildExecutorsFromCatalog(catalog, PLACEHOLDER_BRICK_EXECUTOR_MODULES, { environment: "preview" }),
-    ).not.toThrow();
+    expect(() => buildExecutorsFromCatalog(catalog, PLACEHOLDER_BRICK_EXECUTOR_MODULES, { environment: "preview" })).not.toThrow();
   });
 
   test("PLACEHOLDER_PROD: a placeholder passed as base executors, or in a ready map, is refused by identity in production", () => {
