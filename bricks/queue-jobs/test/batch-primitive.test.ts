@@ -6,7 +6,7 @@ import migration0001 from "../migrations/0001_queue_jobs.sql?raw";
 import migration0002 from "../migrations/0002_batch_items.sql?raw";
 import { JobQueueService, consumeJobQueueBatch } from "../src/index.ts";
 import { runGraph } from "@poc/runtime";
-import { coreNodeExecutors, coreNodeRegistry } from "../../../packages/core-nodes/src/index.ts";
+import { coreNodeExecutors, coreNodeRegistry } from "@poc/core-nodes";
 import { checkGraphBudget } from "@poc/sdk";
 import type { GraphNode, GraphEdge } from "@poc/sdk";
 

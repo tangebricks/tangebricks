@@ -10,7 +10,7 @@ import type { CheckoutEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 // Test only: the wallet brick's fake gateway, which implements the same provider-neutral PaymentGateway. Nothing in
 // bricks/checkout-gateway/src imports credit-wallet.
-import { createFakeGateway, type FakeGateway } from "../../credit-wallet/src/gateway.ts";
+import { createFakeGateway, type FakeGateway } from "@poc/credit-wallet";
 
 // Story 2.3: with a gateway, a session creates the provider order, and only a verified webhook whose re-fetched order
 // matches the session's id, total, currency and customer completes it and issues its invoice, once.

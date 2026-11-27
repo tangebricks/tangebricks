@@ -6,7 +6,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import { walletCharger } from "../../credit-wallet/src/index.ts";
+import { walletCharger } from "@poc/credit-wallet";
 import mwMigration from "../../multi-workspace/migrations/0001_multi_workspace.sql?raw";
 import wallet0001 from "../../credit-wallet/migrations/0001_credit_wallet.sql?raw";
 import wallet0002 from "../../credit-wallet/migrations/0002_workspace_scoped_idempotency.sql?raw";
