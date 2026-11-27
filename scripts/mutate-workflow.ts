@@ -162,7 +162,7 @@ const cases: Case[] = [
     "the route shows a graph stored for any workspace",
     ROUTES,
     "WHERE workspace_id = ?1 AND id = ?2`)\n          .bind(APP_WORKSPACE, id)",
-    "WHEREid = ?2`)\n          .bind(APP_WORKSPACE, id)",
+    "WHERE id = ?2`)\n          .bind(APP_WORKSPACE, id)",
   ),
   one(
     "POST /poc/runs starts a run with the shared key alone (story 1.1)",

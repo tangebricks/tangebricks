@@ -74,6 +74,28 @@ describe("lint-deploy-target: the fake control plane stays out of Studio's produ
     expect(scan(call).map((i) => i.line)).toEqual([7]);
   });
 
+  test("a guard wrapped over two lines (as Prettier prints it) still counts as the opening guard", () => {
+    const wrapped = [
+      ACCESSOR[0]!,
+      '  if (studioDeployClientMode(env) !== "fake")',
+      '    throw new StudioDeployClientConfigError("tests only");',
+      ...ACCESSOR.slice(2),
+    ];
+    expect(scan([ENVIRONMENTS, ...wrapped, ...GUARDED])).toEqual([]);
+  });
+
+  test("a wrapped first statement that is not the guard is refused", () => {
+    const wrongFirst = [
+      ACCESSOR[0]!,
+      "  const cp =",
+      "    new MockCloudflareControlPlane();",
+      '  if (studioDeployClientMode(env) !== "fake") throw new StudioDeployClientConfigError("tests only");',
+      "  return cp;",
+      "}",
+    ];
+    expect(scan([ENVIRONMENTS, ...wrongFirst, ...GUARDED]).map((i) => i.line)).toContain(2);
+  });
+
   test("the accessor must open with its own guard", () => {
     const unguardedAccessor = [ENVIRONMENTS, ACCESSOR[0]!, "  return new MockCloudflareControlPlane();", "}", ...GUARDED];
     expect(scan(unguardedAccessor).map((i) => i.line)).toEqual([2]);

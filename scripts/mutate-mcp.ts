@@ -90,7 +90,7 @@ const cases: Array<{ name: string; file: string; from: string; to: string }> = [
     name: "build_project returns the files",
     file: T,
     from: "return ok({\n      project: args.project,\n      ...summary,\n      bricks: assembled.order,",
-    to: "return ok({\n      project: args.project,\n      ...summary,files: assembled.files, bricks: assembled.order,",
+    to: "return ok({\n      project: args.project,\n      ...summary, files: assembled.files, bricks: assembled.order,",
   },
   {
     name: "build_project stores nothing",

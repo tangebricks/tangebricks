@@ -54,7 +54,7 @@ const cases: Case[] = [
   },
   { name: "the Worker's route stores the 'owner's' edit too", file: W, from: "export const LATENCY_WRITES = 10;", to: "export const LATENCY_WRITES = 7;" },
   // ---- one class ran every graph
-  { name: "a second Workflow is not noticed", file: H, from: "wf.length === 1 &&\n      wf[0]!.name", to: "wf.length>= 1 &&\n      wf[0]!.name" },
+  { name: "a second Workflow is not noticed", file: H, from: "wf.length === 1 &&\n      wf[0]!.name", to: "wf.length >= 1 &&\n      wf[0]!.name" },
   { name: "fewer than three kinds of graph still count", file: H, from: "new Set(runs.map((r) => r!.graphId)).size >= 3 &&", to: "" },
   {
     name: "a run that was never started through the route still counts",

@@ -45,13 +45,13 @@ const cases: Case[] = [
     name: "build_project answers with the files, as a coding tool would",
     file: TOOLS,
     from: "return ok({\n      project: args.project,\n      ...summary,\n      bricks: assembled.order,",
-    to: "return ok({\n      project: args.project,\n      ...summary,files: assembled.files, bricks: assembled.order,",
+    to: "return ok({\n      project: args.project,\n      ...summary, files: assembled.files, bricks: assembled.order,",
   },
   {
     name: "every enable_brick answer repeats the whole catalog",
     file: TOOLS,
     from: "return ok({\n          project: args.project,\n          enabled: result.blueprint.bricks.map((b) => b.id),\n          needs:",
-    to: "return ok({everything: JSON.stringify(catalog), project: args.project,\n          enabled: result.blueprint.bricks.map((b) => b.id),\n          needs:",
+    to: "return ok({ everything: JSON.stringify(catalog), project: args.project,\n          enabled: result.blueprint.bricks.map((b) => b.id),\n          needs:",
   },
   {
     name: "the tool list carries a long description (+20 000 characters)",
