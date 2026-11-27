@@ -123,7 +123,7 @@ describe("POST /wallet/deduct", () => {
 
   it("fifteen requests at once against a balance of ten: exactly ten succeed, over HTTP", async () => {
     await db.prepare("UPDATE credit_wallets SET balance_milli = 10000 WHERE workspace_id = 'ws-a'").run();
-    const responses = await Promise.all(Array.from({ length: 15 }, () => spend("alice", "ws-a", { amount: 1 })));
+    const responses = await Promise.all(Array.from({ length: 15 }, async () => spend("alice", "ws-a", { amount: 1 })));
     expect(responses.filter((r) => r.status === 200).length).toBe(10);
     expect(responses.filter((r) => r.status === 402).length).toBe(5);
     expect(await balance("ws-a")).toBe(0);

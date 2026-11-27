@@ -209,7 +209,7 @@ describe("amount units: the wallet's whole rupees cross the interface as paise (
     const sent = provider.requests.find((r) => r.method === "POST")!;
     expect(sent.body).toContain('"order_amount":500.00,');
     expect(provider.orders.get(orderId)!.amount).toBe(500);
-    provider.markPaid(orderId);
+    await provider.markPaid(orderId);
     expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, creditsMilli: 500_000, amount: 500 });
     expect(await balance()).toBe(500);
   });
@@ -220,7 +220,7 @@ describe("amount units: the wallet's whole rupees cross the interface as paise (
     await wallet.openWallet(WS, 0);
     const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: OWNER, amount: 500 });
     expect(provider.sentAmounts).toEqual([50000]);
-    provider.markPaid(orderId);
+    await provider.markPaid(orderId);
     expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, creditsMilli: 500_000 });
   });
 
@@ -245,7 +245,7 @@ describe("amount units: the wallet's whole rupees cross the interface as paise (
       await wallet.openWallet(WS, 0);
       const { orderId } = await wallet.createOrder({ workspaceId: WS, userId: OWNER, amount: 500 });
       expect(provider.requests.find((r) => r.method === "POST")!.body).toContain(`"order_amount":${sentAmount},`);
-      provider.markPaid(orderId);
+      await provider.markPaid(orderId);
       expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true, creditsMilli: 500_000 });
     }
   });
@@ -350,7 +350,7 @@ describe("webhook edge cases (story 2.3)", () => {
     const row = await db.prepare("SELECT provider_ref FROM credit_orders WHERE order_id = ?").bind(orderId).first<{ provider_ref: string }>();
     expect(row?.provider_ref).toMatch(/^pi_[0-9a-f]{24}$/);
     await expect(provider.gateway.fetchOrder(orderId, orderId)).rejects.toThrow(/HTTP 404/);
-    provider.markPaid(orderId);
+    await provider.markPaid(orderId);
     expect(await wallet.confirmOrder(orderId)).toMatchObject({ status: "PAID", credited: true });
   });
 });
@@ -439,7 +439,7 @@ describe("checkout-gateway through the Cashfree adapter: minor units pass straig
     expect(session.total_cents).toBe(12345);
     expect(provider.requests.find((r) => r.method === "POST")!.body).toContain('"order_amount":123.45,');
 
-    provider.markPaid(session.id);
+    await provider.markPaid(session.id);
     const hook = await provider.signedWebhook(session.id);
     const res = await app.fetch(new Request("http://localhost/api/checkout/webhook", { method: "POST", headers: hook.headers, body: hook.body }), { DB: db });
     expect(res.status).toBe(200);

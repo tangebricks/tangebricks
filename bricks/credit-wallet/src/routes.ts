@@ -440,8 +440,13 @@ export function createWalletRoutes(options: WalletRoutesOptions): Hono<WalletEnv
           return c.json({ error: "A workspace cannot transfer to itself", code: "SAME_WORKSPACE" }, 400);
         case "idempotency_key_reused":
           return keyReused(c);
-        default:
+        case "destination_not_found":
+        case "source_wallet_not_found":
           return c.json({ error: "Destination not found", code: "DESTINATION_NOT_FOUND" }, 404);
+        default: {
+          const _exhaustive: never = result.reason;
+          return c.json({ error: "Destination not found", code: "DESTINATION_NOT_FOUND" }, 404);
+        }
       }
     } catch (error) {
       console.error("POST /wallet/transfer:", error);

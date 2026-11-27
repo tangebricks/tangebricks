@@ -24,7 +24,8 @@ jobs:
   #   e2e               - `pnpm ci:e2e`: the full Playwright suite (covers studio:a11y, the cp5..cp7
   #                       test:e2e subsets and sandbox-to-byoc), then studio:scorecard, which reads
   #                       its JSON report.
-  #   gates             - `pnpm lint` (oxlint correctness), `pnpm format:check` (Prettier), then `pnpm ci:gates`: lints, typecheck,
+  #   gates             - `pnpm lint` (oxlint correctness), `pnpm lint:types` (type-aware oxlint on the money, auth
+  #                       and deploy paths), `pnpm format:check` (Prettier), then `pnpm ci:gates`: lints, typecheck,
   #                       catalog, evidence, story and MCP gates.
   #                       Then the live-canary fetch (continue-on-error) and `pnpm ci:tiers`
   #                       (catalog:tiers), so evidence:check sees only committed evidence.
@@ -117,6 +118,10 @@ jobs:
 
       - name: Run oxlint correctness gate
         run: pnpm lint
+
+      # Type-aware rules (floating/misused promises, await-thenable, exhaustive switches) on the money, auth and deploy paths.
+      - name: Run oxlint type-aware gate
+        run: pnpm lint:types
 
       - name: Run Prettier format check
         run: pnpm format:check
