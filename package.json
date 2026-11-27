@@ -9,6 +9,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "prepare": "node scripts/install-hooks.mjs",
     "test": "vitest run",
     "check:changed": "pnpm typecheck && vitest run --changed origin/main",
     "stress:dom": "node scripts/stress-dom-tests.ts",
@@ -131,6 +132,7 @@
     "hono": "4.13.20",
     "jsdom": "30.1.3",
     "jsonpath-plus": "10.4.0",
+    "lefthook": "2.2.2",
     "miniflare": "5.20261019.0-beta",
     "openai": "7.62.0",
     "oxlint": "1.93.0",

@@ -9,6 +9,11 @@ onlyBuiltDependencies:
   - esbuild
   - workerd
 
+# lefthook's postinstall stays blocked: the root `prepare` script
+# (scripts/install-hooks.mjs) installs the git hooks, outside CI only.
+ignoredBuiltDependencies:
+  - lefthook
+
 # Security floors for transitive dependencies flagged by OSV-Scanner (2026-11-24):
 # undici < 7.30.1 (via miniflare) and follow-redirects < 1.16.2 (via axios).
 overrides:
