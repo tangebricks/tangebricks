@@ -50,9 +50,7 @@ test.describe("Connections & Secrets Center, Inline Inspector Secret Creation, a
     await page.getByTestId("inline-secret-value-node").fill(CANARY_2);
     await page.getByTestId("inline-secret-submit-node").click();
 
-    await expect(page.getByTestId("inspector-node-bound-secret-ref")).toContainText(
-      "sec_http_bearer_e2e",
-    );
+    await expect(page.getByTestId("inspector-node-bound-secret-ref")).toContainText("sec_http_bearer_e2e");
 
     // 6. Navigate to Connections & Secrets Center and add a secret bound to `core-auth`
     await page.getByTestId("nav-tab-connections").click();
@@ -60,9 +58,7 @@ test.describe("Connections & Secrets Center, Inline Inspector Secret Creation, a
 
     // Verify the inline-created node secret is already listed with 4-char key hint
     await expect(page.getByTestId("secret-row-sec_http_bearer_e2e")).toBeVisible();
-    await expect(page.getByTestId("secret-key-hint-sec_http_bearer_e2e")).toHaveText(
-      "••••5520",
-    );
+    await expect(page.getByTestId("secret-key-hint-sec_http_bearer_e2e")).toHaveText("••••5520");
 
     await page.getByTestId("add-secret-button").click();
     await expect(page.getByTestId("add-secret-modal")).toBeVisible();
@@ -71,23 +67,15 @@ test.describe("Connections & Secrets Center, Inline Inspector Secret Creation, a
     await page.getByTestId("secret-handle-input").fill("sec_core_auth_e2e");
     await page.getByTestId("secret-app-input").fill("core-auth");
     await page.getByTestId("secret-value-input").fill(CANARY_1);
-    await page
-      .getByTestId("secret-bind-target-select")
-      .selectOption("brick:core-auth:BETTER_AUTH_SECRET");
+    await page.getByTestId("secret-bind-target-select").selectOption("brick:core-auth:BETTER_AUTH_SECRET");
     await page.getByTestId("save-secret-submit").click();
 
     await expect(page.getByTestId("secret-row-sec_core_auth_e2e")).toBeVisible();
-    await expect(page.getByTestId("secret-key-hint-sec_core_auth_e2e")).toHaveText(
-      "••••9941",
-    );
-    await expect(page.getByTestId("secret-status-sec_core_auth_e2e")).toContainText(
-      "Valid · Connected",
-    );
+    await expect(page.getByTestId("secret-key-hint-sec_core_auth_e2e")).toHaveText("••••9941");
+    await expect(page.getByTestId("secret-status-sec_core_auth_e2e")).toContainText("Valid · Connected");
 
     // 7. Click "Used by" target on `sec_core_auth_e2e` -> jumps to Bricks view & selects `core-auth`
-    await page
-      .getByTestId("secret-used-by-target-sec_core_auth_e2e-core-auth")
-      .click();
+    await page.getByTestId("secret-used-by-target-sec_core_auth_e2e-core-auth").click();
     await expect(page.getByTestId("view-bricks")).toBeVisible();
     await expect(page.getByTestId("inspector-brick-detail")).toBeVisible();
 
@@ -101,33 +89,25 @@ test.describe("Connections & Secrets Center, Inline Inspector Secret Creation, a
 
     await page.getByTestId("nav-tab-connections").click();
     await expect(page.getByTestId("secret-row-sec_core_auth_e2e")).toBeVisible();
-    await expect(page.getByTestId("secret-key-hint-sec_core_auth_e2e")).toHaveText(
-      "••••9941",
-    );
+    await expect(page.getByTestId("secret-key-hint-sec_core_auth_e2e")).toHaveText("••••9941");
     await expect(page.getByTestId("secret-row-sec_http_bearer_e2e")).toBeVisible();
-    await expect(page.getByTestId("secret-key-hint-sec_http_bearer_e2e")).toHaveText(
-      "••••5520",
-    );
+    await expect(page.getByTestId("secret-key-hint-sec_http_bearer_e2e")).toHaveText("••••5520");
 
     // 9. Rotate `sec_core_auth_e2e` and verify keyHint updates to ••••3388
     await page.getByTestId("rotate-secret-button-sec_core_auth_e2e").click();
     await page.getByTestId("secret-value-input").fill(CANARY_ROTATED);
     await page.getByTestId("save-secret-submit").click();
-    await expect(page.getByTestId("secret-key-hint-sec_core_auth_e2e")).toHaveText(
-      "••••3388",
-    );
+    await expect(page.getByTestId("secret-key-hint-sec_core_auth_e2e")).toHaveText("••••3388");
 
     // Verify computed styles on status chip and key hint badge
-    const chipStyles = await page
-      .getByTestId("secret-status-sec_core_auth_e2e")
-      .evaluate((el) => {
-        const cs = window.getComputedStyle(el);
-        return {
-          borderStyle: cs.borderStyle,
-          borderRadius: cs.borderRadius,
-          fontWeight: Number(cs.fontWeight) || 600,
-        };
-      });
+    const chipStyles = await page.getByTestId("secret-status-sec_core_auth_e2e").evaluate((el) => {
+      const cs = window.getComputedStyle(el);
+      return {
+        borderStyle: cs.borderStyle,
+        borderRadius: cs.borderRadius,
+        fontWeight: Number(cs.fontWeight) || 600,
+      };
+    });
     expect(chipStyles.borderStyle).not.toBe("none");
     expect(chipStyles.fontWeight).toBeGreaterThanOrEqual(500);
 
@@ -139,18 +119,12 @@ test.describe("Connections & Secrets Center, Inline Inspector Secret Creation, a
 
     const apiSurfaces = await page.evaluate(async (slug) => {
       const [proj, revs, exp, secs] = await Promise.all([
-        fetch(`/api/projects/${slug}`, { credentials: "include" }).then((r) =>
-          r.text(),
-        ),
+        fetch(`/api/projects/${slug}`, { credentials: "include" }).then((r) => r.text()),
         fetch(`/api/projects/${slug}/revisions`, {
           credentials: "include",
         }).then((r) => r.text()),
-        fetch(`/api/projects/${slug}/export`, { credentials: "include" }).then(
-          (r) => r.text(),
-        ),
-        fetch(`/api/projects/${slug}/secrets`, { credentials: "include" }).then(
-          (r) => r.text(),
-        ),
+        fetch(`/api/projects/${slug}/export`, { credentials: "include" }).then((r) => r.text()),
+        fetch(`/api/projects/${slug}/secrets`, { credentials: "include" }).then((r) => r.text()),
       ]);
       return { proj, revs, exp, secs };
     }, projectSlug);

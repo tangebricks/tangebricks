@@ -4,11 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_outbound_webhooks.sql?raw";
-import {
-  OutboundWebhookService,
-  signWebhookPayload,
-  createOutboundWebhookRoutes,
-} from "../src/index.ts";
+import { OutboundWebhookService, signWebhookPayload, createOutboundWebhookRoutes } from "../src/index.ts";
 import type { OutboundWebhookEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -181,9 +177,7 @@ describe("Outbound webhook SSRF guard and stored response", () => {
 
   it("WEBHOOK_BODY: stores a null response body but keeps the status code, for success and failure", async () => {
     const mockFetch = async (url: string): Promise<Response> =>
-      url.includes("fail")
-        ? new Response("upstream error details: db=10.0.0.9", { status: 500 })
-        : new Response("upstream body with secrets", { status: 202 });
+      url.includes("fail") ? new Response("upstream error details: db=10.0.0.9", { status: 500 }) : new Response("upstream body with secrets", { status: 202 });
     const service = new OutboundWebhookService(db, mockFetch, { resolveHost: publicResolver });
     await service.createEndpoint({ workspaceId: WS_ALPHA, targetUrl: "https://ok.example.com/hook" });
     await service.createEndpoint({ workspaceId: WS_ALPHA, targetUrl: "https://fail.example.com/hook" });
@@ -208,15 +202,19 @@ describe("Outbound Webhooks HTTP API", () => {
     app.route("/api", createOutboundWebhookRoutes());
 
     // 1. POST /subscriptions/webhooks
-    const createRes = await app.request("/api/subscriptions/webhooks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        targetUrl: "https://test.customer.com/webhooks",
-        description: "Customer API",
-        events: ["order.completed"],
-      }),
-    }, { DB: db });
+    const createRes = await app.request(
+      "/api/subscriptions/webhooks",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          targetUrl: "https://test.customer.com/webhooks",
+          description: "Customer API",
+          events: ["order.completed"],
+        }),
+      },
+      { DB: db },
+    );
     expect(createRes.status).toBe(201);
     const createJson = (await createRes.json()) as { endpoint: { id: string } };
     const epId = createJson.endpoint.id;
@@ -228,14 +226,18 @@ describe("Outbound Webhooks HTTP API", () => {
     expect(listJson.endpoints).toHaveLength(1);
 
     // 3. POST /subscriptions/webhooks/dispatch
-    const dispatchRes = await app.request("/api/subscriptions/webhooks/dispatch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        eventType: "order.completed",
-        payload: { orderId: "ord_123" },
-      }),
-    }, { DB: db });
+    const dispatchRes = await app.request(
+      "/api/subscriptions/webhooks/dispatch",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          eventType: "order.completed",
+          payload: { orderId: "ord_123" },
+        }),
+      },
+      { DB: db },
+    );
     expect(dispatchRes.status).toBe(200);
     const dispatchJson = (await dispatchRes.json()) as { deliveries: Array<{ id: string }> };
     expect(dispatchJson.deliveries).toHaveLength(1);
@@ -249,17 +251,25 @@ describe("Outbound Webhooks HTTP API", () => {
     expect(deliveriesJson.deliveries).toHaveLength(1);
 
     // 5. POST /subscriptions/webhooks/deliveries/:id/replay
-    const replayRes = await app.request(`/api/subscriptions/webhooks/deliveries/${delId}/replay`, {
-      method: "POST",
-      headers: { "x-workspace-id": WS_ALPHA },
-    }, { DB: db });
+    const replayRes = await app.request(
+      `/api/subscriptions/webhooks/deliveries/${delId}/replay`,
+      {
+        method: "POST",
+        headers: { "x-workspace-id": WS_ALPHA },
+      },
+      { DB: db },
+    );
     expect(replayRes.status).toBe(200);
 
     // 6. DELETE /subscriptions/webhooks/:id
-    const delRes = await app.request(`/api/subscriptions/webhooks/${epId}`, {
-      method: "DELETE",
-      headers: { "x-workspace-id": WS_ALPHA },
-    }, { DB: db });
+    const delRes = await app.request(
+      `/api/subscriptions/webhooks/${epId}`,
+      {
+        method: "DELETE",
+        headers: { "x-workspace-id": WS_ALPHA },
+      },
+      { DB: db },
+    );
     expect(delRes.status).toBe(200);
   });
 });

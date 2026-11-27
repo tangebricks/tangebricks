@@ -5,14 +5,8 @@ declare module "*?raw" {
 }
 
 interface ImportMeta {
-  glob(
-    patterns: string | string[],
-    options: { query?: string; import?: string; eager: true },
-  ): Record<string, unknown>;
-  glob(
-    patterns: string | string[],
-    options?: { query?: string; import?: string; eager?: false },
-  ): Record<string, () => Promise<unknown>>;
+  glob(patterns: string | string[], options: { query?: string; import?: string; eager: true }): Record<string, unknown>;
+  glob(patterns: string | string[], options?: { query?: string; import?: string; eager?: false }): Record<string, () => Promise<unknown>>;
 }
 
 // The Workers runtime's global env, importable by any code in the isolate. Used by H3 to show what that allows.

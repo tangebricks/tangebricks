@@ -22,12 +22,13 @@ const QUARANTINED = [
   "workflow-dag",
 ];
 
-const brickIds = (bricks: unknown[]): string[] =>
-  bricks.map((b) => (typeof b === "string" ? b : String((b as { id: unknown }).id)));
+const brickIds = (bricks: unknown[]): string[] => bricks.map((b) => (typeof b === "string" ? b : String((b as { id: unknown }).id)));
 
 describe("quarantined bricks (story 0.11)", () => {
   test("exactly the eight unsafe or stub bricks are quarantined, each experimental with a QUARANTINED: reason", () => {
-    const quarantined = Object.keys(catalog.bricks).filter((id) => isQuarantined(catalog.bricks[id])).sort();
+    const quarantined = Object.keys(catalog.bricks)
+      .filter((id) => isQuarantined(catalog.bricks[id]))
+      .sort();
     expect(quarantined).toEqual(QUARANTINED);
     for (const id of QUARANTINED) {
       const ui = catalog.bricks[id]!.manifest.ui!;
@@ -45,7 +46,12 @@ describe("quarantined bricks (story 0.11)", () => {
       expect(result.excluded, id).toContainEqual({ id, reason: "quarantined" });
     }
     // Only quarantined bricks get that reason; scripting-sandbox (experimental, not quarantined) stays in.
-    expect(result.excluded.filter((e) => e.reason === "quarantined").map((e) => e.id).sort()).toEqual(QUARANTINED);
+    expect(
+      result.excluded
+        .filter((e) => e.reason === "quarantined")
+        .map((e) => e.id)
+        .sort(),
+    ).toEqual(QUARANTINED);
     expect(result.bricks).toContain("scripting-sandbox");
     expect(assemble({ project: result.project, bricks: result.bricks }, catalog).ok).toBe(true);
   });
@@ -60,7 +66,10 @@ describe("quarantined bricks (story 0.11)", () => {
       for (const id of brickIds(preset.bricks)) expect(QUARANTINED, `${file} enables ${id}`).not.toContain(id);
       for (const id of QUARANTINED) expect(raw, `${file} mentions ${id}`).not.toContain(`"${id}"`);
     }
-    const studioPresets = JSON.parse(readFileSync(join(repoRoot, "apps", "studio-web", "src", "presets-data.json"), "utf8")) as Record<string, { bricks: unknown[] }>;
+    const studioPresets = JSON.parse(readFileSync(join(repoRoot, "apps", "studio-web", "src", "presets-data.json"), "utf8")) as Record<
+      string,
+      { bricks: unknown[] }
+    >;
     for (const [name, preset] of Object.entries(studioPresets)) {
       for (const id of brickIds(preset.bricks)) expect(QUARANTINED, `studio-web preset ${name} enables ${id}`).not.toContain(id);
     }

@@ -110,25 +110,15 @@ export function canManageOrg(role: StudioOrgRole | null): boolean {
 }
 
 export function canReadProject(role: StudioOrgRole | null, scopes?: string[]): boolean {
-  const roleOk =
-    role === "owner" || role === "admin" || role === "builder" || role === "viewer";
+  const roleOk = role === "owner" || role === "admin" || role === "builder" || role === "viewer";
   if (!roleOk) return false;
   if (scopes !== undefined) {
-    return (
-      scopes.includes("read") ||
-      scopes.includes("edit") ||
-      scopes.includes("deploy") ||
-      scopes.includes("connect")
-    );
+    return scopes.includes("read") || scopes.includes("edit") || scopes.includes("deploy") || scopes.includes("connect");
   }
   return true;
 }
 
-export function canMutateProject(
-  role: StudioOrgRole | null,
-  scopes?: string[],
-  requiredScope: StudioMcpScope | "any" = "edit",
-): boolean {
+export function canMutateProject(role: StudioOrgRole | null, scopes?: string[], requiredScope: StudioMcpScope | "any" = "edit"): boolean {
   const roleOk = role === "owner" || role === "admin" || role === "builder";
   if (!roleOk) return false;
   if (scopes !== undefined) {
@@ -157,12 +147,7 @@ export function parseTokenScopes(raw: string): string[] {
     .filter(Boolean);
 }
 
-export function createStudioBetterAuth(
-  env: StudioApiEnv,
-  requestUrl?: string,
-  sessionDurationSeconds = 86400,
-  requestHeaders?: Headers,
-) {
+export function createStudioBetterAuth(env: StudioApiEnv, requestUrl?: string, sessionDurationSeconds = 86400, requestHeaders?: Headers) {
   const origin = requestUrl ? new URL(requestUrl).origin : "http://localhost";
   // No fallback: a missing signing secret must fail loudly, never sign sessions with a value written in source.
   const secret = requireStudioSecret("BETTER_AUTH_SECRET", env.BETTER_AUTH_SECRET);
@@ -191,10 +176,7 @@ export function createStudioBetterAuth(
       minPasswordLength: 8,
     },
     // GitHub sign-in is configured only when both credentials are provided.
-    socialProviders:
-      githubClientId && githubClientSecret
-        ? { github: { clientId: githubClientId, clientSecret: githubClientSecret } }
-        : {},
+    socialProviders: githubClientId && githubClientSecret ? { github: { clientId: githubClientId, clientSecret: githubClientSecret } } : {},
     plugins: [bearer()],
   });
 }
@@ -209,21 +191,10 @@ export function normalizeStudioAuthHeaders(rawHeaders: Headers): {
   const bearerMatch = /^Bearer\s+(.+)$/i.exec(authHeader);
   const bearerToken = bearerMatch?.[1]?.trim() ?? null;
   const cookieHeader = headers.get("cookie") ?? "";
-  const hasSessionCookie =
-    cookieHeader.includes("better-auth.session_token=") ||
-    cookieHeader.includes("__Secure-better-auth.session_token=");
+  const hasSessionCookie = cookieHeader.includes("better-auth.session_token=") || cookieHeader.includes("__Secure-better-auth.session_token=");
 
-  if (
-    cookieHeader.includes("__Secure-better-auth.session_token=") &&
-    !cookieHeader.includes("; better-auth.session_token=")
-  ) {
-    headers.set(
-      "cookie",
-      cookieHeader.replaceAll(
-        "__Secure-better-auth.session_token=",
-        "better-auth.session_token=",
-      ),
-    );
+  if (cookieHeader.includes("__Secure-better-auth.session_token=") && !cookieHeader.includes("; better-auth.session_token=")) {
+    headers.set("cookie", cookieHeader.replaceAll("__Secure-better-auth.session_token=", "better-auth.session_token="));
   }
 
   return {
@@ -254,19 +225,14 @@ export async function resolveStudioAuthSession(
     return { user: null, session: null, presentedCredentials: true };
   }
 
-  const expiresAtIso =
-    resolved.session.expiresAt instanceof Date
-      ? resolved.session.expiresAt.toISOString()
-      : String(resolved.session.expiresAt);
+  const expiresAtIso = resolved.session.expiresAt instanceof Date ? resolved.session.expiresAt.toISOString() : String(resolved.session.expiresAt);
   const expiresAtMs = Date.parse(expiresAtIso);
   if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
     return { user: null, session: null, presentedCredentials: true };
   }
 
   // Also verify against D1 directly in case session expiry was modified in SQLite
-  const dbSession = await env.STUDIO_DB.prepare(
-    'SELECT "expiresAt" FROM "session" WHERE "id" = ? LIMIT 1',
-  )
+  const dbSession = await env.STUDIO_DB.prepare('SELECT "expiresAt" FROM "session" WHERE "id" = ? LIMIT 1')
     .bind(resolved.session.id)
     .first<{ expiresAt: string }>();
   if (!dbSession) {
@@ -277,10 +243,7 @@ export async function resolveStudioAuthSession(
     return { user: null, session: null, presentedCredentials: true };
   }
 
-  const createdAtIso =
-    resolved.user.createdAt instanceof Date
-      ? resolved.user.createdAt.toISOString()
-      : String(resolved.user.createdAt);
+  const createdAtIso = resolved.user.createdAt instanceof Date ? resolved.user.createdAt.toISOString() : String(resolved.user.createdAt);
 
   return {
     user: {
@@ -305,10 +268,7 @@ export async function resolveStudioAuthSession(
 export async function resolveStudioCaller(
   env: StudioApiEnv,
   request: Request,
-): Promise<
-  | { ok: true; caller: StudioCaller }
-  | { ok: false; status: 401; error: { code: string; message: string } }
-> {
+): Promise<{ ok: true; caller: StudioCaller } | { ok: false; status: 401; error: { code: string; message: string } }> {
   const db = env.STUDIO_DB;
   await ensureStudioD1Schema(db);
 
@@ -361,9 +321,7 @@ export async function resolveStudioCaller(
       }
 
       const memberRow = await db
-        .prepare(
-          `SELECT role FROM studio_org_members WHERE org_id = ? AND user_id = ? LIMIT 1`,
-        )
+        .prepare(`SELECT role FROM studio_org_members WHERE org_id = ? AND user_id = ? LIMIT 1`)
         .bind(mcpTokenRow.org_id, mcpTokenRow.user_id)
         .first<{ role: StudioOrgRole }>();
 
@@ -453,33 +411,21 @@ export async function resolveStudioCaller(
   };
 }
 
-export async function computeAuditIpHash(
-  request?: Request | null,
-  explicitIpHash?: string | null,
-): Promise<string> {
+export async function computeAuditIpHash(request?: Request | null, explicitIpHash?: string | null): Promise<string> {
   if (explicitIpHash && explicitIpHash.trim().length > 0) {
     return explicitIpHash.trim();
   }
-  const rawIp =
-    request?.headers.get("cf-connecting-ip")?.trim() ||
-    request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "127.0.0.1";
+  const rawIp = request?.headers.get("cf-connecting-ip")?.trim() || request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
   const digest = await sha256Hex(`px-audit-ip:${rawIp}`);
   return `sha256:${digest.slice(0, 16)}`;
 }
 
-export async function recordStudioAuditLog(
-  db: D1Like,
-  entry: StudioAuditLogInput,
-): Promise<void> {
+export async function recordStudioAuditLog(db: D1Like, entry: StudioAuditLogInput): Promise<void> {
   await ensureStudioD1Schema(db);
   const id = `audit_${crypto.randomUUID()}`;
   const nowIso = new Date().toISOString();
   const actorPrefix = entry.actorType === "agent" ? "agent:" : "user:";
-  const actor =
-    entry.actorId.startsWith("user:") || entry.actorId.startsWith("agent:")
-      ? entry.actorId
-      : `${actorPrefix}${entry.actorId}`;
+  const actor = entry.actorId.startsWith("user:") || entry.actorId.startsWith("agent:") ? entry.actorId : `${actorPrefix}${entry.actorId}`;
   const mergedMetadata = {
     ...entry.details,
     ...entry.metadata,
@@ -495,9 +441,7 @@ export async function recordStudioAuditLog(
   const metadataJson = JSON.stringify(mergedMetadata);
   const targetRef =
     entry.targetRef?.trim() ||
-    (typeof mergedMetadata.targetRef === "string" && mergedMetadata.targetRef.trim()
-      ? mergedMetadata.targetRef.trim()
-      : entry.projectId ?? entry.orgId);
+    (typeof mergedMetadata.targetRef === "string" && mergedMetadata.targetRef.trim() ? mergedMetadata.targetRef.trim() : (entry.projectId ?? entry.orgId));
   const ipHash = await computeAuditIpHash(entry.request, entry.ipHash);
 
   await db.batch([
@@ -513,17 +457,7 @@ export async function recordStudioAuditLog(
           id, org_id, project_id, actor_type, actor_id, action, status, details_json, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(
-        id,
-        entry.orgId,
-        entry.projectId ?? null,
-        entry.actorType,
-        entry.actorId,
-        entry.action,
-        entry.status,
-        detailsJson,
-        nowIso,
-      ),
+      .bind(id, entry.orgId, entry.projectId ?? null, entry.actorType, entry.actorId, entry.action, entry.status, detailsJson, nowIso),
     db
       .prepare(
         `INSERT INTO studio_audit_logs (
@@ -646,10 +580,7 @@ export async function chooseSessionCreateOrg(
   db: D1Like,
   userId: string,
   selectedOrgId: string | undefined,
-): Promise<
-  | { ok: true; orgId: string }
-  | { ok: false; status: 400 | 403; orgId: string; error: { code: string; message: string } }
-> {
+): Promise<{ ok: true; orgId: string } | { ok: false; status: 400 | 403; orgId: string; error: { code: string; message: string } }> {
   const memberships =
     (
       await db
@@ -689,8 +620,7 @@ export async function chooseSessionCreateOrg(
     orgId: "unassigned",
     error: {
       code: "ORG_SELECTION_REQUIRED",
-      message:
-        "Caller belongs to several organizations; select one (x-org-id or orgId) to create this project in",
+      message: "Caller belongs to several organizations; select one (x-org-id or orgId) to create this project in",
     },
   };
 }
@@ -725,10 +655,7 @@ export async function authorizeProjectAccess(
   await ensureStudioD1Schema(db);
 
   const readRow = () =>
-    db
-      .prepare("SELECT project_id, org_id FROM projects WHERE project_id = ? LIMIT 1")
-      .bind(project)
-      .first<{ project_id: string; org_id: string }>();
+    db.prepare("SELECT project_id, org_id FROM projects WHERE project_id = ? LIMIT 1").bind(project).first<{ project_id: string; org_id: string }>();
   let projectRow = await readRow();
 
   // An MCP token is bound to one project; any other project, in its org or not, is refused.
@@ -820,8 +747,7 @@ export async function authorizeProjectAccess(
   }
 
   if (!canMutateProject(role, scopes, requiredScope)) {
-    const missingScope =
-      caller.kind === "mcp_token" && (role === "owner" || role === "admin" || role === "builder");
+    const missingScope = caller.kind === "mcp_token" && (role === "owner" || role === "admin" || role === "builder");
     return {
       ok: false,
       status: 403,
@@ -829,9 +755,7 @@ export async function authorizeProjectAccess(
       role,
       error: {
         code: "FORBIDDEN_ROLE",
-        message: missingScope
-          ? `MCP token lacks required "${requiredScope}" scope for this operation`
-          : "Viewer role cannot mutate project",
+        message: missingScope ? `MCP token lacks required "${requiredScope}" scope for this operation` : "Viewer role cannot mutate project",
       },
     };
   }
@@ -869,10 +793,7 @@ export async function authorizeProjectAccess(
  * The `/api/admin/*` routes are for platform operators only (story 16): a signed-in person listed in
  * `PX_PLATFORM_OPERATORS` (sdk `isPlatformOperator`). Every other caller, and every MCP token, is refused.
  */
-export function refuseNonPlatformOperator(
-  env: unknown,
-  caller: StudioCaller,
-): { code: string; message: string } | null {
+export function refuseNonPlatformOperator(env: unknown, caller: StudioCaller): { code: string; message: string } | null {
   if (caller.kind === "mcp_token") {
     return {
       code: "FORBIDDEN_TOKEN_CALLER",
@@ -970,15 +891,8 @@ function generateMcpPlaintextToken(): string {
   return `px_mcp_${hex}`;
 }
 
-async function ensurePersonalDefaultOrg(
-  db: D1Like,
-  userId: string,
-  label?: string | null,
-): Promise<void> {
-  const existing = await db
-    .prepare("SELECT org_id FROM studio_org_members WHERE user_id = ? LIMIT 1")
-    .bind(userId)
-    .first<{ org_id: string }>();
+async function ensurePersonalDefaultOrg(db: D1Like, userId: string, label?: string | null): Promise<void> {
+  const existing = await db.prepare("SELECT org_id FROM studio_org_members WHERE user_id = ? LIMIT 1").bind(userId).first<{ org_id: string }>();
   if (existing) return;
 
   const orgId = `org_personal_${userId}`;
@@ -988,16 +902,8 @@ async function ensurePersonalDefaultOrg(
   const nowIso = new Date().toISOString();
 
   await db.batch([
-    db
-      .prepare(
-        "INSERT OR IGNORE INTO studio_orgs (id, slug, name, created_at) VALUES (?, ?, ?, ?)",
-      )
-      .bind(orgId, slug, orgName, nowIso),
-    db
-      .prepare(
-        "INSERT OR IGNORE INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)",
-      )
-      .bind(orgId, userId, nowIso),
+    db.prepare("INSERT OR IGNORE INTO studio_orgs (id, slug, name, created_at) VALUES (?, ?, ?, ?)").bind(orgId, slug, orgName, nowIso),
+    db.prepare("INSERT OR IGNORE INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").bind(orgId, userId, nowIso),
   ]);
 
   await recordStudioOnboardingEvent(db, {
@@ -1010,28 +916,17 @@ async function ensurePersonalDefaultOrg(
 
 async function cleanupUnusedPersonalOrg(db: D1Like, userId: string): Promise<void> {
   const personalOrgId = `org_personal_${userId}`;
-  const orgRow = await db
-    .prepare("SELECT id FROM studio_orgs WHERE id = ? LIMIT 1")
-    .bind(personalOrgId)
-    .first<{ id: string }>();
+  const orgRow = await db.prepare("SELECT id FROM studio_orgs WHERE id = ? LIMIT 1").bind(personalOrgId).first<{ id: string }>();
   if (!orgRow) return;
 
-  const hasProject = await db
-    .prepare("SELECT project_id FROM projects WHERE org_id = ? LIMIT 1")
-    .bind(personalOrgId)
-    .first<{ project_id: string }>();
+  const hasProject = await db.prepare("SELECT project_id FROM projects WHERE org_id = ? LIMIT 1").bind(personalOrgId).first<{ project_id: string }>();
   if (hasProject) return;
 
-  const hasToken = await db
-    .prepare("SELECT id FROM studio_mcp_tokens WHERE org_id = ? LIMIT 1")
-    .bind(personalOrgId)
-    .first<{ id: string }>();
+  const hasToken = await db.prepare("SELECT id FROM studio_mcp_tokens WHERE org_id = ? LIMIT 1").bind(personalOrgId).first<{ id: string }>();
   if (hasToken) return;
 
   await db.batch([
-    db
-      .prepare("DELETE FROM studio_org_members WHERE org_id = ?")
-      .bind(personalOrgId),
+    db.prepare("DELETE FROM studio_org_members WHERE org_id = ?").bind(personalOrgId),
     db.prepare("DELETE FROM studio_orgs WHERE id = ?").bind(personalOrgId),
   ]);
 }
@@ -1061,8 +956,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
     }
 
     const auth = createStudioBetterAuth(c.env, c.req.url);
-    const displayName =
-      parsed.data.displayName ?? parsed.data.name ?? parsed.data.email.split("@")[0] ?? "User";
+    const displayName = parsed.data.displayName ?? parsed.data.name ?? parsed.data.email.split("@")[0] ?? "User";
     const res = await auth.api.signUpEmail({
       body: {
         email: parsed.data.email,
@@ -1084,10 +978,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
         errBody.code === "USER_ALREADY_EXISTS" ||
         errBody.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" ||
         (errBody.message ?? "").toLowerCase().includes("already exists");
-      return c.json(
-        { error: { code: errBody.code ?? "SIGNUP_FAILED", message: errBody.message ?? "sign-up failed" } },
-        isDuplicate ? 409 : 400,
-      );
+      return c.json({ error: { code: errBody.code ?? "SIGNUP_FAILED", message: errBody.message ?? "sign-up failed" } }, isDuplicate ? 409 : 400);
     }
 
     copyAuthHeaders(res.headers, (k, v) => c.header(k, v));
@@ -1095,11 +986,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
       token: string;
       user: { id: string; email: string; name: string };
     };
-    await ensurePersonalDefaultOrg(
-      c.env.STUDIO_DB,
-      data.user.id,
-      data.user.name || data.user.email,
-    );
+    await ensurePersonalDefaultOrg(c.env.STUDIO_DB, data.user.id, data.user.name || data.user.email);
     const expiresAt = new Date(Date.now() + 86400 * 1000).toISOString();
     return c.json(
       {
@@ -1149,11 +1036,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
         token: string;
         user: { id: string; email: string; name: string };
       };
-      await ensurePersonalDefaultOrg(
-        c.env.STUDIO_DB,
-        data.user.id,
-        data.user.name || data.user.email,
-      );
+      await ensurePersonalDefaultOrg(c.env.STUDIO_DB, data.user.id, data.user.name || data.user.email);
       const expiresAt = new Date(Date.now() + 86400 * 1000).toISOString();
       return c.json({
         token: data.token,
@@ -1208,11 +1091,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
         },
       });
     }
-    await ensurePersonalDefaultOrg(
-      c.env.STUDIO_DB,
-      resolved.caller.userId,
-      resolved.caller.displayName ?? resolved.caller.email,
-    );
+    await ensurePersonalDefaultOrg(c.env.STUDIO_DB, resolved.caller.userId, resolved.caller.displayName ?? resolved.caller.email);
     const orgsResult = await c.env.STUDIO_DB.prepare(
       `SELECT o.id, o.slug, o.name, m.role, o.created_at
        FROM studio_orgs o
@@ -1257,10 +1136,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
     await ensureStudioD1Schema(c.env.STUDIO_DB);
     const auth = createStudioBetterAuth(c.env, c.req.url, 86400, c.req.raw.headers);
     const { headers } = normalizeStudioAuthHeaders(c.req.raw.headers);
-    const rawBody =
-      c.req.method === "GET" || c.req.method === "HEAD"
-        ? undefined
-        : await c.req.raw.arrayBuffer();
+    const rawBody = c.req.method === "GET" || c.req.method === "HEAD" ? undefined : await c.req.raw.arrayBuffer();
     const req = new Request(c.req.url, {
       method: c.req.method,
       headers,
@@ -1275,11 +1151,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
         user?: { id?: string; name?: string; email?: string };
       } | null;
       if (body?.user?.id) {
-        await ensurePersonalDefaultOrg(
-          c.env.STUDIO_DB,
-          body.user.id,
-          body.user.name || body.user.email,
-        );
+        await ensurePersonalDefaultOrg(c.env.STUDIO_DB, body.user.id, body.user.name || body.user.email);
       }
     }
     return res;
@@ -1293,10 +1165,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
       return c.json({ error: resolved.error }, 401);
     }
     if (resolved.caller.kind !== "session") {
-      return c.json(
-        { error: { code: "FORBIDDEN_ROLE", message: "Only human sessions can create organizations" } },
-        403,
-      );
+      return c.json({ error: { code: "FORBIDDEN_ROLE", message: "Only human sessions can create organizations" } }, 403);
     }
 
     const parsed = CreateOrgBodySchema.safeParse(await c.req.json().catch(() => null));
@@ -1309,28 +1178,16 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
     const slug = parsed.data.slug ?? slugifyOrgName(parsed.data.name);
     const nowIso = new Date().toISOString();
 
-    const existingSlug = await db
-      .prepare("SELECT id FROM studio_orgs WHERE slug = ? LIMIT 1")
-      .bind(slug)
-      .first<{ id: string }>();
+    const existingSlug = await db.prepare("SELECT id FROM studio_orgs WHERE slug = ? LIMIT 1").bind(slug).first<{ id: string }>();
     if (existingSlug) {
-      return c.json(
-        { error: { code: "ORG_SLUG_EXISTS", message: `Organization slug "${slug}" already exists` } },
-        409,
-      );
+      return c.json({ error: { code: "ORG_SLUG_EXISTS", message: `Organization slug "${slug}" already exists` } }, 409);
     }
 
     await cleanupUnusedPersonalOrg(db, resolved.caller.userId);
 
     await db.batch([
-      db
-        .prepare("INSERT INTO studio_orgs (id, slug, name, created_at) VALUES (?, ?, ?, ?)")
-        .bind(orgId, slug, parsed.data.name, nowIso),
-      db
-        .prepare(
-          "INSERT INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)",
-        )
-        .bind(orgId, resolved.caller.userId, nowIso),
+      db.prepare("INSERT INTO studio_orgs (id, slug, name, created_at) VALUES (?, ?, ?, ?)").bind(orgId, slug, parsed.data.name, nowIso),
+      db.prepare("INSERT INTO studio_org_members (org_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").bind(orgId, resolved.caller.userId, nowIso),
     ]);
 
     await recordStudioAuditLog(db, {
@@ -1361,11 +1218,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
 
     const db = c.env.STUDIO_DB;
     if (resolved.caller.kind === "session") {
-      await ensurePersonalDefaultOrg(
-        db,
-        resolved.caller.userId,
-        resolved.caller.displayName ?? resolved.caller.email,
-      );
+      await ensurePersonalDefaultOrg(db, resolved.caller.userId, resolved.caller.displayName ?? resolved.caller.email);
     }
     const rows = await db
       .prepare(
@@ -1380,13 +1233,15 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
 
     // An MCP token sees only the org it is bound to, never its owner's other orgs.
     const tokenOrgId = resolved.caller.kind === "mcp_token" ? resolved.caller.orgId : null;
-    const orgs = (rows.results ?? []).filter((row) => tokenOrgId === null || row.id === tokenOrgId).map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      name: row.name,
-      role: row.role,
-      createdAt: row.created_at,
-    }));
+    const orgs = (rows.results ?? [])
+      .filter((row) => tokenOrgId === null || row.id === tokenOrgId)
+      .map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        role: row.role,
+        createdAt: row.created_at,
+      }));
 
     return c.json({ orgs }, 200);
   });
@@ -1411,10 +1266,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
       .first<{ role: StudioOrgRole }>();
 
     if (!memberRow) {
-      return c.json(
-        { error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } },
-        403,
-      );
+      return c.json({ error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } }, 403);
     }
 
     const orgRow = await db
@@ -1427,16 +1279,12 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
     }
 
     const membersRes = await db
-      .prepare(
-        "SELECT org_id, user_id, role, created_at FROM studio_org_members WHERE org_id = ? ORDER BY created_at ASC",
-      )
+      .prepare("SELECT org_id, user_id, role, created_at FROM studio_org_members WHERE org_id = ? ORDER BY created_at ASC")
       .bind(orgId)
       .all<{ org_id: string; user_id: string; role: StudioOrgRole; created_at: string }>();
 
     const projectsRes = await db
-      .prepare(
-        "SELECT project_id, org_id, current_revision, semantic_hash, updated_at FROM projects WHERE org_id = ? ORDER BY project_id ASC",
-      )
+      .prepare("SELECT project_id, org_id, current_revision, semantic_hash, updated_at FROM projects WHERE org_id = ? ORDER BY project_id ASC")
       .bind(orgId)
       .all<{
         project_id: string;
@@ -1516,18 +1364,12 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
 
     let targetUserId = parsed.data.userId;
     if (!targetUserId && parsed.data.email) {
-      const userRow = await db
-        .prepare('SELECT "id" FROM "user" WHERE "email" = ? LIMIT 1')
-        .bind(parsed.data.email)
-        .first<{ id: string }>();
+      const userRow = await db.prepare('SELECT "id" FROM "user" WHERE "email" = ? LIMIT 1').bind(parsed.data.email).first<{ id: string }>();
       targetUserId = userRow?.id;
     }
 
     if (!targetUserId) {
-      return c.json(
-        { error: { code: "USER_NOT_FOUND", message: "Target user not found" } },
-        404,
-      );
+      return c.json({ error: { code: "USER_NOT_FOUND", message: "Target user not found" } }, 404);
     }
 
     const normalizedRole = normalizeOrgRole(parsed.data.role);
@@ -1659,10 +1501,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
         403,
       );
     }
-    await db
-      .prepare("UPDATE studio_org_members SET role = ? WHERE org_id = ? AND user_id = ?")
-      .bind(normalizedRole, orgId, targetUserId)
-      .run();
+    await db.prepare("UPDATE studio_org_members SET role = ? WHERE org_id = ? AND user_id = ?").bind(normalizedRole, orgId, targetUserId).run();
 
     await recordStudioAuditLog(db, {
       orgId,
@@ -1750,16 +1589,11 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
       .first<{ role: StudioOrgRole }>();
 
     if (!targetMember) {
-      return c.json(
-        { error: { code: "MEMBER_NOT_FOUND", message: "Target user is not a member of this organization" } },
-        404,
-      );
+      return c.json({ error: { code: "MEMBER_NOT_FOUND", message: "Target user is not a member of this organization" } }, 404);
     }
 
-    const clientName =
-      parsed.data.clientName ?? parsed.data.client ?? parsed.data.name ?? "claude-code";
-    const defaultScopes: StudioMcpScope[] =
-      targetMember.role === "viewer" ? ["read"] : ["read", "edit"];
+    const clientName = parsed.data.clientName ?? parsed.data.client ?? parsed.data.name ?? "claude-code";
+    const defaultScopes: StudioMcpScope[] = targetMember.role === "viewer" ? ["read"] : ["read", "edit"];
     const requestedScopes =
       parsed.data.scopes === undefined
         ? defaultScopes
@@ -1783,15 +1617,9 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
 
     // The token is bound to one project, and that project must belong to this organization.
     const projectId = parsed.data.projectId;
-    const projectRow = await db
-      .prepare("SELECT org_id FROM projects WHERE project_id = ? LIMIT 1")
-      .bind(projectId)
-      .first<{ org_id: string }>();
+    const projectRow = await db.prepare("SELECT org_id FROM projects WHERE project_id = ? LIMIT 1").bind(projectId).first<{ org_id: string }>();
     if (!projectRow) {
-      return c.json(
-        { error: { code: "PROJECT_NOT_FOUND", message: "Project not found in this organization" } },
-        404,
-      );
+      return c.json({ error: { code: "PROJECT_NOT_FOUND", message: "Project not found in this organization" } }, 404);
     }
     if (projectRow.org_id !== orgId) {
       await recordStudioAuditLog(db, {
@@ -1915,10 +1743,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
     }
 
     const nowIso = new Date().toISOString();
-    await db
-      .prepare("UPDATE studio_mcp_tokens SET revoked_at = ? WHERE id = ? AND org_id = ?")
-      .bind(nowIso, tokenId, orgId)
-      .run();
+    await db.prepare("UPDATE studio_mcp_tokens SET revoked_at = ? WHERE id = ? AND org_id = ?").bind(nowIso, tokenId, orgId).run();
 
     await recordStudioAuditLog(db, {
       orgId,
@@ -1976,10 +1801,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
         status: "forbidden",
         details: { code: "FORBIDDEN_ORG" },
       });
-      return c.json(
-        { error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } },
-        403,
-      );
+      return c.json({ error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } }, 403);
     }
 
     if (!canMutateProject(callerMember.role)) {
@@ -2004,9 +1826,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
 
     const parsed = CreateOrgProjectBodySchema.safeParse(await c.req.json().catch(() => null));
     const requestedTemplateId = parsed.success ? parsed.data.templateId?.trim() : undefined;
-    const projectSlug = parsed.success
-      ? (parsed.data.project ?? parsed.data.slug ?? requestedTemplateId)
-      : undefined;
+    const projectSlug = parsed.success ? (parsed.data.project ?? parsed.data.slug ?? requestedTemplateId) : undefined;
     if (!projectSlug || !PROJECT_SLUG_PATTERN.test(projectSlug)) {
       return c.json(
         {
@@ -2019,9 +1839,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
       );
     }
 
-    const templateInst = requestedTemplateId
-      ? instantiateStarterTemplateForProject(requestedTemplateId, projectSlug)
-      : null;
+    const templateInst = requestedTemplateId ? instantiateStarterTemplateForProject(requestedTemplateId, projectSlug) : null;
     if (requestedTemplateId && !templateInst) {
       return c.json(
         {
@@ -2095,9 +1913,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
       }
     }
 
-    const effectiveSource = templateInst
-      ? "template"
-      : (parsed.success && parsed.data.source ? parsed.data.source : "blank");
+    const effectiveSource = templateInst ? "template" : parsed.success && parsed.data.source ? parsed.data.source : "blank";
 
     await recordStudioOnboardingEvent(db, {
       orgId,
@@ -2162,10 +1978,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
       .first<{ role: StudioOrgRole }>();
 
     if (!callerMember) {
-      return c.json(
-        { error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } },
-        403,
-      );
+      return c.json({ error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } }, 403);
     }
 
     if (callerMember.role !== "owner" || resolved.caller.kind !== "session") {
@@ -2239,10 +2052,7 @@ export function createStudioAuthAndOrgRoutes(): Hono<{ Bindings: StudioApiEnv }>
       .first<{ role: StudioOrgRole }>();
 
     if (!callerMember) {
-      return c.json(
-        { error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } },
-        403,
-      );
+      return c.json({ error: { code: "FORBIDDEN_ORG", message: "Caller is not a member of this organization" } }, 403);
     }
 
     const projectFilter = c.req.query("projectId") ?? c.req.query("project") ?? undefined;
@@ -2326,18 +2136,11 @@ export async function ensureDefaultTestAuth(env: StudioApiEnv): Promise<{
         `INSERT OR IGNORE INTO projects (project_id, org_id, current_revision, semantic_hash, updated_at)
          VALUES (?, ?, 0, ?, ?)`,
       )
-      .bind(
-        DEFAULT_TEST_PROJECT_ID,
-        orgId,
-        semanticHash(createEmptyBlueprint(DEFAULT_TEST_PROJECT_ID)),
-        nowIso,
-      ),
+      .bind(DEFAULT_TEST_PROJECT_ID, orgId, semanticHash(createEmptyBlueprint(DEFAULT_TEST_PROJECT_ID)), nowIso),
   ]);
   // A row seeded before story 0.15 has no project; bind it so the seed token stays usable.
   await db
-    .prepare(
-      "UPDATE studio_mcp_tokens SET project_id = ?, scopes = 'read,edit,deploy,connect' WHERE id = ? AND project_id IS NULL",
-    )
+    .prepare("UPDATE studio_mcp_tokens SET project_id = ?, scopes = 'read,edit,deploy,connect' WHERE id = ? AND project_id IS NULL")
     .bind(DEFAULT_TEST_PROJECT_ID, tokenId)
     .run();
 

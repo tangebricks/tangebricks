@@ -1,20 +1,10 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
 import { catalog } from "@poc/assembler/catalog";
-import {
-  PLACEHOLDER_BRICK_EXECUTOR_MODULES,
-  buildExecutorsFromCatalog,
-  buildRegistryFromCatalog,
-  handleWorkflowRunRequest,
-} from "@poc/runtime";
+import { PLACEHOLDER_BRICK_EXECUTOR_MODULES, buildExecutorsFromCatalog, buildRegistryFromCatalog, handleWorkflowRunRequest } from "@poc/runtime";
 import type { WorkflowRunResponse } from "@poc/runtime";
 import type { D1Like } from "@poc/sdk";
-import {
-  TELEMETRY_SIGNATURE_HEADER,
-  listStepEventsForRun,
-  signControlPlaneRequest,
-  signTelemetryPayload,
-} from "@poc/telemetry";
+import { TELEMETRY_SIGNATURE_HEADER, listStepEventsForRun, signControlPlaneRequest, signTelemetryPayload } from "@poc/telemetry";
 import type { TelemetryWsFrame } from "@poc/telemetry";
 import { ensureStudioD1Schema } from "../src/index.ts";
 import { appWithPlaceholderExecutors as app } from "./placeholder-executors.ts";
@@ -36,10 +26,7 @@ const TEST_ENV: StudioApiEnv = {
 describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowId/runs", () => {
   beforeEach(async () => {
     await ensureStudioD1Schema(studioDb);
-    await studioDb.batch([
-      studioDb.prepare("DELETE FROM px_step_events"),
-      studioDb.prepare("DELETE FROM px_runs"),
-    ]);
+    await studioDb.batch([studioDb.prepare("DELETE FROM px_step_events"), studioDb.prepare("DELETE FROM px_runs")]);
   });
 
   test("POST /__px/runs enforces HMAC signature and executes GraphWorkflow identically to a trigger", async () => {
@@ -152,7 +139,11 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
   test("story 1.1: a signed POST /__px/runs naming a malformed workspace is 400, and nothing runs", async () => {
     const registry = buildRegistryFromCatalog(catalog);
     const executors = buildExecutorsFromCatalog(catalog, PLACEHOLDER_BRICK_EXECUTOR_MODULES);
-    for (const [workspaceId, code] of [["ws a", "BAD_WORKSPACE"], ["__app__", "BAD_WORKSPACE"], [undefined, "NO_WORKSPACE"]] as const) {
+    for (const [workspaceId, code] of [
+      ["ws a", "BAD_WORKSPACE"],
+      ["__app__", "BAD_WORKSPACE"],
+      [undefined, "NO_WORKSPACE"],
+    ] as const) {
       const rawBody = JSON.stringify({
         requestId: crypto.randomUUID(),
         runId: `run_bad_ws_${code}`,
@@ -179,75 +170,75 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
 
     // Seed branching 4-node workflow on project
     const setupRes = await postOpsWithReview(TEST_ENV, project, ownerHeaders, {
-          author: { type: "human", id: "alice" },
-          ops: [
-            { opId: "op-1", type: "enable_brick", brickId: "multi-workspace" },
-            {
-              opId: "op-2",
-              type: "enable_brick",
-              brickId: "credit-wallet",
-              config: { creditsPerUnit: 1, minOrderAmount: 1 },
-            },
-            { opId: "op-3", type: "enable_brick", brickId: "in-app-notifications" },
-            {
-              opId: "op-4",
-              type: "add_workflow",
-              workflow: {
-                id: "wf_branching",
-                name: "Branching Checkout Flow",
-                nodes: [
-                  {
-                    id: "step_trigger",
-                    type: "core.webhook",
-                    label: "Order Webhook",
-                    data: { method: "post" },
-                  },
-                  {
-                    id: "step_if",
-                    type: "core.if",
-                    label: "Is VIP Order",
-                    data: { field: "tier", operator: "eq", value: "vip" },
-                  },
-                  {
-                    id: "step_debit",
-                    type: "credit-wallet.debit",
-                    label: "Debit VIP Wallet",
-                    data: { amount: 25 },
-                  },
-                  {
-                    id: "step_notify",
-                    type: "in-app-notifications.send",
-                    label: "Standard Tier Notice",
-                    data: {},
-                  },
-                ],
-                edges: [
-                  {
-                    id: "e_trig_if",
-                    source: "step_trigger",
-                    target: "step_if",
-                    sourceHandle: "out",
-                    targetHandle: "in",
-                  },
-                  {
-                    id: "e_if_true",
-                    source: "step_if",
-                    target: "step_debit",
-                    sourceHandle: "true",
-                    targetHandle: "in",
-                  },
-                  {
-                    id: "e_if_false",
-                    source: "step_if",
-                    target: "step_notify",
-                    sourceHandle: "false",
-                    targetHandle: "in",
-                  },
-                ],
+      author: { type: "human", id: "alice" },
+      ops: [
+        { opId: "op-1", type: "enable_brick", brickId: "multi-workspace" },
+        {
+          opId: "op-2",
+          type: "enable_brick",
+          brickId: "credit-wallet",
+          config: { creditsPerUnit: 1, minOrderAmount: 1 },
+        },
+        { opId: "op-3", type: "enable_brick", brickId: "in-app-notifications" },
+        {
+          opId: "op-4",
+          type: "add_workflow",
+          workflow: {
+            id: "wf_branching",
+            name: "Branching Checkout Flow",
+            nodes: [
+              {
+                id: "step_trigger",
+                type: "core.webhook",
+                label: "Order Webhook",
+                data: { method: "post" },
               },
-            },
-          ],
-        });
+              {
+                id: "step_if",
+                type: "core.if",
+                label: "Is VIP Order",
+                data: { field: "tier", operator: "eq", value: "vip" },
+              },
+              {
+                id: "step_debit",
+                type: "credit-wallet.debit",
+                label: "Debit VIP Wallet",
+                data: { amount: 25 },
+              },
+              {
+                id: "step_notify",
+                type: "in-app-notifications.send",
+                label: "Standard Tier Notice",
+                data: {},
+              },
+            ],
+            edges: [
+              {
+                id: "e_trig_if",
+                source: "step_trigger",
+                target: "step_if",
+                sourceHandle: "out",
+                targetHandle: "in",
+              },
+              {
+                id: "e_if_true",
+                source: "step_if",
+                target: "step_debit",
+                sourceHandle: "true",
+                targetHandle: "in",
+              },
+              {
+                id: "e_if_false",
+                source: "step_if",
+                target: "step_notify",
+                sourceHandle: "false",
+                targetHandle: "in",
+              },
+            ],
+          },
+        },
+      ],
+    });
     expect(setupRes.status).toBe(200);
 
     // 1. Viewer role is rejected with HTTP 403
@@ -268,26 +259,21 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
       user: { id: string };
     };
     await studioDb
-      .prepare(
-        "INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES ('org_default', ?, 'viewer', datetime('now'))",
-      )
+      .prepare("INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES ('org_default', ?, 'viewer', datetime('now'))")
       .bind(viewerAuth.user.id)
       .run();
 
     const viewerRunRes = await app.fetch(
-      new Request(
-        `http://localhost/api/projects/${project}/workflows/wf_branching/runs`,
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${viewerAuth.token}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            triggerPayload: { tier: "vip", balance: 100 },
-          }),
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_branching/runs`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${viewerAuth.token}`,
+          "content-type": "application/json",
         },
-      ),
+        body: JSON.stringify({
+          triggerPayload: { tier: "vip", balance: 100 },
+        }),
+      }),
       TEST_ENV,
     );
     expect(viewerRunRes.status).toBe(403);
@@ -367,25 +353,22 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
 
     // 3. Trigger successful branching run (tier === "vip" -> step_debit succeeds, step_notify skipped)
     const runRes = await app.fetch(
-      new Request(
-        `http://localhost/api/projects/${project}/workflows/wf_branching/runs`,
-        {
-          method: "POST",
-          headers: {
-            ...ownerHeaders,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            // the workspace is the request's (Studio names it), not the payload's (story 1.1)
-            workspaceId: "ws_vip_1",
-            triggerPayload: {
-              tier: "vip",
-              balance: 100,
-              workspaceId: "ws_vip_1",
-            },
-          }),
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_branching/runs`, {
+        method: "POST",
+        headers: {
+          ...ownerHeaders,
+          "content-type": "application/json",
         },
-      ),
+        body: JSON.stringify({
+          // the workspace is the request's (Studio names it), not the payload's (story 1.1)
+          workspaceId: "ws_vip_1",
+          triggerPayload: {
+            tier: "vip",
+            balance: 100,
+            workspaceId: "ws_vip_1",
+          },
+        }),
+      }),
       TEST_ENV,
     );
     expect(runRes.status).toBe(200);
@@ -405,8 +388,7 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
 
     // Verify WebSocket received queued -> running -> succeeded for active nodes and queued -> skipped for untaken branch
     const run1Frames = receivedTelemetryFrames.filter((f) => f.runId === runBody.runId);
-    const statusesFor = (nodeId: string) =>
-      run1Frames.filter((f) => f.nodeId === nodeId).map((f) => f.status);
+    const statusesFor = (nodeId: string) => run1Frames.filter((f) => f.nodeId === nodeId).map((f) => f.status);
 
     expect(statusesFor("step_trigger")).toEqual(["queued", "running", "succeeded"]);
     expect(statusesFor("step_if")).toEqual(["queued", "running", "succeeded"]);
@@ -419,23 +401,20 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
 
     // 4. Trigger failing branch run (tier === "vip", balance: 5 < 25 -> step_debit transitions to failed)
     const failRunRes = await app.fetch(
-      new Request(
-        `http://localhost/api/projects/${project}/workflows/wf_branching/runs`,
-        {
-          method: "POST",
-          headers: {
-            ...ownerHeaders,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            triggerPayload: {
-              tier: "vip",
-              balance: 5,
-              workspaceId: "ws_vip_1",
-            },
-          }),
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_branching/runs`, {
+        method: "POST",
+        headers: {
+          ...ownerHeaders,
+          "content-type": "application/json",
         },
-      ),
+        body: JSON.stringify({
+          triggerPayload: {
+            tier: "vip",
+            balance: 5,
+            workspaceId: "ws_vip_1",
+          },
+        }),
+      }),
       TEST_ENV,
     );
     expect(failRunRes.status).toBe(200);
@@ -444,11 +423,8 @@ describe("POST /__px/runs and POST /api/projects/:projectId/workflows/:workflowI
     expect(failRunBody.runStatus).toBe("failed");
     expect(failRunBody.failed.step_debit).toContain("insufficient balance");
 
-    const run2Frames = receivedTelemetryFrames.filter(
-      (f) => f.runId === failRunBody.runId,
-    );
-    const run2StatusesFor = (nodeId: string) =>
-      run2Frames.filter((f) => f.nodeId === nodeId).map((f) => f.status);
+    const run2Frames = receivedTelemetryFrames.filter((f) => f.runId === failRunBody.runId);
+    const run2StatusesFor = (nodeId: string) => run2Frames.filter((f) => f.nodeId === nodeId).map((f) => f.status);
 
     expect(run2StatusesFor("step_debit")).toEqual(["queued", "running", "failed"]);
     expect(run2StatusesFor("step_notify")).toEqual(["queued", "skipped"]);

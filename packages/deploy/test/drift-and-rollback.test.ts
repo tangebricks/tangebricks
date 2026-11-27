@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  MockCloudflareControlPlane,
-  checkEnvironmentDrift,
-  computeRollbackPlan,
-  createByocProvisioner,
-  deriveEnvironmentResourceNames,
-} from "../src/index.ts";
+import { MockCloudflareControlPlane, checkEnvironmentDrift, computeRollbackPlan, createByocProvisioner, deriveEnvironmentResourceNames } from "../src/index.ts";
 import type { DeployTarget } from "../src/index.ts";
 
 describe("Story 5.5 — Environment Drift Detection & Rollback Plan (packages/deploy)", () => {
@@ -237,15 +231,8 @@ describe("Story 5.5 — Environment Drift Detection & Rollback Plan (packages/de
     controlPlane.mutateDatabaseOutOfBand(target.accountId, names.databaseName, {
       appliedMigrations: [],
     });
-    controlPlane.deleteQueueOutOfBand(
-      target.accountId,
-      "px-drift-rollback-app-preview-events",
-    );
-    controlPlane.mutateCronTriggersOutOfBand(
-      target.accountId,
-      names.scriptName,
-      ["0 0 * * *"],
-    );
+    controlPlane.deleteQueueOutOfBand(target.accountId, "px-drift-rollback-app-preview-events");
+    controlPlane.mutateCronTriggersOutOfBand(target.accountId, names.scriptName, ["0 0 * * *"]);
 
     const drift = await checkEnvironmentDrift(
       target,
@@ -271,12 +258,7 @@ describe("Story 5.5 — Environment Drift Detection & Rollback Plan (packages/de
 
     expect(drift.inSync).toBe(false);
     expect(drift.blueprintDrift.hasCodeDrift).toBe(false);
-    expect(drift.outOfBandDrift.map((d) => d.resource)).toEqual([
-      "worker",
-      "d1",
-      "queue",
-      "cron",
-    ]);
+    expect(drift.outOfBandDrift.map((d) => d.resource)).toEqual(["worker", "d1", "queue", "cron"]);
     expect(drift.outOfBandDrift[0]?.actual).toBe("tampered_worker_hash_999");
   });
 
@@ -335,8 +317,7 @@ describe("Story 5.5 — Environment Drift Detection & Rollback Plan (packages/de
         appliedMigrations: ["0001_orders.sql", "0002_invoices.sql"],
         appliedMigrationSql: {
           "0001_orders.sql": "CREATE TABLE orders (id TEXT PRIMARY KEY);",
-          "0002_invoices.sql":
-            "CREATE TABLE invoices (id TEXT PRIMARY KEY, total REAL);",
+          "0002_invoices.sql": "CREATE TABLE invoices (id TEXT PRIMARY KEY, total REAL);",
         },
         entities: [
           {
@@ -377,19 +358,8 @@ describe("Story 5.5 — Environment Drift Detection & Rollback Plan (packages/de
     );
 
     expect(destructivePlan.action).toBe("update");
-    expect(destructivePlan.d1.destructiveWarnings.length).toBeGreaterThanOrEqual(
-      2,
-    );
-    expect(
-      destructivePlan.d1.destructiveWarnings.some(
-        (w) => w.affectedTable === "invoices",
-      ),
-    ).toBe(true);
-    expect(
-      destructivePlan.d1.destructiveWarnings.some(
-        (w) =>
-          w.affectedTable === "orders" && w.affectedColumn === "discount_code",
-      ),
-    ).toBe(true);
+    expect(destructivePlan.d1.destructiveWarnings.length).toBeGreaterThanOrEqual(2);
+    expect(destructivePlan.d1.destructiveWarnings.some((w) => w.affectedTable === "invoices")).toBe(true);
+    expect(destructivePlan.d1.destructiveWarnings.some((w) => w.affectedTable === "orders" && w.affectedColumn === "discount_code")).toBe(true);
   });
 });

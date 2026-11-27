@@ -24,10 +24,7 @@ const CANARY_VAULT_SECRET = "sk_live_canary_vault_test_step_991122";
 describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test-step", () => {
   beforeEach(async () => {
     await ensureStudioD1Schema(studioDb);
-    await studioDb.batch([
-      studioDb.prepare("DELETE FROM px_step_events"),
-      studioDb.prepare("DELETE FROM px_runs"),
-    ]);
+    await studioDb.batch([studioDb.prepare("DELETE FROM px_step_events"), studioDb.prepare("DELETE FROM px_runs")]);
   });
 
   test("executes single workflow node against preview, enforces role >= editor, rejects production env with 403, and scrubs secrets", async () => {
@@ -36,66 +33,66 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
 
     // Seed project with credit-wallet brick and a workflow containing credit-wallet.debit & core.http_request
     const setupRes = await postOpsWithReview(TEST_ENV, project, ownerHeaders, {
-          author: { type: "human", id: "alice" },
-          ops: [
-            {
-              opId: "op-1",
-              type: "enable_brick",
-              brickId: "multi-workspace",
-            },
-            {
-              opId: "op-2",
-              type: "enable_brick",
-              brickId: "credit-wallet",
-              config: { creditsPerUnit: 1, minOrderAmount: 1 },
-            },
-            {
-              opId: "op-3",
-              type: "add_workflow",
-              workflow: {
-                id: "wf_checkout",
-                name: "Checkout Flow",
-                trigger: "core.webhook",
-                nodes: [
-                  {
-                    id: "step_webhook",
-                    type: "core.webhook",
-                    label: "Incoming Order",
-                    data: { path: "/orders", method: "post" },
-                  },
-                  {
-                    id: "step_debit",
-                    type: "credit-wallet.debit",
-                    label: "Debit Wallet",
-                    data: { amount: 25 },
-                  },
-                  {
-                    id: "step_http",
-                    type: "core.http_request",
-                    label: "Call Partner API",
-                    data: { method: "post", url: "http://fixture.local/partner/hook", timeoutMs: 2000 },
-                  },
-                ],
-                edges: [
-                  {
-                    id: "e1",
-                    source: "step_webhook",
-                    sourceHandle: "out",
-                    target: "step_debit",
-                    targetHandle: "in",
-                  },
-                  {
-                    id: "e2",
-                    source: "step_debit",
-                    sourceHandle: "out",
-                    target: "step_http",
-                    targetHandle: "in",
-                  },
-                ],
+      author: { type: "human", id: "alice" },
+      ops: [
+        {
+          opId: "op-1",
+          type: "enable_brick",
+          brickId: "multi-workspace",
+        },
+        {
+          opId: "op-2",
+          type: "enable_brick",
+          brickId: "credit-wallet",
+          config: { creditsPerUnit: 1, minOrderAmount: 1 },
+        },
+        {
+          opId: "op-3",
+          type: "add_workflow",
+          workflow: {
+            id: "wf_checkout",
+            name: "Checkout Flow",
+            trigger: "core.webhook",
+            nodes: [
+              {
+                id: "step_webhook",
+                type: "core.webhook",
+                label: "Incoming Order",
+                data: { path: "/orders", method: "post" },
               },
-            },
-          ],
-        });
+              {
+                id: "step_debit",
+                type: "credit-wallet.debit",
+                label: "Debit Wallet",
+                data: { amount: 25 },
+              },
+              {
+                id: "step_http",
+                type: "core.http_request",
+                label: "Call Partner API",
+                data: { method: "post", url: "http://fixture.local/partner/hook", timeoutMs: 2000 },
+              },
+            ],
+            edges: [
+              {
+                id: "e1",
+                source: "step_webhook",
+                sourceHandle: "out",
+                target: "step_debit",
+                targetHandle: "in",
+              },
+              {
+                id: "e2",
+                source: "step_debit",
+                sourceHandle: "out",
+                target: "step_http",
+                targetHandle: "in",
+              },
+            ],
+          },
+        },
+      ],
+    });
     expect(setupRes.status).toBe(200);
 
     // Create a human Better Auth session so we can seal a canary secret in the project vault
@@ -116,9 +113,7 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
       user: { id: string };
     };
     await studioDb
-      .prepare(
-        "INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES ('org_default', ?, 'owner', datetime('now'))",
-      )
+      .prepare("INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES ('org_default', ?, 'owner', datetime('now'))")
       .bind(signUpBody.user.id)
       .run();
 
@@ -149,20 +144,17 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
 
     // 1. Rejects env === "production" with HTTP 403
     const prodRes = await app.fetch(
-      new Request(
-        `http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`,
-        {
-          method: "POST",
-          headers: {
-            ...ownerHeaders,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            env: "production",
-            input: { balance: 100, workspaceId: "ws_1" },
-          }),
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`, {
+        method: "POST",
+        headers: {
+          ...ownerHeaders,
+          "content-type": "application/json",
         },
-      ),
+        body: JSON.stringify({
+          env: "production",
+          input: { balance: 100, workspaceId: "ws_1" },
+        }),
+      }),
       TEST_ENV,
     );
     expect(prodRes.status).toBe(403);
@@ -185,34 +177,27 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
       user: { id: string };
     };
     await studioDb
-      .prepare(
-        "INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES ('org_default', ?, 'viewer', datetime('now'))",
-      )
+      .prepare("INSERT OR REPLACE INTO studio_org_members (org_id, user_id, role, created_at) VALUES ('org_default', ?, 'viewer', datetime('now'))")
       .bind(viewerSignUpBody.user.id)
       .run();
 
     const viewerRes = await app.fetch(
-      new Request(
-        `http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`,
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${viewerSignUpBody.token}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            input: { balance: 100, workspaceId: "ws_1" },
-          }),
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${viewerSignUpBody.token}`,
+          "content-type": "application/json",
         },
-      ),
+        body: JSON.stringify({
+          input: { balance: 100, workspaceId: "ws_1" },
+        }),
+      }),
       TEST_ENV,
     );
     expect(viewerRes.status).toBe(403);
 
     // Story 1.17: a workspace outside the project's preview data is refused 403 before anything is signed or run.
-    const eventsBefore = Number(
-      (await studioDb.prepare("SELECT COUNT(*) AS c FROM px_step_events").first<{ c: number }>())?.c ?? 0,
-    );
+    const eventsBefore = Number((await studioDb.prepare("SELECT COUNT(*) AS c FROM px_step_events").first<{ c: number }>())?.c ?? 0);
     const foreignRes = await app.fetch(
       new Request(`http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`, {
         method: "POST",
@@ -229,21 +214,18 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
     // 1.17: the named workspace is one of the project's own preview workspaces (an earlier run of the project names it).
     await seedPreviewWorkspace(studioDb, project, "ws_preview_1");
     const previewRes = await app.fetch(
-      new Request(
-        `http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`,
-        {
-          method: "POST",
-          headers: {
-            ...ownerHeaders,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            // the workspace is the request's (Studio names it), not the input's (story 1.1)
-            workspaceId: "ws_preview_1",
-            input: { balance: 120, workspaceId: "ws_preview_1" },
-          }),
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`, {
+        method: "POST",
+        headers: {
+          ...ownerHeaders,
+          "content-type": "application/json",
         },
-      ),
+        body: JSON.stringify({
+          // the workspace is the request's (Studio names it), not the input's (story 1.1)
+          workspaceId: "ws_preview_1",
+          input: { balance: 120, workspaceId: "ws_preview_1" },
+        }),
+      }),
       TEST_ENV,
     );
     expect(previewRes.status).toBe(200);
@@ -285,9 +267,7 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
     let secretLeakCheckRes: Response;
     try {
       secretLeakCheckRes = await app.fetch(
-      new Request(
-        `http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_http/test-step`,
-        {
+        new Request(`http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_http/test-step`, {
           method: "POST",
           headers: {
             ...ownerHeaders,
@@ -302,10 +282,9 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
               },
             },
           }),
-        },
-      ),
-      TEST_ENV,
-    );
+        }),
+        TEST_ENV,
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -320,14 +299,11 @@ describe("POST /api/projects/:projectId/workflows/:workflowId/nodes/:nodeId/test
 
     // Story 0.9: with PX_ENVIRONMENT=production the injected placeholder executors are refused (503 NOT_CONFIGURED).
     const prodEnvRes = await app.fetch(
-      new Request(
-        `http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`,
-        {
-          method: "POST",
-          headers: { ...ownerHeaders, "content-type": "application/json" },
-          body: JSON.stringify({ input: { balance: 120, workspaceId: "ws_preview_1" } }),
-        },
-      ),
+      new Request(`http://localhost/api/projects/${project}/workflows/wf_checkout/nodes/step_debit/test-step`, {
+        method: "POST",
+        headers: { ...ownerHeaders, "content-type": "application/json" },
+        body: JSON.stringify({ input: { balance: 120, workspaceId: "ws_preview_1" } }),
+      }),
       { ...TEST_ENV, PX_ENVIRONMENT: "production" },
     );
     expect(prodEnvRes.status).toBe(503);

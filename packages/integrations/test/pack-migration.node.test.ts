@@ -24,9 +24,7 @@ describe("UC2.7 — Pack migration, mandatory fidelity, and drift check", () => 
       const discoveryPath = join(appDir, "discovery.json");
       const openApiPath = join(appDir, "openapi.json");
       const specPath = existsSync(discoveryPath) ? discoveryPath : openApiPath;
-      const format: ImportSpecFormat = existsSync(discoveryPath)
-        ? "google-discovery"
-        : (curation.format ?? "openapi3");
+      const format: ImportSpecFormat = existsSync(discoveryPath) ? "google-discovery" : (curation.format ?? "openapi3");
       const specText = readFileSync(specPath, "utf8");
 
       // Run strict import
@@ -45,15 +43,11 @@ describe("UC2.7 — Pack migration, mandatory fidelity, and drift check", () => 
       expect(result.manifest.fidelity?.level).not.toBe("exact");
 
       if (app === "slack") {
-        const upconvertedEntry = result.report.entries.find(
-          (e) => e.code === "SWAGGER2_UPCONVERTED" && e.status === "normalized",
-        );
+        const upconvertedEntry = result.report.entries.find((e) => e.code === "SWAGGER2_UPCONVERTED" && e.status === "normalized");
         expect(upconvertedEntry).toBeDefined();
       } else {
         // Document-level SPEC_HAND_TRIMMED entry must be present in report
-        const handTrimmedEntry = result.report.entries.find(
-          (e) => e.code === "SPEC_HAND_TRIMMED" && e.status === "curated",
-        );
+        const handTrimmedEntry = result.report.entries.find((e) => e.code === "SPEC_HAND_TRIMMED" && e.status === "curated");
         expect(handTrimmedEntry).toBeDefined();
       }
 

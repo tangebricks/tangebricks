@@ -27,16 +27,11 @@ describe("conformance kit against leaky fixture brick", () => {
         db,
         migrations,
         seed: async (d, { workspaceA, workspaceB }) => {
-          await d.prepare(
-            "INSERT INTO leaky_items (id, workspace_id, name, val) VALUES (?, ?, ?, ?)"
-          )
+          await d
+            .prepare("INSERT INTO leaky_items (id, workspace_id, name, val) VALUES (?, ?, ?, ?)")
             .bind("item_a_secret", workspaceA, "Confidential Item A", 100)
             .run();
-          await d.prepare(
-            "INSERT INTO leaky_items (id, workspace_id, name, val) VALUES (?, ?, ?, ?)"
-          )
-            .bind("item_b_public", workspaceB, "Item B", 200)
-            .run();
+          await d.prepare("INSERT INTO leaky_items (id, workspace_id, name, val) VALUES (?, ?, ?, ?)").bind("item_b_public", workspaceB, "Item B", 200).run();
         },
         testRequests: [
           {
@@ -46,7 +41,7 @@ describe("conformance kit against leaky fixture brick", () => {
             targetWorkspaceId: "ws_conf_alpha",
           },
         ],
-      })
+      }),
     ).rejects.toThrow(/CONF_TENANT_ISOLATION/);
   });
 
@@ -66,7 +61,7 @@ describe("conformance kit against leaky fixture brick", () => {
             headers: { "Idempotency-Key": "idemp_test_key_123" },
           },
         ],
-      })
+      }),
     ).rejects.toThrow(/CONF_IDEMPOTENT_WRITE/);
   });
 
@@ -85,7 +80,7 @@ describe("conformance kit against leaky fixture brick", () => {
             body: {},
           },
         ],
-      })
+      }),
     ).rejects.toThrow(/CONF_ERROR_CONTRACT/);
   });
 
@@ -96,7 +91,7 @@ describe("conformance kit against leaky fixture brick", () => {
         manifest: { ...manifest, globalTables: [] } as any,
         db,
         migrations: { "migrations/0001_bad.sql": badMigration },
-      })
+      }),
     ).rejects.toThrow(/CONF_MIGRATIONS_UP/);
   });
 
@@ -114,7 +109,7 @@ describe("conformance kit against leaky fixture brick", () => {
             path: "/leaky/secret-leak",
           },
         ],
-      })
+      }),
     ).rejects.toThrow(/CONF_SECRET_SCOPE/);
   });
 
@@ -139,18 +134,10 @@ describe("conformance kit against leaky fixture brick", () => {
       migrations,
     };
 
-    await expect(checkTenantIsolation(opts)).rejects.toThrow(
-      "[CONF_TENANT_ISOLATION] nothing to test: provide explicit routes/seed",
-    );
-    await expect(checkIdempotentWrite(opts)).rejects.toThrow(
-      "[CONF_IDEMPOTENT_WRITE] nothing to test: provide explicit routes/seed",
-    );
-    await expect(checkErrorContract(opts)).rejects.toThrow(
-      "[CONF_ERROR_CONTRACT] nothing to test: provide explicit routes/seed",
-    );
-    await expect(checkSecretScope(opts)).rejects.toThrow(
-      "[CONF_SECRET_SCOPE] nothing to test: provide explicit routes/seed",
-    );
+    await expect(checkTenantIsolation(opts)).rejects.toThrow("[CONF_TENANT_ISOLATION] nothing to test: provide explicit routes/seed");
+    await expect(checkIdempotentWrite(opts)).rejects.toThrow("[CONF_IDEMPOTENT_WRITE] nothing to test: provide explicit routes/seed");
+    await expect(checkErrorContract(opts)).rejects.toThrow("[CONF_ERROR_CONTRACT] nothing to test: provide explicit routes/seed");
+    await expect(checkSecretScope(opts)).rejects.toThrow("[CONF_SECRET_SCOPE] nothing to test: provide explicit routes/seed");
   });
 
   it("fails CONF_IDEMPOTENT_WRITE when brick has no write routes", async () => {

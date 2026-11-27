@@ -1,10 +1,6 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
-import {
-  app as studioApp,
-  ensureDefaultTestAuth,
-  ensureStudioD1Schema,
-} from "../src/index.ts";
+import { app as studioApp, ensureDefaultTestAuth, ensureStudioD1Schema } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { activateTestSandbox } from "./sandbox-data-store.ts";
 
@@ -34,10 +30,7 @@ async function ensureHumanTestOwner(): Promise<void> {
   activeOrgId = `org_personal_${body.user.id}`;
 }
 
-async function studioReq(
-  path: string,
-  init: RequestInit = {},
-): Promise<Response> {
+async function studioReq(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   if (!headers.has("authorization")) {
     headers.set("authorization", `Bearer ${activeSessionToken}`);
@@ -78,9 +71,7 @@ describe("Story 8.2 — Immutable Audit Log & All 8 Privileged Action Categories
             type: "add_entity",
             entity: {
               name: "audit_items",
-              fields: [
-                { name: "title", type: "text", required: true },
-              ],
+              fields: [{ name: "title", type: "text", required: true }],
             },
           },
         ],
@@ -89,111 +80,89 @@ describe("Story 8.2 — Immutable Audit Log & All 8 Privileged Action Categories
     expect(opsRes.status).toBe(200);
 
     // Seed core-auth secrets so preview deploy and production promotion pass readiness checks
-    for (const secretName of [
-      "BETTER_AUTH_SECRET",
-      "GITHUB_CLIENT_ID",
-      "GITHUB_CLIENT_SECRET",
-    ]) {
-      const authSecretRes = await studioReq(
-        `/api/projects/${project}/secrets`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            ref: `sec_${secretName.toLowerCase()}`,
-            label: secretName,
-            kind: "brick_secret",
-            appOrBrick: "core-auth",
-            value: `${secretName}-for-production-promote-0123456789`,
-          }),
-        },
-      );
+    for (const secretName of ["BETTER_AUTH_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) {
+      const authSecretRes = await studioReq(`/api/projects/${project}/secrets`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ref: `sec_${secretName.toLowerCase()}`,
+          label: secretName,
+          kind: "brick_secret",
+          appOrBrick: "core-auth",
+          value: `${secretName}-for-production-promote-0123456789`,
+        }),
+      });
       expect(authSecretRes.status).toBe(200);
     }
 
     // Category 2: Proposal accept & reject (proposal.accept, proposal.reject)
-    const propAcceptCreate = await studioReq(
-      `/api/projects/${project}/proposals`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          summary: "Agent proposal to accept",
-          author: { type: "agent", id: "claude-code", client: "claude-code" },
-          ops: [
-            {
-              opId: "prop-op-1",
-              type: "configure_brick",
-              brickId: "multi-workspace",
-              config: {},
-            },
-          ],
-        }),
-      },
-    );
+    const propAcceptCreate = await studioReq(`/api/projects/${project}/proposals`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        summary: "Agent proposal to accept",
+        author: { type: "agent", id: "claude-code", client: "claude-code" },
+        ops: [
+          {
+            opId: "prop-op-1",
+            type: "configure_brick",
+            brickId: "multi-workspace",
+            config: {},
+          },
+        ],
+      }),
+    });
     expect(propAcceptCreate.status).toBe(200);
     const { proposalId: acceptPropId } = (await propAcceptCreate.json()) as {
       proposalId: string;
     };
 
-    const acceptRes = await studioReq(
-      `/api/projects/${project}/proposals/${acceptPropId}/accept`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      },
-    );
+    const acceptRes = await studioReq(`/api/projects/${project}/proposals/${acceptPropId}/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
     expect(acceptRes.status).toBe(200);
 
-    const propRejectCreate = await studioReq(
-      `/api/projects/${project}/proposals`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          summary: "Agent proposal to reject",
-          author: { type: "agent", id: "cursor", client: "cursor" },
-          ops: [
-            {
-              opId: "prop-op-2",
-              type: "configure_brick",
-              brickId: "dynamic-entities",
-              config: {},
-            },
-          ],
-        }),
-      },
-    );
+    const propRejectCreate = await studioReq(`/api/projects/${project}/proposals`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        summary: "Agent proposal to reject",
+        author: { type: "agent", id: "cursor", client: "cursor" },
+        ops: [
+          {
+            opId: "prop-op-2",
+            type: "configure_brick",
+            brickId: "dynamic-entities",
+            config: {},
+          },
+        ],
+      }),
+    });
     expect(propRejectCreate.status).toBe(200);
     const { proposalId: rejectPropId } = (await propRejectCreate.json()) as {
       proposalId: string;
     };
 
-    const rejectRes = await studioReq(
-      `/api/projects/${project}/proposals/${rejectPropId}/reject`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reason: "Not needed" }),
-      },
-    );
+    const rejectRes = await studioReq(`/api/projects/${project}/proposals/${rejectPropId}/reject`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Not needed" }),
+    });
     expect(rejectRes.status).toBe(200);
 
     // Category 4 (part 1): Cloudflare token create (cloudflare_token.create)
     const cfAccountId = "0123456789abcdef0123456789abcdef";
-    const cfTokenRes = await studioReq(
-      `/api/orgs/${orgId}/cloudflare-tokens`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          apiToken: "cf_valid_token_audit_log_test_1234567890",
-          accountId: cfAccountId,
-          accountName: "Audit Test Cloudflare Account",
-        }),
-      },
-    );
+    const cfTokenRes = await studioReq(`/api/orgs/${orgId}/cloudflare-tokens`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        apiToken: "cf_valid_token_audit_log_test_1234567890",
+        accountId: cfAccountId,
+        accountName: "Audit Test Cloudflare Account",
+      }),
+    });
     expect(cfTokenRes.status).toBe(201);
     const cfTokenData = (await cfTokenRes.json()) as {
       token: { tokenRef: string };
@@ -206,14 +175,11 @@ describe("Story 8.2 — Immutable Audit Log & All 8 Privileged Action Categories
     });
     expect(buildRes.status).toBe(200);
 
-    const deployRes1 = await studioReq(
-      `/api/projects/${project}/environments/preview/deploy`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      },
-    );
+    const deployRes1 = await studioReq(`/api/projects/${project}/environments/preview/deploy`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
     expect(deployRes1.status).toBe(200);
     const { deployId: firstDeployId } = (await deployRes1.json()) as {
       deployId: string;
@@ -240,84 +206,63 @@ describe("Story 8.2 — Immutable Audit Log & All 8 Privileged Action Categories
         ],
       }),
     });
-    const deployRes2 = await studioReq(
-      `/api/projects/${project}/environments/preview/deploy`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      },
-    );
+    const deployRes2 = await studioReq(`/api/projects/${project}/environments/preview/deploy`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
     expect(deployRes2.status).toBe(200);
 
-    const promoteRes = await studioReq(
-      `/api/projects/${project}/environments/production/promote`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      },
-    );
+    const promoteRes = await studioReq(`/api/projects/${project}/environments/production/promote`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
     expect(promoteRes.status).toBe(200);
 
-    const rollbackRes = await studioReq(
-      `/api/projects/${project}/environments/preview/rollback`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          targetDeploymentId: firstDeployId,
-          confirmDestructive: true,
-        }),
-      },
-    );
+    const rollbackRes = await studioReq(`/api/projects/${project}/environments/preview/rollback`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        targetDeploymentId: firstDeployId,
+        confirmDestructive: true,
+      }),
+    });
     expect(rollbackRes.status).toBe(200);
 
     // Category 4 (part 3): Cloudflare token revoke (cloudflare_token.revoke)
-    const cfRevokeRes = await studioReq(
-      `/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`,
-      {
-        method: "DELETE",
-      },
-    );
+    const cfRevokeRes = await studioReq(`/api/orgs/${orgId}/cloudflare-tokens/${tokenRef}`, {
+      method: "DELETE",
+    });
     expect(cfRevokeRes.status).toBe(200);
 
     // Category 5: Connection create, reauthorize, delete
-    const connCreateRes = await studioReq(
-      `/api/projects/${project}/connections`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ref: "conn_slack_default",
-          app: "slack",
-          authType: "apiKey",
-          value: "xox" + "b-audit-log-token-123456",
-        }),
-      },
-    );
+    const connCreateRes = await studioReq(`/api/projects/${project}/connections`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ref: "conn_slack_default",
+        app: "slack",
+        authType: "apiKey",
+        value: "xox" + "b-audit-log-token-123456",
+      }),
+    });
     expect(connCreateRes.status).toBe(200);
 
-    const connReauthRes = await studioReq(
-      `/api/projects/${project}/connections/conn_slack_default/reauthorize`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          app: "slack",
-          authType: "apiKey",
-          value: "xox" + "b-audit-log-token-rotated-789012",
-        }),
-      },
-    );
+    const connReauthRes = await studioReq(`/api/projects/${project}/connections/conn_slack_default/reauthorize`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        app: "slack",
+        authType: "apiKey",
+        value: "xox" + "b-audit-log-token-rotated-789012",
+      }),
+    });
     expect(connReauthRes.status).toBe(200);
 
-    const connDeleteRes = await studioReq(
-      `/api/projects/${project}/connections/conn_slack_default?env=preview`,
-      {
-        method: "DELETE",
-      },
-    );
+    const connDeleteRes = await studioReq(`/api/projects/${project}/connections/conn_slack_default?env=preview`, {
+      method: "DELETE",
+    });
     expect(connDeleteRes.status).toBe(200);
 
     // Category 6: MCP token issue & revoke (org.mcp_token.create, org.mcp_token.revoke)
@@ -333,79 +278,60 @@ describe("Story 8.2 — Immutable Audit Log & All 8 Privileged Action Categories
     expect(mcpCreateRes.status).toBe(201);
     const mcpCreated = (await mcpCreateRes.json()) as { id: string };
 
-    const mcpRevokeRes = await studioReq(
-      `/api/orgs/${orgId}/mcp-tokens/${mcpCreated.id}`,
-      {
-        method: "DELETE",
-      },
-    );
+    const mcpRevokeRes = await studioReq(`/api/orgs/${orgId}/mcp-tokens/${mcpCreated.id}`, {
+      method: "DELETE",
+    });
     expect(mcpRevokeRes.status).toBe(200);
 
     // Category 7: Data Browser row insert, update, delete
     // Story 17: the Data Browser writes to the project's own data store (the active sandbox D1), never STUDIO_DB.
     // Activate a sandbox and create the ent_audit_items table there so Data Browser mutations succeed.
     const sandbox = await activateTestSandbox(studioEnv.STUDIO_DB, { project, orgId });
-    await sandbox.rawD1
-      .prepare(
-        `CREATE TABLE IF NOT EXISTS ent_audit_items (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, title TEXT NOT NULL);`,
-      )
-      .run();
+    await sandbox.rawD1.prepare(`CREATE TABLE IF NOT EXISTS ent_audit_items (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, title TEXT NOT NULL);`).run();
 
-    const rowInsertRes = await studioReq(
-      `/api/projects/${project}/environments/preview/data/tables/audit_items/rows`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: "ws_default",
-          confirmWrite: true,
-          row: { id: `item_${suffix}`, title: "Initial Title" },
-        }),
-      },
-    );
+    const rowInsertRes = await studioReq(`/api/projects/${project}/environments/preview/data/tables/audit_items/rows`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: "ws_default",
+        confirmWrite: true,
+        row: { id: `item_${suffix}`, title: "Initial Title" },
+      }),
+    });
     expect(rowInsertRes.status).toBe(201);
 
-    const rowUpdateRes = await studioReq(
-      `/api/projects/${project}/environments/preview/data/tables/audit_items/rows/item_${suffix}`,
-      {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: "ws_default",
-          confirmWrite: true,
-          patch: { title: "Updated Title" },
-        }),
-      },
-    );
+    const rowUpdateRes = await studioReq(`/api/projects/${project}/environments/preview/data/tables/audit_items/rows/item_${suffix}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: "ws_default",
+        confirmWrite: true,
+        patch: { title: "Updated Title" },
+      }),
+    });
     expect(rowUpdateRes.status).toBe(200);
 
-    const rowDeleteRes = await studioReq(
-      `/api/projects/${project}/environments/preview/data/tables/audit_items/rows/item_${suffix}`,
-      {
-        method: "DELETE",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: "ws_default",
-          confirmWrite: true,
-        }),
-      },
-    );
+    const rowDeleteRes = await studioReq(`/api/projects/${project}/environments/preview/data/tables/audit_items/rows/item_${suffix}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: "ws_default",
+        confirmWrite: true,
+      }),
+    });
     expect(rowDeleteRes.status).toBe(200);
 
     // Category 8: Retention & privacy settings change (project.retention_settings.update)
-    const retentionUpdateRes = await studioReq(
-      `/api/projects/${project}/settings/retention`,
-      {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          runRetentionDays: 30,
-          telemetryRetentionDays: 14,
-          captureStepIoInProd: false,
-          additionalRedactKeys: ["tax_id", "customer_pin"],
-        }),
-      },
-    );
+    const retentionUpdateRes = await studioReq(`/api/projects/${project}/settings/retention`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        runRetentionDays: 30,
+        telemetryRetentionDays: 14,
+        captureStepIoInProd: false,
+        additionalRedactKeys: ["tax_id", "customer_pin"],
+      }),
+    });
     expect(retentionUpdateRes.status).toBe(200);
 
     // Verify studio_audit_logs rows in D1 across all 8 categories
@@ -462,10 +388,7 @@ describe("Story 8.2 — Immutable Audit Log & All 8 Privileged Action Categories
     ];
 
     for (const expectedAction of expectedActions) {
-      expect(
-        actions.has(expectedAction),
-        `Expected studio_audit_logs to contain action "${expectedAction}". Present: ${[...actions].join(", ")}`,
-      ).toBe(true);
+      expect(actions.has(expectedAction), `Expected studio_audit_logs to contain action "${expectedAction}". Present: ${[...actions].join(", ")}`).toBe(true);
     }
 
     // Verify required columns on every row
@@ -485,18 +408,14 @@ describe("Story 8.2 — Immutable Audit Log & All 8 Privileged Action Categories
       auditLogs: Array<{ action: string; projectId: string }>;
     };
     expect(projAuditBody.auditLogs.length).toBeGreaterThanOrEqual(10);
-    expect(
-      projAuditBody.auditLogs.every((entry) => entry.projectId === project),
-    ).toBe(true);
+    expect(projAuditBody.auditLogs.every((entry) => entry.projectId === project)).toBe(true);
 
     const orgAuditRes = await studioReq(`/api/orgs/${orgId}/audit-logs`);
     expect(orgAuditRes.status).toBe(200);
     const orgAuditBody = (await orgAuditRes.json()) as {
       auditLogs: Array<{ action: string; orgId: string }>;
     };
-    expect(orgAuditBody.auditLogs.length).toBeGreaterThanOrEqual(
-      expectedActions.length,
-    );
+    expect(orgAuditBody.auditLogs.length).toBeGreaterThanOrEqual(expectedActions.length);
   });
 
   test("studio_audit_logs is strictly append-only: SQLite BEFORE UPDATE and BEFORE DELETE triggers reject mutations with AUDIT_LOG_IMMUTABLE", async () => {
@@ -510,31 +429,19 @@ describe("Story 8.2 — Immutable Audit Log & All 8 Privileged Action Categories
     });
     expect(res.status).toBe(200);
 
-    const latestRow = await studioEnv.STUDIO_DB.prepare(
-      `SELECT id, action FROM studio_audit_logs WHERE project_id = ?1 LIMIT 1`,
-    )
+    const latestRow = await studioEnv.STUDIO_DB.prepare(`SELECT id, action FROM studio_audit_logs WHERE project_id = ?1 LIMIT 1`)
       .bind(project)
       .first<{ id: string; action: string }>();
     expect(latestRow).toBeTruthy();
 
     await expect(
-      studioEnv.STUDIO_DB.prepare(
-        `UPDATE studio_audit_logs SET action = 'tampered.action' WHERE id = ?1`,
-      )
-        .bind(latestRow!.id)
-        .run(),
+      studioEnv.STUDIO_DB.prepare(`UPDATE studio_audit_logs SET action = 'tampered.action' WHERE id = ?1`).bind(latestRow!.id).run(),
     ).rejects.toThrow(/AUDIT_LOG_IMMUTABLE/);
 
-    await expect(
-      studioEnv.STUDIO_DB.prepare(`DELETE FROM studio_audit_logs WHERE id = ?1`)
-        .bind(latestRow!.id)
-        .run(),
-    ).rejects.toThrow(/AUDIT_LOG_IMMUTABLE/);
+    await expect(studioEnv.STUDIO_DB.prepare(`DELETE FROM studio_audit_logs WHERE id = ?1`).bind(latestRow!.id).run()).rejects.toThrow(/AUDIT_LOG_IMMUTABLE/);
 
     // Verify the row remains untouched
-    const verifyRow = await studioEnv.STUDIO_DB.prepare(
-      `SELECT id, action FROM studio_audit_logs WHERE id = ?1`,
-    )
+    const verifyRow = await studioEnv.STUDIO_DB.prepare(`SELECT id, action FROM studio_audit_logs WHERE id = ?1`)
       .bind(latestRow!.id)
       .first<{ id: string; action: string }>();
     expect(verifyRow?.action).toBe(latestRow!.action);

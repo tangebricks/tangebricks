@@ -1,11 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { catalog } from "@poc/assembler/catalog";
-import {
-  applyOps,
-  createEmptyBlueprint,
-  evaluateProposalSelection,
-  summarizeProposalOps,
-} from "../src/index.ts";
+import { applyOps, createEmptyBlueprint, evaluateProposalSelection, summarizeProposalOps } from "../src/index.ts";
 import type { Op } from "../src/index.ts";
 
 describe("Story 7.2 — Draft Proposal Evaluation & Per-Op Selection (AC 1, AC 2)", () => {
@@ -137,11 +132,7 @@ describe("Story 7.2 — Draft Proposal Evaluation & Per-Op Selection (AC 1, AC 2
     expect(evaluation.ok).toBe(true);
     if (!evaluation.ok) return;
     expect(evaluation.isPartial).toBe(true);
-    expect(evaluation.selectedOpIds).toEqual([
-      "prop-add-node",
-      "prop-update-node",
-      "prop-add-edge",
-    ]);
+    expect(evaluation.selectedOpIds).toEqual(["prop-add-node", "prop-update-node", "prop-add-edge"]);
 
     const wf = evaluation.state.workflows.find((w) => w.id === "wf-billing")!;
     expect(wf.nodes.map((n) => n.id)).toContain("n_legacy");
@@ -152,12 +143,7 @@ describe("Story 7.2 — Draft Proposal Evaluation & Per-Op Selection (AC 1, AC 2
   test("evaluateProposalSelection fails cleanly before commit when deselecting add_node leaves a dependent connect_edges op invalid", () => {
     const baseState = buildBaseState();
     // Deselect `prop-add-node` while keeping `prop-add-edge` (which connects `n_transform` -> `n_added`)
-    const evaluation = evaluateProposalSelection(
-      baseState,
-      proposalOps,
-      ["prop-update-node", "prop-remove-node", "prop-add-edge"],
-      catalog,
-    );
+    const evaluation = evaluateProposalSelection(baseState, proposalOps, ["prop-update-node", "prop-remove-node", "prop-add-edge"], catalog);
     expect(evaluation.ok).toBe(false);
     if (evaluation.ok) return;
     expect(evaluation.status).toBe(422);
@@ -170,12 +156,7 @@ describe("Story 7.2 — Draft Proposal Evaluation & Per-Op Selection (AC 1, AC 2
   test("evaluateProposalSelection rejects cross-op readiness regressions when a required edge is deselected leaving an orphan node", () => {
     const baseState = buildBaseState();
     // Select `prop-add-node` without `prop-add-edge`: `n_added` has no connected edges -> orphan_node readiness error
-    const evaluation = evaluateProposalSelection(
-      baseState,
-      proposalOps,
-      ["prop-add-node"],
-      catalog,
-    );
+    const evaluation = evaluateProposalSelection(baseState, proposalOps, ["prop-add-node"], catalog);
     expect(evaluation.ok).toBe(false);
     if (evaluation.ok) return;
     expect(evaluation.status).toBe(422);

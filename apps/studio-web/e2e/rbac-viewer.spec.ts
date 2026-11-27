@@ -71,10 +71,7 @@ test.describe("Story 2.7: Viewer Role Read-Only Enforcement & Live Sync", () => 
     expect(proposed.status).toBe("pending");
     expect((await e2eAcceptProposalAsOwner("acme-saas", proposed.proposalId)).status).toBe(200);
 
-    await expect(page.getByTestId("topbar-revision-badge")).toHaveText(
-      `r${revBefore + 1}`,
-      { timeout: 2_000 },
-    );
+    await expect(page.getByTestId("topbar-revision-badge")).toHaveText(`r${revBefore + 1}`, { timeout: 2_000 });
 
     // Verify direct POST /api/projects/acme-saas/ops from the viewer browser session returns 403 Forbidden
     const directMutateResult = await page.evaluate(async () => {

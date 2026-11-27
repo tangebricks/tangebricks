@@ -39,9 +39,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     expect(PX_TELEMETRY_MIGRATION_SQL).toContain("idx_px_http_rollups_env_bucket");
 
     const tables = await db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('px_http_rollups', 'px_queue_metrics')",
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('px_http_rollups', 'px_queue_metrics')")
       .all<{ name: string }>();
     const names = (tables.results ?? []).map((r) => r.name);
     expect(names).toContain("px_http_rollups");
@@ -173,7 +171,14 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     await recordHttpRequestSamples(db, [
       { workspaceId: "ws_beta", ts: min10Ago, routePrefix: "/webhooks/stripe", brickId: "webhook-gateway", status: 500, latencyMs: 9999, envName: "preview" },
     ]);
-    await upsertQueueMetrics(db, { workspaceId: "ws_beta", queueName: "px-outbound-dispatch", pendingCount: 999, dlqCount: 99, updatedAt: min10Ago, envName: "preview" });
+    await upsertQueueMetrics(db, {
+      workspaceId: "ws_beta",
+      queueName: "px-outbound-dispatch",
+      pendingCount: 999,
+      dlqCount: 99,
+      updatedAt: min10Ago,
+      envName: "preview",
+    });
     await upsertRunRecord(db, {
       runId: "run_beta_fail",
       workflowId: "wf_beta",
@@ -192,11 +197,15 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     expect(betaOnly.queues).toEqual([expect.objectContaining({ queueName: "px-outbound-dispatch", depth: 999 })]);
 
     // 1. Verify 1h window
-    const summary1h = await queryEnvironmentMetrics(db, { workspaceId: "ws_alpha" }, {
-      env: "preview",
-      window: "1h",
-      now: baseNow,
-    });
+    const summary1h = await queryEnvironmentMetrics(
+      db,
+      { workspaceId: "ws_alpha" },
+      {
+        env: "preview",
+        window: "1h",
+        now: baseNow,
+      },
+    );
     expect(summary1h.window).toBe("1h");
     expect(summary1h.requestCount).toBe(20);
     expect(summary1h.error4xxCount).toBe(1);
@@ -225,22 +234,30 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     expect(summary1h.series).toHaveLength(12);
 
     // 2. Verify 24h window includes 6h-ago rollup (20 + 30 = 50 requests, 2 + 3 = 5 5xx errors)
-    const summary24h = await queryEnvironmentMetrics(db, { workspaceId: "ws_alpha" }, {
-      env: "preview",
-      window: "24h",
-      now: baseNow,
-    });
+    const summary24h = await queryEnvironmentMetrics(
+      db,
+      { workspaceId: "ws_alpha" },
+      {
+        env: "preview",
+        window: "24h",
+        now: baseNow,
+      },
+    );
     expect(summary24h.requestCount).toBe(50);
     expect(summary24h.error5xxCount).toBe(5);
     expect(summary24h.errorRatePercent).toBe(10);
     expect(summary24h.perBrick).toHaveLength(3);
 
     // 3. Verify 7d window includes 3d-ago rollup (50 + 50 = 100 requests, 5 5xx errors => 5%)
-    const summary7d = await queryEnvironmentMetrics(db, { workspaceId: "ws_alpha" }, {
-      env: "preview",
-      window: "7d",
-      now: baseNow,
-    });
+    const summary7d = await queryEnvironmentMetrics(
+      db,
+      { workspaceId: "ws_alpha" },
+      {
+        env: "preview",
+        window: "7d",
+        now: baseNow,
+      },
+    );
     expect(summary7d.requestCount).toBe(100);
     expect(summary7d.error5xxCount).toBe(5);
     expect(summary7d.errorRatePercent).toBe(5);
@@ -265,10 +282,12 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     });
 
     // Rejects unsigned request with 401
-    const unsignedRes = await handleTelemetryMetricsRequest(
-      new Request("https://worker.local/__px/metrics?workspaceId=ws_alpha&window=1h"),
-      { db, telemetrySecret: TELEMETRY_SECRET, pxEnv: "preview", now: baseNow },
-    );
+    const unsignedRes = await handleTelemetryMetricsRequest(new Request("https://worker.local/__px/metrics?workspaceId=ws_alpha&window=1h"), {
+      db,
+      telemetrySecret: TELEMETRY_SECRET,
+      pxEnv: "preview",
+      now: baseNow,
+    });
     expect(unsignedRes?.status).toBe(401);
 
     // Rejects the old scheme (a signature over GET:<path and query>) with 401
@@ -296,9 +315,7 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
       { db, telemetrySecret: TELEMETRY_SECRET, pxEnv: "preview", now: baseNow },
     );
     expect(validRes?.status).toBe(200);
-    const body = (await validRes!.json()) as Awaited<
-      ReturnType<typeof queryEnvironmentMetrics>
-    >;
+    const body = (await validRes!.json()) as Awaited<ReturnType<typeof queryEnvironmentMetrics>>;
     expect(body.ok).toBe(true);
     expect(body.requestCount).toBe(100);
     expect(body.error5xxCount).toBe(5);
@@ -361,11 +378,15 @@ describe("@poc/telemetry — Story 6.4 HTTP rollups, queue metrics, latency quan
     });
     expect(pruneRes.deletedHttpRollups).toBe(1);
 
-    const summary7d = await queryEnvironmentMetrics(db, { workspaceId: "ws_alpha" }, {
-      env: "preview",
-      window: "7d",
-      now,
-    });
+    const summary7d = await queryEnvironmentMetrics(
+      db,
+      { workspaceId: "ws_alpha" },
+      {
+        env: "preview",
+        window: "7d",
+        now,
+      },
+    );
     expect(summary7d.requestCount).toBe(25);
   });
 });

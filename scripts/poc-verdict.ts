@@ -131,9 +131,7 @@ export function runPocVerdictCli(argv: string[] = process.argv.slice(2)): number
   return result.decision === "go" ? 0 : 1;
 }
 
-const isMain =
-  process.argv[1] !== undefined &&
-  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+const isMain = process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 
 if (isMain) {
   process.exit(runPocVerdictCli());

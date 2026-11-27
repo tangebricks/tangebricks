@@ -5,11 +5,7 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_checkout_gateway.sql?raw";
 import migration0002 from "../migrations/0002_verified_payments.sql?raw";
-import {
-  CheckoutService,
-  createCheckoutRoutes,
-  calculateTax,
-} from "../src/index.ts";
+import { CheckoutService, createCheckoutRoutes, calculateTax } from "../src/index.ts";
 import type { CheckoutEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -132,7 +128,7 @@ describe("Checkout & Tax Engine Core Logic", () => {
     expect(invoicesBeta).toHaveLength(1);
     expect(invoicesAlpha[0]?.workspace_id).toBe(WS_ALPHA);
     expect(invoicesBeta[0]?.workspace_id).toBe(WS_BETA);
-    expect((await service.getInvoiceBySessionId(WS_ALPHA, sBeta.id))).toBeNull();
+    expect(await service.getInvoiceBySessionId(WS_ALPHA, sBeta.id)).toBeNull();
   });
 });
 
@@ -143,15 +139,19 @@ describe("Checkout HTTP API", () => {
     app.route("/api", createCheckoutRoutes());
 
     // 1. Create Session
-    const createRes = await app.request("/api/checkout/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        gateway: "lemonsqueezy",
-        countryCode: "GB",
-        lineItems: [{ description: "Addon Package", quantity: 1, unitAmountCents: 5000 }],
-      }),
-    }, { DB: db });
+    const createRes = await app.request(
+      "/api/checkout/sessions",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          gateway: "lemonsqueezy",
+          countryCode: "GB",
+          lineItems: [{ description: "Addon Package", quantity: 1, unitAmountCents: 5000 }],
+        }),
+      },
+      { DB: db },
+    );
     expect(createRes.status).toBe(201);
     const createJson = (await createRes.json()) as { session: { id: string } };
     const sessionId = createJson.session.id;
@@ -161,13 +161,17 @@ describe("Checkout HTTP API", () => {
     expect(getRes.status).toBe(200);
 
     // 3. CHECKOUT_COMPLETE (story 0.9): the "complete" route is gone. 404, the session stays pending, no invoice.
-    const completeRes = await app.request(`/api/checkout/sessions/${sessionId}/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        billingDetails: { name: "John Doe" },
-      }),
-    }, { DB: db });
+    const completeRes = await app.request(
+      `/api/checkout/sessions/${sessionId}/complete`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          billingDetails: { name: "John Doe" },
+        }),
+      },
+      { DB: db },
+    );
     expect(completeRes.status).toBe(404);
     const afterRes = await app.request(`/api/checkout/sessions/${sessionId}`, { headers: { "x-workspace-id": WS_ALPHA } }, { DB: db });
     expect(((await afterRes.json()) as { session: { status: string } }).session.status).toBe("pending");

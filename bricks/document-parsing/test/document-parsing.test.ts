@@ -4,13 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_document_parsing.sql?raw";
-import {
-  DocumentParsingService,
-  estimateTokens,
-  parseMarkdownTable,
-  parseCsv,
-  createDocumentRoutes,
-} from "../src/index.ts";
+import { DocumentParsingService, estimateTokens, parseMarkdownTable, parseCsv, createDocumentRoutes } from "../src/index.ts";
 import type { DocumentEnv } from "../src/middleware.ts";
 
 const db = env.DB as D1Like;
@@ -216,7 +210,7 @@ describe("Document Parsing REST API", () => {
           rawContent: "# Revenue\nRevenue was $500,000.\n# Expenses\nExpenses were $300,000.",
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(ingestRes.status).toBe(201);
     const doc = (await ingestRes.json()) as any;
@@ -230,7 +224,7 @@ describe("Document Parsing REST API", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ maxTokens: 100 }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(chunkRes.status).toBe(200);
     const chunkJson = (await chunkRes.json()) as any;
@@ -249,28 +243,20 @@ describe("Document Parsing REST API", () => {
           },
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(extRes.status).toBe(201);
     const extJson = (await extRes.json()) as any;
     expect(extJson.extracted_data.revenue).toBe(500000);
 
     // 4. List docs & chunks
-    const listRes = await app.request(
-      `http://localhost/docs`,
-      { method: "GET" },
-      { DB: db }
-    );
+    const listRes = await app.request(`http://localhost/docs`, { method: "GET" }, { DB: db });
     expect(listRes.status).toBe(200);
     const listJson = (await listRes.json()) as any;
     expect(listJson.documents).toHaveLength(1);
 
     // 5. Delete
-    const delRes = await app.request(
-      `http://localhost/docs/${doc.id}`,
-      { method: "DELETE" },
-      { DB: db }
-    );
+    const delRes = await app.request(`http://localhost/docs/${doc.id}`, { method: "DELETE" }, { DB: db });
     expect(delRes.status).toBe(200);
   });
 
@@ -306,15 +292,11 @@ describe("Document Parsing REST API", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(badIngest.status).toBe(400);
 
-    const notFound = await app.request(
-      `http://localhost/docs/doc_missing999`,
-      { method: "GET" },
-      { DB: db }
-    );
+    const notFound = await app.request(`http://localhost/docs/doc_missing999`, { method: "GET" }, { DB: db });
     expect(notFound.status).toBe(404);
   });
 });

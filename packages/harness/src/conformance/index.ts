@@ -7,12 +7,7 @@ import { secretNames } from "../../../assembler/src/schemas.ts";
 import { catalog } from "../../../assembler/catalog.generated.ts";
 import { attach } from "../results.ts";
 
-export type ConformanceCheckName =
-  | "CONF_MIGRATIONS_UP"
-  | "CONF_TENANT_ISOLATION"
-  | "CONF_IDEMPOTENT_WRITE"
-  | "CONF_ERROR_CONTRACT"
-  | "CONF_SECRET_SCOPE";
+export type ConformanceCheckName = "CONF_MIGRATIONS_UP" | "CONF_TENANT_ISOLATION" | "CONF_IDEMPOTENT_WRITE" | "CONF_ERROR_CONTRACT" | "CONF_SECRET_SCOPE";
 
 export interface TenantIsolationRequest {
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
@@ -125,10 +120,7 @@ export async function checkMigrationsUp(options: ConformanceCheckOptions): Promi
     expect(tables.length).toBeGreaterThan(0);
   }
 
-  const declaredGlobals = new Set<string>([
-    ...globalTables,
-    ...(manifest.globalTables ?? []).map((g: { table: string }) => g.table),
-  ]);
+  const declaredGlobals = new Set<string>([...globalTables, ...(manifest.globalTables ?? []).map((g: { table: string }) => g.table)]);
 
   for (const table of tables) {
     const info = await db.prepare(`PRAGMA table_info(${table})`).all<TableInfoColumn>();
@@ -137,9 +129,7 @@ export async function checkMigrationsUp(options: ConformanceCheckOptions): Promi
     const isGlobal = declaredGlobals.has(table);
 
     if (!hasWorkspaceId && !isGlobal) {
-      throw new Error(
-        `[CONF_MIGRATIONS_UP] Table "${table}" does not have workspace_id column and is not declared in globalTables`,
-      );
+      throw new Error(`[CONF_MIGRATIONS_UP] Table "${table}" does not have workspace_id column and is not declared in globalTables`);
     }
     expect(hasWorkspaceId || isGlobal).toBe(true);
   }
@@ -174,7 +164,11 @@ async function autoSeedTables(db: D1Like, tables: string[], workspaceA: string, 
       }
 
       const sql = `INSERT OR IGNORE INTO ${table} (${colNames.join(", ")}) VALUES (${placeholders.join(", ")})`;
-      await db.prepare(sql).bind(...colValues).run().catch(() => {});
+      await db
+        .prepare(sql)
+        .bind(...colValues)
+        .run()
+        .catch(() => {});
     }
   }
 }
@@ -294,14 +288,10 @@ export async function checkTenantIsolation(options: ConformanceCheckOptions): Pr
           );
         }
         if (bodyText.includes(targetWs) || bodyText.includes("Confidential Item A") || (ownerBodyText.length > 0 && bodyText === ownerBodyText)) {
-          throw new Error(
-            `[CONF_TENANT_ISOLATION] Route ${req.method} ${req.path} leaked target workspace data to caller (status ${res.status}): ${bodyText}`,
-          );
+          throw new Error(`[CONF_TENANT_ISOLATION] Route ${req.method} ${req.path} leaked target workspace data to caller (status ${res.status}): ${bodyText}`);
         }
         if ((await snapshotWorkspace(db, tables, targetWs)) !== targetBefore) {
-          throw new Error(
-            `[CONF_TENANT_ISOLATION] Route ${req.method} ${req.path} changed workspace ${targetWs}'s rows when called by workspace ${callerWs}`,
-          );
+          throw new Error(`[CONF_TENANT_ISOLATION] Route ${req.method} ${req.path} changed workspace ${targetWs}'s rows when called by workspace ${callerWs}`);
         }
         continue;
       }
@@ -331,9 +321,7 @@ export async function checkTenantIsolation(options: ConformanceCheckOptions): Pr
     const path = route.path.replace(/:[a-zA-Z0-9_]+/g, `rec_${workspaceA}_1`);
 
     if (route.method === "GET") {
-      const ownerUrl = path.includes("?")
-        ? `${path}&workspaceId=${workspaceA}`
-        : `${path}?workspaceId=${workspaceA}`;
+      const ownerUrl = path.includes("?") ? `${path}&workspaceId=${workspaceA}` : `${path}?workspaceId=${workspaceA}`;
 
       // Positive control: must succeed for owning workspace
       const ownerRes = await app.request(
@@ -349,14 +337,10 @@ export async function checkTenantIsolation(options: ConformanceCheckOptions): Pr
       );
 
       if (ownerRes.status !== 200) {
-        throw new Error(
-          `[CONF_TENANT_ISOLATION] cannot confirm isolation: owning workspace request to GET ${ownerUrl} failed (status ${ownerRes.status})`,
-        );
+        throw new Error(`[CONF_TENANT_ISOLATION] cannot confirm isolation: owning workspace request to GET ${ownerUrl} failed (status ${ownerRes.status})`);
       }
 
-      const url = path.includes("?")
-        ? `${path}&workspaceId=${workspaceA}`
-        : `${path}?workspaceId=${workspaceA}`;
+      const url = path.includes("?") ? `${path}&workspaceId=${workspaceA}` : `${path}?workspaceId=${workspaceA}`;
 
       // Negative check: must fail for workspaceB
       const aBeforeGet = await snapshotWorkspace(db, tables, workspaceA);
@@ -375,16 +359,12 @@ export async function checkTenantIsolation(options: ConformanceCheckOptions): Pr
       const bodyText = await res.text();
       if (res.status === 200) {
         if (bodyText.includes(workspaceA) || bodyText.includes("Confidential Item A")) {
-          throw new Error(
-            `[CONF_TENANT_ISOLATION] Route GET ${url} leaked workspace A data to workspace B: ${bodyText}`,
-          );
+          throw new Error(`[CONF_TENANT_ISOLATION] Route GET ${url} leaked workspace A data to workspace B: ${bodyText}`);
         }
         // A path-addressed probe (B asking for A's record by id) must be refused. A collection route that names A only
         // through `?workspaceId=` may answer with B's own data (AD-V1: the query is never read), if A's rows are untouched.
         if (pathAddressed || (await snapshotWorkspace(db, tables, workspaceA)) !== aBeforeGet) {
-          throw new Error(
-            `[CONF_TENANT_ISOLATION] Route GET ${url} returned 200 when called by workspace B targeting workspace A`,
-          );
+          throw new Error(`[CONF_TENANT_ISOLATION] Route GET ${url} returned 200 when called by workspace B targeting workspace A`);
         }
         continue;
       }
@@ -448,9 +428,7 @@ export async function checkTenantIsolation(options: ConformanceCheckOptions): Pr
         // in the body may be accepted, but it must have run against B's own verified workspace: A's rows are unchanged
         // and nothing of A's came back.
         if (pathAddressed || (await snapshotWorkspace(db, tables, workspaceA)) !== aBefore || bodyText.includes(workspaceA)) {
-          throw new Error(
-            `[CONF_TENANT_ISOLATION] Route ${route.method} ${path} allowed workspace B to modify workspace A (status ${res.status})`,
-          );
+          throw new Error(`[CONF_TENANT_ISOLATION] Route ${route.method} ${path} allowed workspace B to modify workspace A (status ${res.status})`);
         }
         continue;
       }
@@ -514,28 +492,18 @@ export async function checkIdempotentWrite(options: ConformanceCheckOptions): Pr
     const bodyStr = req.body ? JSON.stringify(req.body) : undefined;
     const path = req.path.replace(/:[a-zA-Z0-9_]+/g, "rec_ws_conf_idemp_1");
 
-    await app.request(
-      path,
-      { method: req.method, headers, body: bodyStr },
-      { DB: db, workspace: { id: "ws_conf_idemp", role: "owner", suspended: false } },
-    );
+    await app.request(path, { method: req.method, headers, body: bodyStr }, { DB: db, workspace: { id: "ws_conf_idemp", role: "owner", suspended: false } });
 
     const countAfter1 = await countTotalRows();
 
     // Second call with same Idempotency-Key
-    await app.request(
-      path,
-      { method: req.method, headers, body: bodyStr },
-      { DB: db, workspace: { id: "ws_conf_idemp", role: "owner", suspended: false } },
-    );
+    await app.request(path, { method: req.method, headers, body: bodyStr }, { DB: db, workspace: { id: "ws_conf_idemp", role: "owner", suspended: false } });
 
     const countAfter2 = await countTotalRows();
     const delta2 = countAfter2 - countAfter1;
 
     if (delta2 > 0) {
-      throw new Error(
-        `[CONF_IDEMPOTENT_WRITE] Replayed write to ${req.method} ${req.path} with Idempotency-Key caused ${delta2} additional row change(s)`,
-      );
+      throw new Error(`[CONF_IDEMPOTENT_WRITE] Replayed write to ${req.method} ${req.path} with Idempotency-Key caused ${delta2} additional row change(s)`);
     }
 
     expect(delta2).toBe(0);
@@ -600,9 +568,7 @@ export async function checkErrorContract(options: ConformanceCheckOptions): Prom
       try {
         json = await res.json();
       } catch {
-        throw new Error(
-          `[CONF_ERROR_CONTRACT] Route ${req.method ?? "POST"} ${req.path} returned status ${res.status} with non-JSON body`,
-        );
+        throw new Error(`[CONF_ERROR_CONTRACT] Route ${req.method ?? "POST"} ${req.path} returned status ${res.status} with non-JSON body`);
       }
 
       if (!json || typeof json.error !== "object" || json.error === null) {
@@ -642,14 +608,17 @@ export async function checkSecretScope(options: ConformanceCheckOptions): Promis
   }
 
   const touchedProperties = new Set<string>();
-  const proxyEnv = new Proxy({ DB: db, ...env }, {
-    get(target, prop, receiver) {
-      if (typeof prop === "string" && !prop.startsWith("__") && prop !== "then" && prop !== "constructor") {
-        touchedProperties.add(prop);
-      }
-      return Reflect.get(target, prop, receiver);
+  const proxyEnv = new Proxy(
+    { DB: db, ...env },
+    {
+      get(target, prop, receiver) {
+        if (typeof prop === "string" && !prop.startsWith("__") && prop !== "then" && prop !== "constructor") {
+          touchedProperties.add(prop);
+        }
+        return Reflect.get(target, prop, receiver);
+      },
     },
-  });
+  );
 
   const scopeReqs: ScopeRequest[] = options.scopeRequests ? [...options.scopeRequests] : [];
   if (scopeReqs.length === 0) {
@@ -689,9 +658,7 @@ export async function checkSecretScope(options: ConformanceCheckOptions): Promis
 
   const undeclared = [...touchedProperties].filter((p) => !allowed.has(p));
   if (undeclared.length > 0) {
-    throw new Error(
-      `[CONF_SECRET_SCOPE] Route accessed undeclared binding(s) or secret(s): ${undeclared.join(", ")}`,
-    );
+    throw new Error(`[CONF_SECRET_SCOPE] Route accessed undeclared binding(s) or secret(s): ${undeclared.join(", ")}`);
   }
 
   expect(undeclared.length).toBe(0);

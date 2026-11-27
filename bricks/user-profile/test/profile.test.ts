@@ -152,28 +152,36 @@ describe("User Profile HTTP API", () => {
     expect(getJson.profile.user_id).toBe(USER_ALICE);
 
     // 2. PATCH profile
-    const patchRes = await app.request("/api/me/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        displayName: "Alice In Wonderland",
-        theme: "dark",
-        bio: "Curiouser and curiouser",
-      }),
-    }, { DB: db });
+    const patchRes = await app.request(
+      "/api/me/profile",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: "Alice In Wonderland",
+          theme: "dark",
+          bio: "Curiouser and curiouser",
+        }),
+      },
+      { DB: db },
+    );
     expect(patchRes.status).toBe(200);
     const patchJson = (await patchRes.json()) as { profile: { display_name: string; theme: string } };
     expect(patchJson.profile.display_name).toBe("Alice In Wonderland");
     expect(patchJson.profile.theme).toBe("dark");
 
     // 3. PATCH preferences
-    const prefRes = await app.request("/api/me/preferences", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        preferences: { emailDigest: "weekly" },
-      }),
-    }, { DB: db });
+    const prefRes = await app.request(
+      "/api/me/preferences",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          preferences: { emailDigest: "weekly" },
+        }),
+      },
+      { DB: db },
+    );
     expect(prefRes.status).toBe(200);
 
     // 4. Public lookup

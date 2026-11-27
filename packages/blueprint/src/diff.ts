@@ -1,14 +1,5 @@
 import { canonicalizeValue, normalizeBlueprintState } from "./schema.ts";
-import type {
-  BlueprintState,
-  BrickEntry,
-  Entity,
-  EntityField,
-  SecretRef,
-  Workflow,
-  WorkflowEdge,
-  WorkflowNode,
-} from "./schema.ts";
+import type { BlueprintState, BrickEntry, Entity, EntityField, SecretRef, Workflow, WorkflowEdge, WorkflowNode } from "./schema.ts";
 
 export interface BrickDiffUpdate {
   id: string;
@@ -80,10 +71,7 @@ function stableJson(value: unknown): string {
   return JSON.stringify(canonicalizeValue(value));
 }
 
-function diffBricks(
-  fromBricks: ReadonlyArray<BrickEntry>,
-  toBricks: ReadonlyArray<BrickEntry>,
-): SemanticDiff["bricks"] {
+function diffBricks(fromBricks: ReadonlyArray<BrickEntry>, toBricks: ReadonlyArray<BrickEntry>): SemanticDiff["bricks"] {
   const fromMap = new Map(fromBricks.map((b) => [b.id, b]));
   const toMap = new Map(toBricks.map((b) => [b.id, b]));
 
@@ -109,10 +97,7 @@ function diffBricks(
   return { added, removed, updated };
 }
 
-function diffEntities(
-  fromEntities: ReadonlyArray<Entity>,
-  toEntities: ReadonlyArray<Entity>,
-): SemanticDiff["entities"] {
+function diffEntities(fromEntities: ReadonlyArray<Entity>, toEntities: ReadonlyArray<Entity>): SemanticDiff["entities"] {
   const fromMap = new Map(fromEntities.map((e) => [e.name, e]));
   const toMap = new Map(toEntities.map((e) => [e.name, e]));
 
@@ -173,10 +158,7 @@ function diffEntities(
   return { added, removed, updated };
 }
 
-function diffWorkflows(
-  fromWorkflows: ReadonlyArray<Workflow>,
-  toWorkflows: ReadonlyArray<Workflow>,
-): SemanticDiff["workflows"] {
+function diffWorkflows(fromWorkflows: ReadonlyArray<Workflow>, toWorkflows: ReadonlyArray<Workflow>): SemanticDiff["workflows"] {
   const fromMap = new Map(fromWorkflows.map((w) => [w.id, w]));
   const toMap = new Map(toWorkflows.map((w) => [w.id, w]));
 
@@ -235,17 +217,9 @@ function diffWorkflows(
       }
     }
 
-    const metaChanged =
-      before.name !== after.name || stableJson(before.trigger) !== stableJson(after.trigger);
+    const metaChanged = before.name !== after.name || stableJson(before.trigger) !== stableJson(after.trigger);
 
-    if (
-      metaChanged ||
-      nodesAdded.length > 0 ||
-      nodesRemoved.length > 0 ||
-      nodesUpdated.length > 0 ||
-      edgesAdded.length > 0 ||
-      edgesRemoved.length > 0
-    ) {
+    if (metaChanged || nodesAdded.length > 0 || nodesRemoved.length > 0 || nodesUpdated.length > 0 || edgesAdded.length > 0 || edgesRemoved.length > 0) {
       updated.push({
         id,
         name: after.name,
@@ -267,10 +241,7 @@ function diffWorkflows(
   return { added, removed, updated };
 }
 
-function diffSecretRefs(
-  fromRefs: ReadonlyArray<SecretRef>,
-  toRefs: ReadonlyArray<SecretRef>,
-): SemanticDiff["secretRefs"] {
+function diffSecretRefs(fromRefs: ReadonlyArray<SecretRef>, toRefs: ReadonlyArray<SecretRef>): SemanticDiff["secretRefs"] {
   const remainingFrom = [...fromRefs];
   const remainingTo = [...toRefs];
 
@@ -278,11 +249,7 @@ function diffSecretRefs(
   for (let i = remainingTo.length - 1; i >= 0; i -= 1) {
     const after = remainingTo[i]!;
     const exactIdx = remainingFrom.findIndex(
-      (b) =>
-        b.ref === after.ref &&
-        b.targetKind === after.targetKind &&
-        b.targetId === after.targetId &&
-        b.secretName === after.secretName,
+      (b) => b.ref === after.ref && b.targetKind === after.targetKind && b.targetId === after.targetId && b.secretName === after.secretName,
     );
     if (exactIdx !== -1) {
       remainingFrom.splice(exactIdx, 1);
@@ -293,14 +260,9 @@ function diffSecretRefs(
   const updated: SecretRefDiffUpdate[] = [];
 
   // 2. Match updated secret refs by target slot (targetKind:targetId:secretName) or by ref handle
-  for (let i = 0; i < remainingTo.length; ) {
+  for (let i = 0; i < remainingTo.length;) {
     const after = remainingTo[i]!;
-    let matchIdx = remainingFrom.findIndex(
-      (b) =>
-        b.targetKind === after.targetKind &&
-        b.targetId === after.targetId &&
-        b.secretName === after.secretName,
-    );
+    let matchIdx = remainingFrom.findIndex((b) => b.targetKind === after.targetKind && b.targetId === after.targetId && b.secretName === after.secretName);
     if (matchIdx === -1) {
       matchIdx = remainingFrom.findIndex((b) => b.ref === after.ref);
     }
@@ -320,17 +282,11 @@ function diffSecretRefs(
   };
 }
 
-export function computeSemanticDiff(
-  fromState: BlueprintState,
-  toState: BlueprintState,
-): SemanticDiff {
+export function computeSemanticDiff(fromState: BlueprintState, toState: BlueprintState): SemanticDiff {
   const fromNorm = normalizeBlueprintState(fromState);
   const toNorm = normalizeBlueprintState(toState);
 
-  const identity =
-    fromNorm.identity !== toNorm.identity
-      ? { from: fromNorm.identity, to: toNorm.identity }
-      : null;
+  const identity = fromNorm.identity !== toNorm.identity ? { from: fromNorm.identity, to: toNorm.identity } : null;
   const bricks = diffBricks(fromNorm.bricks, toNorm.bricks);
   const entities = diffEntities(fromNorm.entities, toNorm.entities);
   const workflows = diffWorkflows(fromNorm.workflows, toNorm.workflows);

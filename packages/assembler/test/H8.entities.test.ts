@@ -24,8 +24,20 @@ interface Options {
   headers?: Record<string, string>;
 }
 async function call(method: string, path: string, user: string | null, workspace: string | null, body?: unknown, options: Options = {}): Promise<Reply> {
-  const headers: Record<string, string> = { ...(user ? { "x-test-user": user } : {}), ...(workspace ? { "x-workspace-id": workspace } : {}), ...(body === undefined ? {} : { "content-type": "application/json" }), ...options.headers };
-  const response = await app!.fetch(new Request(`http://localhost${path}${options.query ?? ""}`, { method, headers, body: body === undefined ? null : typeof body === "string" ? body : JSON.stringify(body) }), { DB: db });
+  const headers: Record<string, string> = {
+    ...(user ? { "x-test-user": user } : {}),
+    ...(workspace ? { "x-workspace-id": workspace } : {}),
+    ...(body === undefined ? {} : { "content-type": "application/json" }),
+    ...options.headers,
+  };
+  const response = await app!.fetch(
+    new Request(`http://localhost${path}${options.query ?? ""}`, {
+      method,
+      headers,
+      body: body === undefined ? null : typeof body === "string" ? body : JSON.stringify(body),
+    }),
+    { DB: db },
+  );
   const text = await response.text();
   let parsed: Record<string, any> | null = null;
   try {
@@ -43,11 +55,14 @@ interface World {
   bIds: string[];
 }
 const ALL_TABLES = ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces", "ent_invoices"];
-const snapshot = async (workspace: string) => JSON.stringify((await db.prepare('SELECT * FROM "ent_invoices" WHERE workspace_id = ? ORDER BY id').bind(workspace).all()).results);
-const countRows = async (workspace: string) => (await db.prepare('SELECT COUNT(*) AS n FROM "ent_invoices" WHERE workspace_id = ?').bind(workspace).first<{ n: number }>())!.n;
+const snapshot = async (workspace: string) =>
+  JSON.stringify((await db.prepare('SELECT * FROM "ent_invoices" WHERE workspace_id = ? ORDER BY id').bind(workspace).all()).results);
+const countRows = async (workspace: string) =>
+  (await db.prepare('SELECT COUNT(*) AS n FROM "ent_invoices" WHERE workspace_id = ?').bind(workspace).first<{ n: number }>())!.n;
 // In whole credits: the wallet holds thousandths since credit-wallet's migration 0004 (story 2.5).
 const balanceOf = async (workspace: string) => {
-  const milli = (await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind(workspace).first<{ balance_milli: number }>())?.balance_milli;
+  const milli = (await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind(workspace).first<{ balance_milli: number }>())
+    ?.balance_milli;
   return milli === undefined ? undefined : milli / 1000;
 };
 
@@ -58,16 +73,25 @@ async function world(): Promise<World> {
   const workspace = async (user: string, name: string) => (await call("POST", "/api/workspaces", user, null, { name })).body!.workspace.id as string;
   const a = await workspace("alice", "A");
   const b = await workspace("bob", "B");
-  for (const [user, ws, balance] of [["alice", a, 100], ["bob", b, 50]] as const) {
+  for (const [user, ws, balance] of [
+    ["alice", a, 100],
+    ["bob", b, 50],
+  ] as const) {
     await call("GET", "/api/wallet", user, ws);
-    await db.prepare("UPDATE credit_wallets SET balance_milli = ? WHERE workspace_id = ?").bind(balance * 1000, ws).run();
+    await db
+      .prepare("UPDATE credit_wallets SET balance_milli = ? WHERE workspace_id = ?")
+      .bind(balance * 1000, ws)
+      .run();
   }
   await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, 'carol', 'member')").bind(a).run();
   const seed = async (user: string, ws: string, names: string[]) => {
     const ids: string[] = [];
     for (const [i, name] of names.entries()) {
       const id = (await call("POST", "/api/invoices", user, ws, { client_name: name, amount: 100 + i, status: "draft" })).body!.item.id as string;
-      await db.prepare('UPDATE "ent_invoices" SET created_at = ? WHERE id = ?').bind(`2026-01-0${i + 1} 00:00:00`, id).run();
+      await db
+        .prepare('UPDATE "ent_invoices" SET created_at = ? WHERE id = ?')
+        .bind(`2026-01-0${i + 1} 00:00:00`, id)
+        .run();
       ids.push(id);
     }
     return ids;
@@ -77,7 +101,7 @@ async function world(): Promise<World> {
 
 const HOSTILE_TEXT = [
   "'); DROP TABLE ent_invoices; --",
-  "\" OR 1=1 --",
+  '" OR 1=1 --',
   "Robert'); DROP TABLE mw_members;--",
   "x'; UPDATE credit_wallets SET balance = 999999; --",
   "<script>alert(1)</script>",
@@ -103,10 +127,17 @@ describe("workspace A uses its own invoices", () => {
   });
 
   it("creates an invoice", async () => {
-    const res = await call("POST", "/api/invoices", "alice", w.a, { client_name: "Newco", amount: 250, status: "paid", pdf_r2_url: "https://files.example/1.pdf" });
+    const res = await call("POST", "/api/invoices", "alice", w.a, {
+      client_name: "Newco",
+      amount: 250,
+      status: "paid",
+      pdf_r2_url: "https://files.example/1.pdf",
+    });
     expect(res.status).toBe(201);
     expect(res.body!.item).toMatchObject({ client_name: "Newco", amount: 250, status: "paid", pdf_r2_url: "https://files.example/1.pdf" });
-    expect((await db.prepare('SELECT workspace_id FROM "ent_invoices" WHERE id = ?').bind(res.body!.item.id).first<{ workspace_id: string }>())?.workspace_id).toBe(w.a);
+    expect(
+      (await db.prepare('SELECT workspace_id FROM "ent_invoices" WHERE id = ?').bind(res.body!.item.id).first<{ workspace_id: string }>())?.workspace_id,
+    ).toBe(w.a);
     expect(await countRows(w.a)).toBe(4);
   });
 
@@ -276,13 +307,17 @@ describe("a workspace named in a request body or query is not obeyed", () => {
     expect(res.status).toBe(201);
     expect(await countRows(w.a)).toBe(4);
     expect(await countRows(w.b)).toBe(2);
-    expect((await db.prepare('SELECT workspace_id FROM "ent_invoices" WHERE id = ?').bind(res.body!.item.id).first<{ workspace_id: string }>())?.workspace_id).toBe(w.a);
+    expect(
+      (await db.prepare('SELECT workspace_id FROM "ent_invoices" WHERE id = ?').bind(res.body!.item.id).first<{ workspace_id: string }>())?.workspace_id,
+    ).toBe(w.a);
   });
 
   it("a workspace_id in the body of an update does not move the row", async () => {
     const res = await call("PATCH", `/api/invoices/${w.aIds[0]}`, "alice", w.a, { status: "paid", workspace_id: w.b, workspaceId: w.b });
     expect(res.status).toBe(200);
-    expect((await db.prepare('SELECT workspace_id FROM "ent_invoices" WHERE id = ?').bind(w.aIds[0]).first<{ workspace_id: string }>())?.workspace_id).toBe(w.a);
+    expect((await db.prepare('SELECT workspace_id FROM "ent_invoices" WHERE id = ?').bind(w.aIds[0]).first<{ workspace_id: string }>())?.workspace_id).toBe(
+      w.a,
+    );
     expect(await countRows(w.b)).toBe(2);
     // and an update that names only a workspace is "nothing to update", not a transfer
     expect((await call("PATCH", `/api/invoices/${w.aIds[0]}`, "alice", w.a, { workspace_id: w.b })).status).toBe(400);
@@ -328,9 +363,25 @@ describe("hostile names and values are rejected or stay plain data", () => {
 
   it("injection-shaped ids reach nothing", async () => {
     const before = [await snapshot(w.a), await snapshot(w.b)];
-    for (const id of ["x' OR '1'='1", "' OR 1=1 --", "%", "*", "../../x", `${w.aIds[0]}'`, `${w.aIds[0]} OR 1=1`, "a".repeat(300), "00000000-0000-4000-8000-000000000000", "null", "undefined"]) {
+    for (const id of [
+      "x' OR '1'='1",
+      "' OR 1=1 --",
+      "%",
+      "*",
+      "../../x",
+      `${w.aIds[0]}'`,
+      `${w.aIds[0]} OR 1=1`,
+      "a".repeat(300),
+      "00000000-0000-4000-8000-000000000000",
+      "null",
+      "undefined",
+    ]) {
       const path = `/api/invoices/${encodeURIComponent(id)}`;
-      for (const [method, body] of [["GET", undefined], ["PATCH", { status: "paid" }], ["DELETE", undefined]] as const) {
+      for (const [method, body] of [
+        ["GET", undefined],
+        ["PATCH", { status: "paid" }],
+        ["DELETE", undefined],
+      ] as const) {
         const res = await call(method, path, "alice", w.a, body);
         expect(res.status, `${method} ${id}`).toBe(404);
       }
@@ -339,7 +390,20 @@ describe("hostile names and values are rejected or stay plain data", () => {
   });
 
   it("injection-shaped paging values are refused", async () => {
-    for (const query of ["?limit=1;DROP TABLE ent_invoices", "?limit=-1", "?limit=0", "?limit=1000", "?limit=abc", "?limit=1e9", "?limit=1%20OR%201=1", "?offset=-5", "?offset=9999999999", "?offset=1;DELETE", "?limit=NaN", "?limit=Infinity"]) {
+    for (const query of [
+      "?limit=1;DROP TABLE ent_invoices",
+      "?limit=-1",
+      "?limit=0",
+      "?limit=1000",
+      "?limit=abc",
+      "?limit=1e9",
+      "?limit=1%20OR%201=1",
+      "?offset=-5",
+      "?offset=9999999999",
+      "?offset=1;DELETE",
+      "?limit=NaN",
+      "?limit=Infinity",
+    ]) {
       expect((await call("GET", "/api/invoices", "alice", w.a, undefined, { query })).status, query).toBe(400);
     }
     // parameters the router does not define are ignored, so they cannot choose a column or an order
@@ -353,7 +417,14 @@ describe("hostile names and values are rejected or stay plain data", () => {
 
   it("unknown and made-up fields are dropped", async () => {
     const columnsBefore = (await db.prepare('PRAGMA table_info("ent_invoices")').all<{ name: string }>()).results.map((c) => c.name);
-    const res = await call("POST", "/api/invoices", "alice", w.a, { client_name: "Odd", secret_column: "x", "status\" = 'x', \"workspace_id": w.b, "client_name\") VALUES (1); --": "y", created_at: "1999-01-01", updated_at: "1999-01-01" });
+    const res = await call("POST", "/api/invoices", "alice", w.a, {
+      client_name: "Odd",
+      secret_column: "x",
+      "status\" = 'x', \"workspace_id": w.b,
+      'client_name") VALUES (1); --': "y",
+      created_at: "1999-01-01",
+      updated_at: "1999-01-01",
+    });
     expect(res.status).toBe(201);
     expect(Object.keys(res.body!.item).sort()).toEqual(["amount", "client_name", "created_at", "id", "pdf_r2_url", "status", "updated_at"]);
     expect(res.body!.item.created_at).not.toBe("1999-01-01");
@@ -389,11 +460,19 @@ describe("hostile names and values are rejected or stay plain data", () => {
   });
 
   it("prototype keys in a body are ignored", async () => {
-    const res = await call("POST", "/api/invoices", "alice", w.a, '{"__proto__": {"workspace_id": "' + w.b + '", "polluted": true}, "constructor": {"prototype": {"polluted": true}}, "client_name": "Proto"}');
+    const res = await call(
+      "POST",
+      "/api/invoices",
+      "alice",
+      w.a,
+      '{"__proto__": {"workspace_id": "' + w.b + '", "polluted": true}, "constructor": {"prototype": {"polluted": true}}, "client_name": "Proto"}',
+    );
     expect(res.status).toBe(201);
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(({} as Record<string, unknown>).workspace_id).toBeUndefined();
-    expect((await db.prepare('SELECT workspace_id FROM "ent_invoices" WHERE id = ?').bind(res.body!.item.id).first<{ workspace_id: string }>())?.workspace_id).toBe(w.a);
+    expect(
+      (await db.prepare('SELECT workspace_id FROM "ent_invoices" WHERE id = ?').bind(res.body!.item.id).first<{ workspace_id: string }>())?.workspace_id,
+    ).toBe(w.a);
   });
 
   it("the tables are all still there after the attacks", async () => {
@@ -401,7 +480,11 @@ describe("hostile names and values are rejected or stay plain data", () => {
     for (const text of HOSTILE_TEXT) await call("POST", "/api/invoices", "alice", w.a, { client_name: text });
     await call("GET", "/api/invoices/%27%3B%20DROP%20TABLE%20ent_invoices%3B--", "alice", w.a);
     await call("GET", "/api/invoices", "alice", w.a, undefined, { query: "?limit=1;DROP TABLE ent_invoices" });
-    const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite%' AND name NOT LIKE '_cf%' ORDER BY name").all<{ name: string }>()).results.map((t) => t.name);
+    const tables = (
+      await db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite%' AND name NOT LIKE '_cf%' ORDER BY name")
+        .all<{ name: string }>()
+    ).results.map((t) => t.name);
     expect(tables).toEqual(expect.arrayContaining(["credit_ledger", "credit_orders", "credit_wallets", "ent_invoices", "mw_members", "mw_workspaces"]));
     expect(await countRows(w.a)).toBe(3 + HOSTILE_TEXT.length);
     expect(await countRows(w.b)).toBe(2);
@@ -444,7 +527,10 @@ test("H8 report", async ({ task }) => {
   ok.tenantACrud!.push(made.status === 201, (await call("GET", `/api/invoices/${id}`, "alice", w.a)).body?.item?.client_name === "Report");
   ok.tenantACrud!.push((await call("PATCH", `/api/invoices/${id}`, "alice", w.a, { status: "paid" })).body?.item?.status === "paid");
   ok.tenantACrud!.push((await call("GET", "/api/invoices", "alice", w.a)).body?.total === 4);
-  ok.tenantACrud!.push((await call("DELETE", `/api/invoices/${id}`, "alice", w.a)).status === 200, (await call("GET", `/api/invoices/${id}`, "alice", w.a)).status === 404);
+  ok.tenantACrud!.push(
+    (await call("DELETE", `/api/invoices/${id}`, "alice", w.a)).status === 200,
+    (await call("GET", `/api/invoices/${id}`, "alice", w.a)).status === 404,
+  );
 
   w = await world();
   const before = await snapshot(w.a);
@@ -462,17 +548,27 @@ test("H8 report", async ({ task }) => {
   w = await world();
   const smuggled = await call("POST", "/api/invoices", "alice", w.a, { client_name: "Body", workspace_id: w.b, workspaceId: w.b });
   const moved = await call("PATCH", `/api/invoices/${w.aIds[0]}`, "alice", w.a, { status: "paid", workspace_id: w.b });
-  ok.bodyWorkspaceIgnored!.push(smuggled.status === 201, (await countRows(w.b)) === 2, (await countRows(w.a)) === 4, moved.status === 200, (await countRows(w.b)) === 2);
+  ok.bodyWorkspaceIgnored!.push(
+    smuggled.status === 201,
+    (await countRows(w.b)) === 2,
+    (await countRows(w.a)) === 4,
+    moved.status === 200,
+    (await countRows(w.b)) === 2,
+  );
 
   w = await world();
   for (const text of HOSTILE_TEXT) {
     const stored = await call("POST", "/api/invoices", "alice", w.a, { client_name: text });
-    ok.hostileInputsSafe!.push(stored.status === 201, (await call("GET", `/api/invoices/${stored.body?.item?.id}`, "alice", w.a)).body?.item?.client_name === text);
+    ok.hostileInputsSafe!.push(
+      stored.status === 201,
+      (await call("GET", `/api/invoices/${stored.body?.item?.id}`, "alice", w.a)).body?.item?.client_name === text,
+    );
   }
   ok.hostileInputsSafe!.push((await call("GET", `/api/invoices/${encodeURIComponent("x' OR '1'='1")}`, "alice", w.a)).status === 404);
   ok.hostileInputsSafe!.push((await call("GET", "/api/invoices", "alice", w.a, undefined, { query: "?limit=1;DROP TABLE ent_invoices" })).status === 400);
   ok.hostileInputsSafe!.push((await countRows(w.b)) === 2, (await balanceOf(w.b)) === 50);
-  const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('ent_invoices','mw_members','credit_wallets')").all()).results.length;
+  const tables = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('ent_invoices','mw_members','credit_wallets')").all())
+    .results.length;
   ok.hostileInputsSafe!.push(tables === 3);
 
   w = await world();

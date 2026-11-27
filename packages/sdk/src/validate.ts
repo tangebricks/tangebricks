@@ -41,9 +41,7 @@ export interface ValidationIssue {
 export function checkWire(edge: GraphEdge, nodes: GraphNode[], registry: Registry): string | null {
   if (edge.source === edge.target) return "a node cannot connect to itself";
   const portOf = (id: string, side: "inputs" | "outputs", handle?: string) =>
-    registry
-      .get(nodes.find((n) => n.id === id)?.type ?? "")
-      ?.[side].find((p) => p.id === (handle ?? (side === "outputs" ? "out" : "in")));
+    registry.get(nodes.find((n) => n.id === id)?.type ?? "")?.[side].find((p) => p.id === (handle ?? (side === "outputs" ? "out" : "in")));
   const from = portOf(edge.source, "outputs", edge.sourceHandle);
   const to = portOf(edge.target, "inputs", edge.targetHandle);
   if (!from || !to) return "unknown port";
@@ -54,8 +52,7 @@ export function checkWire(edge: GraphEdge, nodes: GraphNode[], registry: Registr
 /** Checks a { nodes, edges } graph against the registry. `order` is a run order for the nodes that are not in a loop. */
 export function validateGraph(nodes: GraphNode[], edges: GraphEdge[], registry: Registry) {
   const issues: ValidationIssue[] = [];
-  const add = (nodeId: string, code: IssueCode, message: string, severity: "error" | "warning" = "error") =>
-    issues.push({ nodeId, code, message, severity });
+  const add = (nodeId: string, code: IssueCode, message: string, severity: "error" | "warning" = "error") => issues.push({ nodeId, code, message, severity });
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const seenIds = new Set<string>();
   for (const n of nodes) {

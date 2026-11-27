@@ -1,4 +1,3 @@
-
 export interface LimitEntry {
   limit: number;
   source: string;
@@ -140,10 +139,7 @@ export const PLATFORM_LIMITS: { free: PlanPlatformLimits; paid: PlanPlatformLimi
   },
 };
 
-export function getPlatformLimits(
-  plan: "free" | "paid" = "free",
-  evidenceOverride?: WorkflowLimitsEvidence | null,
-): PlanPlatformLimits {
+export function getPlatformLimits(plan: "free" | "paid" = "free", evidenceOverride?: WorkflowLimitsEvidence | null): PlanPlatformLimits {
   const base = PLATFORM_LIMITS[plan] ?? PLATFORM_LIMITS.free;
   // No file access here: this module is on the runtime path (no node: imports, rule C3). Node-side callers load
   // evidence/workflows-limits.json with scripts/lib/load-workflow-limits-evidence.ts and pass it in.

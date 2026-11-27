@@ -214,7 +214,8 @@ describe("H3 untrusted brick isolation (UC6.7)", () => {
       },
       registry,
       toyExecutors,
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         env: {
           BRICK_FIXTURE_ISOLATED: isolatedBinding,
           UNDECLARED_HOST_SECRET: "host_token",

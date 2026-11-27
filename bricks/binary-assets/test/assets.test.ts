@@ -28,13 +28,7 @@ describe("Binary Asset Pipeline Core Engine", () => {
     const service = new AssetService(db, bucket);
     const content = new TextEncoder().encode("Hello Cloudflare R2 Asset Storage!");
 
-    const upload = await service.uploadAsset(
-      WS_A,
-      USER_A,
-      "hello.txt",
-      "text/plain",
-      content
-    );
+    const upload = await service.uploadAsset(WS_A, USER_A, "hello.txt", "text/plain", content);
 
     expect(upload.ok).toBe(true);
     if (!upload.ok) return;
@@ -58,13 +52,7 @@ describe("Binary Asset Pipeline Core Engine", () => {
     const service = new AssetService(db, bucket, 100); // 100 bytes limit
     const largeData = new Uint8Array(200); // 200 bytes
 
-    const upload = await service.uploadAsset(
-      WS_A,
-      USER_A,
-      "toolarge.bin",
-      "application/octet-stream",
-      largeData
-    );
+    const upload = await service.uploadAsset(WS_A, USER_A, "toolarge.bin", "application/octet-stream", largeData);
 
     expect(upload.ok).toBe(false);
     if (upload.ok) return;
@@ -83,13 +71,7 @@ describe("Binary Asset Pipeline Core Engine", () => {
 
   it("enforces multi-tenant isolation: Workspace B cannot read or delete Workspace A assets", async () => {
     const service = new AssetService(db, bucket);
-    const upload = await service.uploadAsset(
-      WS_A,
-      USER_A,
-      "secret.pdf",
-      "application/pdf",
-      new TextEncoder().encode("Classified Tenant A Data")
-    );
+    const upload = await service.uploadAsset(WS_A, USER_A, "secret.pdf", "application/pdf", new TextEncoder().encode("Classified Tenant A Data"));
     if (!upload.ok) return;
 
     // Workspace B cannot view metadata
@@ -111,13 +93,7 @@ describe("Binary Asset Pipeline Core Engine", () => {
 
   it("deleting an asset removes metadata from D1 and deletes object from R2", async () => {
     const service = new AssetService(db, bucket);
-    const upload = await service.uploadAsset(
-      WS_A,
-      USER_A,
-      "temp.jpg",
-      "image/jpeg",
-      new Uint8Array([1, 2, 3, 4, 5])
-    );
+    const upload = await service.uploadAsset(WS_A, USER_A, "temp.jpg", "image/jpeg", new Uint8Array([1, 2, 3, 4, 5]));
     if (!upload.ok) return;
 
     const deleted = await service.deleteAsset(WS_A, upload.asset.id);
@@ -156,7 +132,7 @@ describe("Asset Route Handlers (/api/assets/*)", () => {
         headers: { "Content-Type": "text/plain" },
         body: payload,
       }),
-      { DB: db, BUCKET: bucket }
+      { DB: db, BUCKET: bucket },
     );
 
     expect(res.status).toBe(201);
@@ -165,10 +141,7 @@ describe("Asset Route Handlers (/api/assets/*)", () => {
     expect(json.asset.size_bytes).toBe(payload.byteLength);
 
     // Download via GET /api/assets/:id/download
-    const downloadRes = await app.fetch(
-      new Request(`http://localhost/api/assets/${json.asset.id}/download`),
-      { DB: db, BUCKET: bucket }
-    );
+    const downloadRes = await app.fetch(new Request(`http://localhost/api/assets/${json.asset.id}/download`), { DB: db, BUCKET: bucket });
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.headers.get("Content-Type")).toBe("text/plain");
     const downloadedText = await downloadRes.text();
@@ -181,16 +154,10 @@ describe("Asset Route Handlers (/api/assets/*)", () => {
     const upload = await service.uploadAsset(WS_A, USER_A, "to_delete.txt", "text/plain", "data");
     if (!upload.ok) return;
 
-    const deleteRes = await app.fetch(
-      new Request(`http://localhost/api/assets/${upload.asset.id}`, { method: "DELETE" }),
-      { DB: db, BUCKET: bucket }
-    );
+    const deleteRes = await app.fetch(new Request(`http://localhost/api/assets/${upload.asset.id}`, { method: "DELETE" }), { DB: db, BUCKET: bucket });
     expect(deleteRes.status).toBe(200);
 
-    const getRes = await app.fetch(
-      new Request(`http://localhost/api/assets/${upload.asset.id}`),
-      { DB: db, BUCKET: bucket }
-    );
+    const getRes = await app.fetch(new Request(`http://localhost/api/assets/${upload.asset.id}`), { DB: db, BUCKET: bucket });
     expect(getRes.status).toBe(404);
   });
 

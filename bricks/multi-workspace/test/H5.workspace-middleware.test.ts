@@ -4,7 +4,15 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_multi_workspace.sql?raw";
-import { createWorkspaceRoutes, getRequestContext, isAdminOrOwner, rejectForeignWorkspace, requireNotSuspended, requireWorkspaceId, workspaceMiddleware } from "../src/index.ts";
+import {
+  createWorkspaceRoutes,
+  getRequestContext,
+  isAdminOrOwner,
+  rejectForeignWorkspace,
+  requireNotSuspended,
+  requireWorkspaceId,
+  workspaceMiddleware,
+} from "../src/index.ts";
 import type { WorkspaceEnv } from "../src/index.ts";
 import { stubIdentity } from "./support/stub-identity.ts";
 
@@ -18,7 +26,10 @@ async function reset(): Promise<void> {
   await applyMigration(db, migration);
 }
 async function addWorkspace(id: string, opts: { suspended?: boolean; name?: string } = {}): Promise<void> {
-  await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id, suspended) VALUES (?, ?, 'owner-x', ?)").bind(id, opts.name ?? id, opts.suspended ? 1 : 0).run();
+  await db
+    .prepare("INSERT INTO mw_workspaces (id, name, owner_id, suspended) VALUES (?, ?, 'owner-x', ?)")
+    .bind(id, opts.name ?? id, opts.suspended ? 1 : 0)
+    .run();
 }
 async function addMember(workspaceId: string, userId: string, role: "owner" | "admin" | "member"): Promise<void> {
   await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, ?)").bind(workspaceId, userId, role).run();
@@ -138,7 +149,12 @@ describe("tenant isolation", () => {
   });
 
   it("a role claimed by the caller is ignored", async () => {
-    const res = await call(createApp(), "/api/workspace-protected/test", { "x-test-user": "carol", "x-workspace-id": "ws-a", "x-workspace-role": "owner", "x-role": "owner" });
+    const res = await call(createApp(), "/api/workspace-protected/test", {
+      "x-test-user": "carol",
+      "x-workspace-id": "ws-a",
+      "x-workspace-role": "owner",
+      "x-role": "owner",
+    });
     expect(((await res.json()) as { workspace: { role: string } }).workspace.role).toBe("member");
   });
 
@@ -148,10 +164,13 @@ describe("tenant isolation", () => {
     expect(((await res.json()) as { error: string }).error).toBe("Not a member of this workspace");
   });
 
-  it.each(["' OR '1'='1", "ws-a' --", "ws-a\"; DROP TABLE mw_members; --", "%", "ws-a OR 1=1"])("a workspace id of %j is only ever data: refused, and nothing is dropped", async (id) => {
-    expect((await ask("alice", id)).status).toBe(403);
-    expect((await db.prepare("SELECT COUNT(*) AS n FROM mw_members").first<{ n: number }>())!.n).toBe(4);
-  });
+  it.each(["' OR '1'='1", "ws-a' --", 'ws-a"; DROP TABLE mw_members; --', "%", "ws-a OR 1=1"])(
+    "a workspace id of %j is only ever data: refused, and nothing is dropped",
+    async (id) => {
+      expect((await ask("alice", id)).status).toBe(403);
+      expect((await db.prepare("SELECT COUNT(*) AS n FROM mw_members").first<{ n: number }>())!.n).toBe(4);
+    },
+  );
 
   // Title kept unchanged (evidence keys on test names). Since AD-V1 a query-string workspace is never read: alone it is
   // missing context (400), and alongside the header the header's workspace is the one used.
@@ -202,7 +221,12 @@ describe("tenant isolation", () => {
       return rejectForeignWorkspace(c, body) ?? c.json({ acted: c.get("ctx")!.workspaceId });
     });
     const post = (path: string, body?: unknown) =>
-      call(app, path, { "x-test-user": "alice", "x-workspace-id": "ws-a", "content-type": "application/json" }, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+      call(
+        app,
+        path,
+        { "x-test-user": "alice", "x-workspace-id": "ws-a", "content-type": "application/json" },
+        { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) },
+      );
     expect((await post("/api/admin?workspaceId=ws-b")).status).toBe(403);
     expect((await post("/api/admin", { workspaceId: "ws-b" })).status).toBe(403);
     const same = await post("/api/admin?workspaceId=ws-a", { workspaceId: "ws-a" });
@@ -240,7 +264,12 @@ describe("tenant isolation", () => {
 describe("workspace routes", () => {
   const as = (user: string) => ({ "x-test-user": user });
   const create = (user: string, body: unknown) =>
-    call(createApp(), "/api/workspaces", { ...as(user), "content-type": "application/json" }, { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) });
+    call(
+      createApp(),
+      "/api/workspaces",
+      { ...as(user), "content-type": "application/json" },
+      { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) },
+    );
 
   it("creating a workspace makes the caller its owner, in one batch", async () => {
     const res = await create("alice", { name: "  Acme  " });

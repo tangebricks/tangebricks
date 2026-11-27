@@ -1,17 +1,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
-import {
-  DEFAULT_COHORT_1_PARTNERS,
-  app as studioApp,
-  ensureStudioD1Schema,
-  validateCohort1Composition,
-} from "../../../apps/studio-api/src/index.ts";
-import type {
-  BetaReadinessReport,
-  CohortPartnerSeedInput,
-  ProvisionedCohortPartnerRecord,
-  StudioApiEnv,
-} from "../../../apps/studio-api/src/index.ts";
+import { DEFAULT_COHORT_1_PARTNERS, app as studioApp, ensureStudioD1Schema, validateCohort1Composition } from "../../../apps/studio-api/src/index.ts";
+import type { BetaReadinessReport, CohortPartnerSeedInput, ProvisionedCohortPartnerRecord, StudioApiEnv } from "../../../apps/studio-api/src/index.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 
@@ -19,10 +9,7 @@ const studioEnv = env as unknown as StudioApiEnv;
 // tokens, including the default seed token, are refused. The harness signs an operator in once.
 let operator: { token: string; userId: string } | null = null;
 
-async function adminReq(
-  path: string,
-  init: RequestInit = {},
-): Promise<Response> {
+async function adminReq(path: string, init: RequestInit = {}): Promise<Response> {
   if (!operator) {
     const res = await studioApp.request(
       "/api/auth/signup",
@@ -43,21 +30,21 @@ async function adminReq(
   }
   const headers = new Headers(init.headers);
   if (!headers.has("authorization")) headers.set("authorization", `Bearer ${operator.token}`);
-  return studioApp.request(path, { ...init, headers }, {
-    ...studioEnv,
-    PX_PLATFORM_OPERATORS: operator.userId,
-  });
+  return studioApp.request(
+    path,
+    { ...init, headers },
+    {
+      ...studioEnv,
+      PX_PLATFORM_OPERATORS: operator.userId,
+    },
+  );
 }
 
 describe("Story 8.4 — Cohort-1 Design Partner Simulation & Beta Metrics", () => {
   beforeEach(async () => {
     await ensureStudioD1Schema(studioEnv.STUDIO_DB);
-    await studioEnv.STUDIO_DB.prepare(
-      "DELETE FROM studio_beta_cohort_partners",
-    ).run();
-    await studioEnv.STUDIO_DB.prepare(
-      "DELETE FROM studio_onboarding_events",
-    ).run();
+    await studioEnv.STUDIO_DB.prepare("DELETE FROM studio_beta_cohort_partners").run();
+    await studioEnv.STUDIO_DB.prepare("DELETE FROM studio_onboarding_events").run();
   });
 
   test("1. enforces Owner Decision D1 cohort composition (>= 1 agency and >= 1 mcp-first-dev) and rejects invalid cohort configs with HTTP 422", async () => {
@@ -119,9 +106,7 @@ describe("Story 8.4 — Cohort-1 Design Partner Simulation & Beta Metrics", () =
 
     expect(provisioned.ok).toBe(true);
     expect(provisioned.partners).toHaveLength(5);
-    expect(
-      provisioned.partners.every((p) => p.inviteToken.startsWith("inv_cohort-1_")),
-    ).toBe(true);
+    expect(provisioned.partners.every((p) => p.inviteToken.startsWith("inv_cohort-1_"))).toBe(true);
 
     // Fetch live metrics from GET /api/admin/beta-metrics
     const metricsRes = await adminReq("/api/admin/beta-metrics?cohortId=cohort-1");
@@ -173,19 +158,17 @@ describe("Story 8.4 — Cohort-1 Design Partner Simulation & Beta Metrics", () =
 
   test("3. fires cp9TriggerFired: true and blocks solo-founder unlock when Connect Cloudflare wizard drop-off exceeds 25%", async () => {
     // 2 of 5 partners drop off at Connect Cloudflare (40% drop-off > 25% threshold)
-    const highDropOffCohort: CohortPartnerSeedInput[] = DEFAULT_COHORT_1_PARTNERS.map(
-      (partner, idx) => ({
-        ...partner,
-        orgId: `${partner.orgId}_dropoff`,
-        orgSlug: `${partner.orgSlug}-dropoff`,
-        ownerEmail: `dropoff-${idx}@example.com`,
-        ownerUserId: `usr_dropoff_${idx}`,
-        sessionTelemetry: {
-          ...partner.sessionTelemetry,
-          connectCfCompleted: idx < 3, // Only 3 of 5 complete Connect Cloudflare -> 40% drop-off
-        },
-      }),
-    );
+    const highDropOffCohort: CohortPartnerSeedInput[] = DEFAULT_COHORT_1_PARTNERS.map((partner, idx) => ({
+      ...partner,
+      orgId: `${partner.orgId}_dropoff`,
+      orgSlug: `${partner.orgSlug}-dropoff`,
+      ownerEmail: `dropoff-${idx}@example.com`,
+      ownerUserId: `usr_dropoff_${idx}`,
+      sessionTelemetry: {
+        ...partner.sessionTelemetry,
+        connectCfCompleted: idx < 3, // Only 3 of 5 complete Connect Cloudflare -> 40% drop-off
+      },
+    }));
 
     const res = await adminReq("/api/admin/beta-cohort/provision", {
       method: "POST",

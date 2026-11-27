@@ -10,13 +10,7 @@ function digPath(value: unknown, path: string): unknown {
   return path
     .split(".")
     .filter(Boolean)
-    .reduce<unknown>(
-      (at, key) =>
-        typeof at === "object" && at !== null && Object.hasOwn(at, key)
-          ? (at as Record<string, unknown>)[key]
-          : undefined,
-      value,
-    );
+    .reduce<unknown>((at, key) => (typeof at === "object" && at !== null && Object.hasOwn(at, key) ? (at as Record<string, unknown>)[key] : undefined), value);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -105,9 +99,7 @@ export async function executeSwitchNode(ctx: ExecutionContext): Promise<Record<s
   const field = typeof ctx.data.field === "string" ? ctx.data.field : "type";
   const cases = asRecord(ctx.data.cases);
   const actual = String(digPath(input, field) ?? "");
-  const matchedCase = Object.hasOwn(cases, actual)
-    ? cases[actual]
-    : (ctx.data.defaultBranch ?? "default");
+  const matchedCase = Object.hasOwn(cases, actual) ? cases[actual] : (ctx.data.defaultBranch ?? "default");
   return {
     out: {
       key: actual,
@@ -120,11 +112,13 @@ export async function executeSwitchNode(ctx: ExecutionContext): Promise<Record<s
 export async function executeLoopNode(ctx: ExecutionContext): Promise<Record<string, unknown>> {
   const rawItems = Array.isArray(ctx.inputs.in) ? ctx.inputs.in : [];
   const maxIterations = Math.max(1, Math.min(1000, Number(ctx.data.maxIterations ?? 100)));
-  const bounded = rawItems.slice(0, maxIterations).map((item, index) =>
-    typeof item === "object" && item !== null && !Array.isArray(item)
-      ? { ...(item as Record<string, unknown>), _index: index }
-      : { value: item, _index: index },
-  );
+  const bounded = rawItems
+    .slice(0, maxIterations)
+    .map((item, index) =>
+      typeof item === "object" && item !== null && !Array.isArray(item)
+        ? { ...(item as Record<string, unknown>), _index: index }
+        : { value: item, _index: index },
+    );
   return { out: bounded };
 }
 
@@ -278,13 +272,7 @@ export async function executeDateTimeNode(ctx: ExecutionContext): Promise<Record
 function isFixtureUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return (
-      parsed.protocol === "http:" &&
-      parsed.hostname === "fixture.local" &&
-      parsed.port === "" &&
-      parsed.username === "" &&
-      parsed.password === ""
-    );
+    return parsed.protocol === "http:" && parsed.hostname === "fixture.local" && parsed.port === "" && parsed.username === "" && parsed.password === "";
   } catch {
     return false;
   }
@@ -413,11 +401,7 @@ export async function executeBatchNode(ctx: ExecutionContext): Promise<Record<st
     try {
       queue = ctx.binding("JOB_QUEUE");
     } catch {
-      queue =
-        (ctx.data as any)?.queue ??
-        (ctx.data as any)?.jobQueue ??
-        (ctx as any).env?.QUEUE ??
-        (ctx as any).env?.JOB_QUEUE;
+      queue = (ctx.data as any)?.queue ?? (ctx.data as any)?.jobQueue ?? (ctx as any).env?.QUEUE ?? (ctx as any).env?.JOB_QUEUE;
     }
   }
 
@@ -541,9 +525,7 @@ const EXECUTOR_FUNCTIONS: Record<string, Executor> = {
 function buildConfigSchemaFromManifestConfig(
   configDef: Record<
     string,
-    | { type: "integer"; min: number; max: number; default: number }
-    | { type: "enum"; values: string[]; default: string }
-    | { type: "boolean"; default: boolean }
+    { type: "integer"; min: number; max: number; default: number } | { type: "enum"; values: string[]; default: string } | { type: "boolean"; default: boolean }
   >,
 ): z.ZodType {
   const shape: Record<string, z.ZodType> = {};
@@ -598,4 +580,3 @@ export const coreNodeExecutors: ReadonlyMap<string, Executor> = new Map<string, 
 export const coreNodeExecutorsByExportName: Readonly<Record<string, Executor>> = EXECUTOR_FUNCTIONS;
 export const coreNodeDefinitions = coreNodesManifest.nodes;
 export const CORE_NODE_TYPES = coreNodesManifest.nodes.map((node) => node.type);
-

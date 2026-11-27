@@ -111,12 +111,15 @@ export function createSsoRoutes({ adapter }: { adapter?: SsoRouteAdapter } = {})
       return c.json({ sso_enabled: false }, 200);
     }
 
-    return c.json({
-      sso_enabled: true,
-      provider: conn.provider_type,
-      display_name: conn.display_name,
-      domain: conn.domain,
-    }, 200);
+    return c.json(
+      {
+        sso_enabled: true,
+        provider: conn.provider_type,
+        display_name: conn.display_name,
+        domain: conn.domain,
+      },
+      200,
+    );
   });
 
   // POST /sso/authorize - get authorization URL and store transient PKCE request
@@ -145,12 +148,15 @@ export function createSsoRoutes({ adapter }: { adapter?: SsoRouteAdapter } = {})
       return c.json({ error: err.message || "Failed to create SSO authorize request" }, 404);
     }
 
-    return c.json({
-      authorize_url: result.authorizeUrl,
-      state: result.state,
-      nonce: result.nonce,
-      code_challenge: result.codeChallenge,
-    }, 200);
+    return c.json(
+      {
+        authorize_url: result.authorizeUrl,
+        state: result.state,
+        nonce: result.nonce,
+        code_challenge: result.codeChallenge,
+      },
+      200,
+    );
   });
 
   // GET /sso/callback - handle IdP authorization-code callback
@@ -173,20 +179,26 @@ export function createSsoRoutes({ adapter }: { adapter?: SsoRouteAdapter } = {})
       return c.json({ error: result.error, code: result.code }, result.status as any);
     }
 
-    return c.json({
-      ok: true,
-      identity: result.identity,
-      session: result.session,
-    }, 200);
+    return c.json(
+      {
+        ok: true,
+        identity: result.identity,
+        session: result.session,
+      },
+      200,
+    );
   });
 
   // POST /sso/saml/acs - refuse SAML assertions with stable 501
   app.post("/sso/saml/acs", async (c) => {
-    return c.json({
-      error: "SSO_SAML_UNSUPPORTED",
-      code: "SSO_SAML_UNSUPPORTED",
-      message: "SAML assertion consumer service is not supported",
-    }, 501);
+    return c.json(
+      {
+        error: "SSO_SAML_UNSUPPORTED",
+        code: "SSO_SAML_UNSUPPORTED",
+        message: "SAML assertion consumer service is not supported",
+      },
+      501,
+    );
   });
 
   // POST /sso/scim/v2/Users - SCIM directory sync

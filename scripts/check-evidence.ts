@@ -167,11 +167,7 @@ export function runCheckEvidenceCli(): number {
   return 0;
 }
 
-if (
-  process.argv[1] &&
-  resolve(process.argv[1]).toLowerCase() ===
-    resolve(fileURLToPath(import.meta.url)).toLowerCase()
-) {
+if (process.argv[1] && resolve(process.argv[1]).toLowerCase() === resolve(fileURLToPath(import.meta.url)).toLowerCase()) {
   const code = runCheckEvidenceCli();
   process.exit(code);
 }

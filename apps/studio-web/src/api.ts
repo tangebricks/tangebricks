@@ -59,10 +59,7 @@ export async function fetchAuthMe(): Promise<{
   }
 }
 
-export async function signInWithEmail(input: {
-  email: string;
-  password: string;
-}): Promise<{ user: StudioUser }> {
+export async function signInWithEmail(input: { email: string; password: string }): Promise<{ user: StudioUser }> {
   const res = await fetch("/api/auth/sign-in/email", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -86,11 +83,7 @@ export async function signInWithEmail(input: {
   };
 }
 
-export async function signUpWithEmail(input: {
-  name: string;
-  email: string;
-  password: string;
-}): Promise<{ user: StudioUser }> {
+export async function signUpWithEmail(input: { name: string; email: string; password: string }): Promise<{ user: StudioUser }> {
   const res = await fetch("/api/auth/sign-up/email", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -121,9 +114,7 @@ export async function fetchStudioOrgs(): Promise<StudioOrg[]> {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      body?.error?.message ?? body?.message ?? `Failed to load organizations (${res.status})`,
-    );
+    throw new Error(body?.error?.message ?? body?.message ?? `Failed to load organizations (${res.status})`);
   }
   const data = (await res.json()) as { orgs?: StudioOrg[] };
   return data.orgs ?? [];
@@ -136,9 +127,7 @@ export async function fetchStudioProjects(): Promise<StudioProjectSummary[]> {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      body?.error?.message ?? body?.message ?? `Failed to load projects (${res.status})`,
-    );
+    throw new Error(body?.error?.message ?? body?.message ?? `Failed to load projects (${res.status})`);
   }
   const data = (await res.json()) as { projects?: StudioProjectSummary[] };
   return data.projects ?? [];
@@ -165,9 +154,7 @@ export async function createOrgProject(
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      err?.error?.message ?? err?.message ?? `Failed to create project (${res.status})`,
-    );
+    throw new Error(err?.error?.message ?? err?.message ?? `Failed to create project (${res.status})`);
   }
   const data = (await res.json()) as {
     project: string;
@@ -216,9 +203,7 @@ export async function importProjectBundle(
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      err?.error?.message ?? err?.message ?? `Failed to import preset (${res.status})`,
-    );
+    throw new Error(err?.error?.message ?? err?.message ?? `Failed to import preset (${res.status})`);
   }
   return (await res.json()) as {
     project: string;
@@ -264,15 +249,9 @@ export async function fetchBrickCatalog(): Promise<Record<string, CatalogBrickMa
   }
 }
 
-export async function fetchProjectRevisions(
-  project: string,
-  limit = 50,
-): Promise<RevisionSummary[]> {
+export async function fetchProjectRevisions(project: string, limit = 50): Promise<RevisionSummary[]> {
   try {
-    const res = await fetch(
-      `/api/projects/${encodeURIComponent(project)}/revisions?limit=${limit}`,
-      { credentials: "include" },
-    );
+    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/revisions?limit=${limit}`, { credentials: "include" });
     if (!res.ok) return [];
     const data = (await res.json()) as { revisions?: RevisionSummary[] };
     return data.revisions ?? [];
@@ -281,15 +260,8 @@ export async function fetchProjectRevisions(
   }
 }
 
-export async function fetchProjectDiff(
-  project: string,
-  fromRev: number,
-  toRev: number,
-): Promise<SemanticDiffPayload> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/diff?from=${fromRev}&to=${toRev}`,
-    { credentials: "include" },
-  );
+export async function fetchProjectDiff(project: string, fromRev: number, toRev: number): Promise<SemanticDiffPayload> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/diff?from=${fromRev}&to=${toRev}`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Failed to load diff r${fromRev}..r${toRev} (${res.status})`);
   }
@@ -355,15 +327,8 @@ export async function commitProjectOps(
       };
       message?: string;
     } | null;
-    const issueMessages = body?.error?.issues
-      ?.map((iss) => `${iss.path ? `${iss.path}: ` : ""}${iss.message ?? iss.code ?? "Invalid"}`)
-      .join("; ");
-    const detail =
-      issueMessages ||
-      body?.error?.message ||
-      body?.message ||
-      body?.error?.code ||
-      `Request failed (${res.status})`;
+    const issueMessages = body?.error?.issues?.map((iss) => `${iss.path ? `${iss.path}: ` : ""}${iss.message ?? iss.code ?? "Invalid"}`).join("; ");
+    const detail = issueMessages || body?.error?.message || body?.message || body?.error?.code || `Request failed (${res.status})`;
     const err = new Error(detail) as CommitOpsError;
     err.status = res.status;
     if (res.status === 409 && body?.error) {
@@ -384,10 +349,7 @@ export async function fetchProjectRevisionState(
   semanticHash: string;
   readiness: ReadinessResult;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/revisions/${revision}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/revisions/${revision}`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Failed to load revision r${revision} (${res.status})`);
   }
@@ -400,11 +362,7 @@ export async function fetchProjectRevisionState(
   };
 }
 
-export async function revertProjectToRevision(
-  project: string,
-  targetRevision: number,
-  baseRevision?: number,
-): Promise<CommitOpsResponse> {
+export async function revertProjectToRevision(project: string, targetRevision: number, baseRevision?: number): Promise<CommitOpsResponse> {
   const res = await fetch(`/api/projects/${encodeURIComponent(project)}/revert`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -419,33 +377,19 @@ export async function revertProjectToRevision(
       error?: { message?: string; code?: string };
       message?: string;
     } | null;
-    throw new Error(
-      body?.error?.message ??
-        body?.message ??
-        body?.error?.code ??
-        `Revert to r${targetRevision} failed (${res.status})`,
-    );
+    throw new Error(body?.error?.message ?? body?.message ?? body?.error?.code ?? `Revert to r${targetRevision} failed (${res.status})`);
   }
   return (await res.json()) as CommitOpsResponse;
 }
 
-export async function fetchProjectSecrets(
-  project: string,
-): Promise<StudioSecretMetadata[]> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/secrets`,
-    { credentials: "include" },
-  );
+export async function fetchProjectSecrets(project: string): Promise<StudioSecretMetadata[]> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/secrets`, { credentials: "include" });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      body?.error?.message ??
-        body?.message ??
-        `Failed to load secrets (${res.status})`,
-    );
+    throw new Error(body?.error?.message ?? body?.message ?? `Failed to load secrets (${res.status})`);
   }
   const data = (await res.json()) as { secrets?: StudioSecretMetadata[] };
   return data.secrets ?? [];
@@ -473,29 +417,19 @@ export interface UpsertSecretResponse {
   readiness?: ReadinessResult;
 }
 
-export async function upsertProjectSecret(
-  project: string,
-  input: UpsertSecretInput,
-): Promise<UpsertSecretResponse> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/secrets`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(input),
-    },
-  );
+export async function upsertProjectSecret(project: string, input: UpsertSecretInput): Promise<UpsertSecretResponse> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/secrets`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      body?.error?.message ??
-        body?.message ??
-        `Failed to save secret (${res.status})`,
-    );
+    throw new Error(body?.error?.message ?? body?.message ?? `Failed to save secret (${res.status})`);
   }
   return (await res.json()) as UpsertSecretResponse;
 }
@@ -509,11 +443,7 @@ export interface DeleteSecretResponse {
   readiness?: ReadinessResult;
 }
 
-export async function deleteProjectSecret(
-  project: string,
-  ref: string,
-  unbind = true,
-): Promise<DeleteSecretResponse> {
+export async function deleteProjectSecret(project: string, ref: string, unbind = true): Promise<DeleteSecretResponse> {
   const url = `/api/projects/${encodeURIComponent(project)}/secrets/${encodeURIComponent(ref)}${unbind ? "?unbind=true" : ""}`;
   const res = await fetch(url, {
     method: "DELETE",
@@ -524,25 +454,16 @@ export async function deleteProjectSecret(
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      body?.error?.message ??
-        body?.message ??
-        `Failed to delete secret (${res.status})`,
-    );
+    throw new Error(body?.error?.message ?? body?.message ?? `Failed to delete secret (${res.status})`);
   }
   return (await res.json()) as DeleteSecretResponse;
 }
 
-export async function fetchProjectConnections(
-  project: string,
-): Promise<{
+export async function fetchProjectConnections(project: string): Promise<{
   connections: StudioSecretMetadata[];
   connectionRequests: StudioConnectionRequest[];
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/connections`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/connections`, { credentials: "include" });
   if (!res.ok) {
     return { connections: [], connectionRequests: [] };
   }
@@ -566,23 +487,16 @@ export async function testProjectConnection(
   lastCheckedAt: string;
   keyHint?: string;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/connections/${encodeURIComponent(ref)}/test`,
-    {
-      method: "POST",
-      credentials: "include",
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/connections/${encodeURIComponent(ref)}/test`, {
+    method: "POST",
+    credentials: "include",
+  });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      body?.error?.message ??
-        body?.message ??
-        `Connection test failed (${res.status})`,
-    );
+    throw new Error(body?.error?.message ?? body?.message ?? `Connection test failed (${res.status})`);
   }
   return (await res.json()) as {
     ok: boolean;
@@ -604,25 +518,18 @@ export async function reauthorizeProjectConnection(
   authorizeUrl?: string;
   state?: string;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/connections/${encodeURIComponent(ref)}/reauthorize`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(input ?? {}),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/connections/${encodeURIComponent(ref)}/reauthorize`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input ?? {}),
+  });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      body?.error?.message ??
-        body?.message ??
-        `Connection re-authorization failed (${res.status})`,
-    );
+    throw new Error(body?.error?.message ?? body?.message ?? `Connection re-authorization failed (${res.status})`);
   }
   return (await res.json()) as {
     ok: boolean;
@@ -646,25 +553,18 @@ export async function startOAuthConnection(
   codeChallengeMethod: "S256";
   authorizeUrl: string;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/connections/oauth/${encodeURIComponent(app)}/start`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(options ?? {}),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/connections/oauth/${encodeURIComponent(app)}/start`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(options ?? {}),
+  });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      body?.error?.message ??
-        body?.message ??
-        `OAuth2 start failed (${res.status})`,
-    );
+    throw new Error(body?.error?.message ?? body?.message ?? `OAuth2 start failed (${res.status})`);
   }
   return (await res.json()) as {
     ok: boolean;
@@ -711,12 +611,7 @@ export interface RunNodeTestStepInput {
   orgId?: string;
 }
 
-export async function runNodeTestStep(
-  project: string,
-  workflowId: string,
-  nodeId: string,
-  body: RunNodeTestStepInput,
-): Promise<TestStepResponse> {
+export async function runNodeTestStep(project: string, workflowId: string, nodeId: string, body: RunNodeTestStepInput): Promise<TestStepResponse> {
   const res = await fetch(
     `/api/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(workflowId)}/nodes/${encodeURIComponent(nodeId)}/test-step`,
     {
@@ -731,21 +626,13 @@ export async function runNodeTestStep(
       error?: { message?: string; code?: string };
       message?: string;
     } | null;
-    const msg =
-      errBody?.error?.message ??
-      errBody?.message ??
-      `Test step failed (${res.status})`;
+    const msg = errBody?.error?.message ?? errBody?.message ?? `Test step failed (${res.status})`;
     throw new Error(msg);
   }
   return (await res.json()) as TestStepResponse;
 }
 
-export type TelemetryStepStatus =
-  | "queued"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "skipped";
+export type TelemetryStepStatus = "queued" | "running" | "succeeded" | "failed" | "skipped";
 
 export interface WorkflowRunStepEvent {
   eventId: string;
@@ -793,29 +680,19 @@ export interface TriggerWorkflowRunInput {
   usePinnedOutputs?: boolean;
 }
 
-export async function triggerWorkflowRun(
-  project: string,
-  workflowId: string,
-  body: TriggerWorkflowRunInput = {},
-): Promise<WorkflowRunApiResponse> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(workflowId)}/runs`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+export async function triggerWorkflowRun(project: string, workflowId: string, body: TriggerWorkflowRunInput = {}): Promise<WorkflowRunApiResponse> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(workflowId)}/runs`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     const errBody = (await res.json().catch(() => null)) as {
       error?: { message?: string; code?: string };
       message?: string;
     } | null;
-    const msg =
-      errBody?.error?.message ??
-      errBody?.message ??
-      `Workflow run failed (${res.status})`;
+    const msg = errBody?.error?.message ?? errBody?.message ?? `Workflow run failed (${res.status})`;
     throw new Error(msg);
   }
   return (await res.json()) as WorkflowRunApiResponse;
@@ -828,19 +705,13 @@ export interface TelemetryEventsPage {
   hasMore: boolean;
 }
 
-export async function fetchTelemetryEvents(
-  project: string,
-  params: { after?: number; runId?: string; limit?: number } = {},
-): Promise<TelemetryEventsPage> {
+export async function fetchTelemetryEvents(project: string, params: { after?: number; runId?: string; limit?: number } = {}): Promise<TelemetryEventsPage> {
   const search = new URLSearchParams();
   if (params.after !== undefined) search.set("after", String(params.after));
   if (params.runId) search.set("runId", params.runId);
   if (params.limit !== undefined) search.set("limit", String(params.limit));
   const qs = search.toString();
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/telemetry/events${qs ? `?${qs}` : ""}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/telemetry/events${qs ? `?${qs}` : ""}`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Failed to fetch telemetry events (${res.status})`);
   }
@@ -884,10 +755,7 @@ export interface RunHistoryPageResponse {
   hasMore: boolean;
 }
 
-export async function fetchProjectRuns(
-  project: string,
-  filters: RunHistoryFilterParams = {},
-): Promise<RunHistoryPageResponse> {
+export async function fetchProjectRuns(project: string, filters: RunHistoryFilterParams = {}): Promise<RunHistoryPageResponse> {
   const search = new URLSearchParams();
   if (filters.env) search.set("env", filters.env);
   if (filters.workflowId && filters.workflowId !== "all") {
@@ -905,20 +773,13 @@ export async function fetchProjectRuns(
   if (filters.limit !== undefined) search.set("limit", String(filters.limit));
 
   const qs = search.toString();
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/runs${qs ? `?${qs}` : ""}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/runs${qs ? `?${qs}` : ""}`, { credentials: "include" });
   if (!res.ok) {
     const errBody = (await res.json().catch(() => null)) as {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      errBody?.error?.message ??
-        errBody?.message ??
-        `Failed to load run history (${res.status})`,
-    );
+    throw new Error(errBody?.error?.message ?? errBody?.message ?? `Failed to load run history (${res.status})`);
   }
   return (await res.json()) as RunHistoryPageResponse;
 }
@@ -935,25 +796,16 @@ export interface RunReplayDetailResponse {
   historicalWorkflow: WorkflowDefinition | null;
 }
 
-export async function fetchProjectRunDetail(
-  project: string,
-  runId: string,
-  env: "preview" | "production" = "preview",
-): Promise<RunReplayDetailResponse> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/runs/${encodeURIComponent(runId)}?env=${encodeURIComponent(env)}`,
-    { credentials: "include" },
-  );
+export async function fetchProjectRunDetail(project: string, runId: string, env: "preview" | "production" = "preview"): Promise<RunReplayDetailResponse> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/runs/${encodeURIComponent(runId)}?env=${encodeURIComponent(env)}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     const errBody = (await res.json().catch(() => null)) as {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      errBody?.error?.message ??
-        errBody?.message ??
-        `Failed to load run replay detail (${res.status})`,
-    );
+    throw new Error(errBody?.error?.message ?? errBody?.message ?? `Failed to load run replay detail (${res.status})`);
   }
   return (await res.json()) as RunReplayDetailResponse;
 }
@@ -970,14 +822,8 @@ export interface WorkflowPinsResponse {
   pinnedOutputs: Record<string, PinnedNodeOutputRecord>;
 }
 
-export async function fetchWorkflowPins(
-  project: string,
-  workflowId: string,
-): Promise<WorkflowPinsResponse> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(workflowId)}/pins`,
-    { credentials: "include" },
-  );
+export async function fetchWorkflowPins(project: string, workflowId: string): Promise<WorkflowPinsResponse> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(workflowId)}/pins`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Failed to fetch pinned outputs (${res.status})`);
   }
@@ -997,25 +843,18 @@ export async function pinWorkflowNodeOutput(
   pin: PinnedNodeOutputRecord;
   pinnedOutputs: Record<string, PinnedNodeOutputRecord>;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(workflowId)}/nodes/${encodeURIComponent(nodeId)}/pin`,
-    {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(workflowId)}/nodes/${encodeURIComponent(nodeId)}/pin`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     const errBody = (await res.json().catch(() => null)) as {
       error?: { message?: string };
       message?: string;
     } | null;
-    throw new Error(
-      errBody?.error?.message ??
-        errBody?.message ??
-        `Failed to pin node output (${res.status})`,
-    );
+    throw new Error(errBody?.error?.message ?? errBody?.message ?? `Failed to pin node output (${res.status})`);
   }
   return (await res.json()) as {
     ok: true;
@@ -1038,13 +877,10 @@ export async function unpinWorkflowNodeOutput(
   nodeId: string;
   pinnedOutputs: Record<string, PinnedNodeOutputRecord>;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(workflowId)}/nodes/${encodeURIComponent(nodeId)}/pin`,
-    {
-      method: "DELETE",
-      credentials: "include",
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/workflows/${encodeURIComponent(workflowId)}/nodes/${encodeURIComponent(nodeId)}/pin`, {
+    method: "DELETE",
+    credentials: "include",
+  });
   if (!res.ok) {
     throw new Error(`Failed to unpin node output (${res.status})`);
   }
@@ -1066,35 +902,24 @@ export async function rerunWorkflowFromNode(
     env?: "preview" | "production";
   },
 ): Promise<WorkflowRunApiResponse> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/runs/${encodeURIComponent(runId)}/rerun`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/runs/${encodeURIComponent(runId)}/rerun`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     const errBody = (await res.json().catch(() => null)) as {
       error?: { message?: string; code?: string };
       message?: string;
     } | null;
-    throw new Error(
-      errBody?.error?.message ??
-        errBody?.message ??
-        `Re-run from node failed (${res.status})`,
-    );
+    throw new Error(errBody?.error?.message ?? errBody?.message ?? `Re-run from node failed (${res.status})`);
   }
   return (await res.json()) as WorkflowRunApiResponse;
 }
 
 export interface CloudflarePermissionStatusRow {
-  id:
-    | "account_settings_read"
-    | "workers_scripts_edit"
-    | "d1_edit"
-    | "queues_edit";
+  id: "account_settings_read" | "workers_scripts_edit" | "d1_edit" | "queues_edit";
   label: string;
   required: boolean;
   granted: boolean;
@@ -1230,13 +1055,8 @@ export interface CloudflareTemplateUrlPayload {
 export const DEFAULT_CLOUDFLARE_TEMPLATE_URL =
   "https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22d1%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22queues%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22account_settings%22%2C%22type%22%3A%22read%22%7D%5D&name=ProjectX+Studio+Deploy";
 
-export async function fetchCloudflareTokenTemplate(
-  orgId: string,
-): Promise<CloudflareTemplateUrlPayload> {
-  const res = await fetch(
-    `/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/template-url`,
-    { credentials: "include" },
-  );
+export async function fetchCloudflareTokenTemplate(orgId: string): Promise<CloudflareTemplateUrlPayload> {
+  const res = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/template-url`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Failed to fetch Cloudflare token template (${res.status})`);
   }
@@ -1273,10 +1093,7 @@ export async function fetchProjectEnvironments(
   sandbox?: StudioSandboxSummaryPayload | null;
 }> {
   const qs = orgId ? `?orgId=${encodeURIComponent(orgId)}` : "";
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments${qs}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments${qs}`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Failed to fetch project environments (${res.status})`);
   }
@@ -1298,10 +1115,7 @@ export async function fetchProjectSandbox(
   sandbox: StudioSandboxSummaryPayload | null;
 }> {
   const qs = orgId ? `?orgId=${encodeURIComponent(orgId)}` : "";
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/sandbox${qs}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/sandbox${qs}`, { credentials: "include" });
   if (!res.ok) {
     throw new Error(`Failed to fetch project sandbox (${res.status})`);
   }
@@ -1334,21 +1148,16 @@ export async function deployProjectToSandbox(
   expiresAt: string;
   sandbox: StudioSandboxSummaryPayload;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/sandbox/deploy`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/sandbox/deploy`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
   if (!res.ok || !data?.ok) {
     const errObj = data?.error as { message?: string } | undefined;
-    throw new Error(
-      errObj?.message ?? `Failed to deploy instant sandbox preview (${res.status})`,
-    );
+    throw new Error(errObj?.message ?? `Failed to deploy instant sandbox preview (${res.status})`);
   }
   return data as unknown as {
     ok: true;
@@ -1403,21 +1212,16 @@ export async function promoteSandboxToByoc(
   environment: ProjectDeployEnvironmentRecord;
   token: CloudflareTokenMetadataSummary;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/sandbox/promote-to-byoc`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/sandbox/promote-to-byoc`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
   if (!res.ok || !data?.ok) {
     const errObj = data?.error as { message?: string } | undefined;
-    throw new Error(
-      errObj?.message ?? `Failed to promote sandbox to BYOC (${res.status})`,
-    );
+    throw new Error(errObj?.message ?? `Failed to promote sandbox to BYOC (${res.status})`);
   }
   return data as unknown as {
     ok: true;
@@ -1451,27 +1255,18 @@ export async function promoteSandboxToByoc(
 export async function postCloudflareFunnelEvent(
   orgId: string,
   body: {
-    step:
-      | "wizard_opened"
-      | "template_link_clicked"
-      | "token_submitted"
-      | "verification_failed"
-      | "verification_succeeded"
-      | "token_disconnected";
+    step: "wizard_opened" | "template_link_clicked" | "token_submitted" | "verification_failed" | "verification_succeeded" | "token_disconnected";
     projectId?: string;
     metadata?: Record<string, unknown>;
   },
 ): Promise<void> {
   try {
-    await fetch(
-      `/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/funnel-event`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      },
-    );
+    await fetch(`/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/funnel-event`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
   } catch {
     // Non-blocking funnel telemetry
   }
@@ -1511,15 +1306,12 @@ export async function verifyAndSaveCloudflareToken(
       };
     }
 > {
-  const res = await fetch(
-    `/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/verify-and-save`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/verify-and-save`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (res.ok && data.ok) {
     return {
@@ -1534,9 +1326,7 @@ export async function verifyAndSaveCloudflareToken(
     };
   }
 
-  const verification = data.verification as
-    | CloudflareVerificationReportPayload
-    | undefined;
+  const verification = data.verification as CloudflareVerificationReportPayload | undefined;
   const errObj = (data.error ?? {}) as {
     code?: string;
     message?: string;
@@ -1552,10 +1342,7 @@ export async function verifyAndSaveCloudflareToken(
     verification,
     error: {
       code: errObj.code ?? "VERIFICATION_FAILED",
-      message:
-        errObj.message ??
-        verification?.summaryMessage ??
-        "Cloudflare token verification failed",
+      message: errObj.message ?? verification?.summaryMessage ?? "Cloudflare token verification failed",
       missingPermissionIds: errObj.missingPermissionIds,
       missingPermissionLabels: errObj.missingPermissionLabels,
       remediationUrl: errObj.remediationUrl ?? verification?.remediationUrl,
@@ -1576,15 +1363,12 @@ export async function recheckCloudflareToken(
   token: CloudflareTokenMetadataSummary;
   verification: CloudflareVerificationReportPayload;
 }> {
-  const res = await fetch(
-    `/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/${encodeURIComponent(tokenRef)}/recheck`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/${encodeURIComponent(tokenRef)}/recheck`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     throw new Error(`Failed to re-verify Cloudflare token (${res.status})`);
   }
@@ -1606,13 +1390,10 @@ export async function disconnectCloudflareToken(
   cloudflareDashboardUrl: string;
   workersKeepRunningMessage?: string;
 }> {
-  const res = await fetch(
-    `/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/${encodeURIComponent(tokenRef)}`,
-    {
-      method: "DELETE",
-      credentials: "include",
-    },
-  );
+  const res = await fetch(`/api/orgs/${encodeURIComponent(orgId)}/cloudflare-tokens/${encodeURIComponent(tokenRef)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
   if (!res.ok) {
     throw new Error(`Failed to disconnect Cloudflare token (${res.status})`);
   }
@@ -1793,25 +1574,18 @@ export async function fetchEnvironmentDeployPlan(
     migrations?: Array<{ name?: string; sql: string }>;
   } = {},
 ): Promise<DeployPlanPayload> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/plan`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/plan`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     const errBody = (await res.json().catch(() => null)) as {
       error?: { message?: string; code?: string };
       message?: string;
     } | null;
-    throw new Error(
-      errBody?.error?.message ??
-        errBody?.message ??
-        `Failed to compute deploy plan (${res.status})`,
-    );
+    throw new Error(errBody?.error?.message ?? errBody?.message ?? `Failed to compute deploy plan (${res.status})`);
   }
   return (await res.json()) as DeployPlanPayload;
 }
@@ -1826,15 +1600,12 @@ export async function executeEnvironmentDeploy(
     migrations?: Array<{ name?: string; sql: string }>;
   } = {},
 ): Promise<DeployExecutionResponse> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/deploy`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/deploy`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (res.ok && data.ok) {
     return data as unknown as Extract<DeployExecutionResponse, { ok: true }>;
@@ -1874,15 +1645,12 @@ export async function promoteEnvironmentDeployment(
     migrations?: Array<{ name?: string; sql: string }>;
   } = {},
 ): Promise<DeployExecutionResponse> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/promote`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/promote`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (res.ok && data.ok) {
     return data as unknown as Extract<DeployExecutionResponse, { ok: true }>;
@@ -1933,15 +1701,12 @@ export async function checkProjectEnvironmentDrift(
   driftReport: DriftReportPayload;
   environment: ProjectDeployEnvironmentRecord;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/check-drift`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/check-drift`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     throw new Error(`Failed to check environment drift (${res.status})`);
   }
@@ -1965,10 +1730,9 @@ export async function fetchEnvironmentDeployments(
   deployments: EnvironmentDeploymentRecordPayload[];
 }> {
   const qs = orgId ? `?orgId=${encodeURIComponent(orgId)}` : "";
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/deployments${qs}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/deployments${qs}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     throw new Error(`Failed to fetch environment deployments (${res.status})`);
   }
@@ -2028,15 +1792,12 @@ export async function rollbackProjectEnvironment(
     orgId?: string;
   },
 ): Promise<RollbackExecutionResponse> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/rollback`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/rollback`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (res.ok && data.ok) {
     return data as unknown as Extract<RollbackExecutionResponse, { ok: true }>;
@@ -2179,16 +1940,11 @@ async function throwDataBrowserReadError(res: Response, fallback: string): Promi
   throw new Error(message);
 }
 
-export async function fetchDataBrowserWorkspaces(
-  project: string,
-  envName: "preview" | "production",
-  orgId?: string,
-): Promise<DataBrowserWorkspacesResponse> {
+export async function fetchDataBrowserWorkspaces(project: string, envName: "preview" | "production", orgId?: string): Promise<DataBrowserWorkspacesResponse> {
   const qs = orgId ? `?orgId=${encodeURIComponent(orgId)}` : "";
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/data/workspaces${qs}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/data/workspaces${qs}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     await throwDataBrowserReadError(res, "Failed to load workspaces");
   }
@@ -2204,10 +1960,9 @@ export async function fetchDataBrowserTables(
   if (params.workspaceId) search.set("workspaceId", params.workspaceId);
   if (params.orgId) search.set("orgId", params.orgId);
   const qs = search.toString();
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/data/tables${qs ? `?${qs}` : ""}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/data/tables${qs ? `?${qs}` : ""}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     await throwDataBrowserReadError(res, "Failed to load tables");
   }
@@ -2267,10 +2022,7 @@ export async function mutateDataBrowserRow(
     orgId?: string;
   },
 ): Promise<DataBrowserWriteResponse> {
-  const rowSuffix =
-    input.rowId && (input.method === "PATCH" || input.method === "DELETE")
-      ? `/${encodeURIComponent(input.rowId)}`
-      : "";
+  const rowSuffix = input.rowId && (input.method === "PATCH" || input.method === "DELETE") ? `/${encodeURIComponent(input.rowId)}` : "";
   const res = await fetch(
     `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/data/tables/${encodeURIComponent(tableName)}/rows${rowSuffix}`,
     {
@@ -2319,10 +2071,9 @@ export async function fetchDataBrowserAuditLog(
   if (params.tableName) search.set("tableName", params.tableName);
   if (params.orgId) search.set("orgId", params.orgId);
   const qs = search.toString();
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/data/audit-log${qs ? `?${qs}` : ""}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/data/audit-log${qs ? `?${qs}` : ""}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     throw new Error(`Failed to load data browser audit log (${res.status})`);
   }
@@ -2390,10 +2141,9 @@ export async function fetchWorkspaceLedger(
   if (params.cursor) search.set("cursor", params.cursor);
   if (params.limit !== undefined) search.set("limit", String(params.limit));
   if (params.orgId) search.set("orgId", params.orgId);
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/ledger?${search.toString()}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/ledger?${search.toString()}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     await throwDataBrowserReadError(res, "Failed to load workspace ledger");
   }
@@ -2483,17 +2233,14 @@ export async function fetchEnvironmentLogs(
     search.set("orgId", params.orgId);
   }
   const qs = search.toString();
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/logs${qs ? `?${qs}` : ""}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/logs${qs ? `?${qs}` : ""}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     const errBody = (await res.json().catch(() => null)) as {
       error?: { message?: string; code?: string };
     } | null;
-    throw new Error(
-      errBody?.error?.message ?? `Failed to load structured logs (${res.status})`,
-    );
+    throw new Error(errBody?.error?.message ?? `Failed to load structured logs (${res.status})`);
   }
   return (await res.json()) as EnvironmentLogsResponse;
 }
@@ -2511,15 +2258,12 @@ export async function ingestEnvironmentLogs(
   ingestedCount: number;
   logs: StructuredLogEntryPayload[];
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/logs`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/logs`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     throw new Error(`Failed to ingest structured logs (${res.status})`);
   }
@@ -2623,18 +2367,14 @@ export async function fetchEnvironmentHealth(
   if (params.now) search.set("now", params.now);
   if (params.orgId) search.set("orgId", params.orgId);
 
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/health?${search.toString()}`,
-    { credentials: "include" },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/health?${search.toString()}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     const errBody = (await res.json().catch(() => null)) as {
       error?: { message?: string; code?: string };
     } | null;
-    throw new Error(
-      errBody?.error?.message ??
-        `Failed to load backend health metrics (${res.status})`,
-    );
+    throw new Error(errBody?.error?.message ?? `Failed to load backend health metrics (${res.status})`);
   }
   return (await res.json()) as EnvironmentHealthSummaryPayload;
 }
@@ -2644,15 +2384,12 @@ export async function seedEnvironmentHealth(
   envName: "preview" | "production",
   body: Record<string, unknown>,
 ): Promise<EnvironmentHealthSummaryPayload> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/health/seed`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/environments/${encodeURIComponent(envName)}/health/seed`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     throw new Error(`Failed to seed backend health metrics (${res.status})`);
   }
@@ -2696,18 +2433,12 @@ export interface ProjectActivityFeedResponse {
   };
 }
 
-export async function fetchProjectProposals(
-  project: string,
-  status?: ProposalStatus,
-): Promise<ProposalRecord[]> {
+export async function fetchProjectProposals(project: string, status?: ProposalStatus): Promise<ProposalRecord[]> {
   try {
     const search = new URLSearchParams();
     if (status) search.set("status", status);
     const qs = search.toString();
-    const res = await fetch(
-      `/api/projects/${encodeURIComponent(project)}/proposals${qs ? `?${qs}` : ""}`,
-      { credentials: "include" },
-    );
+    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/proposals${qs ? `?${qs}` : ""}`, { credentials: "include" });
     if (!res.ok) {
       return [];
     }
@@ -2732,22 +2463,16 @@ export async function createProjectProposal(
   proposal: ProposalRecord;
   revision: number;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/proposals`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/proposals`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
   if (!res.ok || !data) {
     const errObj = data?.error as { message?: string; issues?: Array<{ message: string }> } | undefined;
-    const msg =
-      errObj?.issues?.map((i) => i.message).join("; ") ??
-      errObj?.message ??
-      `Failed to create proposal (${res.status})`;
+    const msg = errObj?.issues?.map((i) => i.message).join("; ") ?? errObj?.message ?? `Failed to create proposal (${res.status})`;
     throw new Error(msg);
   }
   return {
@@ -2779,15 +2504,12 @@ export async function acceptProjectProposal(
       issues?: Array<{ code: string; path: string; message: string; suggestedFix?: string }>;
     }
 > {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/proposals/${encodeURIComponent(proposalId)}/accept`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(opIds !== undefined ? { opIds } : {}),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/proposals/${encodeURIComponent(proposalId)}/accept`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(opIds !== undefined ? { opIds } : {}),
+  });
   const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
   if (!res.ok || !data) {
     const errObj = data?.error as
@@ -2796,10 +2518,7 @@ export async function acceptProjectProposal(
           issues?: Array<{ code: string; path: string; message: string; suggestedFix?: string }>;
         }
       | undefined;
-    const message =
-      errObj?.issues?.map((i) => i.message).join("; ") ??
-      errObj?.message ??
-      `Failed to accept proposal (${res.status})`;
+    const message = errObj?.issues?.map((i) => i.message).join("; ") ?? errObj?.message ?? `Failed to accept proposal (${res.status})`;
     return {
       ok: false,
       status: res.status,
@@ -2827,15 +2546,12 @@ export async function rejectProjectProposal(
   proposal: ProposalRecord;
   revision: number;
 }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/proposals/${encodeURIComponent(proposalId)}/reject`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(reason ? { reason } : {}),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/proposals/${encodeURIComponent(proposalId)}/reject`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
   const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
   if (!res.ok || !data) {
     const errObj = data?.error as { message?: string } | undefined;
@@ -2864,10 +2580,7 @@ export async function fetchProjectActivity(
     if (filters.window) search.set("window", filters.window);
     if (filters.limit !== undefined) search.set("limit", String(filters.limit));
     const qs = search.toString();
-    const res = await fetch(
-      `/api/projects/${encodeURIComponent(project)}/activity${qs ? `?${qs}` : ""}`,
-      { credentials: "include" },
-    );
+    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/activity${qs ? `?${qs}` : ""}`, { credentials: "include" });
     if (!res.ok) {
       return {
         project,
@@ -2912,12 +2625,7 @@ export async function downloadProjectOpenApiSpec(
       return { ok: false, spec: null, url, filename };
     }
     const spec = (await res.json()) as Record<string, unknown>;
-    if (
-      typeof window !== "undefined" &&
-      typeof document !== "undefined" &&
-      typeof URL !== "undefined" &&
-      typeof URL.createObjectURL === "function"
-    ) {
+    if (typeof window !== "undefined" && typeof document !== "undefined" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
       try {
         const blob = new Blob([JSON.stringify(spec, null, 2) + "\n"], {
           type: "application/json; charset=utf-8",
@@ -2966,20 +2674,14 @@ export interface StudioAuditLogsResponse {
   entries: StudioAuditLogEntry[];
 }
 
-export async function fetchProjectAuditLogs(
-  project: string,
-  params: { action?: string; actor?: string; limit?: number } = {},
-): Promise<StudioAuditLogEntry[]> {
+export async function fetchProjectAuditLogs(project: string, params: { action?: string; actor?: string; limit?: number } = {}): Promise<StudioAuditLogEntry[]> {
   try {
     const search = new URLSearchParams();
     if (params.action) search.set("action", params.action);
     if (params.actor) search.set("actor", params.actor);
     if (params.limit !== undefined) search.set("limit", String(params.limit));
     const qs = search.toString();
-    const res = await fetch(
-      `/api/projects/${encodeURIComponent(project)}/audit-logs${qs ? `?${qs}` : ""}`,
-      { credentials: "include" },
-    );
+    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/audit-logs${qs ? `?${qs}` : ""}`, { credentials: "include" });
     if (!res.ok) {
       return [];
     }
@@ -3001,9 +2703,7 @@ export interface ProjectRetentionSettingsPayload {
   updatedBy: string | null;
 }
 
-export async function fetchProjectRetentionSettings(
-  project: string,
-): Promise<ProjectRetentionSettingsPayload> {
+export async function fetchProjectRetentionSettings(project: string): Promise<ProjectRetentionSettingsPayload> {
   const fallback: ProjectRetentionSettingsPayload = {
     projectId: project,
     orgId: "org_default",
@@ -3015,10 +2715,7 @@ export async function fetchProjectRetentionSettings(
     updatedBy: null,
   };
   try {
-    const res = await fetch(
-      `/api/projects/${encodeURIComponent(project)}/settings/retention`,
-      { credentials: "include" },
-    );
+    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/settings/retention`, { credentials: "include" });
     if (!res.ok) {
       return fallback;
     }
@@ -3034,18 +2731,10 @@ export async function fetchProjectRetentionSettings(
     }
     return {
       ...fallback,
-      ...(typeof data.runRetentionDays === "number"
-        ? { runRetentionDays: data.runRetentionDays }
-        : {}),
-      ...(typeof data.telemetryRetentionDays === "number"
-        ? { telemetryRetentionDays: data.telemetryRetentionDays }
-        : {}),
-      ...(typeof data.captureStepIoInProd === "boolean"
-        ? { captureStepIoInProd: data.captureStepIoInProd }
-        : {}),
-      ...(Array.isArray(data.additionalRedactKeys)
-        ? { additionalRedactKeys: data.additionalRedactKeys }
-        : {}),
+      ...(typeof data.runRetentionDays === "number" ? { runRetentionDays: data.runRetentionDays } : {}),
+      ...(typeof data.telemetryRetentionDays === "number" ? { telemetryRetentionDays: data.telemetryRetentionDays } : {}),
+      ...(typeof data.captureStepIoInProd === "boolean" ? { captureStepIoInProd: data.captureStepIoInProd } : {}),
+      ...(Array.isArray(data.additionalRedactKeys) ? { additionalRedactKeys: data.additionalRedactKeys } : {}),
     };
   } catch {
     return fallback;
@@ -3061,36 +2750,21 @@ export async function updateProjectRetentionSettings(
     additionalRedactKeys?: string[];
   },
 ): Promise<ProjectRetentionSettingsPayload> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/settings/retention`,
-    {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    },
-  );
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/settings/retention`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
   const data = (await res.json().catch(() => null)) as {
     settings?: ProjectRetentionSettingsPayload;
     error?: { message?: string };
   } | null;
   if (!res.ok || !data?.settings) {
-    throw new Error(
-      data?.error?.message ??
-        `Failed to update retention settings (${res.status})`,
-    );
+    throw new Error(data?.error?.message ?? `Failed to update retention settings (${res.status})`);
   }
   return data.settings;
 }
-
-
-
-
-
-
-
-
-
 
 // ============================================================================
 // AD-V8 — Approval requests for destructive actions an MCP agent asked for
@@ -3116,10 +2790,7 @@ export interface ApprovalRequestRecord {
   expiresAt: string;
 }
 
-export async function fetchProjectApprovals(
-  project: string,
-  status?: ApprovalRequestStatus,
-): Promise<ApprovalRequestRecord[]> {
+export async function fetchProjectApprovals(project: string, status?: ApprovalRequestStatus): Promise<ApprovalRequestRecord[]> {
   try {
     const qs = status ? `?status=${encodeURIComponent(status)}` : "";
     const res = await fetch(`/api/projects/${encodeURIComponent(project)}/approvals${qs}`, {
@@ -3139,18 +2810,13 @@ export async function decideProjectApproval(
   approvalId: string,
   decision: "approve" | "reject",
 ): Promise<{ ok: true; approval: ApprovalRequestRecord } | { ok: false; status: number; code: string; message: string }> {
-  const res = await fetch(
-    `/api/projects/${encodeURIComponent(project)}/approvals/${encodeURIComponent(approvalId)}/${decision}`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "include",
-      body: "{}",
-    },
-  );
-  const data = (await res.json().catch(() => null)) as
-    | { approval?: ApprovalRequestRecord; error?: { code?: string; message?: string } }
-    | null;
+  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/approvals/${encodeURIComponent(approvalId)}/${decision}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "include",
+    body: "{}",
+  });
+  const data = (await res.json().catch(() => null)) as { approval?: ApprovalRequestRecord; error?: { code?: string; message?: string } } | null;
   if (!res.ok || !data?.approval) {
     return {
       ok: false,

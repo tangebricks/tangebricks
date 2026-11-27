@@ -1,17 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { D1Like, D1Statement, Executor, Executors } from "@poc/sdk";
-import {
-  insertStepEvent,
-  listStepEventsForRun,
-  signControlPlaneRequest,
-  upsertRunRecord,
-} from "@poc/telemetry";
-import {
-  buildExecutorsFromCatalog,
-  buildRegistryFromCatalog,
-  executeWorkflowRun,
-  handleWorkflowRerunRequest,
-} from "../src/index.ts";
+import { insertStepEvent, listStepEventsForRun, signControlPlaneRequest, upsertRunRecord } from "@poc/telemetry";
+import { buildExecutorsFromCatalog, buildRegistryFromCatalog, executeWorkflowRun, handleWorkflowRerunRequest } from "../src/index.ts";
 
 function createInMemoryTelemetryDb(): D1Like {
   const runs = new Map<string, Record<string, unknown>>();
@@ -25,20 +15,7 @@ function createInMemoryTelemetryDb(): D1Like {
       },
       async run() {
         if (trimmed.startsWith("INSERT INTO px_runs")) {
-          const [
-            runId,
-            workflowId,
-            revision,
-            triggerType,
-            workspaceId,
-            status,
-            durationMs,
-            retries,
-            retryOfRunId,
-            errorStack,
-            startedAt,
-            endedAt,
-          ] = bound;
+          const [runId, workflowId, revision, triggerType, workspaceId, status, durationMs, retries, retryOfRunId, errorStack, startedAt, endedAt] = bound;
           runs.set(String(runId), {
             run_id: String(runId),
             workflow_id: String(workflowId),
@@ -54,23 +31,8 @@ function createInMemoryTelemetryDb(): D1Like {
             ended_at: endedAt ?? null,
           });
         } else if (trimmed.startsWith("INSERT INTO px_step_events")) {
-          const [
-            eventId,
-            runId,
-            workflowId,
-            revision,
-            nodeId,
-            status,
-            durationMs,
-            retries,
-            inputPreview,
-            outputPreview,
-            errorStack,
-            createdAt,
-          ] = bound;
-          const idx = stepEvents.findIndex(
-            (e) => e.event_id === String(eventId),
-          );
+          const [eventId, runId, workflowId, revision, nodeId, status, durationMs, retries, inputPreview, outputPreview, errorStack, createdAt] = bound;
+          const idx = stepEvents.findIndex((e) => e.event_id === String(eventId));
           const row = {
             seq: idx >= 0 ? (stepEvents[idx]!.seq as number) : stepEvents.length + 1,
             event_id: String(eventId),
@@ -102,10 +64,7 @@ function createInMemoryTelemetryDb(): D1Like {
         }
         if (trimmed.includes("FROM px_runs WHERE retry_of_run_id = ?")) {
           const sourceRunId = String(bound[0] ?? "");
-          const matches = [...runs.values()].filter(
-            (r) =>
-              r.retry_of_run_id === sourceRunId && r.status === "succeeded",
-          );
+          const matches = [...runs.values()].filter((r) => r.retry_of_run_id === sourceRunId && r.status === "succeeded");
           const latest = matches[matches.length - 1];
           return latest ? ({ run_id: latest.run_id } as unknown as T) : null;
         }
@@ -116,9 +75,7 @@ function createInMemoryTelemetryDb(): D1Like {
           const runId = String(bound[0] ?? "");
           // Story 1.4: reads are scoped; the workspace is the last bound value when the statement filters on it.
           const scopedWorkspace = trimmed.includes("workspace_id = ?") ? bound[bound.length - 1] : undefined;
-          const matches = stepEvents.filter(
-            (e) => e.run_id === runId && (scopedWorkspace === undefined || e.workspace_id === scopedWorkspace),
-          ) as T[];
+          const matches = stepEvents.filter((e) => e.run_id === runId && (scopedWorkspace === undefined || e.workspace_id === scopedWorkspace)) as T[];
           return { success: true, results: matches, meta: { changes: 0 } };
         }
         return { success: true, results: [], meta: { changes: 0 } };
@@ -155,9 +112,7 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
     let shouldFailNodeB = true;
     let nodeCReceivedFromB: unknown = null;
 
-    const executors: Executors = new Map<string, Executor>(
-      buildExecutorsFromCatalog(),
-    );
+    const executors: Executors = new Map<string, Executor>(buildExecutorsFromCatalog());
     (executors as Map<string, Executor>).set("core.webhook", async (ctx) => {
       nodeASideEffects += 1;
       const payload = (ctx.payload ?? {}) as Record<string, unknown>;
@@ -169,23 +124,20 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
         },
       };
     });
-    (executors as Map<string, Executor>).set(
-      "credit-wallet.debit",
-      async (ctx) => {
-        nodeBAttempts += 1;
-        if (shouldFailNodeB) {
-          throw new Error("Node B transient failure on run 1");
-        }
-        const upstream = (ctx.inputs.in ?? {}) as Record<string, unknown>;
-        return {
-          out: {
-            ...upstream,
-            processedByB: true,
-            debitedAmount: Number(ctx.data.amount ?? 40),
-          },
-        };
-      },
-    );
+    (executors as Map<string, Executor>).set("credit-wallet.debit", async (ctx) => {
+      nodeBAttempts += 1;
+      if (shouldFailNodeB) {
+        throw new Error("Node B transient failure on run 1");
+      }
+      const upstream = (ctx.inputs.in ?? {}) as Record<string, unknown>;
+      return {
+        out: {
+          ...upstream,
+          processedByB: true,
+          debitedAmount: Number(ctx.data.amount ?? 40),
+        },
+      };
+    });
     (executors as Map<string, Executor>).set("core.noop", async (ctx) => {
       const upstream = (ctx.inputs.in ?? {}) as Record<string, unknown>;
       nodeCReceivedFromB = upstream;
@@ -309,22 +261,12 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
       debitedAmount: 25,
     });
 
-    const reusedNodeAEvent = rerunBody.stepEvents.find(
-      (ev) => ev.nodeId === "node_a" && ev.status === "succeeded",
-    );
+    const reusedNodeAEvent = rerunBody.stepEvents.find((ev) => ev.nodeId === "node_a" && ev.status === "succeeded");
     expect(reusedNodeAEvent?.reused).toBe(true);
 
     const retryEvents = await listStepEventsForRun(db, "run_2_retry_from_b", { workspaceId: "ws_test" });
-    expect(
-      retryEvents.some(
-        (ev) => ev.nodeId === "node_b" && ev.status === "succeeded",
-      ),
-    ).toBe(true);
-    expect(
-      retryEvents.some(
-        (ev) => ev.nodeId === "node_c" && ev.status === "succeeded",
-      ),
-    ).toBe(true);
+    expect(retryEvents.some((ev) => ev.nodeId === "node_b" && ev.status === "succeeded")).toBe(true);
+    expect(retryEvents.some((ev) => ev.nodeId === "node_c" && ev.status === "succeeded")).toBe(true);
   });
 
   test("refuses partial re-run with HTTP 422 UPSTREAM_OUTPUT_UNAVAILABLE when an upstream ancestor output is missing or truncated past 16 KB", async () => {
@@ -421,7 +363,8 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
     });
 
     const res = await executeWorkflowRun(
-      { workspaceId: "ws_test",
+      {
+        workspaceId: "ws_test",
         workflowId: "wf_pinned_preview",
         usePinnedOutputs: true,
         pinnedOutputs: {
@@ -454,9 +397,7 @@ describe("Re-Run From Node & Pinned Step Output Short-Circuiting (@poc/runtime)"
     expect(res.outputs.step_2).toEqual({
       out: { orderId: "pinned_999", amount: 777 },
     });
-    const pinnedEvent = res.stepEvents.find(
-      (ev) => ev.nodeId === "step_1" && ev.status === "succeeded",
-    );
+    const pinnedEvent = res.stepEvents.find((ev) => ev.nodeId === "step_1" && ev.status === "succeeded");
     expect(pinnedEvent).toBeDefined();
     expect(pinnedEvent?.durationMs).toBe(0);
     expect(pinnedEvent?.fromPinned).toBe(true);

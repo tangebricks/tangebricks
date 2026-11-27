@@ -37,26 +37,16 @@ test.describe("Story 8.1 — Starter templates, layout coordinate persistence, a
     // 2. Click load-preset-stripe-discord-ops and verify Backend Map populates immediately
     await page.getByTestId("load-preset-stripe-discord-ops").click();
     await expect(page.getByTestId("overview-backend-map")).toBeVisible();
-    await expect(
-      page.getByTestId("backend-map-brick-card-webhook-gateway"),
-    ).toBeVisible();
-    await expect(
-      page.getByTestId("backend-map-brick-card-integration-connections"),
-    ).toBeVisible();
-    await expect(
-      page.getByTestId("backend-map-entity-card-payment_events"),
-    ).toBeVisible();
+    await expect(page.getByTestId("backend-map-brick-card-webhook-gateway")).toBeVisible();
+    await expect(page.getByTestId("backend-map-brick-card-integration-connections")).toBeVisible();
+    await expect(page.getByTestId("backend-map-entity-card-payment_events")).toBeVisible();
 
     // 3. Navigate to Workflows view and verify pre-laid-out nodes render on React Flow canvas
     await page.getByTestId("nav-tab-workflows").click();
     await expect(page.getByTestId("view-workflows")).toBeVisible();
     await expect(page.getByTestId("workflow-reactflow-canvas")).toBeVisible();
-    await expect(
-      page.getByTestId("canvas-node-n_stripe_webhook"),
-    ).toBeVisible();
-    await expect(
-      page.getByTestId("canvas-node-n_discord_notify"),
-    ).toBeVisible();
+    await expect(page.getByTestId("canvas-node-n_stripe_webhook")).toBeVisible();
+    await expect(page.getByTestId("canvas-node-n_discord_notify")).toBeVisible();
 
     // 4. Story 16: the operator funnel report (/api/admin/*) is for platform operators only; a signed-in project owner
     // is refused. The funnel aggregation itself is covered by apps/studio-api/test/templates-and-funnel.test.ts.

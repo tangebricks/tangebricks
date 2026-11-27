@@ -1,5 +1,4 @@
-interface SqlStorageCursor<T extends Record<string, unknown> = Record<string, unknown>>
-  extends Iterable<T> {
+interface SqlStorageCursor<T extends Record<string, unknown> = Record<string, unknown>> extends Iterable<T> {
   toArray(): T[];
   one(): T;
   raw<U extends unknown[] = unknown[]>(): IterableIterator<U>;
@@ -9,10 +8,7 @@ interface SqlStorageCursor<T extends Record<string, unknown> = Record<string, un
 }
 
 interface SqlStorage {
-  exec<T extends Record<string, unknown> = Record<string, unknown>>(
-    query: string,
-    ...bindings: unknown[]
-  ): SqlStorageCursor<T>;
+  exec<T extends Record<string, unknown> = Record<string, unknown>>(query: string, ...bindings: unknown[]): SqlStorageCursor<T>;
 }
 
 interface DurableObjectStorage {
@@ -78,12 +74,7 @@ declare module "cloudflare:workers" {
     constructor(ctx: DurableObjectState, env: Env);
     fetch?(request: Request): Response | Promise<Response>;
     webSocketMessage?(ws: WebSocket, message: string | ArrayBuffer): void | Promise<void>;
-    webSocketClose?(
-      ws: WebSocket,
-      code: number,
-      reason: string,
-      wasClean: boolean,
-    ): void | Promise<void>;
+    webSocketClose?(ws: WebSocket, code: number, reason: string, wasClean: boolean): void | Promise<void>;
     webSocketError?(ws: WebSocket, error: unknown): void | Promise<void>;
   }
 }

@@ -35,11 +35,7 @@ function resolveRef(root: unknown, ref: string): Record<string, unknown> | undef
 /**
  * Maps an OpenAPI 3 / Discovery schema into a cycle-safe, bounded FieldSchema (UC3.5).
  */
-export function mapSchema(
-  root: unknown,
-  raw: unknown,
-  options: MapSchemaOptions = {},
-): FieldSchema {
+export function mapSchema(root: unknown, raw: unknown, options: MapSchemaOptions = {}): FieldSchema {
   const depth = options.depth ?? 1;
   const maxDepth = options.maxDepth ?? 8;
   const maxNodes = options.maxNodes ?? 200;
@@ -132,11 +128,7 @@ export function mapSchema(
   }
 
   // oneOf / anyOf composition: variants
-  const rawVariants = Array.isArray(raw.oneOf)
-    ? raw.oneOf
-    : Array.isArray(raw.anyOf)
-      ? raw.anyOf
-      : undefined;
+  const rawVariants = Array.isArray(raw.oneOf) ? raw.oneOf : Array.isArray(raw.anyOf) ? raw.anyOf : undefined;
 
   let variants: FieldSchema[] | undefined;
   if (rawVariants && rawVariants.length > 0) {
@@ -205,10 +197,7 @@ export function mapSchema(
   }
 
   if (Array.isArray(raw.enum)) {
-    result.enum = raw.enum.filter(
-      (e): e is string | number | boolean =>
-        typeof e === "string" || typeof e === "number" || typeof e === "boolean",
-    );
+    result.enum = raw.enum.filter((e): e is string | number | boolean => typeof e === "string" || typeof e === "number" || typeof e === "boolean");
   }
 
   if (raw.default !== undefined) {

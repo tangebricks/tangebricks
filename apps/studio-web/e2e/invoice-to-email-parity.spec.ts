@@ -1,11 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { assemble } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
-import {
-  canonicalSemanticPayload,
-  semanticHash,
-  toAssemblerBlueprint,
-} from "@poc/blueprint";
+import { canonicalSemanticPayload, semanticHash, toAssemblerBlueprint } from "@poc/blueprint";
 import type { BlueprintState } from "@poc/blueprint";
 import { computeBuildHash } from "../../studio-api/src/index.ts";
 import { e2eProjectToken } from "./project-token.ts";
@@ -45,12 +41,8 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     // Enable `credit-wallet` -> Dependency Preview auto-enables `multi-workspace` (`workspace-context`)
     await page.getByTestId("catalog-brick-enable-credit-wallet").click();
     await expect(page.getByTestId("brick-enable-modal")).toBeVisible();
-    await expect(page.getByTestId("brick-enable-requires")).toContainText(
-      "Also turns on: multi-workspace (required)",
-    );
-    await expect(page.getByTestId("brick-enable-req-multi-workspace")).toContainText(
-      "provides workspace-context",
-    );
+    await expect(page.getByTestId("brick-enable-requires")).toContainText("Also turns on: multi-workspace (required)");
+    await expect(page.getByTestId("brick-enable-req-multi-workspace")).toContainText("provides workspace-context");
     await page.getByTestId("brick-enable-confirm").click();
     await expect(page.getByTestId("enabled-brick-card-multi-workspace")).toBeVisible();
     await expect(page.getByTestId("enabled-brick-card-credit-wallet")).toBeVisible();
@@ -63,9 +55,7 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     // Enable `omnichannel-outbound`
     await page.getByTestId("catalog-brick-enable-omnichannel-outbound").click();
     await page.getByTestId("brick-enable-confirm").click();
-    await expect(
-      page.getByTestId("enabled-brick-card-omnichannel-outbound"),
-    ).toBeVisible();
+    await expect(page.getByTestId("enabled-brick-card-omnichannel-outbound")).toBeVisible();
 
     // Configure `credit-wallet` settings via Right Dock Inspector form (`creditsPerUnit = 25`, `minOrderAmount = 100`)
     await page.getByTestId("enabled-brick-card-credit-wallet").click();
@@ -113,15 +103,11 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     await page.getByTestId("secret-handle-input").fill("sec_email_api_key");
     await page.getByTestId("secret-app-input").fill("omnichannel-outbound");
     await page.getByTestId("secret-value-input").fill("re_live_invoice_email_key_7788");
-    await page
-      .getByTestId("secret-bind-target-select")
-      .selectOption("brick:core-auth:BETTER_AUTH_SECRET");
+    await page.getByTestId("secret-bind-target-select").selectOption("brick:core-auth:BETTER_AUTH_SECRET");
     await page.getByTestId("save-secret-submit").click();
 
     await expect(page.getByTestId("secret-row-sec_email_api_key")).toBeVisible();
-    await expect(page.getByTestId("secret-key-hint-sec_email_api_key")).toHaveText(
-      "••••7788",
-    );
+    await expect(page.getByTestId("secret-key-hint-sec_email_api_key")).toHaveText("••••7788");
 
     // 4. Create workflow `"invoice-paid-email"` on the Canvas with zero typed '{{' characters
     await page.getByTestId("nav-tab-workflows").click();
@@ -130,9 +116,7 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     await page.getByTestId("new-workflow-button").click();
     await page.getByTestId("new-workflow-name-input").fill("invoice-paid-email");
     await page.getByTestId("create-workflow-confirm").click();
-    await expect(page.getByTestId("workflow-selector")).toHaveValue(
-      "wf-invoice-paid-email",
-    );
+    await expect(page.getByTestId("workflow-selector")).toHaveValue("wf-invoice-paid-email");
 
     const trigNodeId = "node-brick-event-1";
     const ifNodeId = "node-if-2";
@@ -148,24 +132,16 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     await page.getByTestId("palette-add-node-core.format_template").click();
     await expect(page.getByTestId(`canvas-node-${formatNodeId}`)).toBeVisible();
 
-    await page
-      .getByTestId("palette-add-node-omnichannel-outbound.send_message")
-      .click();
+    await page.getByTestId("palette-add-node-omnichannel-outbound.send_message").click();
     await expect(page.getByTestId(`canvas-node-${emailNodeId}`)).toBeVisible();
 
     // Configure Trigger node: bind to `invoices` entity
     await page.getByTestId(`canvas-node-${trigNodeId}`).click();
     await expect(page.getByTestId("inspector-node-id")).toHaveText(trigNodeId);
     await page.getByTestId("node-entity-select").selectOption("invoices");
-    await expect(page.getByTestId("dynamic-port-out-col-amount")).toContainText(
-      "col-amount:number",
-    );
-    await expect(page.getByTestId("dynamic-port-out-col-status")).toContainText(
-      "col-status:string",
-    );
-    await expect(page.getByTestId("dynamic-port-out-col-customer_email")).toContainText(
-      "col-customer_email:string",
-    );
+    await expect(page.getByTestId("dynamic-port-out-col-amount")).toContainText("col-amount:number");
+    await expect(page.getByTestId("dynamic-port-out-col-status")).toContainText("col-status:string");
+    await expect(page.getByTestId("dynamic-port-out-col-customer_email")).toContainText("col-customer_email:string");
     await page.getByTestId("inspector-node-save").click();
     await expect(page.getByTestId("inspector-node-saved-badge")).toBeVisible();
 
@@ -213,12 +189,8 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     // Configure `emailNodeId`: bind `sec_email_api_key` via `bind_secret_ref` and map `customer_email` + formatted `out` via Data-Pill Picker
     await page.getByTestId(`canvas-node-${emailNodeId}`).click();
     await expect(page.getByTestId("inspector-node-id")).toHaveText(emailNodeId);
-    await page
-      .getByTestId("select-existing-secret-node")
-      .selectOption("sec_email_api_key");
-    await expect(page.getByTestId("inspector-node-bound-secret-ref")).toContainText(
-      "sec_email_api_key",
-    );
+    await page.getByTestId("select-existing-secret-node").selectOption("sec_email_api_key");
+    await expect(page.getByTestId("inspector-node-bound-secret-ref")).toContainText("sec_email_api_key");
 
     await page.getByTestId("open-pill-picker-to").click();
     await page.getByTestId(`pill-option-${trigNodeId}-customer_email`).click();
@@ -244,14 +216,11 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     await expect(page.getByTestId(`canvas-node-${emailNodeId}`)).toBeVisible();
 
     // 6. Trigger `POST /api/projects/invoice-ui/build`
-    const uiBuildRes = await request.post(
-      "http://127.0.0.1:8787/api/projects/invoice-ui/build",
-      {
-        headers: {
-          authorization: `Bearer ${await e2eProjectToken("invoice-ui")}`,
-        },
+    const uiBuildRes = await request.post("http://127.0.0.1:8787/api/projects/invoice-ui/build", {
+      headers: {
+        authorization: `Bearer ${await e2eProjectToken("invoice-ui")}`,
       },
-    );
+    });
     expect(uiBuildRes.status()).toBe(200);
     const uiBuildJson = (await uiBuildRes.json()) as {
       project: string;
@@ -264,14 +233,11 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     expect(uiBuildJson.files).toBeGreaterThan(0);
 
     // Fetch `invoice-ui` state and persisted build artifacts
-    const uiStateRes = await request.get(
-      "http://127.0.0.1:8787/api/projects/invoice-ui",
-      {
-        headers: {
-          authorization: `Bearer ${await e2eProjectToken("invoice-ui")}`,
-        },
+    const uiStateRes = await request.get("http://127.0.0.1:8787/api/projects/invoice-ui", {
+      headers: {
+        authorization: `Bearer ${await e2eProjectToken("invoice-ui")}`,
       },
-    );
+    });
     expect(uiStateRes.status()).toBe(200);
     const uiStatePayload = (await uiStateRes.json()) as {
       project: string;
@@ -280,14 +246,11 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
       state: BlueprintState;
     };
 
-    const uiBuildArtifactRes = await request.get(
-      "http://127.0.0.1:8787/api/projects/invoice-ui/build",
-      {
-        headers: {
-          authorization: `Bearer ${await e2eProjectToken("invoice-ui")}`,
-        },
+    const uiBuildArtifactRes = await request.get("http://127.0.0.1:8787/api/projects/invoice-ui/build", {
+      headers: {
+        authorization: `Bearer ${await e2eProjectToken("invoice-ui")}`,
       },
-    );
+    });
     expect(uiBuildArtifactRes.status()).toBe(200);
     const uiBuildArtifacts = (await uiBuildArtifactRes.json()) as {
       buildHash: string;
@@ -298,10 +261,7 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     // SURFACE 2: MCP Agent Tools (`invoice-mcp`)
     // =========================================================================
     let rpcId = 100;
-    const callMcp = async <T = Record<string, unknown>>(
-      toolName: string,
-      args: Record<string, unknown>,
-    ): Promise<T> => {
+    const callMcp = async <T = Record<string, unknown>>(toolName: string, args: Record<string, unknown>): Promise<T> => {
       // Story 0.15: an MCP token is bound to one project, so each call uses the token of the project it targets
       // (the MCP surface builds `invoice-mcp`; the co-author step below edits `invoice-ui`).
       const project = typeof args.project === "string" ? args.project : "invoice-mcp";
@@ -343,10 +303,7 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
       ],
     });
     expect(bricksProposal.status).toBe("pending");
-    const acceptBricks = await page.request.post(
-      `/api/projects/invoice-mcp/proposals/${encodeURIComponent(bricksProposal.proposalId)}/accept`,
-      { data: {} },
-    );
+    const acceptBricks = await page.request.post(`/api/projects/invoice-mcp/proposals/${encodeURIComponent(bricksProposal.proposalId)}/accept`, { data: {} });
     expect(acceptBricks.status()).toBe(200);
 
     // MCP Step 2: `define_entity` for `invoices`
@@ -493,14 +450,11 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     expect(mcpBuildJson.files).toBe(uiBuildJson.files);
 
     // Fetch `invoice-mcp` state and persisted build artifacts
-    const mcpStateRes = await request.get(
-      "http://127.0.0.1:8787/api/projects/invoice-mcp",
-      {
-        headers: {
-          authorization: `Bearer ${await e2eProjectToken("invoice-mcp")}`,
-        },
+    const mcpStateRes = await request.get("http://127.0.0.1:8787/api/projects/invoice-mcp", {
+      headers: {
+        authorization: `Bearer ${await e2eProjectToken("invoice-mcp")}`,
       },
-    );
+    });
     expect(mcpStateRes.status()).toBe(200);
     const mcpStatePayload = (await mcpStateRes.json()) as {
       project: string;
@@ -509,14 +463,11 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
       state: BlueprintState;
     };
 
-    const mcpBuildArtifactRes = await request.get(
-      "http://127.0.0.1:8787/api/projects/invoice-mcp/build",
-      {
-        headers: {
-          authorization: `Bearer ${await e2eProjectToken("invoice-mcp")}`,
-        },
+    const mcpBuildArtifactRes = await request.get("http://127.0.0.1:8787/api/projects/invoice-mcp/build", {
+      headers: {
+        authorization: `Bearer ${await e2eProjectToken("invoice-mcp")}`,
       },
-    );
+    });
     expect(mcpBuildArtifactRes.status()).toBe(200);
     const mcpBuildArtifacts = (await mcpBuildArtifactRes.json()) as {
       buildHash: string;
@@ -553,17 +504,13 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     expect(uiWorkflowsJson!.length).toBeGreaterThan(20);
     expect(mcpWorkflowsJson).toBe(uiWorkflowsJson);
 
-    const uiProjectMeta = JSON.parse(
-      uiBuildArtifacts.emittedFiles["project.json"] ?? "{}",
-    ) as {
+    const uiProjectMeta = JSON.parse(uiBuildArtifacts.emittedFiles["project.json"] ?? "{}") as {
       secretRefs?: unknown[];
       workflows?: unknown[];
       bricks?: unknown[];
       entities?: unknown[];
     };
-    const mcpProjectMeta = JSON.parse(
-      mcpBuildArtifacts.emittedFiles["project.json"] ?? "{}",
-    ) as {
+    const mcpProjectMeta = JSON.parse(mcpBuildArtifacts.emittedFiles["project.json"] ?? "{}") as {
       secretRefs?: unknown[];
       workflows?: unknown[];
       bricks?: unknown[];
@@ -571,22 +518,12 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     };
     expect(Array.isArray(uiProjectMeta.secretRefs)).toBe(true);
     expect(uiProjectMeta.secretRefs!.length).toBe(2);
-    expect(JSON.stringify(mcpProjectMeta.secretRefs)).toBe(
-      JSON.stringify(uiProjectMeta.secretRefs),
-    );
-    expect(JSON.stringify(mcpProjectMeta.workflows)).toBe(
-      JSON.stringify(uiProjectMeta.workflows),
-    );
+    expect(JSON.stringify(mcpProjectMeta.secretRefs)).toBe(JSON.stringify(uiProjectMeta.secretRefs));
+    expect(JSON.stringify(mcpProjectMeta.workflows)).toBe(JSON.stringify(uiProjectMeta.workflows));
 
     // Verify `assemble()` `buildHash` is identical across UI and MCP
-    const assembledUi = assemble(
-      toAssemblerBlueprint({ ...uiStatePayload.state, project: "invoice-ui" }),
-      catalog,
-    );
-    const assembledMcp = assemble(
-      toAssemblerBlueprint({ ...mcpStatePayload.state, project: "invoice-ui" }),
-      catalog,
-    );
+    const assembledUi = assemble(toAssemblerBlueprint({ ...uiStatePayload.state, project: "invoice-ui" }), catalog);
+    const assembledMcp = assemble(toAssemblerBlueprint({ ...mcpStatePayload.state, project: "invoice-ui" }), catalog);
     expect(assembledUi.ok).toBe(true);
     expect(assembledMcp.ok).toBe(true);
     if (!assembledUi.ok || !assembledMcp.ok) {
@@ -637,10 +574,7 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
       ],
     });
     expect(walletProposal.status).toBe("pending");
-    const acceptWallet = await page.request.post(
-      `/api/projects/invoice-ui/proposals/${encodeURIComponent(walletProposal.proposalId)}/accept`,
-      { data: {} },
-    );
+    const acceptWallet = await page.request.post(`/api/projects/invoice-ui/proposals/${encodeURIComponent(walletProposal.proposalId)}/accept`, { data: {} });
     expect(acceptWallet.status()).toBe(200);
 
     await expect(page.getByTestId(`canvas-node-${walletNodeId}`)).toBeVisible({
@@ -649,8 +583,6 @@ test.describe("UI-vs-MCP 'invoice -> email' buildHash & semanticHash Parity Proo
     const coAuthorLatencyMs = Date.now() - tCoAuthorStart;
     expect(coAuthorLatencyMs).toBeLessThanOrEqual(2_000);
 
-    await expect(page.getByTestId(`node-author-badge-${walletNodeId}`)).toContainText(
-      "agent:Claude Desktop",
-    );
+    await expect(page.getByTestId(`node-author-badge-${walletNodeId}`)).toContainText("agent:Claude Desktop");
   });
 });

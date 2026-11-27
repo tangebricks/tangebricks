@@ -8,12 +8,14 @@ const HeartbeatSchema = z.object({
   userId: z.string().min(1).max(128).optional(),
   userName: z.string().min(1).max(100).optional(),
   status: z.enum(["online", "idle", "away", "offline"]).optional(),
-  cursor: z.object({
-    x: z.number(),
-    y: z.number(),
-    page: z.number().optional(),
-    target: z.string().optional(),
-  }).optional(),
+  cursor: z
+    .object({
+      x: z.number(),
+      y: z.number(),
+      page: z.number().optional(),
+      target: z.string().optional(),
+    })
+    .optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -57,7 +59,7 @@ export function createPresenceRoutes(): Hono<PresenceEnv> {
         cursor: parsed.data.cursor,
         status: parsed.data.status as PresenceStatus | undefined,
         metadata: parsed.data.metadata,
-      }
+      },
     );
 
     return c.json({ participant }, 200);

@@ -59,10 +59,12 @@ function text(value: unknown, name: string, max: number, required = true): strin
 /** Builds one capability-marked audit insert from structured fields. Throws RangeError on a bad field. */
 export function auditStatement(db: D1Like, input: AuditStatementInput, options: AuditStatementOptions = {}): AuditStatement {
   const workspaceId = input.workspaceId;
-  if (typeof workspaceId !== "string" || workspaceId.trim().length === 0 || workspaceId.length > 128) throw new RangeError("workspaceId must be 1 to 128 characters");
+  if (typeof workspaceId !== "string" || workspaceId.trim().length === 0 || workspaceId.length > 128)
+    throw new RangeError("workspaceId must be 1 to 128 characters");
   if (!(AUDIT_ACTOR_TYPES as readonly string[]).includes(input.actorType)) throw new RangeError(`actor type ${String(input.actorType)} is not accepted`);
   const metadata = input.metadata === undefined ? null : JSON.stringify(input.metadata);
-  if (metadata !== null && metadata.length > MAX_AUDIT_METADATA_CHARS) throw new RangeError(`audit metadata is longer than ${MAX_AUDIT_METADATA_CHARS} characters`);
+  if (metadata !== null && metadata.length > MAX_AUDIT_METADATA_CHARS)
+    throw new RangeError(`audit metadata is longer than ${MAX_AUDIT_METADATA_CHARS} characters`);
   if (options.dedupeKey !== undefined && (typeof options.dedupeKey !== "string" || options.dedupeKey.length === 0 || options.dedupeKey.length > 200)) {
     throw new RangeError("dedupeKey must be 1 to 200 characters");
   }

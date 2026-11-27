@@ -116,57 +116,31 @@ test.describe("Test Workflow Trigger & Live Canvas Node Highlighting (Real Backe
     await page.getByTestId("test-workflow-button").click();
 
     // Assert within 2 seconds that active nodes transition to Succeeded and the false branch transitions to Skipped
-    await expect(page.getByTestId("node-telemetry-badge-node_trigger")).toHaveAttribute(
-      "data-status",
-      "succeeded",
-      { timeout: 2000 },
-    );
-    await expect(page.getByTestId("node-telemetry-badge-node_if")).toHaveAttribute(
-      "data-status",
-      "succeeded",
-      { timeout: 2000 },
-    );
-    await expect(
-      page.getByTestId("node-telemetry-badge-node_split_true"),
-    ).toHaveAttribute("data-status", "succeeded", { timeout: 2000 });
-    await expect(
-      page.getByTestId("node-telemetry-badge-node_split_true"),
-    ).toContainText("✓");
-    await expect(
-      page.getByTestId("node-telemetry-badge-node_split_true"),
-    ).toContainText("Succeeded");
+    await expect(page.getByTestId("node-telemetry-badge-node_trigger")).toHaveAttribute("data-status", "succeeded", { timeout: 2000 });
+    await expect(page.getByTestId("node-telemetry-badge-node_if")).toHaveAttribute("data-status", "succeeded", { timeout: 2000 });
+    await expect(page.getByTestId("node-telemetry-badge-node_split_true")).toHaveAttribute("data-status", "succeeded", { timeout: 2000 });
+    await expect(page.getByTestId("node-telemetry-badge-node_split_true")).toContainText("✓");
+    await expect(page.getByTestId("node-telemetry-badge-node_split_true")).toContainText("Succeeded");
 
     // Verify compiled Tailwind styles on the succeeded badge via getComputedStyle
-    const badgeStyles = await page
-      .getByTestId("node-telemetry-badge-node_split_true")
-      .evaluate((el) => {
-        const s = window.getComputedStyle(el);
-        return {
-          display: s.display,
-          fontWeight: s.fontWeight,
-          borderRadius: s.borderRadius,
-        };
-      });
+    const badgeStyles = await page.getByTestId("node-telemetry-badge-node_split_true").evaluate((el) => {
+      const s = window.getComputedStyle(el);
+      return {
+        display: s.display,
+        fontWeight: s.fontWeight,
+        borderRadius: s.borderRadius,
+      };
+    });
     expect(badgeStyles.display).toBe("flex");
     expect(Number(badgeStyles.fontWeight)).toBeGreaterThanOrEqual(600);
 
-    await expect(
-      page.getByTestId("node-telemetry-badge-node_notify_false"),
-    ).toHaveAttribute("data-status", "skipped", { timeout: 2000 });
-    await expect(
-      page.getByTestId("node-telemetry-badge-node_notify_false"),
-    ).toContainText("—");
-    await expect(
-      page.getByTestId("node-telemetry-badge-node_notify_false"),
-    ).toContainText("Skipped");
+    await expect(page.getByTestId("node-telemetry-badge-node_notify_false")).toHaveAttribute("data-status", "skipped", { timeout: 2000 });
+    await expect(page.getByTestId("node-telemetry-badge-node_notify_false")).toContainText("—");
+    await expect(page.getByTestId("node-telemetry-badge-node_notify_false")).toContainText("Skipped");
 
     // Verify traversed edge item-count pills
-    await expect(page.getByTestId("edge-item-count-e_trig_if")).toContainText(
-      "1 item",
-    );
-    await expect(page.getByTestId("edge-item-count-e_if_true")).toContainText(
-      "1 item",
-    );
+    await expect(page.getByTestId("edge-item-count-e_trig_if")).toContainText("1 item");
+    await expect(page.getByTestId("edge-item-count-e_if_true")).toContainText("1 item");
     await expect(page.getByTestId("edge-item-count-e_if_false")).toHaveCount(0);
 
     // Trigger a failing branch run (b: 0, division by zero) and assert Failed badge within 2 seconds
@@ -184,17 +158,9 @@ test.describe("Test Workflow Trigger & Live Canvas Node Highlighting (Real Backe
     );
     await page.getByTestId("test-workflow-button").click();
 
-    await expect(
-      page.getByTestId("node-telemetry-badge-node_split_true"),
-    ).toHaveAttribute("data-status", "failed", { timeout: 2000 });
-    await expect(
-      page.getByTestId("node-telemetry-badge-node_split_true"),
-    ).toContainText("✕");
-    await expect(
-      page.getByTestId("node-telemetry-badge-node_split_true"),
-    ).toContainText("Failed");
-    await expect(
-      page.getByTestId("node-telemetry-error-node_split_true"),
-    ).toContainText("division by zero");
+    await expect(page.getByTestId("node-telemetry-badge-node_split_true")).toHaveAttribute("data-status", "failed", { timeout: 2000 });
+    await expect(page.getByTestId("node-telemetry-badge-node_split_true")).toContainText("✕");
+    await expect(page.getByTestId("node-telemetry-badge-node_split_true")).toContainText("Failed");
+    await expect(page.getByTestId("node-telemetry-error-node_split_true")).toContainText("division by zero");
   });
 });

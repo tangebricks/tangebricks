@@ -105,17 +105,11 @@ describe("Story 5.5 — Studio Web Drift Badge, Deployment History & Rollback Mo
               hasGraphDrift: true,
               deployedRev: previewRolledBack ? 1 : 2,
               currentRev: 2,
-              deployedBuildHash: previewRolledBack
-                ? "build_hash_r1_aaa111"
-                : "build_hash_r2_bbb222",
+              deployedBuildHash: previewRolledBack ? "build_hash_r1_aaa111" : "build_hash_r2_bbb222",
               currentBuildHash: "build_hash_r2_bbb222",
-              deployedCodeHash: previewRolledBack
-                ? "code_hash_r1_aaa111"
-                : "code_hash_r2_bbb222",
+              deployedCodeHash: previewRolledBack ? "code_hash_r1_aaa111" : "code_hash_r2_bbb222",
               currentCodeHash: "code_hash_r2_bbb222",
-              deployedGraphHash: previewRolledBack
-                ? "graph_hash_r1_aaa111"
-                : "graph_hash_r2_bbb222",
+              deployedGraphHash: previewRolledBack ? "graph_hash_r1_aaa111" : "graph_hash_r2_bbb222",
               currentGraphHash: "graph_hash_r2_bbb222",
             },
             outOfBandDrift: previewRolledBack
@@ -125,8 +119,7 @@ describe("Story 5.5 — Studio Web Drift Badge, Deployment History & Rollback Mo
                     resource: "worker",
                     expected: "code_hash_r2_bbb222",
                     actual: "tampered_script_hash_xyz",
-                    message:
-                      'Worker script "px-drift-ui-app-preview" hash mismatch: expected code_hash_r2, found tampered_script',
+                    message: 'Worker script "px-drift-ui-app-preview" hash mismatch: expected code_hash_r2, found tampered_script',
                   },
                 ],
             checkedAt: "2026-10-31T10:06:00Z",
@@ -299,8 +292,7 @@ describe("Story 5.5 — Studio Web Drift Badge, Deployment History & Rollback Mo
                 statement: "DROP TABLE invoices;",
                 kind: "drop_table",
                 affectedTable: "invoices",
-                message:
-                  'Applied D1 migration "0002_create_invoices.sql" created table "invoices" after the rollback target revision.',
+                message: 'Applied D1 migration "0002_create_invoices.sql" created table "invoices" after the rollback target revision.',
               },
             ],
           },
@@ -392,21 +384,13 @@ describe("Story 5.5 — Studio Web Drift Badge, Deployment History & Rollback Mo
 
     // Drift card in ConnectionsView shows Drift Detected and out-of-band drift item
     await waitFor(() => {
-      expect(screen.getByTestId("env-drift-status-preview").textContent).toContain(
-        "Drift Detected",
-      );
+      expect(screen.getByTestId("env-drift-status-preview").textContent).toContain("Drift Detected");
     });
-    expect(
-      screen.getByTestId("out-of-band-drift-item-preview-0").textContent,
-    ).toContain("hash mismatch");
+    expect(screen.getByTestId("out-of-band-drift-item-preview-0").textContent).toContain("hash mismatch");
 
     // Deployment history shows v2 and v1
-    expect(screen.getByTestId("deployment-version-preview-v2").textContent).toBe(
-      "v2",
-    );
-    expect(screen.getByTestId("deployment-version-preview-v1").textContent).toBe(
-      "v1",
-    );
+    expect(screen.getByTestId("deployment-version-preview-v2").textContent).toBe("v2");
+    expect(screen.getByTestId("deployment-version-preview-v1").textContent).toBe("v1");
 
     // Click Roll back on v1
     fireEvent.click(screen.getByTestId("rollback-button-dep_v1_first"));
@@ -417,40 +401,28 @@ describe("Story 5.5 — Studio Web Drift Badge, Deployment History & Rollback Mo
 
     // Wait for destructive migration guard to appear
     await waitFor(() => {
-      expect(
-        screen.getByTestId("rollback-destructive-migration-guard"),
-      ).toBeTruthy();
+      expect(screen.getByTestId("rollback-destructive-migration-guard")).toBeTruthy();
     });
 
-    const confirmBtn = screen.getByTestId(
-      "confirm-rollback-button",
-    ) as HTMLButtonElement;
+    const confirmBtn = screen.getByTestId("confirm-rollback-button") as HTMLButtonElement;
     expect(confirmBtn.disabled).toBe(true);
 
     // Check destructive migration confirmation checkbox
-    fireEvent.click(
-      screen.getByTestId("rollback-confirm-destructive-checkbox"),
-    );
+    fireEvent.click(screen.getByTestId("rollback-confirm-destructive-checkbox"));
     expect(confirmBtn.disabled).toBe(false);
 
     // Confirm rollback
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(screen.getByTestId("rollback-success-banner").textContent).toContain(
-        "Rolled back to r1",
-      );
+      expect(screen.getByTestId("rollback-success-banner").textContent).toContain("Rolled back to r1");
     });
 
     // Close modal and verify v3 is now at the top of deployment history with rollback badge
     fireEvent.click(screen.getByTestId("cancel-rollback-button"));
     await waitFor(() => {
-      expect(screen.getByTestId("deployment-version-preview-v3").textContent).toBe(
-        "v3",
-      );
+      expect(screen.getByTestId("deployment-version-preview-v3").textContent).toBe("v3");
     });
-    expect(
-      screen.getByTestId("deployment-rollback-badge-dep_v3_rb").textContent,
-    ).toContain("rolled back from");
+    expect(screen.getByTestId("deployment-rollback-badge-dep_v3_rb").textContent).toContain("rolled back from");
   });
 });

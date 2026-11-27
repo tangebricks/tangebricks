@@ -104,11 +104,7 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
             semanticHash: "hash-rev-2",
             state: {
               ...emptyEntitiesBlueprint,
-              bricks: [
-                ...emptyEntitiesBlueprint.bricks,
-                { id: "multi-workspace", config: {} },
-                { id: "dynamic-entities", config: {} },
-              ],
+              bricks: [...emptyEntitiesBlueprint.bricks, { id: "multi-workspace", config: {} }, { id: "dynamic-entities", config: {} }],
             },
             readiness: {
               state: "Ready",
@@ -167,11 +163,7 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
             semanticHash: "hash-rev-3",
             state: {
               ...emptyEntitiesBlueprint,
-              bricks: [
-                ...emptyEntitiesBlueprint.bricks,
-                { id: "multi-workspace", config: {} },
-                { id: "dynamic-entities", config: {} },
-              ],
+              bricks: [...emptyEntitiesBlueprint.bricks, { id: "multi-workspace", config: {} }, { id: "dynamic-entities", config: {} }],
               entities: [createdEntity],
             },
             readiness: {
@@ -197,11 +189,7 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
       activeProjectId: "saas-crm",
       projectState: {
         ...emptyEntitiesBlueprint,
-        bricks: [
-          ...emptyEntitiesBlueprint.bricks,
-          { id: "multi-workspace", config: {} },
-          { id: "dynamic-entities", config: {} },
-        ],
+        bricks: [...emptyEntitiesBlueprint.bricks, { id: "multi-workspace", config: {} }, { id: "dynamic-entities", config: {} }],
       },
       activeNav: "data",
     });
@@ -214,12 +202,8 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
     // Reserved route prefix "wallet" is rejected immediately
     const nameInput = screen.getByTestId("entity-name-input") as HTMLInputElement;
     fireEvent.change(nameInput, { target: { value: "wallet" } });
-    expect(screen.getByTestId("entity-name-error").textContent).toContain(
-      "collides with a reserved brick route prefix (/api/wallet)",
-    );
-    expect(
-      (screen.getByTestId("save-entity-button") as HTMLButtonElement).disabled,
-    ).toBe(true);
+    expect(screen.getByTestId("entity-name-error").textContent).toContain("collides with a reserved brick route prefix (/api/wallet)");
+    expect((screen.getByTestId("save-entity-button") as HTMLButtonElement).disabled).toBe(true);
 
     // Valid name "invoices" clears entity name error
     fireEvent.change(nameInput, { target: { value: "invoices" } });
@@ -229,9 +213,7 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
     fireEvent.change(screen.getByTestId("field-name-input-0"), {
       target: { value: "workspace_id" },
     });
-    expect(screen.getByTestId("field-error-0").textContent).toContain(
-      "reserved by the system",
-    );
+    expect(screen.getByTestId("field-error-0").textContent).toContain("reserved by the system");
 
     // Configure Field 0: amount (number, required)
     fireEvent.change(screen.getByTestId("field-name-input-0"), {
@@ -281,9 +263,7 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
     expect(ddlText).toContain('"workspace_id" TEXT NOT NULL');
     expect(ddlText).toContain(`"status" TEXT NOT NULL CHECK ("status" IN ('draft', 'paid', 'void'))`);
     expect(ddlText).toContain('UNIQUE("workspace_id", "customer_email")');
-    expect(ddlText).toContain(
-      'CREATE INDEX IF NOT EXISTS "idx_ent_invoices_workspace_customer_email" ON "ent_invoices"("workspace_id", "customer_email")',
-    );
+    expect(ddlText).toContain('CREATE INDEX IF NOT EXISTS "idx_ent_invoices_workspace_customer_email" ON "ent_invoices"("workspace_id", "customer_email")');
 
     const crudText = screen.getByTestId("entity-crud-routes-preview").textContent ?? "";
     expect(crudText).toContain("POST /api/entities/invoices");
@@ -335,8 +315,7 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
         const body = JSON.parse(String(init?.body ?? "{}"));
         opsPayloads.push(body);
         const op = body.ops[0];
-        const nextEntities =
-          op.type === "remove_entity" ? [] : [op.entity];
+        const nextEntities = op.type === "remove_entity" ? [] : [op.entity];
         return new Response(
           JSON.stringify({
             revision: opsPayloads.length + 1,
@@ -376,9 +355,7 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
     fireEvent.click(screen.getByTestId("field-remove-button-2"));
 
     // Verify live ALTER TABLE DROP COLUMN preview appears in SQL DDL preview
-    expect(screen.getByTestId("entity-sql-ddl-code").textContent).toContain(
-      'ALTER TABLE "ent_invoices" DROP COLUMN "customer_email";',
-    );
+    expect(screen.getByTestId("entity-sql-ddl-code").textContent).toContain('ALTER TABLE "ent_invoices" DROP COLUMN "customer_email";');
 
     // Clicking Save Entity opens Destructive Migration Confirmation modal instead of immediately committing
     fireEvent.click(screen.getByTestId("save-entity-button"));
@@ -386,12 +363,8 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
 
     const modal = screen.getByTestId("destructive-entity-modal");
     expect(modal).toBeDefined();
-    expect(screen.getByTestId("destructive-entity-reasons").textContent).toContain(
-      'Drops column "customer_email"',
-    );
-    expect(
-      screen.getByTestId("destructive-entity-wf-wf-invoice-notify").textContent,
-    ).toContain("Notify Customer On Invoice (wf-invoice-notify)");
+    expect(screen.getByTestId("destructive-entity-reasons").textContent).toContain('Drops column "customer_email"');
+    expect(screen.getByTestId("destructive-entity-wf-wf-invoice-notify").textContent).toContain("Notify Customer On Invoice (wf-invoice-notify)");
 
     // Confirm destructive update -> dispatches update_entity
     fireEvent.click(screen.getByTestId("destructive-entity-confirm"));
@@ -403,9 +376,7 @@ describe("Visual Entity Designer with SQL migration, route, and workspace_id iso
 
     // Clicking Delete Entity opens Destructive Migration Confirmation modal for remove_entity
     fireEvent.click(screen.getByTestId("delete-entity-button-invoices"));
-    expect(screen.getByTestId("destructive-entity-reasons").textContent).toContain(
-      'Drops table "ent_invoices"',
-    );
+    expect(screen.getByTestId("destructive-entity-reasons").textContent).toContain('Drops table "ent_invoices"');
     fireEvent.click(screen.getByTestId("destructive-entity-confirm"));
 
     await waitFor(() => {

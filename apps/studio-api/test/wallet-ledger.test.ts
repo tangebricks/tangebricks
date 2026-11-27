@@ -34,10 +34,7 @@ interface CallOptions {
   body?: unknown;
 }
 
-async function callStudio(
-  path: string,
-  options: CallOptions = {},
-): Promise<Response> {
+async function callStudio(path: string, options: CallOptions = {}): Promise<Response> {
   const headers = new Headers(options.headers);
   if (options.token) headers.set("authorization", `Bearer ${options.token}`);
 
@@ -167,8 +164,8 @@ describe("Story 6.2 — Studio API Read-Only Credit Wallet & Usage Ledger (/api/
     });
     expect(seedRes.status).toBe(200);
     await seedRowsDirectly(sandboxDb, {
-        ddl: [
-          `CREATE TABLE IF NOT EXISTS "usage_rollups" (
+      ddl: [
+        `CREATE TABLE IF NOT EXISTS "usage_rollups" (
             "id" TEXT PRIMARY KEY,
             "workspace_id" TEXT NOT NULL,
             "metric_key" TEXT NOT NULL,
@@ -176,77 +173,74 @@ describe("Story 6.2 — Studio API Read-Only Credit Wallet & Usage Ledger (/api/
             "period_end" TEXT NOT NULL,
             "total_quantity" INTEGER NOT NULL
           )`,
+      ],
+      tables: {
+        credit_wallets: [
+          { workspace_id: "workspace_A", balance_milli: 650_000, created_at: "2026-04-19T10:00:00Z" },
+          { workspace_id: "workspace_B", balance_milli: 3_000_000, created_at: "2026-04-19T11:00:00Z" },
         ],
-        tables: {
-          credit_wallets: [
-            { workspace_id: "workspace_A", balance_milli: 650_000, created_at: "2026-04-19T10:00:00Z" },
-            { workspace_id: "workspace_B", balance_milli: 3_000_000, created_at: "2026-04-19T11:00:00Z" },
-          ],
-          credit_ledger: [
-            {
-              id: "led_a_1",
-              workspace_id: "workspace_A",
-              user_id: "alice",
-              type: "topup",
-              amount_milli: 1_000_000,
-              balance_after_milli: 1_000_000,
-              reason: "Initial credit grant",
-              metadata: JSON.stringify({ orderId: "ord_a_1" }),
-              idempotency_key: "idem_a_1",
-              created_at: "2026-04-19T10:01:00Z",
-            },
-            {
-              id: "led_a_2",
-              workspace_id: "workspace_A",
-              user_id: "alice",
-              type: "deduction",
-              amount_milli: -350_000,
-              balance_after_milli: 650_000,
-              reason: "Workflow step execution",
-              metadata: JSON.stringify({ runId: "run_inv_01", nodeId: "node-pick" }),
-              idempotency_key: "idem_a_2",
-              created_at: "2026-04-19T10:05:00Z",
-            },
-            {
-              id: "led_b_1",
-              workspace_id: "workspace_B",
-              user_id: "bob",
-              type: "topup",
-              amount_milli: 3_000_000,
-              balance_after_milli: 3_000_000,
-              reason: "Workspace B credit grant",
-              metadata: JSON.stringify({ orderId: "ord_b_1" }),
-              idempotency_key: "idem_b_1",
-              created_at: "2026-04-19T11:01:00Z",
-            },
-          ],
-          usage_rollups: [
-            {
-              id: "ur_a_1",
-              workspace_id: "workspace_A",
-              metric_key: "ai_tokens_used",
-              period_start: "2026-04-01",
-              period_end: "2026-04-30",
-              total_quantity: 12500,
-            },
-            {
-              id: "ur_b_1",
-              workspace_id: "workspace_B",
-              metric_key: "ai_tokens_used",
-              period_start: "2026-04-01",
-              period_end: "2026-04-30",
-              total_quantity: 99999,
-            },
-          ],
-        },
+        credit_ledger: [
+          {
+            id: "led_a_1",
+            workspace_id: "workspace_A",
+            user_id: "alice",
+            type: "topup",
+            amount_milli: 1_000_000,
+            balance_after_milli: 1_000_000,
+            reason: "Initial credit grant",
+            metadata: JSON.stringify({ orderId: "ord_a_1" }),
+            idempotency_key: "idem_a_1",
+            created_at: "2026-04-19T10:01:00Z",
+          },
+          {
+            id: "led_a_2",
+            workspace_id: "workspace_A",
+            user_id: "alice",
+            type: "deduction",
+            amount_milli: -350_000,
+            balance_after_milli: 650_000,
+            reason: "Workflow step execution",
+            metadata: JSON.stringify({ runId: "run_inv_01", nodeId: "node-pick" }),
+            idempotency_key: "idem_a_2",
+            created_at: "2026-04-19T10:05:00Z",
+          },
+          {
+            id: "led_b_1",
+            workspace_id: "workspace_B",
+            user_id: "bob",
+            type: "topup",
+            amount_milli: 3_000_000,
+            balance_after_milli: 3_000_000,
+            reason: "Workspace B credit grant",
+            metadata: JSON.stringify({ orderId: "ord_b_1" }),
+            idempotency_key: "idem_b_1",
+            created_at: "2026-04-19T11:01:00Z",
+          },
+        ],
+        usage_rollups: [
+          {
+            id: "ur_a_1",
+            workspace_id: "workspace_A",
+            metric_key: "ai_tokens_used",
+            period_start: "2026-04-01",
+            period_end: "2026-04-30",
+            total_quantity: 12500,
+          },
+          {
+            id: "ur_b_1",
+            workspace_id: "workspace_B",
+            metric_key: "ai_tokens_used",
+            period_start: "2026-04-01",
+            period_end: "2026-04-30",
+            total_quantity: 99999,
+          },
+        ],
+      },
     });
   });
 
   it("allows viewer role to read workspace-scoped ledger balance, usage summary, and journal entries for workspace_A with zero workspace_B leakage (AC 3, AC 5)", async () => {
-    const res = await callStudio(
-      `/api/projects/${project}/environments/preview/ledger?workspaceId=workspace_A&orgId=${orgId}`,
-      { token: viewerToken },
-    );
+    const res = await callStudio(`/api/projects/${project}/environments/preview/ledger?workspaceId=workspace_A&orgId=${orgId}`, { token: viewerToken });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       ok: boolean;
@@ -290,33 +284,27 @@ describe("Story 6.2 — Studio API Read-Only Credit Wallet & Usage Ledger (/api/
   it("refuses POST, PATCH, PUT, and DELETE against /ledger and wallet/usage tables in both preview and production with HTTP 403 LEDGER_IMMUTABLE_READ_ONLY (AC 2, AC 3, AC 5)", async () => {
     for (const envName of ["preview", "production"] as const) {
       for (const method of ["POST", "PATCH", "PUT", "DELETE"] as const) {
-        const directRes = await callStudio(
-          `/api/projects/${project}/environments/${envName}/ledger?workspaceId=workspace_A&orgId=${orgId}`,
-          {
-            method,
-            token: ownerToken,
-            body: { workspaceId: "workspace_A", confirmWrite: true, balance: 999999 },
-          },
-        );
+        const directRes = await callStudio(`/api/projects/${project}/environments/${envName}/ledger?workspaceId=workspace_A&orgId=${orgId}`, {
+          method,
+          token: ownerToken,
+          body: { workspaceId: "workspace_A", confirmWrite: true, balance: 999999 },
+        });
         expect(directRes.status).toBe(403);
         const directJson = (await directRes.json()) as { error: { code: string } };
         expect(directJson.error.code).toBe("LEDGER_IMMUTABLE_READ_ONLY");
       }
 
       for (const table of ["credit_wallets", "credit_ledger", "usage_rollups"] as const) {
-        const tableRes = await callStudio(
-          `/api/projects/${project}/environments/${envName}/data/tables/${table}/rows?workspaceId=workspace_A&orgId=${orgId}`,
-          {
-            method: "POST",
-            token: ownerToken,
-            body: {
-              orgId,
-              workspaceId: "workspace_A",
-              confirmWrite: true,
-              row: { id: "tamper_1", balance: 999999 },
-            },
+        const tableRes = await callStudio(`/api/projects/${project}/environments/${envName}/data/tables/${table}/rows?workspaceId=workspace_A&orgId=${orgId}`, {
+          method: "POST",
+          token: ownerToken,
+          body: {
+            orgId,
+            workspaceId: "workspace_A",
+            confirmWrite: true,
+            row: { id: "tamper_1", balance: 999999 },
           },
-        );
+        });
         expect(tableRes.status).toBe(403);
         const tableJson = (await tableRes.json()) as { error: { code: string } };
         expect(tableJson.error.code).toBe("LEDGER_IMMUTABLE_READ_ONLY");

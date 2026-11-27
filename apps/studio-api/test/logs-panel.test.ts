@@ -3,15 +3,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import {
-  REDACTED_PLACEHOLDER,
-  createStructuredLogger,
-} from "@poc/telemetry";
-import {
-  createFakeGateway,
-  createWallet,
-  createWalletRoutes,
-} from "@poc/credit-wallet";
+import { REDACTED_PLACEHOLDER, createStructuredLogger } from "@poc/telemetry";
+import { createFakeGateway, createWallet, createWalletRoutes } from "@poc/credit-wallet";
 import type { WalletEnv } from "@poc/credit-wallet";
 import studioAuthOrgsSql from "../migrations/0001_studio_auth_orgs.sql?raw";
 import studioSecretVaultSql from "../migrations/0002_studio_secret_vault.sql?raw";
@@ -43,10 +36,7 @@ interface CallOptions {
   body?: unknown;
 }
 
-async function callStudio(
-  path: string,
-  options: CallOptions = {},
-): Promise<Response> {
+async function callStudio(path: string, options: CallOptions = {}): Promise<Response> {
   const headers = new Headers(options.headers);
   if (options.token) headers.set("authorization", `Bearer ${options.token}`);
 
@@ -235,22 +225,19 @@ describe("Story 6.3 — Studio API Structured Logs & Errors Panel (/api/projects
     // Story 1.17: the run names ws_alpha, so ws_alpha must be one of the project's own workspaces (an earlier run names it).
     await seedPreviewWorkspace(studioDb, project, "ws_alpha");
     // 1. Trigger a failing workflow run on wf_payment_flow (balance 40 < amount 250)
-    const runRes = await callStudio(
-      `/api/projects/${project}/workflows/wf_payment_flow/runs`,
-      {
-        token: ownerToken,
-        body: {
-          orgId,
-          env: "preview",
-          runId: "run_wf_fail_01",
+    const runRes = await callStudio(`/api/projects/${project}/workflows/wf_payment_flow/runs`, {
+      token: ownerToken,
+      body: {
+        orgId,
+        env: "preview",
+        runId: "run_wf_fail_01",
+        workspaceId: "ws_alpha",
+        triggerPayload: {
+          balance: 40,
           workspaceId: "ws_alpha",
-          triggerPayload: {
-            balance: 40,
-            workspaceId: "ws_alpha",
-          },
         },
       },
-    );
+    });
     expect(runRes.status).toBe(200);
     // The run fails because the debit is refused for insufficient balance (not NOT_CONFIGURED).
     const runText = await runRes.text();
@@ -258,33 +245,30 @@ describe("Story 6.3 — Studio API Structured Logs & Errors Panel (/api/projects
     expect(runText).not.toMatch(/NOT_CONFIGURED/);
 
     // 2. Also emit an explicit ctx.log.error entry from a workflow step with canary secret in message & fields
-    const ingestStepLogRes = await callStudio(
-      `/api/projects/${project}/environments/preview/logs`,
-      {
-        token: ownerToken,
-        body: {
-          orgId,
-          entries: [
-            {
-              level: "error",
-              message: `Payment gateway timeout using key ${CANARY_SECRET}`,
-              runId: "run_wf_fail_01",
-              workflowId: "wf_payment_flow",
-              revision: 1,
-              nodeId: "node_charge_wallet",
-              brickId: "credit-wallet",
-              workspaceId: "ws_alpha",
-              fields: {
-                gatewayKey: CANARY_SECRET,
-                authorization: "Bearer eyJ_inline_bearer_secret_token",
-                attempt: 1,
-              },
-              errorStack: `Error: Payment gateway timeout (${CANARY_SECRET})\n    at executeWalletDebit (workflow.ts:24:11)`,
+    const ingestStepLogRes = await callStudio(`/api/projects/${project}/environments/preview/logs`, {
+      token: ownerToken,
+      body: {
+        orgId,
+        entries: [
+          {
+            level: "error",
+            message: `Payment gateway timeout using key ${CANARY_SECRET}`,
+            runId: "run_wf_fail_01",
+            workflowId: "wf_payment_flow",
+            revision: 1,
+            nodeId: "node_charge_wallet",
+            brickId: "credit-wallet",
+            workspaceId: "ws_alpha",
+            fields: {
+              gatewayKey: CANARY_SECRET,
+              authorization: "Bearer eyJ_inline_bearer_secret_token",
+              attempt: 1,
             },
-          ],
-        },
+            errorStack: `Error: Payment gateway timeout (${CANARY_SECRET})\n    at executeWalletDebit (workflow.ts:24:11)`,
+          },
+        ],
       },
-    );
+    });
     expect(ingestStepLogRes.status).toBe(201);
 
     // 3. Execute a brick route handler from @poc/credit-wallet wired with createStructuredLogger
@@ -330,10 +314,7 @@ describe("Story 6.3 — Studio API Structured Logs & Errors Panel (/api/projects
     await brickLogger.flush();
 
     // 4. Viewer role can query GET /api/projects/:project/environments/preview/logs
-    const allLogsRes = await callStudio(
-      `/api/projects/${project}/environments/preview/logs?orgId=${orgId}`,
-      { token: viewerToken },
-    );
+    const allLogsRes = await callStudio(`/api/projects/${project}/environments/preview/logs?orgId=${orgId}`, { token: viewerToken });
     expect(allLogsRes.status).toBe(200);
     const allLogsBody = (await allLogsRes.json()) as {
       ok: boolean;
@@ -377,17 +358,14 @@ describe("Story 6.3 — Studio API Structured Logs & Errors Panel (/api/projects
     }
 
     // Filter by workspaceId=ws_beta (brick route log)
-    const betaLogsRes = await callStudio(
-      `/api/projects/${project}/environments/preview/logs?orgId=${orgId}&workspaceId=ws_beta&brickId=credit-wallet`,
-      { token: viewerToken },
-    );
+    const betaLogsRes = await callStudio(`/api/projects/${project}/environments/preview/logs?orgId=${orgId}&workspaceId=ws_beta&brickId=credit-wallet`, {
+      token: viewerToken,
+    });
     expect(betaLogsRes.status).toBe(200);
     const betaLogsBody = (await betaLogsRes.json()) as typeof allLogsBody;
     expect(betaLogsBody.logs).toHaveLength(1);
     expect(betaLogsBody.logs[0]!.level).toBe("warn");
-    expect(betaLogsBody.logs[0]!.message).toContain(
-      "Insufficient balance for wallet deduction",
-    );
+    expect(betaLogsBody.logs[0]!.message).toContain("Insufficient balance for wallet deduction");
     expect(betaLogsBody.logs[0]!.runId).toBeNull();
   });
 
@@ -408,37 +386,32 @@ describe("Story 6.3 — Studio API Structured Logs & Errors Panel (/api/projects
     const receivedFrames: Array<Record<string, unknown>> = [];
     ws.addEventListener("message", (ev) => {
       try {
-        receivedFrames.push(
-          JSON.parse(String(ev.data)) as Record<string, unknown>,
-        );
+        receivedFrames.push(JSON.parse(String(ev.data)) as Record<string, unknown>);
       } catch {
         // Ignore non-JSON frames
       }
     });
 
-    const ingestRes = await callStudio(
-      `/api/projects/${project}/environments/preview/logs`,
-      {
-        token: ownerToken,
-        body: {
-          orgId,
-          entries: [
-            {
-              level: "error",
-              message: "Webhook signature mismatch with token Bearer secret_live_tok_999",
-              runId: "run_live_ws_01",
-              workflowId: "wf_payment_flow",
-              nodeId: "node_trigger",
-              brickId: "webhook-gateway",
-              workspaceId: "ws_alpha",
-              fields: {
-                apiKey: "sk_test_inline_secret_123",
-              },
+    const ingestRes = await callStudio(`/api/projects/${project}/environments/preview/logs`, {
+      token: ownerToken,
+      body: {
+        orgId,
+        entries: [
+          {
+            level: "error",
+            message: "Webhook signature mismatch with token Bearer secret_live_tok_999",
+            runId: "run_live_ws_01",
+            workflowId: "wf_payment_flow",
+            nodeId: "node_trigger",
+            brickId: "webhook-gateway",
+            workspaceId: "ws_alpha",
+            fields: {
+              apiKey: "sk_test_inline_secret_123",
             },
-          ],
-        },
+          },
+        ],
       },
-    );
+    });
     expect(ingestRes.status).toBe(201);
 
     const logFrame = receivedFrames.find((f) => f.type === "log") as

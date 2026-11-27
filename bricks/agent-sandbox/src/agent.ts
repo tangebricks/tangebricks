@@ -84,17 +84,13 @@ export class AgentSandboxService {
     description: string,
     parametersSchema: Record<string, unknown>,
     handlerType: HandlerType = "built_in",
-    handlerTarget = "echo"
+    handlerTarget = "echo",
   ): Promise<McpTool> {
     const id = `tool_${crypto.randomUUID().replace(/-/g, "")}`;
     const name = nameRaw.trim().toLowerCase();
     const now = new Date().toISOString();
 
-    const existing = await scoped(this.db, workspaceId).first<{ id: string }>(
-      "mcp_tools",
-      "name = ?",
-      [name]
-    );
+    const existing = await scoped(this.db, workspaceId).first<{ id: string }>("mcp_tools", "name = ?", [name]);
 
     if (existing) {
       await scoped(this.db, workspaceId).update(
@@ -107,7 +103,7 @@ export class AgentSandboxService {
           is_enabled: 1,
         },
         "name = ?",
-        [name]
+        [name],
       );
     } else {
       await scoped(this.db, workspaceId).insert("mcp_tools", {
@@ -142,11 +138,7 @@ export class AgentSandboxService {
    */
   async getTool(workspaceId: string, nameRaw: string): Promise<McpTool | null> {
     const name = nameRaw.trim().toLowerCase();
-    const row = await scoped(this.db, workspaceId).first<RawToolRow>(
-      "mcp_tools",
-      "name = ?",
-      [name]
-    );
+    const row = await scoped(this.db, workspaceId).first<RawToolRow>("mcp_tools", "name = ?", [name]);
 
     if (!row) return null;
 
@@ -161,12 +153,7 @@ export class AgentSandboxService {
    * Lists all enabled MCP tools in the workspace formatted for LLMs.
    */
   async listTools(workspaceId: string): Promise<McpTool[]> {
-    const rows = await scoped(this.db, workspaceId).select<RawToolRow>(
-      "mcp_tools",
-      "is_enabled = 1",
-      [],
-      { orderBy: "name ASC" }
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawToolRow>("mcp_tools", "is_enabled = 1", [], { orderBy: "name ASC" });
 
     return rows.map((r) => ({
       ...r,
@@ -217,7 +204,7 @@ export class AgentSandboxService {
     workspaceId: string,
     toolNameRaw: string,
     args: Record<string, unknown>,
-    sessionId?: string
+    sessionId?: string,
   ): Promise<{ ok: boolean; output?: unknown; error?: string; durationMs: number }> {
     const startTime = Date.now();
     const tool = await this.getTool(workspaceId, toolNameRaw);
@@ -255,9 +242,7 @@ export class AgentSandboxService {
       } else {
         // px-stub: inline_js, http_webhook and workflow_call tools have no runner (NOT_CONFIGURED); there is no isolate sandbox
         // Story 0.9: there is no runner for non-built-in tools. Fail NOT_CONFIGURED; never record a run that did not happen.
-        throw new Error(
-          `NOT_CONFIGURED: no handler is configured for ${tool.handler_type} tool '${tool.name}'; the tool was not run.`,
-        );
+        throw new Error(`NOT_CONFIGURED: no handler is configured for ${tool.handler_type} tool '${tool.name}'; the tool was not run.`);
       }
     } catch (err: unknown) {
       status = "error";
@@ -290,18 +275,19 @@ export class AgentSandboxService {
   /**
    * Initializes or updates an agent multi-turn session.
    */
-  async createSession(
-    workspaceId: string,
-    agentName: string,
-    initialState: Record<string, unknown> = {}
-  ): Promise<AgentSession> {
+  async createSession(workspaceId: string, agentName: string, initialState: Record<string, unknown> = {}): Promise<AgentSession> {
     const id = `sess_${crypto.randomUUID().replace(/-/g, "")}`;
     const now = new Date().toISOString();
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO mcp_agent_sessions (id, workspace_id, agent_name, state_json, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(id, workspaceId, agentName.trim(), JSON.stringify(initialState), now, now).run();
+    `,
+      )
+      .bind(id, workspaceId, agentName.trim(), JSON.stringify(initialState), now, now)
+      .run();
 
     return {
       id,
@@ -317,15 +303,16 @@ export class AgentSandboxService {
    * Updates state variables for a session, in the given workspace only: another workspace's session id is "not
    * found" (null) and is left unchanged.
    */
-  async updateSessionState(
-    workspaceId: string,
-    sessionId: string,
-    stateUpdates: Record<string, unknown>
-  ): Promise<AgentSession | null> {
-    const row = await this.db.prepare(`
+  async updateSessionState(workspaceId: string, sessionId: string, stateUpdates: Record<string, unknown>): Promise<AgentSession | null> {
+    const row = await this.db
+      .prepare(
+        `
       SELECT id, workspace_id, agent_name, state_json, created_at, updated_at
       FROM mcp_agent_sessions WHERE id = ? AND workspace_id = ?
-    `).bind(sessionId, workspaceId).first<RawSessionRow>();
+    `,
+      )
+      .bind(sessionId, workspaceId)
+      .first<RawSessionRow>();
 
     if (!row) return null;
 
@@ -333,11 +320,16 @@ export class AgentSandboxService {
     const merged = { ...current, ...stateUpdates };
     const now = new Date().toISOString();
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       UPDATE mcp_agent_sessions
       SET state_json = ?, updated_at = ?
       WHERE id = ? AND workspace_id = ?
-    `).bind(JSON.stringify(merged), now, sessionId, workspaceId).run();
+    `,
+      )
+      .bind(JSON.stringify(merged), now, sessionId, workspaceId)
+      .run();
 
     return {
       ...row,
@@ -354,7 +346,7 @@ export class AgentSandboxService {
       "mcp_tool_invocations",
       toolName ? "tool_name = ?" : undefined,
       toolName ? [toolName.trim().toLowerCase()] : [],
-      { orderBy: "created_at DESC", limit: 50 }
+      { orderBy: "created_at DESC", limit: 50 },
     );
 
     return rows.map((r) => ({

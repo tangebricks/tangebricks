@@ -51,7 +51,8 @@ function reachable(root: unknown): { values: unknown[]; objects: Set<object> } {
 
 const executors = (extra: Record<string, Executor>): Map<string, Executor> => new Map([...toyExecutors, ...Object.entries(extra)]);
 const run = (type: string, exec: Executor, payload: unknown = {}) =>
-  runGraph({ nodes: [node("t", "trigger.manual"), node("x", type)], edges: [wire("t", "x")] }, registry, executors({ [type]: exec }), { workspaceId: "ws_test",
+  runGraph({ nodes: [node("t", "trigger.manual"), node("x", type)], edges: [wire("t", "x")] }, registry, executors({ [type]: exec }), {
+    workspaceId: "ws_test",
     payload,
     env,
   });
@@ -155,8 +156,7 @@ test("H3 report", async ({ task }) => {
     checks: {
       declaredSecretReadable: vault.ok && vault.outputs.x?.out === DECLARED_VALUE,
       // Nothing about the undeclared secret leaks anywhere in the run result or the executor's context.
-      undeclaredSecretAbsent:
-        !JSON.stringify(snoop).includes(UNDECLARED_VALUE) && !values.includes(UNDECLARED_VALUE) && !values.includes(DECLARED_VALUE),
+      undeclaredSecretAbsent: !JSON.stringify(snoop).includes(UNDECLARED_VALUE) && !values.includes(UNDECLARED_VALUE) && !values.includes(DECLARED_VALUE),
       undeclaredReadThrows: snoop.failed.x === `secret "${UNDECLARED}" is not declared by test.snoop`,
       // The env object is not reachable from anything the runtime hands the executor (see the known-limit test).
       rawEnvUnreachable: !objects.has(env) && seen !== undefined && !("env" in seen),

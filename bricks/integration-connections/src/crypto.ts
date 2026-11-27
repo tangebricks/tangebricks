@@ -41,11 +41,7 @@ const sealOptions = (workspaceId: string, rawKeyMaterial?: string) => ({
  * `workspaceId` bound in the Additional Authenticated Data (`AAD`).
  * Copying `sealed_credentials` across workspace rows will fail AES-GCM tag verification.
  */
-export async function sealWorkspaceCredentials(
-  credentials: WorkspaceSealedCredentials,
-  workspaceId: string,
-  rawKeyMaterial?: string,
-): Promise<string> {
+export async function sealWorkspaceCredentials(credentials: WorkspaceSealedCredentials, workspaceId: string, rawKeyMaterial?: string): Promise<string> {
   if (!workspaceId || workspaceId.trim().length === 0) {
     throw new Error("workspaceId is required for AAD-bound credential sealing");
   }
@@ -62,15 +58,9 @@ export async function sealWorkspaceCredentials(
  * Decrypts and authenticates workspace OAuth credentials using AES-GCM 256-bit `PX_CONN_KEY`
  * verifying `AAD === workspaceId`. Throws `WORKSPACE_CREDENTIAL_INTEGRITY_ERROR` on AAD mismatch.
  */
-export async function unsealWorkspaceCredentials(
-  sealedEnvelope: string,
-  workspaceId: string,
-  rawKeyMaterial?: string,
-): Promise<WorkspaceSealedCredentials> {
+export async function unsealWorkspaceCredentials(sealedEnvelope: string, workspaceId: string, rawKeyMaterial?: string): Promise<WorkspaceSealedCredentials> {
   if (!workspaceId || workspaceId.trim().length === 0) {
-    throw new Error(
-      "WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: Missing workspaceId for AAD verification",
-    );
+    throw new Error("WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: Missing workspaceId for AAD verification");
   }
   try {
     return await unsealJson<WorkspaceSealedCredentials>(sealedEnvelope, sealOptions(workspaceId, rawKeyMaterial));
@@ -78,13 +68,9 @@ export async function unsealWorkspaceCredentials(
     if (!(error instanceof SealedJsonError)) throw error;
     if (error.code === "MISSING_KEY") throw new Error("Missing required secret PX_CONN_KEY");
     if (error.code === "MALFORMED") {
-      throw new Error(
-        `WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: Malformed sealed_credentials envelope for workspace "${workspaceId}"`,
-      );
+      throw new Error(`WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: Malformed sealed_credentials envelope for workspace "${workspaceId}"`);
     }
-    throw new Error(
-      `WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: AES-GCM authentication failed for workspace "${workspaceId}" (AAD mismatch or tampered ciphertext)`,
-    );
+    throw new Error(`WORKSPACE_CREDENTIAL_INTEGRITY_ERROR: AES-GCM authentication failed for workspace "${workspaceId}" (AAD mismatch or tampered ciphertext)`);
   }
 }
 
@@ -99,9 +85,6 @@ export function generatePkceVerifier(): string {
 }
 
 export async function computePkceChallengeS256(verifier: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(verifier),
-  );
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
   return toBase64Url(new Uint8Array(digest));
 }

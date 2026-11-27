@@ -19,9 +19,7 @@ export interface EvidenceProvenance {
 }
 
 export function getEvidenceDir(): string {
-  return process.env.POC_EVIDENCE_DIR
-    ? resolve(process.env.POC_EVIDENCE_DIR)
-    : resolve(repoRoot, "evidence");
+  return process.env.POC_EVIDENCE_DIR ? resolve(process.env.POC_EVIDENCE_DIR) : resolve(repoRoot, "evidence");
 }
 
 export function getGitSha(cwd: string = repoRoot): string {
@@ -45,10 +43,7 @@ export function isGitDirty(cwd: string = repoRoot): boolean {
   }
 }
 
-export function stampEvidence(
-  generator: string,
-  inputKind: EvidenceInputKind = "measured",
-): EvidenceProvenance {
+export function stampEvidence(generator: string, inputKind: EvidenceInputKind = "measured"): EvidenceProvenance {
   return {
     generatedAt: new Date().toISOString(),
     gitSha: getGitSha(),
@@ -58,11 +53,7 @@ export function stampEvidence(
   };
 }
 
-export function writeEvidence(
-  targetPath: string,
-  body: unknown,
-  provenance: EvidenceProvenance,
-): void {
+export function writeEvidence(targetPath: string, body: unknown, provenance: EvidenceProvenance): void {
   const normalized = targetPath.replace(/\\/g, "/");
 
   if (provenance.inputKind === "simulated") {
@@ -80,14 +71,10 @@ export function writeEvidence(
   mkdirSync(dirname(targetPath), { recursive: true });
 
   const payload: Record<string, unknown> =
-    typeof body === "object" && body !== null && !Array.isArray(body)
-      ? { ...(body as Record<string, unknown>), provenance }
-      : { data: body, provenance };
+    typeof body === "object" && body !== null && !Array.isArray(body) ? { ...(body as Record<string, unknown>), provenance } : { data: body, provenance };
 
   if (payload.generatedAt === "2026-11-01T00:00:00.000Z" || provenance.generatedAt === "2026-11-01T00:00:00.000Z") {
-    throw new Error(
-      `EVIDENCE_HARDCODED_TIMESTAMP: Attempted to write evidence with hardcoded timestamp 2026-11-01T00:00:00.000Z to ${targetPath}`,
-    );
+    throw new Error(`EVIDENCE_HARDCODED_TIMESTAMP: Attempted to write evidence with hardcoded timestamp 2026-11-01T00:00:00.000Z to ${targetPath}`);
   }
 
   writeFileSync(targetPath, JSON.stringify(payload, null, 2) + "\n", "utf8");

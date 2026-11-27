@@ -36,14 +36,10 @@ describe("UC5.2 tier evidence recording and assertion counting", () => {
     process.env.POC_MANIFEST_DIR = fixturesDir;
 
     const savedExitCode = process.exitCode;
-    const vitest = await startVitest(
-      "test",
-      [passingTest, skippedTest, zeroExpectsTest],
-      {
-        watch: false,
-        run: true,
-      },
-    );
+    const vitest = await startVitest("test", [passingTest, skippedTest, zeroExpectsTest], {
+      watch: false,
+      run: true,
+    });
     await vitest?.close();
     process.exitCode = savedExitCode;
 
@@ -106,14 +102,10 @@ describe("UC5.2 tier evidence recording and assertion counting", () => {
 
     // Run ONLY passingTest; skipped and zeroExpects tests are filtered out
     const savedExitCode = process.exitCode;
-    const vitest = await startVitest(
-      "test",
-      [passingTest],
-      {
-        watch: false,
-        run: true,
-      },
-    );
+    const vitest = await startVitest("test", [passingTest], {
+      watch: false,
+      run: true,
+    });
     await vitest?.close();
     process.exitCode = savedExitCode;
 
@@ -156,14 +148,10 @@ describe("UC5.2 tier evidence recording and assertion counting", () => {
     // Run on a fast single test file
     const fastTest = join(repoRoot, "scripts", "test", "fixtures", "clean-tree-attach.node.test.ts");
     const savedExitCode = process.exitCode;
-    const vitest = await startVitest(
-      "test",
-      [fastTest],
-      {
-        watch: false,
-        run: true,
-      },
-    );
+    const vitest = await startVitest("test", [fastTest], {
+      watch: false,
+      run: true,
+    });
     await vitest?.close();
     process.exitCode = savedExitCode;
 

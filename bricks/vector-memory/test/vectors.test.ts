@@ -4,12 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_vector_memory.sql?raw";
-import {
-  VectorMemoryService,
-  cosineSimilarity,
-  chunkText,
-  createVectorRoutes,
-} from "../src/index.ts";
+import { VectorMemoryService, cosineSimilarity, chunkText, createVectorRoutes } from "../src/index.ts";
 import type { VectorEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -63,16 +58,12 @@ describe("Vector Memory Service Core Logic", () => {
     expect(index.dimensions).toBe(3);
 
     // Attempting to upsert 2-dimensional vector should fail
-    const failRes = await service.upsertChunks(WS_ALPHA, index.id, [
-      { text: "Too short", embedding: [0.1, 0.2] },
-    ]);
+    const failRes = await service.upsertChunks(WS_ALPHA, index.id, [{ text: "Too short", embedding: [0.1, 0.2] }]);
     expect(failRes.ok).toBe(false);
     expect(failRes.error).toContain("dimension mismatch");
 
     // Upserting 3-dimensional vector should succeed
-    const okRes = await service.upsertChunks(WS_ALPHA, index.id, [
-      { text: "Exact length", embedding: [0.1, 0.2, 0.3] },
-    ]);
+    const okRes = await service.upsertChunks(WS_ALPHA, index.id, [{ text: "Exact length", embedding: [0.1, 0.2, 0.3] }]);
     expect(okRes.ok).toBe(true);
     expect(okRes.count).toBe(1);
   });
@@ -128,40 +119,50 @@ describe("Vector Memory HTTP API", () => {
     app.route("/api", createVectorRoutes());
 
     // 1. POST /vectors/indexes
-    const createRes = await app.request("/api/vectors/indexes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        name: "product_docs",
-        dimensions: 3,
-        metric: "cosine",
-      }),
-    }, { DB: db });
+    const createRes = await app.request(
+      "/api/vectors/indexes",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          name: "product_docs",
+          dimensions: 3,
+          metric: "cosine",
+        }),
+      },
+      { DB: db },
+    );
     expect(createRes.status).toBe(201);
     const createJson = (await createRes.json()) as { index: { id: string } };
     const indexId = createJson.index.id;
 
     // 2. POST /vectors/indexes/:id/upsert
-    const upsertRes = await app.request(`/api/vectors/indexes/${indexId}/upsert`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        chunks: [
-          { text: "Cloudflare D1 is SQLite at the edge", embedding: [0.8, 0.2, 0.1] },
-        ],
-      }),
-    }, { DB: db });
+    const upsertRes = await app.request(
+      `/api/vectors/indexes/${indexId}/upsert`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          chunks: [{ text: "Cloudflare D1 is SQLite at the edge", embedding: [0.8, 0.2, 0.1] }],
+        }),
+      },
+      { DB: db },
+    );
     expect(upsertRes.status).toBe(201);
 
     // 3. POST /vectors/indexes/:id/search
-    const searchRes = await app.request(`/api/vectors/indexes/${indexId}/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        vector: [0.8, 0.2, 0.1],
-        topK: 1,
-      }),
-    }, { DB: db });
+    const searchRes = await app.request(
+      `/api/vectors/indexes/${indexId}/search`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          vector: [0.8, 0.2, 0.1],
+          topK: 1,
+        }),
+      },
+      { DB: db },
+    );
     expect(searchRes.status).toBe(200);
     const searchJson = (await searchRes.json()) as { results: Array<{ text_content: string; score: number }> };
     expect(searchJson.results).toHaveLength(1);
@@ -181,22 +182,33 @@ describe("Vector Memory HTTP API", () => {
     await service.upsertChunks(WS_BETA, idxB.id, [{ text: "Beta confidential", embedding: [1, 0] }]);
     const asAlpha = { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA };
 
-    const upsert = await app.request(`/api/vectors/indexes/${idxB.id}/upsert`, {
-      method: "POST",
-      headers: asAlpha,
-      body: JSON.stringify({ chunks: [{ text: "Alpha planted", embedding: [1, 0] }] }),
-    }, { DB: db });
+    const upsert = await app.request(
+      `/api/vectors/indexes/${idxB.id}/upsert`,
+      {
+        method: "POST",
+        headers: asAlpha,
+        body: JSON.stringify({ chunks: [{ text: "Alpha planted", embedding: [1, 0] }] }),
+      },
+      { DB: db },
+    );
     expect(upsert.status).toBe(404);
-    const search = await app.request(`/api/vectors/indexes/${idxB.id}/search`, {
-      method: "POST",
-      headers: asAlpha,
-      body: JSON.stringify({ vector: [1, 0], topK: 5 }),
-    }, { DB: db });
+    const search = await app.request(
+      `/api/vectors/indexes/${idxB.id}/search`,
+      {
+        method: "POST",
+        headers: asAlpha,
+        body: JSON.stringify({ vector: [1, 0], topK: 5 }),
+      },
+      { DB: db },
+    );
     expect(search.status).toBe(404);
 
     expect(await service.getIndex(WS_ALPHA, idxB.id)).toBeNull();
     expect(await service.upsertChunks(WS_ALPHA, idxB.id, [{ text: "x", embedding: [1, 0] }])).toMatchObject({ ok: false });
-    const planted = await db.prepare("SELECT COUNT(*) AS n FROM vec_documents WHERE index_id = ? AND workspace_id = ?").bind(idxB.id, WS_ALPHA).first<{ n: number }>();
+    const planted = await db
+      .prepare("SELECT COUNT(*) AS n FROM vec_documents WHERE index_id = ? AND workspace_id = ?")
+      .bind(idxB.id, WS_ALPHA)
+      .first<{ n: number }>();
     expect(planted!.n).toBe(0);
   });
 });

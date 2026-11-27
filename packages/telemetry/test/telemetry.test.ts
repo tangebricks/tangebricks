@@ -34,10 +34,7 @@ const db = (env as unknown as { DB: D1Like }).DB;
 describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB truncator, and signed pull", () => {
   beforeEach(async () => {
     await ensureTelemetryTables(db);
-    await db.batch([
-      db.prepare("DELETE FROM px_step_events"),
-      db.prepare("DELETE FROM px_runs"),
-    ]);
+    await db.batch([db.prepare("DELETE FROM px_step_events"), db.prepare("DELETE FROM px_runs")]);
   });
 
   test("exports Zod-validated RunRecord and StepEvent schemas and creates px_runs & px_step_events with required indexes", async () => {
@@ -47,9 +44,7 @@ describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB trun
     expect(PX_TELEMETRY_MIGRATION_SQL).toContain("(run_id, node_id)");
 
     const indexRows = await db
-      .prepare(
-        "SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name IN ('px_runs', 'px_step_events')",
-      )
+      .prepare("SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name IN ('px_runs', 'px_step_events')")
       .all<{ name: string; tbl_name: string; sql: string | null }>();
     const indexSql = (indexRows.results ?? []).map((r) => r.sql ?? "").join("\n");
     expect(indexSql).toContain("(workflow_id, started_at DESC)");
@@ -133,11 +128,7 @@ describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB trun
     };
 
     const redacted = redactTelemetryPayload(rawPayload, {
-      secretValues: [
-        canaryApiSecret,
-        canaryConnToken,
-        "sec+val/with=special&chars!999",
-      ],
+      secretValues: [canaryApiSecret, canaryConnToken, "sec+val/with=special&chars!999"],
       secretFieldNames: ["customWidgetSecretField"],
     }) as Record<string, unknown>;
 
@@ -265,10 +256,10 @@ describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB trun
 
     // Signed, but naming no workspace -> 400 WORKSPACE_ID_REQUIRED
     const noWsUrl = "http://worker.local/__px/events?after=0&limit=2";
-    const noWsRes = await handleTelemetryEventsPullRequest(
-      new Request(noWsUrl, { headers: await signControlPlaneRequest(secret, "GET", new URL(noWsUrl)) }),
-      { db, telemetrySecret: secret },
-    );
+    const noWsRes = await handleTelemetryEventsPullRequest(new Request(noWsUrl, { headers: await signControlPlaneRequest(secret, "GET", new URL(noWsUrl)) }), {
+      db,
+      telemetrySecret: secret,
+    });
     expect(noWsRes?.status).toBe(400);
     expect(((await noWsRes!.json()) as { error: { code: string } }).error.code).toBe("WORKSPACE_ID_REQUIRED");
 
@@ -305,7 +296,15 @@ describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB trun
   });
 
   test("story 1.4: every read is scoped; a read naming neither project nor workspace throws", async () => {
-    const base = { workflowId: "wf_scope", revision: 1, triggerType: "manual", status: "succeeded" as const, durationMs: 1, retries: 0, startedAt: "2026-10-30T12:00:00.000Z" };
+    const base = {
+      workflowId: "wf_scope",
+      revision: 1,
+      triggerType: "manual",
+      status: "succeeded" as const,
+      durationMs: 1,
+      retries: 0,
+      startedAt: "2026-10-30T12:00:00.000Z",
+    };
     await upsertRunRecord(db, { ...base, runId: "run_pa", workspaceId: "ws_shared" }, { projectId: "proj_a" });
     await upsertRunRecord(db, { ...base, runId: "run_pb", workspaceId: "ws_shared" }, { projectId: "proj_b" });
     await upsertRunRecord(db, { ...base, runId: "run_wb", workspaceId: "ws_b" });
@@ -315,15 +314,28 @@ describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB trun
     expect(await getRunRecord(db, "run_wb", { workspaceId: "ws_shared" })).toBeNull();
     expect((await listRunRecords(db, { projectId: "proj_a" })).map((r) => r.runId)).toEqual(["run_pa"]);
     expect((await listRunRecords(db, { workspaceId: "ws_shared" })).map((r) => r.runId).sort()).toEqual(["run_pa", "run_pb"]);
-    expect((await listRunRecords(db, { projectId: "proj_a", workspaceId: "ws_b" }))).toEqual([]);
+    expect(await listRunRecords(db, { projectId: "proj_a", workspaceId: "ws_b" })).toEqual([]);
 
     // The same run id written for another project never overwrites the first project's row, and is refused as a
     // collision rather than reported as a success.
-    await expect(
-      upsertRunRecord(db, { ...base, runId: "run_pa", workspaceId: "ws_shared", status: "failed" }, { projectId: "proj_b" }),
-    ).rejects.toMatchObject({ kind: "ID_COLLISION" });
+    await expect(upsertRunRecord(db, { ...base, runId: "run_pa", workspaceId: "ws_shared", status: "failed" }, { projectId: "proj_b" })).rejects.toMatchObject({
+      kind: "ID_COLLISION",
+    });
     expect((await getRunRecord(db, "run_pa", { projectId: "proj_a" }))?.status).toBe("succeeded");
-    const ev = { eventId: "ev_pa", runId: "run_pa", workflowId: "wf_scope", revision: 1, nodeId: "n", status: "succeeded" as const, durationMs: 1, retries: 0, inputPreview: "{}", outputPreview: "{}", errorStack: null, createdAt: "2026-10-30T12:00:00.000Z" };
+    const ev = {
+      eventId: "ev_pa",
+      runId: "run_pa",
+      workflowId: "wf_scope",
+      revision: 1,
+      nodeId: "n",
+      status: "succeeded" as const,
+      durationMs: 1,
+      retries: 0,
+      inputPreview: "{}",
+      outputPreview: "{}",
+      errorStack: null,
+      createdAt: "2026-10-30T12:00:00.000Z",
+    };
     await insertStepEvent(db, { ...ev, workspaceId: "ws_shared" }, { projectId: "proj_a" });
     await expect(insertStepEvent(db, { ...ev, workspaceId: "ws_other" }, { projectId: "proj_a" })).rejects.toMatchObject({ kind: "ID_COLLISION" });
     await insertStructuredLog(db, { logId: "log_pa", level: "info", message: "pa", workspaceId: "ws_shared" }, {}, { projectId: "proj_a" });
@@ -356,9 +368,20 @@ describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB trun
     };
     await expect(insertStepEvent(db, event as never)).rejects.toBeInstanceOf(TelemetryWriteRefusedError);
     await expect(
-      upsertRunRecord(db, { runId: "run_nows", workflowId: "wf", revision: 0, triggerType: "manual", status: "running", durationMs: 0, retries: 0, startedAt: "2026-10-30T12:00:00.000Z" } as never),
+      upsertRunRecord(db, {
+        runId: "run_nows",
+        workflowId: "wf",
+        revision: 0,
+        triggerType: "manual",
+        status: "running",
+        durationMs: 0,
+        retries: 0,
+        startedAt: "2026-10-30T12:00:00.000Z",
+      } as never),
     ).rejects.toBeInstanceOf(TelemetryWriteRefusedError);
-    await expect(upsertHttpRollup(db, { bucketMinute: "2026-10-30T12:00:00.000Z", requestCount: 1 } as never)).rejects.toBeInstanceOf(TelemetryWriteRefusedError);
+    await expect(upsertHttpRollup(db, { bucketMinute: "2026-10-30T12:00:00.000Z", requestCount: 1 } as never)).rejects.toBeInstanceOf(
+      TelemetryWriteRefusedError,
+    );
     await expect(upsertQueueMetrics(db, { queueName: "q", depth: 1 } as never)).rejects.toBeInstanceOf(TelemetryWriteRefusedError);
     const leaked = await db.prepare("SELECT COUNT(*) AS c FROM px_step_events WHERE run_id = 'run_nows'").first<{ c: number }>();
     expect(Number(leaked?.c ?? 0)).toBe(0);
@@ -387,7 +410,9 @@ describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB trun
         "CREATE TABLE px_queue_metrics (queue_name TEXT NOT NULL, pending_count INTEGER NOT NULL DEFAULT 0, dlq_count INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, env_name TEXT NOT NULL DEFAULT 'preview', PRIMARY KEY (queue_name, env_name))",
       ),
       db.prepare("INSERT INTO px_runs (run_id, workflow_id, status, started_at) VALUES ('run_legacy', 'wf', 'succeeded', '2026-10-01T00:00:00.000Z')"),
-      db.prepare("INSERT INTO px_step_events (event_id, run_id, workflow_id, node_id, status, created_at) VALUES ('ev_legacy', 'run_legacy', 'wf', 'n', 'succeeded', '2026-10-01T00:00:00.000Z')"),
+      db.prepare(
+        "INSERT INTO px_step_events (event_id, run_id, workflow_id, node_id, status, created_at) VALUES ('ev_legacy', 'run_legacy', 'wf', 'n', 'succeeded', '2026-10-01T00:00:00.000Z')",
+      ),
       db.prepare("INSERT INTO px_http_rollups (bucket_minute, request_count) VALUES ('2026-10-01T00:00:00.000Z', 7)"),
       db.prepare("INSERT INTO px_queue_metrics (queue_name, pending_count, updated_at) VALUES ('q_legacy', 3, '2026-10-01T00:00:00.000Z')"),
       // A stray copy from an interrupted rebuild does not block the next one.
@@ -399,8 +424,7 @@ describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB trun
     forgetEnsuredTelemetryTables(db);
     await ensureTelemetryTables(db); // idempotent: the second pass finds the 1.4 keys and rebuilds nothing
 
-    const cols = async (table: string) =>
-      ((await db.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>()).results ?? []).map((c) => c.name);
+    const cols = async (table: string) => ((await db.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>()).results ?? []).map((c) => c.name);
     expect(await cols("px_runs")).toContain("project_id");
     expect(await cols("px_step_events")).toEqual(expect.arrayContaining(["workspace_id", "project_id"]));
     expect(await cols("px_logs")).toContain("project_id");
@@ -413,9 +437,7 @@ describe("@poc/telemetry — schemas, D1 migration, redaction engine, 16 KB trun
     expect(await count("SELECT COUNT(*) AS c FROM px_runs WHERE run_id = 'run_legacy' AND workspace_id = 'ws_default'")).toBe(1);
     expect((await listRunRecords(db, { workspaceId: "ws_default" })).map((r) => r.runId)).toEqual(["run_legacy"]);
     const pkCols = async (table: string) =>
-      ((await db.prepare(`PRAGMA table_info(${table})`).all<{ name: string; pk: number }>()).results ?? [])
-        .filter((c) => c.pk > 0)
-        .map((c) => c.name);
+      ((await db.prepare(`PRAGMA table_info(${table})`).all<{ name: string; pk: number }>()).results ?? []).filter((c) => c.pk > 0).map((c) => c.name);
     expect(await pkCols("px_http_rollups")).toEqual(expect.arrayContaining(["workspace_id", "project_id"]));
     expect(await pkCols("px_queue_metrics")).toEqual(expect.arrayContaining(["workspace_id", "project_id"]));
     // A pre-1.4 step event takes its run's workspace.

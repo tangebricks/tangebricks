@@ -151,17 +151,11 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
 
     expect(screen.getByTestId("view-connections")).toBeTruthy();
     expect(screen.getByTestId("secret-row-sec_stripe_wh")).toBeTruthy();
-    expect(
-      screen.getByTestId("secret-key-hint-sec_stripe_wh").textContent,
-    ).toBe("••••9182");
-    expect(
-      screen.getByTestId("secret-status-sec_stripe_wh").textContent,
-    ).toContain("Valid · Connected");
+    expect(screen.getByTestId("secret-key-hint-sec_stripe_wh").textContent).toBe("••••9182");
+    expect(screen.getByTestId("secret-status-sec_stripe_wh").textContent).toContain("Valid · Connected");
 
     // Click "Used by" target for brick webhook-gateway -> jumps to Bricks view & selects brick
-    fireEvent.click(
-      screen.getByTestId("secret-used-by-target-sec_stripe_wh-webhook-gateway"),
-    );
+    fireEvent.click(screen.getByTestId("secret-used-by-target-sec_stripe_wh-webhook-gateway"));
     expect(useStudioStore.getState().activeNav).toBe("bricks");
     expect(useStudioStore.getState().selection).toEqual({
       kind: "brick",
@@ -170,9 +164,7 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
 
     // Switch back to Connections and click "Used by" target for node_http_1 -> jumps to Workflows view & selects node
     fireEvent.click(screen.getByTestId("nav-tab-connections"));
-    fireEvent.click(
-      screen.getByTestId("secret-used-by-target-sec_billing_api-node_http_1"),
-    );
+    fireEvent.click(screen.getByTestId("secret-used-by-target-sec_billing_api-node_http_1"));
     expect(useStudioStore.getState().activeNav).toBe("workflows");
     expect(useStudioStore.getState().selection).toEqual({
       kind: "node",
@@ -185,10 +177,7 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/secrets") && (!init?.method || init.method === "GET")) {
-        return new Response(
-          JSON.stringify({ secrets: useStudioStore.getState().secrets }),
-          { status: 200 },
-        );
+        return new Response(JSON.stringify({ secrets: useStudioStore.getState().secrets }), { status: 200 });
       }
       if (url.endsWith("/secrets") && init?.method === "POST") {
         const body = JSON.parse(String(init.body)) as {
@@ -255,9 +244,7 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
     fireEvent.change(screen.getByTestId("secret-label-input"), {
       target: { value: "Resend API Key" },
     });
-    expect(
-      (screen.getByTestId("secret-handle-input") as HTMLInputElement).value,
-    ).toBe("sec_resend_api_key");
+    expect((screen.getByTestId("secret-handle-input") as HTMLInputElement).value).toBe("sec_resend_api_key");
     fireEvent.change(screen.getByTestId("secret-value-input"), {
       target: { value: "re_live_secret_value_8842" },
     });
@@ -266,9 +253,7 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
     await waitFor(() => {
       expect(screen.getByTestId("secret-row-sec_resend_api_key")).toBeTruthy();
     });
-    expect(
-      screen.getByTestId("secret-key-hint-sec_resend_api_key").textContent,
-    ).toBe("••••8842");
+    expect(screen.getByTestId("secret-key-hint-sec_resend_api_key").textContent).toBe("••••8842");
     // Plaintext must never appear in the rendered DOM
     expect(document.body.innerHTML).not.toContain("re_live_secret_value_8842");
 
@@ -280,18 +265,14 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
     fireEvent.click(screen.getByTestId("save-secret-submit"));
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("secret-key-hint-sec_resend_api_key").textContent,
-      ).toBe("••••1199");
+      expect(screen.getByTestId("secret-key-hint-sec_resend_api_key").textContent).toBe("••••1199");
     });
     expect(document.body.innerHTML).not.toContain("re_live_rotated_value_1199");
 
     // 3. Delete bound secret -> shows impact warning modal and unbinds on confirm
     fireEvent.click(screen.getByTestId("delete-secret-button-sec_stripe_wh"));
     expect(screen.getByTestId("delete-secret-modal")).toBeTruthy();
-    expect(
-      screen.getByTestId("delete-secret-impact-warning").textContent,
-    ).toContain("webhook-gateway (WEBHOOK_SIGNING_SECRET)");
+    expect(screen.getByTestId("delete-secret-impact-warning").textContent).toContain("webhook-gateway (WEBHOOK_SIGNING_SECRET)");
 
     fireEvent.click(screen.getByTestId("confirm-delete-secret"));
     await waitFor(() => {
@@ -323,10 +304,7 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
                 {
                   opId: "bind-inline-1",
                   type: "bind_secret_ref",
-                  targetKind:
-                    body.bindTarget.targetKind === "node"
-                      ? "connection"
-                      : "brick",
+                  targetKind: body.bindTarget.targetKind === "node" ? "connection" : "brick",
                   targetId: body.bindTarget.targetId,
                   secretName: body.bindTarget.secretName,
                   ref: body.ref,
@@ -360,35 +338,19 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
     vi.stubGlobal("fetch", fetchMock);
 
     // Select brick `core-auth` in Inspector (which declares BETTER_AUTH_SECRET)
-    useStudioStore
-      .getState()
-      .selectItem({ kind: "brick", id: "core-auth" }, "bricks");
+    useStudioStore.getState().selectItem({ kind: "brick", id: "core-auth" }, "bricks");
 
     render(<StudioShell />);
 
-    const inlineBtn = screen.getByTestId(
-      "inline-add-secret-button-BETTER_AUTH_SECRET",
-    );
+    const inlineBtn = screen.getByTestId("inline-add-secret-button-BETTER_AUTH_SECRET");
     fireEvent.click(inlineBtn);
 
-    fireEvent.change(
-      screen.getByTestId("inline-secret-handle-BETTER_AUTH_SECRET"),
-      { target: { value: "sec_inline_auth_key" } },
-    );
-    fireEvent.change(
-      screen.getByTestId("inline-secret-value-BETTER_AUTH_SECRET"),
-      { target: { value: "whsec_inline_secret_4455" } },
-    );
-    fireEvent.click(
-      screen.getByTestId("inline-secret-submit-BETTER_AUTH_SECRET"),
-    );
+    fireEvent.change(screen.getByTestId("inline-secret-handle-BETTER_AUTH_SECRET"), { target: { value: "sec_inline_auth_key" } });
+    fireEvent.change(screen.getByTestId("inline-secret-value-BETTER_AUTH_SECRET"), { target: { value: "whsec_inline_secret_4455" } });
+    fireEvent.click(screen.getByTestId("inline-secret-submit-BETTER_AUTH_SECRET"));
 
     await waitFor(() => {
-      expect(
-        useStudioStore
-          .getState()
-          .secrets.some((s) => s.ref === "sec_inline_auth_key"),
-      ).toBe(true);
+      expect(useStudioStore.getState().secrets.some((s) => s.ref === "sec_inline_auth_key")).toBe(true);
     });
     expect(document.body.innerHTML).not.toContain("whsec_inline_secret_4455");
   });
@@ -467,10 +429,7 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
           { status: 200 },
         );
       }
-      if (
-        url.endsWith("/connections/sec_slack_oauth/reauthorize") &&
-        init?.method === "POST"
-      ) {
+      if (url.endsWith("/connections/sec_slack_oauth/reauthorize") && init?.method === "POST") {
         return new Response(
           JSON.stringify({
             ok: true,
@@ -482,10 +441,7 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
         );
       }
       if (url.endsWith("/secrets") && (!init?.method || init.method === "GET")) {
-        return new Response(
-          JSON.stringify({ secrets: useStudioStore.getState().secrets }),
-          { status: 200 },
-        );
+        return new Response(JSON.stringify({ secrets: useStudioStore.getState().secrets }), { status: 200 });
       }
       return new Response(JSON.stringify({}), { status: 200 });
     });
@@ -493,15 +449,9 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
 
     render(<StudioShell />);
 
-    expect(
-      screen.getByTestId("secret-status-sec_slack_oauth").textContent,
-    ).toContain("Expired");
-    expect(
-      screen.getByTestId("secret-status-sec_revoked_key").textContent,
-    ).toContain("Revoked");
-    expect(
-      screen.getByTestId("secret-status-sec_error_key").textContent,
-    ).toContain("Error");
+    expect(screen.getByTestId("secret-status-sec_slack_oauth").textContent).toContain("Expired");
+    expect(screen.getByTestId("secret-status-sec_revoked_key").textContent).toContain("Revoked");
+    expect(screen.getByTestId("secret-status-sec_error_key").textContent).toContain("Error");
 
     // Agent Connection Consent Banner renders and opens pre-filled modal on click
     await waitFor(() => {
@@ -509,54 +459,34 @@ describe("Connections & Secrets Center UI & Inline Inspector Secret Creation", (
     });
     fireEvent.click(screen.getByTestId("consent-banner-connect-req_slack_1"));
     expect(screen.getByTestId("add-secret-modal")).toBeTruthy();
-    expect(
-      (screen.getByTestId("secret-handle-input") as HTMLInputElement).value,
-    ).toBe("sec_slack");
+    expect((screen.getByTestId("secret-handle-input") as HTMLInputElement).value).toBe("sec_slack");
     fireEvent.click(screen.getByTestId("close-secret-modal"));
 
     // Test button transitions status to Connected
     fireEvent.click(screen.getByTestId("test-connection-button-sec_slack_oauth"));
     await waitFor(() => {
-      expect(
-        screen.getByTestId("secret-status-sec_slack_oauth").textContent,
-      ).toContain("Connected");
+      expect(screen.getByTestId("secret-status-sec_slack_oauth").textContent).toContain("Connected");
     });
 
     // Re-authorize button works
-    fireEvent.click(
-      screen.getByTestId("reauthorize-connection-button-sec_slack_oauth"),
-    );
+    fireEvent.click(screen.getByTestId("reauthorize-connection-button-sec_slack_oauth"));
     await waitFor(() => {
-      expect(
-        screen.getByTestId("connections-action-message").textContent,
-      ).toContain("Re-authorization ready");
+      expect(screen.getByTestId("connections-action-message").textContent).toContain("Re-authorization ready");
     });
 
     // Case B — Connect your account widget preview renders Not connected, Connected, and Expired states
     expect(screen.getByTestId("case-b-widget-preview")).toBeTruthy();
-    expect(screen.getByTestId("case-b-provider-status-google").textContent).toBe(
-      "Not connected",
-    );
-    expect(screen.getByTestId("case-b-provider-status-slack").textContent).toBe(
-      "Connected",
-    );
-    expect(screen.getByTestId("case-b-provider-status-github").textContent).toBe(
-      "Expired",
-    );
+    expect(screen.getByTestId("case-b-provider-status-google").textContent).toBe("Not connected");
+    expect(screen.getByTestId("case-b-provider-status-slack").textContent).toBe("Connected");
+    expect(screen.getByTestId("case-b-provider-status-github").textContent).toBe("Expired");
 
     fireEvent.click(screen.getByTestId("case-b-connect-btn-google"));
     await waitFor(() => {
-      expect(screen.getByTestId("case-b-provider-status-google").textContent).toBe(
-        "Connected",
-      );
+      expect(screen.getByTestId("case-b-provider-status-google").textContent).toBe("Connected");
     });
     fireEvent.click(screen.getByTestId("case-b-reconnect-btn-github"));
-    expect(screen.getByTestId("case-b-provider-status-github").textContent).toBe(
-      "Connected",
-    );
+    expect(screen.getByTestId("case-b-provider-status-github").textContent).toBe("Connected");
     fireEvent.click(screen.getByTestId("case-b-disconnect-btn-slack"));
-    expect(screen.getByTestId("case-b-provider-status-slack").textContent).toBe(
-      "Not connected",
-    );
+    expect(screen.getByTestId("case-b-provider-status-slack").textContent).toBe("Not connected");
   });
 });

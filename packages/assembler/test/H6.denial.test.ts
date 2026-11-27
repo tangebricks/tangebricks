@@ -21,9 +21,27 @@ const app = Object.values(entry)[0]?.default;
 const db = env.DB as D1Like;
 
 type Reply = { status: number; body: Record<string, any> | null };
-async function call(path: string, user: string | null, workspace: string | null, body?: unknown, extra: { query?: string; headers?: Record<string, string> } = {}): Promise<Reply> {
-  const headers: Record<string, string> = { ...(user ? { "x-test-user": user } : {}), ...(workspace ? { "x-workspace-id": workspace } : {}), ...(body === undefined ? {} : { "content-type": "application/json" }), ...extra.headers };
-  const response = await app!.fetch(new Request(`http://localhost${path}${extra.query ?? ""}`, { method: body === undefined ? "GET" : "POST", headers, body: body === undefined ? null : JSON.stringify(body) }), { DB: db });
+async function call(
+  path: string,
+  user: string | null,
+  workspace: string | null,
+  body?: unknown,
+  extra: { query?: string; headers?: Record<string, string> } = {},
+): Promise<Reply> {
+  const headers: Record<string, string> = {
+    ...(user ? { "x-test-user": user } : {}),
+    ...(workspace ? { "x-workspace-id": workspace } : {}),
+    ...(body === undefined ? {} : { "content-type": "application/json" }),
+    ...extra.headers,
+  };
+  const response = await app!.fetch(
+    new Request(`http://localhost${path}${extra.query ?? ""}`, {
+      method: body === undefined ? "GET" : "POST",
+      headers,
+      body: body === undefined ? null : JSON.stringify(body),
+    }),
+    { DB: db },
+  );
   return { status: response.status, body: (await response.json().catch(() => null)) as Record<string, any> | null };
 }
 
@@ -34,15 +52,19 @@ interface World {
 }
 // In whole credits: the wallet holds thousandths since credit-wallet's migration 0004 (story 2.5).
 const balanceOf = async (workspace: string) => {
-  const milli = (await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind(workspace).first<{ balance_milli: number }>())?.balance_milli;
+  const milli = (await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind(workspace).first<{ balance_milli: number }>())
+    ?.balance_milli;
   return milli === undefined ? undefined : milli / 1000;
 };
-const ledgerRows = async (workspace: string) => (await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
-const orderRows = async (workspace: string) => (await db.prepare("SELECT COUNT(*) AS n FROM credit_orders WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
+const ledgerRows = async (workspace: string) =>
+  (await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
+const orderRows = async (workspace: string) =>
+  (await db.prepare("SELECT COUNT(*) AS n FROM credit_orders WHERE workspace_id = ?").bind(workspace).first<{ n: number }>())!.n;
 
 /** An empty database with the project's own migrations, two tenants made through the project's own API, balances seeded. */
 async function world(): Promise<World> {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces"])
+    await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   for (const path of Object.keys(sql).sort()) await applyMigration(db, sql[path]!);
   const create = async (user: string, name: string) => (await call("/api/workspaces", user, null, { name })).body!.workspace.id as string;
   const a = await create("alice", "A");
@@ -79,7 +101,12 @@ describe("workspace A cannot reach workspace B's money", () => {
   });
 
   test("reading B's history", async () => {
-    await db.prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata) VALUES ('secret-row', ?, 'bob', 'topup', 50000, 50000, 'bob-private-memo', '{}')").bind(w.b).run();
+    await db
+      .prepare(
+        "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, metadata) VALUES ('secret-row', ?, 'bob', 'topup', 50000, 50000, 'bob-private-memo', '{}')",
+      )
+      .bind(w.b)
+      .run();
     const reply = await call("/api/wallet/history", "alice", w.b);
     expect(reply.status).toBe(403);
     expect(JSON.stringify(reply.body)).not.toContain("bob-private-memo");
@@ -144,7 +171,12 @@ describe("workspace A cannot reach workspace B's money", () => {
   });
 
   test("no identity is refused on every wallet route, and so is an identity with no workspace", async () => {
-    for (const [path, body] of [["/api/wallet", undefined], ["/api/wallet/history", undefined], ["/api/wallet/deduct", { amount: 1 }], ["/api/payments/create-order", { amount: 100 }]] as const) {
+    for (const [path, body] of [
+      ["/api/wallet", undefined],
+      ["/api/wallet/history", undefined],
+      ["/api/wallet/deduct", { amount: 1 }],
+      ["/api/payments/create-order", { amount: 100 }],
+    ] as const) {
       expect((await call(path, null, w.a, body)).status, `${path} without identity`).toBe(401);
       expect((await call(path, "alice", null, body)).status, `${path} without workspace`).toBe(400);
     }
@@ -153,7 +185,9 @@ describe("workspace A cannot reach workspace B's money", () => {
   });
 
   test("a hundred attempts at once against B leave B exactly as it was", async () => {
-    const attempts = Array.from({ length: 100 }, (_, i) => call(i % 2 === 0 ? "/api/wallet/deduct" : "/api/payments/create-order", "alice", w.b, i % 2 === 0 ? { amount: 1 } : { amount: 100 }));
+    const attempts = Array.from({ length: 100 }, (_, i) =>
+      call(i % 2 === 0 ? "/api/wallet/deduct" : "/api/payments/create-order", "alice", w.b, i % 2 === 0 ? { amount: 1 } : { amount: 100 }),
+    );
     const replies = await Promise.all(attempts);
     expect(replies.every((r) => r.status === 403)).toBe(true);
     expect(await untouched(w)).toBe(true);

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { signControlPlaneRequest } from "@poc/telemetry";
-import {
-  assemble,
-  computeBuildHash,
-  computeCodeHash,
-  computeGraphHash,
-} from "@poc/assembler";
+import { assemble, computeBuildHash, computeCodeHash, computeGraphHash } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
 import aiCreditsSaasJson from "../../../presets/ai-credits-saas.blueprint.json";
 import b2bWorkspaceJson from "../../../presets/b2b-workspace-app.blueprint.json";
@@ -19,19 +14,13 @@ import {
   SandboxDispatchPlatform,
   createSandboxDispatcher,
 } from "../src/index.ts";
-import type {
-  DeployBuildArtifactInput,
-  DeployProvisioner,
-  DeployTarget,
-} from "../src/index.ts";
+import type { DeployBuildArtifactInput, DeployProvisioner, DeployTarget } from "../src/index.ts";
 
-async function buildPresetDeployArtifact(
-  presetJson: {
-    project: string;
-    identity?: string;
-    workflows?: Array<{ id: string; [key: string]: unknown }>;
-  },
-): Promise<DeployBuildArtifactInput> {
+async function buildPresetDeployArtifact(presetJson: {
+  project: string;
+  identity?: string;
+  workflows?: Array<{ id: string; [key: string]: unknown }>;
+}): Promise<DeployBuildArtifactInput> {
   const assembled = assemble(presetJson, catalog);
   if (!assembled.ok) {
     throw new Error(`Failed to assemble preset: ${assembled.errors.join("; ")}`);
@@ -79,9 +68,7 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
     };
     const parsed = DeployTargetSchema.parse(rawTarget);
     expect(parsed.type).toBe("platform-sandbox");
-    expect(PlatformSandboxDeployTargetSchema.parse(rawTarget).sandboxId).toBe(
-      "sbx-acme-preview-01",
-    );
+    expect(PlatformSandboxDeployTargetSchema.parse(rawTarget).sandboxId).toBe("sbx-acme-preview-01");
 
     const platform = new SandboxDispatchPlatform();
     const sandboxTarget = new HostedSandboxTarget({ platform });
@@ -95,15 +82,11 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
 
     // 2. Apply provisions isolated px_sbx_<sandboxId> D1, applies migrations, uploads worker to px-sandbox-preview, binds keys
     const applied = await sandboxTarget.apply(artifact, parsed);
-    expect(applied.previewUrl).toBe(
-      "https://sbx-acme-preview-01.sandbox.projectx.dev",
-    );
+    expect(applied.previewUrl).toBe("https://sbx-acme-preview-01.sandbox.projectx.dev");
     expect(applied.buildHash).toBe(artifact.buildHash);
     expect(applied.databaseName).toBe("px_sbx_sbx-acme-preview-01");
     expect(applied.bindings?.PX_CONN_KEY).toMatch(/^px_conn_key_/);
-    expect(applied.bindings?.PX_EVENTS_HMAC_KEY).toMatch(
-      /^px_telemetry_hmac_/,
-    );
+    expect(applied.bindings?.PX_EVENTS_HMAC_KEY).toMatch(/^px_telemetry_hmac_/);
     expect(applied.bindings?.DISPATCH_NAMESPACE).toBe("px-sandbox-preview");
 
     // 3. Re-plan and re-apply with identical buildHash returns 0 changes
@@ -136,17 +119,13 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
     expect(hotApplied.workerVersionId).toBe(applied.versionId);
 
     const dbRecord = platform.getDatabase("sbx-acme-preview-01");
-    expect(dbRecord?.graphs["slack-relay"]?.graph).toContain(
-      "/webhooks/inbound-v2",
-    );
+    expect(dbRecord?.graphs["slack-relay"]?.graph).toContain("/webhooks/inbound-v2");
 
     // 5. destroy tears down dispatch worker and isolated D1 database
     const destroyed = await sandboxTarget.destroy(parsed);
     expect(destroyed.removedResources).toContain("sbx-acme-preview-01");
     expect(destroyed.removedResources).toContain("px_sbx_sbx-acme-preview-01");
-    expect(
-      platform.getWorker("px-sandbox-preview", "sbx-acme-preview-01"),
-    ).toBeNull();
+    expect(platform.getWorker("px-sandbox-preview", "sbx-acme-preview-01")).toBeNull();
     expect(platform.getDatabase("sbx-acme-preview-01")).toBeNull();
   });
 
@@ -156,10 +135,7 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
       studioEventsSink: async (sandboxId, req) => {
         const body = await req.json();
         forwardedEvents.push({ sandboxId, body });
-        return new Response(
-          JSON.stringify({ ok: true, studioIngested: true, sandboxId }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        );
+        return new Response(JSON.stringify({ ok: true, studioIngested: true, sandboxId }), { status: 200, headers: { "content-type": "application/json" } });
       },
     });
     const sandboxTarget = new HostedSandboxTarget({ platform });
@@ -175,9 +151,7 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
     const dispatcher = createSandboxDispatcher(platform);
 
     // Route standard request via <sandboxId>.sandbox.projectx.dev hostname
-    const healthRes = await dispatcher.fetch(
-      new Request("https://sbx-dispatch-route.sandbox.projectx.dev/health"),
-    );
+    const healthRes = await dispatcher.fetch(new Request("https://sbx-dispatch-route.sandbox.projectx.dev/health"));
     expect(healthRes.status).toBe(200);
     const healthBody = (await healthRes.json()) as {
       ok: boolean;
@@ -199,7 +173,9 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
     const otherSandboxUrl = new URL("https://sbx-dispatch-route.sandbox.projectx.dev/__px/events?sandboxId=sbx-someone-else");
     expect((await post(otherSandboxUrl, await signControlPlaneRequest(key, "POST", otherSandboxUrl, eventBody))).status).toBe(400);
     // A signature over another body does not verify.
-    expect((await post(postUrl, await signControlPlaneRequest(key, "POST", postUrl, eventBody), eventBody.replace("run_sbx_01", "run_forged"))).status).toBe(401);
+    expect((await post(postUrl, await signControlPlaneRequest(key, "POST", postUrl, eventBody), eventBody.replace("run_sbx_01", "run_forged"))).status).toBe(
+      401,
+    );
     expect(forwardedEvents).toHaveLength(0);
 
     const eventsRes = await post(postUrl, await signControlPlaneRequest(key, "POST", postUrl, eventBody));
@@ -256,9 +232,7 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
     expect(afterBuildHash).toBe(beforeBuildHash);
     expect(afterCodeHash).toBe(beforeCodeHash);
     expect(afterGraphHash).toBe(beforeGraphHash);
-    expect(Object.keys(afterSandbox.files)).toEqual(
-      Object.keys(beforeSandbox.files),
-    );
+    expect(Object.keys(afterSandbox.files)).toEqual(Object.keys(beforeSandbox.files));
     for (const [path, content] of Object.entries(beforeSandbox.files)) {
       expect(afterSandbox.files[path]).toBe(content);
       expect(content).not.toContain("platform-sandbox");
@@ -286,12 +260,7 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
             accountName: "Conformance Cloudflare Account",
             subdomain: "conformance",
             status: "active",
-            permissions: [
-              "Account Settings: Read",
-              "Workers Scripts: Edit",
-              "D1: Edit",
-              "Queues: Edit",
-            ],
+            permissions: ["Account Settings: Read", "Workers Scripts: Edit", "D1: Edit", "Queues: Edit"],
           });
           const provisioner = new ByocCloudflareTarget({
             apiClient,
@@ -307,11 +276,7 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
             provisioner,
             target,
             bootAndProbe: async () => {
-              const script = await apiClient.getScript(
-                acctId,
-                "cf_scoped_conformance_token_01",
-                "px-ai-credits-saas-preview",
-              );
+              const script = await apiClient.getScript(acctId, "cf_scoped_conformance_token_01", "px-ai-credits-saas-preview");
               return {
                 status: script ? 200 : 404,
                 buildHash: script?.buildHash ?? "",
@@ -336,11 +301,7 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
             provisioner,
             target,
             bootAndProbe: async () => {
-              const res = await dispatcher.fetch(
-                new Request(
-                  "https://sbx-conformance-suite-01.sandbox.projectx.dev/health",
-                ),
-              );
+              const res = await dispatcher.fetch(new Request("https://sbx-conformance-suite-01.sandbox.projectx.dev/health"));
               const body = (await res.json()) as { buildHash?: string };
               return {
                 status: res.status,
@@ -397,12 +358,7 @@ describe("Story 9.1 — HostedSandboxTarget on Workers for Platforms dispatch na
         expect(graphUpdate.workerVersionId).toBe(firstApply.versionId);
 
         // 4. putSecret binds a test secret cleanly
-        const secretRes = await provisioner.putSecret(
-          target,
-          "STRIPE_SECRET_KEY",
-          "sk_" + "test_51ConformanceSafeKey",
-          { project: artifact.project },
-        );
+        const secretRes = await provisioner.putSecret(target, "STRIPE_SECRET_KEY", "sk_" + "test_51ConformanceSafeKey", { project: artifact.project });
         expect(secretRes.secretName).toBe("STRIPE_SECRET_KEY");
 
         // 5. destroy tears down Worker and D1 cleanly

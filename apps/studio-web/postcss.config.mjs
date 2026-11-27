@@ -9,10 +9,7 @@ export default {
   plugins: [
     tailwindcss({
       ...tailwindConfig,
-      content: [
-        resolve(__dirname, "./index.html"),
-        resolve(__dirname, "./src/**/*.{ts,tsx}"),
-      ],
+      content: [resolve(__dirname, "./index.html"), resolve(__dirname, "./src/**/*.{ts,tsx}")],
     }),
   ],
 };

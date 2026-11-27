@@ -53,8 +53,7 @@ export async function teardown(client: Client, ledger: Ledger, policy: NamePolic
           continue;
         }
         await client.deleteQueue(queue.id);
-      }
-      else if (entry.kind === "d1_database") {
+      } else if (entry.kind === "d1_database") {
         // delete by the id the ledger recorded, after checking that the id still belongs to a database of that name
         const named = (await client.listDatabases(entry.name)).filter((d) => d.name === entry.name);
         const target = named.find((d) => d.uuid === entry.id) ?? (entry.id === undefined ? named[0] : undefined);
@@ -67,7 +66,8 @@ export async function teardown(client: Client, ledger: Ledger, policy: NamePolic
       }
       result.removed.push({ kind: entry.kind, name: entry.name });
     } catch (error) {
-      if (error instanceof Error && "status" in error && (error as { status: number }).status === 404) result.alreadyGone.push({ kind: entry.kind, name: entry.name });
+      if (error instanceof Error && "status" in error && (error as { status: number }).status === 404)
+        result.alreadyGone.push({ kind: entry.kind, name: entry.name });
       else throw error;
     }
     ledger.removed(entry.kind, entry.name);
@@ -78,10 +78,19 @@ export async function teardown(client: Client, ledger: Ledger, policy: NamePolic
 }
 
 /** Proof-prefixed resources in the account that the ledger does not list as live. Read-only. */
-export async function findUnledgered(client: Client, ledger: Ledger, policy: NamePolicy = PROOF_NAME_POLICY): Promise<Array<{ kind: ResourceKind; name: string }>> {
+export async function findUnledgered(
+  client: Client,
+  ledger: Ledger,
+  policy: NamePolicy = PROOF_NAME_POLICY,
+): Promise<Array<{ kind: ResourceKind; name: string }>> {
   const PROOF_PREFIX = policy.prefix;
   const isProofName = (name: string) => policy.isName(name);
-  const live = new Set(ledger.entries().filter((e) => e.status !== "removed").map((e) => `${e.kind}:${e.name}`));
+  const live = new Set(
+    ledger
+      .entries()
+      .filter((e) => e.status !== "removed")
+      .map((e) => `${e.kind}:${e.name}`),
+  );
   const out: Array<{ kind: ResourceKind; name: string }> = [];
   const consider = (kind: ResourceKind, name: string) => {
     if (name.startsWith(PROOF_PREFIX) && isProofName(name) && !live.has(`${kind}:${name}`)) out.push({ kind, name });
@@ -98,7 +107,10 @@ export async function findUnledgered(client: Client, ledger: Ledger, policy: Nam
       queues = await client.listQueues();
     } catch (error) {
       // 404: no Queues endpoint for this account. 400 only when Cloudflare says Queues is not enabled; any other refusal fails.
-      const notEnabled = error instanceof CloudflareApiError && (error.status === 404 || (error.status === 400 && /not (enabled|available|entitled)|enable queues/i.test(`${error.message} ${error.details.join(" ")}`)));
+      const notEnabled =
+        error instanceof CloudflareApiError &&
+        (error.status === 404 ||
+          (error.status === 400 && /not (enabled|available|entitled)|enable queues/i.test(`${error.message} ${error.details.join(" ")}`)));
       if (!notEnabled) throw error;
     }
     for (const queue of queues) consider("queue", queue.name);

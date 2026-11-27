@@ -6,10 +6,7 @@ import type { D1Like } from "@poc/sdk";
 import migration1 from "../migrations/0001_identity_federation.sql?raw";
 import migration2 from "../migrations/0002_auth_requests.sql?raw";
 import workspaceMigration from "../../multi-workspace/migrations/0001_multi_workspace.sql?raw";
-import {
-  IdentityFederationService,
-  createSsoRoutes,
-} from "../src/index.ts";
+import { IdentityFederationService, createSsoRoutes } from "../src/index.ts";
 import type { SsoEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -94,26 +91,14 @@ describe("Identity Federation Core Logic", () => {
       issuerUrl: "https://accounts.google.com",
     });
 
-    const fid1 = await service.linkFederatedIdentity(
-      conn.id,
-      WS_ALPHA,
-      "google_sub_888999",
-      "homer@globex.com",
-      "Homer Simpson"
-    );
+    const fid1 = await service.linkFederatedIdentity(conn.id, WS_ALPHA, "google_sub_888999", "homer@globex.com", "Homer Simpson");
 
     expect(fid1.id).toMatch(/^fid_[a-f0-9]{32}$/);
     expect(fid1.email).toBe("homer@globex.com");
     expect(fid1.external_subject_id).toBe("google_sub_888999");
 
     // Subsequent login with updated display name
-    const fid2 = await service.linkFederatedIdentity(
-      conn.id,
-      WS_ALPHA,
-      "google_sub_888999",
-      "homer@globex.com",
-      "Homer J. Simpson"
-    );
+    const fid2 = await service.linkFederatedIdentity(conn.id, WS_ALPHA, "google_sub_888999", "homer@globex.com", "Homer J. Simpson");
 
     expect(fid2.display_name).toBe("Homer J. Simpson");
     expect(fid2.id).toBe(fid1.id); // Same record updated
@@ -180,18 +165,22 @@ describe("Identity Federation HTTP API", () => {
     app.route("/api", createSsoRoutes());
 
     // 1. POST /sso/connections
-    const createRes = await app.request("/api/sso/connections", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        domain: "cyberdyne.com",
-        providerType: "oidc",
-        displayName: "Cyberdyne SSO",
-        clientId: "client_t800",
-        issuerUrl: "https://auth.cyberdyne.com",
-        scimToken: "scim_bearer_t800",
-      }),
-    }, { DB: db });
+    const createRes = await app.request(
+      "/api/sso/connections",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          domain: "cyberdyne.com",
+          providerType: "oidc",
+          displayName: "Cyberdyne SSO",
+          clientId: "client_t800",
+          issuerUrl: "https://auth.cyberdyne.com",
+          scimToken: "scim_bearer_t800",
+        }),
+      },
+      { DB: db },
+    );
     expect(createRes.status).toBe(201);
     const createJson = (await createRes.json()) as { connection: { id: string } };
     const connId = createJson.connection.id;
@@ -204,33 +193,41 @@ describe("Identity Federation HTTP API", () => {
     expect(discJson.provider).toBe("oidc");
 
     // 3. POST /sso/authorize
-    const authRes = await app.request("/api/sso/authorize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        domain: "cyberdyne.com",
-        redirectUri: "https://app.projectx.dev/auth/callback",
-        state: "state_12345",
-      }),
-    }, { DB: db });
+    const authRes = await app.request(
+      "/api/sso/authorize",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: "cyberdyne.com",
+          redirectUri: "https://app.projectx.dev/auth/callback",
+          state: "state_12345",
+        }),
+      },
+      { DB: db },
+    );
     expect(authRes.status).toBe(200);
     const authJson = (await authRes.json()) as { authorize_url: string };
     expect(authJson.authorize_url).toContain("auth.cyberdyne.com");
 
     // 4. POST /sso/scim/v2/Users
-    const scimRes = await app.request("/api/sso/scim/v2/Users", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer scim_bearer_t800",
-        "x-connection-id": connId,
+    const scimRes = await app.request(
+      "/api/sso/scim/v2/Users",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer scim_bearer_t800",
+          "x-connection-id": connId,
+        },
+        body: JSON.stringify({
+          id: "scim_usr_99",
+          userName: "john@cyberdyne.com",
+          displayName: "John Connor",
+        }),
       },
-      body: JSON.stringify({
-        id: "scim_usr_99",
-        userName: "john@cyberdyne.com",
-        displayName: "John Connor",
-      }),
-    }, { DB: db });
+      { DB: db },
+    );
     expect(scimRes.status).toBe(201);
     const scimJson = (await scimRes.json()) as { user: { email: string } };
     expect(scimJson.user.email).toBe("john@cyberdyne.com");

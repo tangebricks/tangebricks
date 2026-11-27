@@ -42,11 +42,7 @@ export function createMeteringRoutes(): Hono<MeterEnv> {
     }
 
     const service = c.get("metering") || new MeteringService(c.env.DB);
-    const meter = await service.defineMeter(
-      parsed.data.key,
-      parsed.data.name,
-      parsed.data.aggregation as MeterAggregation
-    );
+    const meter = await service.defineMeter(parsed.data.key, parsed.data.name, parsed.data.aggregation as MeterAggregation);
 
     return c.json({ meter }, 201);
   });

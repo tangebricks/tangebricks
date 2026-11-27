@@ -91,7 +91,12 @@ describe("where the credentials come from", () => {
 
 describe("names the proof may touch", () => {
   test("a suffix gives three names that all carry the prefix", () => {
-    expect(resourceNames("0a1b2c3d")).toEqual({ suffix: "0a1b2c3d", script: "projectx-poc-0a1b2c3d", database: "projectx-poc-0a1b2c3d-db", workflow: "projectx-poc-0a1b2c3d-graphs" });
+    expect(resourceNames("0a1b2c3d")).toEqual({
+      suffix: "0a1b2c3d",
+      script: "projectx-poc-0a1b2c3d",
+      database: "projectx-poc-0a1b2c3d-db",
+      workflow: "projectx-poc-0a1b2c3d-graphs",
+    });
   });
 
   test.each(["", "0a1b2c3", "0a1b2c3d4", "0A1B2C3D", "zzzzzzzz", "0a1b2c3d-", "../0a1b2c"])("suffix %j is refused", (suffix) => {
@@ -219,7 +224,8 @@ describe("the Cloudflare client", () => {
   const credentials = { token: TOKEN, accountId: ACCOUNT };
   const ok = (result: unknown, status = 200, headers: Record<string, string> = {}) =>
     new Response(JSON.stringify({ success: true, errors: [], messages: [], result }), { status, headers: { "content-type": "application/json", ...headers } });
-  const refuse = (status: number, code: number, message: string) => new Response(JSON.stringify({ success: false, errors: [{ code, message }], messages: [], result: null }), { status });
+  const refuse = (status: number, code: number, message: string) =>
+    new Response(JSON.stringify({ success: false, errors: [{ code, message }], messages: [], result: null }), { status });
 
   function clientWith(handler: (request: Request, n: number) => Response | Promise<Response>) {
     const seen: Request[] = [];
@@ -276,7 +282,9 @@ describe("the Cloudflare client", () => {
   });
 
   test("HTTP 200 with success false is still a refusal", async () => {
-    const { client } = clientWith(() => new Response(JSON.stringify({ success: false, errors: [{ code: 7500, message: "no such table" }], result: null }), { status: 200 }));
+    const { client } = clientWith(
+      () => new Response(JSON.stringify({ success: false, errors: [{ code: 7500, message: "no such table" }], result: null }), { status: 200 }),
+    );
     await expect(client.listDatabases()).rejects.toBeInstanceOf(CloudflareApiError);
   });
 
@@ -313,7 +321,11 @@ describe("the Cloudflare client", () => {
   });
 
   test("a write is NOT repeated when the network fails, because it may have gone through", async () => {
-    for (const run of [(c: ReturnType<typeof clientWith>["client"]) => c.createDatabase("x"), (c: ReturnType<typeof clientWith>["client"]) => c.uploadScript("s", { mainModule: "worker.mjs", code: "x", metadata: {} }), (c: ReturnType<typeof clientWith>["client"]) => c.deleteScript("s")]) {
+    for (const run of [
+      (c: ReturnType<typeof clientWith>["client"]) => c.createDatabase("x"),
+      (c: ReturnType<typeof clientWith>["client"]) => c.uploadScript("s", { mainModule: "worker.mjs", code: "x", metadata: {} }),
+      (c: ReturnType<typeof clientWith>["client"]) => c.deleteScript("s"),
+    ]) {
       const { client, seen } = clientWith(() => {
         throw new TypeError("fetch failed");
       });
@@ -356,13 +368,22 @@ describe("the Cloudflare client", () => {
     await client.queryDatabase("db1", [{ sql: "SELECT 1" }, { sql: "DELETE FROM t" }]);
     expect(client.calls.map((c) => c.sqlKind)).toEqual(["select", "select", "write", "write"]);
     expect(JSON.parse(bodies[0]!)).toEqual({ sql: "SELECT 1", params: [] });
-    expect(JSON.parse(bodies[1]!)).toEqual({ batch: [{ sql: "  select name FROM t", params: [] }, { sql: "SELECT 2", params: [] }] });
+    expect(JSON.parse(bodies[1]!)).toEqual({
+      batch: [
+        { sql: "  select name FROM t", params: [] },
+        { sql: "SELECT 2", params: [] },
+      ],
+    });
     expect(client.calls.every((c) => c.path === "/accounts/{account}/d1/database/db1/query")).toBe(true);
   });
 
   test("a Worker upload is multipart: a JSON metadata part naming the main module, and the module itself", async () => {
     const { client, seen } = clientWith(() => ok({ etag: "e1", startup_time_ms: 9 }));
-    const out = await client.uploadScript("projectx-poc-0a1b2c3d", { mainModule: "worker.mjs", code: "export default {};", metadata: { compatibility_date: "2026-10-01", bindings: [{ type: "secret_text", name: "K", text: "the-secret-value" }] } });
+    const out = await client.uploadScript("projectx-poc-0a1b2c3d", {
+      mainModule: "worker.mjs",
+      code: "export default {};",
+      metadata: { compatibility_date: "2026-10-01", bindings: [{ type: "secret_text", name: "K", text: "the-secret-value" }] },
+    });
     expect(out).toEqual({ etag: "e1", startupTimeMs: 9 });
     const request = seen[0]!;
     expect(request.method).toBe("PUT");
@@ -390,7 +411,17 @@ describe("the Cloudflare client", () => {
   });
 
   test("a call counts as a write unless it is a GET or a D1 query that only reads", () => {
-    const call = (method: string, path: string, sqlKind?: "select" | "write"): CallRecord => ({ n: 1, atMs: 0, method, path, status: 200, ms: 1, outcome: "ok", attempt: 1, ...(sqlKind ? { sqlKind } : {}) });
+    const call = (method: string, path: string, sqlKind?: "select" | "write"): CallRecord => ({
+      n: 1,
+      atMs: 0,
+      method,
+      path,
+      status: 200,
+      ms: 1,
+      outcome: "ok",
+      attempt: 1,
+      ...(sqlKind ? { sqlKind } : {}),
+    });
     const q = "/accounts/{account}/d1/database/db1/query";
     expect(isWriteCall(call("GET", "/accounts/{account}/d1/database"))).toBe(false);
     expect(isWriteCall(call("POST", q, "select"))).toBe(false);

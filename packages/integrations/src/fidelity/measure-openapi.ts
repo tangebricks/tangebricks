@@ -8,8 +8,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
   let specOps = 0;
   const extracted = extractOpenApi3Operations(spec0);
   const seenIds = new Set<string>();
-  const schemes =
-    spec0.components?.securitySchemes ?? spec0.securityDefinitions ?? {};
+  const schemes = spec0.components?.securitySchemes ?? spec0.securityDefinitions ?? {};
   const globalSec = spec0.security;
 
   if (spec0.swagger) {
@@ -24,10 +23,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
       if (!isObject(op)) continue;
 
       specOps++;
-      const rawId =
-        typeof op.operationId === "string" && op.operationId.trim()
-          ? op.operationId
-          : `${m}_${p.replace(/[^A-Za-z0-9]+/g, "_")}`;
+      const rawId = typeof op.operationId === "string" && op.operationId.trim() ? op.operationId : `${m}_${p.replace(/[^A-Za-z0-9]+/g, "_")}`;
       const id =
         rawId
           .replace(/[^A-Za-z0-9_]/g, "_")
@@ -46,9 +42,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
       }
       seenIds.add(id);
 
-      const all = [...(item.parameters ?? []), ...(op.parameters ?? [])].map((x: any) =>
-        dereference(spec0, x)
-      );
+      const all = [...(item.parameters ?? []), ...(op.parameters ?? [])].map((x: any) => dereference(spec0, x));
       const seen = new Set<string>();
 
       for (const q of all) {
@@ -65,11 +59,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
 
         const sanitized = sanitizeIdentifier(nm);
         if (sanitized !== nm) {
-          flag(
-            loc === "header" ? "header_name_altered" : "path_query_name_altered",
-            key,
-            { src: nm, gen: sanitized, in: loc }
-          );
+          flag(loc === "header" ? "header_name_altered" : "path_query_name_altered", key, { src: nm, gen: sanitized, in: loc });
         }
 
         if (seen.has(sanitized)) {
@@ -81,15 +71,10 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
         seen.add(sanitized);
 
         const sc = spec0.swagger ? q : dereference(spec0, q.schema);
-        if (
-          q.style === "label" ||
-          q.style === "matrix"
-        ) {
-          flag(
-            "param_serialization_unhonoured(array/object/style/explode)",
-            key,
-            { src: { name: nm, in: loc, style: q.style, explode: q.explode, type: sc.type } }
-          );
+        if (q.style === "label" || q.style === "matrix") {
+          flag("param_serialization_unhonoured(array/object/style/explode)", key, {
+            src: { name: nm, in: loc, style: q.style, explode: q.explode, type: sc.type },
+          });
         }
 
         if (Array.isArray(sc.enum) && sc.enum.length > 256) {
@@ -121,11 +106,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
           flag("body_unsupported_content_type_silent_json_fallback", key, { cts });
         }
 
-        const ct = hasJ
-          ? "application/json"
-          : hasF
-            ? "application/x-www-form-urlencoded"
-            : (cts[0] ?? "application/json");
+        const ct = hasJ ? "application/json" : hasF ? "application/x-www-form-urlencoded" : (cts[0] ?? "application/json");
         const mo = content[ct] ?? {};
         const bs = dereference(spec0, mo.schema);
         const props = isObject(bs.properties) ? bs.properties : {};
@@ -151,9 +132,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
                 schema,
               }))
             : undefined);
-        const actualImportedCount = Array.isArray(importedFields)
-          ? importedFields.length
-          : undefined;
+        const actualImportedCount = Array.isArray(importedFields) ? importedFields.length : undefined;
 
         if (bs.allOf || bs.oneOf || bs.anyOf) {
           if (!importedOp?.body || (!importedOp.body.root && (!importedFields || importedFields.length === 0))) {
@@ -185,10 +164,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
           }
         }
 
-        const isCapped =
-          actualImportedCount !== undefined
-            ? pn.length > actualImportedCount
-            : pn.length > 6;
+        const isCapped = actualImportedCount !== undefined ? pn.length > actualImportedCount : pn.length > 6;
 
         if (isCapped) {
           const capBoundary = actualImportedCount ?? 6;
@@ -199,9 +175,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
           });
           const importedNames = new Set((importedFields ?? []).map((f: any) => f.name));
           const req = (Array.isArray(bs.required) ? bs.required : []).filter(
-            (r: string) =>
-              !importedNames.has(sanitizeIdentifier(r)) &&
-              pn.indexOf(r) >= capBoundary
+            (r: string) => !importedNames.has(sanitizeIdentifier(r)) && pn.indexOf(r) >= capBoundary,
           );
           if (req.length) {
             flag("required_body_fields_lost_by_cap", key, { req });
@@ -224,15 +198,10 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
           const importedField = fieldMap.get(cleanN);
 
           const it = dereference(spec0, s.items);
-          const hasNestedInSpec =
-            isObject(s.properties) ||
-            (s.type === "array" &&
-              (isObject(it.properties) || it.type === "array" || it.type === "object"));
+          const hasNestedInSpec = isObject(s.properties) || (s.type === "array" && (isObject(it.properties) || it.type === "array" || it.type === "object"));
 
           if (hasNestedInSpec) {
-            const preserved =
-              Boolean(importedField?.schema?.properties) ||
-              Boolean(importedField?.schema?.items);
+            const preserved = Boolean(importedField?.schema?.properties) || Boolean(importedField?.schema?.items);
             if (!preserved) {
               flag("body_nested_structure_flattened", key, {
                 field: n,
@@ -243,9 +212,7 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
           }
 
           if (s.enum || s.default !== undefined) {
-            const preservedEnumOrDefault =
-              importedField?.schema?.enum !== undefined ||
-              importedField?.schema?.default !== undefined;
+            const preservedEnumOrDefault = importedField?.schema?.enum !== undefined || importedField?.schema?.default !== undefined;
             if (!preservedEnumOrDefault) {
               flag("enum_or_default_lost", key, {
                 field: n,
@@ -289,19 +256,10 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
           const derefSchema = dereference(spec0, schema);
           if (derefSchema && isObject(derefSchema.properties)) {
             const okProp = derefSchema.properties.ok;
-            if (
-              okProp &&
-              (okProp.type === "boolean" ||
-                (Array.isArray(okProp.type) && okProp.type.includes("boolean")))
-            ) {
+            if (okProp && (okProp.type === "boolean" || (Array.isArray(okProp.type) && okProp.type.includes("boolean")))) {
               flag("success_envelope_unchecked", key);
             }
-            if (
-              derefSchema.properties.has_more ||
-              derefSchema.properties.next_cursor ||
-              derefSchema.properties.nextPageToken ||
-              derefSchema.properties.next
-            ) {
+            if (derefSchema.properties.has_more || derefSchema.properties.next_cursor || derefSchema.properties.nextPageToken || derefSchema.properties.next) {
               flag("pagination_unmodelled", key);
             }
           }
@@ -318,25 +276,11 @@ export function measureOpenApiOps(ctx: MeasureContext): ExtractedOps {
           for (const sn of Object.keys(req)) {
             const s = schemes[sn];
             if (!s) continue;
-            types.add(
-              s.type === "apiKey"
-                ? `apiKey:${s.in}`
-                : s.type === "http"
-                  ? `http:${s.scheme}`
-                  : s.type
-            );
+            types.add(s.type === "apiKey" ? `apiKey:${s.in}` : s.type === "http" ? `http:${s.scheme}` : s.type);
           }
         }
 
-        if (
-          [...types].some(
-            (t) =>
-              t === "oauth2" ||
-              t === "apiKey:cookie" ||
-              t === "apiKey:query" ||
-              t === "openIdConnect"
-          )
-        ) {
+        if ([...types].some((t) => t === "oauth2" || t === "apiKey:cookie" || t === "apiKey:query" || t === "openIdConnect")) {
           flag("security_oauth_or_nonheader", key, { types: [...types] });
         }
       }

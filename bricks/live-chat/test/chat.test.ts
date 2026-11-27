@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_live_chat.sql?raw";
-import {
-  LiveChatService,
-  createChatRoutes,
-} from "../src/index.ts";
+import { LiveChatService, createChatRoutes } from "../src/index.ts";
 import type { ChatEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -59,7 +56,7 @@ describe("Live Chat Core Service", () => {
       conv.id,
       { type: "agent", id: "agent_terminator", name: "Agent T-800" },
       "Have you tried resetting your password via email?",
-      [{ url: "https://support.example.com/reset.png", name: "guide.png" }]
+      [{ url: "https://support.example.com/reset.png", name: "guide.png" }],
     );
 
     expect(agentMsg.id).toMatch(/^cmsg_[a-f0-9]{32}$/);
@@ -71,12 +68,7 @@ describe("Live Chat Core Service", () => {
     expect(resolved).toBe(true);
 
     // Customer sends follow up -> should reopen to 'open'
-    await service.sendMessage(
-      WS_ALPHA,
-      conv.id,
-      { type: "customer", id: "cust_123", name: "Sarah Connor" },
-      "Nevermind, it still fails with code 403"
-    );
+    await service.sendMessage(WS_ALPHA, conv.id, { type: "customer", id: "cust_123", name: "Sarah Connor" }, "Nevermind, it still fails with code 403");
 
     const fetched = await service.getConversation(WS_ALPHA, conv.id);
     expect(fetched).not.toBeNull();
@@ -92,26 +84,16 @@ describe("Live Chat Core Service", () => {
       WS_ALPHA,
       "hello",
       "Standard Greeting",
-      "Hello! Thank you for reaching out to customer support. How can I help you today?"
+      "Hello! Thank you for reaching out to customer support. How can I help you today?",
     );
     expect(reply1.shortcut).toBe("hello");
 
     // Overwrite/Update shortcut
-    const reply2 = await service.createCannedReply(
-      WS_ALPHA,
-      "hello",
-      "Updated Greeting",
-      "Hello! Welcome to Support. What can I do for you?"
-    );
+    const reply2 = await service.createCannedReply(WS_ALPHA, "hello", "Updated Greeting", "Hello! Welcome to Support. What can I do for you?");
     expect(reply2.title).toBe("Updated Greeting");
 
     // Create another canned reply
-    await service.createCannedReply(
-      WS_ALPHA,
-      "bye",
-      "Resolution Farewell",
-      "Thank you for contacting us. Have a great day!"
-    );
+    await service.createCannedReply(WS_ALPHA, "bye", "Resolution Farewell", "Thank you for contacting us. Have a great day!");
 
     const list = await service.listCannedReplies(WS_ALPHA);
     expect(list).toHaveLength(2);
@@ -171,7 +153,7 @@ describe("Live Chat Hono Endpoints", () => {
           priority: "normal",
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(startRes.status).toBe(201);
     const conv = (await startRes.json()) as any;
@@ -179,11 +161,7 @@ describe("Live Chat Hono Endpoints", () => {
     expect(conv.messages).toHaveLength(1);
 
     // 2. List Inbox
-    const listRes = await app.request(
-      "http://localhost/chat/conversations?status=open",
-      { method: "GET" },
-      { DB: db }
-    );
+    const listRes = await app.request("http://localhost/chat/conversations?status=open", { method: "GET" }, { DB: db });
     expect(listRes.status).toBe(200);
     const listJson = (await listRes.json()) as any;
     expect(listJson.conversations).toHaveLength(1);
@@ -196,7 +174,7 @@ describe("Live Chat Hono Endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agentId: "usr_agent_1" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(assignRes.status).toBe(200);
 
@@ -211,7 +189,7 @@ describe("Live Chat Hono Endpoints", () => {
           body: "Tracking number is TRACK-88192",
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(msgRes.status).toBe(201);
 
@@ -223,16 +201,12 @@ describe("Live Chat Hono Endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(resolveRes.status).toBe(200);
 
     // 6. Verify Fetch Conversation
-    const getRes = await app.request(
-      `http://localhost/chat/conversations/${conv.id}`,
-      { method: "GET" },
-      { DB: db }
-    );
+    const getRes = await app.request(`http://localhost/chat/conversations/${conv.id}`, { method: "GET" }, { DB: db });
     expect(getRes.status).toBe(200);
     const getJson = (await getRes.json()) as any;
     expect(getJson.status).toBe("resolved");
@@ -253,15 +227,11 @@ describe("Live Chat Hono Endpoints", () => {
           content: "Refunds take 3 to 5 business days to post back to original payment.",
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(postRes.status).toBe(201);
 
-    const getRes = await app.request(
-      "http://localhost/chat/canned-replies",
-      { method: "GET" },
-      { DB: db }
-    );
+    const getRes = await app.request("http://localhost/chat/canned-replies", { method: "GET" }, { DB: db });
     expect(getRes.status).toBe(200);
     const getJson = (await getRes.json()) as any;
     expect(getJson.cannedReplies).toHaveLength(1);
@@ -279,16 +249,12 @@ describe("Live Chat Hono Endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ initialMessage: "Hi" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(badStart.status).toBe(400);
 
     // Non-existent conversation
-    const notFound = await app.request(
-      "http://localhost/chat/conversations/conv_unknown999",
-      { method: "GET" },
-      { DB: db }
-    );
+    const notFound = await app.request("http://localhost/chat/conversations/conv_unknown999", { method: "GET" }, { DB: db });
     expect(notFound.status).toBe(404);
   });
 });
@@ -309,7 +275,7 @@ describe("Live Chat HTTP API: the workspace comes from the verified context only
     const res = await createApp().request(
       `http://localhost/chat/conversations?workspaceId=${WS_BETA}`,
       { headers: { "x-workspace-id": WS_ALPHA } },
-      { DB: db }
+      { DB: db },
     );
     expect(res.status).toBe(200);
     const { conversations } = (await res.json()) as { conversations: Array<{ customer_id: string }> };
@@ -327,7 +293,7 @@ describe("Live Chat HTTP API: the workspace comes from the verified context only
         headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
         body: JSON.stringify({ workspaceId: WS_BETA, shortcut: "planted", title: "Planted", content: "aimed at beta" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(res.status).toBe(201);
     expect((await service.listCannedReplies(WS_ALPHA)).map((r) => r.shortcut)).toEqual(["planted"]);

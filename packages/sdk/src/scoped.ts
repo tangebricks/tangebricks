@@ -18,11 +18,7 @@ function validateBindCount(count: number, operation: string): void {
 }
 
 function validateWorkspaceId(workspaceId: string): void {
-  if (
-    typeof workspaceId !== "string" ||
-    workspaceId.trim().length === 0 ||
-    workspaceId.length > 200
-  ) {
+  if (typeof workspaceId !== "string" || workspaceId.trim().length === 0 || workspaceId.length > 200) {
     throw new Error("TENANT_ID_INVALID: workspaceId must be a non-empty string of at most 200 characters");
   }
 }
@@ -80,12 +76,7 @@ function validateOrderBy(orderBy?: string): void {
   }
 }
 
-function validateScopedRawQuery(
-  sql: string,
-  params: unknown[],
-  scopedWorkspaceId: string,
-  tableName: string
-): void {
+function validateScopedRawQuery(sql: string, params: unknown[], scopedWorkspaceId: string, tableName: string): void {
   validateBindCount(params.length, "raw");
 
   if (sql.includes(";")) {
@@ -101,21 +92,19 @@ function validateScopedRawQuery(
     throw new Error(`TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot contain OR operators`);
   }
   if (/\bjoin\b/i.test(sql)) {
-    throw new Error(
-      `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot contain JOIN clauses; only single-table queries are permitted`
-    );
+    throw new Error(`TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot contain JOIN clauses; only single-table queries are permitted`);
   }
 
   const selectMatches = sql.match(/\bselect\b/gi) ?? [];
   const isSelectStatement = /^\s*select\b/i.test(sql);
   if (isSelectStatement && selectMatches.length > 1) {
     throw new Error(
-      `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot contain nested SELECT or subqueries; only single-table queries are permitted`
+      `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot contain nested SELECT or subqueries; only single-table queries are permitted`,
     );
   }
   if (!isSelectStatement && selectMatches.length > 0) {
     throw new Error(
-      `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot contain nested SELECT or subqueries; only single-table queries are permitted`
+      `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot contain nested SELECT or subqueries; only single-table queries are permitted`,
     );
   }
 
@@ -126,7 +115,7 @@ function validateScopedRawQuery(
     const fromClause = whereIdx !== -1 ? afterFrom.slice(0, whereIdx) : afterFrom;
     if (fromClause.includes(",")) {
       throw new Error(
-        `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot query multiple tables in FROM list; only single-table queries are permitted`
+        `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot query multiple tables in FROM list; only single-table queries are permitted`,
       );
     }
   }
@@ -137,17 +126,13 @@ function validateScopedRawQuery(
     const setIdx = afterUpdate.search(/\bset\b/i);
     const updateClause = setIdx !== -1 ? afterUpdate.slice(0, setIdx) : afterUpdate;
     if (updateClause.includes(",")) {
-      throw new Error(
-        `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot update multiple tables; only single-table queries are permitted`
-      );
+      throw new Error(`TENANT_PREDICATE_MISSING: raw query on table '${tableName}' cannot update multiple tables; only single-table queries are permitted`);
     }
   }
 
   const whereMatch = sql.match(/\bwhere\b/i);
   if (!whereMatch || whereMatch.index === undefined) {
-    throw new Error(
-      `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' must have a WHERE clause with 'workspace_id = ?'`
-    );
+    throw new Error(`TENANT_PREDICATE_MISSING: raw query on table '${tableName}' must have a WHERE clause with 'workspace_id = ?'`);
   }
 
   // Find all matches for workspace_id = ?
@@ -207,7 +192,7 @@ function validateScopedRawQuery(
 
   if (!validPredicateFound) {
     throw new Error(
-      `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' must include a top-level 'workspace_id = ?' predicate bound to scoped tenant '${scopedWorkspaceId}' at its parameter slot`
+      `TENANT_PREDICATE_MISSING: raw query on table '${tableName}' must include a top-level 'workspace_id = ?' predicate bound to scoped tenant '${scopedWorkspaceId}' at its parameter slot`,
     );
   }
 }
@@ -220,24 +205,10 @@ export interface SelectOptions {
 
 export interface ScopedDb {
   readonly workspaceId: string;
-  select<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params?: unknown[],
-    options?: SelectOptions
-  ): Promise<T[]>;
-  first<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params?: unknown[]
-  ): Promise<T | null>;
+  select<T = Record<string, unknown>>(table: string, where?: string, params?: unknown[], options?: SelectOptions): Promise<T[]>;
+  first<T = Record<string, unknown>>(table: string, where?: string, params?: unknown[]): Promise<T | null>;
   insert(table: string, row: Record<string, unknown>): Promise<D1Result>;
-  update(
-    table: string,
-    set: Record<string, unknown>,
-    where?: string,
-    params?: unknown[]
-  ): Promise<D1Result>;
+  update(table: string, set: Record<string, unknown>, where?: string, params?: unknown[]): Promise<D1Result>;
   delete(table: string, where?: string, params?: unknown[]): Promise<D1Result>;
   raw(sql: string, params?: unknown[]): D1Statement & PromiseLike<D1Result>;
 }
@@ -245,41 +216,13 @@ export interface ScopedDb {
 export interface GlobalDbTable {
   readonly table: string;
   readonly reason: string;
-  select<T = Record<string, unknown>>(
-    where?: string,
-    params?: unknown[],
-    options?: SelectOptions
-  ): Promise<T[]>;
-  select<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params?: unknown[],
-    options?: SelectOptions
-  ): Promise<T[]>;
-  first<T = Record<string, unknown>>(
-    where?: string,
-    params?: unknown[]
-  ): Promise<T | null>;
-  first<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params?: unknown[]
-  ): Promise<T | null>;
-  insert(
-    rowOrTable: Record<string, unknown> | string,
-    maybeRow?: Record<string, unknown>
-  ): Promise<D1Result>;
-  update(
-    setOrTable: Record<string, unknown> | string,
-    maybeSetOrWhere?: unknown,
-    maybeWhereOrParams?: unknown,
-    maybeParams?: unknown[]
-  ): Promise<D1Result>;
-  delete(
-    whereOrTable?: string,
-    maybeWhereOrParams?: unknown,
-    maybeParams?: unknown[]
-  ): Promise<D1Result>;
+  select<T = Record<string, unknown>>(where?: string, params?: unknown[], options?: SelectOptions): Promise<T[]>;
+  select<T = Record<string, unknown>>(table: string, where?: string, params?: unknown[], options?: SelectOptions): Promise<T[]>;
+  first<T = Record<string, unknown>>(where?: string, params?: unknown[]): Promise<T | null>;
+  first<T = Record<string, unknown>>(table: string, where?: string, params?: unknown[]): Promise<T | null>;
+  insert(rowOrTable: Record<string, unknown> | string, maybeRow?: Record<string, unknown>): Promise<D1Result>;
+  update(setOrTable: Record<string, unknown> | string, maybeSetOrWhere?: unknown, maybeWhereOrParams?: unknown, maybeParams?: unknown[]): Promise<D1Result>;
+  delete(whereOrTable?: string, maybeWhereOrParams?: unknown, maybeParams?: unknown[]): Promise<D1Result>;
   raw(sql: string, params?: unknown[]): D1Statement & PromiseLike<D1Result>;
 }
 
@@ -287,7 +230,7 @@ function createStatementProxy(
   db: D1Like,
   sql: string,
   initialParams: unknown[],
-  validateParams?: (params: unknown[]) => void
+  validateParams?: (params: unknown[]) => void,
 ): D1Statement & PromiseLike<D1Result> {
   validateParams?.(initialParams);
   let currentStmt = db.prepare(sql).bind(...initialParams);
@@ -331,12 +274,7 @@ class ScopedDbImpl implements ScopedDb {
     return this.#workspaceId;
   }
 
-  async select<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params: unknown[] = [],
-    options?: SelectOptions
-  ): Promise<T[]> {
+  async select<T = Record<string, unknown>>(table: string, where?: string, params: unknown[] = [], options?: SelectOptions): Promise<T[]> {
     validateIdentifier(table, "table");
     validateWhereText(where);
     validateOrderBy(options?.orderBy);
@@ -361,15 +299,14 @@ class ScopedDbImpl implements ScopedDb {
       sql += ` OFFSET ${options.offset}`;
     }
 
-    const res = await this.db.prepare(sql).bind(...bound).all<T>();
+    const res = await this.db
+      .prepare(sql)
+      .bind(...bound)
+      .all<T>();
     return res.results;
   }
 
-  async first<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params: unknown[] = []
-  ): Promise<T | null> {
+  async first<T = Record<string, unknown>>(table: string, where?: string, params: unknown[] = []): Promise<T | null> {
     validateIdentifier(table, "table");
     validateWhereText(where);
 
@@ -384,19 +321,16 @@ class ScopedDbImpl implements ScopedDb {
     }
     sql += ` LIMIT 1`;
 
-    return this.db.prepare(sql).bind(...bound).first<T>();
+    return this.db
+      .prepare(sql)
+      .bind(...bound)
+      .first<T>();
   }
 
   async insert(table: string, row: Record<string, unknown>): Promise<D1Result> {
     validateIdentifier(table, "table");
-    if (
-      row.workspace_id !== undefined &&
-      row.workspace_id !== null &&
-      row.workspace_id !== this.workspaceId
-    ) {
-      throw new Error(
-        `TENANT_ID_CONFLICT: cannot insert row with workspace_id '${row.workspace_id}' into scoped workspace '${this.workspaceId}'`
-      );
+    if (row.workspace_id !== undefined && row.workspace_id !== null && row.workspace_id !== this.workspaceId) {
+      throw new Error(`TENANT_ID_CONFLICT: cannot insert row with workspace_id '${row.workspace_id}' into scoped workspace '${this.workspaceId}'`);
     }
 
     const data: Record<string, unknown> = { ...row, workspace_id: this.workspaceId };
@@ -410,26 +344,18 @@ class ScopedDbImpl implements ScopedDb {
     validateBindCount(values.length, "insert");
 
     const sql = `INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders})`;
-    return this.db.prepare(sql).bind(...values).run();
+    return this.db
+      .prepare(sql)
+      .bind(...values)
+      .run();
   }
 
-  async update(
-    table: string,
-    set: Record<string, unknown>,
-    where?: string,
-    params: unknown[] = []
-  ): Promise<D1Result> {
+  async update(table: string, set: Record<string, unknown>, where?: string, params: unknown[] = []): Promise<D1Result> {
     validateIdentifier(table, "table");
     validateWhereText(where);
 
-    if (
-      set.workspace_id !== undefined &&
-      set.workspace_id !== null &&
-      set.workspace_id !== this.workspaceId
-    ) {
-      throw new Error(
-        `TENANT_ID_CONFLICT: cannot update workspace_id to '${set.workspace_id}' in scoped workspace '${this.workspaceId}'`
-      );
+    if (set.workspace_id !== undefined && set.workspace_id !== null && set.workspace_id !== this.workspaceId) {
+      throw new Error(`TENANT_ID_CONFLICT: cannot update workspace_id to '${set.workspace_id}' in scoped workspace '${this.workspaceId}'`);
     }
 
     const setObj = { ...set };
@@ -458,7 +384,10 @@ class ScopedDbImpl implements ScopedDb {
     validateBindCount(bound.length, "update");
 
     const sql = `UPDATE ${table} SET ${setClause} ${whereClause}`;
-    return this.db.prepare(sql).bind(...bound).run();
+    return this.db
+      .prepare(sql)
+      .bind(...bound)
+      .run();
   }
 
   async delete(table: string, where?: string, params: unknown[] = []): Promise<D1Result> {
@@ -476,7 +405,10 @@ class ScopedDbImpl implements ScopedDb {
     validateBindCount(bound.length, "delete");
 
     const sql = `DELETE FROM ${table} ${whereClause}`;
-    return this.db.prepare(sql).bind(...bound).run();
+    return this.db
+      .prepare(sql)
+      .bind(...bound)
+      .run();
   }
 
   raw(sql: string, params: unknown[] = []): D1Statement & PromiseLike<D1Result> {
@@ -506,12 +438,7 @@ class GlobalDbTableImpl implements GlobalDbTable {
     this.reason = reason;
   }
 
-  private resolveArgs(
-    arg0?: string,
-    arg1?: unknown,
-    arg2?: unknown,
-    arg3?: SelectOptions
-  ): { where?: string; params: unknown[]; options?: SelectOptions } {
+  private resolveArgs(arg0?: string, arg1?: unknown, arg2?: unknown, arg3?: SelectOptions): { where?: string; params: unknown[]; options?: SelectOptions } {
     if (arg0 === this.table) {
       return {
         where: typeof arg1 === "string" ? arg1 : undefined,
@@ -522,33 +449,14 @@ class GlobalDbTableImpl implements GlobalDbTable {
     return {
       where: typeof arg0 === "string" ? arg0 : undefined,
       params: Array.isArray(arg1) ? (arg1 as unknown[]) : [],
-      options: (arg2 && typeof arg2 === "object" && !Array.isArray(arg2)) ? (arg2 as SelectOptions) : undefined,
+      options: arg2 && typeof arg2 === "object" && !Array.isArray(arg2) ? (arg2 as SelectOptions) : undefined,
     };
   }
 
-  select<T = Record<string, unknown>>(
-    where?: string,
-    params?: unknown[],
-    options?: SelectOptions
-  ): Promise<T[]>;
-  select<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params?: unknown[],
-    options?: SelectOptions
-  ): Promise<T[]>;
-  async select<T = Record<string, unknown>>(
-    whereOrTable?: string,
-    paramsOrWhere?: unknown,
-    maybeParams?: unknown,
-    maybeOptions?: SelectOptions
-  ): Promise<T[]> {
-    const { where, params, options } = this.resolveArgs(
-      whereOrTable,
-      paramsOrWhere,
-      maybeParams,
-      maybeOptions
-    );
+  select<T = Record<string, unknown>>(where?: string, params?: unknown[], options?: SelectOptions): Promise<T[]>;
+  select<T = Record<string, unknown>>(table: string, where?: string, params?: unknown[], options?: SelectOptions): Promise<T[]>;
+  async select<T = Record<string, unknown>>(whereOrTable?: string, paramsOrWhere?: unknown, maybeParams?: unknown, maybeOptions?: SelectOptions): Promise<T[]> {
+    const { where, params, options } = this.resolveArgs(whereOrTable, paramsOrWhere, maybeParams, maybeOptions);
     validateBindCount(params.length, "global.select");
     validateOrderBy(options?.orderBy);
 
@@ -567,15 +475,14 @@ class GlobalDbTableImpl implements GlobalDbTable {
       sql += ` OFFSET ${options.offset}`;
     }
 
-    const res = await this.db.prepare(sql).bind(...params).all<T>();
+    const res = await this.db
+      .prepare(sql)
+      .bind(...params)
+      .all<T>();
     return res.results;
   }
 
-  async first<T = Record<string, unknown>>(
-    whereOrTable?: string,
-    paramsOrWhere?: unknown,
-    maybeParams?: unknown[]
-  ): Promise<T | null> {
+  async first<T = Record<string, unknown>>(whereOrTable?: string, paramsOrWhere?: unknown, maybeParams?: unknown[]): Promise<T | null> {
     const { where, params } = this.resolveArgs(whereOrTable, paramsOrWhere, maybeParams);
     validateBindCount(params.length, "global.first");
 
@@ -585,15 +492,14 @@ class GlobalDbTableImpl implements GlobalDbTable {
     }
     sql += ` LIMIT 1`;
 
-    return this.db.prepare(sql).bind(...params).first<T>();
+    return this.db
+      .prepare(sql)
+      .bind(...params)
+      .first<T>();
   }
 
-  async insert(
-    rowOrTable: Record<string, unknown> | string,
-    maybeRow?: Record<string, unknown>
-  ): Promise<D1Result> {
-    const row =
-      typeof rowOrTable === "string" && maybeRow ? maybeRow : (rowOrTable as Record<string, unknown>);
+  async insert(rowOrTable: Record<string, unknown> | string, maybeRow?: Record<string, unknown>): Promise<D1Result> {
+    const row = typeof rowOrTable === "string" && maybeRow ? maybeRow : (rowOrTable as Record<string, unknown>);
 
     const keys = Object.keys(row);
     for (const k of keys) {
@@ -605,14 +511,17 @@ class GlobalDbTableImpl implements GlobalDbTable {
     validateBindCount(values.length, "global.insert");
 
     const sql = `INSERT INTO ${this.table} (${keys.join(", ")}) VALUES (${placeholders})`;
-    return this.db.prepare(sql).bind(...values).run();
+    return this.db
+      .prepare(sql)
+      .bind(...values)
+      .run();
   }
 
   async update(
     setOrTable: Record<string, unknown> | string,
     maybeSetOrWhere?: unknown,
     maybeWhereOrParams?: unknown,
-    maybeParams?: unknown[]
+    maybeParams?: unknown[],
   ): Promise<D1Result> {
     let set: Record<string, unknown>;
     let where: string | undefined;
@@ -648,14 +557,13 @@ class GlobalDbTableImpl implements GlobalDbTable {
     const bound = [...setValues, ...params];
     validateBindCount(bound.length, "global.update");
 
-    return this.db.prepare(sql).bind(...bound).run();
+    return this.db
+      .prepare(sql)
+      .bind(...bound)
+      .run();
   }
 
-  async delete(
-    whereOrTable?: string,
-    maybeWhereOrParams?: unknown,
-    maybeParams?: unknown[]
-  ): Promise<D1Result> {
+  async delete(whereOrTable?: string, maybeWhereOrParams?: unknown, maybeParams?: unknown[]): Promise<D1Result> {
     const { where, params } = this.resolveArgs(whereOrTable, maybeWhereOrParams, maybeParams);
     validateBindCount(params.length, "global.delete");
 
@@ -664,7 +572,10 @@ class GlobalDbTableImpl implements GlobalDbTable {
       sql += ` WHERE ${where.trim()}`;
     }
 
-    return this.db.prepare(sql).bind(...params).run();
+    return this.db
+      .prepare(sql)
+      .bind(...params)
+      .run();
   }
 
   raw(sql: string, params: unknown[] = []): D1Statement & PromiseLike<D1Result> {
@@ -685,24 +596,10 @@ export function global(db: D1Like, table: string, reason: string): GlobalDbTable
 
 export interface SystemScopeDb {
   readonly reason: string;
-  select<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params?: unknown[],
-    options?: SelectOptions
-  ): Promise<T[]>;
-  first<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params?: unknown[]
-  ): Promise<T | null>;
+  select<T = Record<string, unknown>>(table: string, where?: string, params?: unknown[], options?: SelectOptions): Promise<T[]>;
+  first<T = Record<string, unknown>>(table: string, where?: string, params?: unknown[]): Promise<T | null>;
   insert(table: string, row: Record<string, unknown>): Promise<D1Result>;
-  update(
-    table: string,
-    set: Record<string, unknown>,
-    where?: string,
-    params?: unknown[]
-  ): Promise<D1Result>;
+  update(table: string, set: Record<string, unknown>, where?: string, params?: unknown[]): Promise<D1Result>;
   delete(table: string, where?: string, params?: unknown[]): Promise<D1Result>;
   raw(sql: string, params?: unknown[]): D1Statement & PromiseLike<D1Result>;
 }
@@ -720,20 +617,11 @@ class SystemScopeDbImpl implements SystemScopeDb {
     Object.freeze(this);
   }
 
-  async select<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params: unknown[] = [],
-    options?: SelectOptions
-  ): Promise<T[]> {
+  async select<T = Record<string, unknown>>(table: string, where?: string, params: unknown[] = [], options?: SelectOptions): Promise<T[]> {
     return global(this.db, table, this.reason).select<T>(where, params, options);
   }
 
-  async first<T = Record<string, unknown>>(
-    table: string,
-    where?: string,
-    params: unknown[] = []
-  ): Promise<T | null> {
+  async first<T = Record<string, unknown>>(table: string, where?: string, params: unknown[] = []): Promise<T | null> {
     return global(this.db, table, this.reason).first<T>(where, params);
   }
 
@@ -741,12 +629,7 @@ class SystemScopeDbImpl implements SystemScopeDb {
     return global(this.db, table, this.reason).insert(row);
   }
 
-  async update(
-    table: string,
-    set: Record<string, unknown>,
-    where?: string,
-    params: unknown[] = []
-  ): Promise<D1Result> {
+  async update(table: string, set: Record<string, unknown>, where?: string, params: unknown[] = []): Promise<D1Result> {
     return global(this.db, table, this.reason).update(set, where, params);
   }
 
@@ -762,4 +645,3 @@ class SystemScopeDbImpl implements SystemScopeDb {
 export function systemScope(db: D1Like, reason: string): SystemScopeDb {
   return new SystemScopeDbImpl(db, reason);
 }
-

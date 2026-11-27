@@ -82,18 +82,14 @@ const CallbackPayloadSchema = z.object({
 
 type Ctx = Context<IntegrationConnectionsEnv>;
 
-export function createIntegrationConnectionsRoutes(
-  options: IntegrationConnectionsRouteOptions = {},
-): Hono<IntegrationConnectionsEnv> {
+export function createIntegrationConnectionsRoutes(options: IntegrationConnectionsRouteOptions = {}): Hono<IntegrationConnectionsEnv> {
   const oauthStateTtlSeconds = options.oauthStateTtlSeconds ?? 600;
   const refreshWindowSeconds = options.refreshWindowSeconds ?? 60;
   const publicBaseUrl = options.publicBaseUrl;
   const allowedRedirectUris = options.allowedRedirectUris;
   const adapter: IntegrationConnectionsAdapter = {
     ...options.adapter,
-    integrations:
-      options.adapter?.integrations ??
-      (catalog.integrations as Record<string, { manifest: IntegrationManifestFile }> | undefined),
+    integrations: options.adapter?.integrations ?? (catalog.integrations as Record<string, { manifest: IntegrationManifestFile }> | undefined),
   };
 
   const router = new Hono<IntegrationConnectionsEnv>();
@@ -126,14 +122,14 @@ export function createIntegrationConnectionsRoutes(
     const redirectUri = c.req.query("redirect_uri") ?? c.req.query("redirectUri") ?? undefined;
     const rawScopes = c.req.query("scope") ?? c.req.query("scopes") ?? undefined;
     const scopes = rawScopes
-      ? rawScopes.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)
+      ? rawScopes
+          .split(/[,\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
       : undefined;
     const wantsRedirect = c.req.query("redirect") === "1" || c.req.query("redirect") === "true";
     if (wantsRedirect && isCrossSiteRequest(c, publicBaseUrl)) {
-      return c.json(
-        { error: { code: "CSRF_REJECTED", message: "Cross-site redirecting connect requests are refused" } },
-        403,
-      );
+      return c.json({ error: { code: "CSRF_REJECTED", message: "Cross-site redirecting connect requests are refused" } }, 403);
     }
 
     try {
@@ -166,15 +162,9 @@ export function createIntegrationConnectionsRoutes(
       );
     } catch (error) {
       if (error instanceof IntegrationConnectionsError) {
-        return c.json(
-          { error: { code: error.code, message: error.message } },
-          (error.status ?? 400) as 400 | 404 | 503,
-        );
+        return c.json({ error: { code: error.code, message: error.message } }, (error.status ?? 400) as 400 | 404 | 503);
       }
-      return c.json(
-        { error: { code: "CONNECT_START_FAILED", message: "Failed to initiate OAuth flow" } },
-        500,
-      );
+      return c.json({ error: { code: "CONNECT_START_FAILED", message: "Failed to initiate OAuth flow" } }, 500);
     }
   };
 
@@ -194,10 +184,7 @@ export function createIntegrationConnectionsRoutes(
       try {
         rawBody = await c.req.json();
       } catch {
-        return c.json(
-          { error: { code: "INVALID_JSON", message: "Invalid callback JSON body" } },
-          400,
-        );
+        return c.json({ error: { code: "INVALID_JSON", message: "Invalid callback JSON body" } }, 400);
       }
       const parsed = CallbackPayloadSchema.safeParse(rawBody);
       if (!parsed.success) {
@@ -237,15 +224,9 @@ export function createIntegrationConnectionsRoutes(
       );
     } catch (error) {
       if (error instanceof IntegrationConnectionsError) {
-        return c.json(
-          { error: { code: error.code, message: error.message } },
-          (error.status ?? 400) as 400 | 404 | 503,
-        );
+        return c.json({ error: { code: error.code, message: error.message } }, (error.status ?? 400) as 400 | 404 | 503);
       }
-      return c.json(
-        { error: { code: "OAUTH_CALLBACK_FAILED", message: "Failed to complete OAuth callback" } },
-        500,
-      );
+      return c.json({ error: { code: "OAUTH_CALLBACK_FAILED", message: "Failed to complete OAuth callback" } }, 500);
     }
   };
 
@@ -269,15 +250,9 @@ export function createIntegrationConnectionsRoutes(
       );
     } catch (error) {
       if (error instanceof IntegrationConnectionsError) {
-        return c.json(
-          { error: { code: error.code, message: error.message } },
-          (error.status ?? 400) as 400 | 404 | 503,
-        );
+        return c.json({ error: { code: error.code, message: error.message } }, (error.status ?? 400) as 400 | 404 | 503);
       }
-      return c.json(
-        { error: { code: "LIST_INTEGRATIONS_FAILED", message: "Failed to list workspace integrations" } },
-        500,
-      );
+      return c.json({ error: { code: "LIST_INTEGRATIONS_FAILED", message: "Failed to list workspace integrations" } }, 500);
     }
   });
 
@@ -299,10 +274,7 @@ export function createIntegrationConnectionsRoutes(
       });
       return c.json(res, 200);
     } catch {
-      return c.json(
-        { error: { code: "DISCONNECT_FAILED", message: "Failed to disconnect workspace integration" } },
-        500,
-      );
+      return c.json({ error: { code: "DISCONNECT_FAILED", message: "Failed to disconnect workspace integration" } }, 500);
     }
   });
 

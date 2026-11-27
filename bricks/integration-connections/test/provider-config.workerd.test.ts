@@ -5,10 +5,7 @@ import { catalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migrationSql from "../migrations/0001_integration_connections.sql?raw";
-import {
-  createIntegrationConnectionsRoutes,
-  resolveProviderConfig,
-} from "../src/index.ts";
+import { createIntegrationConnectionsRoutes, resolveProviderConfig } from "../src/index.ts";
 import type { IntegrationConnectionsEnv } from "../src/index.ts";
 
 function createTestApp(options: Parameters<typeof createIntegrationConnectionsRoutes>[0] = {}) {
@@ -58,40 +55,30 @@ describe("Story UC1.6 / Finding F-SEC-5 — OAuth provider config and manifest r
   describe("Task 1(c) & AC3: unknown provider start route returns HTTP 404", () => {
     it("returns 404 with OAUTH_PROVIDER_UNKNOWN error before any redirect or state row is written", async () => {
       const app = createTestApp();
-      const res = await app.fetch(
-        new Request("https://app.example.test/api/integrations/acme/connect"),
-        { DB: db, PX_CONN_KEY: pxConnKey },
-      );
+      const res = await app.fetch(new Request("https://app.example.test/api/integrations/acme/connect"), { DB: db, PX_CONN_KEY: pxConnKey });
 
       expect(res.status).toBe(404);
       const body = (await res.json()) as { error?: { code?: string; message?: string } };
       expect(body.error?.code).toBe("OAUTH_PROVIDER_UNKNOWN");
 
       // Verify no state row was written into DB
-      const stateCount = await db
-        .prepare("SELECT count(*) as cnt FROM int_oauth_states")
-        .first<{ cnt: number }>();
+      const stateCount = await db.prepare("SELECT count(*) as cnt FROM int_oauth_states").first<{ cnt: number }>();
       expect(stateCount?.cnt).toBe(0);
     });
   });
 
   describe("AC2: parametrized test over catalog integrations with auth.type: 'oauth2'", () => {
-    const oauthIntegrations = Object.entries(catalog.integrations ?? {}).filter(
-      ([, entry]) => entry.manifest.auth?.type === "oauth2",
-    );
+    const oauthIntegrations = Object.entries(catalog.integrations ?? {}).filter(([, entry]) => entry.manifest.auth?.type === "oauth2");
 
-    it.each(oauthIntegrations)(
-      "resolves exact manifest URLs for %s",
-      (slug, entry) => {
-        const manifestAuth = entry.manifest.auth;
-        if (manifestAuth?.type !== "oauth2") return;
+    it.each(oauthIntegrations)("resolves exact manifest URLs for %s", (slug, entry) => {
+      const manifestAuth = entry.manifest.auth;
+      if (manifestAuth?.type !== "oauth2") return;
 
-        const cfg = resolveProviderConfig(slug);
-        expect(cfg.authorizeUrl).toBe(manifestAuth.authorizeUrl);
-        expect(cfg.tokenUrl).toBe(manifestAuth.tokenUrl);
-        expect(cfg.defaultScopes).toEqual(manifestAuth.scopes ?? []);
-      },
-    );
+      const cfg = resolveProviderConfig(slug);
+      expect(cfg.authorizeUrl).toBe(manifestAuth.authorizeUrl);
+      expect(cfg.tokenUrl).toBe(manifestAuth.tokenUrl);
+      expect(cfg.defaultScopes).toEqual(manifestAuth.scopes ?? []);
+    });
   });
 
   describe("URL validation and host restrictions", () => {

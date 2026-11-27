@@ -19,11 +19,7 @@ export interface BudgetIssue extends ValidationIssue {
  * - Subrequests budget: sum over integration nodes (or individual node) of (pagination ? maxPages : 1) * (retries + 1) <= limits[plan].subrequests.limit (50 free / 1,000 paid)
  * - Payload size estimate: flags output dataType rows/json lacking maxOutputBytes with BUDGET_PAYLOAD_UNBOUNDED_WARNING
  */
-export function checkGraphBudget(
-  graph: { nodes: GraphNode[]; edges: GraphEdge[] },
-  registry: Registry,
-  plan: "free" | "paid" = "free",
-): BudgetIssue[] {
+export function checkGraphBudget(graph: { nodes: GraphNode[]; edges: GraphEdge[] }, registry: Registry, plan: "free" | "paid" = "free"): BudgetIssue[] {
   const limits = getPlatformLimits(plan);
   const issues: BudgetIssue[] = [];
   const { nodes, edges } = graph;
@@ -132,23 +128,12 @@ export function checkGraphBudget(
       totalSubrequests += 1;
     } else if (isIntegration) {
       const nodeData = node.data as Record<string, unknown> | undefined;
-      const pagination = (nodeData?.pagination ?? (manifest as { pagination?: unknown } | undefined)?.pagination) as
-        | { maxPages?: number }
-        | undefined;
+      const pagination = (nodeData?.pagination ?? (manifest as { pagination?: unknown } | undefined)?.pagination) as { maxPages?: number } | undefined;
       const maxPages =
-        typeof pagination?.maxPages === "number"
-          ? pagination.maxPages
-          : typeof nodeData?.maxPages === "number"
-            ? (nodeData.maxPages as number)
-            : 1;
+        typeof pagination?.maxPages === "number" ? pagination.maxPages : typeof nodeData?.maxPages === "number" ? (nodeData.maxPages as number) : 1;
 
       const retryPolicy = nodeData?.retryPolicy as { limit?: number } | undefined;
-      const retryLimit =
-        typeof retryPolicy?.limit === "number"
-          ? retryPolicy.limit
-          : typeof nodeData?.retries === "number"
-            ? (nodeData.retries as number)
-            : 0;
+      const retryLimit = typeof retryPolicy?.limit === "number" ? retryPolicy.limit : typeof nodeData?.retries === "number" ? (nodeData.retries as number) : 0;
 
       const nodeSubreqs = Math.max(1, maxPages) * (retryLimit + 1);
       totalSubrequests += nodeSubreqs;
@@ -170,11 +155,7 @@ export function checkGraphBudget(
   }
 
   if (!individualNodeExceeded && totalSubrequests > subreqLimit) {
-    const firstIntegrationNode = nodes.find(
-      (n) =>
-        reached.has(n.id) &&
-        (n.type.startsWith("integration.") || n.type.startsWith("int:")),
-    );
+    const firstIntegrationNode = nodes.find((n) => reached.has(n.id) && (n.type.startsWith("integration.") || n.type.startsWith("int:")));
     issues.push({
       code: "BUDGET_SUBREQUESTS_EXCEEDED",
       nodeId: firstIntegrationNode?.id ?? nodes[0]?.id ?? "",
@@ -198,16 +179,12 @@ export function checkGraphBudget(
     }
 
     const nodeData = (node.data ?? {}) as Record<string, unknown>;
-    const hasMaxOutputBytes =
-      typeof nodeData.maxOutputBytes === "number" && nodeData.maxOutputBytes > 0;
+    const hasMaxOutputBytes = typeof nodeData.maxOutputBytes === "number" && nodeData.maxOutputBytes > 0;
 
     for (const output of manifest.outputs) {
       const isUnboundedType =
         output.dataType === "rows" ||
-        (output.dataType === "json" &&
-          (manifest.executor === "integration" ||
-            node.type.startsWith("integration.") ||
-            node.type.startsWith("int:")));
+        (output.dataType === "json" && (manifest.executor === "integration" || node.type.startsWith("integration.") || node.type.startsWith("int:")));
 
       if (isUnboundedType && !hasMaxOutputBytes) {
         issues.push({

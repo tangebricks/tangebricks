@@ -46,13 +46,17 @@ function clientFor(workspaceId: string, user = "alice", override?: (input: strin
 }
 
 beforeEach(async () => {
-  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+  for (const table of ["credit_ledger", "credit_orders", "credit_wallets", "credit_action_costs", "mw_members", "mw_workspaces"])
+    await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
   await applyMigration(db, mwMigration);
   await applyMigration(db, walletMigration);
   await applyMigration(db, walletMigration0002);
   await applyMigration(db, walletMigration0003);
   await applyMigration(db, walletMigration0004);
-  for (const [id, user] of [["ws-a", "alice"], ["ws-b", "bob"]] as const) {
+  for (const [id, user] of [
+    ["ws-a", "alice"],
+    ["ws-b", "bob"],
+  ] as const) {
     await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(id, id, user).run();
     await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").bind(id, user).run();
   }

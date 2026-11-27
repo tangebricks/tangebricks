@@ -96,11 +96,7 @@ export function createOutboundWebhookRoutes(): Hono<OutboundWebhookEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("outboundWebhooks") || new OutboundWebhookService(c.env.DB);
-    const deliveries = await service.dispatchEvent(
-      workspaceId,
-      parsed.data.eventType,
-      parsed.data.payload
-    );
+    const deliveries = await service.dispatchEvent(workspaceId, parsed.data.eventType, parsed.data.payload);
 
     return c.json({ deliveries }, 200);
   });

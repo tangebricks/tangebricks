@@ -130,11 +130,9 @@ export async function chargeAction(db: D1Like, workspaceId: string, input: Charg
   // The row already under this key: the same charge (a deduction recorded with this action and quantity) answers as a
   // duplicate; anything else is a reused key and takes nothing.
   const earlier = async (): Promise<ChargeActionResult | null> => {
-    const row = await scoped(db, workspaceId).first<{ type: string; amount_milli: number; metadata: string | null }>(
-      "credit_ledger",
-      "idempotency_key = ?",
-      [idempotencyKey],
-    );
+    const row = await scoped(db, workspaceId).first<{ type: string; amount_milli: number; metadata: string | null }>("credit_ledger", "idempotency_key = ?", [
+      idempotencyKey,
+    ]);
     if (!row) return null;
     let parsed: unknown = null;
     try {
@@ -145,7 +143,8 @@ export async function chargeAction(db: D1Like, workspaceId: string, input: Charg
     // Anything but a metadata object tagged as this very charge is another operation.
     if (typeof parsed !== "object" || parsed === null) return { ok: false, code: "IDEMPOTENCY_KEY_REUSED" };
     const meta = parsed as { op?: unknown; action?: unknown; quantity?: unknown; cost_milli?: unknown };
-    if (row.type !== "deduction" || meta.op !== "action" || meta.action !== action || meta.quantity !== quantity) return { ok: false, code: "IDEMPOTENCY_KEY_REUSED" };
+    if (row.type !== "deduction" || meta.op !== "action" || meta.action !== action || meta.quantity !== quantity)
+      return { ok: false, code: "IDEMPOTENCY_KEY_REUSED" };
     return {
       ok: true,
       action,

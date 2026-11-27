@@ -10,13 +10,15 @@ const CreateIndexSchema = z.object({
 });
 
 const UpsertChunksSchema = z.object({
-  chunks: z.array(
-    z.object({
-      text: z.string().min(1).max(8192),
-      embedding: z.array(z.number()),
-      metadata: z.record(z.string(), z.unknown()).optional(),
-    })
-  ).min(1),
+  chunks: z
+    .array(
+      z.object({
+        text: z.string().min(1).max(8192),
+        embedding: z.array(z.number()),
+        metadata: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .min(1),
 });
 
 const SearchSchema = z.object({
@@ -49,12 +51,7 @@ export function createVectorRoutes(): Hono<VectorEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("vectorService") || new VectorMemoryService(c.env.DB);
-    const index = await service.createIndex(
-      workspaceId,
-      parsed.data.name,
-      parsed.data.dimensions,
-      parsed.data.metric as VectorMetric
-    );
+    const index = await service.createIndex(workspaceId, parsed.data.name, parsed.data.dimensions, parsed.data.metric as VectorMetric);
 
     return c.json({ index }, 201);
   });
@@ -124,13 +121,7 @@ export function createVectorRoutes(): Hono<VectorEnv> {
     if (!(await service.getIndex(workspaceId, indexId))) {
       return c.json({ error: "Vector index not found" }, 404);
     }
-    const results = await service.search(
-      workspaceId,
-      indexId,
-      parsed.data.vector,
-      parsed.data.topK,
-      parsed.data.minScore
-    );
+    const results = await service.search(workspaceId, indexId, parsed.data.vector, parsed.data.topK, parsed.data.minScore);
 
     return c.json({ results }, 200);
   });

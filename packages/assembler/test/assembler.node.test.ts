@@ -55,7 +55,7 @@ describe("the two-brick blueprint", () => {
     const guard = entry.indexOf('app.use("/api/wallet", workspaceMiddleware);');
     expect(guard).toBeGreaterThan(-1);
     for (const path of ["/api/wallet", "/api/wallet/*", "/api/payments/create-order"]) expect(entry).toContain(`app.use("${path}", workspaceMiddleware);`);
-    expect(entry.indexOf("app.use(\"/api/*\", stubIdentity)")).toBeLessThan(guard);
+    expect(entry.indexOf('app.use("/api/*", stubIdentity)')).toBeLessThan(guard);
     expect(guard).toBeLessThan(entry.indexOf("createWalletRoutes({"));
     // Story 0.9: no payment gateway is wired by default; the fake is for tests that inject it.
     expect(entry).toContain('import { createWalletRoutes } from "@poc/credit-wallet";');
@@ -72,7 +72,9 @@ describe("the two-brick blueprint", () => {
     const result = files(twoBricks);
     expect(result.files["migrations/0001_multi-workspace__0001_multi_workspace.sql"]).toContain("CREATE TABLE IF NOT EXISTS mw_workspaces");
     expect(result.files["migrations/0002_credit-wallet__0001_credit_wallet.sql"]).toContain("CREATE TABLE IF NOT EXISTS credit_wallets");
-    expect(result.files["migrations/0002_credit-wallet__0001_credit_wallet.sql"]).toBe(catalog.bricks["credit-wallet"]!.files["migrations/0001_credit_wallet.sql"]);
+    expect(result.files["migrations/0002_credit-wallet__0001_credit_wallet.sql"]).toBe(
+      catalog.bricks["credit-wallet"]!.files["migrations/0001_credit_wallet.sql"],
+    );
   });
 
   test("defaults and chosen settings reach the emitted code", () => {
@@ -80,14 +82,26 @@ describe("the two-brick blueprint", () => {
     const configured = { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 10, minOrderAmount: 100 } }] };
     const entry = files(configured).files["src/index.ts"]!;
     expect(entry).toContain("creditsPerUnit: 10, minOrderAmount: 100");
-    expect(JSON.parse(files(configured).files["project.json"]!).bricks[1].settings).toEqual({ creditsPerUnit: 10, minOrderAmount: 100, paymentCurrency: "", defaultActionCosts: "" });
+    expect(JSON.parse(files(configured).files["project.json"]!).bricks[1].settings).toEqual({
+      creditsPerUnit: 10,
+      minOrderAmount: 100,
+      paymentCurrency: "",
+      defaultActionCosts: "",
+    });
   });
 
   test("the emitted JSON files parse, and the project name and the database name agree", () => {
     const result = files(twoBricks);
     const wrangler = JSON.parse(result.files["wrangler.jsonc"]!.replace(/^\/\/.*\n/, ""));
-    expect(wrangler).toMatchObject({ name: "invoice-flow", main: "src/index.ts", d1_databases: [{ binding: "DB", database_name: "invoice-flow", migrations_dir: "migrations" }] });
-    expect(JSON.parse(result.files["package.json"]!)).toMatchObject({ name: "invoice-flow", dependencies: { "@poc/credit-wallet": "workspace:*", "@poc/multi-workspace": "workspace:*", hono: "4.13.20", zod: "4.6.7" } });
+    expect(wrangler).toMatchObject({
+      name: "invoice-flow",
+      main: "src/index.ts",
+      d1_databases: [{ binding: "DB", database_name: "invoice-flow", migrations_dir: "migrations" }],
+    });
+    expect(JSON.parse(result.files["package.json"]!)).toMatchObject({
+      name: "invoice-flow",
+      dependencies: { "@poc/credit-wallet": "workspace:*", "@poc/multi-workspace": "workspace:*", hono: "4.13.20", zod: "4.6.7" },
+    });
     expect(JSON.parse(result.files["project.json"]!).migrations).toHaveLength(6);
   });
 
@@ -139,15 +153,47 @@ describe("assembly is pure", () => {
 
 describe("a blueprint that cannot be assembled is refused with a reason that names the problem", () => {
   test.each([
-    ["an unknown brick", { project: "p", bricks: ["multi-workspace", "no-such-brick"] }, new RegExp(`unknown brick "no-such-brick" \\(available: ${Object.keys(catalog.bricks).sort().join(", ")}\\)`)],
+    [
+      "an unknown brick",
+      { project: "p", bricks: ["multi-workspace", "no-such-brick"] },
+      new RegExp(`unknown brick "no-such-brick" \\(available: ${Object.keys(catalog.bricks).sort().join(", ")}\\)`),
+    ],
     ["a brick listed twice", { project: "p", bricks: ["multi-workspace", "multi-workspace"] }, /"multi-workspace" is listed more than once/],
-    ["the wallet without the workspace brick", { project: "p", bricks: ["credit-wallet"] }, /credit-wallet requires "workspace-context", which no enabled brick provides \(enable one of: multi-workspace\)/],
-    ["an unknown setting", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditPerUnit: 2 } }] }, /credit-wallet: unknown setting "creditPerUnit" \(known: creditsPerUnit, defaultActionCosts, minOrderAmount, paymentCurrency\)/],
-    ["a setting of the wrong type", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: "ten" } }] }, /setting "creditsPerUnit" must be a whole number from 1 to 1000000/],
-    ["a setting below its minimum", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 0 } }] }, /setting "creditsPerUnit" must be a whole number/],
-    ["a fractional setting", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { minOrderAmount: 1.5 } }] }, /setting "minOrderAmount" must be a whole number/],
-    ["a setting of the wrong kind of value", { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { minOrderAmount: true } }] }, /setting "minOrderAmount" must be a whole number/],
-    ["a setting on a brick that has none", { project: "p", bricks: [{ id: "multi-workspace", config: { x: 1 } }] }, /multi-workspace: unknown setting "x" \(known: none\)/],
+    [
+      "the wallet without the workspace brick",
+      { project: "p", bricks: ["credit-wallet"] },
+      /credit-wallet requires "workspace-context", which no enabled brick provides \(enable one of: multi-workspace\)/,
+    ],
+    [
+      "an unknown setting",
+      { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditPerUnit: 2 } }] },
+      /credit-wallet: unknown setting "creditPerUnit" \(known: creditsPerUnit, defaultActionCosts, minOrderAmount, paymentCurrency\)/,
+    ],
+    [
+      "a setting of the wrong type",
+      { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: "ten" } }] },
+      /setting "creditsPerUnit" must be a whole number from 1 to 1000000/,
+    ],
+    [
+      "a setting below its minimum",
+      { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { creditsPerUnit: 0 } }] },
+      /setting "creditsPerUnit" must be a whole number/,
+    ],
+    [
+      "a fractional setting",
+      { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { minOrderAmount: 1.5 } }] },
+      /setting "minOrderAmount" must be a whole number/,
+    ],
+    [
+      "a setting of the wrong kind of value",
+      { project: "p", bricks: ["multi-workspace", { id: "credit-wallet", config: { minOrderAmount: true } }] },
+      /setting "minOrderAmount" must be a whole number/,
+    ],
+    [
+      "a setting on a brick that has none",
+      { project: "p", bricks: [{ id: "multi-workspace", config: { x: 1 } }] },
+      /multi-workspace: unknown setting "x" \(known: none\)/,
+    ],
   ])("%s", (_label, blueprint, message) => {
     expect(errors(blueprint).join("\n")).toMatch(message);
   });
@@ -195,7 +241,22 @@ describe("a blueprint that cannot be assembled is refused with a reason that nam
 // below stand in for bricks that do not exist yet; they test the ordering and refusal logic that the two real bricks
 // (one depends on the other, nothing deeper) cannot.
 const brick = (id: string, extra: Partial<Catalog["bricks"][string]["manifest"]> = {}, files: Record<string, string> = {}): Catalog["bricks"][string] => ({
-  manifest: { manifestVersion: 2, kind: "brick", id, version: "1.0.0", trust: "first-party", isolation: "none", provides: [], requires: [], migrations: [], routePrefixes: [], npmDependencies: {}, settings: {}, worker: { package: `@x/${id}`, routes: [] }, ...extra },
+  manifest: {
+    manifestVersion: 2,
+    kind: "brick",
+    id,
+    version: "1.0.0",
+    trust: "first-party",
+    isolation: "none",
+    provides: [],
+    requires: [],
+    migrations: [],
+    routePrefixes: [],
+    npmDependencies: {},
+    settings: {},
+    worker: { package: `@x/${id}`, routes: [] },
+    ...extra,
+  },
   files,
 });
 const catalogOf = (...bricks: Array<Catalog["bricks"][string]>): Catalog => ({ bricks: Object.fromEntries(bricks.map((b) => [b.manifest.id, b])) });
@@ -208,7 +269,11 @@ describe("ordering and refusal with synthetic bricks", () => {
   );
 
   test("a chain is mounted from the deepest provider outwards, whatever order it was listed in", () => {
-    for (const listed of [["alpha", "bravo", "charlie"], ["charlie", "alpha", "bravo"], ["bravo", "charlie", "alpha"]]) {
+    for (const listed of [
+      ["alpha", "bravo", "charlie"],
+      ["charlie", "alpha", "bravo"],
+      ["bravo", "charlie", "alpha"],
+    ]) {
       const result = files({ project: "p", bricks: listed }, chain);
       expect(result.order).toEqual(["charlie", "bravo", "alpha"]);
       expect(Object.keys(result.files).filter((f) => f.startsWith("migrations/"))).toEqual([
@@ -235,13 +300,8 @@ describe("ordering and refusal with synthetic bricks", () => {
   });
 
   test("two bricks declaring a conflict are refused with conflict: <a> × <b>: <reason>", () => {
-    const c = catalogOf(
-      brick("alpha", { conflicts: [{ brick: "bravo", reason: "Both mount /api/shared" }] }),
-      brick("bravo"),
-    );
-    expect(errors({ project: "p", bricks: ["bravo", "alpha"] }, c)).toEqual([
-      "conflict: alpha × bravo: Both mount /api/shared",
-    ]);
+    const c = catalogOf(brick("alpha", { conflicts: [{ brick: "bravo", reason: "Both mount /api/shared" }] }), brick("bravo"));
+    expect(errors({ project: "p", bricks: ["bravo", "alpha"] }, c)).toEqual(["conflict: alpha × bravo: Both mount /api/shared"]);
   });
 
   test("a brick that provides a capability it also requires does not wait on itself", () => {
@@ -262,9 +322,14 @@ describe("ordering and refusal with synthetic bricks", () => {
   test("a capability offered without a guard cannot guard a route", () => {
     const c = catalogOf(
       brick("offers", { provides: ["cap-g"] }),
-      brick("uses", { requires: ["cap-g"], worker: { package: "@x/uses", routes: [{ factory: "makeRoutes", mountAt: "/api", options: {}, guardPaths: ["/api/x"], guardWith: "cap-g" }] } }),
+      brick("uses", {
+        requires: ["cap-g"],
+        worker: { package: "@x/uses", routes: [{ factory: "makeRoutes", mountAt: "/api", options: {}, guardPaths: ["/api/x"], guardWith: "cap-g" }] },
+      }),
     );
-    expect(errors({ project: "p", bricks: ["offers", "uses"] }, c).join()).toMatch(/uses guards makeRoutes with "cap-g", but offers offers that capability without a guard to mount/);
+    expect(errors({ project: "p", bricks: ["offers", "uses"] }, c).join()).toMatch(
+      /uses guards makeRoutes with "cap-g", but offers offers that capability without a guard to mount/,
+    );
   });
 
   test("the emitted code for a synthetic brick uses only what its manifest declares", () => {
@@ -273,7 +338,18 @@ describe("ordering and refusal with synthetic bricks", () => {
       brick("routes", {
         requires: ["cap-g"],
         settings: { limit: { type: "integer", min: 1, max: 9, default: 3 } },
-        worker: { package: "@x/routes", routes: [{ factory: "makeRoutes", mountAt: "/api/things", options: { limit: { $setting: "limit" }, label: "hello", on: true, store: { $call: "makeStore" } }, guardPaths: ["/api/things"], guardWith: "cap-g" }] },
+        worker: {
+          package: "@x/routes",
+          routes: [
+            {
+              factory: "makeRoutes",
+              mountAt: "/api/things",
+              options: { limit: { $setting: "limit" }, label: "hello", on: true, store: { $call: "makeStore" } },
+              guardPaths: ["/api/things"],
+              guardWith: "cap-g",
+            },
+          ],
+        },
       }),
     );
     const entry = files({ project: "p", bricks: ["routes", "guarded"] }, c).files["src/index.ts"]!;
@@ -286,7 +362,19 @@ describe("ordering and refusal with synthetic bricks", () => {
 
 describe("a manifest cannot smuggle code into the emitted project", () => {
   const withRoute = (route: Record<string, unknown>) =>
-    ({ manifestVersion: 2, kind: "brick", id: "evil", version: "1.0.0", trust: "first-party", provides: [], requires: [], migrations: [], npmDependencies: {}, settings: {}, worker: { package: "@x/evil", routes: [route] } }) as never;
+    ({
+      manifestVersion: 2,
+      kind: "brick",
+      id: "evil",
+      version: "1.0.0",
+      trust: "first-party",
+      provides: [],
+      requires: [],
+      migrations: [],
+      npmDependencies: {},
+      settings: {},
+      worker: { package: "@x/evil", routes: [route] },
+    }) as never;
   const parse = async (manifest: unknown) => (await import("../src/schemas.ts")).ManifestSchema.safeParse(manifest).success;
 
   test.each([
@@ -315,11 +403,26 @@ describe("a manifest cannot smuggle code into the emitted project", () => {
     ["a manifest with wrong kind", { kind: "node-pack" }],
     ["a ui summary over 140 characters", { ui: { displayName: "Valid Name", category: "billing", summary: "a".repeat(141) } }],
     ["a ui category outside the closed enum", { ui: { displayName: "Valid Name", category: "unknown-cat", summary: "Short summary." } }],
-    ["a ui behaviourTest with path traversal", { ui: { displayName: "Valid Name", category: "billing", summary: "Short summary.", behaviourTest: "../escape.test.ts" } }],
+    [
+      "a ui behaviourTest with path traversal",
+      { ui: { displayName: "Valid Name", category: "billing", summary: "Short summary.", behaviourTest: "../escape.test.ts" } },
+    ],
     ["a trigger handler that is not an identifier", { triggers: { schedules: [{ id: "tick", cron: "* * * * *", handler: "run(); evil" }] } }],
     ["a conflict brick id that is invalid", { conflicts: [{ brick: "../evil", reason: "Bad id" }] }],
   ])("%s is refused", async (_label, change) => {
-    const base = { manifestVersion: 2, kind: "brick", id: "evil", version: "1.0.0", trust: "first-party", provides: [], requires: [], migrations: [], npmDependencies: {}, settings: {}, worker: { package: "@x/evil", routes: [] } };
+    const base = {
+      manifestVersion: 2,
+      kind: "brick",
+      id: "evil",
+      version: "1.0.0",
+      trust: "first-party",
+      provides: [],
+      requires: [],
+      migrations: [],
+      npmDependencies: {},
+      settings: {},
+      worker: { package: "@x/evil", routes: [] },
+    };
     expect(await parse({ ...base, ...change })).toBe(false);
   });
 
@@ -434,7 +537,10 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
 
   test("story 0.21: a brick's rateLimits are mounted with the SDK limiter after its guards and before its routes, and add the px_rate_limits migration", () => {
     const c = catalogOf(
-      brick("guard-brick", { provides: ["workspace-context"], worker: { package: "@x/guard-brick", guard: { export: "wsGuard", capability: "workspace-context" }, routes: [] } }),
+      brick("guard-brick", {
+        provides: ["workspace-context"],
+        worker: { package: "@x/guard-brick", guard: { export: "wsGuard", capability: "workspace-context" }, routes: [] },
+      }),
       brick("limited-brick", {
         requires: ["workspace-context"],
         routePrefixes: ["things"],
@@ -451,8 +557,12 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
     const out = files({ project: "limited-app", bricks: ["guard-brick", "limited-brick"] }, c);
     const entry = out.files["src/index.ts"]!;
     expect(entry).toContain('import { createHttpGuard, rateLimit } from "@poc/sdk";');
-    const poke = entry.indexOf('app.on("POST", "/api/things/:thingId/poke", rateLimit({"bucket":"things-poke","limit":7,"windowSeconds":60,"key":"param:thingId"}));');
-    const login = entry.indexOf('app.on("POST", "/api/things/login", rateLimit({"bucket":"auth-things","limit":3,"windowSeconds":600,"key":"field:email","failClosed":true}));');
+    const poke = entry.indexOf(
+      'app.on("POST", "/api/things/:thingId/poke", rateLimit({"bucket":"things-poke","limit":7,"windowSeconds":60,"key":"param:thingId"}));',
+    );
+    const login = entry.indexOf(
+      'app.on("POST", "/api/things/login", rateLimit({"bucket":"auth-things","limit":3,"windowSeconds":600,"key":"field:email","failClosed":true}));',
+    );
     expect(poke).toBeGreaterThan(-1);
     expect(login).toBeGreaterThan(poke);
     expect(entry.indexOf('app.use("/api/things/*", wsGuard);')).toBeGreaterThan(-1);
@@ -465,7 +575,10 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
 
   test("story 0.21: with several routes, every guard of the brick comes before its limiter, and rule paths use the brick's mount", () => {
     const c = catalogOf(
-      brick("guard-brick", { provides: ["workspace-context"], worker: { package: "@x/guard-brick", guard: { export: "wsGuard", capability: "workspace-context" }, routes: [] } }),
+      brick("guard-brick", {
+        provides: ["workspace-context"],
+        worker: { package: "@x/guard-brick", guard: { export: "wsGuard", capability: "workspace-context" }, routes: [] },
+      }),
       brick("two-route-brick", {
         requires: ["workspace-context"],
         routePrefixes: ["alpha", "beta"],
@@ -502,7 +615,15 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
     });
     expect(ManifestSchema.safeParse(manifest({})).success).toBe(true);
     expect(ManifestSchema.safeParse(manifest({ key: "param:id", failClosed: true })).success).toBe(true);
-    for (const rule of [{ limit: 0 }, { windowSeconds: -1 }, { limit: 1.5 }, { key: "cookie:session" }, { path: "things" }, { path: "/things/../x" }, { method: "TRACE" }]) {
+    for (const rule of [
+      { limit: 0 },
+      { windowSeconds: -1 },
+      { limit: 1.5 },
+      { key: "cookie:session" },
+      { path: "things" },
+      { path: "/things/../x" },
+      { method: "TRACE" },
+    ]) {
       expect(ManifestSchema.safeParse(manifest(rule)).success, JSON.stringify(rule)).toBe(false);
     }
   });
@@ -569,9 +690,7 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       brick("left", { triggers: { queues: [{ id: "shared-q", handler: "runLeft", maxBatch: 10, dlq: true }] } }),
       brick("right", { triggers: { queues: [{ id: "shared-q", handler: "runRight", maxBatch: 10, dlq: true }] } }),
     );
-    expect(errors({ project: "p", bricks: ["left", "right"] }, c)).toEqual([
-      'queue "shared-q" is declared by both left and right; enable only one',
-    ]);
+    expect(errors({ project: "p", bricks: ["left", "right"] }, c)).toEqual(['queue "shared-q" is declared by both left and right; enable only one']);
   });
 
   test("pluggable identity mounts core-auth sessionMiddleware or any custom user-identity brick guard, and refuses invalid identity configs", () => {
@@ -687,9 +806,7 @@ describe("conditional INTEGRATION_BLOBS R2 binding emission (AC4)", () => {
     };
     const res = files(bp, binaryCatalog);
     const wrangler = JSON.parse(res.files["wrangler.jsonc"]!.replace(/^\/\/.*\n/, ""));
-    expect(wrangler.r2_buckets).toEqual([
-      { binding: "INTEGRATION_BLOBS", bucket_name: "proj-binary-res-blobs" },
-    ]);
+    expect(wrangler.r2_buckets).toEqual([{ binding: "INTEGRATION_BLOBS", bucket_name: "proj-binary-res-blobs" }]);
   });
 
   test("emits INTEGRATION_BLOBS R2 bucket binding in wrangler.jsonc when graph has binary request content-type", () => {
@@ -712,9 +829,7 @@ describe("conditional INTEGRATION_BLOBS R2 binding emission (AC4)", () => {
     };
     const res = files(bp, binaryCatalog);
     const wrangler = JSON.parse(res.files["wrangler.jsonc"]!.replace(/^\/\/.*\n/, ""));
-    expect(wrangler.r2_buckets).toEqual([
-      { binding: "INTEGRATION_BLOBS", bucket_name: "proj-binary-req-blobs" },
-    ]);
+    expect(wrangler.r2_buckets).toEqual([{ binding: "INTEGRATION_BLOBS", bucket_name: "proj-binary-req-blobs" }]);
   });
 
   test("omits r2_buckets and INTEGRATION_BLOBS from wrangler.jsonc when graph has only non-binary operations", () => {
@@ -753,7 +868,6 @@ describe("conditional INTEGRATION_BLOBS R2 binding emission (AC4)", () => {
   });
 });
 
-
 describe("story 1.10: workspace delete cascade and suspension enforcement", () => {
   const ws = (guard: Record<string, unknown> = { suspension: "refuseSuspended" }, extra: Partial<Catalog["bricks"][string]["manifest"]> = {}) =>
     brick("ws-brick", {
@@ -785,7 +899,10 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
         globalTables: [{ table: "note_kinds", reason: "Shared list of kinds." }],
         privacy: { tables: {}, hookTables: ["notes", "note_tags", "note_audit", "note_trash"] },
         workspaceData,
-        worker: { package: "@x/notes-brick", routes: [{ factory: "createNotes", mountAt: "/api", options: {}, guardWith: "workspace-context", guardPaths: ["/api/notes", "/api/notes/*"] }] },
+        worker: {
+          package: "@x/notes-brick",
+          routes: [{ factory: "createNotes", mountAt: "/api", options: {}, guardWith: "workspace-context", guardPaths: ["/api/notes", "/api/notes/*"] }],
+        },
         ...extra,
       },
       { "migrations/0001.sql": notesSql },
@@ -793,11 +910,14 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
   const both = ["ws-brick", "notes-brick"];
 
   test("the purge lists every declared table in reverse install order, tombstones by deleted_at, and never a global table", () => {
-    const c = catalogOf(ws(), notes({ tables: [{ table: "notes" }, { table: "note_audit", tombstone: true }, { table: "note_trash", tombstone: true }, { table: "note_tags" }] }));
+    const c = catalogOf(
+      ws(),
+      notes({ tables: [{ table: "notes" }, { table: "note_audit", tombstone: true }, { table: "note_trash", tombstone: true }, { table: "note_tags" }] }),
+    );
     const entry = files({ project: "p", bricks: both }, c).files["src/index.ts"]!;
     const sql = /const WORKSPACE_PURGE_BRICK_SQL: ReadonlyArray<string> = (\[[\s\S]*?\]);/.exec(entry)?.[1];
     expect(JSON.parse(sql!)).toEqual([
-      'UPDATE "note_trash" SET deleted_at = datetime(\'now\') WHERE workspace_id = ? AND deleted_at IS NULL',
+      "UPDATE \"note_trash\" SET deleted_at = datetime('now') WHERE workspace_id = ? AND deleted_at IS NULL",
       'DELETE FROM "note_tags" WHERE workspace_id = ?',
       'DELETE FROM "notes" WHERE workspace_id = ?',
     ]);
@@ -818,7 +938,9 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
     const entry = files({ project: "p", bricks: both }, c).files["src/index.ts"]!;
     const sql = JSON.parse(/const WORKSPACE_PURGE_SHELL_SQL: ReadonlyArray<string> = (\[[\s\S]*?\]);/.exec(entry)![1]!);
     expect(sql[0]).toBe('DELETE FROM "px_schedules" WHERE workspace_id = ?');
-    expect(entry).toContain('const WORKSPACE_PURGE_OBJECTS: ReadonlyArray<{ binding: string; prefix: string }> = [{"binding":"FILES","prefix":"ws/{workspaceId}/notes/"}];');
+    expect(entry).toContain(
+      'const WORKSPACE_PURGE_OBJECTS: ReadonlyArray<{ binding: string; prefix: string }> = [{"binding":"FILES","prefix":"ws/{workspaceId}/notes/"}];',
+    );
     // Without schedules there is no px_schedules statement.
     const plain = files({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [{ table: "notes" }] }))).files["src/index.ts"]!;
     expect(plain).not.toContain("px_schedules");
@@ -831,9 +953,9 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
     expect(errors({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [{ table: "note_kinds" }] })))).toEqual([
       'notes-brick declares workspaceData table "note_kinds", which has no workspace_id column',
     ]);
-    expect(errors({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/" }] })))).toEqual([
-      'notes-brick declares workspaceData objects in binding "FILES", which is not an R2 binding in its bindings',
-    ]);
+    expect(
+      errors({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/" }] }))),
+    ).toEqual(['notes-brick declares workspaceData objects in binding "FILES", which is not an R2 binding in its bindings']);
     // A binding of another type (a KV namespace here) is refused too: R2 is the only store listed and deleted by prefix.
     const kv = notes({ tables: [], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/" }] }, { bindings: { FILES: "kv" } });
     expect(errors({ project: "p", bricks: both }, catalogOf(ws(), kv))).toEqual([
@@ -848,7 +970,10 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
     expect(withPrefix("{workspaceId}/x/")).toBe(false);
     // The schema (and so catalog:conformance) refuses a binding that is not declared as R2.
     const issues = (bindings: unknown) =>
-      ManifestSchema.safeParse({ ...notes({ tables: [], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/" }] }).manifest, bindings }).error?.issues.map((i) => i.message) ?? [];
+      ManifestSchema.safeParse({
+        ...notes({ tables: [], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/" }] }).manifest,
+        bindings,
+      }).error?.issues.map((i) => i.message) ?? [];
     expect(issues({ FILES: "r2" })).toEqual([]);
     for (const bindings of [{ FILES: "kv" }, ["FILES"], undefined]) {
       expect(issues(bindings)).toContain('workspaceData objectPrefixes binding "FILES" must be declared as an R2 binding ("r2") in bindings');
@@ -857,7 +982,10 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
 
   test("the generated purge pages through the bucket, deletes only the workspace's keys, and refuses an id with a slash before any delete", async () => {
     const ts = (await import("typescript")).default;
-    const c = catalogOf(ws(), notes({ tables: [{ table: "notes" }], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/notes/" }] }, { bindings: { FILES: "r2" } }));
+    const c = catalogOf(
+      ws(),
+      notes({ tables: [{ table: "notes" }], objectPrefixes: [{ binding: "FILES", prefix: "ws/{workspaceId}/notes/" }] }, { bindings: { FILES: "r2" } }),
+    );
     const entry = files({ project: "p", bricks: both }, c).files["src/index.ts"]!;
     const start = entry.indexOf("const WORKSPACE_PURGE_SHELL_SQL");
     const end = entry.indexOf("\n}\n", entry.indexOf("async function purgeWorkspaceData")) + 3;
@@ -866,12 +994,7 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
     }).outputText;
     const purge = new Function(`${js}\nreturn make();`)() as (env: Record<string, unknown>, workspaceId: string) => Promise<void>;
 
-    const keys = new Set([
-      ...[1, 2, 3, 4, 5].map((n) => `ws/wsA/notes/${n}`),
-      "ws/wsA2/notes/1",
-      "ws/wsB/notes/1",
-      "ws/wsA/other/1",
-    ]);
+    const keys = new Set([...[1, 2, 3, 4, 5].map((n) => `ws/wsA/notes/${n}`), "ws/wsA2/notes/1", "ws/wsB/notes/1", "ws/wsA/other/1"]);
     const lists: Array<{ prefix: string; cursor?: string }> = [];
     const bucket = {
       async list(o: { prefix: string; cursor?: string }) {
@@ -915,7 +1038,8 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
 
   test("each guard's own suspension check is mounted right after it on every guarded path", () => {
     const entry = files({ project: "p", bricks: both }, catalogOf(ws(), notes({ tables: [{ table: "notes" }] }))).files["src/index.ts"]!;
-    for (const path of ["/api/notes", "/api/notes/*"]) expect(entry).toContain(`app.use("${path}", wsGuard);\napp.use("${path}", notSuspended_workspace_context);`);
+    for (const path of ["/api/notes", "/api/notes/*"])
+      expect(entry).toContain(`app.use("${path}", wsGuard);\napp.use("${path}", notSuspended_workspace_context);`);
     expect(entry).toContain('import { createWs, refuseSuspended, wsGuard } from "@x/ws-brick";');
     expect(entry).toContain("const notSuspended_workspace_context = (c: any, next: any) => (suspensionExempt(c) ? next() : refuseSuspended(c, next));");
     for (const e of SUSPENSION_EXEMPT) expect(entry).toContain(`  // ${e.method} ${e.path}: ${e.reason}`);
@@ -928,9 +1052,15 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
     const orgRoutes = brick("org-things", {
       requires: ["org-context"],
       routePrefixes: ["orgs"],
-      worker: { package: "@x/org-things", routes: [{ factory: "createOrgThings", mountAt: "/api", options: {}, guardWith: "org-context", guardPaths: ["/api/orgs/*"] }] },
+      worker: {
+        package: "@x/org-things",
+        routes: [{ factory: "createOrgThings", mountAt: "/api", options: {}, guardWith: "org-context", guardPaths: ["/api/orgs/*"] }],
+      },
     });
-    const two = files({ project: "p", bricks: [...both, "org-brick", "org-things"] }, catalogOf(ws(), notes({ tables: [{ table: "notes" }] }), other, orgRoutes)).files["src/index.ts"]!;
+    const two = files(
+      { project: "p", bricks: [...both, "org-brick", "org-things"] },
+      catalogOf(ws(), notes({ tables: [{ table: "notes" }] }), other, orgRoutes),
+    ).files["src/index.ts"]!;
     expect(two).toContain('app.use("/api/orgs/*", orgGuard);\napp.use("/api/orgs/*", notSuspended_org_context);');
     expect(two).toContain("const notSuspended_org_context = (c: any, next: any) => (suspensionExempt(c) ? next() : refuseFrozenOrg(c, next));");
     expect(two).toContain('app.use("/api/notes/*", wsGuard);\napp.use("/api/notes/*", notSuspended_workspace_context);');

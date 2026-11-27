@@ -58,16 +58,8 @@ import type {
 } from "@poc/blueprint";
 import { PX_RATE_LIMITS_DDL, applyMigration, hashLegacySessionTokensOnce } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import {
-  PX_TELEMETRY_MIGRATION_SQL,
-  ensureTelemetryTables,
-} from "@poc/telemetry";
-import type {
-  RunRecord,
-  StepEvent,
-  TelemetryWebhookPayload,
-  TelemetryWsFrame,
-} from "@poc/telemetry";
+import { PX_TELEMETRY_MIGRATION_SQL, ensureTelemetryTables } from "@poc/telemetry";
+import type { RunRecord, StepEvent, TelemetryWebhookPayload, TelemetryWsFrame } from "@poc/telemetry";
 
 export interface StudioApiEnv {
   BLUEPRINT_DO: DurableObjectNamespace;
@@ -753,12 +745,8 @@ export async function ensureStudioD1Schema(db: D1Like): Promise<void> {
     ),
     db.prepare('CREATE INDEX IF NOT EXISTS "session_userId_idx" ON "session" ("userId")'),
     db.prepare('CREATE INDEX IF NOT EXISTS "account_userId_idx" ON "account" ("userId")'),
-    db.prepare(
-      'CREATE INDEX IF NOT EXISTS "verification_identifier_idx" ON "verification" ("identifier")',
-    ),
-    db.prepare(
-      "CREATE TABLE IF NOT EXISTS studio_orgs (id TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NULL, name TEXT NOT NULL, created_at TEXT NOT NULL)",
-    ),
+    db.prepare('CREATE INDEX IF NOT EXISTS "verification_identifier_idx" ON "verification" ("identifier")'),
+    db.prepare("CREATE TABLE IF NOT EXISTS studio_orgs (id TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NULL, name TEXT NOT NULL, created_at TEXT NOT NULL)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_org_members (org_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'builder', 'viewer')), created_at TEXT NOT NULL, PRIMARY KEY (org_id, user_id))",
     ),
@@ -774,79 +762,51 @@ export async function ensureStudioD1Schema(db: D1Like): Promise<void> {
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_builds (project_id TEXT NOT NULL, revision INTEGER NOT NULL, build_hash TEXT NOT NULL, semantic_hash TEXT NOT NULL, file_count INTEGER NOT NULL, byte_count INTEGER NOT NULL, files_json TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (project_id, revision))",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_builds_hash_idx ON studio_builds(project_id, build_hash)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_builds_hash_idx ON studio_builds(project_id, build_hash)"),
     db.prepare("CREATE INDEX IF NOT EXISTS studio_projects_org_idx ON projects(org_id)"),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_audit_log_org_idx ON studio_audit_log(org_id, created_at)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_audit_log_org_idx ON studio_audit_log(org_id, created_at)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_secret_vault (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, project_id TEXT NOT NULL, ref TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('api_key', 'webhook_secret', 'brick_secret')), label TEXT NOT NULL, app_or_brick TEXT NOT NULL, env_scope TEXT NOT NULL DEFAULT 'all', ciphertext_b64 TEXT NOT NULL, iv_b64 TEXT NOT NULL, key_hint TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'valid', created_by TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(project_id, ref))",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_secret_vault_project_idx ON studio_secret_vault(project_id, org_id)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_secret_vault_project_idx ON studio_secret_vault(project_id, org_id)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS deploy_tokens (token_ref TEXT PRIMARY KEY, org_id TEXT NOT NULL, account_id TEXT NOT NULL, account_name TEXT NOT NULL, token_last4 TEXT NOT NULL, scopes TEXT NOT NULL, status TEXT NOT NULL CHECK (status IN ('active', 'revoked', 'expired')) DEFAULT 'active', ciphertext TEXT, iv TEXT, wrapped_dek TEXT, dek_iv TEXT, kek_version INTEGER NOT NULL DEFAULT 1, created_by TEXT NOT NULL, created_at TEXT NOT NULL, last_verified_at TEXT, revoked_at TEXT)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS deploy_tokens_org_idx ON deploy_tokens(org_id, status)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS deploy_tokens_org_idx ON deploy_tokens(org_id, status)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS deploy_token_audit_log (audit_id TEXT PRIMARY KEY, token_ref TEXT NOT NULL, org_id TEXT NOT NULL, actor TEXT NOT NULL, deploy_id TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT NOT NULL)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS deploy_token_audit_log_token_idx ON deploy_token_audit_log(token_ref, created_at)",
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS deploy_token_audit_log_org_idx ON deploy_token_audit_log(org_id, created_at)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS deploy_token_audit_log_token_idx ON deploy_token_audit_log(token_ref, created_at)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS deploy_token_audit_log_org_idx ON deploy_token_audit_log(org_id, created_at)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS project_environments (project_id TEXT NOT NULL, org_id TEXT NOT NULL, env_name TEXT NOT NULL CHECK (env_name IN ('preview', 'production')), target_type TEXT NOT NULL DEFAULT 'byoc', account_id TEXT NOT NULL, account_name TEXT NOT NULL, token_ref TEXT NOT NULL, deployed_rev INTEGER, build_hash TEXT, code_hash TEXT, graph_hash TEXT, deployed_state_json TEXT, status TEXT NOT NULL DEFAULT 'connected', updated_at TEXT NOT NULL, PRIMARY KEY (project_id, env_name))",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS project_environments_org_idx ON project_environments(org_id, token_ref)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS project_environments_org_idx ON project_environments(org_id, token_ref)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS project_deployments (deploy_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, org_id TEXT NOT NULL, env_name TEXT NOT NULL CHECK (env_name IN ('preview', 'production')), revision INTEGER NOT NULL, build_hash TEXT NOT NULL, code_hash TEXT NOT NULL, graph_hash TEXT NOT NULL, action TEXT NOT NULL, worker_url TEXT NOT NULL, version_id TEXT NOT NULL, database_id TEXT NOT NULL, actor_id TEXT NOT NULL, state_json TEXT NOT NULL, created_at TEXT NOT NULL)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS project_deployments_project_env_idx ON project_deployments(project_id, env_name, created_at)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS project_deployments_project_env_idx ON project_deployments(project_id, env_name, created_at)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS builds (build_hash TEXT PRIMARY KEY, project_id TEXT NOT NULL, revision INTEGER NOT NULL, semantic_hash TEXT NOT NULL, code_hash TEXT NOT NULL, graph_hash TEXT NOT NULL, catalog_version TEXT NOT NULL DEFAULT '1.0.0', bundle_code TEXT NOT NULL, bundle_sha256 TEXT NOT NULL, files_json TEXT NOT NULL, assemble_count INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS builds_project_rev_idx ON builds(project_id, revision)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS builds_project_rev_idx ON builds(project_id, revision)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS deployments (deploy_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, org_id TEXT NOT NULL, env_name TEXT NOT NULL CHECK (env_name IN ('preview', 'production')), revision INTEGER NOT NULL, build_hash TEXT NOT NULL, code_hash TEXT NOT NULL, graph_hash TEXT NOT NULL, action TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'succeeded', reused_cached_build INTEGER NOT NULL DEFAULT 0, live_without_redeploy INTEGER NOT NULL DEFAULT 0, no_changes INTEGER NOT NULL DEFAULT 0, rollback_from_deploy_id TEXT, worker_url TEXT NOT NULL, version_id TEXT NOT NULL, database_id TEXT NOT NULL, actor_id TEXT NOT NULL, state_json TEXT NOT NULL, created_at TEXT NOT NULL)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS deployments_project_env_idx ON deployments(project_id, env_name, created_at)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS deployments_project_env_idx ON deployments(project_id, env_name, created_at)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS deployment_steps (step_id TEXT PRIMARY KEY, deploy_id TEXT NOT NULL, project_id TEXT NOT NULL, env_name TEXT NOT NULL, step_order INTEGER NOT NULL, step_name TEXT NOT NULL, resource_kind TEXT NOT NULL, resource_name TEXT NOT NULL, action TEXT NOT NULL, status TEXT NOT NULL, summary TEXT NOT NULL, created_at TEXT NOT NULL)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS deployment_steps_deploy_idx ON deployment_steps(deploy_id, step_order)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS deployment_steps_deploy_idx ON deployment_steps(deploy_id, step_order)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS onboarding_funnel_events (event_id TEXT PRIMARY KEY, org_id TEXT NOT NULL, project_id TEXT, actor_id TEXT NOT NULL, step TEXT NOT NULL CHECK (step IN ('wizard_opened', 'template_link_clicked', 'token_submitted', 'verification_failed', 'verification_succeeded', 'token_disconnected')), metadata_json TEXT, created_at TEXT NOT NULL)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS onboarding_funnel_events_org_step_idx ON onboarding_funnel_events(org_id, step, created_at)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS onboarding_funnel_events_org_step_idx ON onboarding_funnel_events(org_id, step, created_at)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_onboarding_events (event_id TEXT PRIMARY KEY, org_id TEXT NOT NULL, project_id TEXT, actor_id TEXT NOT NULL, step TEXT NOT NULL CHECK (step IN ('signup_completed', 'project_created', 'first_blueprint_edit', 'first_test_step_run', 'connect_cf_wizard_opened', 'connect_cf_token_link_clicked', 'connect_cf_token_submitted', 'connect_cf_permission_check_failed', 'connect_cf_verified', 'first_preview_deploy_started', 'first_preview_deploy_succeeded', 'first_production_deploy_succeeded')), metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_onboarding_events_org_step_idx ON studio_onboarding_events(org_id, step, created_at)",
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_onboarding_events_project_step_idx ON studio_onboarding_events(project_id, step, created_at)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_onboarding_events_org_step_idx ON studio_onboarding_events(org_id, step, created_at)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_onboarding_events_project_step_idx ON studio_onboarding_events(project_id, step, created_at)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS data_browser_audit_log (audit_id TEXT PRIMARY KEY, org_id TEXT NOT NULL, project_id TEXT NOT NULL, env_name TEXT NOT NULL CHECK (env_name IN ('preview', 'production')), workspace_id TEXT NOT NULL, table_name TEXT NOT NULL, row_id TEXT NOT NULL, operation TEXT NOT NULL CHECK (operation IN ('insert', 'update', 'delete')), actor TEXT NOT NULL, before_snapshot TEXT, after_snapshot TEXT, created_at TEXT NOT NULL)",
     ),
@@ -862,33 +822,23 @@ export async function ensureStudioD1Schema(db: D1Like): Promise<void> {
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_connections_metadata (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, project_id TEXT NOT NULL, ref TEXT NOT NULL, app TEXT NOT NULL, auth_type TEXT NOT NULL, label TEXT NOT NULL, env_scope TEXT NOT NULL DEFAULT 'all', scopes_json TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'connected', expires_at TEXT, last_checked_at TEXT, key_hint TEXT NOT NULL, created_by TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(project_id, ref))",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_connections_metadata_project_idx ON studio_connections_metadata(project_id, org_id)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_connections_metadata_project_idx ON studio_connections_metadata(project_id, org_id)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_oauth_states (state TEXT PRIMARY KEY, org_id TEXT NOT NULL, project_id TEXT NOT NULL, app TEXT NOT NULL, ref TEXT NOT NULL, label TEXT NOT NULL, env_scope TEXT NOT NULL DEFAULT 'preview', workspace_id TEXT NOT NULL DEFAULT 'default', code_verifier TEXT NOT NULL, code_challenge TEXT NOT NULL, scopes_json TEXT NOT NULL DEFAULT '[]', redirect_uri TEXT NOT NULL, created_by TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL)",
     ),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_connection_requests (request_id TEXT PRIMARY KEY, org_id TEXT NOT NULL, project_id TEXT NOT NULL, app TEXT NOT NULL, reason TEXT NOT NULL, scopes_json TEXT NOT NULL DEFAULT '[]', suggested_ref TEXT NOT NULL, connect_url TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending_user_consent', requested_by TEXT NOT NULL, created_at TEXT NOT NULL, resolved_at TEXT)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_connection_requests_project_idx ON studio_connection_requests(project_id, status)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_connection_requests_project_idx ON studio_connection_requests(project_id, status)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS px_connections (ref TEXT PRIMARY KEY, project_id TEXT NOT NULL DEFAULT 'default', env_name TEXT NOT NULL DEFAULT 'preview', workspace_id TEXT NOT NULL DEFAULT 'default', app TEXT NOT NULL, auth_type TEXT NOT NULL, label TEXT NOT NULL DEFAULT '', scopes_json TEXT NOT NULL DEFAULT '[]', ciphertext_b64 TEXT NOT NULL, iv_b64 TEXT NOT NULL, key_hint TEXT NOT NULL DEFAULT '••••', status TEXT NOT NULL DEFAULT 'connected', expires_at TEXT, refresh_lock_until TEXT, last_checked_at TEXT, updated_at TEXT NOT NULL DEFAULT (datetime('now')))",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS idx_px_connections_project_app ON px_connections(project_id, app, status)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_px_connections_project_app ON px_connections(project_id, app, status)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_audit_logs (id TEXT PRIMARY KEY, ts TEXT NOT NULL, org_id TEXT NOT NULL, project_id TEXT, actor_type TEXT NOT NULL, actor_id TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'succeeded', target_ref TEXT NOT NULL DEFAULT '', metadata_json TEXT NOT NULL DEFAULT '{}', details_json TEXT, ip_hash TEXT NOT NULL DEFAULT 'sha256:local', created_at TEXT NOT NULL)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_audit_logs_org_idx ON studio_audit_logs(org_id, ts DESC)",
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_audit_logs_project_idx ON studio_audit_logs(project_id, ts DESC)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_audit_logs_org_idx ON studio_audit_logs(org_id, ts DESC)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_audit_logs_project_idx ON studio_audit_logs(project_id, ts DESC)"),
     db.prepare(
       "CREATE TRIGGER IF NOT EXISTS trg_studio_audit_logs_no_update BEFORE UPDATE ON studio_audit_logs BEGIN SELECT RAISE(ABORT, 'AUDIT_LOG_IMMUTABLE: UPDATE and DELETE are forbidden on studio_audit_logs'); END",
     ),
@@ -898,24 +848,16 @@ export async function ensureStudioD1Schema(db: D1Like): Promise<void> {
     db.prepare(
       "CREATE TABLE IF NOT EXISTS project_retention_settings (project_id TEXT NOT NULL, org_id TEXT NOT NULL, env_name TEXT NOT NULL DEFAULT 'default' CHECK (env_name IN ('default', 'preview', 'production')), run_retention_days INTEGER NOT NULL DEFAULT 14 CHECK (run_retention_days >= 1 AND run_retention_days <= 90), telemetry_retention_days INTEGER NOT NULL DEFAULT 7 CHECK (telemetry_retention_days >= 1 AND telemetry_retention_days <= 30), capture_step_io_in_prod INTEGER NOT NULL DEFAULT 1, additional_redact_keys_json TEXT NOT NULL DEFAULT '[]', updated_by TEXT NOT NULL DEFAULT 'system', updated_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (project_id, env_name))",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS project_retention_settings_org_idx ON project_retention_settings(org_id, project_id)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS project_retention_settings_org_idx ON project_retention_settings(org_id, project_id)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_beta_cohort_partners (org_id TEXT PRIMARY KEY, cohort_id TEXT NOT NULL DEFAULT 'cohort-1', org_name TEXT NOT NULL, org_slug TEXT NOT NULL, partner_type TEXT NOT NULL CHECK (partner_type IN ('agency', 'mcp-first-dev', 'solo-founder')), owner_email TEXT NOT NULL, owner_user_id TEXT NOT NULL, invite_token TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'provisioned', deployed_integration_workflows INTEGER NOT NULL DEFAULT 0, mean_time_to_locate_failing_node_sec REAL, weekly_active_sessions_w4 INTEGER NOT NULL DEFAULT 0, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_beta_cohort_partners_cohort_idx ON studio_beta_cohort_partners(cohort_id, partner_type)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_beta_cohort_partners_cohort_idx ON studio_beta_cohort_partners(cohort_id, partner_type)"),
     db.prepare(
       "CREATE TABLE IF NOT EXISTS studio_sandboxes (sandbox_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, org_id TEXT NOT NULL DEFAULT 'org_default', dispatch_namespace TEXT NOT NULL DEFAULT 'px-sandboxes', build_hash TEXT NOT NULL, code_hash TEXT NOT NULL, graph_hash TEXT NOT NULL, deployed_rev INTEGER NOT NULL DEFAULT 0, preview_url TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'promoted', 'destroyed')), daily_requests_used INTEGER NOT NULL DEFAULT 0, d1_rows_used INTEGER NOT NULL DEFAULT 0, d1_bytes_used INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, destroyed_at TEXT)",
     ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_sandboxes_project_idx ON studio_sandboxes(project_id, status)",
-    ),
-    db.prepare(
-      "CREATE INDEX IF NOT EXISTS studio_sandboxes_expires_idx ON studio_sandboxes(status, expires_at)",
-    ),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_sandboxes_project_idx ON studio_sandboxes(project_id, status)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS studio_sandboxes_expires_idx ON studio_sandboxes(status, expires_at)"),
     ...STUDIO_APPROVAL_REQUESTS_DDL.map((sql) => db.prepare(sql)),
   ]);
   await db
@@ -941,11 +883,7 @@ export async function ensureStudioD1Schema(db: D1Like): Promise<void> {
   // guarded step rewrites them to their digest once per isolate (a full scan, so not on every call); a legacy row that
   // appears later is rewritten on first use by the hashed-session adapter. Either way its holder stays signed in.
   await hashLegacySessionTokensOnce(db);
-  await db
-    .prepare(
-      "CREATE INDEX IF NOT EXISTS studio_mcp_tokens_org_project_idx ON studio_mcp_tokens(org_id, project_id)",
-    )
-    .run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS studio_mcp_tokens_org_project_idx ON studio_mcp_tokens(org_id, project_id)").run();
   await ensureTelemetryTables(db);
 }
 
@@ -1222,9 +1160,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     return byWorkflow;
   }
 
-  public getWorkflowPinnedOutputs(
-    workflowId: string,
-  ): Record<string, PinnedNodeOutput> {
+  public getWorkflowPinnedOutputs(workflowId: string): Record<string, PinnedNodeOutput> {
     this.ensureTables();
     const rows = this.ctx.storage.sql
       .exec<{
@@ -1232,10 +1168,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
         output_json: string;
         source_run_id: string | null;
         pinned_at: string;
-      }>(
-        "SELECT node_id, output_json, source_run_id, pinned_at FROM pinned_outputs WHERE workflow_id = ? ORDER BY node_id ASC",
-        workflowId,
-      )
+      }>("SELECT node_id, output_json, source_run_id, pinned_at FROM pinned_outputs WHERE workflow_id = ? ORDER BY node_id ASC", workflowId)
       .toArray();
 
     const pins: Record<string, PinnedNodeOutput> = {};
@@ -1290,11 +1223,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
 
   public deletePinnedOutput(workflowId: string, nodeId: string): boolean {
     this.ensureTables();
-    this.ctx.storage.sql.exec(
-      "DELETE FROM pinned_outputs WHERE workflow_id = ? AND node_id = ?",
-      workflowId,
-      nodeId,
-    );
+    this.ctx.storage.sql.exec("DELETE FROM pinned_outputs WHERE workflow_id = ? AND node_id = ?", workflowId, nodeId);
     return true;
   }
 
@@ -1340,10 +1269,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       .exec<{
         revision: number;
         state_json: string;
-      }>(
-        "SELECT revision, state_json FROM snapshots WHERE revision <= ? ORDER BY revision DESC LIMIT 1",
-        targetRevision,
-      )
+      }>("SELECT revision, state_json FROM snapshots WHERE revision <= ? ORDER BY revision DESC LIMIT 1", targetRevision)
       .toArray();
 
     let state: BlueprintState;
@@ -1361,20 +1287,14 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
         .exec<{
           revision: number;
           ops_json: string;
-        }>(
-          "SELECT revision, ops_json FROM revisions WHERE revision >= ? AND revision <= ? ORDER BY revision ASC",
-          startRevision,
-          targetRevision,
-        )
+        }>("SELECT revision, ops_json FROM revisions WHERE revision >= ? AND revision <= ? ORDER BY revision ASC", startRevision, targetRevision)
         .toArray();
 
       for (const step of stepRows) {
         const ops = JSON.parse(step.ops_json) as unknown[];
         const res = applyOps(state, ops, catalog);
         if (!res.ok) {
-          throw new Error(
-            `Failed to replay revision ${step.revision} for project "${project}": ${JSON.stringify(res.errors)}`,
-          );
+          throw new Error(`Failed to replay revision ${step.revision} for project "${project}": ${JSON.stringify(res.errors)}`);
         }
         state = res.state;
       }
@@ -1393,9 +1313,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       project,
       revision: Number(revRow.revision),
       parentRevision: Number(revRow.parent_revision),
-      ...(revRow.rebased_from !== null && revRow.rebased_from !== undefined
-        ? { rebasedFrom: Number(revRow.rebased_from) }
-        : {}),
+      ...(revRow.rebased_from !== null && revRow.rebased_from !== undefined ? { rebasedFrom: Number(revRow.rebased_from) } : {}),
       author,
       summary: revRow.summary,
       opCount,
@@ -1406,10 +1324,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     };
   }
 
-  public listRevisions(
-    project: string,
-    options?: { limit?: number; beforeRevision?: number },
-  ): RevisionHistoryPayload {
+  public listRevisions(project: string, options?: { limit?: number; beforeRevision?: number }): RevisionHistoryPayload {
     this.ensureTables();
     const limit = Math.max(1, Math.min(100, options?.limit ?? 20));
     const beforeRevision = options?.beforeRevision;
@@ -1458,9 +1373,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       return {
         revision: Number(row.revision),
         parentRevision: Number(row.parent_revision),
-        ...(row.rebased_from !== null && row.rebased_from !== undefined
-          ? { rebasedFrom: Number(row.rebased_from) }
-          : {}),
+        ...(row.rebased_from !== null && row.rebased_from !== undefined ? { rebasedFrom: Number(row.rebased_from) } : {}),
         author: {
           type: row.author_type,
           id: row.author_id,
@@ -1475,8 +1388,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       };
     });
 
-    const nextBeforeRevision =
-      hasMore && revisions.length > 0 ? revisions[revisions.length - 1]!.revision : null;
+    const nextBeforeRevision = hasMore && revisions.length > 0 ? revisions[revisions.length - 1]!.revision : null;
 
     return {
       project,
@@ -1490,9 +1402,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     project: string,
     fromRevision: number,
     toRevision: number,
-  ):
-    | { ok: true; status: 200; data: SemanticDiffPayload }
-    | { ok: false; status: 404; error: { code: string; message: string } } {
+  ): { ok: true; status: 200; data: SemanticDiffPayload } | { ok: false; status: 404; error: { code: string; message: string } } {
     this.ensureTables();
     const stateA = this.getStateAtRevision(project, fromRevision);
     if (!stateA) {
@@ -1545,9 +1455,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
 
     const meta = metaRows[0];
     const currentRevision = meta ? Number(meta.current_revision) : 0;
-    const currentState = meta
-      ? (JSON.parse(meta.current_state) as BlueprintState)
-      : createEmptyBlueprint(input.project);
+    const currentState = meta ? (JSON.parse(meta.current_state) as BlueprintState) : createEmptyBlueprint(input.project);
 
     if (input.baseRevision !== undefined && input.baseRevision !== currentRevision) {
       return {
@@ -1565,11 +1473,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       };
     }
 
-    if (
-      !Number.isInteger(input.targetRevision) ||
-      input.targetRevision < 0 ||
-      input.targetRevision >= currentRevision
-    ) {
+    if (!Number.isInteger(input.targetRevision) || input.targetRevision < 0 || input.targetRevision >= currentRevision) {
       return {
         ok: false,
         status: 422,
@@ -1589,10 +1493,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
 
     if (input.targetRevision > 0) {
       const targetExists = this.ctx.storage.sql
-        .exec<{ revision: number }>(
-          "SELECT revision FROM revisions WHERE revision = ? LIMIT 1",
-          input.targetRevision,
-        )
+        .exec<{ revision: number }>("SELECT revision FROM revisions WHERE revision = ? LIMIT 1", input.targetRevision)
         .toArray();
       if (!targetExists[0]) {
         return {
@@ -1692,25 +1593,17 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       };
     }
 
-    const txResult = this.ctx.storage.transactionSync(
-      (): ApplyBatchOutcome & { updatedAt?: string; committedOps?: Op[] } => {
+    const txResult = this.ctx.storage.transactionSync((): ApplyBatchOutcome & { updatedAt?: string; committedOps?: Op[] } => {
       // 1. Check idempotent retry: if every op in the batch has an opId already recorded in committed_ops
       const incomingOpIds = input.ops.map((raw) =>
-        raw && typeof raw === "object" && typeof (raw as { opId?: unknown }).opId === "string"
-          ? (raw as { opId: string }).opId.trim()
-          : "",
+        raw && typeof raw === "object" && typeof (raw as { opId?: unknown }).opId === "string" ? (raw as { opId: string }).opId.trim() : "",
       );
 
       if (incomingOpIds.every((id) => id.length > 0)) {
         const committedRevisions: number[] = [];
         let allAlreadyCommitted = true;
         for (const opId of incomingOpIds) {
-          const rows = this.ctx.storage.sql
-            .exec<{ revision: number }>(
-              "SELECT revision FROM committed_ops WHERE op_id = ? LIMIT 1",
-              opId,
-            )
-            .toArray();
+          const rows = this.ctx.storage.sql.exec<{ revision: number }>("SELECT revision FROM committed_ops WHERE op_id = ? LIMIT 1", opId).toArray();
           if (rows[0]) {
             committedRevisions.push(Number(rows[0].revision));
           } else {
@@ -1754,9 +1647,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
 
       const meta = metaRows[0];
       const currentRevision = meta ? Number(meta.current_revision) : 0;
-      const currentState = meta
-        ? (JSON.parse(meta.current_state) as BlueprintState)
-        : createEmptyBlueprint(input.project);
+      const currentState = meta ? (JSON.parse(meta.current_state) as BlueprintState) : createEmptyBlueprint(input.project);
 
       // 2. Reject if baseRevision is ahead of currentRevision
       if (input.baseRevision !== undefined && input.baseRevision > currentRevision) {
@@ -1804,9 +1695,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       // 4. Stale baseRevision: check target overlap and auto-rebase if disjoint
       let rebasedFrom: number | undefined;
       if (input.baseRevision !== undefined && input.baseRevision < currentRevision) {
-        const baseState =
-          this.getStateAtRevision(input.project, input.baseRevision)?.state ??
-          createEmptyBlueprint(input.project);
+        const baseState = this.getStateAtRevision(input.project, input.baseRevision)?.state ?? createEmptyBlueprint(input.project);
 
         const interveningRows = this.ctx.storage.sql
           .exec<{
@@ -1825,10 +1714,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
           )
           .toArray();
 
-        const touchedTargets = new Map<
-          string,
-          { revision: number; author: AuthorAttribution; opId: string }
-        >();
+        const touchedTargets = new Map<string, { revision: number; author: AuthorAttribution; opId: string }>();
         const interveningOps: InterveningOpRecord[] = [];
 
         for (const row of interveningRows) {
@@ -1892,16 +1778,12 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
         const rebasedApplied = applyOps(currentState, input.ops, catalog);
         if (!rebasedApplied.ok) {
           const lastIntervening = interveningRows[interveningRows.length - 1];
-          const fallbackRevision = lastIntervening
-            ? Number(lastIntervening.revision)
-            : currentRevision;
+          const fallbackRevision = lastIntervening ? Number(lastIntervening.revision) : currentRevision;
           const fallbackAuthor: AuthorAttribution = lastIntervening
             ? {
                 type: lastIntervening.author_type,
                 id: lastIntervening.author_id,
-                ...(lastIntervening.author_client
-                  ? { client: lastIntervening.author_client }
-                  : {}),
+                ...(lastIntervening.author_client ? { client: lastIntervening.author_client } : {}),
               }
             : { type: "human", id: "unknown" };
 
@@ -1947,27 +1829,15 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       }
 
       const nowIso = new Date().toISOString();
-      const summary =
-        input.summary && input.summary.trim().length > 0
-          ? input.summary.trim()
-          : generateBatchSummary(parsedIncomingOps);
-      const resolvedOrgId =
-        (input.orgId && input.orgId !== "org_default" ? input.orgId : meta?.org_id) ??
-        input.orgId ??
-        null;
+      const summary = input.summary && input.summary.trim().length > 0 ? input.summary.trim() : generateBatchSummary(parsedIncomingOps);
+      const resolvedOrgId = (input.orgId && input.orgId !== "org_default" ? input.orgId : meta?.org_id) ?? input.orgId ?? null;
 
       if (input.mode === "propose") {
         const proposedState = applied.state;
-        const proposedReadiness = computeReadiness(
-          proposedState,
-          catalog,
-          catalogNodeRegistry,
-        );
+        const proposedReadiness = computeReadiness(proposedState, catalog, catalogNodeRegistry);
         const diff = computeSemanticDiff(currentState, proposedState);
         const proposalId =
-          input.proposalId && input.proposalId.trim().length > 0
-            ? input.proposalId.trim()
-            : `prop_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+          input.proposalId && input.proposalId.trim().length > 0 ? input.proposalId.trim() : `prop_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
 
         if (!meta) {
           const initialHash = semanticHash(currentState);
@@ -2020,11 +1890,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
         };
 
         const currentSemanticHash = semanticHash(currentState);
-        const currentReadiness = computeReadiness(
-          currentState,
-          catalog,
-          catalogNodeRegistry,
-        );
+        const currentReadiness = computeReadiness(currentState, catalog, catalogNodeRegistry);
 
         return {
           ok: true,
@@ -2079,11 +1945,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       );
 
       for (const op of parsedIncomingOps) {
-        this.ctx.storage.sql.exec(
-          `INSERT OR REPLACE INTO committed_ops (op_id, revision) VALUES (?, ?)`,
-          op.opId,
-          nextRevision,
-        );
+        this.ctx.storage.sql.exec(`INSERT OR REPLACE INTO committed_ops (op_id, revision) VALUES (?, ?)`, op.opId, nextRevision);
       }
 
       this.ctx.storage.sql.exec(
@@ -2154,8 +2016,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       const db = this.env.STUDIO_DB;
       if (db) {
         await ensureStudioD1Schema(db);
-        const orgId =
-          (txResult.data as { orgId?: string }).orgId ?? input.orgId ?? "org_default";
+        const orgId = (txResult.data as { orgId?: string }).orgId ?? input.orgId ?? "org_default";
         await db
           .prepare(
             `INSERT INTO projects (project_id, org_id, current_revision, semantic_hash, updated_at)
@@ -2165,13 +2026,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
                semantic_hash = excluded.semantic_hash,
                updated_at = excluded.updated_at`,
           )
-          .bind(
-            txResult.data.project,
-            orgId,
-            txResult.data.revision,
-            txResult.data.semanticHash,
-            timestamp,
-          )
+          .bind(txResult.data.project, orgId, txResult.data.revision, txResult.data.semanticHash, timestamp)
           .run();
       }
 
@@ -2219,11 +2074,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     }
   }
 
-  private broadcastProposalEvent(
-    action: "created" | "accepted" | "partially_accepted" | "rejected",
-    proposal: ProposalRecord,
-    revision?: number,
-  ): void {
+  private broadcastProposalEvent(action: "created" | "accepted" | "partially_accepted" | "rejected", proposal: ProposalRecord, revision?: number): void {
     const payload = JSON.stringify({
       type: "proposal",
       action,
@@ -2272,17 +2123,10 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       proposedReadiness: JSON.parse(row.proposed_readiness_json) as ReadinessResult,
       createdAt: row.created_at,
       reviewedAt: row.reviewed_at ?? null,
-      reviewedBy: row.reviewed_by
-        ? (JSON.parse(row.reviewed_by) as AuthorAttribution)
-        : null,
+      reviewedBy: row.reviewed_by ? (JSON.parse(row.reviewed_by) as AuthorAttribution) : null,
       rejectionReason: row.rejection_reason ?? null,
-      acceptedRev:
-        row.accepted_rev !== null && row.accepted_rev !== undefined
-          ? Number(row.accepted_rev)
-          : null,
-      acceptedOpIds: row.accepted_op_ids_json
-        ? (JSON.parse(row.accepted_op_ids_json) as string[])
-        : null,
+      acceptedRev: row.accepted_rev !== null && row.accepted_rev !== undefined ? Number(row.accepted_rev) : null,
+      acceptedOpIds: row.accepted_op_ids_json ? (JSON.parse(row.accepted_op_ids_json) as string[]) : null,
     };
   }
 
@@ -2336,10 +2180,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
 
   public async acceptProposal(
     input: AcceptProposalInput,
-  ): Promise<
-    | ApplyBatchOutcome
-    | { ok: false; status: 404 | 409; error: { code: string; message: string } }
-  > {
+  ): Promise<ApplyBatchOutcome | { ok: false; status: 404 | 409; error: { code: string; message: string } }> {
     this.ensureTables();
     const proposal = this.getProposal(input.project, input.proposalId);
     if (!proposal) {
@@ -2365,13 +2206,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     }
 
     const current = this.getProjectState(input.project);
-    const evaluated = evaluateProposalSelection(
-      current.state,
-      proposal.ops,
-      input.opIds,
-      catalog,
-      catalogNodeRegistry,
-    );
+    const evaluated = evaluateProposalSelection(current.state, proposal.ops, input.opIds, catalog, catalogNodeRegistry);
     if (!evaluated.ok) {
       return {
         ok: false,
@@ -2384,9 +2219,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       ...proposal.actor,
       ...(input.reviewer.id ? { onBehalfOf: input.reviewer.id } : {}),
     };
-    const commitSummary = evaluated.isPartial
-      ? `${proposal.summary} (${evaluated.selectedOps.length}/${proposal.ops.length} ops accepted)`
-      : proposal.summary;
+    const commitSummary = evaluated.isPartial ? `${proposal.summary} (${evaluated.selectedOps.length}/${proposal.ops.length} ops accepted)` : proposal.summary;
 
     const batchOutcome = await this.applyBatch({
       project: input.project,
@@ -2403,9 +2236,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       return batchOutcome;
     }
 
-    const nextStatus: ProposalStatus = evaluated.isPartial
-      ? "partially_accepted"
-      : "accepted";
+    const nextStatus: ProposalStatus = evaluated.isPartial ? "partially_accepted" : "accepted";
     const reviewedAt = new Date().toISOString();
 
     this.ctx.storage.sql.exec(
@@ -2425,21 +2256,16 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       input.proposalId,
     );
 
-    const updatedProposal =
-      this.getProposal(input.project, input.proposalId) ?? {
-        ...proposal,
-        status: nextStatus,
-        reviewedAt,
-        reviewedBy: input.reviewer,
-        acceptedRev: batchOutcome.data.revision,
-        acceptedOpIds: evaluated.selectedOpIds,
-      };
+    const updatedProposal = this.getProposal(input.project, input.proposalId) ?? {
+      ...proposal,
+      status: nextStatus,
+      reviewedAt,
+      reviewedBy: input.reviewer,
+      acceptedRev: batchOutcome.data.revision,
+      acceptedOpIds: evaluated.selectedOpIds,
+    };
 
-    this.broadcastProposalEvent(
-      nextStatus,
-      updatedProposal,
-      batchOutcome.data.revision,
-    );
+    this.broadcastProposalEvent(nextStatus, updatedProposal, batchOutcome.data.revision);
 
     return {
       ok: true,
@@ -2453,9 +2279,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     };
   }
 
-  public async rejectProposal(
-    input: RejectProposalInput,
-  ): Promise<
+  public async rejectProposal(input: RejectProposalInput): Promise<
     | {
         ok: true;
         status: 200;
@@ -2494,8 +2318,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     }
 
     const reviewedAt = new Date().toISOString();
-    const reason =
-      input.reason && input.reason.trim().length > 0 ? input.reason.trim() : null;
+    const reason = input.reason && input.reason.trim().length > 0 ? input.reason.trim() : null;
 
     this.ctx.storage.sql.exec(
       `UPDATE proposals
@@ -2512,14 +2335,13 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     );
 
     const current = this.getProjectState(input.project);
-    const updatedProposal =
-      this.getProposal(input.project, input.proposalId) ?? {
-        ...proposal,
-        status: "rejected" as const,
-        reviewedAt,
-        reviewedBy: input.reviewer,
-        rejectionReason: reason,
-      };
+    const updatedProposal = this.getProposal(input.project, input.proposalId) ?? {
+      ...proposal,
+      status: "rejected" as const,
+      reviewedAt,
+      reviewedBy: input.reviewer,
+      rejectionReason: reason,
+    };
 
     this.broadcastProposalEvent("rejected", updatedProposal, current.revision);
 
@@ -2571,17 +2393,11 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       if (revParam !== null) {
         const revNum = Number(revParam);
         if (!Number.isInteger(revNum) || revNum < 0) {
-          return Response.json(
-            { error: { code: "INVALID_REVISION", message: "revision must be a non-negative integer" } },
-            { status: 400 },
-          );
+          return Response.json({ error: { code: "INVALID_REVISION", message: "revision must be a non-negative integer" } }, { status: 400 });
         }
         const historical = this.getStateAtRevision(project, revNum);
         if (!historical) {
-          return Response.json(
-            { error: { code: "REVISION_NOT_FOUND", message: `revision ${revNum} not found` } },
-            { status: 404 },
-          );
+          return Response.json({ error: { code: "REVISION_NOT_FOUND", message: `revision ${revNum} not found` } }, { status: 404 });
         }
         return Response.json(historical, { status: 200 });
       }
@@ -2600,10 +2416,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       if (limitParam !== null) {
         const parsedLimit = Number(limitParam);
         if (!Number.isInteger(parsedLimit) || parsedLimit < 1) {
-          return Response.json(
-            { error: { code: "INVALID_LIMIT", message: "limit must be a positive integer" } },
-            { status: 400 },
-          );
+          return Response.json({ error: { code: "INVALID_LIMIT", message: "limit must be a positive integer" } }, { status: 400 });
         }
         limit = parsedLimit;
       }
@@ -2692,20 +2505,14 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
         return Response.json({ project, proposal }, { status: 200 });
       }
       const statusFilter = url.searchParams.get("status") ?? undefined;
-      return Response.json(
-        { project, proposals: this.listProposals(project, statusFilter) },
-        { status: 200 },
-      );
+      return Response.json({ project, proposals: this.listProposals(project, statusFilter) }, { status: 200 });
     }
 
     if (request.method === "POST" && url.pathname === "/proposals") {
       const body = (await request.json()) as ApplyOpsInput;
       const role = request.headers.get("x-studio-caller-role") ?? body.callerRole;
       if (role === "viewer") {
-        return Response.json(
-          { error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } },
-          { status: 403 },
-        );
+        return Response.json({ error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } }, { status: 403 });
       }
       const result = await this.applyBatch({ ...body, mode: "propose" });
       if (!result.ok) {
@@ -2718,10 +2525,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       const body = (await request.json()) as AcceptProposalInput;
       const role = request.headers.get("x-studio-caller-role") ?? body.callerRole;
       if (role === "viewer") {
-        return Response.json(
-          { error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } },
-          { status: 403 },
-        );
+        return Response.json({ error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } }, { status: 403 });
       }
       const result = await this.acceptProposal(body);
       if (!result.ok) {
@@ -2734,10 +2538,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       const body = (await request.json()) as RejectProposalInput;
       const role = request.headers.get("x-studio-caller-role") ?? body.callerRole;
       if (role === "viewer") {
-        return Response.json(
-          { error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } },
-          { status: 403 },
-        );
+        return Response.json({ error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } }, { status: 403 });
       }
       const result = await this.rejectProposal(body);
       if (!result.ok) {
@@ -2750,10 +2551,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       const body = (await request.json()) as ApplyOpsInput;
       const role = request.headers.get("x-studio-caller-role") ?? body.callerRole;
       if (role === "viewer") {
-        return Response.json(
-          { error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } },
-          { status: 403 },
-        );
+        return Response.json({ error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } }, { status: 403 });
       }
       const result = await this.applyBatch(body);
       if (!result.ok) {
@@ -2766,10 +2564,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       const body = (await request.json()) as RevertInput;
       const role = request.headers.get("x-studio-caller-role") ?? body.callerRole;
       if (role === "viewer") {
-        return Response.json(
-          { error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } },
-          { status: 403 },
-        );
+        return Response.json({ error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } }, { status: 403 });
       }
       const result = await this.revertToRevision(body);
       if (!result.ok) {
@@ -2814,10 +2609,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       const body = (await request.json()) as ImportBundleInput;
       const role = request.headers.get("x-studio-caller-role") ?? body.callerRole;
       if (role === "viewer") {
-        return Response.json(
-          { error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } },
-          { status: 403 },
-        );
+        return Response.json({ error: { code: "FORBIDDEN_ROLE", message: "Viewer role cannot mutate project" } }, { status: 403 });
       }
       const result = await this.importBundle(body);
       if (!result.ok) {
@@ -3044,32 +2836,23 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
           project,
           workflowId,
           nodeId,
-          pinnedOutputs: workflowId
-            ? this.getWorkflowPinnedOutputs(workflowId)
-            : {},
+          pinnedOutputs: workflowId ? this.getWorkflowPinnedOutputs(workflowId) : {},
         },
         { status: 200 },
       );
     }
 
     if (request.method === "POST" && url.pathname === "/deploy-broadcast") {
-      const body = (await request.json().catch(() => ({}))) as Record<
-        string,
-        unknown
-      >;
+      const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
       const frame = {
         type: "deploy" as const,
         project,
         ...body,
-        timestamp:
-          typeof body.timestamp === "string"
-            ? body.timestamp
-            : new Date().toISOString(),
+        timestamp: typeof body.timestamp === "string" ? body.timestamp : new Date().toISOString(),
       };
       const serialized = JSON.stringify(frame);
       const sockets = this.ctx.getWebSockets(project);
-      const allSockets =
-        sockets.length > 0 ? sockets : this.ctx.getWebSockets();
+      const allSockets = sockets.length > 0 ? sockets : this.ctx.getWebSockets();
       let broadcastedCount = 0;
       for (const ws of allSockets) {
         try {
@@ -3079,10 +2862,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
           // Ignore closed socket errors
         }
       }
-      return Response.json(
-        { ok: true, project, broadcastedCount, frame },
-        { status: 200 },
-      );
+      return Response.json({ ok: true, project, broadcastedCount, frame }, { status: 200 });
     }
 
     if (request.method === "POST" && url.pathname === "/log-broadcast") {
@@ -3091,15 +2871,10 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
         entry?: unknown;
         entries?: unknown[];
       };
-      const entries = Array.isArray(body.entries)
-        ? body.entries
-        : body.entry
-          ? [body.entry]
-          : [];
+      const entries = Array.isArray(body.entries) ? body.entries : body.entry ? [body.entry] : [];
       const envName = typeof body.envName === "string" ? body.envName : "preview";
       const sockets = this.ctx.getWebSockets(project);
-      const allSockets =
-        sockets.length > 0 ? sockets : this.ctx.getWebSockets();
+      const allSockets = sockets.length > 0 ? sockets : this.ctx.getWebSockets();
       let broadcastedCount = 0;
       const frames: Array<Record<string, unknown>> = [];
       for (const entry of entries) {
@@ -3120,10 +2895,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
           }
         }
       }
-      return Response.json(
-        { ok: true, project, envName, broadcastedCount, frames },
-        { status: 200 },
-      );
+      return Response.json({ ok: true, project, envName, broadcastedCount, frames }, { status: 200 });
     }
 
     if (request.method === "GET" && url.pathname === "/sqlite-dump") {
@@ -3131,27 +2903,13 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       return Response.json(
         {
           project,
-          project_meta: this.ctx.storage.sql
-            .exec<Record<string, unknown>>("SELECT * FROM project_meta")
-            .toArray(),
-          revisions: this.ctx.storage.sql
-            .exec<Record<string, unknown>>("SELECT * FROM revisions ORDER BY revision ASC")
-            .toArray(),
-          snapshots: this.ctx.storage.sql
-            .exec<Record<string, unknown>>("SELECT * FROM snapshots ORDER BY revision ASC")
-            .toArray(),
-          committed_ops: this.ctx.storage.sql
-            .exec<Record<string, unknown>>("SELECT * FROM committed_ops")
-            .toArray(),
-          telemetry_runs: this.ctx.storage.sql
-            .exec<Record<string, unknown>>("SELECT * FROM telemetry_runs")
-            .toArray(),
-          telemetry_events: this.ctx.storage.sql
-            .exec<Record<string, unknown>>("SELECT * FROM telemetry_events ORDER BY seq ASC")
-            .toArray(),
-          pinned_outputs: this.ctx.storage.sql
-            .exec<Record<string, unknown>>("SELECT * FROM pinned_outputs")
-            .toArray(),
+          project_meta: this.ctx.storage.sql.exec<Record<string, unknown>>("SELECT * FROM project_meta").toArray(),
+          revisions: this.ctx.storage.sql.exec<Record<string, unknown>>("SELECT * FROM revisions ORDER BY revision ASC").toArray(),
+          snapshots: this.ctx.storage.sql.exec<Record<string, unknown>>("SELECT * FROM snapshots ORDER BY revision ASC").toArray(),
+          committed_ops: this.ctx.storage.sql.exec<Record<string, unknown>>("SELECT * FROM committed_ops").toArray(),
+          telemetry_runs: this.ctx.storage.sql.exec<Record<string, unknown>>("SELECT * FROM telemetry_runs").toArray(),
+          telemetry_events: this.ctx.storage.sql.exec<Record<string, unknown>>("SELECT * FROM telemetry_events ORDER BY seq ASC").toArray(),
+          pinned_outputs: this.ctx.storage.sql.exec<Record<string, unknown>>("SELECT * FROM pinned_outputs").toArray(),
         },
         { status: 200 },
       );
@@ -3391,10 +3149,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
   }
 
   override async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-    const text =
-      typeof message === "string"
-        ? message
-        : new TextDecoder().decode(message);
+    const text = typeof message === "string" ? message : new TextDecoder().decode(message);
 
     let parsed: unknown;
     try {
@@ -3414,12 +3169,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
       return;
     }
 
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      !Array.isArray(parsed) &&
-      (parsed as { type?: unknown }).type === "ping"
-    ) {
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && (parsed as { type?: unknown }).type === "ping") {
       try {
         ws.send(JSON.stringify({ type: "pong" }));
       } catch {
@@ -3433,7 +3183,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
         JSON.stringify({
           type: "error",
           code: "BAD_MESSAGE",
-          message: "Unsupported WebSocket message type; expected { type: \"ping\" }",
+          message: 'Unsupported WebSocket message type; expected { type: "ping" }',
         }),
       );
     } catch {
@@ -3441,12 +3191,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     }
   }
 
-  override async webSocketClose(
-    ws: WebSocket,
-    code: number,
-    reason: string,
-    _wasClean: boolean,
-  ): Promise<void> {
+  override async webSocketClose(ws: WebSocket, code: number, reason: string, _wasClean: boolean): Promise<void> {
     try {
       ws.close(code, reason);
     } catch {
@@ -3478,10 +3223,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
         error: { code: "VALIDATION_FAILED"; issues: BlueprintValidationError[] };
       } {
     this.ensureTables();
-    const snapshot =
-      revision !== undefined
-        ? this.getStateAtRevision(project, revision)
-        : this.getProjectState(project);
+    const snapshot = revision !== undefined ? this.getStateAtRevision(project, revision) : this.getProjectState(project);
 
     if (!snapshot) {
       return {
@@ -3555,11 +3297,7 @@ export class BlueprintDO extends DurableObjectBase<StudioApiEnv> {
     }
 
     const nextRevision = current.revision + 1;
-    const ops = buildImportOps(
-      parsed.state,
-      current.revision > 0 ? current.state : undefined,
-      `import-r${nextRevision}`,
-    );
+    const ops = buildImportOps(parsed.state, current.revision > 0 ? current.state : undefined, `import-r${nextRevision}`);
 
     return this.applyBatch({
       project: input.project,

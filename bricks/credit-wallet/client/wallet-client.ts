@@ -77,7 +77,10 @@ export function createWalletClient(options: WalletClientOptions): WalletClient {
       throw new WalletClientError("The server's answer was not understood", response.status);
     }
     if (!response.ok) {
-      const message = typeof body === "object" && body !== null && typeof (body as { error?: unknown }).error === "string" ? (body as { error: string }).error : `Request failed (${response.status})`;
+      const message =
+        typeof body === "object" && body !== null && typeof (body as { error?: unknown }).error === "string"
+          ? (body as { error: string }).error
+          : `Request failed (${response.status})`;
       throw new WalletClientError(message, response.status);
     }
     const parsed = schema.safeParse(body);

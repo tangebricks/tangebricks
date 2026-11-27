@@ -67,9 +67,7 @@ export const stripeManifest: IntegrationManifestFile = {
       summary: "Retrieve payment intent",
       method: "GET",
       path: "/v1/payment_intents/{intentId}",
-      params: [
-        { name: "intentId", in: "path", dataType: "string", required: true },
-      ],
+      params: [{ name: "intentId", in: "path", dataType: "string", required: true }],
       response: {
         status: 200,
         outputs: [

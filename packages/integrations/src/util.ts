@@ -12,9 +12,7 @@ export function canonicalJson(val: unknown): string {
   return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson((val as Record<string, unknown>)[k])}`).join(",")}}`;
 }
 
-
 export const VALID_IDENTIFIER_REGEX = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
-
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -56,13 +54,7 @@ export function mapSchemaTypeToPortType(schema: unknown): SchemaTypeMappingResul
   if (rawType === "boolean") return { dataType: "boolean" };
   if (rawType === "array") {
     const it = isPlainObject(schema.items) ? schema.items : undefined;
-    if (
-      it &&
-      (isPlainObject(it.properties) ||
-        it.type === "object" ||
-        typeof it.$ref === "string" ||
-        it.type === "array")
-    ) {
+    if (it && (isPlainObject(it.properties) || it.type === "object" || typeof it.$ref === "string" || it.type === "array")) {
       return { dataType: "array", loss: "BODY_NESTED_FLATTENED" };
     }
     return { dataType: "array" };
@@ -78,7 +70,11 @@ export function mapSchemaTypeToPortType(schema: unknown): SchemaTypeMappingResul
 
 export function truncateText(text: unknown, maxLen: number): string | undefined {
   if (typeof text !== "string") return undefined;
-  const firstSentence = text.trim().replace(/\s+/g, " ").split(/(?<=\.)\s+/)[0] ?? text.trim();
+  const firstSentence =
+    text
+      .trim()
+      .replace(/\s+/g, " ")
+      .split(/(?<=\.)\s+/)[0] ?? text.trim();
   const compact = firstSentence.slice(0, maxLen).trim();
   return compact.length > 0 ? compact : undefined;
 }
@@ -137,11 +133,7 @@ export interface DerefResult {
   readonly depthExceeded: boolean;
 }
 
-export function derefObject(
-  root: Record<string, unknown>,
-  target: unknown,
-  depth = 0,
-): DerefResult {
+export function derefObject(root: Record<string, unknown>, target: unknown, depth = 0): DerefResult {
   if (!isPlainObject(target)) return { target: {}, depthExceeded: false };
   if (depth > 5) return { target, depthExceeded: true };
   if (typeof target.$ref === "string") {
@@ -188,4 +180,3 @@ export function computeSpecHash(spec: Record<string, unknown> | string | unknown
   }
   return result;
 }
-

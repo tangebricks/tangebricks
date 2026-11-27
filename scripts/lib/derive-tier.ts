@@ -40,8 +40,7 @@ export function loadTierPolicy(policyPath?: string): TierPolicy {
     integrationFidelity: { production: "zero-unacknowledged", beta: "report-present" },
   };
 
-  const resolvedPath =
-    policyPath ?? resolve(__dirname, "..", "tier-policy.json");
+  const resolvedPath = policyPath ?? resolve(__dirname, "..", "tier-policy.json");
 
   if (existsSync(resolvedPath)) {
     try {
@@ -55,10 +54,7 @@ export function loadTierPolicy(policyPath?: string): TierPolicy {
           ...defaultPolicy.requireConformanceKit,
           ...parsed.requireConformanceKit,
         },
-        liveVerifiedMaxAgeDays:
-          typeof parsed.liveVerifiedMaxAgeDays === "number"
-            ? parsed.liveVerifiedMaxAgeDays
-            : defaultPolicy.liveVerifiedMaxAgeDays,
+        liveVerifiedMaxAgeDays: typeof parsed.liveVerifiedMaxAgeDays === "number" ? parsed.liveVerifiedMaxAgeDays : defaultPolicy.liveVerifiedMaxAgeDays,
         integrationFidelity: {
           ...defaultPolicy.integrationFidelity,
           ...parsed.integrationFidelity,
@@ -90,9 +86,7 @@ export function deriveTier(
   const minBeta = resolvedPolicy.minAssertions?.beta ?? 5;
   const maxCanaryAgeDays = resolvedPolicy.liveVerifiedMaxAgeDays ?? 7;
 
-  const isIntegration =
-    manifest.kind === "integration" ||
-    (typeof manifest.app === "string" && !manifest.id);
+  const isIntegration = manifest.kind === "integration" || (typeof manifest.app === "string" && !manifest.id);
 
   const blockers: string[] = [];
 
@@ -123,8 +117,7 @@ export function deriveTier(
 
   // 3. Conformance kit (for bricks)
   if (!isIntegration && resolvedPolicy.requireConformanceKit?.production) {
-    const hasConformanceKit =
-      tierEvidence?.conformanceKit === true || tierEvidence?.skipped !== undefined;
+    const hasConformanceKit = tierEvidence?.conformanceKit === true || tierEvidence?.skipped !== undefined;
     if (!hasConformanceKit) {
       blockers.push("CONFORMANCE_KIT_MISSING");
     }

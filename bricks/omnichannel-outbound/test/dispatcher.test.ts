@@ -168,7 +168,10 @@ describe("Omnichannel Outbound Dispatcher Core Engine", () => {
       return { status: "failed", error: "PROVIDER_THROTTLED", retryable: true, retryAfterMs: 1000 };
     };
     const waits: number[] = [];
-    const res = await service(adapter, { now, sleep: async (ms) => void waits.push(ms) }).sendMessage(WS_A, "email", { recipient: "a@example.com", body: "hi" });
+    const res = await service(adapter, { now, sleep: async (ms) => void waits.push(ms) }).sendMessage(WS_A, "email", {
+      recipient: "a@example.com",
+      body: "hi",
+    });
     expect(res.ok && res.dispatch).toMatchObject({ status: "failed", error_text: "PROVIDER_THROTTLED", attempts: 1, external_id: null });
     expect(adapter.calls).toBe(1);
     expect(waits).toEqual([]);
@@ -314,7 +317,10 @@ describe("credentials (B9)", () => {
     const a = await verifiedEmailChannel(adapter);
     const b = await service(adapter).createChannel(WS_A, "email", "mockmail", "other@example.com");
     if (!b.ok) throw new Error(b.error);
-    await db.prepare("UPDATE msg_channels SET credentials_ciphertext = (SELECT credentials_ciphertext FROM msg_channels WHERE id = ?) WHERE id = ?").bind(a.id, b.channel.id).run();
+    await db
+      .prepare("UPDATE msg_channels SET credentials_ciphertext = (SELECT credentials_ciphertext FROM msg_channels WHERE id = ?) WHERE id = ?")
+      .bind(a.id, b.channel.id)
+      .run();
     const res = await service(adapter).sendMessage(WS_A, b.channel.id, { recipient: "x@example.com", body: "hi" });
     expect(res.ok === false && res.errorCode).toBe("CREDENTIALS_UNREADABLE");
   });
@@ -327,7 +333,14 @@ describe("credentials (B9)", () => {
   });
 
   it("without the key, a channel with credentials is refused 503 NOT_CONFIGURED", async () => {
-    const res = await service(new MockDeliveryAdapter(), { credentialsKey: undefined }).createChannel(WS_A, "email", "mockmail", "a@example.com", {}, { apiKey: "x" });
+    const res = await service(new MockDeliveryAdapter(), { credentialsKey: undefined }).createChannel(
+      WS_A,
+      "email",
+      "mockmail",
+      "a@example.com",
+      {},
+      { apiKey: "x" },
+    );
     expect(res.ok === false && res.code).toBe(503);
     expect(res.ok === false && res.errorCode).toBe("NOT_CONFIGURED");
     expect(await service().listChannels(WS_A)).toHaveLength(0);
@@ -382,7 +395,17 @@ describe("paging (B12)", () => {
   it("limit 1..100 (default 50) and offset 0..100000; anything else is refused", () => {
     expect(parsePaging(undefined, undefined)).toEqual({ limit: 50, offset: 0 });
     expect(parsePaging("100", "100000")).toEqual({ limit: 100, offset: 100000 });
-    for (const [limit, offset] of [["-1", undefined], ["1000", undefined], ["abc", undefined], ["0", undefined], ["Infinity", undefined], ["1.5", undefined], ["10", "-1"], ["10", "100001"], ["10", "x"]] as const) {
+    for (const [limit, offset] of [
+      ["-1", undefined],
+      ["1000", undefined],
+      ["abc", undefined],
+      ["0", undefined],
+      ["Infinity", undefined],
+      ["1.5", undefined],
+      ["10", "-1"],
+      ["10", "100001"],
+      ["10", "x"],
+    ] as const) {
       expect(parsePaging(limit, offset)).toBeNull();
     }
   });
@@ -405,7 +428,11 @@ describe("Message Route Handlers (/api/messages/*)", () => {
   const ENV = { DB: db, PX_CHANNEL_CREDENTIALS_KEY: KEY };
   const post = (app: Hono<MessageEnv>, path: string, body: unknown, envOverride: Record<string, unknown> = ENV) =>
     app.fetch(
-      new Request(`http://localhost/api/messages/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: typeof body === "string" ? body : JSON.stringify(body) }),
+      new Request(`http://localhost/api/messages/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: typeof body === "string" ? body : JSON.stringify(body),
+      }),
       envOverride,
     );
   const get = (app: Hono<MessageEnv>, path: string) => app.fetch(new Request(`http://localhost/api/messages/${path}`), ENV);
@@ -413,7 +440,13 @@ describe("Message Route Handlers (/api/messages/*)", () => {
   it("POST channels (with credentials) -> 201 without secrets; send -> 200 sent; history lists it", async () => {
     const adapter = new MockDeliveryAdapter();
     const app = createApp(adapter);
-    const chanRes = await post(app, "channels", { channelType: "email", provider: "mockmail", senderAddress: "team@projectx.dev", config: { region: "com" }, credentials: { apiKey: "sk_live_route" } });
+    const chanRes = await post(app, "channels", {
+      channelType: "email",
+      provider: "mockmail",
+      senderAddress: "team@projectx.dev",
+      config: { region: "com" },
+      credentials: { apiKey: "sk_live_route" },
+    });
     expect(chanRes.status).toBe(201);
     const chanText = await chanRes.text();
     expect(chanText).not.toContain("sk_live_route");
@@ -438,8 +471,15 @@ describe("Message Route Handlers (/api/messages/*)", () => {
 
   it("secret-like config keys 400; credentials without the key 503", async () => {
     const app = createApp(new MockDeliveryAdapter());
-    expect((await post(app, "channels", { channelType: "email", provider: "mockmail", senderAddress: "a@projectx.dev", config: { apiKey: "x" } })).status).toBe(400);
-    const res = await post(app, "channels", { channelType: "email", provider: "mockmail", senderAddress: "a@projectx.dev", credentials: { apiKey: "x" } }, { DB: db });
+    expect((await post(app, "channels", { channelType: "email", provider: "mockmail", senderAddress: "a@projectx.dev", config: { apiKey: "x" } })).status).toBe(
+      400,
+    );
+    const res = await post(
+      app,
+      "channels",
+      { channelType: "email", provider: "mockmail", senderAddress: "a@projectx.dev", credentials: { apiKey: "x" } },
+      { DB: db },
+    );
     expect(res.status).toBe(503);
     expect(((await res.json()) as { code: string }).code).toBe("NOT_CONFIGURED");
   });
@@ -491,7 +531,10 @@ describe("Message Route Handlers (/api/messages/*)", () => {
     const adapter = new MockDeliveryAdapter();
     const channel = { channelType: "email", provider: "mockmail", senderAddress: "ceo@projectx.dev" };
     const send = { channel: "email", recipient: "victim@example.com", body: "hi" };
-    for (const [role, status] of [[null, 401], ["member", 403]] as const) {
+    for (const [role, status] of [
+      [null, 401],
+      ["member", 403],
+    ] as const) {
       const app = createApp(adapter, WS_A, role);
       expect((await post(app, "channels", channel)).status).toBe(status);
       expect((await post(app, "channels", "{bad")).status).toBe(status);
@@ -527,10 +570,10 @@ describe("status webhook", () => {
     return a;
   };
   const hook = (a: Hono<MessageEnv>, channelId: string, body: string, signature?: string) =>
-    a.fetch(
-      new Request(`http://localhost/api/message-webhooks/${channelId}`, { method: "POST", headers: signature ? { [SIG]: signature } : {}, body }),
-      { DB: db, PX_CHANNEL_CREDENTIALS_KEY: KEY },
-    );
+    a.fetch(new Request(`http://localhost/api/message-webhooks/${channelId}`, { method: "POST", headers: signature ? { [SIG]: signature } : {}, body }), {
+      DB: db,
+      PX_CHANNEL_CREDENTIALS_KEY: KEY,
+    });
 
   async function sentDispatch(adapter: MockDeliveryAdapter, ws: string, secret: string) {
     const created = await service(adapter).createChannel(ws, "email", "mockmail", "team@example.com", {}, { apiKey: "k", appSecret: secret });
@@ -634,9 +677,9 @@ describe("no delivery adapter (story 0.9, B11)", () => {
   });
 
   it("OUTBOUND_NO_ADAPTER: the workflow node fails NOT_CONFIGURED instead of returning dispatched: true", async () => {
-    await expect(
-      executeSendOutboundMessage({ nodeId: "n_send", data: { channel: "slack" }, inputs: { in: { text: "hi" } } }),
-    ).rejects.toThrow(/^NOT_CONFIGURED: omnichannel-outbound\.send_message/);
+    await expect(executeSendOutboundMessage({ nodeId: "n_send", data: { channel: "slack" }, inputs: { in: { text: "hi" } } })).rejects.toThrow(
+      /^NOT_CONFIGURED: omnichannel-outbound\.send_message/,
+    );
   });
 });
 
@@ -655,7 +698,7 @@ describe("workflow node with adapters (story 2.4)", () => {
       if (typeof value !== "string") throw new Error(`secret "${name}" is declared by omnichannel-outbound.send_message but was not provided`);
       return value;
     },
-    binding: <T,>(name: string) => {
+    binding: <T>(name: string) => {
       if (!(node.bindings ?? []).includes(name)) throw new Error(`binding "${name}" is not declared by omnichannel-outbound.send_message`);
       const value = env[name];
       if (value === undefined) throw new Error(`binding "${name}" is declared by omnichannel-outbound.send_message but was not provided`);
@@ -880,7 +923,11 @@ describe("review hardening (story 2.4)", () => {
     };
     const patch = (role: string, body: unknown, id = channel.id) =>
       appAs(role).fetch(
-        new Request(`http://localhost/api/messages/channels/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+        new Request(`http://localhost/api/messages/channels/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }),
         { DB: db, PX_CHANNEL_CREDENTIALS_KEY: KEY },
       );
     expect((await patch("member", { workflowSendAllowed: true })).status).toBe(403);
@@ -939,7 +986,10 @@ describe("review follow-up (story 2.4)", () => {
     adapter.script = [{ status: "failed", error: "PROVIDER_UNKNOWN_OUTCOME", retryable: false }];
     const created = await service(adapter).createChannel(WS_A, "email", "mockmail", "team@example.com");
     if (!created.ok) throw new Error(created.error);
-    const row = await db.prepare("SELECT verify_code_hash FROM msg_channels WHERE id = ?").bind(created.channel.id).first<{ verify_code_hash: string | null }>();
+    const row = await db
+      .prepare("SELECT verify_code_hash FROM msg_channels WHERE id = ?")
+      .bind(created.channel.id)
+      .first<{ verify_code_hash: string | null }>();
     expect(row!.verify_code_hash).toMatch(/^[0-9a-f]{64}$/);
     adapter.script = [{ status: "failed", error: "SEND_TIMEOUT_UNKNOWN_OUTCOME", retryable: false }];
     const res = await service(adapter).startVerification(WS_A, created.channel.id);
@@ -985,7 +1035,12 @@ describe("review follow-up (story 2.4)", () => {
       new Request("http://localhost/api/messages/channels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channelType: "email", provider: "mockmail", senderAddress: "a@example.com", credentials: { apiKey: "\u00e9".repeat(4000), other: "\u00e9".repeat(1500) } }),
+        body: JSON.stringify({
+          channelType: "email",
+          provider: "mockmail",
+          senderAddress: "a@example.com",
+          credentials: { apiKey: "\u00e9".repeat(4000), other: "\u00e9".repeat(1500) },
+        }),
       }),
       { DB: db, PX_CHANNEL_CREDENTIALS_KEY: KEY },
     );
@@ -1000,7 +1055,9 @@ describe("review follow-up (story 2.4)", () => {
     let clock = Date.parse("2026-11-25T09:00:00Z");
     await service(adapter, { now: () => clock }).createChannel(WS_A, "email", "mockmail", "old@example.com");
     clock += 60_000;
-    const open = await service(adapter, { now: () => clock }).createChannel(WS_A, "email", "mockmail", "wf@example.com", {}, undefined, { workflowSendAllowed: true });
+    const open = await service(adapter, { now: () => clock }).createChannel(WS_A, "email", "mockmail", "wf@example.com", {}, undefined, {
+      workflowSendAllowed: true,
+    });
     if (!open.ok) throw new Error(open.error);
     const viaWorkflow = await service(adapter).sendMessage(WS_A, "email", { recipient: "a@example.com", body: "hi", viaWorkflow: true });
     expect(viaWorkflow.ok && viaWorkflow.dispatch.channel_id).toBe(open.channel.id);
@@ -1030,9 +1087,39 @@ describe("migration 0002 keeps existing dispatches", () => {
       await db.prepare("SELECT id, recipient, subject, body_text, status, external_id, error_text, sent_at, attempts FROM msg_dispatches ORDER BY id").all()
     ).results;
     expect(rows).toEqual([
-      { id: "dsp_1", recipient: "x@example.com", subject: "Hi", body_text: "body one", status: "sent", external_id: "ext_1", error_text: null, sent_at: "2026-01-01T00:00:00Z", attempts: 1 },
-      { id: "dsp_2", recipient: "y@example.com", subject: null, body_text: "body two", status: "failed", external_id: null, error_text: "boom", sent_at: null, attempts: 1 },
-      { id: "dsp_3", recipient: "z@example.com", subject: null, body_text: "body three", status: "queued", external_id: null, error_text: null, sent_at: null, attempts: 0 },
+      {
+        id: "dsp_1",
+        recipient: "x@example.com",
+        subject: "Hi",
+        body_text: "body one",
+        status: "sent",
+        external_id: "ext_1",
+        error_text: null,
+        sent_at: "2026-01-01T00:00:00Z",
+        attempts: 1,
+      },
+      {
+        id: "dsp_2",
+        recipient: "y@example.com",
+        subject: null,
+        body_text: "body two",
+        status: "failed",
+        external_id: null,
+        error_text: "boom",
+        sent_at: null,
+        attempts: 1,
+      },
+      {
+        id: "dsp_3",
+        recipient: "z@example.com",
+        subject: null,
+        body_text: "body three",
+        status: "queued",
+        external_id: null,
+        error_text: null,
+        sent_at: null,
+        attempts: 0,
+      },
     ]);
     const indexes = (
       await db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'msg_dispatches' ORDER BY name").all<{ name: string }>()

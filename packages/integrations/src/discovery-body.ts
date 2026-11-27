@@ -1,12 +1,7 @@
 import { FIDELITY_CODES } from "@poc/assembler";
 import { escapeJsonPointer } from "./report.ts";
 import { mapSchema } from "./schema-map.ts";
-import {
-  isPlainObject,
-  resolveJsonPointerRef,
-  sanitizeIdentifier,
-  truncateText,
-} from "./util.ts";
+import { isPlainObject, resolveJsonPointerRef, sanitizeIdentifier, truncateText } from "./util.ts";
 import type { IntegrationOperationBody, IntegrationOperationBodyField } from "@poc/assembler";
 import type { DiscoveryMethodContext } from "./discovery-params.ts";
 
@@ -21,8 +16,7 @@ export function extractDiscoveryBody(
   const { report, operationId, methodIdStr } = ctx;
   let body: IntegrationOperationBody | undefined;
   if (method !== "GET" && isPlainObject(methodVal.request)) {
-    const refName =
-      typeof methodVal.request.$ref === "string" ? methodVal.request.$ref : "";
+    const refName = typeof methodVal.request.$ref === "string" ? methodVal.request.$ref : "";
     const reqSchema = refName ? resolveJsonPointerRef(doc, refName) : methodVal.request;
     const reqPointer = `#/methods/${escapeJsonPointer(methodIdStr)}/request`;
 
@@ -42,11 +36,7 @@ export function extractDiscoveryBody(
         };
       }
 
-      const requiredSet = new Set<string>(
-        Array.isArray(reqSchema.required)
-          ? reqSchema.required.filter((r): r is string => typeof r === "string")
-          : [],
-      );
+      const requiredSet = new Set<string>(Array.isArray(reqSchema.required) ? reqSchema.required.filter((r): r is string => typeof r === "string") : []);
 
       // Required-first ordering
       const reqProps: [string, unknown][] = [];
@@ -118,9 +108,7 @@ export function extractDiscoveryBody(
               report?.approximated({
                 op: operationId,
                 element: "bodyField",
-                code: code === "SCHEMA_DEPTH_LIMIT"
-                  ? FIDELITY_CODES.SCHEMA_DEPTH_LIMIT.code
-                  : FIDELITY_CODES.SCHEMA_NODE_LIMIT.code,
+                code: code === "SCHEMA_DEPTH_LIMIT" ? FIDELITY_CODES.SCHEMA_DEPTH_LIMIT.code : FIDELITY_CODES.SCHEMA_NODE_LIMIT.code,
                 pointer: propPointer,
                 blocking: false,
               });

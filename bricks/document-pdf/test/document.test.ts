@@ -4,12 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_document_pdf.sql?raw";
-import {
-  DocumentPdfService,
-  hydrateTemplate,
-  generatePdfBinary,
-  createDocumentRoutes,
-} from "../src/index.ts";
+import { DocumentPdfService, hydrateTemplate, generatePdfBinary, createDocumentRoutes } from "../src/index.ts";
 import type { DocEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -66,11 +61,7 @@ describe("Document & PDF Engine Core Logic", () => {
 
   it("renders document, saves audit record, and computes SHA-256 digital stamp", async () => {
     const service = new DocumentPdfService(db);
-    const tmpl = await service.createTemplate(
-      WS_ALPHA,
-      "service_agreement",
-      "Agreement between {{partyA}} and {{partyB}}\nEffective Date: {{effectiveDate}}"
-    );
+    const tmpl = await service.createTemplate(WS_ALPHA, "service_agreement", "Agreement between {{partyA}} and {{partyB}}\nEffective Date: {{effectiveDate}}");
 
     expect(tmpl.id).toMatch(/^tmpl_[a-f0-9]{32}$/);
 
@@ -118,14 +109,18 @@ describe("Document & PDF HTTP API", () => {
     app.route("/api", createDocumentRoutes());
 
     // 1. POST /documents/templates
-    const createRes = await app.request("/api/documents/templates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        name: "nda_contract",
-        templateHtml: "Non-Disclosure Agreement for {{clientName}}",
-      }),
-    }, { DB: db });
+    const createRes = await app.request(
+      "/api/documents/templates",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          name: "nda_contract",
+          templateHtml: "Non-Disclosure Agreement for {{clientName}}",
+        }),
+      },
+      { DB: db },
+    );
     expect(createRes.status).toBe(201);
     const createJson = (await createRes.json()) as { template: { id: string } };
     const tmplId = createJson.template.id;
@@ -137,29 +132,37 @@ describe("Document & PDF HTTP API", () => {
     expect(listJson.templates).toHaveLength(1);
 
     // 3. POST /documents/render (JSON format)
-    const renderRes = await app.request("/api/documents/render", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        templateId: tmplId,
-        title: "NDA - Stark Industries",
-        variables: { clientName: "Stark Industries" },
-      }),
-    }, { DB: db });
+    const renderRes = await app.request(
+      "/api/documents/render",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          templateId: tmplId,
+          title: "NDA - Stark Industries",
+          variables: { clientName: "Stark Industries" },
+        }),
+      },
+      { DB: db },
+    );
     expect(renderRes.status).toBe(201);
     const renderJson = (await renderRes.json()) as { renderId: string; sha256: string };
     expect(renderJson.renderId).toMatch(/^drend_/);
     expect(renderJson.sha256).toMatch(/^[a-f0-9]{64}$/);
 
     // 4. POST /documents/render?format=binary (Binary PDF format)
-    const binRes = await app.request("/api/documents/render?format=binary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        title: "Downloadable PDF",
-        lines: ["Page 1 content"],
-      }),
-    }, { DB: db });
+    const binRes = await app.request(
+      "/api/documents/render?format=binary",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          title: "Downloadable PDF",
+          lines: ["Page 1 content"],
+        }),
+      },
+      { DB: db },
+    );
     expect(binRes.status).toBe(200);
     expect(binRes.headers.get("Content-Type")).toBe("application/pdf");
     expect(binRes.headers.get("X-PDF-SHA256")).not.toBeNull();
@@ -182,11 +185,15 @@ describe("Document & PDF HTTP API", () => {
     const service = new DocumentPdfService(db);
     const betaTmpl = await service.createTemplate(WS_BETA, "beta_secret", "Beta secret terms for {{name}}");
 
-    const res = await app.request("/api/documents/render", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({ templateId: betaTmpl.id, title: "Stolen", variables: { name: "Mallory" } }),
-    }, { DB: db });
+    const res = await app.request(
+      "/api/documents/render",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({ templateId: betaTmpl.id, title: "Stolen", variables: { name: "Mallory" } }),
+      },
+      { DB: db },
+    );
     expect(res.status).toBe(404);
     expect(await service.getTemplate(WS_ALPHA, betaTmpl.id)).toBeNull();
     expect((await service.getTemplate(WS_BETA, betaTmpl.id))?.template_html).toContain("Beta secret terms");

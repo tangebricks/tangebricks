@@ -1,9 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  fetchEnvironmentHealth,
-  type EnvironmentHealthSummaryPayload,
-  type HealthWindowPayload,
-} from "../api.ts";
+import { fetchEnvironmentHealth, type EnvironmentHealthSummaryPayload, type HealthWindowPayload } from "../api.ts";
 import { useStudioStore } from "../store.ts";
 
 export interface BackendHealthPanelProps {
@@ -39,22 +35,15 @@ function loadInitialHealthState(project: string): PersistedHealthFilterState {
 
   const params = new URLSearchParams(window.location.search);
   const envParam = params.get("healthEnv") ?? fromStorage.env ?? defaults.env;
-  const winParam =
-    params.get("healthWindow") ?? fromStorage.window ?? defaults.window;
+  const winParam = params.get("healthWindow") ?? fromStorage.window ?? defaults.window;
 
   return {
     env: envParam === "production" ? "production" : "preview",
-    window:
-      winParam === "24h" || winParam === "7d" || winParam === "1h"
-        ? winParam
-        : "1h",
+    window: winParam === "24h" || winParam === "7d" || winParam === "1h" ? winParam : "1h",
   };
 }
 
-function persistHealthState(
-  project: string,
-  state: PersistedHealthFilterState,
-): void {
+function persistHealthState(project: string, state: PersistedHealthFilterState): void {
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage.setItem(getStorageKey(project), JSON.stringify(state));
@@ -65,11 +54,7 @@ function persistHealthState(
     const url = new URL(window.location.href);
     url.searchParams.set("healthEnv", state.env);
     url.searchParams.set("healthWindow", state.window);
-    window.history.replaceState(
-      window.history.state,
-      "",
-      `${url.pathname}${url.search}${url.hash}`,
-    );
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   } catch {
     // ignore history errors
   }
@@ -82,8 +67,7 @@ export function drillDownToErrorLogs(options: {
   setActiveNav: (nav: "workflows") => void;
   setRunHistoryDrawerOpen: (open: boolean) => void;
 }): void {
-  const { project, env, brickId, setActiveNav, setRunHistoryDrawerOpen } =
-    options;
+  const { project, env, brickId, setActiveNav, setRunHistoryDrawerOpen } = options;
   if (typeof window !== "undefined") {
     try {
       const logState = {
@@ -97,10 +81,7 @@ export function drillDownToErrorLogs(options: {
         q: "",
         liveTail: true,
       };
-      window.sessionStorage.setItem(
-        `px_studio_structured_logs_state:${project}`,
-        JSON.stringify(logState),
-      );
+      window.sessionStorage.setItem(`px_studio_structured_logs_state:${project}`, JSON.stringify(logState));
       window.sessionStorage.setItem("studio:runsDrawerSubTab", "logs");
     } catch {
       // ignore storage errors
@@ -116,11 +97,7 @@ export function drillDownToErrorLogs(options: {
       } else {
         url.searchParams.delete("logBrick");
       }
-      window.history.replaceState(
-        window.history.state,
-        "",
-        `${url.pathname}${url.search}${url.hash}`,
-      );
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     } catch {
       // ignore history errors
     }
@@ -135,31 +112,11 @@ export function drillDownToFailedWorkflowRuns(options: {
   lastFailedRunId?: string | null;
   setActiveNav: (nav: "workflows") => void;
   setRunHistoryDrawerOpen: (open: boolean) => void;
-  setRunsFilters: (filters: {
-    env: "preview" | "production";
-    status: "failed";
-    workflowId: string;
-  }) => void;
-  loadProjectRuns: (filters?: {
-    env?: "preview" | "production";
-    status?: "failed";
-    workflowId?: string;
-  }) => Promise<unknown>;
-  startRunReplay?: (
-    runId: string,
-    env?: "preview" | "production",
-  ) => Promise<unknown>;
+  setRunsFilters: (filters: { env: "preview" | "production"; status: "failed"; workflowId: string }) => void;
+  loadProjectRuns: (filters?: { env?: "preview" | "production"; status?: "failed"; workflowId?: string }) => Promise<unknown>;
+  startRunReplay?: (runId: string, env?: "preview" | "production") => Promise<unknown>;
 }): void {
-  const {
-    env,
-    workflowId,
-    lastFailedRunId,
-    setActiveNav,
-    setRunHistoryDrawerOpen,
-    setRunsFilters,
-    loadProjectRuns,
-    startRunReplay,
-  } = options;
+  const { env, workflowId, lastFailedRunId, setActiveNav, setRunHistoryDrawerOpen, setRunsFilters, loadProjectRuns, startRunReplay } = options;
   if (typeof window !== "undefined") {
     try {
       window.sessionStorage.setItem("studio:runsDrawerSubTab", "runs");
@@ -177,11 +134,7 @@ export function drillDownToFailedWorkflowRuns(options: {
       } else {
         url.searchParams.delete("runsWf");
       }
-      window.history.replaceState(
-        window.history.state,
-        "",
-        `${url.pathname}${url.search}${url.hash}`,
-      );
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     } catch {
       // ignore
     }
@@ -204,23 +157,15 @@ export function drillDownToFailedWorkflowRuns(options: {
   }
 }
 
-export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
-  project,
-  onHealthLoaded,
-}) => {
+export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({ project, onHealthLoaded }) => {
   const setActiveNav = useStudioStore((s) => s.setActiveNav);
-  const setRunHistoryDrawerOpen = useStudioStore(
-    (s) => s.setRunHistoryDrawerOpen,
-  );
+  const setRunHistoryDrawerOpen = useStudioStore((s) => s.setRunHistoryDrawerOpen);
   const setRunsFilters = useStudioStore((s) => s.setRunsFilters);
   const loadProjectRuns = useStudioStore((s) => s.loadProjectRuns);
   const startRunReplay = useStudioStore((s) => s.startRunReplay);
 
-  const [filterState, setFilterState] = useState<PersistedHealthFilterState>(
-    () => loadInitialHealthState(project),
-  );
-  const [summary, setSummary] =
-    useState<EnvironmentHealthSummaryPayload | null>(null);
+  const [filterState, setFilterState] = useState<PersistedHealthFilterState>(() => loadInitialHealthState(project));
+  const [summary, setSummary] = useState<EnvironmentHealthSummaryPayload | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -236,21 +181,12 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
       const res = await fetchEnvironmentHealth(project, filterState.env, {
         window: filterState.window,
       });
-      if (
-        res &&
-        typeof res.requestCount === "number" &&
-        res.workflows &&
-        res.d1
-      ) {
+      if (res && typeof res.requestCount === "number" && res.workflows && res.d1) {
         setSummary(res);
         onHealthLoaded?.(res);
       }
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to load backend health metrics",
-      );
+      setError(err instanceof Error ? err.message : "Failed to load backend health metrics");
     } finally {
       setLoading(false);
     }
@@ -260,18 +196,9 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
     void loadHealth();
   }, [loadHealth]);
 
-  const totalQueueDepth = (summary?.queues ?? []).reduce(
-    (acc, q) => acc + q.depth,
-    0,
-  );
-  const totalDlqCount = (summary?.queues ?? []).reduce(
-    (acc, q) => acc + q.dlqCount,
-    0,
-  );
-  const maxSeriesRequests = Math.max(
-    1,
-    ...(summary?.series ?? []).map((b) => b.requestCount),
-  );
+  const totalQueueDepth = (summary?.queues ?? []).reduce((acc, q) => acc + q.depth, 0);
+  const totalDlqCount = (summary?.queues ?? []).reduce((acc, q) => acc + q.dlqCount, 0);
+  const maxSeriesRequests = Math.max(1, ...(summary?.series ?? []).map((b) => b.requestCount));
 
   return (
     <section
@@ -314,27 +241,16 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
                 padding: "2px 7px",
                 borderRadius: 999,
                 background:
-                  (summary?.error5xxCount ?? 0) > 0 ||
-                  (summary?.workflows.failedRuns ?? 0) > 0
-                    ? "rgba(239, 68, 68, 0.16)"
-                    : "rgba(34, 197, 94, 0.16)",
-                color:
-                  (summary?.error5xxCount ?? 0) > 0 ||
-                  (summary?.workflows.failedRuns ?? 0) > 0
-                    ? "#fca5a5"
-                    : "#86efac",
+                  (summary?.error5xxCount ?? 0) > 0 || (summary?.workflows.failedRuns ?? 0) > 0 ? "rgba(239, 68, 68, 0.16)" : "rgba(34, 197, 94, 0.16)",
+                color: (summary?.error5xxCount ?? 0) > 0 || (summary?.workflows.failedRuns ?? 0) > 0 ? "#fca5a5" : "#86efac",
                 fontWeight: 700,
               }}
             >
-              {(summary?.error5xxCount ?? 0) > 0 ||
-              (summary?.workflows.failedRuns ?? 0) > 0
-                ? "Degraded / Errors Detected"
-                : "Healthy"}
+              {(summary?.error5xxCount ?? 0) > 0 || (summary?.workflows.failedRuns ?? 0) > 0 ? "Degraded / Errors Detected" : "Healthy"}
             </span>
           </div>
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-            Request rate, 5xx error rate, HTTP p50/p95/p99 latency, workflow
-            failures, queue backlog/DLQ depth, and D1 query performance.
+            Request rate, 5xx error rate, HTTP p50/p95/p99 latency, workflow failures, queue backlog/DLQ depth, and D1 query performance.
           </div>
         </div>
 
@@ -378,9 +294,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
                   key={win}
                   type="button"
                   data-testid={`health-window-${win}`}
-                  onClick={() =>
-                    setFilterState((prev) => ({ ...prev, window: win }))
-                  }
+                  onClick={() => setFilterState((prev) => ({ ...prev, window: win }))}
                   style={{
                     padding: "4px 10px",
                     fontSize: 11,
@@ -474,10 +388,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
           >
             {summary?.requestCount ?? 0}
           </div>
-          <div
-            data-testid="health-metric-rpm"
-            style={{ fontSize: 11, color: "#60a5fa", marginTop: 2 }}
-          >
+          <div data-testid="health-metric-rpm" style={{ fontSize: 11, color: "#60a5fa", marginTop: 2 }}>
             {summary?.requestsPerMinute ?? 0} req/min
           </div>
           {/* Sparkline */}
@@ -491,10 +402,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
             }}
           >
             {(summary?.series ?? []).map((b, idx) => {
-              const pct = Math.max(
-                15,
-                Math.round((b.requestCount / maxSeriesRequests) * 100),
-              );
+              const pct = Math.max(15, Math.round((b.requestCount / maxSeriesRequests) * 100));
               return (
                 <div
                   key={b.bucketTs || idx}
@@ -526,10 +434,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
           style={{
             textAlign: "left",
             background: "#0d111a",
-            border:
-              (summary?.error5xxCount ?? 0) > 0
-                ? "1px solid rgba(239, 68, 68, 0.5)"
-                : "1px solid #1e293b",
+            border: (summary?.error5xxCount ?? 0) > 0 ? "1px solid rgba(239, 68, 68, 0.5)" : "1px solid #1e293b",
             borderRadius: 8,
             padding: 12,
             cursor: "pointer",
@@ -554,21 +459,15 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
             style={{
               fontSize: 20,
               fontWeight: 800,
-              color:
-                (summary?.error5xxCount ?? 0) > 0 ? "#fca5a5" : "#86efac",
+              color: (summary?.error5xxCount ?? 0) > 0 ? "#fca5a5" : "#86efac",
               marginTop: 4,
             }}
           >
             {summary?.errorRatePercent ?? 0}%
           </div>
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-            <span data-testid="health-metric-5xx-count">
-              {summary?.error5xxCount ?? 0} 5xx
-            </span>{" "}
-            ·{" "}
-            <span data-testid="health-metric-4xx-count">
-              {summary?.error4xxCount ?? 0} 4xx
-            </span>
+            <span data-testid="health-metric-5xx-count">{summary?.error5xxCount ?? 0} 5xx</span> ·{" "}
+            <span data-testid="health-metric-4xx-count">{summary?.error4xxCount ?? 0} 4xx</span>
           </div>
         </button>
 
@@ -601,10 +500,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
               fontFamily: "monospace",
             }}
           >
-            <span data-testid="health-metric-p50">
-              {summary?.latencyP50Ms ?? 0}ms
-            </span>{" "}
-            /{" "}
+            <span data-testid="health-metric-p50">{summary?.latencyP50Ms ?? 0}ms</span> /{" "}
             <span data-testid="health-metric-p95" style={{ color: "#fbbf24" }}>
               {summary?.latencyP95Ms ?? 0}ms
             </span>{" "}
@@ -613,9 +509,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
               {summary?.latencyP99Ms ?? 0}ms
             </span>
           </div>
-          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-            Quantiles across {filterState.window} rollups
-          </div>
+          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Quantiles across {filterState.window} rollups</div>
         </div>
 
         {/* 4. Workflow Failures — Clickable drill-down to Failed Runs */}
@@ -635,10 +529,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
           style={{
             textAlign: "left",
             background: "#0d111a",
-            border:
-              (summary?.workflows.failedRuns ?? 0) > 0
-                ? "1px solid rgba(239, 68, 68, 0.5)"
-                : "1px solid #1e293b",
+            border: (summary?.workflows.failedRuns ?? 0) > 0 ? "1px solid rgba(239, 68, 68, 0.5)" : "1px solid #1e293b",
             borderRadius: 8,
             padding: 12,
             cursor: "pointer",
@@ -663,21 +554,14 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
             style={{
               fontSize: 20,
               fontWeight: 800,
-              color:
-                (summary?.workflows.failedRuns ?? 0) > 0
-                  ? "#fca5a5"
-                  : "#86efac",
+              color: (summary?.workflows.failedRuns ?? 0) > 0 ? "#fca5a5" : "#86efac",
               marginTop: 4,
             }}
           >
             {summary?.workflows.failedRuns ?? 0} failed
           </div>
-          <div
-            data-testid="health-metric-workflow-success"
-            style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}
-          >
-            {summary?.workflows.successRatePercent ?? 100}% success (
-            {summary?.workflows.totalRuns ?? 0} total)
+          <div data-testid="health-metric-workflow-success" style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+            {summary?.workflows.successRatePercent ?? 100}% success ({summary?.workflows.totalRuns ?? 0} total)
           </div>
         </button>
 
@@ -686,10 +570,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
           data-testid="health-card-queues"
           style={{
             background: "#0d111a",
-            border:
-              totalDlqCount > 0
-                ? "1px solid rgba(245, 158, 11, 0.5)"
-                : "1px solid #1e293b",
+            border: totalDlqCount > 0 ? "1px solid rgba(245, 158, 11, 0.5)" : "1px solid #1e293b",
             borderRadius: 8,
             padding: 12,
           }}
@@ -759,8 +640,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
             {summary?.d1.queryCount ?? 0}
           </div>
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-            p50 {summary?.d1.p50Ms ?? 0}ms · p95 {summary?.d1.p95Ms ?? 0}ms ·{" "}
-            {summary?.d1.errorCount ?? 0} errors
+            p50 {summary?.d1.p50Ms ?? 0}ms · p95 {summary?.d1.p95Ms ?? 0}ms · {summary?.d1.errorCount ?? 0} errors
           </div>
         </div>
       </div>
@@ -794,9 +674,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
             Per-Brick HTTP Route Rollups
           </div>
           {(summary?.perBrick ?? []).length === 0 ? (
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>
-              No HTTP route rollups recorded in this window.
-            </div>
+            <div style={{ fontSize: 12, color: "#94a3b8" }}>No HTTP route rollups recorded in this window.</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {(summary?.perBrick ?? []).map((b) => (
@@ -816,26 +694,12 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
                   }}
                 >
                   <div>
-                    <span style={{ fontWeight: 700, color: "#f8fafc" }}>
-                      {b.brickId}
-                    </span>{" "}
-                    <span
-                      style={{ color: "#94a3b8", fontFamily: "monospace" }}
-                    >
-                      {b.routePrefix}
-                    </span>
+                    <span style={{ fontWeight: 700, color: "#f8fafc" }}>{b.brickId}</span>{" "}
+                    <span style={{ color: "#94a3b8", fontFamily: "monospace" }}>{b.routePrefix}</span>
                   </div>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
-                    <span style={{ color: "#cbd5e1" }}>
-                      {b.requestCount} req
-                    </span>
-                    <span
-                      style={{ color: "#94a3b8", fontFamily: "monospace" }}
-                    >
-                      p95 {b.p95Ms}ms
-                    </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "#cbd5e1" }}>{b.requestCount} req</span>
+                    <span style={{ color: "#94a3b8", fontFamily: "monospace" }}>p95 {b.p95Ms}ms</span>
                     <button
                       type="button"
                       data-testid={`health-drilldown-logs-${b.brickId}`}
@@ -853,10 +717,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
                         fontSize: 10,
                         fontWeight: 700,
                         borderRadius: 4,
-                        background:
-                          b.error5xxCount > 0
-                            ? "rgba(239, 68, 68, 0.2)"
-                            : "rgba(59, 130, 246, 0.14)",
+                        background: b.error5xxCount > 0 ? "rgba(239, 68, 68, 0.2)" : "rgba(59, 130, 246, 0.14)",
                         color: b.error5xxCount > 0 ? "#fca5a5" : "#93c5fd",
                         border: "1px solid rgba(239, 68, 68, 0.35)",
                         cursor: "pointer",
@@ -896,9 +757,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
               Top Failing Workflows
             </div>
             {(summary?.workflows.topFailingWorkflows ?? []).length === 0 ? (
-              <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                Zero workflow failures in this window.
-              </div>
+              <div style={{ fontSize: 12, color: "#94a3b8" }}>Zero workflow failures in this window.</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {(summary?.workflows.topFailingWorkflows ?? []).map((wf) => (
@@ -915,9 +774,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
                       fontSize: 11,
                     }}
                   >
-                    <span style={{ fontWeight: 700, color: "#f8fafc" }}>
-                      {wf.workflowId}
-                    </span>
+                    <span style={{ fontWeight: 700, color: "#f8fafc" }}>{wf.workflowId}</span>
                     <button
                       type="button"
                       data-testid={`health-drilldown-workflow-${wf.workflowId}`}
@@ -965,9 +822,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
               Queues & Dead-Letter Queues (DLQ)
             </div>
             {(summary?.queues ?? []).length === 0 ? (
-              <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                No queue backlog or DLQ activity recorded.
-              </div>
+              <div style={{ fontSize: 12, color: "#94a3b8" }}>No queue backlog or DLQ activity recorded.</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {(summary?.queues ?? []).map((q) => (
@@ -994,12 +849,8 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
                     >
                       {q.queueName}
                     </span>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 8 }}
-                    >
-                      <span style={{ color: "#cbd5e1" }}>
-                        {q.depth} pending
-                      </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#cbd5e1" }}>{q.depth} pending</span>
                       <button
                         type="button"
                         data-testid={`health-drilldown-dlq-${q.queueName}`}
@@ -1018,10 +869,7 @@ export const BackendHealthPanel: React.FC<BackendHealthPanelProps> = ({
                           fontSize: 10,
                           fontWeight: 700,
                           borderRadius: 4,
-                          background:
-                            q.dlqCount > 0
-                              ? "rgba(245, 158, 11, 0.2)"
-                              : "rgba(51, 65, 85, 0.4)",
+                          background: q.dlqCount > 0 ? "rgba(245, 158, 11, 0.2)" : "rgba(51, 65, 85, 0.4)",
                           color: q.dlqCount > 0 ? "#fcd34d" : "#94a3b8",
                           border: "1px solid rgba(245, 158, 11, 0.35)",
                           cursor: "pointer",

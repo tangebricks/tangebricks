@@ -1,12 +1,4 @@
-import {
-  createPublicUrlFetch,
-  isEgressForbiddenError,
-  scoped,
-  systemScope,
-  type D1Like,
-  type HostResolver,
-  type PublicUrlFetcher,
-} from "@poc/sdk";
+import { createPublicUrlFetch, isEgressForbiddenError, scoped, systemScope, type D1Like, type HostResolver, type PublicUrlFetcher } from "@poc/sdk";
 
 /**
  * The most runs one schedule may replay in one tick under catchUp "all" (story 0.21, threat model B16): one schedule
@@ -141,22 +133,13 @@ export class CronService {
   private readonly maxSchedules: number;
   private readonly envBindings: Record<string, unknown> | undefined;
 
-  constructor(
-    db: D1Like,
-    maxSchedules = 50,
-    envBindings?: Record<string, unknown>,
-    fetcher?: Fetcher,
-    options: CronServiceOptions = {},
-  ) {
+  constructor(db: D1Like, maxSchedules = 50, envBindings?: Record<string, unknown>, fetcher?: Fetcher, options: CronServiceOptions = {}) {
     this.db = db;
     this.maxSchedules = maxSchedules;
     this.envBindings = envBindings;
-    const base: Fetcher =
-      fetcher ?? (envBindings?.["fetch"] as Fetcher | undefined) ?? ((url, init) => globalThis.fetch(url, init));
+    const base: Fetcher = fetcher ?? (envBindings?.["fetch"] as Fetcher | undefined) ?? ((url, init) => globalThis.fetch(url, init));
     this.customFetch = createPublicUrlFetch((url, init) => base(url, init), options.resolveHost !== undefined ? { resolveHost: options.resolveHost } : {});
-    this.allowedWorkflowTargets = new Set(
-      options.allowedWorkflowTargets ?? parseWorkflowTargets(envBindings?.[CRON_WORKFLOW_TARGETS_ENV]),
-    );
+    this.allowedWorkflowTargets = new Set(options.allowedWorkflowTargets ?? parseWorkflowTargets(envBindings?.[CRON_WORKFLOW_TARGETS_ENV]));
   }
 
   /** True when `name` is on the app's Workflow target allowlist. */
@@ -202,10 +185,7 @@ export class CronService {
     interface CountRow {
       cnt: number;
     }
-    const count = await s.raw(
-      "SELECT count(*) as cnt FROM cron_schedules WHERE workspace_id = ?",
-      [workspaceId]
-    ).first<CountRow>();
+    const count = await s.raw("SELECT count(*) as cnt FROM cron_schedules WHERE workspace_id = ?", [workspaceId]).first<CountRow>();
 
     if ((count?.cnt ?? 0) >= this.maxSchedules) {
       return { ok: false, error: `Workspace schedule limit (${this.maxSchedules}) reached`, code: 403 };
@@ -246,10 +226,12 @@ export class CronService {
 
     try {
       await this.db
-        .prepare(`
+        .prepare(
+          `
         INSERT INTO px_schedules (id, workspace_id, brick_id, schedule_id, cron_expression, payload_json, active, next_run_at, created_at)
         VALUES (?, ?, 'cron-alarms', ?, ?, ?, 1, ?, ?)
-      `)
+      `,
+        )
         .bind(
           id,
           workspaceId,
@@ -357,12 +339,7 @@ export class CronService {
    */
   async toggleSchedule(workspaceId: string, scheduleId: string, active: boolean): Promise<boolean> {
     const s = scoped(this.db, workspaceId);
-    const res = await s.update(
-      "cron_schedules",
-      { active: active ? 1 : 0 },
-      "id = ?",
-      [scheduleId]
-    );
+    const res = await s.update("cron_schedules", { active: active ? 1 : 0 }, "id = ?", [scheduleId]);
     const changed = (res.meta?.changes ?? 0) > 0;
     if (changed) {
       try {
@@ -386,10 +363,7 @@ export class CronService {
     const changed = (res.meta?.changes ?? 0) > 0;
     if (changed) {
       try {
-        await this.db
-          .prepare("DELETE FROM px_schedules WHERE id = ? AND workspace_id = ?")
-          .bind(scheduleId, workspaceId)
-          .run();
+        await this.db.prepare("DELETE FROM px_schedules WHERE id = ? AND workspace_id = ?").bind(scheduleId, workspaceId).run();
       } catch {
         // Standalone unit tests may run without px_schedules.
       }
@@ -400,11 +374,7 @@ export class CronService {
   /**
    * Invokes schedule target (Workflow instance or HTTP URL) and writes history record.
    */
-  private async invokeTargetAndRecord(
-    sched: DueRow,
-    slotIso: string,
-    nowIso: string,
-  ): Promise<HistoryRecord> {
+  private async invokeTargetAndRecord(sched: DueRow, slotIso: string, nowIso: string): Promise<HistoryRecord> {
     const startTime = Date.now();
     const histId = `crh_${crypto.randomUUID().replace(/-/g, "")}`;
     const dedupeId = `cron:${sched.id}:${slotIso}`;
@@ -420,8 +390,7 @@ export class CronService {
         summary = `NOT_ALLOWED: workflow target ${sched.target_workflow_id} is not in ${CRON_WORKFLOW_TARGETS_ENV}; not triggered`;
       } else if (sched.target_workflow_id) {
         const workflowBinding = this.envBindings?.[sched.target_workflow_id] as
-          | { create(options: { id: string; params: unknown }): Promise<unknown> }
-          | undefined;
+          { create(options: { id: string; params: unknown }): Promise<unknown> } | undefined;
 
         if (workflowBinding && typeof workflowBinding.create === "function") {
           await workflowBinding.create({
@@ -520,18 +489,22 @@ export class CronService {
     let candidates: DueRow[];
     try {
       candidates = (
-        await sys.raw(
-          "SELECT id, workspace_id, target_workflow_id, target_url, cron_expression, timezone, next_run_at, catch_up, max_catch_up FROM cron_schedules WHERE active = 1 AND datetime(next_run_at) <= datetime(?) ORDER BY datetime(next_run_at) ASC",
-          [nowIso]
-        ).all<DueRow>()
+        await sys
+          .raw(
+            "SELECT id, workspace_id, target_workflow_id, target_url, cron_expression, timezone, next_run_at, catch_up, max_catch_up FROM cron_schedules WHERE active = 1 AND datetime(next_run_at) <= datetime(?) ORDER BY datetime(next_run_at) ASC",
+            [nowIso],
+          )
+          .all<DueRow>()
       ).results;
     } catch {
       // Fallback for schemas without catch_up columns
       candidates = (
-        await sys.raw(
-          "SELECT id, workspace_id, target_workflow_id, target_url, cron_expression, timezone, next_run_at FROM cron_schedules WHERE active = 1 AND datetime(next_run_at) <= datetime(?) ORDER BY datetime(next_run_at) ASC",
-          [nowIso]
-        ).all<DueRow>()
+        await sys
+          .raw(
+            "SELECT id, workspace_id, target_workflow_id, target_url, cron_expression, timezone, next_run_at FROM cron_schedules WHERE active = 1 AND datetime(next_run_at) <= datetime(?) ORDER BY datetime(next_run_at) ASC",
+            [nowIso],
+          )
+          .all<DueRow>()
       ).results;
     }
 
@@ -555,13 +528,15 @@ export class CronService {
         // Policy 'skip': skip overdue slots, advance to future next_run_at, record 'missed' history
         const nextFutureRun = computeNextRun(sched.cron_expression, now);
         const claimRes = (
-          await sys.raw(
-            `UPDATE cron_schedules
+          await sys
+            .raw(
+              `UPDATE cron_schedules
             SET next_run_at = ?, last_run_at = ?
             WHERE id = ? AND next_run_at = ? AND active = 1
             RETURNING id`,
-            [nextFutureRun.toISOString(), nowIso, sched.id, sched.next_run_at]
-          ).all<{ id: string }>()
+              [nextFutureRun.toISOString(), nowIso, sched.id, sched.next_run_at],
+            )
+            .all<{ id: string }>()
         ).results;
 
         if (!claimRes || claimRes.length === 0) {
@@ -610,19 +585,18 @@ export class CronService {
         while (currentSlot.getTime() <= now.getTime() && runCount < maxCatchUp) {
           const isLastRun = runCount + 1 >= maxCatchUp;
           const nextSlot = computeNextRun(sched.cron_expression, currentSlot);
-          const advanceTo =
-            isLastRun && nextSlot.getTime() <= now.getTime()
-              ? computeNextRun(sched.cron_expression, now)
-              : nextSlot;
+          const advanceTo = isLastRun && nextSlot.getTime() <= now.getTime() ? computeNextRun(sched.cron_expression, now) : nextSlot;
 
           const claimRes = (
-            await sys.raw(
-              `UPDATE cron_schedules
+            await sys
+              .raw(
+                `UPDATE cron_schedules
               SET next_run_at = ?, last_run_at = ?
               WHERE id = ? AND next_run_at = ? AND active = 1
               RETURNING id`,
-              [advanceTo.toISOString(), nowIso, sched.id, currentSlot.toISOString()]
-            ).all<{ id: string }>()
+                [advanceTo.toISOString(), nowIso, sched.id, currentSlot.toISOString()],
+              )
+              .all<{ id: string }>()
           ).results;
 
           if (!claimRes || claimRes.length === 0) {
@@ -636,11 +610,7 @@ export class CronService {
               .run();
           } catch {}
 
-          const record = await this.invokeTargetAndRecord(
-            sched,
-            currentSlot.toISOString(),
-            nowIso,
-          );
+          const record = await this.invokeTargetAndRecord(sched, currentSlot.toISOString(), nowIso);
           history.push(record);
 
           runCount++;
@@ -653,13 +623,15 @@ export class CronService {
       // Default policy 'once': advance next_run_at to future, invoke exactly once
       const nextRun = computeNextRun(sched.cron_expression, now);
       const claimRes = (
-        await sys.raw(
-          `UPDATE cron_schedules
+        await sys
+          .raw(
+            `UPDATE cron_schedules
           SET next_run_at = ?, last_run_at = ?
           WHERE id = ? AND next_run_at = ? AND active = 1
           RETURNING id`,
-          [nextRun.toISOString(), nowIso, sched.id, sched.next_run_at]
-        ).all<{ id: string }>()
+            [nextRun.toISOString(), nowIso, sched.id, sched.next_run_at],
+          )
+          .all<{ id: string }>()
       ).results;
 
       if (!claimRes || claimRes.length === 0) {
@@ -667,10 +639,7 @@ export class CronService {
       }
 
       try {
-        await this.db
-          .prepare("UPDATE px_schedules SET next_run_at = ?, last_run_at = ? WHERE id = ?")
-          .bind(nextRun.toISOString(), nowIso, sched.id)
-          .run();
+        await this.db.prepare("UPDATE px_schedules SET next_run_at = ?, last_run_at = ? WHERE id = ?").bind(nextRun.toISOString(), nowIso, sched.id).run();
       } catch {}
 
       const record = await this.invokeTargetAndRecord(sched, sched.next_run_at, nowIso);
@@ -686,20 +655,10 @@ export class CronService {
   async getHistory(workspaceId: string, scheduleId?: string, limit = 50): Promise<HistoryRecord[]> {
     const s = scoped(this.db, workspaceId);
     if (scheduleId) {
-      return s.select<HistoryRecord>(
-        "cron_history",
-        "schedule_id = ?",
-        [scheduleId],
-        { orderBy: "actual_start_time DESC", limit }
-      );
+      return s.select<HistoryRecord>("cron_history", "schedule_id = ?", [scheduleId], { orderBy: "actual_start_time DESC", limit });
     }
 
-    return s.select<HistoryRecord>(
-      "cron_history",
-      undefined,
-      [],
-      { orderBy: "actual_start_time DESC", limit }
-    );
+    return s.select<HistoryRecord>("cron_history", undefined, [], { orderBy: "actual_start_time DESC", limit });
   }
 }
 

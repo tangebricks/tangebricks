@@ -203,8 +203,6 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
     expect(callErr.providerCode).toBe("card_declined");
   });
 
-
-
   it("AC3 — Wallet behaviour tests pass against both the fake gateway and the adapter backed by recorded Stripe fixtures", async () => {
     const WS_FAKE = "ws_fake_test";
     const WS_STRIPE = "ws_stripe_test";
@@ -245,7 +243,14 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
         const orderId = params.get("metadata[order_id]") ?? "unknown";
         const amount = Number(params.get("amount") ?? "0");
         const secret = `sec_${orderId}_live`;
-        orderStore.set(`pi_${orderId}`, { orderId, status: "succeeded", amount, secret, currency: params.get("currency") ?? "", customerId: params.get("metadata[customer_id]") ?? "" });
+        orderStore.set(`pi_${orderId}`, {
+          orderId,
+          status: "succeeded",
+          amount,
+          secret,
+          currency: params.get("currency") ?? "",
+          customerId: params.get("metadata[customer_id]") ?? "",
+        });
 
         return new Response(
           JSON.stringify({
@@ -315,8 +320,7 @@ describe("UC3.9 — Typed gateway adapter pattern: credit-wallet PaymentGateway 
 
 describe("story 0.9 (A21): no order is recorded unless Stripe created one", () => {
   const WS = "ws_stripe_error";
-  const orderCount = async () =>
-    (await db.prepare("SELECT COUNT(*) AS n FROM credit_orders WHERE workspace_id = ?").bind(WS).first<{ n: number }>())?.n;
+  const orderCount = async () => (await db.prepare("SELECT COUNT(*) AS n FROM credit_orders WHERE workspace_id = ?").bind(WS).first<{ n: number }>())?.n;
 
   it("STRIPE_ERROR: a non-2xx answer fails createOrder and the wallet records no order", async () => {
     const gateway = createStripePaymentGateway({
@@ -338,7 +342,8 @@ describe("story 0.9 (A21): no order is recorded unless Stripe created one", () =
     const gateway = createStripePaymentGateway({
       manifest: stripeManifest,
       connection: { apiKey: "sk_test_fake_stripe_key" },
-      fetcher: async () => new Response(JSON.stringify({ status: "requires_payment_method" }), { status: 200, headers: { "content-type": "application/json" } }),
+      fetcher: async () =>
+        new Response(JSON.stringify({ status: "requires_payment_method" }), { status: 200, headers: { "content-type": "application/json" } }),
     });
     let caught: unknown;
     try {
@@ -359,7 +364,13 @@ describe("story 0.9 (A21): no order is recorded unless Stripe created one", () =
 describe("story 2.3: Stripe-Signature webhook verification", () => {
   const SECRET = "whsec_unit_test_only";
   const NOW = Date.parse("2026-11-25T10:00:00Z");
-  const gateway = createStripePaymentGateway({ manifest: stripeManifest, connection: { apiKey: "sk_test_x" }, fetcher: async () => new Response("{}"), webhookSecret: SECRET, now: () => NOW });
+  const gateway = createStripePaymentGateway({
+    manifest: stripeManifest,
+    connection: { apiKey: "sk_test_x" },
+    fetcher: async () => new Response("{}"),
+    webhookSecret: SECRET,
+    now: () => NOW,
+  });
   const event = (type: string) => JSON.stringify({ id: "evt_1", type, data: { object: { id: "pi_1", metadata: { order_id: "order_abc" } } } });
   const sign = async (body: string, t: number, secret = SECRET) => {
     const { hmacSha256, toHex } = await import("../src/webhook-signature.ts");
@@ -392,14 +403,22 @@ describe("story 2.3: Stripe-Signature webhook verification", () => {
 describe("story 2.3: Stripe currencies whose convention differs from ISO 4217 are refused", () => {
   it.each(["HUF", "TWD", "ISK", "UGX", "MGA"])("%s fails NOT_SUPPORTED before any request", async (currency) => {
     let called = false;
-    const gateway = createStripePaymentGateway({ manifest: stripeManifest, connection: { apiKey: "sk_test_x" }, fetcher: async () => ((called = true), new Response("{}")) });
+    const gateway = createStripePaymentGateway({
+      manifest: stripeManifest,
+      connection: { apiKey: "sk_test_x" },
+      fetcher: async () => ((called = true), new Response("{}")),
+    });
     await expect(gateway.createOrder({ orderId: "o1", amountMinor: 100, currency, customerId: "c1" })).rejects.toThrow(/^NOT_SUPPORTED/);
     expect(called).toBe(false);
   });
 
   it("fetchOrder without a stored intent id fails (it never looks an intent up by the brick's order id)", async () => {
     let called = false;
-    const gateway = createStripePaymentGateway({ manifest: stripeManifest, connection: { apiKey: "sk_test_x" }, fetcher: async () => ((called = true), new Response("{}")) });
+    const gateway = createStripePaymentGateway({
+      manifest: stripeManifest,
+      connection: { apiKey: "sk_test_x" },
+      fetcher: async () => ((called = true), new Response("{}")),
+    });
     await expect(gateway.fetchOrder("order_1", undefined)).rejects.toThrow(/PROVIDER_ERROR/);
     expect(called).toBe(false);
   });

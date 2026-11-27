@@ -3,19 +3,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ActionableIssueSchema, type BlueprintState } from "@poc/blueprint";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import {
-  createDurableObjectBlueprintClient,
-} from "../src/index.ts";
-import {
-  MAX_SELF_CORRECTION_TOOL_CALLS,
-  runSelfCorrectionEvalSuite,
-  type SelfCorrectionScenarioResult,
-} from "../src/self-correction-eval.ts";
+import { createDurableObjectBlueprintClient } from "../src/index.ts";
+import { MAX_SELF_CORRECTION_TOOL_CALLS, runSelfCorrectionEvalSuite, type SelfCorrectionScenarioResult } from "../src/self-correction-eval.ts";
 import mcpMigrationSql from "../migrations/0001_mcp_server.sql?raw";
-import {
-  app as studioApp,
-  type StudioApiEnv,
-} from "../../../apps/studio-api/src/index.ts";
+import { app as studioApp, type StudioApiEnv } from "../../../apps/studio-api/src/index.ts";
 import { ensureTestProjectToken } from "../../../apps/studio-api/test/project-token.ts";
 import { acceptProposalAsOwner } from "../../../apps/studio-api/test/human-session.ts";
 
@@ -24,10 +15,7 @@ const db = (env as unknown as { DB: D1Like }).DB;
 
 let rpcId = 1;
 
-async function callStudioMcp(
-  name: string,
-  args: Record<string, unknown>,
-) {
+async function callStudioMcp(name: string, args: Record<string, unknown>) {
   // Story 0.15: each scenario's project has its own MCP token.
   const project = typeof args.project === "string" ? args.project : "default-project";
   const { headers: authHeaders } = await ensureTestProjectToken(studioEnv, project, {
@@ -111,17 +99,10 @@ describe("Story 7.3 — Automated Agent Self-Correction Evaluation over MCP in w
     expect(report.scenarios.map((s: SelfCorrectionScenarioResult) => s.code)).toEqual(expectedCodes);
 
     for (const scenario of report.scenarios) {
-      expect(
-        scenario.passed,
-        `Scenario #${scenario.id} (${scenario.code}) failed: ${JSON.stringify(scenario.trace)}`,
-      ).toBe(true);
-      expect(scenario.toolCallsUsed).toBeLessThanOrEqual(
-        MAX_SELF_CORRECTION_TOOL_CALLS,
-      );
+      expect(scenario.passed, `Scenario #${scenario.id} (${scenario.code}) failed: ${JSON.stringify(scenario.trace)}`).toBe(true);
+      expect(scenario.toolCallsUsed).toBeLessThanOrEqual(MAX_SELF_CORRECTION_TOOL_CALLS);
       expect(scenario.schemaValid).toBe(true);
-      expect(
-        ActionableIssueSchema.safeParse(scenario.initialIssue).success,
-      ).toBe(true);
+      expect(ActionableIssueSchema.safeParse(scenario.initialIssue).success).toBe(true);
       expect(scenario.initialIssue.path).toMatch(/^(\/[^/]+)+$/);
       expect(scenario.initialIssue.suggestedFix.length).toBeGreaterThan(0);
       expect(scenario.initialIssue.remediationOp).toBeDefined();

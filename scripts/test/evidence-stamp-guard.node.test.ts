@@ -67,7 +67,15 @@ describe("check-evidence CLI can check another folder (EVIDENCE_CHECK_DIR)", () 
     mkdirSync(dir, { recursive: true });
     writeFileSync(
       join(dir, "ok.json"),
-      JSON.stringify({ provenance: { generatedAt: new Date().toISOString(), gitSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).trim(), gitDirty: false, generator: "scripts/test.ts", inputKind: "measured" } }),
+      JSON.stringify({
+        provenance: {
+          generatedAt: new Date().toISOString(),
+          gitSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).trim(),
+          gitDirty: false,
+          generator: "scripts/test.ts",
+          inputKind: "measured",
+        },
+      }),
     );
     const res = run(dir);
     expect(res.status).toBe(0);

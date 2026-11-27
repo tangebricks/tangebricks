@@ -234,7 +234,7 @@ export function createPrivacyRoutes(options?: PrivacyServiceHooks): Hono<Privacy
         deletedCount: result.deletedCount,
         retain: result.retain,
       },
-      200
+      200,
     );
   });
 

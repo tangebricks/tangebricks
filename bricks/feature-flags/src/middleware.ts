@@ -24,8 +24,7 @@ export const featureFlagMiddleware: MiddlewareHandler<FlagEnv> = async (c, next)
 
   const service = new FeatureFlagService(c.env.DB);
   c.set("flags", {
-    isEnabled: (key: string) =>
-      service.isEnabled(key, { workspaceId: workspace?.id, userId: user?.uid }),
+    isEnabled: (key: string) => service.isEnabled(key, { workspaceId: workspace?.id, userId: user?.uid }),
   });
 
   await next();

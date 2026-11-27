@@ -14,18 +14,22 @@ export interface WorkflowEnv {
 const CreateWorkflowSchema = z.object({
   name: z.string().min(1).max(100),
   graph: z.object({
-    nodes: z.array(z.object({
-      id: z.string(),
-      type: z.string(),
-      data: z.record(z.string(), z.unknown()).default({}),
-    })),
-    edges: z.array(z.object({
-      id: z.string(),
-      source: z.string(),
-      target: z.string(),
-      sourceHandle: z.string().optional(),
-      targetHandle: z.string().optional(),
-    })),
+    nodes: z.array(
+      z.object({
+        id: z.string(),
+        type: z.string(),
+        data: z.record(z.string(), z.unknown()).default({}),
+      }),
+    ),
+    edges: z.array(
+      z.object({
+        id: z.string(),
+        source: z.string(),
+        target: z.string(),
+        sourceHandle: z.string().optional(),
+        targetHandle: z.string().optional(),
+      }),
+    ),
   }),
 });
 

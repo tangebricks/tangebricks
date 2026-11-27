@@ -1,9 +1,5 @@
 import { getJwksKey, resolveJwksUri } from "./jwks.ts";
-import {
-  OidcVerificationError,
-  type OidcUserContext,
-  type OidcVerifyConfig,
-} from "./types.ts";
+import { OidcVerificationError, type OidcUserContext, type OidcVerifyConfig } from "./types.ts";
 
 function base64UrlDecode(str: string): Uint8Array {
   try {
@@ -78,11 +74,7 @@ export type VerifyJwtOptions =
     }
   | typeof fetch;
 
-export async function verifyJwt(
-  token: string,
-  config: OidcVerifyConfig,
-  options: VerifyJwtOptions = {},
-): Promise<OidcUserContext> {
+export async function verifyJwt(token: string, config: OidcVerifyConfig, options: VerifyJwtOptions = {}): Promise<OidcUserContext> {
   const resolvedFetcher = typeof options === "function" ? options : options.fetcher;
   const resolvedNow = typeof options === "object" && options.now ? options.now() : Date.now();
   const expectedNonce = (typeof options === "object" && options.nonce) || config.nonce;
@@ -106,9 +98,7 @@ export async function verifyJwt(
     throw new OidcVerificationError("alg_not_allowed", "Algorithm 'none' is forbidden");
   }
 
-  const allowedAlgs = (config.algorithms && config.algorithms.length > 0)
-    ? config.algorithms.map((a) => a.toUpperCase())
-    : ["RS256"];
+  const allowedAlgs = config.algorithms && config.algorithms.length > 0 ? config.algorithms.map((a) => a.toUpperCase()) : ["RS256"];
 
   if (alg.toUpperCase().startsWith("HS")) {
     const secret = config.hs256Secret;
@@ -117,10 +107,7 @@ export async function verifyJwt(
     }
   } else {
     if (!allowedAlgs.includes(alg.toUpperCase())) {
-      throw new OidcVerificationError(
-        "alg_not_allowed",
-        `Algorithm "${alg}" is not in allowed list [${allowedAlgs.join(", ")}]`,
-      );
+      throw new OidcVerificationError("alg_not_allowed", `Algorithm "${alg}" is not in allowed list [${allowedAlgs.join(", ")}]`);
     }
   }
 
@@ -129,13 +116,7 @@ export async function verifyJwt(
 
   // Signature verification
   if (alg.toUpperCase() === "HS256") {
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(config.hs256Secret!),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"],
-    );
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(config.hs256Secret!), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
     const valid = await crypto.subtle.verify("HMAC", key, signatureBytes, signedData);
     if (!valid) {
       throw new OidcVerificationError("invalid_signature", "HMAC signature verification failed");
@@ -178,20 +159,11 @@ export async function verifyJwt(
       throw new OidcVerificationError("alg_not_allowed", `Unsupported algorithm "${alg}"`);
     }
 
-    const cryptoKey = (await (crypto.subtle.importKey as any)(
-      "jwk",
-      jwk,
-      importAlgorithm,
-      false,
-      ["verify"],
-    )) as Awaited<ReturnType<typeof crypto.subtle.importKey>>;
+    const cryptoKey = (await (crypto.subtle.importKey as any)("jwk", jwk, importAlgorithm, false, ["verify"])) as Awaited<
+      ReturnType<typeof crypto.subtle.importKey>
+    >;
 
-    const valid = await (crypto.subtle.verify as any)(
-      verifyAlgorithm,
-      cryptoKey,
-      signatureBytes,
-      signedData,
-    );
+    const valid = await (crypto.subtle.verify as any)(verifyAlgorithm, cryptoKey, signatureBytes, signedData);
     if (!valid) {
       throw new OidcVerificationError("invalid_signature", "Asymmetric signature verification failed");
     }
@@ -214,10 +186,7 @@ export async function verifyJwt(
   const normExpectedIss = config.issuer.trim().replace(/\/+$/, "");
   const normActualIss = typeof payload.iss === "string" ? payload.iss.trim().replace(/\/+$/, "") : "";
   if (!normActualIss || normActualIss !== normExpectedIss) {
-    throw new OidcVerificationError(
-      "issuer_mismatch",
-      `Token issuer "${payload.iss}" does not match expected "${config.issuer}"`,
-    );
+    throw new OidcVerificationError("issuer_mismatch", `Token issuer "${payload.iss}" does not match expected "${config.issuer}"`);
   }
 
   // 2. Audience check (using audienceClaim or "aud")
@@ -233,10 +202,7 @@ export async function verifyJwt(
   }
 
   if (!audMatches) {
-    throw new OidcVerificationError(
-      "audience_mismatch",
-      `Token audience claim "${audClaimName}" does not match expected "${expectedAud}"`,
-    );
+    throw new OidcVerificationError("audience_mismatch", `Token audience claim "${audClaimName}" does not match expected "${expectedAud}"`);
   }
 
   // 3. Expiration check: `exp` is required. A token that never expires is refused.
@@ -271,10 +237,7 @@ export async function verifyJwt(
   if (expectedNonce !== undefined && expectedNonce !== null && expectedNonce !== "") {
     const actualNonce = payload.nonce;
     if (typeof actualNonce !== "string" || actualNonce !== expectedNonce) {
-      throw new OidcVerificationError(
-        "nonce_mismatch",
-        `Token nonce "${actualNonce}" does not match expected "${expectedNonce}"`,
-      );
+      throw new OidcVerificationError("nonce_mismatch", `Token nonce "${actualNonce}" does not match expected "${expectedNonce}"`);
     }
   }
 
@@ -282,10 +245,7 @@ export async function verifyJwt(
   const userIdClaim = config.userIdClaim || "sub";
   const rawUserId = getByDotPath(payload, userIdClaim);
   if (!rawUserId || (typeof rawUserId !== "string" && typeof rawUserId !== "number")) {
-    throw new OidcVerificationError(
-      "malformed_token",
-      `Missing or invalid user identifier claim "${userIdClaim}"`,
-    );
+    throw new OidcVerificationError("malformed_token", `Missing or invalid user identifier claim "${userIdClaim}"`);
   }
   const userId = String(rawUserId);
 

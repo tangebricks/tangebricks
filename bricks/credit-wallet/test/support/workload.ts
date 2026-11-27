@@ -69,7 +69,15 @@ export interface Tables {
   /** Stored units per whole credit of the workload. */
   scale: number;
 }
-export const CEPHLOW2_TABLES: Tables = { wallet: "workspaces", walletKey: "id", balance: "current_balance", ledger: "ledgers", amount: "amount", balanceAfter: "balance_after", scale: 1 };
+export const CEPHLOW2_TABLES: Tables = {
+  wallet: "workspaces",
+  walletKey: "id",
+  balance: "current_balance",
+  ledger: "ledgers",
+  amount: "amount",
+  balanceAfter: "balance_after",
+  scale: 1,
+};
 export const BRICK_TABLES: Tables = {
   wallet: "credit_wallets",
   walletKey: "workspace_id",
@@ -96,13 +104,18 @@ export async function violations(db: D1Like, workspaceId: string, start: number,
   const expected = accepted.reduce((sum, o) => sum + (o.op.kind === "topup" ? o.op.amount : -o.op.amount) * tables.scale, start * tables.scale);
 
   // Table and column names come from the two constants above, never from input.
-  const ws = await db.prepare(`SELECT ${tables.balance} AS current_balance FROM ${tables.wallet} WHERE ${tables.walletKey} = ?`).bind(workspaceId).first<{ current_balance: number }>();
+  const ws = await db
+    .prepare(`SELECT ${tables.balance} AS current_balance FROM ${tables.wallet} WHERE ${tables.walletKey} = ?`)
+    .bind(workspaceId)
+    .first<{ current_balance: number }>();
   if (!ws) return ["workspace row is missing"];
   if (ws.current_balance !== expected) reasons.push(`final balance ${ws.current_balance}, expected ${expected}`);
   if (ws.current_balance < 0) reasons.push(`final balance is negative: ${ws.current_balance}`);
 
   const { results: rows } = await db
-    .prepare(`SELECT id, type, ${tables.amount} AS amount, ${tables.balanceAfter} AS balance_after, metadata FROM ${tables.ledger} WHERE workspace_id = ? ORDER BY rowid`)
+    .prepare(
+      `SELECT id, type, ${tables.amount} AS amount, ${tables.balanceAfter} AS balance_after, metadata FROM ${tables.ledger} WHERE workspace_id = ? ORDER BY rowid`,
+    )
     .bind(workspaceId)
     .all<LedgerRow>();
   if (rows.length !== accepted.length) reasons.push(`ledger has ${rows.length} rows for ${accepted.length} accepted operations`);

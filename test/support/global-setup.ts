@@ -11,7 +11,14 @@ import { join, resolve } from "node:path";
 import { assemble } from "../../packages/assembler/src/index.ts";
 import { catalog } from "../../packages/assembler/catalog.generated.ts";
 import { computeMaxCompatible } from "../../scripts/max-compatible.ts";
-import { APPROVAL_GATE_BLUEPRINT, INVOICE_FLOW_BLUEPRINT, PLAN_CREDITS_BLUEPRINT, PRIVACY_PRESENCE_BLUEPRINT, TWO_BRICK_BLUEPRINT, WORKFLOW_SHELL_BLUEPRINT } from "./blueprints.ts";
+import {
+  APPROVAL_GATE_BLUEPRINT,
+  INVOICE_FLOW_BLUEPRINT,
+  PLAN_CREDITS_BLUEPRINT,
+  PRIVACY_PRESENCE_BLUEPRINT,
+  TWO_BRICK_BLUEPRINT,
+  WORKFLOW_SHELL_BLUEPRINT,
+} from "./blueprints.ts";
 import { OUT_DIR, compareProject, hashesPath, verifiedPath, writeProject } from "./emitted.ts";
 import { writeH9EmittedSource } from "./h9-emitted-source.ts";
 
@@ -19,7 +26,8 @@ import { writeH9EmittedSource } from "./h9-emitted-source.ts";
 export const ASSEMBLED_PROJECTS = [TWO_BRICK_BLUEPRINT, INVOICE_FLOW_BLUEPRINT] as const;
 
 const repoRoot = resolve(import.meta.dirname, "..", "..");
-const readPreset = (name: string) => JSON.parse(readFileSync(join(repoRoot, "presets", `${name}.blueprint.json`), "utf8")) as { project: string; bricks: unknown[]; entities?: unknown[] };
+const readPreset = (name: string) =>
+  JSON.parse(readFileSync(join(repoRoot, "presets", `${name}.blueprint.json`), "utf8")) as { project: string; bricks: unknown[]; entities?: unknown[] };
 
 export function getBootBlueprints() {
   const maxSet = computeMaxCompatible(catalog);
@@ -79,7 +87,11 @@ export default async function setup(): Promise<() => Promise<void>> {
       if (!comparison.unchanged) {
         problems.push(
           `the assembled project ${project} changed while the tests ran:\n` +
-            [...comparison.changed.map((f) => `  changed: ${f}`), ...comparison.missing.map((f) => `  missing: ${f}`), ...comparison.extra.map((f) => `  extra: ${f}`)].join("\n"),
+            [
+              ...comparison.changed.map((f) => `  changed: ${f}`),
+              ...comparison.missing.map((f) => `  missing: ${f}`),
+              ...comparison.extra.map((f) => `  extra: ${f}`),
+            ].join("\n"),
         );
       }
     }

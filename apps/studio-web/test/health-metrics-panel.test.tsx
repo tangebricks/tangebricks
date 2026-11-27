@@ -5,10 +5,7 @@ import { BackendHealthPanel } from "../src/components/BackendHealthPanel.tsx";
 import { useStudioStore } from "../src/store.ts";
 import type { EnvironmentHealthSummaryPayload } from "../src/api.ts";
 
-function buildMockHealthSummary(
-  window: "1h" | "24h" | "7d",
-  env: "preview" | "production" = "preview",
-): EnvironmentHealthSummaryPayload {
+function buildMockHealthSummary(window: "1h" | "24h" | "7d", env: "preview" | "production" = "preview"): EnvironmentHealthSummaryPayload {
   const multiplier = window === "1h" ? 1 : window === "24h" ? 5 : 10;
   return {
     ok: true,
@@ -77,9 +74,7 @@ function buildMockHealthSummary(
       },
     ],
     series: Array.from({ length: 12 }, (_, idx) => ({
-      bucketTs: new Date(
-        Date.parse("2026-06-20T17:00:00.000Z") + idx * 5 * 60_000,
-      ).toISOString(),
+      bucketTs: new Date(Date.parse("2026-06-20T17:00:00.000Z") + idx * 5 * 60_000).toISOString(),
       requestCount: 2 * multiplier,
       error5xxCount: idx === 10 ? 1 : 0,
       p95Ms: 120 + idx * 5,
@@ -121,24 +116,14 @@ describe("Story 6.4 — BackendHealthPanel UI & Drill-down Navigation", () => {
     });
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const urlStr =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
+      const urlStr = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       const u = new URL(urlStr, "http://localhost");
       const win = (u.searchParams.get("window") ?? "1h") as "1h" | "24h" | "7d";
-      const env = u.pathname.includes("/environments/production/")
-        ? "production"
-        : "preview";
-      return new Response(
-        JSON.stringify(buildMockHealthSummary(win, env)),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
-      );
+      const env = u.pathname.includes("/environments/production/") ? "production" : "preview";
+      return new Response(JSON.stringify(buildMockHealthSummary(win, env)), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     });
   });
 
@@ -146,49 +131,31 @@ describe("Story 6.4 — BackendHealthPanel UI & Drill-down Navigation", () => {
     render(<BackendHealthPanel project="proj-health-ui" />);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("health-metric-request-count").textContent,
-      ).toBe("20");
+      expect(screen.getByTestId("health-metric-request-count").textContent).toBe("20");
     });
 
-    expect(screen.getByTestId("health-metric-error-rate").textContent).toBe(
-      "10%",
-    );
-    expect(screen.getByTestId("health-metric-5xx-count").textContent).toContain(
-      "2 5xx",
-    );
+    expect(screen.getByTestId("health-metric-error-rate").textContent).toBe("10%");
+    expect(screen.getByTestId("health-metric-5xx-count").textContent).toContain("2 5xx");
     expect(screen.getByTestId("health-metric-p50").textContent).toBe("28.5ms");
     expect(screen.getByTestId("health-metric-p95").textContent).toBe("185.2ms");
     expect(screen.getByTestId("health-metric-p99").textContent).toBe("310.4ms");
-    expect(screen.getByTestId("health-metric-failed-runs").textContent).toBe(
-      "1 failed",
-    );
-    expect(screen.getByTestId("health-metric-queue-depth").textContent).toBe(
-      "14 pending",
-    );
-    expect(screen.getByTestId("health-metric-dlq-count").textContent).toBe(
-      "2 DLQ messages",
-    );
-    expect(screen.getByTestId("health-metric-d1-queries").textContent).toBe(
-      "48",
-    );
+    expect(screen.getByTestId("health-metric-failed-runs").textContent).toBe("1 failed");
+    expect(screen.getByTestId("health-metric-queue-depth").textContent).toBe("14 pending");
+    expect(screen.getByTestId("health-metric-dlq-count").textContent).toBe("2 DLQ messages");
+    expect(screen.getByTestId("health-metric-d1-queries").textContent).toBe("48");
     expect(screen.getAllByTestId("health-sparkline-bar")).toHaveLength(12);
 
     // Switch to 24h window
     fireEvent.click(screen.getByTestId("health-window-24h"));
     await waitFor(() => {
-      expect(
-        screen.getByTestId("health-metric-request-count").textContent,
-      ).toBe("100");
+      expect(screen.getByTestId("health-metric-request-count").textContent).toBe("100");
     });
     expect(window.location.search).toContain("healthWindow=24h");
 
     // Switch to 7d window
     fireEvent.click(screen.getByTestId("health-window-7d"));
     await waitFor(() => {
-      expect(
-        screen.getByTestId("health-metric-request-count").textContent,
-      ).toBe("200");
+      expect(screen.getByTestId("health-metric-request-count").textContent).toBe("200");
     });
     expect(window.location.search).toContain("healthWindow=7d");
   });
@@ -197,9 +164,7 @@ describe("Story 6.4 — BackendHealthPanel UI & Drill-down Navigation", () => {
     render(<BackendHealthPanel project="proj-health-ui" />);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("health-drilldown-logs-credit-wallet"),
-      ).toBeTruthy();
+      expect(screen.getByTestId("health-drilldown-logs-credit-wallet")).toBeTruthy();
     });
 
     fireEvent.click(screen.getByTestId("health-drilldown-logs-credit-wallet"));
@@ -207,9 +172,7 @@ describe("Story 6.4 — BackendHealthPanel UI & Drill-down Navigation", () => {
     const store = useStudioStore.getState();
     expect(store.activeNav).toBe("workflows");
     expect(store.runHistoryDrawerOpen).toBe(true);
-    expect(window.sessionStorage.getItem("studio:runsDrawerSubTab")).toBe(
-      "logs",
-    );
+    expect(window.sessionStorage.getItem("studio:runsDrawerSubTab")).toBe("logs");
     expect(window.location.search).toContain("drawer=logs");
     expect(window.location.search).toContain("logLevel=error");
     expect(window.location.search).toContain("logBrick=credit-wallet");
@@ -219,14 +182,10 @@ describe("Story 6.4 — BackendHealthPanel UI & Drill-down Navigation", () => {
     render(<BackendHealthPanel project="proj-health-ui" />);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("health-drilldown-workflow-wf_wallet_settlement"),
-      ).toBeTruthy();
+      expect(screen.getByTestId("health-drilldown-workflow-wf_wallet_settlement")).toBeTruthy();
     });
 
-    fireEvent.click(
-      screen.getByTestId("health-drilldown-workflow-wf_wallet_settlement"),
-    );
+    fireEvent.click(screen.getByTestId("health-drilldown-workflow-wf_wallet_settlement"));
 
     const store = useStudioStore.getState();
     expect(store.activeNav).toBe("workflows");

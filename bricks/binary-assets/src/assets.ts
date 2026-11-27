@@ -17,11 +17,7 @@ export interface R2ObjectLike {
 
 export interface R2Like {
   get(key: string): Promise<R2ObjectLike | null>;
-  put(
-    key: string,
-    value: ReadableStream | ArrayBuffer | Uint8Array | string,
-    options?: { httpMetadata?: R2HttpMetadataLike }
-  ): Promise<R2ObjectLike>;
+  put(key: string, value: ReadableStream | ArrayBuffer | Uint8Array | string, options?: { httpMetadata?: R2HttpMetadataLike }): Promise<R2ObjectLike>;
   delete(key: string): Promise<void>;
 }
 
@@ -56,11 +52,7 @@ export class MemoryR2 implements R2Like {
     };
   }
 
-  async put(
-    key: string,
-    value: ReadableStream | ArrayBuffer | Uint8Array | string,
-    options?: { httpMetadata?: R2HttpMetadataLike }
-  ): Promise<R2ObjectLike> {
+  async put(key: string, value: ReadableStream | ArrayBuffer | Uint8Array | string, options?: { httpMetadata?: R2HttpMetadataLike }): Promise<R2ObjectLike> {
     let bytes: Uint8Array;
     if (typeof value === "string") {
       bytes = new TextEncoder().encode(value);
@@ -135,14 +127,7 @@ export const MAX_LIST_OFFSET = 100000;
 const MAX_R2_KEY_LENGTH = 512;
 const MAX_PUBLIC_URL_LENGTH = 1024;
 
-const ACTIVE_CONTENT_TYPES = new Set([
-  "text/html",
-  "application/xhtml+xml",
-  "image/svg+xml",
-  "text/xml",
-  "application/xml",
-  "text/xsl",
-]);
+const ACTIVE_CONTENT_TYPES = new Set(["text/html", "application/xhtml+xml", "image/svg+xml", "text/xml", "application/xml", "text/xsl"]);
 
 /** The media type alone: lowercased, trimmed, parameters (`; charset=...`) stripped. */
 export function normalizeContentType(raw: string): string {
@@ -209,17 +194,9 @@ export function newCorrelationId(): string {
   return `err_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
 }
 
-export type UploadErrorCode =
-  | "INVALID_FILENAME"
-  | "INVALID_CONTENT_TYPE"
-  | "UNSUPPORTED_CONTENT_TYPE"
-  | "FILE_TOO_LARGE"
-  | "QUOTA_EXCEEDED"
-  | "INTERNAL_ERROR";
+export type UploadErrorCode = "INVALID_FILENAME" | "INVALID_CONTENT_TYPE" | "UNSUPPORTED_CONTENT_TYPE" | "FILE_TOO_LARGE" | "QUOTA_EXCEEDED" | "INTERNAL_ERROR";
 
-export type UploadResult =
-  | { ok: true; asset: AssetRecord }
-  | { ok: false; error: string; code: number; errorCode: UploadErrorCode; correlationId?: string };
+export type UploadResult = { ok: true; asset: AssetRecord } | { ok: false; error: string; code: number; errorCode: UploadErrorCode; correlationId?: string };
 
 export interface AssetServiceOptions {
   /** The most a workspace's assets may total, in bytes (A14). Default {@link DEFAULT_WORKSPACE_QUOTA_BYTES}. */
@@ -241,7 +218,7 @@ export class AssetService {
     r2Bucket?: R2Like,
     maxSizeBytes = 10485760, // 10MB
     publicBaseUrl?: string,
-    options: AssetServiceOptions = {}
+    options: AssetServiceOptions = {},
   ) {
     this.db = db;
     this.maxSizeBytes = maxSizeBytes;
@@ -262,7 +239,7 @@ export class AssetService {
     uploadedBy: string,
     filenameRaw: string,
     contentTypeRaw: string,
-    data: Uint8Array | ArrayBuffer | string
+    data: Uint8Array | ArrayBuffer | string,
   ): Promise<UploadResult> {
     const filename = sanitizeFilename(filenameRaw);
 
@@ -301,10 +278,7 @@ export class AssetService {
     // The sanitized name is a single path segment and is URI-encoded in the key. Every key segment is encoded again in
     // the public URL, so the URL addresses exactly this object.
     const r2Key = `workspaces/${workspaceId}/assets/${assetId}/${encodeURIComponent(filename)}`;
-    const publicUrl =
-      this.publicBaseUrl && !active
-        ? `${this.publicBaseUrl.replace(/\/$/, "")}/${r2Key.split("/").map(encodeURIComponent).join("/")}`
-        : null;
+    const publicUrl = this.publicBaseUrl && !active ? `${this.publicBaseUrl.replace(/\/$/, "")}/${r2Key.split("/").map(encodeURIComponent).join("/")}` : null;
     if (MAX_R2_KEY_LENGTH < r2Key.length || (publicUrl !== null && publicUrl.length > MAX_PUBLIC_URL_LENGTH)) {
       return { ok: false, error: "Filename too long", code: 400, errorCode: "INVALID_FILENAME" };
     }
@@ -312,9 +286,7 @@ export class AssetService {
 
     // 1. Upload to R2. Active content is stored as an opaque attachment, so the bucket never serves it inline.
     await this.r2.put(r2Key, bytes, {
-      httpMetadata: active
-        ? { contentType: "application/octet-stream", contentDisposition: "attachment" }
-        : { contentType },
+      httpMetadata: active ? { contentType: "application/octet-stream", contentDisposition: "attachment" } : { contentType },
     });
 
     // 2. Insert metadata into D1
@@ -333,10 +305,7 @@ export class AssetService {
       // Roll back the R2 upload. The raw error goes only to the log, under a correlation id (A18).
       await this.r2.delete(r2Key);
       const correlationId = newCorrelationId();
-      console.error(
-        `binary-assets: saving asset metadata failed [${correlationId}]`,
-        err instanceof Error ? err.message : String(err)
-      );
+      console.error(`binary-assets: saving asset metadata failed [${correlationId}]`, err instanceof Error ? err.message : String(err));
       return { ok: false, error: "Failed to save asset metadata", code: 500, errorCode: "INTERNAL_ERROR", correlationId };
     }
 
@@ -360,21 +329,14 @@ export class AssetService {
    * Retrieves asset metadata by ID scoped to workspace.
    */
   async getAsset(workspaceId: string, assetId: string): Promise<AssetRecord | null> {
-    const row = await scoped(this.db, workspaceId).first<AssetRecord>(
-      "asset_files",
-      "id = ?",
-      [assetId],
-    );
+    const row = await scoped(this.db, workspaceId).first<AssetRecord>("asset_files", "id = ?", [assetId]);
     return withSafePublicUrl(row);
   }
 
   /**
    * Retrieves an asset's metadata and its R2 body as a stream; the bytes are not buffered (A17).
    */
-  async getAssetData(
-    workspaceId: string,
-    assetId: string
-  ): Promise<{ asset: AssetRecord; body: ReadableStream; size: number } | null> {
+  async getAssetData(workspaceId: string, assetId: string): Promise<{ asset: AssetRecord; body: ReadableStream; size: number } | null> {
     const asset = await this.getAsset(workspaceId, assetId);
     if (!asset) return null;
 
@@ -407,12 +369,11 @@ export class AssetService {
   async listAssets(workspaceId: string, limit = 50, offset = 0): Promise<AssetRecord[]> {
     const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(Math.trunc(limit), 1), MAX_LIST_LIMIT) : 50;
     const safeOffset = Number.isFinite(offset) ? Math.min(Math.max(Math.trunc(offset), 0), MAX_LIST_OFFSET) : 0;
-    const rows = await scoped(this.db, workspaceId).select<AssetRecord>(
-      "asset_files",
-      undefined,
-      [],
-      { orderBy: "created_at DESC", limit: safeLimit, offset: safeOffset },
-    );
+    const rows = await scoped(this.db, workspaceId).select<AssetRecord>("asset_files", undefined, [], {
+      orderBy: "created_at DESC",
+      limit: safeLimit,
+      offset: safeOffset,
+    });
     return rows.map(withSafePublicUrl);
   }
 
@@ -423,10 +384,9 @@ export class AssetService {
     interface SumRow {
       total: number | null;
     }
-    const res = await scoped(this.db, workspaceId).raw(
-      "SELECT SUM(size_bytes) as total FROM asset_files WHERE workspace_id = ?",
-      [workspaceId],
-    ).first<SumRow>();
+    const res = await scoped(this.db, workspaceId)
+      .raw("SELECT SUM(size_bytes) as total FROM asset_files WHERE workspace_id = ?", [workspaceId])
+      .first<SumRow>();
 
     return res?.total ?? 0;
   }

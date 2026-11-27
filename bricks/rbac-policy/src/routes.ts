@@ -24,12 +24,15 @@ const CreateRoleSchema = z.object({
   name: z.string().min(1).max(64),
   description: z.string().max(255).optional(),
   // The format of each part is checked after normalising (validatePermissions), so a bad one gets INVALID_PERMISSION.
-  permissions: z.array(
-    z.object({
-      resource: z.string().max(256),
-      action: z.string().max(256),
-    })
-  ).max(200).default([]),
+  permissions: z
+    .array(
+      z.object({
+        resource: z.string().max(256),
+        action: z.string().max(256),
+      }),
+    )
+    .max(200)
+    .default([]),
 });
 
 const AssignRoleSchema = z.object({
@@ -37,9 +40,7 @@ const AssignRoleSchema = z.object({
   roleId: z.string().min(1).max(200),
 });
 
-type PermissionCheck =
-  | { ok: true; permissions: Permission[] }
-  | { ok: false; code: "INVALID_PERMISSION" | "UNKNOWN_PERMISSION"; invalid: string[] };
+type PermissionCheck = { ok: true; permissions: Permission[] } | { ok: false; code: "INVALID_PERMISSION" | "UNKNOWN_PERMISSION"; invalid: string[] };
 
 /** Normalises requested permissions (lower-case, trim, de-duplicate), then checks their format and the known list. */
 function validatePermissions(requested: Permission[], known: Set<string> | undefined): PermissionCheck {
@@ -73,9 +74,7 @@ const grantExceeds = (missing: string[]) => ({ error: "Permission denied", code:
 
 export function createRbacRoutes(options: RbacRouteOptions = {}): Hono<RbacEnv> {
   const app = new Hono<RbacEnv>();
-  const known = options.knownPermissions
-    ? new Set(options.knownPermissions.map((p) => p.toLowerCase().trim()))
-    : undefined;
+  const known = options.knownPermissions ? new Set(options.knownPermissions.map((p) => p.toLowerCase().trim())) : undefined;
 
   // Attach policy engine to context
   app.use("*", rbacMiddleware);
@@ -120,12 +119,7 @@ export function createRbacRoutes(options: RbacRouteOptions = {}): Hono<RbacEnv> 
         if (missing.length > 0) return c.json(grantExceeds(missing), 403);
       }
 
-      const result = await rbac.createRole(
-        workspace.id,
-        parsed.data.name,
-        checked.permissions,
-        parsed.data.description
-      );
+      const result = await rbac.createRole(workspace.id, parsed.data.name, checked.permissions, parsed.data.description);
 
       if (!result.ok) {
         return c.json({ error: result.error }, result.code as 400 | 500);

@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_user_onboarding.sql?raw";
-import {
-  UserOnboardingService,
-  createOnboardingRoutes,
-} from "../src/index.ts";
+import { UserOnboardingService, createOnboardingRoutes } from "../src/index.ts";
 import type { OnboardingEnv } from "../src/middleware.ts";
 
 const db = env.DB as D1Like;
@@ -132,18 +129,14 @@ describe("User Onboarding REST API", () => {
           ],
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(createRes.status).toBe(201);
     const flow = (await createRes.json()) as any;
     expect(flow.key).toBe("quickstart");
 
     // 2. Fetch progress
-    const progRes = await app.request(
-      "http://localhost/onboarding/flows/quickstart/progress",
-      { method: "GET" },
-      { DB: db }
-    );
+    const progRes = await app.request("http://localhost/onboarding/flows/quickstart/progress", { method: "GET" }, { DB: db });
     expect(progRes.status).toBe(200);
     const progJson = (await progRes.json()) as any;
     expect(progJson.percent_complete).toBe(0);
@@ -152,7 +145,7 @@ describe("User Onboarding REST API", () => {
     const stepRes = await app.request(
       "http://localhost/onboarding/flows/quickstart/steps/step_profile/complete",
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) },
-      { DB: db }
+      { DB: db },
     );
     expect(stepRes.status).toBe(200);
     const stepJson = (await stepRes.json()) as any;
@@ -162,7 +155,7 @@ describe("User Onboarding REST API", () => {
     const step2Res = await app.request(
       "http://localhost/onboarding/flows/quickstart/steps/step_api_key/complete",
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) },
-      { DB: db }
+      { DB: db },
     );
     expect(step2Res.status).toBe(200);
     const step2Json = (await step2Res.json()) as any;
@@ -170,11 +163,7 @@ describe("User Onboarding REST API", () => {
     expect(step2Json.percent_complete).toBe(100);
 
     // 5. Analytics
-    const analyticsRes = await app.request(
-      "http://localhost/onboarding/flows/quickstart/analytics",
-      { method: "GET" },
-      { DB: db }
-    );
+    const analyticsRes = await app.request("http://localhost/onboarding/flows/quickstart/analytics", { method: "GET" }, { DB: db });
     expect(analyticsRes.status).toBe(200);
     const analyticsJson = (await analyticsRes.json()) as any;
     expect(analyticsJson.total_completed).toBe(1);

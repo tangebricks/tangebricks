@@ -41,24 +41,24 @@ export class FeatureFlagService {
   /**
    * Defines or updates a global feature flag.
    */
-  async defineFlag(
-    keyRaw: string,
-    description?: string,
-    enabledDefault = false,
-    percentageRollout = 100
-  ): Promise<FlagDefinition> {
+  async defineFlag(keyRaw: string, description?: string, enabledDefault = false, percentageRollout = 100): Promise<FlagDefinition> {
     const key = keyRaw.trim().toLowerCase();
     const percentage = Math.max(0, Math.min(100, percentageRollout));
     const now = new Date().toISOString();
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO flag_definitions (key, description, enabled_default, percentage_rollout, created_at)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT (key) DO UPDATE SET
         description = excluded.description,
         enabled_default = excluded.enabled_default,
         percentage_rollout = excluded.percentage_rollout
-    `).bind(key, description?.trim() || null, enabledDefault ? 1 : 0, percentage, now).run();
+    `,
+      )
+      .bind(key, description?.trim() || null, enabledDefault ? 1 : 0, percentage, now)
+      .run();
 
     return {
       key,
@@ -81,9 +81,10 @@ export class FeatureFlagService {
       created_at: string;
     }
 
-    const row = await this.db.prepare(
-      "SELECT key, description, enabled_default, percentage_rollout, created_at FROM flag_definitions WHERE key = ?"
-    ).bind(key.toLowerCase().trim()).first<Row>();
+    const row = await this.db
+      .prepare("SELECT key, description, enabled_default, percentage_rollout, created_at FROM flag_definitions WHERE key = ?")
+      .bind(key.toLowerCase().trim())
+      .first<Row>();
 
     if (!row) return null;
     return {
@@ -104,9 +105,9 @@ export class FeatureFlagService {
       created_at: string;
     }
 
-    const rows = (await this.db.prepare(
-      "SELECT key, description, enabled_default, percentage_rollout, created_at FROM flag_definitions ORDER BY key ASC"
-    ).all<Row>()).results;
+    const rows = (
+      await this.db.prepare("SELECT key, description, enabled_default, percentage_rollout, created_at FROM flag_definitions ORDER BY key ASC").all<Row>()
+    ).results;
 
     return rows.map((r) => ({
       ...r,
@@ -124,12 +125,7 @@ export class FeatureFlagService {
 
     const existing = await scoped(this.db, workspaceId).first("flag_overrides", "flag_key = ?", [flagKey]);
     if (existing) {
-      await scoped(this.db, workspaceId).update(
-        "flag_overrides",
-        { enabled: enabled ? 1 : 0, updated_at: now },
-        "flag_key = ?",
-        [flagKey],
-      );
+      await scoped(this.db, workspaceId).update("flag_overrides", { enabled: enabled ? 1 : 0, updated_at: now }, "flag_key = ?", [flagKey]);
     } else {
       await scoped(this.db, workspaceId).insert("flag_overrides", {
         flag_key: flagKey,
@@ -156,10 +152,7 @@ export class FeatureFlagService {
   /**
    * Evaluates whether a flag is enabled for a given context (workspace & user).
    */
-  async isEnabled(
-    flagKeyRaw: string,
-    context: { workspaceId?: string; userId?: string } = {}
-  ): Promise<boolean> {
+  async isEnabled(flagKeyRaw: string, context: { workspaceId?: string; userId?: string } = {}): Promise<boolean> {
     const flagKey = flagKeyRaw.toLowerCase().trim();
 
     // 1. Check workspace override
@@ -167,11 +160,7 @@ export class FeatureFlagService {
       interface OverrideRow {
         enabled: number;
       }
-      const override = await scoped(this.db, context.workspaceId).first<OverrideRow>(
-        "flag_overrides",
-        "flag_key = ?",
-        [flagKey],
-      );
+      const override = await scoped(this.db, context.workspaceId).first<OverrideRow>("flag_overrides", "flag_key = ?", [flagKey]);
 
       if (override !== null && override !== undefined) {
         return override.enabled === 1;

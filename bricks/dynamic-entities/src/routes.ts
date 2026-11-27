@@ -180,7 +180,9 @@ export function createEntityRoutes(options: EntityRoutesOptions): Hono<EntityEnv
       const query = ListQuery.safeParse({ limit: c.req.query("limit"), offset: c.req.query("offset") });
       if (!query.success) return c.json({ error: { code: "VALIDATION_ERROR", message: describeIssues(query.error) } }, 400);
       try {
-        const { results } = await c.env.DB.prepare(`SELECT ${selectList} FROM ${table} WHERE "workspace_id" = ? ORDER BY "created_at" DESC, "id" LIMIT ? OFFSET ?`)
+        const { results } = await c.env.DB.prepare(
+          `SELECT ${selectList} FROM ${table} WHERE "workspace_id" = ? ORDER BY "created_at" DESC, "id" LIMIT ? OFFSET ?`,
+        )
           .bind(ctx.workspace.id, query.data.limit, query.data.offset)
           .all<Row>();
         const total = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE "workspace_id" = ?`).bind(ctx.workspace.id).first<{ n: number }>();
@@ -217,7 +219,9 @@ export function createEntityRoutes(options: EntityRoutesOptions): Hono<EntityEnv
         const missing = await missingRelations(c, ctx.workspace.id, body.data as Row);
         if (missing) return c.json({ error: { code: "VALIDATION_ERROR", message: missing } }, 400);
         const assignments = changes.flatMap((f) => fieldColumns(f).map((column) => `${q(column)} = ?`));
-        const result = await c.env.DB.prepare(`UPDATE ${table} SET ${assignments.join(", ")}, "updated_at" = datetime('now') WHERE "id" = ? AND "workspace_id" = ?`)
+        const result = await c.env.DB.prepare(
+          `UPDATE ${table} SET ${assignments.join(", ")}, "updated_at" = datetime('now') WHERE "id" = ? AND "workspace_id" = ?`,
+        )
           .bind(...changes.flatMap((f) => store(f, (body.data as Row)[f.name])), id, ctx.workspace.id)
           .run();
         if (result.meta.changes === 0) return c.json({ error: { code: "NOT_FOUND", message: "Not found" } }, 404);

@@ -24,14 +24,7 @@ import {
   normalizeBlueprintState,
   toSdkEntity,
 } from "./schema.ts";
-import type {
-  BlueprintMetadata,
-  BlueprintState,
-  SettingValue,
-  Workflow,
-  WorkflowEdge,
-  WorkflowNode,
-} from "./schema.ts";
+import type { BlueprintMetadata, BlueprintState, SettingValue, Workflow, WorkflowEdge, WorkflowNode } from "./schema.ts";
 
 export interface BlueprintValidationError {
   code: string;
@@ -40,16 +33,11 @@ export interface BlueprintValidationError {
   suggestedFix?: string;
 }
 
-export type ApplyOpResult =
-  | { ok: true; state: BlueprintState; inverseOps: Op[] }
-  | { ok: false; errors: BlueprintValidationError[] };
+export type ApplyOpResult = { ok: true; state: BlueprintState; inverseOps: Op[] } | { ok: false; errors: BlueprintValidationError[] };
 
 const IDENTITY_CAPABILITY = "user-identity";
 
-export function buildCatalogNodeRegistry(
-  catalog: Catalog,
-  baseRegistry: Registry = toyRegistry,
-): Registry {
+export function buildCatalogNodeRegistry(catalog: Catalog, baseRegistry: Registry = toyRegistry): Registry {
   const merged = new Map<string, BrickManifest>(baseRegistry);
   for (const packEntry of Object.values(catalog.nodePacks ?? {})) {
     for (const node of packEntry.manifest.nodes ?? []) {
@@ -66,8 +54,7 @@ export function buildCatalogNodeRegistry(
     }
   }
   for (const integrationEntry of Object.values(catalog.integrations ?? {})) {
-    const nodes =
-      integrationEntry.nodes ?? projectIntegrationToNodes(integrationEntry.manifest);
+    const nodes = integrationEntry.nodes ?? projectIntegrationToNodes(integrationEntry.manifest);
     for (const node of nodes) {
       if (!merged.has(node.type)) {
         merged.set(node.type, catalogNodeToBrickManifest(node));
@@ -77,11 +64,7 @@ export function buildCatalogNodeRegistry(
   return merged;
 }
 
-function checkUnsupportedIntegrationNode(
-  catalog: Catalog,
-  registry: Registry,
-  nodeType: string,
-): { isUnsupported: boolean; blockingCodes: string[] } {
+function checkUnsupportedIntegrationNode(catalog: Catalog, registry: Registry, nodeType: string): { isUnsupported: boolean; blockingCodes: string[] } {
   const manifest = registry.get(nodeType);
   let isUnsupported = manifest?.availability === "unsupported";
   let blockingCodes: string[] = [];
@@ -94,8 +77,7 @@ function checkUnsupportedIntegrationNode(
       const intEntry = catalog.integrations?.[app];
       if (intEntry?.manifest?.fidelity?.unsupported) {
         const matching = intEntry.manifest.fidelity.unsupported.filter(
-          (e: { op: string | null; blocking: boolean; code: string }) =>
-            (e.op === opId || e.op === null || e.op === "*") && e.blocking,
+          (e: { op: string | null; blocking: boolean; code: string }) => (e.op === opId || e.op === null || e.op === "*") && e.blocking,
         );
         if (matching.length > 0) {
           isUnsupported = true;
@@ -224,9 +206,7 @@ function validateWorkflowGraph(
     if (issue.code === "bad_ref") {
       const node = byId.get(issue.nodeId);
       if (node && !incidentNodes.has(node.id)) {
-        const refs = [...JSON.stringify(node.data).matchAll(/\{\{\$node\.([\w-]+)\./g)].map(
-          (m) => m[1]!,
-        );
+        const refs = [...JSON.stringify(node.data).matchAll(/\{\{\$node\.([\w-]+)\./g)].map((m) => m[1]!);
         const allExistAndDistinct = refs.every((r) => byId.has(r) && r !== node.id);
         if (allExistAndDistinct) {
           continue;
@@ -235,9 +215,7 @@ function validateWorkflowGraph(
     }
     errors.push({
       code: issue.code,
-      path: issue.nodeId
-        ? `workflows.${workflowId}.nodes.${issue.nodeId}`
-        : `workflows.${workflowId}`,
+      path: issue.nodeId ? `workflows.${workflowId}.nodes.${issue.nodeId}` : `workflows.${workflowId}`,
       message: issue.message,
       suggestedFix: suggestedFixForGraphIssue(issue.code),
     });
@@ -248,9 +226,7 @@ function validateWorkflowGraph(
     if (bIssue.severity === "error") {
       errors.push({
         code: bIssue.code,
-        path: bIssue.nodeId
-          ? `workflows.${workflowId}.nodes.${bIssue.nodeId}`
-          : `workflows.${workflowId}`,
+        path: bIssue.nodeId ? `workflows.${workflowId}.nodes.${bIssue.nodeId}` : `workflows.${workflowId}`,
         message: bIssue.message,
         suggestedFix: bIssue.fix,
       });
@@ -303,11 +279,7 @@ function reservedRoutesForCatalog(catalog: Catalog, state: BlueprintState): Set<
   return reserved;
 }
 
-function checkBrickConflicts(
-  brickId: string,
-  state: BlueprintState,
-  catalog: Catalog,
-): BlueprintValidationError[] {
+function checkBrickConflicts(brickId: string, state: BlueprintState, catalog: Catalog): BlueprintValidationError[] {
   const errors: BlueprintValidationError[] = [];
   const targetManifest = catalog.bricks[brickId]?.manifest;
   if (!targetManifest) return errors;
@@ -355,10 +327,7 @@ function checkBrickConflicts(
 }
 
 /** The message for one schema issue of an entity declaration, with a pointer to `relation` for a wrong relation key. */
-function entityIssueMessage(
-  entityName: string,
-  issue: { path: PropertyKey[]; message: string; code: string; keys?: readonly unknown[] },
-): string {
+function entityIssueMessage(entityName: string, issue: { path: PropertyKey[]; message: string; code: string; keys?: readonly unknown[] }): string {
   const hint = issue.code === "unrecognized_keys" ? relationKeyHint(issue.keys) : null;
   return `entities.${entityName}${issue.path.length > 0 ? "." + issue.path.map(String).join(".") : ""}: ${issue.message}${hint ? ` (${hint})` : ""}`;
 }
@@ -399,7 +368,10 @@ export function relationSuggestedFix(message: string): string | undefined {
 }
 
 /** A `relation` key on a field that is not of type relation would be silently ignored; refuse it in an op instead. */
-function misplacedRelationKeys(entityName: string, entity: { fields: ReadonlyArray<{ name: string; type: string; relation?: string }> }): BlueprintValidationError[] {
+function misplacedRelationKeys(
+  entityName: string,
+  entity: { fields: ReadonlyArray<{ name: string; type: string; relation?: string }> },
+): BlueprintValidationError[] {
   return entity.fields
     .filter((field) => field.type !== "relation" && field.relation !== undefined)
     .map((field) => ({
@@ -418,15 +390,8 @@ export interface ApplyOpOptions {
   deferRelationTargets?: boolean;
 }
 
-export function applyOp(
-  state: BlueprintState,
-  rawOp: unknown,
-  catalog: Catalog,
-  nodeRegistry?: Registry,
-  options: ApplyOpOptions = {},
-): ApplyOpResult {
-  const effectiveNodeRegistry =
-    nodeRegistry !== undefined ? nodeRegistry : buildCatalogNodeRegistry(catalog, toyRegistry);
+export function applyOp(state: BlueprintState, rawOp: unknown, catalog: Catalog, nodeRegistry?: Registry, options: ApplyOpOptions = {}): ApplyOpResult {
+  const effectiveNodeRegistry = nodeRegistry !== undefined ? nodeRegistry : buildCatalogNodeRegistry(catalog, toyRegistry);
   const parsedOp = OpSchema.safeParse(rawOp);
   if (!parsedOp.success) {
     return {
@@ -479,10 +444,7 @@ export function applyOp(
       }
 
       const existing = state.bricks.find((b) => b.id === op.brickId);
-      const nextBricks = [
-        ...state.bricks.filter((b) => b.id !== op.brickId),
-        { id: op.brickId, config: { ...rawConfig } },
-      ];
+      const nextBricks = [...state.bricks.filter((b) => b.id !== op.brickId), { id: op.brickId, config: { ...rawConfig } }];
       const nextState = normalizeBlueprintState({
         ...state,
         bricks: nextBricks,
@@ -539,9 +501,7 @@ export function applyOp(
         };
       }
 
-      const mergedConfig = (
-        op.replace ? { ...op.config } : { ...existing.config, ...op.config }
-      ) as Record<string, SettingValue>;
+      const mergedConfig = (op.replace ? { ...op.config } : { ...existing.config, ...op.config }) as Record<string, SettingValue>;
       const configErrors = checkBrickConfig(op.brickId, mergedConfig, catalog);
       if (configErrors.length > 0) {
         return {
@@ -557,9 +517,7 @@ export function applyOp(
 
       const nextState = normalizeBlueprintState({
         ...state,
-        bricks: state.bricks.map((b) =>
-          b.id === op.brickId ? { id: b.id, config: mergedConfig } : b,
-        ),
+        bricks: state.bricks.map((b) => (b.id === op.brickId ? { id: b.id, config: mergedConfig } : b)),
       });
 
       return {
@@ -587,12 +545,8 @@ export function applyOp(
             {
               code: isKnown ? "BRICK_NOT_ENABLED" : "UNKNOWN_BRICK",
               path: `bricks.${op.brickId}`,
-              message: isKnown
-                ? `brick "${op.brickId}" is not enabled in project "${state.project}"`
-                : `unknown brick "${op.brickId}"`,
-              suggestedFix: isKnown
-                ? `Check enabled bricks before calling remove_brick`
-                : `Specify a valid enabled brick id`,
+              message: isKnown ? `brick "${op.brickId}" is not enabled in project "${state.project}"` : `unknown brick "${op.brickId}"`,
+              suggestedFix: isKnown ? `Check enabled bricks before calling remove_brick` : `Specify a valid enabled brick id`,
             },
           ],
         };
@@ -721,23 +675,15 @@ export function applyOp(
       const misplacedAdd = misplacedRelationKeys(entityName || "0", validatedEntity.data);
       if (misplacedAdd.length > 0) return { ok: false, errors: misplacedAdd };
 
-      const parsed = parseEntities(
-        [...state.entities.map(toSdkEntity), toSdkEntity(validatedEntity.data)],
-        reserved,
-        "free",
-        { skipRelationTargets: true },
-      );
+      const parsed = parseEntities([...state.entities.map(toSdkEntity), toSdkEntity(validatedEntity.data)], reserved, "free", { skipRelationTargets: true });
       if (!parsed.ok) {
         return {
           ok: false,
           errors: parsed.errors.map((err) => ({
-            code: err.includes("routes already use")
-              ? "ENTITY_ROUTE_COLLISION"
-              : "INVALID_ENTITY_SCHEMA",
+            code: err.includes("routes already use") ? "ENTITY_ROUTE_COLLISION" : "INVALID_ENTITY_SCHEMA",
             path: `entities.${entityName || "0"}`,
             message: err,
-            suggestedFix:
-              "Ensure entity name and fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)",
+            suggestedFix: "Ensure entity name and fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)",
           })),
         };
       }
@@ -748,7 +694,12 @@ export function applyOp(
         if (introduced.length > 0) {
           return {
             ok: false,
-            errors: introduced.map((message) => ({ code: "INVALID_ENTITY_SCHEMA", path: `entities.${entityName || "0"}`, message, suggestedFix: RELATION_FIX })),
+            errors: introduced.map((message) => ({
+              code: "INVALID_ENTITY_SCHEMA",
+              path: `entities.${entityName || "0"}`,
+              message,
+              suggestedFix: RELATION_FIX,
+            })),
           };
         }
       }
@@ -798,10 +749,7 @@ export function applyOp(
               code: "INVALID_ENTITY_SCHEMA",
               path: `entities.${entityName}`,
               message,
-              suggestedFix: entitySchemaFix(
-                message,
-                "Ensure entity fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)",
-              ),
+              suggestedFix: entitySchemaFix(message, "Ensure entity fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)"),
             };
           }),
         };
@@ -812,10 +760,7 @@ export function applyOp(
 
       const reserved = reservedRoutesForCatalog(catalog, state);
       const parsed = parseEntities(
-        [
-          ...state.entities.filter((e) => e.name !== entityName).map(toSdkEntity),
-          toSdkEntity(validatedEntity.data),
-        ],
+        [...state.entities.filter((e) => e.name !== entityName).map(toSdkEntity), toSdkEntity(validatedEntity.data)],
         reserved,
         "free",
         { skipRelationTargets: true },
@@ -824,13 +769,10 @@ export function applyOp(
         return {
           ok: false,
           errors: parsed.errors.map((err) => ({
-            code: err.includes("routes already use")
-              ? "ENTITY_ROUTE_COLLISION"
-              : "INVALID_ENTITY_SCHEMA",
+            code: err.includes("routes already use") ? "ENTITY_ROUTE_COLLISION" : "INVALID_ENTITY_SCHEMA",
             path: `entities.${entityName}`,
             message: err,
-            suggestedFix:
-              "Ensure entity fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)",
+            suggestedFix: "Ensure entity fields satisfy EntitySchema (snake_case names, non-reserved columns, valid bounds)",
           })),
         };
       }
@@ -1046,8 +988,11 @@ export function applyOp(
         };
       }
 
-      const { isUnsupported: addIsUnsupported, blockingCodes: addBlockingCodes } =
-        checkUnsupportedIntegrationNode(catalog, effectiveNodeRegistry, op.node.type);
+      const { isUnsupported: addIsUnsupported, blockingCodes: addBlockingCodes } = checkUnsupportedIntegrationNode(
+        catalog,
+        effectiveNodeRegistry,
+        op.node.type,
+      );
       if (addIsUnsupported) {
         const details = addBlockingCodes.join(", ") || "blocking fidelity loss";
         return {
@@ -1064,25 +1009,17 @@ export function applyOp(
       }
 
       const nextNodes = [...wf.nodes, structuredClone(op.node)];
-      const graphErrors = validateWorkflowGraph(
-        op.workflowId,
-        nextNodes,
-        wf.edges,
-        effectiveNodeRegistry,
-        {
-          requireTrigger: false,
-          rejectOrphans: false,
-        },
-      );
+      const graphErrors = validateWorkflowGraph(op.workflowId, nextNodes, wf.edges, effectiveNodeRegistry, {
+        requireTrigger: false,
+        rejectOrphans: false,
+      });
       if (graphErrors.length > 0) {
         return { ok: false, errors: graphErrors };
       }
 
       const nextState = normalizeBlueprintState({
         ...state,
-        workflows: state.workflows.map((w) =>
-          w.id === op.workflowId ? { ...w, nodes: nextNodes } : w,
-        ),
+        workflows: state.workflows.map((w) => (w.id === op.workflowId ? { ...w, nodes: nextNodes } : w)),
       });
 
       return {
@@ -1132,8 +1069,7 @@ export function applyOp(
 
       const nextType = op.node?.type ?? op.patch?.type ?? op.nodeType ?? existingNode.type;
 
-      const { isUnsupported: updIsUnsupported, blockingCodes: updBlockingCodes } =
-        checkUnsupportedIntegrationNode(catalog, effectiveNodeRegistry, nextType);
+      const { isUnsupported: updIsUnsupported, blockingCodes: updBlockingCodes } = checkUnsupportedIntegrationNode(catalog, effectiveNodeRegistry, nextType);
       if (updIsUnsupported) {
         const details = updBlockingCodes.join(", ") || "blocking fidelity loss";
         return {
@@ -1148,9 +1084,7 @@ export function applyOp(
           ],
         };
       }
-      const nextData = structuredClone(
-        op.node?.data ?? op.patch?.data ?? op.data ?? existingNode.data,
-      );
+      const nextData = structuredClone(op.node?.data ?? op.patch?.data ?? op.data ?? existingNode.data);
       let nextLabel = existingNode.label;
       if (op.node !== undefined) {
         nextLabel = op.node.label;
@@ -1166,31 +1100,21 @@ export function applyOp(
         type: nextType,
         ...(nextLabel !== undefined ? { label: nextLabel } : {}),
         data: nextData,
-        ...(nextPosition !== undefined
-          ? { position: { x: nextPosition.x, y: nextPosition.y } }
-          : {}),
+        ...(nextPosition !== undefined ? { position: { x: nextPosition.x, y: nextPosition.y } } : {}),
       };
 
       const nextNodes = wf.nodes.map((n) => (n.id === op.nodeId ? updatedNode : n));
-      const graphErrors = validateWorkflowGraph(
-        op.workflowId,
-        nextNodes,
-        wf.edges,
-        effectiveNodeRegistry,
-        {
-          requireTrigger: false,
-          rejectOrphans: false,
-        },
-      );
+      const graphErrors = validateWorkflowGraph(op.workflowId, nextNodes, wf.edges, effectiveNodeRegistry, {
+        requireTrigger: false,
+        rejectOrphans: false,
+      });
       if (graphErrors.length > 0) {
         return { ok: false, errors: graphErrors };
       }
 
       const nextState = normalizeBlueprintState({
         ...state,
-        workflows: state.workflows.map((w) =>
-          w.id === op.workflowId ? { ...w, nodes: nextNodes } : w,
-        ),
+        workflows: state.workflows.map((w) => (w.id === op.workflowId ? { ...w, nodes: nextNodes } : w)),
       });
 
       return {
@@ -1239,33 +1163,21 @@ export function applyOp(
         };
       }
 
-      const removedEdges = wf.edges.filter(
-        (e) => e.source === op.nodeId || e.target === op.nodeId,
-      );
-      const nextEdges = wf.edges.filter(
-        (e) => e.source !== op.nodeId && e.target !== op.nodeId,
-      );
+      const removedEdges = wf.edges.filter((e) => e.source === op.nodeId || e.target === op.nodeId);
+      const nextEdges = wf.edges.filter((e) => e.source !== op.nodeId && e.target !== op.nodeId);
       const nextNodes = wf.nodes.filter((n) => n.id !== op.nodeId);
 
-      const graphErrors = validateWorkflowGraph(
-        op.workflowId,
-        nextNodes,
-        nextEdges,
-        effectiveNodeRegistry,
-        {
-          requireTrigger: false,
-          rejectOrphans: false,
-        },
-      );
+      const graphErrors = validateWorkflowGraph(op.workflowId, nextNodes, nextEdges, effectiveNodeRegistry, {
+        requireTrigger: false,
+        rejectOrphans: false,
+      });
       if (graphErrors.length > 0) {
         return { ok: false, errors: graphErrors };
       }
 
       const nextState = normalizeBlueprintState({
         ...state,
-        workflows: state.workflows.map((w) =>
-          w.id === op.workflowId ? { ...w, nodes: nextNodes, edges: nextEdges } : w,
-        ),
+        workflows: state.workflows.map((w) => (w.id === op.workflowId ? { ...w, nodes: nextNodes, edges: nextEdges } : w)),
       });
 
       const inverseOps: Op[] = [
@@ -1305,25 +1217,17 @@ export function applyOp(
       }
 
       const nextEdges = [...wf.edges, ...structuredClone(op.edges)];
-      const graphErrors = validateWorkflowGraph(
-        op.workflowId,
-        wf.nodes,
-        nextEdges,
-        effectiveNodeRegistry,
-        {
-          requireTrigger: true,
-          rejectOrphans: false,
-        },
-      );
+      const graphErrors = validateWorkflowGraph(op.workflowId, wf.nodes, nextEdges, effectiveNodeRegistry, {
+        requireTrigger: true,
+        rejectOrphans: false,
+      });
       if (graphErrors.length > 0) {
         return { ok: false, errors: graphErrors };
       }
 
       const nextState = normalizeBlueprintState({
         ...state,
-        workflows: state.workflows.map((w) =>
-          w.id === op.workflowId ? { ...w, edges: nextEdges } : w,
-        ),
+        workflows: state.workflows.map((w) => (w.id === op.workflowId ? { ...w, edges: nextEdges } : w)),
       });
 
       const inverseOps: Op[] = [...op.edges].reverse().map((edge, idx) => ({
@@ -1368,25 +1272,17 @@ export function applyOp(
       }
 
       const nextEdges = wf.edges.filter((e) => e.id !== op.edgeId);
-      const graphErrors = validateWorkflowGraph(
-        op.workflowId,
-        wf.nodes,
-        nextEdges,
-        effectiveNodeRegistry,
-        {
-          requireTrigger: false,
-          rejectOrphans: false,
-        },
-      );
+      const graphErrors = validateWorkflowGraph(op.workflowId, wf.nodes, nextEdges, effectiveNodeRegistry, {
+        requireTrigger: false,
+        rejectOrphans: false,
+      });
       if (graphErrors.length > 0) {
         return { ok: false, errors: graphErrors };
       }
 
       const nextState = normalizeBlueprintState({
         ...state,
-        workflows: state.workflows.map((w) =>
-          w.id === op.workflowId ? { ...w, edges: nextEdges } : w,
-        ),
+        workflows: state.workflows.map((w) => (w.id === op.workflowId ? { ...w, edges: nextEdges } : w)),
       });
 
       return {
@@ -1433,12 +1329,7 @@ export function applyOp(
         };
       }
 
-      const existing = state.secretRefs.find(
-        (s) =>
-          s.targetKind === op.targetKind &&
-          s.targetId === op.targetId &&
-          s.secretName === op.secretName,
-      );
+      const existing = state.secretRefs.find((s) => s.targetKind === op.targetKind && s.targetId === op.targetId && s.secretName === op.secretName);
 
       if (op.ref === null) {
         if (!existing) {
@@ -1485,22 +1376,14 @@ export function applyOp(
               code: "INVALID_SECRET_REF",
               path,
               message: handleCheck.reason,
-              suggestedFix:
-                'Pass a clean secret reference handle (such as "sec_stripe_key" or "STRIPE_API_KEY_REF"), never a raw secret value',
+              suggestedFix: 'Pass a clean secret reference handle (such as "sec_stripe_key" or "STRIPE_API_KEY_REF"), never a raw secret value',
             },
           ],
         };
       }
 
       const nextSecretRefs = [
-        ...state.secretRefs.filter(
-          (s) =>
-            !(
-              s.targetKind === op.targetKind &&
-              s.targetId === op.targetId &&
-              s.secretName === op.secretName
-            ),
-        ),
+        ...state.secretRefs.filter((s) => !(s.targetKind === op.targetKind && s.targetId === op.targetId && s.secretName === op.secretName)),
         {
           ref: op.ref,
           targetKind: op.targetKind,
@@ -1541,12 +1424,7 @@ export function applyOp(
 
     case "unbind_secret_ref": {
       const path = `secretRefs.${op.targetKind}.${op.targetId}.${op.secretName}`;
-      const existing = state.secretRefs.find(
-        (s) =>
-          s.targetKind === op.targetKind &&
-          s.targetId === op.targetId &&
-          s.secretName === op.secretName,
-      );
+      const existing = state.secretRefs.find((s) => s.targetKind === op.targetKind && s.targetId === op.targetId && s.secretName === op.secretName);
       if (!existing) {
         return {
           ok: false,
@@ -1618,9 +1496,7 @@ export function applyOp(
         if (op.metadata.layout === null || op.metadata.layout === undefined) {
           delete baseMeta.layout;
         } else {
-          const nextLayout: Record<string, { x: number; y: number }> = op.replace
-            ? {}
-            : { ...baseMeta.layout };
+          const nextLayout: Record<string, { x: number; y: number }> = op.replace ? {} : { ...baseMeta.layout };
           for (const [nodeId, coords] of Object.entries(op.metadata.layout)) {
             if (coords === null || coords === undefined) {
               delete nextLayout[nodeId];
@@ -1653,12 +1529,7 @@ export function applyOp(
   }
 }
 
-export function applyOps(
-  state: BlueprintState,
-  ops: ReadonlyArray<unknown>,
-  catalog: Catalog,
-  nodeRegistry?: Registry,
-): ApplyOpResult {
+export function applyOps(state: BlueprintState, ops: ReadonlyArray<unknown>, catalog: Catalog, nodeRegistry?: Registry): ApplyOpResult {
   let current = normalizeBlueprintState(state);
   const initialEntities = current.entities;
   const inverseOps: Op[] = [];

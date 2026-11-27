@@ -5,14 +5,8 @@ import type { CurationAcknowledge, CurationConfig } from "./curation.ts";
  * Applies `curation.acknowledge` to the report's lossy entries, rejects stale acknowledgements,
  * and in strict mode rejects any loss that is still unacknowledged.
  */
-export function applyAcknowledgements(
-  report: ImportReport,
-  curation: CurationConfig,
-  mode: "strict" | "lenient",
-): void {
-  const lossEntries = report.entries.filter(
-    (e) => e.status === "approximated" || e.status === "unsupported",
-  );
+export function applyAcknowledgements(report: ImportReport, curation: CurationConfig, mode: "strict" | "lenient"): void {
+  const lossEntries = report.entries.filter((e) => e.status === "approximated" || e.status === "unsupported");
   const matchedAcks = new Set<CurationAcknowledge>();
   const acknowledgedEntries = new Set<ImportReportEntry>();
 
@@ -38,11 +32,7 @@ export function applyAcknowledgements(
       if (!matchedAcks.has(ack)) {
         const isUpstreamAck =
           curation.specProvenance === "hand-trimmed" &&
-          Boolean(
-            curation.upstream &&
-              (ack.op === "*" ||
-                (curation.upstream.operationIds && ack.op in curation.upstream.operationIds)),
-          );
+          Boolean(curation.upstream && (ack.op === "*" || (curation.upstream.operationIds && ack.op in curation.upstream.operationIds)));
         if (!isUpstreamAck) {
           const ptrStr = ack.pointer ? `, pointer="${ack.pointer}"` : "";
           throw new Error(
@@ -57,10 +47,7 @@ export function applyAcknowledgements(
     const unacknowledged = lossEntries.filter((e) => !acknowledgedEntries.has(e));
     if (unacknowledged.length > 0) {
       const list = unacknowledged
-        .map(
-          (e) =>
-            `  - op="${e.op ?? "<doc>"}", code="${e.code}", pointer="${e.pointer}" (status=${e.status}, blocking=${e.blocking})`,
-        )
+        .map((e) => `  - op="${e.op ?? "<doc>"}", code="${e.code}", pointer="${e.pointer}" (status=${e.status}, blocking=${e.blocking})`)
         .join("\n");
       throw new Error(
         `OPENAPI_IMPORT_UNACKNOWLEDGED_LOSS: Strict import rejected unacknowledged loss(es) in "${curation.app}" (${unacknowledged.length} unacknowledged):\n${list}`,

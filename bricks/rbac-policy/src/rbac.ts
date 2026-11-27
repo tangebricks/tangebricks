@@ -30,7 +30,7 @@ export class RbacService {
     name: string,
     permissions: Permission[] = [],
     description?: string,
-    isSystem = false
+    isSystem = false,
   ): Promise<{ ok: true; role: RoleRecord } | { ok: false; error: string; code: number }> {
     const trimmedName = name.trim();
     if (!trimmedName || trimmedName.length > 64) {
@@ -49,9 +49,9 @@ export class RbacService {
 
       if (permissions.length > 0) {
         const permStmts = permissions.map((p) =>
-          this.db.prepare(
-            "INSERT OR IGNORE INTO rbac_permissions (role_id, resource, action) VALUES (?, ?, ?)"
-          ).bind(roleId, p.resource.toLowerCase().trim(), p.action.toLowerCase().trim())
+          this.db
+            .prepare("INSERT OR IGNORE INTO rbac_permissions (role_id, resource, action) VALUES (?, ?, ?)")
+            .bind(roleId, p.resource.toLowerCase().trim(), p.action.toLowerCase().trim()),
         );
         await this.db.batch(permStmts);
       }
@@ -88,23 +88,25 @@ export class RbacService {
       created_at: string;
     }
 
-    const roles = await scoped(this.db, workspaceId).select<RoleRow>(
-      "rbac_roles",
-      undefined,
-      [],
-      { orderBy: "created_at ASC" }
-    );
+    const roles = await scoped(this.db, workspaceId).select<RoleRow>("rbac_roles", undefined, [], { orderBy: "created_at ASC" });
 
     if (roles.length === 0) {
       return [];
     }
 
     const placeholders = roles.map(() => "?").join(",");
-    const permRows = (await this.db.prepare(`
+    const permRows = (
+      await this.db
+        .prepare(
+          `
       SELECT role_id, resource, action
       FROM rbac_permissions
       WHERE role_id IN (${placeholders})
-    `).bind(...roles.map((r) => r.id)).all<{ role_id: string; resource: string; action: string }>()).results;
+    `,
+        )
+        .bind(...roles.map((r) => r.id))
+        .all<{ role_id: string; resource: string; action: string }>()
+    ).results;
 
     const permsByRole = new Map<string, Permission[]>();
     for (const p of permRows) {
@@ -127,11 +129,7 @@ export class RbacService {
     const role = await scoped(this.db, workspaceId).first("rbac_roles", "id = ?", [roleId]);
     if (!role) return false;
 
-    const existing = await scoped(this.db, workspaceId).first(
-      "rbac_role_assignments",
-      "user_id = ? AND role_id = ?",
-      [userId, roleId]
-    );
+    const existing = await scoped(this.db, workspaceId).first("rbac_role_assignments", "user_id = ? AND role_id = ?", [userId, roleId]);
     if (!existing) {
       await scoped(this.db, workspaceId).insert("rbac_role_assignments", {
         user_id: userId,
@@ -146,11 +144,7 @@ export class RbacService {
    * Revokes a role from a user within a workspace.
    */
   async revokeRole(workspaceId: string, userId: string, roleId: string): Promise<boolean> {
-    const res = await scoped(this.db, workspaceId).delete(
-      "rbac_role_assignments",
-      "user_id = ? AND role_id = ?",
-      [userId, roleId]
-    );
+    const res = await scoped(this.db, workspaceId).delete("rbac_role_assignments", "user_id = ? AND role_id = ?", [userId, roleId]);
     return res.meta.changes > 0;
   }
 
@@ -163,11 +157,7 @@ export class RbacService {
       action: string;
     }
 
-    const assignments = await scoped(this.db, workspaceId).select<{ role_id: string }>(
-      "rbac_role_assignments",
-      "user_id = ?",
-      [userId]
-    );
+    const assignments = await scoped(this.db, workspaceId).select<{ role_id: string }>("rbac_role_assignments", "user_id = ?", [userId]);
 
     if (assignments.length === 0) {
       return new Set();
@@ -175,11 +165,18 @@ export class RbacService {
 
     const roleIds = assignments.map((a) => a.role_id);
     const placeholders = roleIds.map(() => "?").join(",");
-    const rows = (await this.db.prepare(`
+    const rows = (
+      await this.db
+        .prepare(
+          `
       SELECT DISTINCT resource, action
       FROM rbac_permissions
       WHERE role_id IN (${placeholders})
-    `).bind(...roleIds).all<PermRow>()).results;
+    `,
+        )
+        .bind(...roleIds)
+        .all<PermRow>()
+    ).results;
 
     const set = new Set<string>();
     for (const r of rows) {
@@ -194,9 +191,7 @@ export class RbacService {
   async getRolePermissions(workspaceId: string, roleId: string): Promise<Permission[] | null> {
     const role = await scoped(this.db, workspaceId).first("rbac_roles", "id = ?", [roleId]);
     if (!role) return null;
-    const rows = (await this.db.prepare(
-      "SELECT resource, action FROM rbac_permissions WHERE role_id = ?"
-    ).bind(roleId).all<Permission>()).results;
+    const rows = (await this.db.prepare("SELECT resource, action FROM rbac_permissions WHERE role_id = ?").bind(roleId).all<Permission>()).results;
     return rows.map((r) => ({ resource: r.resource.toLowerCase(), action: r.action.toLowerCase() }));
   }
 
@@ -221,12 +216,7 @@ export class RbacService {
 
   /** Whether a set of held "resource:action" permissions covers one (already normalised) resource and action. */
   private static covers(permissions: Set<string>, resource: string, action: string): boolean {
-    return (
-      permissions.has("*:*") ||
-      permissions.has(`${resource}:*`) ||
-      permissions.has(`*:${action}`) ||
-      permissions.has(`${resource}:${action}`)
-    );
+    return permissions.has("*:*") || permissions.has(`${resource}:*`) || permissions.has(`*:${action}`) || permissions.has(`${resource}:${action}`);
   }
 
   /**

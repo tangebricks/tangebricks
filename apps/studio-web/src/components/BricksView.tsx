@@ -8,11 +8,7 @@ import {
   formatMaturityBadge,
   hasSchedulingOrQueueTriggers,
 } from "../types.ts";
-import type {
-  BrickCategory,
-  CatalogBrickManifest,
-  CatalogIntegrationManifest,
-} from "../types.ts";
+import type { BrickCategory, CatalogBrickManifest, CatalogIntegrationManifest } from "../types.ts";
 import { AuthorBadge, MaturityBadge } from "./Badges.tsx";
 
 const CATEGORIES: Array<{ value: "all" | BrickCategory; label: string }> = [
@@ -64,9 +60,7 @@ export function BricksView() {
     }
     const toBricks = canvasVisualDiff.toState.bricks ?? [];
     const toIds = new Set(toBricks.map((b) => b.id));
-    const removedBricks = (canvasVisualDiff.fromState.bricks ?? []).filter(
-      (b) => !toIds.has(b.id),
-    );
+    const removedBricks = (canvasVisualDiff.fromState.bricks ?? []).filter((b) => !toIds.has(b.id));
     return [...toBricks, ...removedBricks];
   }, [canvasVisualDiff, projectState?.bricks]);
   const enabledIds = useMemo(() => new Set(enabledBricks.map((b) => b.id)), [enabledBricks]);
@@ -84,11 +78,7 @@ export function BricksView() {
     }
     return map;
   }, [canvasVisualDiff]);
-  const validationIssues = useMemo(
-    () =>
-      computeStudioValidationIssues(projectState, catalog, secrets, readiness),
-    [projectState, catalog, secrets, readiness],
-  );
+  const validationIssues = useMemo(() => computeStudioValidationIssues(projectState, catalog, secrets, readiness), [projectState, catalog, secrets, readiness]);
 
   const enablePreview = useMemo(() => {
     if (!enableModalBrickId) return null;
@@ -203,12 +193,7 @@ export function BricksView() {
     if (!q) return true;
     const displayName = (manifest.ui?.displayName ?? manifest.id).toLowerCase();
     const summary = (manifest.ui?.summary ?? "").toLowerCase();
-    return (
-      manifest.id.toLowerCase().includes(q) ||
-      displayName.includes(q) ||
-      summary.includes(q) ||
-      category.toLowerCase().includes(q)
-    );
+    return manifest.id.toLowerCase().includes(q) || displayName.includes(q) || summary.includes(q) || category.toLowerCase().includes(q);
   };
 
   // Enabled in Project: always shown regardless of experimental tier (AC 1)
@@ -248,11 +233,7 @@ export function BricksView() {
         if (!q) return true;
         const displayName = (manifest.ui?.displayName ?? manifest.ui?.title ?? manifest.app).toLowerCase();
         const summary = (manifest.ui?.summary ?? "").toLowerCase();
-        return (
-          manifest.app.toLowerCase().includes(q) ||
-          displayName.includes(q) ||
-          summary.includes(q)
-        );
+        return manifest.app.toLowerCase().includes(q) || displayName.includes(q) || summary.includes(q);
       })
       .sort((a, b) => a.app.localeCompare(b.app));
   }, [integrations, showExperimental, categoryFilter, searchQuery]);
@@ -268,12 +249,8 @@ export function BricksView() {
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="font-bold text-xs text-text-primary">
-                {displayName}
-              </div>
-              <div className="font-mono text-[11px] text-text-muted mt-0.5">
-                {manifest.app}
-              </div>
+              <div className="font-bold text-xs text-text-primary">{displayName}</div>
+              <div className="font-mono text-[11px] text-text-muted mt-0.5">{manifest.app}</div>
             </div>
 
             <MaturityBadge
@@ -287,15 +264,10 @@ export function BricksView() {
             />
           </div>
 
-          {manifest.ui?.summary && (
-            <p className="text-xs text-text-secondary">{manifest.ui.summary}</p>
-          )}
+          {manifest.ui?.summary && <p className="text-xs text-text-secondary">{manifest.ui.summary}</p>}
 
           {manifest.ui?.maturityReason && manifest.ui?.derivedTier !== "production" && (
-            <div
-              data-testid={`integration-reason-${manifest.app}`}
-              className="p-2 rounded bg-surface-base border border-border text-[11px] text-amber-200/90"
-            >
+            <div data-testid={`integration-reason-${manifest.app}`} className="p-2 rounded bg-surface-base border border-border text-[11px] text-amber-200/90">
               ⚠ {manifest.ui.maturityReason}
             </div>
           )}
@@ -317,7 +289,7 @@ export function BricksView() {
       (manifest.ui?.evidence?.gitSha
         ? manifest.ui?.maturity === "production"
           ? "unverified"
-          : manifest.ui?.maturity ?? "experimental"
+          : (manifest.ui?.maturity ?? "experimental")
         : manifest.ui?.maturity === "beta"
           ? "beta"
           : manifest.ui?.maturity === "experimental"
@@ -328,12 +300,9 @@ export function BricksView() {
     const needsScheduling = hasSchedulingOrQueueTriggers(manifest, enabledBricks.find((b) => b.id === manifest.id)?.config ?? {});
     const isEnabled = enabledIds.has(manifest.id);
     const isSelected = selection?.kind === "brick" && selection.id === manifest.id;
-    const highlight =
-      highlightedTargets[`brick:${manifest.id}`] ?? highlightedTargets[manifest.id];
+    const highlight = highlightedTargets[`brick:${manifest.id}`] ?? highlightedTargets[manifest.id];
     const diffStatus = brickDiffMap.get(manifest.id) ?? null;
-    const brickIssues = isEnabled
-      ? validationIssues.filter((iss) => iss.brickId === manifest.id)
-      : [];
+    const brickIssues = isEnabled ? validationIssues.filter((iss) => iss.brickId === manifest.id) : [];
 
     return (
       <div
@@ -359,18 +328,10 @@ export function BricksView() {
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div
-                className={`font-bold text-xs ${
-                  diffStatus === "removed"
-                    ? "line-through text-rose-300"
-                    : "text-text-primary"
-                }`}
-              >
+              <div className={`font-bold text-xs ${diffStatus === "removed" ? "line-through text-rose-300" : "text-text-primary"}`}>
                 {manifest.ui?.displayName ?? manifest.id}
               </div>
-              <div className="font-mono text-[11px] text-text-muted mt-0.5">
-                {manifest.id}
-              </div>
+              <div className="font-mono text-[11px] text-text-muted mt-0.5">{manifest.id}</div>
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -398,13 +359,7 @@ export function BricksView() {
                   - Removed
                 </span>
               )}
-              {highlight && (
-                <AuthorBadge
-                  testId={`brick-author-badge-${manifest.id}`}
-                  authorLabel={highlight.authorLabel}
-                  isAgent={highlight.isAgent}
-                />
-              )}
+              {highlight && <AuthorBadge testId={`brick-author-badge-${manifest.id}`} authorLabel={highlight.authorLabel} isAgent={highlight.isAgent} />}
               <MaturityBadge
                 testId={`${sectionPrefix}-brick-maturity-${manifest.id}`}
                 tier={manifest.ui?.maturity}
@@ -416,9 +371,7 @@ export function BricksView() {
             </div>
           </div>
 
-          {manifest.ui?.summary && (
-            <p className="text-xs text-text-secondary">{manifest.ui.summary}</p>
-          )}
+          {manifest.ui?.summary && <p className="text-xs text-text-secondary">{manifest.ui.summary}</p>}
 
           {maturityReason && maturity.tier !== "production" && (
             <div
@@ -446,9 +399,7 @@ export function BricksView() {
             >
               {brickIssues.map((iss) => (
                 <div key={iss.id} className="flex items-start gap-1.5">
-                  <span className="font-bold text-rose-400">
-                    {iss.severity === "error" ? "✕" : "⚠"}
-                  </span>
+                  <span className="font-bold text-rose-400">{iss.severity === "error" ? "✕" : "⚠"}</span>
                   <span>{iss.message}</span>
                 </div>
               ))}
@@ -465,13 +416,7 @@ export function BricksView() {
           </span>
 
           <div className="flex items-center gap-2">
-            <span
-              className={
-                isEnabled
-                  ? "text-emerald-400 font-semibold"
-                  : "text-text-muted"
-              }
-            >
+            <span className={isEnabled ? "text-emerald-400 font-semibold" : "text-text-muted"}>
               {isEnabled ? "● Enabled in project" : "○ Available in catalog"}
             </span>
 
@@ -531,11 +476,10 @@ export function BricksView() {
       {/* Header & Filter Bar */}
       <div className="p-4 rounded-lg bg-surface-raised border border-border flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-text-primary">
-            Bricks — Enabled & 40-Brick Catalog
-          </h2>
+          <h2 className="text-base font-bold text-text-primary">Bricks — Enabled & 40-Brick Catalog</h2>
           <p className="text-xs text-text-muted mt-0.5">
-            Full-stack capabilities with production, beta, and experimental maturity badges. Turn bricks on or off and configure settings in the Right Dock Inspector.
+            Full-stack capabilities with production, beta, and experimental maturity badges. Turn bricks on or off and configure settings in the Right Dock
+            Inspector.
           </p>
         </div>
 
@@ -584,41 +528,23 @@ export function BricksView() {
       </div>
 
       {/* Section 1: Enabled in Project */}
-      <section
-        aria-label="Enabled in Project"
-        data-testid="bricks-enabled-section"
-        className="space-y-3"
-      >
+      <section aria-label="Enabled in Project" data-testid="bricks-enabled-section" className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">
-            Enabled in Project ({enabledManifests.length})
-          </h3>
-          <span className="text-[11px] text-text-muted">
-            Enabled bricks are always shown regardless of maturity tier
-          </span>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">Enabled in Project ({enabledManifests.length})</h3>
+          <span className="text-[11px] text-text-muted">Enabled bricks are always shown regardless of maturity tier</span>
         </div>
 
         {enabledManifests.length === 0 ? (
-          <div className="p-4 rounded-lg bg-surface-raised border border-border text-xs text-text-muted">
-            No enabled bricks match the current filter.
-          </div>
+          <div className="p-4 rounded-lg bg-surface-raised border border-border text-xs text-text-muted">No enabled bricks match the current filter.</div>
         ) : (
-          <div className="grid grid-cols-3 gap-3">
-            {enabledManifests.map((manifest) => renderBrickCard(manifest, "enabled"))}
-          </div>
+          <div className="grid grid-cols-3 gap-3">{enabledManifests.map((manifest) => renderBrickCard(manifest, "enabled"))}</div>
         )}
       </section>
 
       {/* Section 2: Brick Catalog */}
-      <section
-        aria-label="Brick Catalog"
-        data-testid="bricks-catalog-section"
-        className="space-y-3"
-      >
+      <section aria-label="Brick Catalog" data-testid="bricks-catalog-section" className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">
-            Brick Catalog ({catalogManifests.length} shown)
-          </h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">Brick Catalog ({catalogManifests.length} shown)</h3>
           <span className="text-[11px] text-text-muted">
             {showExperimental
               ? "Showing production, beta, and experimental bricks"
@@ -626,34 +552,20 @@ export function BricksView() {
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          {catalogManifests.map((manifest) => renderBrickCard(manifest, "catalog"))}
-        </div>
+        <div className="grid grid-cols-3 gap-3">{catalogManifests.map((manifest) => renderBrickCard(manifest, "catalog"))}</div>
       </section>
 
       {/* Section 3: Curated Integrations */}
-      <section
-        aria-label="Curated Integrations"
-        data-testid="bricks-integrations-section"
-        className="space-y-3"
-      >
+      <section aria-label="Curated Integrations" data-testid="bricks-integrations-section" className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">
-            Curated Integrations ({integrationList.length})
-          </h3>
-          <span className="text-[11px] text-text-muted">
-            Integration packs with live-canary and fidelity verification
-          </span>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">Curated Integrations ({integrationList.length})</h3>
+          <span className="text-[11px] text-text-muted">Integration packs with live-canary and fidelity verification</span>
         </div>
 
         {integrationList.length === 0 ? (
-          <div className="p-4 rounded-lg bg-surface-raised border border-border text-xs text-text-muted">
-            No integrations match the current filter.
-          </div>
+          <div className="p-4 rounded-lg bg-surface-raised border border-border text-xs text-text-muted">No integrations match the current filter.</div>
         ) : (
-          <div className="grid grid-cols-3 gap-3">
-            {integrationList.map((intManifest) => renderIntegrationCard(intManifest))}
-          </div>
+          <div className="grid grid-cols-3 gap-3">{integrationList.map((intManifest) => renderIntegrationCard(intManifest))}</div>
         )}
       </section>
 
@@ -669,12 +581,8 @@ export function BricksView() {
           <div className="w-full max-w-lg rounded-lg bg-surface-raised border border-border-strong p-5 space-y-4 text-xs shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-text-primary">
-                  Turn on {enablePreview.manifest.ui?.displayName ?? enablePreview.brickId}
-                </h3>
-                <div className="font-mono text-[11px] text-text-muted mt-0.5">
-                  {enablePreview.brickId}
-                </div>
+                <h3 className="text-sm font-bold text-text-primary">Turn on {enablePreview.manifest.ui?.displayName ?? enablePreview.brickId}</h3>
+                <div className="font-mono text-[11px] text-text-muted mt-0.5">{enablePreview.brickId}</div>
               </div>
               <MaturityBadge
                 testId="brick-enable-modal-maturity"
@@ -686,36 +594,21 @@ export function BricksView() {
               />
             </div>
 
-            {enablePreview.manifest.ui?.summary && (
-              <p className="text-text-secondary">{enablePreview.manifest.ui.summary}</p>
-            )}
+            {enablePreview.manifest.ui?.summary && <p className="text-text-secondary">{enablePreview.manifest.ui.summary}</p>}
 
             {/* Transitive Required Providers */}
-            <div
-              data-testid="brick-enable-requires"
-              className="p-3 rounded bg-surface-base border border-border space-y-1.5"
-            >
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                Dependency Preview
-              </div>
+            <div data-testid="brick-enable-requires" className="p-3 rounded bg-surface-base border border-border space-y-1.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Dependency Preview</div>
               {enablePreview.missingProviders.length === 0 ? (
-                <div className="text-emerald-400">
-                  ✓ All required capabilities are already satisfied.
-                </div>
+                <div className="text-emerald-400">✓ All required capabilities are already satisfied.</div>
               ) : (
                 <div className="space-y-1">
                   <div className="text-amber-300 font-semibold">
-                    Also turns on:{" "}
-                    {enablePreview.missingProviders
-                      .map((p) => `${p.brickId} (required)`)
-                      .join(", ")}
+                    Also turns on: {enablePreview.missingProviders.map((p) => `${p.brickId} (required)`).join(", ")}
                   </div>
                   <ul className="space-y-1 text-text-secondary font-mono text-[11px]">
                     {enablePreview.missingProviders.map((p) => (
-                      <li
-                        key={p.brickId}
-                        data-testid={`brick-enable-req-${p.brickId}`}
-                      >
+                      <li key={p.brickId} data-testid={`brick-enable-req-${p.brickId}`}>
                         + {p.brickId} ({p.displayName}) — provides {p.providesCapability}
                       </li>
                     ))}
@@ -726,14 +619,8 @@ export function BricksView() {
 
             {/* Conflicts */}
             {enablePreview.conflicts.length > 0 && (
-              <div
-                role="alert"
-                data-testid="brick-enable-conflicts"
-                className="p-3 rounded bg-rose-500/15 border border-rose-500/40 text-rose-200 space-y-1.5"
-              >
-                <div className="font-bold text-rose-300">
-                  ✕ Conflict with enabled brick — cannot turn on:
-                </div>
+              <div role="alert" data-testid="brick-enable-conflicts" className="p-3 rounded bg-rose-500/15 border border-rose-500/40 text-rose-200 space-y-1.5">
+                <div className="font-bold text-rose-300">✕ Conflict with enabled brick — cannot turn on:</div>
                 <ul className="space-y-1 font-mono text-[11px]">
                   {enablePreview.conflicts.map((c, idx) => (
                     <li key={`${c.brickA}:${c.brickB}:${idx}`}>
@@ -745,35 +632,22 @@ export function BricksView() {
             )}
 
             {/* What this brick adds */}
-            <div
-              data-testid="brick-enable-adds"
-              className="p-3 rounded bg-surface-base border border-border space-y-1.5"
-            >
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                What This Brick Adds
-              </div>
+            <div data-testid="brick-enable-adds" className="p-3 rounded bg-surface-base border border-border space-y-1.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">What This Brick Adds</div>
               <div>
                 <span className="text-text-muted">Migrations: </span>
                 <span className="font-mono text-text-secondary">
-                  {enablePreview.adds.migrations.length > 0
-                    ? enablePreview.adds.migrations.join(", ")
-                    : "None"}
+                  {enablePreview.adds.migrations.length > 0 ? enablePreview.adds.migrations.join(", ") : "None"}
                 </span>
               </div>
               <div>
                 <span className="text-text-muted">Routes: </span>
-                <span className="font-mono text-sky-400">
-                  {enablePreview.adds.routes.length > 0
-                    ? enablePreview.adds.routes.join(", ")
-                    : "None"}
-                </span>
+                <span className="font-mono text-sky-400">{enablePreview.adds.routes.length > 0 ? enablePreview.adds.routes.join(", ") : "None"}</span>
               </div>
               <div>
                 <span className="text-text-muted">Workflow Actions / Triggers: </span>
                 <span className="font-mono text-emerald-400">
-                  {enablePreview.adds.nodes.length > 0
-                    ? enablePreview.adds.nodes.map((n) => `${n.type} (${n.role})`).join(", ")
-                    : "None"}
+                  {enablePreview.adds.nodes.length > 0 ? enablePreview.adds.nodes.map((n) => `${n.type} (${n.role})`).join(", ") : "None"}
                 </span>
               </div>
             </div>
@@ -791,10 +665,7 @@ export function BricksView() {
                   onChange={(e) => setExperimentalConfirmed(e.target.checked)}
                   className="mt-0.5 rounded accent-amber-500"
                 />
-                <span>
-                  I understand this brick is experimental:{" "}
-                  {enablePreview.maturityReason ?? "Experimental maturity tier"}
-                </span>
+                <span>I understand this brick is experimental: {enablePreview.maturityReason ?? "Experimental maturity tier"}</span>
               </label>
             )}
 
@@ -813,11 +684,7 @@ export function BricksView() {
               <button
                 type="button"
                 data-testid="brick-enable-confirm"
-                disabled={
-                  isMutating ||
-                  enablePreview.conflicts.length > 0 ||
-                  (enablePreview.isExperimental && !experimentalConfirmed)
-                }
+                disabled={isMutating || enablePreview.conflicts.length > 0 || (enablePreview.isExperimental && !experimentalConfirmed)}
                 onClick={() => void handleConfirmEnable()}
                 className="px-3 py-1.5 rounded bg-accent text-slate-950 font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -839,30 +706,17 @@ export function BricksView() {
         >
           <div className="w-full max-w-lg rounded-lg bg-surface-raised border border-border-strong p-5 space-y-4 text-xs shadow-xl">
             <div>
-              <h3 className="text-sm font-bold text-text-primary">
-                Turn off {disableImpact.manifest.ui?.displayName ?? disableImpact.brickId}?
-              </h3>
-              <div className="font-mono text-[11px] text-text-muted mt-0.5">
-                {disableImpact.brickId}
-              </div>
+              <h3 className="text-sm font-bold text-text-primary">Turn off {disableImpact.manifest.ui?.displayName ?? disableImpact.brickId}?</h3>
+              <div className="font-mono text-[11px] text-text-muted mt-0.5">{disableImpact.brickId}</div>
             </div>
 
-            <div
-              data-testid="brick-disable-dependents"
-              className="p-3 rounded bg-surface-base border border-border space-y-1.5"
-            >
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                Dependent Bricks Impact
-              </div>
+            <div data-testid="brick-disable-dependents" className="p-3 rounded bg-surface-base border border-border space-y-1.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Dependent Bricks Impact</div>
               {disableImpact.dependentBricks.length === 0 ? (
-                <div className="text-emerald-400">
-                  ✓ No other enabled bricks depend exclusively on this brick.
-                </div>
+                <div className="text-emerald-400">✓ No other enabled bricks depend exclusively on this brick.</div>
               ) : (
                 <div className="space-y-1 text-amber-300">
-                  <div className="font-semibold">
-                    Turning off {disableImpact.brickId} will also turn off dependent bricks:
-                  </div>
+                  <div className="font-semibold">Turning off {disableImpact.brickId} will also turn off dependent bricks:</div>
                   <ul className="font-mono text-[11px] space-y-1">
                     {disableImpact.dependentBricks.map((d) => (
                       <li key={d.brickId} data-testid={`brick-disable-dep-${d.brickId}`}>
@@ -874,22 +728,13 @@ export function BricksView() {
               )}
             </div>
 
-            <div
-              data-testid="brick-disable-workflows"
-              className="p-3 rounded bg-surface-base border border-border space-y-1.5"
-            >
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                Workflow Impact
-              </div>
+            <div data-testid="brick-disable-workflows" className="p-3 rounded bg-surface-base border border-border space-y-1.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Workflow Impact</div>
               {disableImpact.dependentWorkflows.length === 0 ? (
-                <div className="text-emerald-400">
-                  ✓ No workflows currently use {disableImpact.brickId} nodes.
-                </div>
+                <div className="text-emerald-400">✓ No workflows currently use {disableImpact.brickId} nodes.</div>
               ) : (
                 <div className="space-y-1 text-amber-300">
-                  <div className="font-semibold">
-                    Workflows referencing {disableImpact.brickId} nodes:
-                  </div>
+                  <div className="font-semibold">Workflows referencing {disableImpact.brickId} nodes:</div>
                   <ul className="font-mono text-[11px] space-y-1">
                     {disableImpact.dependentWorkflows.map((w) => (
                       <li key={w.workflowId} data-testid={`brick-disable-wf-${w.workflowId}`}>

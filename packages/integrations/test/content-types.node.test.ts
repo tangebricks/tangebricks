@@ -88,18 +88,14 @@ describe("UC3.6 — Importer content types preference order, XML blocking, and D
     const multiAllOp = result.manifest.operations.find((o) => o.operationId === "multiAll");
     expect(multiAllOp?.body?.contentType).toBe("application/json");
 
-    const multipartOp = result.manifest.operations.find(
-      (o) => o.operationId === "multipartOverOctet",
-    );
+    const multipartOp = result.manifest.operations.find((o) => o.operationId === "multipartOverOctet");
     expect(multipartOp?.body?.contentType).toBe("multipart/form-data");
 
     const octetOp = result.manifest.operations.find((o) => o.operationId === "octetOverText");
     expect(octetOp?.body?.contentType).toBe("application/octet-stream");
 
     // Verify alternatives recorded in report
-    const multiEntry = result.report.entries.find(
-      (e) => e.op === "multipartOverOctet" && e.element === "contentType",
-    );
+    const multiEntry = result.report.entries.find((e) => e.op === "multipartOverOctet" && e.element === "contentType");
     expect(multiEntry).toBeDefined();
     expect(multiEntry?.code).toBe("CONTENT_TYPE_MAPPED");
     expect(multiEntry?.to).toBe("multipart/form-data");
@@ -134,9 +130,7 @@ describe("UC3.6 — Importer content types preference order, XML blocking, and D
       mode: "lenient",
     });
 
-    const entry = result.report.entries.find(
-      (e) => e.op === "postXml" && e.code === "CONTENT_TYPE_UNSUPPORTED",
-    );
+    const entry = result.report.entries.find((e) => e.op === "postXml" && e.code === "CONTENT_TYPE_UNSUPPORTED");
     expect(entry).toBeDefined();
     expect(entry?.status).toBe("unsupported");
     expect(entry?.blocking).toBe(true);
@@ -207,16 +201,11 @@ describe("UC3.6 — Importer content types preference order, XML blocking, and D
     });
 
     // Check base operation exists
-    const baseOp = result.manifest.operations.find(
-      (o) => o.operationId === "drive_files_create" || o.operationId === "create",
-    );
+    const baseOp = result.manifest.operations.find((o) => o.operationId === "drive_files_create" || o.operationId === "create");
     expect(baseOp).toBeDefined();
 
     // Check upload variant operation exists
-    const uploadOp = result.manifest.operations.find(
-      (o) =>
-        o.operationId === "drive_files_create_upload" || o.operationId === "create_upload",
-    );
+    const uploadOp = result.manifest.operations.find((o) => o.operationId === "drive_files_create_upload" || o.operationId === "create_upload");
     expect(uploadOp).toBeDefined();
     expect(uploadOp?.path).toBe("/upload/drive/v3/files");
     expect(uploadOp?.body?.contentType).toBe("multipart/related");

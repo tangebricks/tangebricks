@@ -137,10 +137,7 @@ export class ApiKeyService {
     if (!isAllowedScopeSet(scopes)) {
       return { ok: false, error: 'Scopes must be ["*"] or ["read"]', code: 400 };
     }
-    if (
-      input.expiresDays !== undefined &&
-      (!Number.isInteger(input.expiresDays) || input.expiresDays < 1 || input.expiresDays > MAX_KEY_EXPIRES_DAYS)
-    ) {
+    if (input.expiresDays !== undefined && (!Number.isInteger(input.expiresDays) || input.expiresDays < 1 || input.expiresDays > MAX_KEY_EXPIRES_DAYS)) {
       return { ok: false, error: `expiresDays must be a whole number from 1 to ${MAX_KEY_EXPIRES_DAYS}`, code: 400 };
     }
     const role: ApiKeyRole = input.role ?? "member";
@@ -205,8 +202,7 @@ export class ApiKeyService {
     if (!rawKey || !rawKey.startsWith("sk_live_") || rawKey.length < 32) return null;
 
     const keyHash = await sha256Hex(rawKey);
-    const row = await global(this.db, "key_api_keys", "authenticate incoming API key by key hash")
-      .first<KeyRow>("key_hash = ? AND revoked = 0", [keyHash]);
+    const row = await global(this.db, "key_api_keys", "authenticate incoming API key by key hash").first<KeyRow>("key_hash = ? AND revoked = 0", [keyHash]);
     if (!row) return null;
     if (row.expires_at && !(new Date(row.expires_at).getTime() > Date.now())) return null;
     if (parseScopes(row.scopes_json) === null) return null;
@@ -253,12 +249,7 @@ export class ApiKeyService {
    * Lists masked API keys in a workspace.
    */
   async listKeys(workspaceId: string): Promise<ApiKeyRecord[]> {
-    const rows = await scoped(this.db, workspaceId).select<KeyRow>(
-      "key_api_keys",
-      undefined,
-      [],
-      { orderBy: "created_at DESC" },
-    );
+    const rows = await scoped(this.db, workspaceId).select<KeyRow>("key_api_keys", undefined, [], { orderBy: "created_at DESC" });
     return rows.map(toRecord);
   }
 }

@@ -20,16 +20,7 @@ describe("UC0.5 real-spec fidelity corpus", () => {
     expect(Array.isArray(specs)).toBe(true);
     expect(specs.length).toBe(8);
 
-    const expectedIds = [
-      "stripe",
-      "github",
-      "discord",
-      "slack",
-      "google-calendar",
-      "google-gmail",
-      "google-drive",
-      "google-sheets",
-    ];
+    const expectedIds = ["stripe", "github", "discord", "slack", "google-calendar", "google-gmail", "google-drive", "google-sheets"];
 
     const allowedFormats = new Set(["openapi3", "swagger2", "google-discovery"]);
     const foundIds = specs.map((s: { id: string }) => s.id);
@@ -56,10 +47,7 @@ describe("UC0.5 real-spec fidelity corpus", () => {
     for (const entry of specs) {
       if (entry.url.includes("raw.githubusercontent.com")) {
         const match = entry.url.match(/^https:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/([0-9a-f]{40})\//);
-        expect(
-          match,
-          `URL for ${entry.id} (${entry.url}) must pin a 40-hex commit, not a branch or tag`
-        ).not.toBeNull();
+        expect(match, `URL for ${entry.id} (${entry.url}) must pin a 40-hex commit, not a branch or tag`).not.toBeNull();
       }
     }
   });
@@ -191,15 +179,11 @@ describe("UC0.5 real-spec fidelity corpus", () => {
       const raw = readFileSync(manifestPath, "utf8");
       writeFileSync(manifestCopy, raw);
 
-      const proc = spawnSync(
-        process.execPath,
-        [fetchScript, "--manifest", manifestCopy, "--cache-dir", cacheDir, "--update", "google-calendar"],
-        {
-          encoding: "utf8",
-          cwd: repoRoot,
-          env: { ...process.env, CORPUS_MANIFEST_PATH: manifestCopy, CORPUS_CACHE_DIR: cacheDir },
-        }
-      );
+      const proc = spawnSync(process.execPath, [fetchScript, "--manifest", manifestCopy, "--cache-dir", cacheDir, "--update", "google-calendar"], {
+        encoding: "utf8",
+        cwd: repoRoot,
+        env: { ...process.env, CORPUS_MANIFEST_PATH: manifestCopy, CORPUS_CACHE_DIR: cacheDir },
+      });
 
       expect(proc.status).toBe(0);
       const combined = (proc.stdout || "") + (proc.stderr || "");

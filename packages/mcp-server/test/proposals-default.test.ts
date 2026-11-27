@@ -126,7 +126,7 @@ describe.each(clients)("the %s client stores and reviews proposals", (_name, mak
     if (!first.ok) throw new Error("propose failed");
     const rejected = await client.rejectProposal!({ project, proposalId: first.data.proposalId!, reviewer, reason: "no" });
     expect(rejected).toMatchObject({ ok: true, data: { status: "rejected", revision: 1 } });
-    expect((await client.getProposal!(project, first.data.proposalId!))).toMatchObject({ status: "rejected", rejectionReason: "no" });
+    expect(await client.getProposal!(project, first.data.proposalId!)).toMatchObject({ status: "rejected", rejectionReason: "no" });
     expect((await client.getProject(project))!.revision).toBe(1);
 
     expect(await client.acceptProposal!({ project, proposalId: "prop_missing", reviewer })).toMatchObject({
@@ -251,7 +251,10 @@ describe.each(surfaces)("the MCP tools on the %s client: proposals by default, r
 
   it("set_metadata with replace drops a pinned catalogVersion: refused as a brick upgrade", async () => {
     const project = `tool-replace-${epoch}`;
-    expect((await client.applyOps({ project, author: reviewer, mode: "apply", ops: [{ opId: "pin", type: "set_metadata", metadata: { catalogVersion: "1.0.0" } }] })).ok).toBe(true);
+    expect(
+      (await client.applyOps({ project, author: reviewer, mode: "apply", ops: [{ opId: "pin", type: "set_metadata", metadata: { catalogVersion: "1.0.0" } }] }))
+        .ok,
+    ).toBe(true);
     const reply = await callTool(app, "apply_ops", {
       project,
       mode: "apply",

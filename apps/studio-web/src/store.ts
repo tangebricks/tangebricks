@@ -1,10 +1,4 @@
-import {
-  computeSemanticDiff,
-  createEmptyBlueprint,
-  evaluateProposalSelection,
-  normalizeBlueprintState,
-  semanticHash,
-} from "@poc/blueprint";
+import { computeSemanticDiff, createEmptyBlueprint, evaluateProposalSelection, normalizeBlueprintState, semanticHash } from "@poc/blueprint";
 import { create } from "zustand";
 import {
   acceptProjectProposal,
@@ -281,83 +275,47 @@ export interface StudioState {
   toggleProposalOp: (opId: string) => void;
   setAllProposalOpsSelected: (selected: boolean) => void;
   exitProposalReview: () => void;
-  acceptActiveProposal: (
-    opIds?: string[],
-  ) => Promise<{ ok: true; revision: number } | { ok: false; error: string }>;
-  rejectActiveProposal: (
-    reason?: string,
-  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  acceptActiveProposal: (opIds?: string[]) => Promise<{ ok: true; revision: number } | { ok: false; error: string }>;
+  rejectActiveProposal: (reason?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   applyIncomingProposalFrame: (frame: {
     type: "proposal";
     action: "created" | "accepted" | "partially_accepted" | "rejected";
     project: string;
     proposal: ProposalRecord;
   }) => void;
-  loadProjectActivity: (overrideFilters?: {
-    author?: string;
-    type?: string;
-    window?: string;
-  }) => Promise<ActivityFeedEventPayload[]>;
+  loadProjectActivity: (overrideFilters?: { author?: string; type?: string; window?: string }) => Promise<ActivityFeedEventPayload[]>;
   setActivityAuthorFilter: (author: string) => void;
   setActivityTypeFilter: (type: string) => void;
   setActivityWindowFilter: (window: string) => void;
 
   setUsePinnedData: (enabled: boolean) => void;
-  loadWorkflowPins: (
-    workflowId: string,
-  ) => Promise<Record<string, PinnedNodeOutputRecord>>;
-  pinNodeOutput: (
-    workflowId: string,
-    nodeId: string,
-    output: unknown,
-    sourceRunId?: string | null,
-  ) => Promise<{ ok: true } | { ok: false; error: string }>;
-  unpinNodeOutput: (
-    workflowId: string,
-    nodeId: string,
-  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  loadWorkflowPins: (workflowId: string) => Promise<Record<string, PinnedNodeOutputRecord>>;
+  pinNodeOutput: (workflowId: string, nodeId: string, output: unknown, sourceRunId?: string | null) => Promise<{ ok: true } | { ok: false; error: string }>;
+  unpinNodeOutput: (workflowId: string, nodeId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   rerunFromNode: (
     runId: string,
     fromNodeId: string,
     useCurrentDraftRev?: boolean,
-  ) => Promise<
-    | { ok: true; response: WorkflowRunApiResponse }
-    | { ok: false; error: string }
-  >;
+  ) => Promise<{ ok: true; response: WorkflowRunApiResponse } | { ok: false; error: string }>;
 
   setRunHistoryDrawerOpen: (open: boolean) => void;
   toggleRunHistoryDrawer: () => void;
   setRunsFilters: (patch: Partial<StudioRunsFilterState>) => void;
-  loadProjectRuns: (
-    overrideFilters?: Partial<StudioRunsFilterState>,
-  ) => Promise<RunHistoryItem[]>;
+  loadProjectRuns: (overrideFilters?: Partial<StudioRunsFilterState>) => Promise<RunHistoryItem[]>;
   startRunReplay: (
     runId: string,
     env?: "preview" | "production",
     targetNodeId?: string | null,
-  ) => Promise<
-    | { ok: true; detail: ActiveRunReplayState }
-    | { ok: false; error: string }
-  >;
+  ) => Promise<{ ok: true; detail: ActiveRunReplayState } | { ok: false; error: string }>;
   exitRunReplay: () => void;
 
-  setStepTestResult: (
-    workflowId: string,
-    nodeId: string,
-    result: TestStepResponse,
-  ) => void;
-  setPinnedStepOutput: (
-    nodeId: string,
-    output: Record<string, unknown> | null,
-  ) => void;
+  setStepTestResult: (workflowId: string, nodeId: string, result: TestStepResponse) => void;
+  setPinnedStepOutput: (nodeId: string, output: Record<string, unknown> | null) => void;
   runTestStep: (
     workflowId: string,
     nodeId: string,
     body: RunNodeTestStepInput,
-  ) => Promise<
-    | { ok: true; result: TestStepResponse }
-    | { ok: false; error: string }
-  >;
+  ) => Promise<{ ok: true; result: TestStepResponse } | { ok: false; error: string }>;
   applyIncomingTelemetryFrame: (frame: IncomingTelemetryFrame) => void;
   reconcileTelemetryEvents: (events: WorkflowRunStepEvent[]) => void;
   clearWorkflowTelemetry: (workflowId: string) => void;
@@ -365,10 +323,7 @@ export interface StudioState {
   executeWorkflowTestRun: (
     workflowId: string,
     body?: TriggerWorkflowRunInput,
-  ) => Promise<
-    | { ok: true; response: WorkflowRunApiResponse }
-    | { ok: false; error: string }
-  >;
+  ) => Promise<{ ok: true; response: WorkflowRunApiResponse } | { ok: false; error: string }>;
 
   setAuth: (user: StudioUser | null, orgs?: StudioOrg[], activeOrgId?: string | null) => void;
   signOut: () => void;
@@ -376,18 +331,10 @@ export interface StudioState {
   selectOrg: (orgId: string) => void;
   setProjects: (projects: StudioProjectSummary[], activeProjectId?: string | null) => void;
   selectProject: (projectId: string) => void;
-  setProjectData: (input: {
-    project: string;
-    revision?: number;
-    state: BlueprintState;
-    readiness?: ReadinessResult;
-    revisions?: RevisionSummary[];
-  }) => void;
+  setProjectData: (input: { project: string; revision?: number; state: BlueprintState; readiness?: ReadinessResult; revisions?: RevisionSummary[] }) => void;
   setRevisions: (revisions: RevisionSummary[]) => void;
   setCatalog: (catalog: Record<string, CatalogBrickManifest>) => void;
-  setIntegrations: (
-    integrations: Record<string, { manifest: CatalogIntegrationManifest; nodes?: CatalogNodeDefinition[] }>,
-  ) => void;
+  setIntegrations: (integrations: Record<string, { manifest: CatalogIntegrationManifest; nodes?: CatalogNodeDefinition[] }>) => void;
   setActiveNav: (nav: StudioNavTab) => void;
   setRightDockOpen: (open: boolean) => void;
   toggleRightDock: () => void;
@@ -424,32 +371,15 @@ export interface StudioState {
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   startCanvasVisualDiff: (fromRev: number, toRev: number) => Promise<void>;
   clearCanvasVisualDiff: () => void;
-  undoLastBatch: () => Promise<
-    | { ok: true; state: BlueprintState; revision: number }
-    | { ok: false; error: string }
-  >;
-  redoLastBatch: () => Promise<
-    | { ok: true; state: BlueprintState; revision: number }
-    | { ok: false; error: string }
-  >;
+  undoLastBatch: () => Promise<{ ok: true; state: BlueprintState; revision: number } | { ok: false; error: string }>;
+  redoLastBatch: () => Promise<{ ok: true; state: BlueprintState; revision: number } | { ok: false; error: string }>;
   undoHistoricalRevision: (
     targetRevision: number,
     mode?: "inverse" | "revert-to-parent",
-  ) => Promise<
-    | { ok: true; state: BlueprintState; revision: number }
-    | { ok: false; error: string }
-  >;
+  ) => Promise<{ ok: true; state: BlueprintState; revision: number } | { ok: false; error: string }>;
   loadProjectSecrets: () => Promise<StudioSecretMetadata[]>;
-  upsertSecret: (
-    input: UpsertSecretInput,
-  ) => Promise<
-    | { ok: true; secret: StudioSecretMetadata }
-    | { ok: false; error: string }
-  >;
-  removeSecret: (
-    ref: string,
-    unbind?: boolean,
-  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  upsertSecret: (input: UpsertSecretInput) => Promise<{ ok: true; secret: StudioSecretMetadata } | { ok: false; error: string }>;
+  removeSecret: (ref: string, unbind?: boolean) => Promise<{ ok: true } | { ok: false; error: string }>;
   commitOps: (
     ops: Array<Record<string, unknown>>,
     summary?: string,
@@ -459,19 +389,13 @@ export interface StudioState {
       nextUndoStack?: UndoRedoEntry[];
       nextRedoStack?: UndoRedoEntry[];
     },
-  ) => Promise<
-    | { ok: true; state: BlueprintState; revision: number }
-    | { ok: false; error: string }
-  >;
+  ) => Promise<{ ok: true; state: BlueprintState; revision: number } | { ok: false; error: string }>;
   applyIncomingRevision: (envelope: IncomingRevisionEnvelope) => void;
   applyIncomingCatchup: (revisions: IncomingRevisionEnvelope[]) => void;
   resetStore: (initial?: Partial<StudioState>) => void;
 }
 
-export function reconcileSecretsWithBlueprint(
-  vaultSecrets: StudioSecretMetadata[],
-  blueprint: BlueprintState | null,
-): StudioSecretMetadata[] {
+export function reconcileSecretsWithBlueprint(vaultSecrets: StudioSecretMetadata[], blueprint: BlueprintState | null): StudioSecretMetadata[] {
   const usedByMap = new Map<string, StudioSecretUsedByTarget[]>();
   for (const sr of blueprint?.secretRefs ?? []) {
     const list = usedByMap.get(sr.ref) ?? [];
@@ -567,10 +491,7 @@ const BASE_STATE = {
   pendingConflict: null as PendingConflictState | null,
   stepTestResults: {} as Record<string, TestStepResponse>,
   pinnedStepOutputs: {} as Record<string, Record<string, unknown>>,
-  pinnedOutputsByWorkflow: {} as Record<
-    string,
-    Record<string, PinnedNodeOutputRecord>
-  >,
+  pinnedOutputsByWorkflow: {} as Record<string, Record<string, PinnedNodeOutputRecord>>,
   usePinnedData: true,
   isRunningTestStep: false,
   nodeTelemetryByWorkflow: {} as Record<string, Record<string, NodeLiveTelemetryState>>,
@@ -611,9 +532,7 @@ function computeProposalReviewPreview(
   canvasVisualDiff: CanvasVisualDiffState;
   validationError: string | null;
 } {
-  const normBase = normalizeBlueprintState(
-    baseState as Parameters<typeof normalizeBlueprintState>[0],
-  );
+  const normBase = normalizeBlueprintState(baseState as Parameters<typeof normalizeBlueprintState>[0]);
   if (selectedOpIds.length === 0) {
     const emptyDiff = computeSemanticDiff(normBase, normBase);
     return {
@@ -628,12 +547,7 @@ function computeProposalReviewPreview(
     };
   }
   const catalogLike = toBlueprintCatalog(catalog);
-  const evalRes = evaluateProposalSelection(
-    normBase,
-    proposal.ops,
-    selectedOpIds,
-    catalogLike,
-  );
+  const evalRes = evaluateProposalSelection(normBase, proposal.ops, selectedOpIds, catalogLike);
   if (evalRes.ok) {
     return {
       canvasVisualDiff: {
@@ -648,24 +562,11 @@ function computeProposalReviewPreview(
   }
 
   // Fallback to full proposal state for canvas visualization while surfacing the 422 validation error
-  const fullRes = evaluateProposalSelection(
-    normBase,
-    proposal.ops,
-    undefined,
-    catalogLike,
-  );
-  const toState = fullRes.ok
-    ? (fullRes.state as unknown as BlueprintState)
-    : baseState;
+  const fullRes = evaluateProposalSelection(normBase, proposal.ops, undefined, catalogLike);
+  const toState = fullRes.ok ? (fullRes.state as unknown as BlueprintState) : baseState;
   const diff = fullRes.ok
     ? fullRes.diff
-    : (proposal.diff ??
-      computeSemanticDiff(
-        normBase,
-        normalizeBlueprintState(
-          toState as Parameters<typeof normalizeBlueprintState>[0],
-        ),
-      ));
+    : (proposal.diff ?? computeSemanticDiff(normBase, normalizeBlueprintState(toState as Parameters<typeof normalizeBlueprintState>[0])));
   return {
     canvasVisualDiff: {
       fromRev: proposal.baseRev,
@@ -684,15 +585,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setAuth: (user, orgs, activeOrgId) =>
     set((state) => {
       const nextOrgs = orgs ?? state.orgs;
-      const nextOrgId =
-        activeOrgId !== undefined
-          ? activeOrgId
-          : state.activeOrgId ?? nextOrgs[0]?.id ?? null;
+      const nextOrgId = activeOrgId !== undefined ? activeOrgId : (state.activeOrgId ?? nextOrgs[0]?.id ?? null);
       const nextPresence: PresenceMember[] = user
-        ? [
-            { id: user.id, label: user.name || user.email, kind: "human" },
-            ...state.presence.filter((p) => p.kind === "agent"),
-          ]
+        ? [{ id: user.id, label: user.name || user.email, kind: "human" }, ...state.presence.filter((p) => p.kind === "agent")]
         : [];
       return {
         user,
@@ -710,10 +605,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setOrgs: (orgs, activeOrgId) =>
     set((state) => ({
       orgs,
-      activeOrgId:
-        activeOrgId !== undefined
-          ? activeOrgId
-          : state.activeOrgId ?? orgs[0]?.id ?? null,
+      activeOrgId: activeOrgId !== undefined ? activeOrgId : (state.activeOrgId ?? orgs[0]?.id ?? null),
     })),
 
   selectOrg: (orgId) =>
@@ -728,17 +620,12 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   setProjects: (projects, activeProjectId) =>
     set((state) => {
-      const nextActiveProjectId =
-        activeProjectId !== undefined
-          ? activeProjectId
-          : state.activeProjectId ?? projects[0]?.project ?? null;
+      const nextActiveProjectId = activeProjectId !== undefined ? activeProjectId : (state.activeProjectId ?? projects[0]?.project ?? null);
       const matched = projects.find((p) => p.project === nextActiveProjectId);
       return {
         projects,
         activeProjectId: nextActiveProjectId,
-        ...(matched && typeof matched.revision === "number" && !state.projectState
-          ? { currentRevision: matched.revision }
-          : {}),
+        ...(matched && typeof matched.revision === "number" && !state.projectState ? { currentRevision: matched.revision } : {}),
       };
     }),
 
@@ -750,13 +637,11 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   setProjectData: ({ project, revision, state: blueprintState, readiness, revisions }) =>
     set((prev) => {
-      const computedReadiness =
-        readiness ?? computeStudioReadiness(blueprintState, prev.catalog);
+      const computedReadiness = readiness ?? computeStudioReadiness(blueprintState, prev.catalog);
       const nextWorkflowId =
-        prev.activeWorkflowId &&
-        blueprintState.workflows.some((w) => w.id === prev.activeWorkflowId)
+        prev.activeWorkflowId && blueprintState.workflows.some((w) => w.id === prev.activeWorkflowId)
           ? prev.activeWorkflowId
-          : blueprintState.workflows[0]?.id ?? null;
+          : (blueprintState.workflows[0]?.id ?? null);
       return {
         activeProjectId: project,
         currentRevision: revision ?? prev.currentRevision,
@@ -773,9 +658,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setCatalog: (catalog) =>
     set((prev) => ({
       catalog,
-      readiness: prev.projectState
-        ? computeStudioReadiness(prev.projectState, catalog)
-        : prev.readiness,
+      readiness: prev.projectState ? computeStudioReadiness(prev.projectState, catalog) : prev.readiness,
     })),
 
   setIntegrations: (integrations) => set({ integrations }),
@@ -799,11 +682,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       rightDockTab: selection ? "inspector" : state.rightDockTab,
       activeNav: navigateTo ?? state.activeNav,
       activeWorkflowId:
-        selection?.kind === "workflow"
-          ? selection.id
-          : selection?.kind === "node" && selection.workflowId
-            ? selection.workflowId
-            : state.activeWorkflowId,
+        selection?.kind === "workflow" ? selection.id : selection?.kind === "node" && selection.workflowId ? selection.workflowId : state.activeWorkflowId,
     })),
 
   setCommandPaletteOpen: (commandPaletteOpen) =>
@@ -853,11 +732,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   setIssuesDrawerOpen: (issuesDrawerOpen) => set({ issuesDrawerOpen }),
 
-  toggleIssuesDrawer: () =>
-    set((state) => ({ issuesDrawerOpen: !state.issuesDrawerOpen })),
+  toggleIssuesDrawer: () => set((state) => ({ issuesDrawerOpen: !state.issuesDrawerOpen })),
 
-  setHighlightedInspectorField: (highlightedInspectorField) =>
-    set({ highlightedInspectorField }),
+  setHighlightedInspectorField: (highlightedInspectorField) => set({ highlightedInspectorField }),
 
   jumpToValidationIssue: (issue) =>
     set((state) => ({
@@ -913,18 +790,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   loadWorkflowPins: async (workflowId) => {
     const state = get();
-    const project =
-      state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
+    const project = state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
     try {
       const res = await fetchWorkflowPins(project, workflowId);
       const pins = res.pinnedOutputs ?? {};
       set((prev) => {
         const nextFlat = { ...prev.pinnedStepOutputs };
         for (const [nId, rec] of Object.entries(pins)) {
-          nextFlat[nId] =
-            typeof rec.output === "object" && rec.output !== null
-              ? (rec.output as Record<string, unknown>)
-              : { out: rec.output };
+          nextFlat[nId] = typeof rec.output === "object" && rec.output !== null ? (rec.output as Record<string, unknown>) : { out: rec.output };
         }
         return {
           pinnedOutputsByWorkflow: {
@@ -946,12 +819,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     if (role === "viewer") {
       return { ok: false, error: "Viewer role cannot pin node outputs." };
     }
-    const project =
-      state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
-    const normalizedObj =
-      typeof output === "object" && output !== null && !Array.isArray(output)
-        ? (output as Record<string, unknown>)
-        : { out: output };
+    const project = state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
+    const normalizedObj = typeof output === "object" && output !== null && !Array.isArray(output) ? (output as Record<string, unknown>) : { out: output };
 
     // Optimistically update local store immediately
     set((prev) => ({
@@ -997,8 +866,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     if (role === "viewer") {
       return { ok: false, error: "Viewer role cannot unpin node outputs." };
     }
-    const project =
-      state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
+    const project = state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
 
     set((prev) => {
       const nextFlat = { ...prev.pinnedStepOutputs };
@@ -1029,8 +897,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     if (role === "viewer") {
       return { ok: false, error: "Viewer role cannot re-run workflows." };
     }
-    const project =
-      state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
+    const project = state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
     set({ isRunningWorkflow: true, mutationError: null });
     try {
       const response = await rerunWorkflowFromNode(project, runId, {
@@ -1041,10 +908,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       if (Array.isArray(response.stepEvents) && response.stepEvents.length > 0) {
         get().reconcileTelemetryEvents(response.stepEvents);
       }
-      const failedNodeId =
-        Object.keys(response.failed ?? {})[0] ??
-        response.stepEvents?.find((e) => e.status === "failed")?.nodeId ??
-        null;
+      const failedNodeId = Object.keys(response.failed ?? {})[0] ?? response.stepEvents?.find((e) => e.status === "failed")?.nodeId ?? null;
       const newStatus = response.runStatus ?? response.status;
       const summaryItem: RunHistoryItem = {
         runId: response.runId,
@@ -1056,24 +920,16 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         durationMs: response.durationMs,
         retries: 0,
         retryOfRunId: runId,
-        startedAt:
-          response.stepEvents?.[0]?.createdAt ?? new Date().toISOString(),
+        startedAt: response.stepEvents?.[0]?.createdAt ?? new Date().toISOString(),
         endedAt: new Date().toISOString(),
         failedNodeId,
-        stepCount: new Set((response.stepEvents ?? []).map((e) => e.nodeId))
-          .size,
+        stepCount: new Set((response.stepEvents ?? []).map((e) => e.nodeId)).size,
       };
 
       set((prev) => {
-        const updatedRuns = prev.runsList.map((r) =>
-          r.runId === runId && newStatus === "succeeded"
-            ? { ...r, resolvedByRunId: response.runId }
-            : r,
-        );
+        const updatedRuns = prev.runsList.map((r) => (r.runId === runId && newStatus === "succeeded" ? { ...r, resolvedByRunId: response.runId } : r));
         const nextReplayRun =
-          prev.activeReplayRun &&
-          prev.activeReplayRun.run.runId === runId &&
-          newStatus === "succeeded"
+          prev.activeReplayRun && prev.activeReplayRun.run.runId === runId && newStatus === "succeeded"
             ? {
                 ...prev.activeReplayRun,
                 run: {
@@ -1084,15 +940,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
             : prev.activeReplayRun;
         return {
           isRunningWorkflow: false,
-          runsList: [
-            summaryItem,
-            ...updatedRuns.filter((r) => r.runId !== summaryItem.runId),
-          ],
+          runsList: [summaryItem, ...updatedRuns.filter((r) => r.runId !== summaryItem.runId)],
           activeReplayRun: nextReplayRun,
-          liveAnnouncement:
-            newStatus === "succeeded"
-              ? `Re-run from ${fromNodeId} succeeded (${response.runId}).`
-              : `Re-run from ${fromNodeId} failed.`,
+          liveAnnouncement: newStatus === "succeeded" ? `Re-run from ${fromNodeId} succeeded (${response.runId}).` : `Re-run from ${fromNodeId} failed.`,
         };
       });
       return { ok: true, response };
@@ -1126,9 +976,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       const wfPins = state.pinnedOutputsByWorkflow[workflowId] ?? {};
       for (const [pinnedNodeId, pinRec] of Object.entries(wfPins)) {
         upstreamSteps[pinnedNodeId] =
-          typeof pinRec.output === "object" && pinRec.output !== null
-            ? (pinRec.output as Record<string, unknown>)
-            : { out: pinRec.output };
+          typeof pinRec.output === "object" && pinRec.output !== null ? (pinRec.output as Record<string, unknown>) : { out: pinRec.output };
       }
 
       const result = await runNodeTestStep(project, workflowId, nodeId, {
@@ -1163,10 +1011,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       const existing = wfMap[frame.nodeId];
       // If a newer run started on this workflow, clear stale nodes from the previous run
       const prevRunId = prev.activeRunIdByWorkflow[frame.workflowId];
-      const baseWfMap =
-        prevRunId && prevRunId !== frame.runId && !frame.runId.startsWith("rehearsal:")
-          ? {}
-          : wfMap;
+      const baseWfMap = prevRunId && prevRunId !== frame.runId && !frame.runId.startsWith("rehearsal:") ? {} : wfMap;
 
       const nextNodeState: NodeLiveTelemetryState = {
         runId: frame.runId,
@@ -1188,10 +1033,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         [frame.nodeId]: nextNodeState,
       };
 
-      const nextCursor =
-        typeof frame.cursor === "number" && frame.cursor > prev.lastTelemetryCursor
-          ? frame.cursor
-          : prev.lastTelemetryCursor;
+      const nextCursor = typeof frame.cursor === "number" && frame.cursor > prev.lastTelemetryCursor ? frame.cursor : prev.lastTelemetryCursor;
 
       return {
         nodeTelemetryByWorkflow: {
@@ -1256,8 +1098,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   setRunHistoryDrawerOpen: (open) => set({ runHistoryDrawerOpen: open }),
 
-  toggleRunHistoryDrawer: () =>
-    set((prev) => ({ runHistoryDrawerOpen: !prev.runHistoryDrawerOpen })),
+  toggleRunHistoryDrawer: () => set((prev) => ({ runHistoryDrawerOpen: !prev.runHistoryDrawerOpen })),
 
   setRunsFilters: (patch) =>
     set((prev) => {
@@ -1289,8 +1130,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   loadProjectRuns: async (overrideFilters) => {
     const state = get();
-    const project =
-      state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
+    const project = state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
     const mergedFilters: StudioRunsFilterState = {
       ...state.runsFilters,
       ...overrideFilters,
@@ -1303,15 +1143,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     try {
       const params: RunHistoryFilterParams = {
         env: mergedFilters.env,
-        ...(mergedFilters.workflowId !== "all"
-          ? { workflowId: mergedFilters.workflowId }
-          : {}),
-        ...(mergedFilters.status !== "all"
-          ? { status: mergedFilters.status }
-          : {}),
-        ...(mergedFilters.trigger !== "all"
-          ? { trigger: mergedFilters.trigger }
-          : {}),
+        ...(mergedFilters.workflowId !== "all" ? { workflowId: mergedFilters.workflowId } : {}),
+        ...(mergedFilters.status !== "all" ? { status: mergedFilters.status } : {}),
+        ...(mergedFilters.trigger !== "all" ? { trigger: mergedFilters.trigger } : {}),
         ...(mergedFilters.from ? { from: mergedFilters.from } : {}),
         ...(mergedFilters.to ? { to: mergedFilters.to } : {}),
       };
@@ -1326,15 +1160,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   startRunReplay: async (runId, env, targetNodeId) => {
     const state = get();
-    const project =
-      state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
+    const project = state.activeProjectId ?? state.projectState?.project ?? "my-saas-app";
     const targetEnv = env ?? state.runsFilters.env ?? "preview";
     try {
-      const detail: RunReplayDetailResponse = await fetchProjectRunDetail(
-        project,
-        runId,
-        targetEnv,
-      );
+      const detail: RunReplayDetailResponse = await fetchProjectRunDetail(project, runId, targetEnv);
       const nodeMap: Record<string, NodeLiveTelemetryState> = {};
       for (const ev of detail.stepEvents ?? []) {
         nodeMap[ev.nodeId] = {
@@ -1358,21 +1187,12 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         nodeMap,
         currentRevision: detail.currentRevision ?? state.currentRevision,
         historicalRevision: detail.historicalRevision ?? detail.run.revision,
-        isHistoricalRevision:
-          detail.isHistoricalRevision ??
-          detail.run.revision !== state.currentRevision,
-        historicalState:
-          detail.historicalState ??
-          state.projectState ??
-          createEmptyBlueprint(project),
+        isHistoricalRevision: detail.isHistoricalRevision ?? detail.run.revision !== state.currentRevision,
+        historicalState: detail.historicalState ?? state.projectState ?? createEmptyBlueprint(project),
         historicalWorkflow: detail.historicalWorkflow,
       };
       const targetSelectNodeId =
-        targetNodeId ??
-        detail.run.failedNodeId ??
-        detail.stepEvents?.[detail.stepEvents.length - 1]?.nodeId ??
-        detail.historicalWorkflow?.nodes[0]?.id ??
-        null;
+        targetNodeId ?? detail.run.failedNodeId ?? detail.stepEvents?.[detail.stepEvents.length - 1]?.nodeId ?? detail.historicalWorkflow?.nodes[0]?.id ?? null;
 
       set({
         activeReplayRun,
@@ -1395,17 +1215,11 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       return { ok: true, detail: activeReplayRun };
     } catch {
       const fallbackWf =
-        state.projectState?.workflows.find(
-          (w) =>
-            (targetNodeId && w.nodes.some((n) => n.id === targetNodeId)) ||
-            w.id === state.activeWorkflowId,
-        ) ??
+        state.projectState?.workflows.find((w) => (targetNodeId && w.nodes.some((n) => n.id === targetNodeId)) || w.id === state.activeWorkflowId) ??
         state.projectState?.workflows[0] ??
         null;
-      const fallbackWfId =
-        fallbackWf?.id ?? state.activeWorkflowId ?? "wf-billing";
-      const selectedNode =
-        targetNodeId ?? fallbackWf?.nodes[0]?.id ?? "node-trigger";
+      const fallbackWfId = fallbackWf?.id ?? state.activeWorkflowId ?? "wf-billing";
+      const selectedNode = targetNodeId ?? fallbackWf?.nodes[0]?.id ?? "node-trigger";
       const nowIso = new Date().toISOString();
       const fallbackRun: RunHistoryItem = {
         runId,
@@ -1525,19 +1339,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     try {
       const effectiveBody: TriggerWorkflowRunInput = {
         ...body,
-        ...(body.usePinnedOutputs === undefined && state.usePinnedData
-          ? { usePinnedOutputs: true }
-          : {}),
+        ...(body.usePinnedOutputs === undefined && state.usePinnedData ? { usePinnedOutputs: true } : {}),
       };
       const response = await triggerWorkflowRun(project, workflowId, effectiveBody);
       // Reconcile all returned stepEvents in order so store is guaranteed up-to-date even before/without WS
       if (Array.isArray(response.stepEvents) && response.stepEvents.length > 0) {
         get().reconcileTelemetryEvents(response.stepEvents);
       }
-      const failedNodeId =
-        Object.keys(response.failed ?? {})[0] ??
-        response.stepEvents?.find((e) => e.status === "failed")?.nodeId ??
-        null;
+      const failedNodeId = Object.keys(response.failed ?? {})[0] ?? response.stepEvents?.find((e) => e.status === "failed")?.nodeId ?? null;
       const summaryItem: RunHistoryItem = {
         runId: response.runId,
         workflowId: response.workflowId,
@@ -1547,19 +1356,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         status: response.runStatus ?? response.status,
         durationMs: response.durationMs,
         retries: 0,
-        startedAt:
-          response.stepEvents?.[0]?.createdAt ?? new Date().toISOString(),
+        startedAt: response.stepEvents?.[0]?.createdAt ?? new Date().toISOString(),
         endedAt: new Date().toISOString(),
         failedNodeId,
-        stepCount: new Set((response.stepEvents ?? []).map((e) => e.nodeId))
-          .size,
+        stepCount: new Set((response.stepEvents ?? []).map((e) => e.nodeId)).size,
       };
       set((prev) => ({
         isRunningWorkflow: false,
-        runsList: [
-          summaryItem,
-          ...prev.runsList.filter((r) => r.runId !== summaryItem.runId),
-        ],
+        runsList: [summaryItem, ...prev.runsList.filter((r) => r.runId !== summaryItem.runId)],
         liveAnnouncement: `Workflow ${workflowId} run ${response.runStatus ?? response.status} in ${Math.round(response.durationMs)}ms`,
       }));
       return { ok: true, response };
@@ -1595,10 +1399,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
     if (resolution === "merged" && fieldChoices) {
       const merged: Record<string, unknown> = {};
-      const allKeys = new Set([
-        ...Object.keys(conflict.mineData),
-        ...Object.keys(conflict.aiData),
-      ]);
+      const allKeys = new Set([...Object.keys(conflict.mineData), ...Object.keys(conflict.aiData)]);
       for (const k of allKeys) {
         if (k === "__label__") continue;
         const choice = fieldChoices[k] ?? "mine";
@@ -1616,11 +1417,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const stamp = Date.now();
     let op: Record<string, unknown>;
     if (conflict.targetKind === "node") {
-      const wfId =
-        conflict.workflowId ??
-        current.activeWorkflowId ??
-        current.projectState?.workflows[0]?.id ??
-        "main-wf";
+      const wfId = conflict.workflowId ?? current.activeWorkflowId ?? current.projectState?.workflows[0]?.id ?? "main-wf";
       op = {
         opId: `resolve-conflict-node-${conflict.targetId}-${stamp}`,
         type: "update_node",
@@ -1675,36 +1472,17 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   startCanvasVisualDiff: async (fromRev, toRev) => {
     const current = get();
-    const project =
-      current.activeProjectId ?? current.projectState?.project ?? "my-saas-app";
+    const project = current.activeProjectId ?? current.projectState?.project ?? "my-saas-app";
     const lo = Math.min(fromRev, toRev);
     const hi = Math.max(fromRev, toRev);
 
-    let fromState = reconstructBlueprintStateAtRevision(
-      project,
-      current.revisions,
-      lo,
-      current.projectState,
-      current.currentRevision,
-      current.catalog,
-    );
-    let toState = reconstructBlueprintStateAtRevision(
-      project,
-      current.revisions,
-      hi,
-      current.projectState,
-      current.currentRevision,
-      current.catalog,
-    );
+    let fromState = reconstructBlueprintStateAtRevision(project, current.revisions, lo, current.projectState, current.currentRevision, current.catalog);
+    let toState = reconstructBlueprintStateAtRevision(project, current.revisions, hi, current.projectState, current.currentRevision, current.catalog);
 
     try {
       const [fetchedFrom, fetchedTo] = await Promise.all([
-        lo === current.currentRevision && current.projectState
-          ? Promise.resolve({ state: current.projectState })
-          : fetchProjectRevisionState(project, lo),
-        hi === current.currentRevision && current.projectState
-          ? Promise.resolve({ state: current.projectState })
-          : fetchProjectRevisionState(project, hi),
+        lo === current.currentRevision && current.projectState ? Promise.resolve({ state: current.projectState }) : fetchProjectRevisionState(project, lo),
+        hi === current.currentRevision && current.projectState ? Promise.resolve({ state: current.projectState }) : fetchProjectRevisionState(project, hi),
       ]);
       fromState = fetchedFrom.state;
       toState = fetchedTo.state;
@@ -1713,12 +1491,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     }
 
     const diff = computeSemanticDiff(
-      normalizeBlueprintState(
-        fromState as Parameters<typeof normalizeBlueprintState>[0],
-      ),
-      normalizeBlueprintState(
-        toState as Parameters<typeof normalizeBlueprintState>[0],
-      ),
+      normalizeBlueprintState(fromState as Parameters<typeof normalizeBlueprintState>[0]),
+      normalizeBlueprintState(toState as Parameters<typeof normalizeBlueprintState>[0]),
     );
 
     set((state) => ({
@@ -1731,11 +1505,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       },
       diffComparison: { fromRev: lo, toRev: hi },
       activeNav: "workflows",
-      activeWorkflowId:
-        state.activeWorkflowId ??
-        toState.workflows[0]?.id ??
-        fromState.workflows[0]?.id ??
-        null,
+      activeWorkflowId: state.activeWorkflowId ?? toState.workflows[0]?.id ?? fromState.workflows[0]?.id ?? null,
       liveAnnouncement: `Comparing revision r${lo} → r${hi} on Workflow Canvas`,
     }));
   },
@@ -1792,13 +1562,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     if (typeof window !== "undefined") {
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        const savedId =
-          urlParams.get("proposal") ??
-          window.sessionStorage.getItem(`studio:activeProposalId:${project}`);
+        const savedId = urlParams.get("proposal") ?? window.sessionStorage.getItem(`studio:activeProposalId:${project}`);
         if (savedId) {
-          const found = list.find(
-            (p) => p.proposalId === savedId && p.status === "pending",
-          );
+          const found = list.find((p) => p.proposalId === savedId && p.status === "pending");
           if (found) {
             get().startProposalReview(savedId);
           }
@@ -1814,29 +1580,18 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const state = get();
     const proposal = state.proposals.find((p) => p.proposalId === proposalId);
     if (!proposal) return;
-    const project =
-      state.activeProjectId ?? state.projectState?.project ?? proposal.project;
+    const project = state.activeProjectId ?? state.projectState?.project ?? proposal.project;
     const baseState = state.projectState ?? createEmptyBlueprint(project);
 
     let initialOpIds = proposal.ops.map((op) => op.opId);
     if (typeof window !== "undefined") {
       try {
-        window.sessionStorage.setItem(
-          `studio:activeProposalId:${project}`,
-          proposalId,
-        );
-        const savedOpsRaw = window.sessionStorage.getItem(
-          `studio:proposalOps:${project}:${proposalId}`,
-        );
+        window.sessionStorage.setItem(`studio:activeProposalId:${project}`, proposalId);
+        const savedOpsRaw = window.sessionStorage.getItem(`studio:proposalOps:${project}:${proposalId}`);
         if (savedOpsRaw) {
           const parsed = JSON.parse(savedOpsRaw) as unknown;
-          if (
-            Array.isArray(parsed) &&
-            parsed.every((id) => typeof id === "string")
-          ) {
-            const validIds = parsed.filter((id) =>
-              proposal.ops.some((o) => o.opId === id),
-            );
+          if (Array.isArray(parsed) && parsed.every((id) => typeof id === "string")) {
+            const validIds = parsed.filter((id) => proposal.ops.some((o) => o.opId === id));
             if (validIds.length > 0) {
               initialOpIds = validIds;
             }
@@ -1850,44 +1605,19 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       }
     }
 
-    const { canvasVisualDiff, validationError } = computeProposalReviewPreview(
-      baseState,
-      proposal,
-      initialOpIds,
-      state.catalog,
-    );
+    const { canvasVisualDiff, validationError } = computeProposalReviewPreview(baseState, proposal, initialOpIds, state.catalog);
 
     const wfDiff = canvasVisualDiff.diff.workflows;
-    const hasWorkflowChanges =
-      wfDiff.added.length > 0 ||
-      wfDiff.updated.length > 0 ||
-      wfDiff.removed.length > 0;
+    const hasWorkflowChanges = wfDiff.added.length > 0 || wfDiff.updated.length > 0 || wfDiff.removed.length > 0;
     const hasBrickChanges =
-      canvasVisualDiff.diff.bricks.added.length > 0 ||
-      canvasVisualDiff.diff.bricks.updated.length > 0 ||
-      canvasVisualDiff.diff.bricks.removed.length > 0;
+      canvasVisualDiff.diff.bricks.added.length > 0 || canvasVisualDiff.diff.bricks.updated.length > 0 || canvasVisualDiff.diff.bricks.removed.length > 0;
     const hasEntityChanges =
-      canvasVisualDiff.diff.entities.added.length > 0 ||
-      canvasVisualDiff.diff.entities.updated.length > 0 ||
-      canvasVisualDiff.diff.entities.removed.length > 0;
+      canvasVisualDiff.diff.entities.added.length > 0 || canvasVisualDiff.diff.entities.updated.length > 0 || canvasVisualDiff.diff.entities.removed.length > 0;
 
-    const targetNav: StudioNavTab =
-      navigateTo ??
-      (hasWorkflowChanges
-        ? "workflows"
-        : hasBrickChanges
-          ? "bricks"
-          : hasEntityChanges
-            ? "data"
-            : state.activeNav);
+    const targetNav: StudioNavTab = navigateTo ?? (hasWorkflowChanges ? "workflows" : hasBrickChanges ? "bricks" : hasEntityChanges ? "data" : state.activeNav);
 
     const affectedWfId =
-      wfDiff.updated[0]?.id ??
-      wfDiff.added[0]?.id ??
-      wfDiff.removed[0]?.id ??
-      state.activeWorkflowId ??
-      canvasVisualDiff.toState.workflows[0]?.id ??
-      null;
+      wfDiff.updated[0]?.id ?? wfDiff.added[0]?.id ?? wfDiff.removed[0]?.id ?? state.activeWorkflowId ?? canvasVisualDiff.toState.workflows[0]?.id ?? null;
 
     const firstUpdatedNode = wfDiff.updated[0]?.nodesUpdated[0];
     const nextSelection: StudioSelection | null = firstUpdatedNode
@@ -1906,9 +1636,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       activeNav: targetNav,
       activeWorkflowId: affectedWfId,
       selection: nextSelection,
-      ...(firstUpdatedNode
-        ? { rightDockOpen: true, rightDockTab: "inspector" }
-        : {}),
+      ...(firstUpdatedNode ? { rightDockOpen: true, rightDockTab: "inspector" } : {}),
       liveAnnouncement: `Reviewing draft proposal ${proposalId}: ${proposal.summary}`,
     });
   },
@@ -1916,40 +1644,25 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   toggleProposalOp: (opId) => {
     const state = get();
     if (!state.activeProposalId) return;
-    const proposal = state.proposals.find(
-      (p) => p.proposalId === state.activeProposalId,
-    );
+    const proposal = state.proposals.find((p) => p.proposalId === state.activeProposalId);
     if (!proposal) return;
-    const project =
-      state.activeProjectId ?? state.projectState?.project ?? proposal.project;
+    const project = state.activeProjectId ?? state.projectState?.project ?? proposal.project;
     const baseState = state.projectState ?? createEmptyBlueprint(project);
 
     const exists = state.selectedProposalOpIds.includes(opId);
     const nextSelected = exists
       ? state.selectedProposalOpIds.filter((id) => id !== opId)
-      : proposal.ops
-          .map((o) => o.opId)
-          .filter(
-            (id) => id === opId || state.selectedProposalOpIds.includes(id),
-          );
+      : proposal.ops.map((o) => o.opId).filter((id) => id === opId || state.selectedProposalOpIds.includes(id));
 
     if (typeof window !== "undefined") {
       try {
-        window.sessionStorage.setItem(
-          `studio:proposalOps:${project}:${proposal.proposalId}`,
-          JSON.stringify(nextSelected),
-        );
+        window.sessionStorage.setItem(`studio:proposalOps:${project}:${proposal.proposalId}`, JSON.stringify(nextSelected));
       } catch {
         // Ignore storage errors
       }
     }
 
-    const { canvasVisualDiff, validationError } = computeProposalReviewPreview(
-      baseState,
-      proposal,
-      nextSelected,
-      state.catalog,
-    );
+    const { canvasVisualDiff, validationError } = computeProposalReviewPreview(baseState, proposal, nextSelected, state.catalog);
 
     set({
       selectedProposalOpIds: nextSelected,
@@ -1961,32 +1674,21 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setAllProposalOpsSelected: (selected) => {
     const state = get();
     if (!state.activeProposalId) return;
-    const proposal = state.proposals.find(
-      (p) => p.proposalId === state.activeProposalId,
-    );
+    const proposal = state.proposals.find((p) => p.proposalId === state.activeProposalId);
     if (!proposal) return;
-    const project =
-      state.activeProjectId ?? state.projectState?.project ?? proposal.project;
+    const project = state.activeProjectId ?? state.projectState?.project ?? proposal.project;
     const baseState = state.projectState ?? createEmptyBlueprint(project);
     const nextSelected = selected ? proposal.ops.map((o) => o.opId) : [];
 
     if (typeof window !== "undefined") {
       try {
-        window.sessionStorage.setItem(
-          `studio:proposalOps:${project}:${proposal.proposalId}`,
-          JSON.stringify(nextSelected),
-        );
+        window.sessionStorage.setItem(`studio:proposalOps:${project}:${proposal.proposalId}`, JSON.stringify(nextSelected));
       } catch {
         // Ignore storage errors
       }
     }
 
-    const { canvasVisualDiff, validationError } = computeProposalReviewPreview(
-      baseState,
-      proposal,
-      nextSelected,
-      state.catalog,
-    );
+    const { canvasVisualDiff, validationError } = computeProposalReviewPreview(baseState, proposal, nextSelected, state.catalog);
 
     set({
       selectedProposalOpIds: nextSelected,
@@ -2001,9 +1703,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     if (typeof window !== "undefined") {
       try {
         if (project) {
-          window.sessionStorage.removeItem(
-            `studio:activeProposalId:${project}`,
-          );
+          window.sessionStorage.removeItem(`studio:activeProposalId:${project}`);
         }
         const url = new URL(window.location.href);
         url.searchParams.delete("proposal");
@@ -2029,12 +1729,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       return { ok: false, error: "No active proposal selected." };
     }
     const proposal = state.proposals.find((p) => p.proposalId === proposalId);
-    const opIdsToApply =
-      explicitOpIds ??
-      (proposal &&
-      state.selectedProposalOpIds.length === proposal.ops.length
-        ? undefined
-        : state.selectedProposalOpIds);
+    const opIdsToApply = explicitOpIds ?? (proposal && state.selectedProposalOpIds.length === proposal.ops.length ? undefined : state.selectedProposalOpIds);
 
     set({ isMutating: true, mutationError: null });
     const res = await acceptProjectProposal(project, proposalId, opIdsToApply);
@@ -2050,9 +1745,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     if (typeof window !== "undefined") {
       try {
         window.sessionStorage.removeItem(`studio:activeProposalId:${project}`);
-        window.sessionStorage.removeItem(
-          `studio:proposalOps:${project}:${proposalId}`,
-        );
+        window.sessionStorage.removeItem(`studio:proposalOps:${project}:${proposalId}`);
         const url = new URL(window.location.href);
         url.searchParams.delete("proposal");
         window.history.replaceState({}, "", url.toString());
@@ -2062,9 +1755,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     }
 
     set((prev) => {
-      const updatedProposals = prev.proposals.map((p) =>
-        p.proposalId === proposalId ? res.proposal : p,
-      );
+      const updatedProposals = prev.proposals.map((p) => (p.proposalId === proposalId ? res.proposal : p));
       const newRev: RevisionSummary = {
         revision: res.revision,
         parentRevision: Math.max(0, res.revision - 1),
@@ -2077,10 +1768,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         createdAt: new Date().toISOString(),
         ops: res.proposal.ops as unknown as Array<Record<string, unknown>>,
       };
-      const nextRevisions = [
-        newRev,
-        ...prev.revisions.filter((r) => r.revision !== newRev.revision),
-      ].sort((a, b) => b.revision - a.revision);
+      const nextRevisions = [newRev, ...prev.revisions.filter((r) => r.revision !== newRev.revision)].sort((a, b) => b.revision - a.revision);
 
       return {
         isMutating: false,
@@ -2116,12 +1804,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       const res = await rejectProjectProposal(project, proposalId, reason);
       if (typeof window !== "undefined") {
         try {
-          window.sessionStorage.removeItem(
-            `studio:activeProposalId:${project}`,
-          );
-          window.sessionStorage.removeItem(
-            `studio:proposalOps:${project}:${proposalId}`,
-          );
+          window.sessionStorage.removeItem(`studio:activeProposalId:${project}`);
+          window.sessionStorage.removeItem(`studio:proposalOps:${project}:${proposalId}`);
           const url = new URL(window.location.href);
           url.searchParams.delete("proposal");
           window.history.replaceState({}, "", url.toString());
@@ -2137,17 +1821,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         activeProposalId: null,
         selectedProposalOpIds: [],
         canvasVisualDiff: null,
-        proposals: prev.proposals.map((p) =>
-          p.proposalId === proposalId ? res.proposal : p,
-        ),
+        proposals: prev.proposals.map((p) => (p.proposalId === proposalId ? res.proposal : p)),
         liveAnnouncement: `Rejected proposal ${proposalId}`,
       }));
 
       void get().loadProjectActivity();
       return { ok: true };
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to reject proposal";
+      const msg = err instanceof Error ? err.message : "Failed to reject proposal";
       set({ isMutating: false, mutationError: msg });
       return { ok: false, error: msg };
     }
@@ -2156,18 +1837,12 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   applyIncomingProposalFrame: (frame) => {
     proposalFrameSeq += 1;
     set((prev) => {
-      const exists = prev.proposals.some(
-        (p) => p.proposalId === frame.proposal.proposalId,
-      );
+      const exists = prev.proposals.some((p) => p.proposalId === frame.proposal.proposalId);
       const nextProposals = exists
-        ? prev.proposals.map((p) =>
-            p.proposalId === frame.proposal.proposalId ? frame.proposal : p,
-          )
+        ? prev.proposals.map((p) => (p.proposalId === frame.proposal.proposalId ? frame.proposal : p))
         : [frame.proposal, ...prev.proposals];
 
-      const isActiveResolved =
-        prev.activeProposalId === frame.proposal.proposalId &&
-        frame.proposal.status !== "pending";
+      const isActiveResolved = prev.activeProposalId === frame.proposal.proposalId && frame.proposal.status !== "pending";
 
       return {
         proposals: nextProposals,
@@ -2223,8 +1898,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       return { ok: false, error: "No active project selected." };
     }
 
-    let entry: UndoRedoEntry | undefined =
-      current.undoStack[current.undoStack.length - 1];
+    let entry: UndoRedoEntry | undefined = current.undoStack[current.undoStack.length - 1];
     let remainingUndo = current.undoStack.slice(0, -1);
 
     if (!entry && current.revisions.length > 0 && current.currentRevision > 0) {
@@ -2258,15 +1932,11 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       opId: `undo-r${current.currentRevision}-${idx + 1}-${stamp}`,
     }));
 
-    const res = await get().commitOps(
-      inverseWithFreshOpIds,
-      `Undo: ${entry.summary}`,
-      {
-        isUndoRedo: true,
-        nextUndoStack: remainingUndo,
-        nextRedoStack: [...current.redoStack, entry].slice(-MAX_UNDO_STACK_DEPTH),
-      },
-    );
+    const res = await get().commitOps(inverseWithFreshOpIds, `Undo: ${entry.summary}`, {
+      isUndoRedo: true,
+      nextUndoStack: remainingUndo,
+      nextRedoStack: [...current.redoStack, entry].slice(-MAX_UNDO_STACK_DEPTH),
+    });
     if (res.ok) {
       set({
         liveAnnouncement: `Undid: ${entry.summary}`,
@@ -2293,15 +1963,11 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       opId: `redo-r${current.currentRevision}-${idx + 1}-${stamp}`,
     }));
 
-    const res = await get().commitOps(
-      opsWithFreshOpIds,
-      `Redo: ${entry.summary}`,
-      {
-        isUndoRedo: true,
-        nextRedoStack: remainingRedo,
-        nextUndoStack: [...current.undoStack, entry].slice(-MAX_UNDO_STACK_DEPTH),
-      },
-    );
+    const res = await get().commitOps(opsWithFreshOpIds, `Redo: ${entry.summary}`, {
+      isUndoRedo: true,
+      nextRedoStack: remainingRedo,
+      nextUndoStack: [...current.undoStack, entry].slice(-MAX_UNDO_STACK_DEPTH),
+    });
     if (res.ok) {
       set({
         liveAnnouncement: `Redid: ${entry.summary}`,
@@ -2335,10 +2001,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           ...op,
           opId: `ledger-undo-r${targetRevision}-${idx + 1}-${stamp}`,
         }));
-        const res = await get().commitOps(
-          freshInverse,
-          `Undo r${targetRevision}: ${revSummary}`,
-        );
+        const res = await get().commitOps(freshInverse, `Undo r${targetRevision}: ${revSummary}`);
         if (res.ok) {
           return res;
         }
@@ -2348,38 +2011,21 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     // Fallback or explicit revert-to-parent via POST /api/projects/:project/revert
     set({ isMutating: true, mutationError: null });
     try {
-      const parentRev = Math.max(
-        0,
-        rev?.parentRevision ?? targetRevision - 1,
-      );
+      const parentRev = Math.max(0, rev?.parentRevision ?? targetRevision - 1);
       const result = await revertProjectToRevision(project, parentRev);
       set((prev) => {
-        const nextReadiness =
-          result.readiness ??
-          computeStudioReadiness(result.state, prev.catalog);
-        const author: AuthorAttribution = prev.user
-          ? { type: "human", id: prev.user.id }
-          : { type: "human", id: "user" };
+        const nextReadiness = result.readiness ?? computeStudioReadiness(result.state, prev.catalog);
+        const author: AuthorAttribution = prev.user ? { type: "human", id: prev.user.id } : { type: "human", id: "user" };
         const newRev: RevisionSummary = {
           revision: result.revision,
-          parentRevision:
-            result.parentRevision ?? Math.max(0, result.revision - 1),
+          parentRevision: result.parentRevision ?? Math.max(0, result.revision - 1),
           author,
           summary: `Revert to revision ${parentRev} (undo r${targetRevision})`,
-          semanticHash:
-            result.semanticHash ??
-            semanticHash(
-              normalizeBlueprintState(
-                result.state as Parameters<typeof normalizeBlueprintState>[0],
-              ),
-            ),
+          semanticHash: result.semanticHash ?? semanticHash(normalizeBlueprintState(result.state as Parameters<typeof normalizeBlueprintState>[0])),
           createdAt: new Date().toISOString(),
           ops: [],
         };
-        const nextRevisions = [
-          newRev,
-          ...prev.revisions.filter((r) => r.revision !== newRev.revision),
-        ].sort((a, b) => b.revision - a.revision);
+        const nextRevisions = [newRev, ...prev.revisions.filter((r) => r.revision !== newRev.revision)].sort((a, b) => b.revision - a.revision);
         return {
           isMutating: false,
           mutationError: null,
@@ -2393,8 +2039,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       });
       return { ok: true, state: result.state, revision: result.revision };
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to undo revision";
+      const msg = err instanceof Error ? err.message : "Failed to undo revision";
       set({ isMutating: false, mutationError: msg });
       return { ok: false, error: msg };
     }
@@ -2425,15 +2070,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       set((prev) => {
         const nextProjectState = result.state ?? prev.projectState;
         const nextRevision = result.revision ?? prev.currentRevision;
-        const nextReadiness =
-          result.readiness ??
-          (nextProjectState
-            ? computeStudioReadiness(nextProjectState, prev.catalog)
-            : prev.readiness);
+        const nextReadiness = result.readiness ?? (nextProjectState ? computeStudioReadiness(nextProjectState, prev.catalog) : prev.readiness);
 
-        const existingIdx = prev.secrets.findIndex(
-          (s) => s.ref === result.secret.ref,
-        );
+        const existingIdx = prev.secrets.findIndex((s) => s.ref === result.secret.ref);
         const rawList = [...prev.secrets];
         const nextEntry: StudioSecretMetadata = {
           ...result.secret,
@@ -2477,11 +2116,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       set((prev) => {
         const nextProjectState = result.state ?? prev.projectState;
         const nextRevision = result.revision ?? prev.currentRevision;
-        const nextReadiness =
-          result.readiness ??
-          (nextProjectState
-            ? computeStudioReadiness(nextProjectState, prev.catalog)
-            : prev.readiness);
+        const nextReadiness = result.readiness ?? (nextProjectState ? computeStudioReadiness(nextProjectState, prev.catalog) : prev.readiness);
         const remaining = prev.secrets.filter((s) => s.ref !== ref);
         return {
           isMutating: false,
@@ -2513,56 +2148,34 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const stamp = Date.now();
     const opsWithIds = ops.map((op, idx) => ({
       ...op,
-      opId:
-        typeof op.opId === "string" && op.opId.trim().length > 0
-          ? op.opId
-          : `op-${stamp}-${idx + 1}`,
+      opId: typeof op.opId === "string" && op.opId.trim().length > 0 ? op.opId : `op-${stamp}-${idx + 1}`,
     }));
 
-    const baseState =
-      current.projectState ?? createEmptyBlueprint(project);
-    const computedInverseOps = computeStudioInverseOps(
-      baseState,
-      opsWithIds,
-      current.catalog,
-    );
+    const baseState = current.projectState ?? createEmptyBlueprint(project);
+    const computedInverseOps = computeStudioInverseOps(baseState, opsWithIds, current.catalog);
 
     set({ isMutating: true, mutationError: null });
     try {
       const result = await commitProjectOps(project, {
         ops: opsWithIds,
         summary,
-        ...(options?.baseRevision !== undefined
-          ? { baseRevision: options.baseRevision }
-          : {}),
+        ...(options?.baseRevision !== undefined ? { baseRevision: options.baseRevision } : {}),
       });
       set((prev) => {
-        const nextReadiness =
-          result.readiness ?? computeStudioReadiness(result.state, prev.catalog);
-        const author: AuthorAttribution = prev.user
-          ? { type: "human", id: prev.user.id }
-          : { type: "human", id: "user" };
+        const nextReadiness = result.readiness ?? computeStudioReadiness(result.state, prev.catalog);
+        const author: AuthorAttribution = prev.user ? { type: "human", id: prev.user.id } : { type: "human", id: "user" };
         const revSummary = summary ?? `Revision r${result.revision}`;
         const newRev: RevisionSummary = {
           revision: result.revision,
           parentRevision: result.parentRevision ?? Math.max(0, result.revision - 1),
           author,
           summary: revSummary,
-          semanticHash:
-            result.semanticHash ??
-            semanticHash(
-              normalizeBlueprintState(
-                result.state as Parameters<typeof normalizeBlueprintState>[0],
-              ),
-            ),
+          semanticHash: result.semanticHash ?? semanticHash(normalizeBlueprintState(result.state as Parameters<typeof normalizeBlueprintState>[0])),
           createdAt: new Date().toISOString(),
           ops,
           inverseOps: computedInverseOps,
         };
-        const nextRevisions = [
-          newRev,
-          ...prev.revisions.filter((r) => r.revision !== newRev.revision),
-        ].sort((a, b) => b.revision - a.revision);
+        const nextRevisions = [newRev, ...prev.revisions.filter((r) => r.revision !== newRev.revision)].sort((a, b) => b.revision - a.revision);
 
         const nextUndoStack = options?.nextUndoStack
           ? options.nextUndoStack
@@ -2577,11 +2190,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
                   revision: result.revision,
                 },
               ].slice(-MAX_UNDO_STACK_DEPTH);
-        const nextRedoStack = options?.nextRedoStack
-          ? options.nextRedoStack
-          : options?.isUndoRedo
-            ? prev.redoStack
-            : [];
+        const nextRedoStack = options?.nextRedoStack ? options.nextRedoStack : options?.isUndoRedo ? prev.redoStack : [];
 
         return {
           isMutating: false,
@@ -2604,57 +2213,36 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
       if (commitErr?.status === 409 && commitErr.conflict) {
         const cDetail = commitErr.conflict;
-        const aiState =
-          cDetail.currentState ??
-          current.projectState ??
-          createEmptyBlueprint(project);
+        const aiState = cDetail.currentState ?? current.projectState ?? createEmptyBlueprint(project);
         const intervening = cDetail.interveningOps?.[cDetail.interveningOps.length - 1];
         const conflictingAuthor: AuthorAttribution = intervening?.author ?? {
           type: "agent",
           id: "claude-code",
           client: "claude-code",
         };
-        const conflictingRevision =
-          cDetail.currentRevision ?? current.currentRevision + 1;
+        const conflictingRevision = cDetail.currentRevision ?? current.currentRevision + 1;
 
         const firstOp = ops[0] ?? {};
-        let targetKind: "brick" | "entity" | "node" =
-          current.dirtyTarget?.kind ?? "node";
+        let targetKind: "brick" | "entity" | "node" = current.dirtyTarget?.kind ?? "node";
         let targetId = current.dirtyTarget?.id ?? "";
         let workflowId = current.dirtyTarget?.workflowId;
-        let mineData: Record<string, unknown> =
-          current.dirtyTarget?.draftData ?? {};
+        let mineData: Record<string, unknown> = current.dirtyTarget?.draftData ?? {};
         let mineLabel = current.dirtyTarget?.draftLabel;
 
         if (!targetId) {
-          if (
-            firstOp.type === "update_node" &&
-            typeof firstOp.nodeId === "string"
-          ) {
+          if (firstOp.type === "update_node" && typeof firstOp.nodeId === "string") {
             targetKind = "node";
             targetId = firstOp.nodeId;
-            workflowId =
-              typeof firstOp.workflowId === "string"
-                ? firstOp.workflowId
-                : undefined;
-            const patch =
-              (firstOp.patch as Record<string, unknown> | undefined) ?? {};
-            mineData =
-              (patch.data as Record<string, unknown> | undefined) ?? {};
-            mineLabel =
-              typeof patch.label === "string" ? patch.label : undefined;
-          } else if (
-            firstOp.type === "configure_brick" &&
-            typeof firstOp.brickId === "string"
-          ) {
+            workflowId = typeof firstOp.workflowId === "string" ? firstOp.workflowId : undefined;
+            const patch = (firstOp.patch as Record<string, unknown> | undefined) ?? {};
+            mineData = (patch.data as Record<string, unknown> | undefined) ?? {};
+            mineLabel = typeof patch.label === "string" ? patch.label : undefined;
+          } else if (firstOp.type === "configure_brick" && typeof firstOp.brickId === "string") {
             targetKind = "brick";
             targetId = firstOp.brickId;
-            mineData =
-              (firstOp.config as Record<string, unknown> | undefined) ?? {};
+            mineData = (firstOp.config as Record<string, unknown> | undefined) ?? {};
           } else if (firstOp.type === "update_entity") {
-            const ent = firstOp.entity as
-              | { name?: string; fields?: unknown[] }
-              | undefined;
+            const ent = firstOp.entity as { name?: string; fields?: unknown[] } | undefined;
             targetKind = "entity";
             targetId = ent?.name ?? "entity";
             mineData = { fields: ent?.fields ?? [] };
@@ -2688,10 +2276,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
             targetKind,
             targetId,
             workflowId,
-            baseRevision:
-              options?.baseRevision ??
-              current.dirtyTarget?.baseRevision ??
-              current.currentRevision,
+            baseRevision: options?.baseRevision ?? current.dirtyTarget?.baseRevision ?? current.currentRevision,
             conflictingRevision,
             conflictingAuthor,
             summary: `Concurrent modification on ${targetId}`,
@@ -2717,41 +2302,23 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         return state;
       }
 
-      const baseState =
-        state.projectState ??
-        createEmptyBlueprint(
-          envelope.project ?? state.activeProjectId ?? "my-saas-app",
-        );
-      const computedInverseOps = computeStudioInverseOps(
-        baseState,
-        envelope.ops ?? [],
-        state.catalog,
-      );
+      const baseState = state.projectState ?? createEmptyBlueprint(envelope.project ?? state.activeProjectId ?? "my-saas-app");
+      const computedInverseOps = computeStudioInverseOps(baseState, envelope.ops ?? [], state.catalog);
       const nextProjectState = applyStudioOps(baseState, envelope.ops ?? [], state.catalog);
-      const nextReadiness =
-        envelope.readiness ?? computeStudioReadiness(nextProjectState, state.catalog);
+      const nextReadiness = envelope.readiness ?? computeStudioReadiness(nextProjectState, state.catalog);
 
       const newRev: RevisionSummary = {
         revision: envelope.revision,
         parentRevision: envelope.parentRevision ?? Math.max(0, envelope.revision - 1),
         author: envelope.author,
         summary: envelope.summary ?? `Revision r${envelope.revision}`,
-        semanticHash:
-          envelope.semanticHash ??
-          semanticHash(
-            normalizeBlueprintState(
-              nextProjectState as Parameters<typeof normalizeBlueprintState>[0],
-            ),
-          ),
+        semanticHash: envelope.semanticHash ?? semanticHash(normalizeBlueprintState(nextProjectState as Parameters<typeof normalizeBlueprintState>[0])),
         createdAt: envelope.timestamp ?? new Date().toISOString(),
         ops: envelope.ops ?? [],
         inverseOps: computedInverseOps,
       };
 
-      const nextRevisions = [
-        newRev,
-        ...state.revisions.filter((r) => r.revision !== newRev.revision),
-      ].sort((a, b) => b.revision - a.revision);
+      const nextRevisions = [newRev, ...state.revisions.filter((r) => r.revision !== newRev.revision)].sort((a, b) => b.revision - a.revision);
 
       const authorInfo = formatAuthorBadge(envelope.author);
       const targets = extractAffectedTargets(newRev);
@@ -2773,11 +2340,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       // Check for same-object conflict when human has a dirtyTarget in the Inspector
       let nextPendingConflict = state.pendingConflict;
       if (state.dirtyTarget) {
-        const matchingTarget = targets.find(
-          (t) =>
-            t.kind === state.dirtyTarget!.kind &&
-            t.id === state.dirtyTarget!.id,
-        );
+        const matchingTarget = targets.find((t) => t.kind === state.dirtyTarget!.kind && t.id === state.dirtyTarget!.id);
         if (matchingTarget) {
           const dt = state.dirtyTarget;
           let aiData: Record<string, unknown> = {};
@@ -2840,10 +2403,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       let nextNav = state.activeNav;
       let nextSelection = state.selection;
       let nextWorkflowId =
-        state.activeWorkflowId &&
-        nextProjectState.workflows.some((w) => w.id === state.activeWorkflowId)
+        state.activeWorkflowId && nextProjectState.workflows.some((w) => w.id === state.activeWorkflowId)
           ? state.activeWorkflowId
-          : nextProjectState.workflows[0]?.id ?? null;
+          : (nextProjectState.workflows[0]?.id ?? null);
       let nextNodeSearch = state.workflowNodeSearch;
       let nextRightDockOpen = state.rightDockOpen;
       let nextRightDockTab = state.rightDockTab;
@@ -2922,22 +2484,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set({
       ...BASE_STATE,
       ...initial,
-      secrets: reconcileSecretsWithBlueprint(
-        initial?.secrets ?? [],
-        initial?.projectState ?? null,
-      ),
-      activeWorkflowId:
-        initial?.activeWorkflowId ??
-        initial?.projectState?.workflows[0]?.id ??
-        null,
+      secrets: reconcileSecretsWithBlueprint(initial?.secrets ?? [], initial?.projectState ?? null),
+      activeWorkflowId: initial?.activeWorkflowId ?? initial?.projectState?.workflows[0]?.id ?? null,
       readiness:
-        initial?.readiness ??
-        (initial?.projectState
-          ? computeStudioReadiness(
-              initial.projectState,
-              initial.catalog ?? DEFAULT_CATALOG,
-            )
-          : initialReadiness),
+        initial?.readiness ?? (initial?.projectState ? computeStudioReadiness(initial.projectState, initial.catalog ?? DEFAULT_CATALOG) : initialReadiness),
     }),
 }));
 
@@ -2946,8 +2496,6 @@ export function getActiveOrg(state: Pick<StudioState, "orgs" | "activeOrgId">): 
   return state.orgs.find((o) => o.id === state.activeOrgId) ?? state.orgs[0] ?? null;
 }
 
-export function getActiveRole(
-  state: Pick<StudioState, "orgs" | "activeOrgId">,
-): StudioOrgRole {
+export function getActiveRole(state: Pick<StudioState, "orgs" | "activeOrgId">): StudioOrgRole {
   return getActiveOrg(state)?.role ?? "viewer";
 }

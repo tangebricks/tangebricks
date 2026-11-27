@@ -41,12 +41,7 @@ export function createDocumentRoutes(): Hono<DocEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("documentService") || new DocumentPdfService(c.env.DB);
-    const template = await service.createTemplate(
-      workspaceId,
-      parsed.data.name,
-      parsed.data.templateHtml,
-      parsed.data.defaultMetadata
-    );
+    const template = await service.createTemplate(workspaceId, parsed.data.name, parsed.data.templateHtml, parsed.data.defaultMetadata);
 
     return c.json({ template }, 201);
   });
@@ -109,13 +104,16 @@ export function createDocumentRoutes(): Hono<DocEnv> {
       });
     }
 
-    return c.json({
-      renderId: result.id,
-      title: result.title,
-      sha256: result.pdfSha256,
-      byteSize: result.byteSize,
-      createdAt: result.createdAt,
-    }, 201);
+    return c.json(
+      {
+        renderId: result.id,
+        title: result.title,
+        sha256: result.pdfSha256,
+        byteSize: result.byteSize,
+        createdAt: result.createdAt,
+      },
+      201,
+    );
   });
 
   // GET /documents/renders

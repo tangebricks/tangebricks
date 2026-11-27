@@ -1,12 +1,7 @@
 import { FIDELITY_CODES } from "@poc/assembler";
 import { escapeJsonPointer } from "./report.ts";
 import type { ReportCollector } from "./report.ts";
-import {
-  isPlainObject,
-  mapSchemaTypeToPortType,
-  sanitizeIdentifier,
-  truncateText,
-} from "./util.ts";
+import { isPlainObject, mapSchemaTypeToPortType, sanitizeIdentifier, truncateText } from "./util.ts";
 import type { IntegrationOperationParam } from "@poc/assembler";
 
 export interface DiscoveryMethodContext {
@@ -35,12 +30,7 @@ export function extractDiscoveryParams(
   for (const [pKey, pVal] of Object.entries(rawParams)) {
     if (!isPlainObject(pVal)) continue;
     const pPointer = `#/methods/${escapeJsonPointer(methodIdStr)}/parameters/${escapeJsonPointer(pKey)}`;
-    const loc =
-      pVal.location === "path"
-        ? "path"
-        : pVal.location === "header"
-          ? "header"
-          : "query";
+    const loc = pVal.location === "path" ? "path" : pVal.location === "header" ? "header" : "query";
     const rawKey = `${loc}:${pKey}`;
     if (seenParamKeys.has(rawKey)) continue;
     seenParamKeys.add(rawKey);
@@ -127,9 +117,7 @@ export function extractDiscoveryParams(
     let itemsVal: { dataType: any; enum?: (string | number | boolean)[] } | undefined;
     if (pVal.items && (pVal.type === "array" || pVal.repeated)) {
       const itemsMapping = mapSchemaTypeToPortType(pVal.items);
-      const rawItemsEnum = Array.isArray((pVal.items as any)?.enum)
-        ? (pVal.items as any).enum
-        : undefined;
+      const rawItemsEnum = Array.isArray((pVal.items as any)?.enum) ? (pVal.items as any).enum : undefined;
       let itemsEnum: (string | number | boolean)[] | undefined;
       if (rawItemsEnum) {
         if (rawItemsEnum.length > 256) {
@@ -152,9 +140,7 @@ export function extractDiscoveryParams(
       };
     }
 
-    const isReserved =
-      reservedPathParams.has(pKey) ||
-      (loc === "path" && reservedPathParams.has(cleanName));
+    const isReserved = reservedPathParams.has(pKey) || (loc === "path" && reservedPathParams.has(cleanName));
 
     if (mapping.loss === "SCHEMA_COMPOSITION_ERASED") {
       report?.approximated({

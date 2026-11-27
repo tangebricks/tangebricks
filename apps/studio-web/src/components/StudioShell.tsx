@@ -1,15 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import {
-  createOrgProject,
-  deployProjectToSandbox,
-  fetchProjectEnvironments,
-  promoteSandboxToByoc,
-} from "../api.ts";
-import type {
-  ProjectDeployEnvironmentRecord,
-  StudioSandboxSummaryPayload,
-} from "../api.ts";
+import { createOrgProject, deployProjectToSandbox, fetchProjectEnvironments, promoteSandboxToByoc } from "../api.ts";
+import type { ProjectDeployEnvironmentRecord, StudioSandboxSummaryPayload } from "../api.ts";
 import { getActiveOrg, getActiveRole, useStudioStore } from "../store.ts";
 import { computeStudioValidationIssues, formatRoleLabel } from "../types.ts";
 import type { StudioNavTab } from "../types.ts";
@@ -49,14 +41,7 @@ const NAV_ITEMS: Array<{
   { id: "history", label: "History", subtitle: "Revisions & Ledger", icon: "◷" },
 ];
 
-export function StudioShell({
-  renderOverview,
-  renderBricks,
-  renderData,
-  renderWorkflows,
-  renderConnections,
-  renderHistory,
-}: StudioShellProps = {}) {
+export function StudioShell({ renderOverview, renderBricks, renderData, renderWorkflows, renderConnections, renderHistory }: StudioShellProps = {}) {
   const user = useStudioStore((s) => s.user);
   const orgs = useStudioStore((s) => s.orgs);
   const activeOrgId = useStudioStore((s) => s.activeOrgId);
@@ -93,17 +78,11 @@ export function StudioShell({
   const redoLastBatch = useStudioStore((s) => s.redoLastBatch);
   const loadProjectProposals = useStudioStore((s) => s.loadProjectProposals);
   const backendMapOutlineMode = useStudioStore((s) => s.backendMapOutlineMode);
-  const setBackendMapOutlineMode = useStudioStore(
-    (s) => s.setBackendMapOutlineMode,
-  );
+  const setBackendMapOutlineMode = useStudioStore((s) => s.setBackendMapOutlineMode);
   const workflowOutlineMode = useStudioStore((s) => s.workflowOutlineMode);
-  const setWorkflowOutlineMode = useStudioStore(
-    (s) => s.setWorkflowOutlineMode,
-  );
+  const setWorkflowOutlineMode = useStudioStore((s) => s.setWorkflowOutlineMode);
   const setLiveAnnouncement = useStudioStore((s) => s.setLiveAnnouncement);
-  const setPrefersReducedMotion = useStudioStore(
-    (s) => s.setPrefersReducedMotion,
-  );
+  const setPrefersReducedMotion = useStudioStore((s) => s.setPrefersReducedMotion);
 
   useLiveProjectSync(true);
 
@@ -127,11 +106,8 @@ export function StudioShell({
   const [creatingProject, setCreatingProject] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [topBarDeployModalOpen, setTopBarDeployModalOpen] = useState(false);
-  const [topBarEnvironments, setTopBarEnvironments] = useState<
-    ProjectDeployEnvironmentRecord[]
-  >([]);
-  const [topBarSandbox, setTopBarSandbox] =
-    useState<StudioSandboxSummaryPayload | null>(null);
+  const [topBarEnvironments, setTopBarEnvironments] = useState<ProjectDeployEnvironmentRecord[]>([]);
+  const [topBarSandbox, setTopBarSandbox] = useState<StudioSandboxSummaryPayload | null>(null);
   const [zeroCredModalOpen, setZeroCredModalOpen] = useState(false);
   const [moveToByocModalOpen, setMoveToByocModalOpen] = useState(false);
   const [deployingSandbox, setDeployingSandbox] = useState(false);
@@ -153,18 +129,11 @@ export function StudioShell({
   const roleLabel = formatRoleLabel(activeRole);
   const isViewer = activeRole === "viewer";
 
-  const orgProjects = projects.filter(
-    (p) => !activeOrg || p.orgId === activeOrg.id,
-  );
-  const displayProjectName =
-    projectState?.project ?? activeProjectId ?? orgProjects[0]?.project ?? "unselected-project";
+  const orgProjects = projects.filter((p) => !activeOrg || p.orgId === activeOrg.id);
+  const displayProjectName = projectState?.project ?? activeProjectId ?? orgProjects[0]?.project ?? "unselected-project";
 
   useEffect(() => {
-    if (
-      !displayProjectName ||
-      displayProjectName === "unselected-project" ||
-      typeof fetch !== "function"
-    ) {
+    if (!displayProjectName || displayProjectName === "unselected-project" || typeof fetch !== "function") {
       return;
     }
     let cancelled = false;
@@ -193,11 +162,7 @@ export function StudioShell({
   }, [displayProjectName, activeOrg?.id, currentRevision]);
 
   useEffect(() => {
-    if (
-      !displayProjectName ||
-      displayProjectName === "unselected-project" ||
-      typeof fetch !== "function"
-    ) {
+    if (!displayProjectName || displayProjectName === "unselected-project" || typeof fetch !== "function") {
       return;
     }
     void loadProjectProposals();
@@ -223,20 +188,10 @@ export function StudioShell({
     }
   }, [activeNav]);
 
-  const validationIssues = useMemo(
-    () =>
-      computeStudioValidationIssues(projectState, catalog, secrets, readiness),
-    [projectState, catalog, secrets, readiness],
-  );
-  const totalIssueCount = Math.max(
-    readiness.needs.length,
-    validationIssues.length,
-  );
+  const validationIssues = useMemo(() => computeStudioValidationIssues(projectState, catalog, secrets, readiness), [projectState, catalog, secrets, readiness]);
+  const totalIssueCount = Math.max(readiness.needs.length, validationIssues.length);
   const isFullyReady = readiness.ready && validationIssues.length === 0;
-  const canUndo =
-    !isViewer &&
-    !isMutating &&
-    (undoStack.length > 0 || (revisions.length > 0 && currentRevision > 0));
+  const canUndo = !isViewer && !isMutating && (undoStack.length > 0 || (revisions.length > 0 && currentRevision > 0));
   const canRedo = !isViewer && !isMutating && redoStack.length > 0;
 
   useEffect(() => {
@@ -251,29 +206,17 @@ export function StudioShell({
         if (activeNav === "overview") {
           const next = !backendMapOutlineMode;
           setBackendMapOutlineMode(next);
-          setLiveAnnouncement(
-            next
-              ? "Backend Map Outline View enabled"
-              : "Backend Map Outline View disabled",
-          );
+          setLiveAnnouncement(next ? "Backend Map Outline View enabled" : "Backend Map Outline View disabled");
         } else {
           const next = !workflowOutlineMode;
           setWorkflowOutlineMode(next);
-          setLiveAnnouncement(
-            next
-              ? "Workflow Outline View enabled"
-              : "Workflow Outline View disabled",
-          );
+          setLiveAnnouncement(next ? "Workflow Outline View enabled" : "Workflow Outline View disabled");
         }
         return;
       }
       const target = e.target as HTMLElement | null;
       const tagName = target?.tagName?.toLowerCase();
-      const isEditable =
-        tagName === "input" ||
-        tagName === "textarea" ||
-        tagName === "select" ||
-        Boolean(target?.isContentEditable);
+      const isEditable = tagName === "input" || tagName === "textarea" || tagName === "select" || Boolean(target?.isContentEditable);
       if (isEditable || isViewer) return;
 
       if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "z") {
@@ -283,11 +226,7 @@ export function StudioShell({
         } else {
           void undoLastBatch();
         }
-      } else if (
-        (e.ctrlKey || e.metaKey) &&
-        !e.altKey &&
-        e.key.toLowerCase() === "y"
-      ) {
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "y") {
         e.preventDefault();
         void redoLastBatch();
       }
@@ -309,23 +248,13 @@ export function StudioShell({
 
   const handleCreateProject = async () => {
     if (isViewer || !activeOrg) return;
-    const urlNewProject =
-      typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("newProject")?.trim()
-        : null;
-    const canUseUrlSlug =
-      Boolean(urlNewProject) &&
-      !orgProjects.some((p) => p.project === urlNewProject);
+    const urlNewProject = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("newProject")?.trim() : null;
+    const canUseUrlSlug = Boolean(urlNewProject) && !orgProjects.some((p) => p.project === urlNewProject);
     let fallbackIndex = orgProjects.length + 1;
     while (orgProjects.some((p) => p.project === `project-${fallbackIndex}`)) {
       fallbackIndex += 1;
     }
-    const slug = (
-      newProjectSlug.trim() ||
-      (canUseUrlSlug ? urlNewProject! : `project-${fallbackIndex}`)
-    )
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, "-");
+    const slug = (newProjectSlug.trim() || (canUseUrlSlug ? urlNewProject! : `project-${fallbackIndex}`)).toLowerCase().replace(/[^a-z0-9-]/g, "-");
     setCreatingProject(true);
     setActionError(null);
     try {
@@ -360,15 +289,9 @@ export function StudioShell({
         : { icon: "⚠", text: "Offline", classes: "bg-amber-500/10 text-amber-300 border-amber-500/30" };
 
   return (
-    <div
-      data-testid="studio-shell"
-      className="min-w-[1280px] min-h-screen bg-surface-base text-text-primary flex flex-col"
-    >
+    <div data-testid="studio-shell" className="min-w-[1280px] min-h-screen bg-surface-base text-text-primary flex flex-col">
       {/* Top Bar (56px height) */}
-      <header
-        data-testid="studio-topbar"
-        className="h-[56px] px-4 bg-surface-raised border-b border-border flex items-center justify-between gap-4 shrink-0"
-      >
+      <header data-testid="studio-topbar" className="h-[56px] px-4 bg-surface-raised border-b border-border flex items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 font-bold text-sm text-text-primary">
             <span className="text-accent">◆</span>
@@ -399,9 +322,7 @@ export function StudioShell({
             <span
               data-testid="role-badge"
               className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
-                isViewer
-                  ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
-                  : "bg-surface-control text-text-secondary border-border-strong"
+                isViewer ? "bg-amber-500/15 text-amber-300 border-amber-500/40" : "bg-surface-control text-text-secondary border-border-strong"
               }`}
             >
               {roleLabel}
@@ -438,11 +359,7 @@ export function StudioShell({
               data-testid="new-project-button"
               disabled={isViewer || creatingProject}
               onClick={handleCreateProject}
-              title={
-                isViewer
-                  ? "Viewer role cannot create or mutate projects"
-                  : "Create a new empty project in this organization"
-              }
+              title={isViewer ? "Viewer role cannot create or mutate projects" : "Create a new empty project in this organization"}
               className="px-2.5 py-1 rounded bg-surface-control hover:bg-slate-700 border border-border-strong text-xs font-semibold text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
               + New Project
@@ -451,30 +368,11 @@ export function StudioShell({
 
           {/* Environment badge & Current revision */}
           {(() => {
-            const previewEnv = topBarEnvironments.find(
-              (e) =>
-                e.envName === "preview" &&
-                e.deployedRev !== null &&
-                e.deployedRev !== undefined,
-            );
-            const prodEnv = topBarEnvironments.find(
-              (e) =>
-                e.envName === "production" &&
-                e.deployedRev !== null &&
-                e.deployedRev !== undefined,
-            );
+            const previewEnv = topBarEnvironments.find((e) => e.envName === "preview" && e.deployedRev !== null && e.deployedRev !== undefined);
+            const prodEnv = topBarEnvironments.find((e) => e.envName === "production" && e.deployedRev !== null && e.deployedRev !== undefined);
             const activeDeployedEnv = prodEnv ?? previewEnv ?? null;
-            const envLabel = prodEnv
-              ? `Production r${prodEnv.deployedRev}`
-              : previewEnv
-                ? `Preview r${previewEnv.deployedRev}`
-                : "Draft";
-            const hasDrift = [previewEnv, prodEnv].some(
-              (e) =>
-                e &&
-                ((e.driftReport && !e.driftReport.inSync) ||
-                  e.deployedRev !== currentRevision),
-            );
+            const envLabel = prodEnv ? `Production r${prodEnv.deployedRev}` : previewEnv ? `Preview r${previewEnv.deployedRev}` : "Draft";
+            const hasDrift = [previewEnv, prodEnv].some((e) => e && ((e.driftReport && !e.driftReport.inSync) || e.deployedRev !== currentRevision));
             return (
               <>
                 <span
@@ -495,8 +393,7 @@ export function StudioShell({
                       title={`Requests: ${topBarSandbox.dailyRequestCount}/${topBarSandbox.dailyRequestLimit} today · D1 rows: ${topBarSandbox.d1RowCount}/${topBarSandbox.d1RowLimit}`}
                       className="px-2 py-0.5 rounded border bg-sky-500/15 border-sky-500/40 text-sky-200 text-[11px] font-semibold"
                     >
-                      Sandbox v{topBarSandbox.revision || 1} ·{" "}
-                      {topBarSandbox.remainingDays}d left
+                      Sandbox v{topBarSandbox.revision || 1} · {topBarSandbox.remainingDays}d left
                     </span>
                     <span
                       data-testid="sandbox-preview-url"
@@ -529,10 +426,7 @@ export function StudioShell({
               </>
             );
           })()}
-          <span
-            data-testid="topbar-revision-badge"
-            className="px-2 py-0.5 rounded bg-surface-base border border-border font-mono text-[11px] text-accent"
-          >
+          <span data-testid="topbar-revision-badge" className="px-2 py-0.5 rounded bg-surface-base border border-border font-mono text-[11px] text-accent">
             r{currentRevision}
           </span>
         </div>
@@ -546,11 +440,7 @@ export function StudioShell({
               data-testid="topbar-undo-button"
               disabled={!canUndo}
               onClick={() => void undoLastBatch()}
-              title={
-                undoStack.length > 0
-                  ? `Undo: ${undoStack[undoStack.length - 1]?.summary ?? "last action"} (Ctrl+Z)`
-                  : "Undo last revision (Ctrl+Z)"
-              }
+              title={undoStack.length > 0 ? `Undo: ${undoStack[undoStack.length - 1]?.summary ?? "last action"} (Ctrl+Z)` : "Undo last revision (Ctrl+Z)"}
               className="px-2 py-1 rounded bg-surface-control hover:bg-slate-700 border border-border-strong text-[11px] font-semibold text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
               ↶ Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ""}
@@ -560,11 +450,7 @@ export function StudioShell({
               data-testid="topbar-redo-button"
               disabled={!canRedo}
               onClick={() => void redoLastBatch()}
-              title={
-                redoStack.length > 0
-                  ? `Redo: ${redoStack[redoStack.length - 1]?.summary ?? "next action"} (Ctrl+Shift+Z)`
-                  : "Redo (Ctrl+Shift+Z)"
-              }
+              title={redoStack.length > 0 ? `Redo: ${redoStack[redoStack.length - 1]?.summary ?? "next action"} (Ctrl+Shift+Z)` : "Redo (Ctrl+Shift+Z)"}
               className="px-2 py-1 rounded bg-surface-control hover:bg-slate-700 border border-border-strong text-[11px] font-semibold text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
             >
               ↷ Redo{redoStack.length > 0 ? ` (${redoStack.length})` : ""}
@@ -578,9 +464,7 @@ export function StudioShell({
             aria-pressed={followAi}
             onClick={() => setFollowAi(!followAi)}
             className={`px-2.5 py-1 rounded border text-[11px] font-semibold transition ${
-              followAi
-                ? "bg-sky-400/20 text-sky-200 border-sky-400/50"
-                : "bg-surface-control text-text-muted border-border hover:text-text-secondary"
+              followAi ? "bg-sky-400/20 text-sky-200 border-sky-400/50" : "bg-surface-control text-text-muted border-border hover:text-text-secondary"
             }`}
           >
             🤖 Follow AI: {followAi ? "On" : "Off"}
@@ -608,11 +492,7 @@ export function StudioShell({
             }`}
           >
             <span>{isFullyReady ? "✓" : "⚠"}</span>
-            <span>
-              {isFullyReady
-                ? "Ready"
-                : `${totalIssueCount} ${totalIssueCount === 1 ? "issue" : "issues"}`}
-            </span>
+            <span>{isFullyReady ? "Ready" : `${totalIssueCount} ${totalIssueCount === 1 ? "issue" : "issues"}`}</span>
           </button>
 
           {/* Presence indicator */}
@@ -624,10 +504,7 @@ export function StudioShell({
             {presence
               .filter((p) => p.kind === "agent")
               .map((agent) => (
-                <span
-                  key={agent.id}
-                  className="ml-1 px-1.5 py-0.5 rounded bg-sky-400/15 text-sky-300 font-mono text-[10px]"
-                >
+                <span key={agent.id} className="ml-1 px-1.5 py-0.5 rounded bg-sky-400/15 text-sky-300 font-mono text-[10px]">
                   🤖 {agent.label}
                 </span>
               ))}
@@ -641,9 +518,7 @@ export function StudioShell({
             className="px-3 py-1 rounded bg-surface-control hover:bg-slate-700 border border-border-strong text-xs text-text-secondary flex items-center gap-2"
           >
             <span>Search</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-surface-base text-[10px] font-mono text-accent">
-              Ctrl+K
-            </kbd>
+            <kbd className="px-1.5 py-0.5 rounded bg-surface-base text-[10px] font-mono text-accent">Ctrl+K</kbd>
           </button>
 
           {/* Deploy button */}
@@ -654,10 +529,7 @@ export function StudioShell({
             onClick={() => {
               void (async () => {
                 try {
-                  const envData = await fetchProjectEnvironments(
-                    displayProjectName,
-                    activeOrg?.id,
-                  );
+                  const envData = await fetchProjectEnvironments(displayProjectName, activeOrg?.id);
                   if (envData.activeToken) {
                     setTopBarDeployModalOpen(true);
                     return;
@@ -668,11 +540,7 @@ export function StudioShell({
                 setZeroCredModalOpen(true);
               })();
             }}
-            title={
-              isViewer
-                ? "Viewer role cannot deploy or connect Cloudflare accounts"
-                : "Open Pre-deploy Plan & Diff or Instant Sandbox Preview"
-            }
+            title={isViewer ? "Viewer role cannot deploy or connect Cloudflare accounts" : "Open Pre-deploy Plan & Diff or Instant Sandbox Preview"}
             className="px-3 py-1.5 rounded-md bg-accent text-text-on-accent font-bold text-xs hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Deploy
@@ -689,26 +557,16 @@ export function StudioShell({
         >
           <div className="flex items-center gap-3 flex-wrap">
             <span>
-              ✓ Promoted Sandbox to your Cloudflare account (BYOC preview) — 0 extra{" "}
-              <code className="font-mono">assemble()</code> calls!
+              ✓ Promoted Sandbox to your Cloudflare account (BYOC preview) — 0 extra <code className="font-mono">assemble()</code> calls!
             </span>
             <span className="font-mono text-[11px]">
-              sandboxBuildHash:{" "}
-              <strong data-testid="promoted-sandbox-build-hash">
-                {promotedByocResult.sandboxBuildHash}
-              </strong>
+              sandboxBuildHash: <strong data-testid="promoted-sandbox-build-hash">{promotedByocResult.sandboxBuildHash}</strong>
             </span>
             <span className="font-mono text-[11px]">
-              byocBuildHash:{" "}
-              <strong data-testid="promoted-byoc-build-hash">
-                {promotedByocResult.byocBuildHash}
-              </strong>
+              byocBuildHash: <strong data-testid="promoted-byoc-build-hash">{promotedByocResult.byocBuildHash}</strong>
             </span>
             <span className="font-mono text-[11px]">
-              oldSandboxDestroyed:{" "}
-              <strong data-testid="promoted-old-sandbox-destroyed">
-                {String(promotedByocResult.oldSandboxDestroyed)}
-              </strong>
+              oldSandboxDestroyed: <strong data-testid="promoted-old-sandbox-destroyed">{String(promotedByocResult.oldSandboxDestroyed)}</strong>
             </span>
           </div>
           <button
@@ -728,9 +586,7 @@ export function StudioShell({
           data-testid="viewer-readonly-banner"
           className="px-4 py-1.5 bg-amber-500/15 border-b border-amber-500/30 text-amber-200 text-xs flex items-center justify-between"
         >
-          <span>
-            🔒 Read-only access (Viewer role) — project creation and blueprint mutations are disabled.
-          </span>
+          <span>🔒 Read-only access (Viewer role) — project creation and blueprint mutations are disabled.</span>
           <span className="font-mono text-[11px]">Role: Viewer</span>
         </div>
       )}
@@ -749,11 +605,7 @@ export function StudioShell({
           className="px-4 py-2 bg-red-950/80 border-b border-red-700 text-red-200 text-xs flex items-center justify-between"
         >
           <span>✕ {actionError}</span>
-          <button
-            type="button"
-            onClick={() => setActionError(null)}
-            className="px-2 py-0.5 rounded bg-red-900/60 hover:bg-red-800 text-red-100 text-[11px]"
-          >
+          <button type="button" onClick={() => setActionError(null)} className="px-2 py-0.5 rounded bg-red-900/60 hover:bg-red-800 text-red-100 text-[11px]">
             Dismiss
           </button>
         </div>
@@ -769,13 +621,9 @@ export function StudioShell({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
-                {validationIssues.length === 0
-                  ? "✓ Blueprint Validation — 0 Issues"
-                  : `⚠ Blueprint Validation Issues (${validationIssues.length})`}
+                {validationIssues.length === 0 ? "✓ Blueprint Validation — 0 Issues" : `⚠ Blueprint Validation Issues (${validationIssues.length})`}
               </span>
-              <span className="text-[11px] text-text-muted">
-                Click any issue to jump directly to the offending brick, entity, node, or field
-              </span>
+              <span className="text-[11px] text-text-muted">Click any issue to jump directly to the offending brick, entity, node, or field</span>
             </div>
             <button
               type="button"
@@ -798,34 +646,19 @@ export function StudioShell({
                   key={issue.id}
                   type="button"
                   data-testid={`issue-jump-item-${idx}`}
-                  data-issue-target={
-                    issue.nodeId ?? issue.brickId ?? issue.entityName ?? issue.id
-                  }
+                  data-issue-target={issue.nodeId ?? issue.brickId ?? issue.entityName ?? issue.id}
                   onClick={() => jumpToValidationIssue(issue)}
                   className="w-full p-2.5 rounded bg-surface-base hover:bg-surface-control border border-amber-500/30 text-left flex items-center justify-between gap-3 transition"
                 >
                   <div className="flex items-start gap-2.5 min-w-0">
-                    <span
-                      className={`mt-0.5 font-bold text-xs ${
-                        issue.severity === "error"
-                          ? "text-rose-400"
-                          : "text-amber-300"
-                      }`}
-                    >
+                    <span className={`mt-0.5 font-bold text-xs ${issue.severity === "error" ? "text-rose-400" : "text-amber-300"}`}>
                       {issue.severity === "error" ? "✕" : "⚠"}
                     </span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-mono text-[10px] uppercase">
-                          {issue.category}
-                        </span>
-                        <span className="font-mono text-[10px] text-text-muted">
-                          {issue.code}
-                        </span>
-                        {(issue.brickId ||
-                          issue.nodeId ||
-                          issue.entityName ||
-                          issue.workflowId) && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-mono text-[10px] uppercase">{issue.category}</span>
+                        <span className="font-mono text-[10px] text-text-muted">{issue.code}</span>
+                        {(issue.brickId || issue.nodeId || issue.entityName || issue.workflowId) && (
                           <span
                             data-testid={`issue-jump-target-${issue.nodeId ?? issue.brickId ?? issue.entityName ?? issue.workflowId}`}
                             className="px-1.5 py-0.5 rounded bg-surface-control border border-border font-mono text-[10px] text-accent"
@@ -841,14 +674,8 @@ export function StudioShell({
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-text-primary mt-1">
-                        {issue.message}
-                      </div>
-                      {issue.suggestedFix && (
-                        <div className="text-[11px] text-text-muted mt-0.5">
-                          Fix: {issue.suggestedFix}
-                        </div>
-                      )}
+                      <div className="text-xs text-text-primary mt-1">{issue.message}</div>
+                      {issue.suggestedFix && <div className="text-[11px] text-text-muted mt-0.5">Fix: {issue.suggestedFix}</div>}
                     </div>
                   </div>
                   <span className="shrink-0 px-2 py-1 rounded bg-amber-500/15 text-amber-200 border border-amber-500/30 text-[11px] font-semibold">
@@ -870,9 +697,7 @@ export function StudioShell({
           className="w-[256px] shrink-0 bg-surface-raised border-r border-border p-3 flex flex-col justify-between"
         >
           <div className="space-y-1">
-            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">
-              Project Workspace
-            </div>
+            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">Project Workspace</div>
             {NAV_ITEMS.map((item) => {
               const active = activeNav === item.id;
               return (
@@ -891,9 +716,7 @@ export function StudioShell({
                   <span className="text-sm">{item.icon}</span>
                   <div>
                     <div className="text-xs leading-tight">{item.label}</div>
-                    <div className="text-[10px] text-text-muted font-normal">
-                      {item.subtitle}
-                    </div>
+                    <div className="text-[10px] text-text-muted font-normal">{item.subtitle}</div>
                   </div>
                 </button>
               );
@@ -905,25 +728,15 @@ export function StudioShell({
               Project: <span className="font-mono">{displayProjectName}</span>
             </div>
             <div>
-              Bricks: {projectState?.bricks.length ?? 0} · Entities:{" "}
-              {projectState?.entities.length ?? 0} · Workflows:{" "}
-              {projectState?.workflows.length ?? 0}
+              Bricks: {projectState?.bricks.length ?? 0} · Entities: {projectState?.entities.length ?? 0} · Workflows: {projectState?.workflows.length ?? 0}
             </div>
           </div>
         </nav>
 
         {/* Main Area */}
-        <main
-          data-testid="main-area"
-          className="flex-1 bg-surface-canvas overflow-y-auto p-6"
-        >
+        <main data-testid="main-area" className="flex-1 bg-surface-canvas overflow-y-auto p-6">
           {isLoadingMain ? (
-            <div
-              data-testid="main-area-skeleton"
-              aria-busy="true"
-              aria-label="Loading active view"
-              className="space-y-4 animate-pulse"
-            >
+            <div data-testid="main-area-skeleton" aria-busy="true" aria-label="Loading active view" className="space-y-4 animate-pulse">
               <div className="h-7 w-64 rounded bg-surface-control" />
               <div className="grid grid-cols-3 gap-4">
                 <div className="h-32 rounded-lg bg-surface-raised border border-border" />
@@ -976,22 +789,10 @@ export function StudioShell({
       </div>
 
       {/* Screen-reader live sync announcer */}
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        data-testid="live-sync-announcer"
-        className="sr-only"
-      >
+      <div role="status" aria-live="polite" aria-atomic="true" data-testid="live-sync-announcer" className="sr-only">
         {liveAnnouncement}
       </div>
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        data-testid="studio-aria-live-region"
-        className="sr-only"
-      >
+      <div role="status" aria-live="polite" aria-atomic="true" data-testid="studio-aria-live-region" className="sr-only">
         {liveAnnouncement}
       </div>
 
@@ -1022,9 +823,7 @@ export function StudioShell({
           <div className="w-full max-w-xl rounded-xl bg-surface-raised border border-border-strong shadow-2xl p-6 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-base font-bold text-text-primary">
-                  Deploy Your Backend
-                </h2>
+                <h2 className="text-base font-bold text-text-primary">Deploy Your Backend</h2>
                 <p className="text-xs text-text-secondary mt-1">
                   Try a live preview immediately with zero credentials, or connect your own Cloudflare account (BYOC).
                 </p>
@@ -1049,21 +848,12 @@ export function StudioShell({
                     setDeployingSandbox(true);
                     setActionError(null);
                     try {
-                      const res = await deployProjectToSandbox(
-                        displayProjectName,
-                        { orgId: activeOrg?.id },
-                      );
+                      const res = await deployProjectToSandbox(displayProjectName, { orgId: activeOrg?.id });
                       setTopBarSandbox(res.sandbox);
                       setZeroCredModalOpen(false);
-                      window.dispatchEvent(
-                        new CustomEvent("studio:environments-updated"),
-                      );
+                      window.dispatchEvent(new CustomEvent("studio:environments-updated"));
                     } catch (err) {
-                      setActionError(
-                        err instanceof Error
-                          ? err.message
-                          : "Failed to deploy instant sandbox preview",
-                      );
+                      setActionError(err instanceof Error ? err.message : "Failed to deploy instant sandbox preview");
                     } finally {
                       setDeployingSandbox(false);
                     }
@@ -1077,9 +867,8 @@ export function StudioShell({
                     : "Try in Instant Sandbox Preview (No Cloudflare account needed — free for 7 days)"}
                 </div>
                 <div className="text-xs font-normal opacity-90">
-                  Provisions an isolated Workers for Platforms preview at{" "}
-                  <code className="font-mono">*.sandbox.projectx.dev</code> with
-                  D1 &amp; test-mode integrations in seconds.
+                  Provisions an isolated Workers for Platforms preview at <code className="font-mono">*.sandbox.projectx.dev</code> with D1 &amp; test-mode
+                  integrations in seconds.
                 </div>
               </button>
 
@@ -1091,20 +880,13 @@ export function StudioShell({
                   setZeroCredModalOpen(false);
                   setActiveNav("connections");
                   setTimeout(() => {
-                    window.dispatchEvent(
-                      new CustomEvent("studio:open-cf-wizard"),
-                    );
+                    window.dispatchEvent(new CustomEvent("studio:open-cf-wizard"));
                   }, 50);
                 }}
                 className="w-full p-4 rounded-lg bg-surface-base hover:bg-surface-control border border-border-strong text-left transition space-y-1"
               >
-                <div className="text-sm font-bold text-text-primary">
-                  Connect my Cloudflare account (BYOC)
-                </div>
-                <div className="text-xs text-text-secondary">
-                  Deploy directly into your own Cloudflare Workers &amp; D1
-                  account with zero platform lock-in.
-                </div>
+                <div className="text-sm font-bold text-text-primary">Connect my Cloudflare account (BYOC)</div>
+                <div className="text-xs text-text-secondary">Deploy directly into your own Cloudflare Workers &amp; D1 account with zero platform lock-in.</div>
               </button>
             </div>
           </div>
@@ -1123,17 +905,10 @@ export function StudioShell({
           <div className="w-full max-w-xl rounded-xl bg-surface-raised border border-border-strong shadow-2xl p-6 space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-base font-bold text-text-primary">
-                  Move to my Cloudflare account (BYOC)
-                </h2>
+                <h2 className="text-base font-bold text-text-primary">Move to my Cloudflare account (BYOC)</h2>
                 <p className="text-xs text-text-secondary mt-1">
-                  Promotes your exact verified Sandbox artifact (
-                  <code className="font-mono text-amber-300">
-                    {topBarSandbox?.buildHash ?? "cached-build"}
-                  </code>
-                  ) into your own Cloudflare account without re-running{" "}
-                  <code className="font-mono">assemble()</code>, then tears down
-                  the temporary sandbox.
+                  Promotes your exact verified Sandbox artifact (<code className="font-mono text-amber-300">{topBarSandbox?.buildHash ?? "cached-build"}</code>)
+                  into your own Cloudflare account without re-running <code className="font-mono">assemble()</code>, then tears down the temporary sandbox.
                 </p>
               </div>
               <button
@@ -1148,10 +923,7 @@ export function StudioShell({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label
-                  htmlFor="move-to-byoc-token-input"
-                  className="block font-semibold text-text-secondary mb-1"
-                >
+                <label htmlFor="move-to-byoc-token-input" className="block font-semibold text-text-secondary mb-1">
                   Cloudflare API Token (Workers Scripts:Edit, D1:Edit, Queues:Edit)
                 </label>
                 <input
@@ -1167,10 +939,7 @@ export function StudioShell({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label
-                    htmlFor="move-to-byoc-account-id-input"
-                    className="block font-semibold text-text-secondary mb-1"
-                  >
+                  <label htmlFor="move-to-byoc-account-id-input" className="block font-semibold text-text-secondary mb-1">
                     Cloudflare Account ID
                   </label>
                   <input
@@ -1183,10 +952,7 @@ export function StudioShell({
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="move-to-byoc-account-name-input"
-                    className="block font-semibold text-text-secondary mb-1"
-                  >
+                  <label htmlFor="move-to-byoc-account-name-input" className="block font-semibold text-text-secondary mb-1">
                     Account Label
                   </label>
                   <input
@@ -1218,38 +984,28 @@ export function StudioShell({
                     setPromotingToByoc(true);
                     setActionError(null);
                     try {
-                      const res = await promoteSandboxToByoc(
-                        displayProjectName,
-                        {
-                          orgId: activeOrg?.id,
-                          token: byocTokenInput.trim() || undefined,
-                          accountId: byocAccountIdInput.trim() || undefined,
-                          accountName: byocAccountNameInput.trim() || undefined,
-                        },
-                      );
+                      const res = await promoteSandboxToByoc(displayProjectName, {
+                        orgId: activeOrg?.id,
+                        token: byocTokenInput.trim() || undefined,
+                        accountId: byocAccountIdInput.trim() || undefined,
+                        accountName: byocAccountNameInput.trim() || undefined,
+                      });
                       setPromotedByocResult({
                         buildHash: res.buildHash,
                         sandboxBuildHash: res.sandboxBuildHash,
                         byocBuildHash: res.byocBuildHash ?? res.buildHash,
                         url: res.byocDeploy?.url ?? "",
                         oldSandboxDestroyed: res.oldSandboxDestroyed ?? true,
-                        assembleCalledDuringPromote:
-                          res.assembleCalledDuringPromote ?? false,
+                        assembleCalledDuringPromote: res.assembleCalledDuringPromote ?? false,
                       });
                       setTopBarSandbox(null);
                       if (res.environment) {
                         setTopBarEnvironments([res.environment]);
                       }
                       setMoveToByocModalOpen(false);
-                      window.dispatchEvent(
-                        new CustomEvent("studio:environments-updated"),
-                      );
+                      window.dispatchEvent(new CustomEvent("studio:environments-updated"));
                     } catch (err) {
-                      setActionError(
-                        err instanceof Error
-                          ? err.message
-                          : "Failed to promote sandbox to BYOC",
-                      );
+                      setActionError(err instanceof Error ? err.message : "Failed to promote sandbox to BYOC");
                     } finally {
                       setPromotingToByoc(false);
                     }
@@ -1257,9 +1013,7 @@ export function StudioShell({
                 }}
                 className="px-4 py-1.5 rounded bg-amber-400 text-slate-950 font-bold text-xs hover:opacity-90 disabled:opacity-50"
               >
-                {promotingToByoc
-                  ? "Promoting to BYOC…"
-                  : "Promote Sandbox to My Cloudflare Account"}
+                {promotingToByoc ? "Promoting to BYOC…" : "Promote Sandbox to My Cloudflare Account"}
               </button>
             </div>
           </div>

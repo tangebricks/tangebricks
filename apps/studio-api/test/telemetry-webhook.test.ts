@@ -77,10 +77,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
   beforeEach(async () => {
     await ensureStudioD1Schema(studioDb);
     await ensureTelemetryTables(workerDb);
-    await studioDb.batch([
-      studioDb.prepare("DELETE FROM px_step_events"),
-      studioDb.prepare("DELETE FROM px_runs"),
-    ]);
+    await studioDb.batch([studioDb.prepare("DELETE FROM px_step_events"), studioDb.prepare("DELETE FROM px_runs")]);
   });
 
   test("rejects missing or forged X-Px-Signature on POST /api/projects/:project/telemetry/webhook with HTTP 401", async () => {
@@ -123,8 +120,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
         method: "POST",
         headers: {
           "content-type": "application/json",
-          [TELEMETRY_SIGNATURE_HEADER]:
-            "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+          [TELEMETRY_SIGNATURE_HEADER]: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
         },
         body: payload,
       }),
@@ -191,7 +187,12 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
       { [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryWebhook(payload, TELEMETRY_SECRET) },
       { [TELEMETRY_SIGNATURE_HEADER]: await signTelemetryPayload(payload, projectSecret) },
       await signControlPlaneRequest(projectSecret, "POST", `/api/projects/${project}/telemetry/webhook`, payload),
-      await signControlPlaneRequest(await deriveProjectSecret(TELEMETRY_SECRET, project, "control-plane"), "POST", `/api/projects/${project}/telemetry/webhook`, payload),
+      await signControlPlaneRequest(
+        await deriveProjectSecret(TELEMETRY_SECRET, project, "control-plane"),
+        "POST",
+        `/api/projects/${project}/telemetry/webhook`,
+        payload,
+      ),
     ]) {
       const refused = await app.fetch(
         new Request(`http://localhost/api/projects/${project}/telemetry/webhook`, {
@@ -341,7 +342,8 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     };
 
     const happyWorkflow = new GraphWorkflow(workflowRegistry, happyExecutors);
-    const happyResult = await happyWorkflow.start({ workspaceId: "ws_test",
+    const happyResult = await happyWorkflow.start({
+      workspaceId: "ws_test",
       graph,
       payload: { customer: "cust_42", totalCents: 4900 },
       env: {
@@ -361,8 +363,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
         telemetrySecret: TELEMETRY_SECRET,
         webhookSecret: await deriveProjectTelemetrySecret(TELEMETRY_SECRET, project),
         webhookUrl: `http://localhost/api/projects/${project}/telemetry/webhook`,
-        webhookFetcher: async (input, init) =>
-          app.fetch(new Request(String(input), init), testEnv),
+        webhookFetcher: async (input, init) => app.fetch(new Request(String(input), init), testEnv),
       },
     });
 
@@ -396,7 +397,8 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     ]);
 
     const failingWorkflow = new GraphWorkflow(workflowRegistry, failingExecutors);
-    const failResult = await failingWorkflow.start({ workspaceId: "ws_test",
+    const failResult = await failingWorkflow.start({
+      workspaceId: "ws_test",
       graph,
       payload: { customer: "cust_fail", totalCents: 9900 },
       env: {
@@ -419,8 +421,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
           step_charge: { limit: 2, delayMs: 1 },
         },
         webhookUrl: `http://localhost/api/projects/${project}/telemetry/webhook`,
-        webhookFetcher: async (input, init) =>
-          app.fetch(new Request(String(input), init), testEnv),
+        webhookFetcher: async (input, init) => app.fetch(new Request(String(input), init), testEnv),
       },
     });
 
@@ -437,13 +438,9 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     expect(storedFailRun?.errorStack).toContain("[REDACTED]");
 
     const failEvents = await listStepEventsForRun(studioDb, "run_ws_fail_2", { projectId: project });
-    const failedStep = failEvents.find(
-      (e) => e.nodeId === "step_charge" && e.status === "failed",
-    );
+    const failedStep = failEvents.find((e) => e.nodeId === "step_charge" && e.status === "failed");
     expect(failedStep?.retries).toBe(2);
-    const skippedStep = failEvents.find(
-      (e) => e.nodeId === "step_notify" && e.status === "skipped",
-    );
+    const skippedStep = failEvents.find((e) => e.nodeId === "step_notify" && e.status === "skipped");
     expect(skippedStep).toBeDefined();
 
     // Verify ZERO canary secrets appear anywhere in WebSocket frames or D1 tables
@@ -455,13 +452,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
       failEvents,
     });
 
-    for (const canary of [
-      CANARY_SECRET_1,
-      btoa(CANARY_SECRET_1),
-      CANARY_SECRET_2,
-      encodeURIComponent(CANARY_SECRET_2),
-      CANARY_SECRET_3,
-    ]) {
+    for (const canary of [CANARY_SECRET_1, btoa(CANARY_SECRET_1), CANARY_SECRET_2, encodeURIComponent(CANARY_SECRET_2), CANARY_SECRET_3]) {
       expect(wsDump).not.toContain(canary);
       expect(d1Dump).not.toContain(canary);
     }
@@ -496,13 +487,17 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     );
 
     // Run a 3-node workflow that pushes events
-    const workflow = new GraphWorkflow(workflowRegistry, new Map([
-      ...toyExecutors,
-      ["action.charge_customer", ({ inputs }) => ({ out: inputs.in })],
-      ["action.notify_slack", ({ inputs }) => ({ out: inputs.in })],
-    ]));
+    const workflow = new GraphWorkflow(
+      workflowRegistry,
+      new Map([
+        ...toyExecutors,
+        ["action.charge_customer", ({ inputs }) => ({ out: inputs.in })],
+        ["action.notify_slack", ({ inputs }) => ({ out: inputs.in })],
+      ]),
+    );
 
-    await workflow.start({ workspaceId: "ws_test",
+    await workflow.start({
+      workspaceId: "ws_test",
       graph: {
         nodes: [
           { id: "n1", type: "trigger.manual", data: {} },
@@ -528,8 +523,7 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
         telemetrySecret: TELEMETRY_SECRET,
         webhookSecret: await deriveProjectTelemetrySecret(TELEMETRY_SECRET, project),
         webhookUrl: `http://localhost/api/projects/${project}/telemetry/webhook`,
-        webhookFetcher: async (input, init) =>
-          app.fetch(new Request(String(input), init), testEnv),
+        webhookFetcher: async (input, init) => app.fetch(new Request(String(input), init), testEnv),
       },
     });
 
@@ -554,12 +548,9 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
 
     // Query studio-api GET /api/projects/:project/telemetry/events?after=0&limit=20
     const studioEventsRes = await app.fetch(
-      new Request(
-        `http://localhost/api/projects/${project}/telemetry/events?runId=run_reconcile_1`,
-        {
-          headers: authHeaders,
-        },
-      ),
+      new Request(`http://localhost/api/projects/${project}/telemetry/events?runId=run_reconcile_1`, {
+        headers: authHeaders,
+      }),
       testEnv,
     );
     expect(studioEventsRes.status).toBe(200);
@@ -575,11 +566,35 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     const owner = "telemetry-collision-owner";
     const intruder = "telemetry-collision-intruder";
     const now = new Date().toISOString();
-    const ownerRun = { runId: "run_owned_by_owner", workflowId: "wf", revision: 0, triggerType: "manual", workspaceId: "ws_default", status: "succeeded" as const, durationMs: 1, retries: 0, startedAt: now };
+    const ownerRun = {
+      runId: "run_owned_by_owner",
+      workflowId: "wf",
+      revision: 0,
+      triggerType: "manual",
+      workspaceId: "ws_default",
+      status: "succeeded" as const,
+      durationMs: 1,
+      retries: 0,
+      startedAt: now,
+    };
     await upsertRunRecord(studioDb, ownerRun, { projectId: owner });
     await insertStepEvent(
       studioDb,
-      { eventId: "ev_owned_by_owner", runId: ownerRun.runId, workflowId: "wf", revision: 0, workspaceId: "ws_default", nodeId: "n", status: "succeeded", durationMs: 1, retries: 0, inputPreview: "{}", outputPreview: "{}", errorStack: null, createdAt: now },
+      {
+        eventId: "ev_owned_by_owner",
+        runId: ownerRun.runId,
+        workflowId: "wf",
+        revision: 0,
+        workspaceId: "ws_default",
+        nodeId: "n",
+        status: "succeeded",
+        durationMs: 1,
+        retries: 0,
+        inputPreview: "{}",
+        outputPreview: "{}",
+        errorStack: null,
+        createdAt: now,
+      },
       { projectId: owner },
     );
     await insertStructuredLog(studioDb, { logId: "log_owned_by_owner", level: "info", message: "owner", workspaceId: "ws_default" }, {}, { projectId: owner });
@@ -603,7 +618,23 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
     const evCollision = await postWebhook({
       project: intruder,
       run: freshRun,
-      events: [{ eventId: "ev_owned_by_owner", runId: freshRun.runId, workflowId: "wf", revision: 0, workspaceId: "ws_default", nodeId: "n", status: "failed", durationMs: 1, retries: 0, inputPreview: "{}", outputPreview: "{}", errorStack: null, createdAt: now }],
+      events: [
+        {
+          eventId: "ev_owned_by_owner",
+          runId: freshRun.runId,
+          workflowId: "wf",
+          revision: 0,
+          workspaceId: "ws_default",
+          nodeId: "n",
+          status: "failed",
+          durationMs: 1,
+          retries: 0,
+          inputPreview: "{}",
+          outputPreview: "{}",
+          errorStack: null,
+          createdAt: now,
+        },
+      ],
     });
     expect(evCollision.status).toBe(409);
     expect(((await evCollision.json()) as { error: { code: string } }).error.code).toBe("ID_COLLISION");
@@ -658,7 +689,23 @@ describe("apps/studio-api — Telemetry HMAC webhook, BlueprintDO WebSocket broa
       pulledFrom.push(String(input instanceof Request ? input.url : input));
       return Response.json({
         runs: [{ ...ownerRun, runId: "run_reconcile_fresh" }],
-        events: [{ eventId: "ev_owned_by_owner", runId: "run_reconcile_fresh", workflowId: "wf", revision: 0, workspaceId: "ws_default", nodeId: "n", status: "failed", durationMs: 1, retries: 0, inputPreview: "{}", outputPreview: "{}", errorStack: null, createdAt: now }],
+        events: [
+          {
+            eventId: "ev_owned_by_owner",
+            runId: "run_reconcile_fresh",
+            workflowId: "wf",
+            revision: 0,
+            workspaceId: "ws_default",
+            nodeId: "n",
+            status: "failed",
+            durationMs: 1,
+            retries: 0,
+            inputPreview: "{}",
+            outputPreview: "{}",
+            errorStack: null,
+            createdAt: now,
+          },
+        ],
       });
     }) as typeof fetch;
     try {

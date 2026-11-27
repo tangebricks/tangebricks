@@ -26,9 +26,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
   const orgs = useStudioStore((s) => s.orgs);
   const activeOrgId = useStudioStore((s) => s.activeOrgId);
   const isMutating = useStudioStore((s) => s.isMutating);
-  const highlightedInspectorField = useStudioStore(
-    (s) => s.highlightedInspectorField,
-  );
+  const highlightedInspectorField = useStudioStore((s) => s.highlightedInspectorField);
   const setDirtyTarget = useStudioStore((s) => s.setDirtyTarget);
   const commitOps = useStudioStore((s) => s.commitOps);
   const upsertSecret = useStudioStore((s) => s.upsertSecret);
@@ -39,11 +37,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
   const manifest = catalog[brickId];
   const enabledEntry = projectState?.bricks.find((b) => b.id === brickId);
   const configJson = JSON.stringify(enabledEntry?.config ?? {});
-  const secretRefsJson = JSON.stringify(
-    (projectState?.secretRefs ?? []).filter(
-      (r) => r.targetKind === "brick" && r.targetId === brickId,
-    ),
-  );
+  const secretRefsJson = JSON.stringify((projectState?.secretRefs ?? []).filter((r) => r.targetKind === "brick" && r.targetId === brickId));
 
   const [draftSettings, setDraftSettings] = useState<Record<string, unknown>>({});
   const [secretInputs, setSecretInputs] = useState<Record<string, string>>({});
@@ -66,12 +60,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
     if (!manifest) return;
     const nextSecrets: Record<string, string> = {};
     for (const secretName of brickSecretNames(manifest)) {
-      const bound = projectState?.secretRefs.find(
-        (r) =>
-          r.targetKind === "brick" &&
-          r.targetId === brickId &&
-          r.secretName === secretName,
-      );
+      const bound = projectState?.secretRefs.find((r) => r.targetKind === "brick" && r.targetId === brickId && r.secretName === secretName);
       nextSecrets[secretName] = bound?.ref ?? "";
     }
     setSecretInputs(nextSecrets);
@@ -93,10 +82,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
   const validationResults = useMemo(() => {
     const map: Record<string, { ok: boolean; value?: unknown; error?: string }> = {};
     for (const [key, def] of settingsEntries) {
-      const rawVal =
-        key in draftSettings
-          ? draftSettings[key]
-          : (enabledEntry?.config?.[key] ?? def.default);
+      const rawVal = key in draftSettings ? draftSettings[key] : (enabledEntry?.config?.[key] ?? def.default);
       map[key] = validateBrickSettingValue(key, rawVal, def);
     }
     return map;
@@ -186,60 +172,39 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
           className="p-2 rounded bg-amber-500/15 border border-amber-500/50 text-[11px] text-amber-200 flex items-center justify-between"
         >
           <span>
-            ⚑ Focused offending field:{" "}
-            <span className="font-mono font-bold text-accent">
-              {highlightedInspectorField}
-            </span>
+            ⚑ Focused offending field: <span className="font-mono font-bold text-accent">{highlightedInspectorField}</span>
           </span>
         </div>
       )}
       <div>
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-bold text-text-primary">
-            {manifest.ui?.displayName ?? manifest.id}
-          </h3>
-          <span
-            data-testid="inspector-brick-maturity"
-            className="px-2 py-0.5 rounded bg-surface-control border border-border-strong text-[11px] font-semibold"
-          >
+          <h3 className="text-sm font-bold text-text-primary">{manifest.ui?.displayName ?? manifest.id}</h3>
+          <span data-testid="inspector-brick-maturity" className="px-2 py-0.5 rounded bg-surface-control border border-border-strong text-[11px] font-semibold">
             {maturity.textWithIcon}
           </span>
         </div>
         <div className="font-mono text-[11px] text-text-muted mt-0.5">{manifest.id}</div>
-        {manifest.ui?.summary && (
-          <p className="text-text-secondary mt-1.5">{manifest.ui.summary}</p>
-        )}
+        {manifest.ui?.summary && <p className="text-text-secondary mt-1.5">{manifest.ui.summary}</p>}
         {manifest.ui?.maturityReason && (
-          <div
-            data-testid="inspector-brick-maturity-reason"
-            className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-200 text-[11px]"
-          >
+          <div data-testid="inspector-brick-maturity-reason" className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-200 text-[11px]">
             ⚠ {manifest.ui.maturityReason}
           </div>
         )}
         {needsScheduling && (
-          <div
-            data-testid="inspector-brick-scheduling-marker"
-            className="mt-2 p-2 rounded bg-sky-400/10 border border-sky-400/30 text-sky-300 text-[11px]"
-          >
+          <div data-testid="inspector-brick-scheduling-marker" className="mt-2 p-2 rounded bg-sky-400/10 border border-sky-400/30 text-sky-300 text-[11px]">
             ⏱ Needs scheduling / queues
           </div>
         )}
       </div>
 
       <div className="space-y-2 border-t border-border pt-3">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-          Capabilities & Wiring
-        </div>
+        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Capabilities & Wiring</div>
         <div>
           <span className="text-text-muted">Provides: </span>
           {manifest.provides.length === 0 ? (
             <span className="text-text-muted">None</span>
           ) : (
-            <span
-              data-testid="inspector-brick-provides"
-              className="font-mono text-emerald-400"
-            >
+            <span data-testid="inspector-brick-provides" className="font-mono text-emerald-400">
               {manifest.provides.join(", ")}
             </span>
           )}
@@ -249,10 +214,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
           {manifest.requires.length === 0 ? (
             <span className="text-text-muted">None</span>
           ) : (
-            <span
-              data-testid="inspector-brick-requires"
-              className="font-mono text-amber-400"
-            >
+            <span data-testid="inspector-brick-requires" className="font-mono text-amber-400">
               {manifest.requires.join(", ")}
             </span>
           )}
@@ -262,10 +224,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
           {manifest.routePrefixes.length === 0 ? (
             <span className="text-text-muted">None</span>
           ) : (
-            <span
-              data-testid="inspector-brick-routes"
-              className="font-mono text-sky-400"
-            >
+            <span data-testid="inspector-brick-routes" className="font-mono text-sky-400">
               {manifest.routePrefixes.map((p) => `/api/${p}`).join(", ")}
             </span>
           )}
@@ -275,10 +234,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
           {manifest.migrations.length === 0 ? (
             <span className="text-text-muted">None</span>
           ) : (
-            <span
-              data-testid="inspector-brick-migrations"
-              className="font-mono text-text-secondary"
-            >
+            <span data-testid="inspector-brick-migrations" className="font-mono text-text-secondary">
               {manifest.migrations.join(", ")}
             </span>
           )}
@@ -288,10 +244,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
           {secretsList.length === 0 ? (
             <span className="text-text-muted">None</span>
           ) : (
-            <span
-              data-testid="inspector-brick-secrets"
-              className="font-mono text-amber-300"
-            >
+            <span data-testid="inspector-brick-secrets" className="font-mono text-amber-300">
               {secretsList.join(", ")}
             </span>
           )}
@@ -300,13 +253,8 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
 
       {/* Secret Reference Bindings (for bricks declaring secrets) */}
       {secretsList.length > 0 && (
-        <div
-          data-testid="inspector-brick-secret-refs"
-          className="space-y-2 border-t border-border pt-3"
-        >
-          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-            Secret Reference Handles (sec_*)
-          </div>
+        <div data-testid="inspector-brick-secret-refs" className="space-y-2 border-t border-border pt-3">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Secret Reference Handles (sec_*)</div>
           {secretsList.map((secretName) => {
             const val = secretInputs[secretName] ?? "";
             const trimmed = val.trim();
@@ -317,15 +265,9 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
             const isInlineOpen = Boolean(inlineSecretOpen[secretName]);
 
             return (
-              <div
-                key={secretName}
-                data-testid={`inspector-secret-row-${secretName}`}
-                className="p-2 rounded bg-surface-base border border-border space-y-2"
-              >
+              <div key={secretName} data-testid={`inspector-secret-row-${secretName}`} className="p-2 rounded bg-surface-base border border-border space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="font-mono text-[11px] font-semibold text-amber-300">
-                    {secretName}
-                  </div>
+                  <div className="font-mono text-[11px] font-semibold text-amber-300">{secretName}</div>
                   <button
                     type="button"
                     data-testid={`inline-add-secret-button-${secretName}`}
@@ -388,13 +330,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
                   <button
                     type="button"
                     data-testid={`secret-ref-bind-${secretName}`}
-                    disabled={
-                      !enabledEntry ||
-                      isViewer ||
-                      isMutating ||
-                      trimmed.length === 0 ||
-                      isInvalid
-                    }
+                    disabled={!enabledEntry || isViewer || isMutating || trimmed.length === 0 || isInvalid}
                     onClick={() => void handleBindSecretRef(secretName)}
                     className="px-2 py-1 rounded bg-surface-control border border-border-strong text-[11px] font-semibold text-accent hover:bg-accent/20 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
@@ -404,13 +340,8 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
 
                 {/* Inline Add Secret Form */}
                 {isInlineOpen && (
-                  <div
-                    data-testid={`inline-add-secret-form-${secretName}`}
-                    className="p-2 rounded bg-surface-raised border border-accent/40 space-y-1.5"
-                  >
-                    <div className="text-[10px] font-bold text-accent">
-                      Create &amp; Seal Secret Inline (AES-GCM)
-                    </div>
+                  <div data-testid={`inline-add-secret-form-${secretName}`} className="p-2 rounded bg-surface-raised border border-accent/40 space-y-1.5">
+                    <div className="text-[10px] font-bold text-accent">Create &amp; Seal Secret Inline (AES-GCM)</div>
                     <input
                       type="text"
                       aria-label={`Inline secret handle for ${secretName}`}
@@ -455,12 +386,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
                       <button
                         type="button"
                         data-testid={`inline-secret-submit-${secretName}`}
-                        disabled={
-                          isMutating ||
-                          !inlineVal.trim() ||
-                          !inlineHandle.trim().startsWith("sec_") ||
-                          !isValidSecretRefHandle(inlineHandle.trim()).ok
-                        }
+                        disabled={isMutating || !inlineVal.trim() || !inlineHandle.trim().startsWith("sec_") || !isValidSecretRefHandle(inlineHandle.trim()).ok}
                         onClick={() => void handleInlineCreateSecret(secretName)}
                         className="px-2.5 py-0.5 rounded bg-accent text-slate-950 font-bold text-[10px] disabled:opacity-40"
                       >
@@ -471,11 +397,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
                 )}
 
                 {isInvalid && (
-                  <div
-                    role="alert"
-                    data-testid={`secret-ref-error-${secretName}`}
-                    className="text-[10px] text-rose-400 font-semibold"
-                  >
+                  <div role="alert" data-testid={`secret-ref-error-${secretName}`} className="text-[10px] text-rose-400 font-semibold">
                     Secret reference must be an opaque handle matching sec_* — never raw plaintext.
                   </div>
                 )}
@@ -491,21 +413,14 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
           <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
             {enabledEntry ? "Settings (Configurable)" : "Settings (Catalog Defaults)"}
           </span>
-          <span className="text-[10px] text-text-muted">
-            {enabledEntry ? "Enabled in project" : "Turn on brick to edit"}
-          </span>
+          <span className="text-[10px] text-text-muted">{enabledEntry ? "Enabled in project" : "Turn on brick to edit"}</span>
         </div>
         {settingsEntries.length === 0 ? (
-          <div className="text-text-muted text-[11px]">
-            This brick declares no configurable settings.
-          </div>
+          <div className="text-text-muted text-[11px]">This brick declares no configurable settings.</div>
         ) : (
           <div data-testid="inspector-brick-settings" className="space-y-2.5">
             {settingsEntries.map(([key, def]) => {
-              const currentVal =
-                key in draftSettings
-                  ? draftSettings[key]
-                  : (enabledEntry?.config?.[key] ?? def.default);
+              const currentVal = key in draftSettings ? draftSettings[key] : (enabledEntry?.config?.[key] ?? def.default);
               const uiMeta = manifest.ui?.settings?.[key];
               const label = uiMeta?.label ?? key;
               const helpText = uiMeta?.helpText ?? uiMeta?.help;
@@ -523,29 +438,18 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
                         : `string (default ${String(def.default ?? "")})`;
 
               return (
-                <div
-                  key={key}
-                  data-testid={`inspector-setting-${key}`}
-                  className="p-2.5 rounded bg-surface-base border border-border space-y-2"
-                >
+                <div key={key} data-testid={`inspector-setting-${key}`} className="p-2.5 rounded bg-surface-base border border-border space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="font-mono font-semibold text-text-primary">{key}</div>
-                      {uiMeta?.label && uiMeta.label !== key && (
-                        <div className="text-[10px] text-text-secondary">{uiMeta.label}</div>
-                      )}
+                      {uiMeta?.label && uiMeta.label !== key && <div className="text-[10px] text-text-secondary">{uiMeta.label}</div>}
                     </div>
-                    <span
-                      data-testid={`inspector-setting-value-${key}`}
-                      className="font-mono px-1.5 py-0.5 rounded bg-surface-control text-accent font-bold"
-                    >
+                    <span data-testid={`inspector-setting-value-${key}`} className="font-mono px-1.5 py-0.5 rounded bg-surface-control text-accent font-bold">
                       {String(currentVal)}
                     </span>
                   </div>
 
-                  {helpText && (
-                    <div className="text-[10px] text-text-secondary">{helpText}</div>
-                  )}
+                  {helpText && <div className="text-[10px] text-text-secondary">{helpText}</div>}
 
                   {/* Auto-generated widget per setting type */}
                   {def.type === "integer" && (
@@ -586,10 +490,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
                         disabled={!enabledEntry || isViewer || isMutating}
                         value={
                           typeof currentVal === "number" && !Number.isNaN(currentVal)
-                            ? Math.min(
-                                Math.max(currentVal, def.min),
-                                Math.min(def.max, 100000),
-                              )
+                            ? Math.min(Math.max(currentVal, def.min), Math.min(def.max, 100000))
                             : def.default
                         }
                         onChange={(e) => {
@@ -644,9 +545,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
                           setSaveSuccess(false);
                         }}
                         className={`px-2.5 py-1 rounded font-mono text-[11px] font-semibold border transition disabled:opacity-50 ${
-                          currentVal
-                            ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
-                            : "bg-surface-control border-border-strong text-text-muted"
+                          currentVal ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300" : "bg-surface-control border-border-strong text-text-muted"
                         }`}
                       >
                         {currentVal ? "Enabled (true)" : "Disabled (false)"}
@@ -665,12 +564,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
                         const raw = e.target.value;
                         setDraftSettings((prev) => ({
                           ...prev,
-                          [key]:
-                            def.type === "number"
-                              ? raw === ""
-                                ? ""
-                                : Number(raw)
-                              : raw,
+                          [key]: def.type === "number" ? (raw === "" ? "" : Number(raw)) : raw,
                         }));
                         setSaveSuccess(false);
                       }}
@@ -681,11 +575,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
                   <div className="text-[10px] text-text-muted">{constraintText}</div>
 
                   {validation && !validation.ok && (
-                    <div
-                      role="alert"
-                      data-testid={`setting-error-${key}`}
-                      className="text-[11px] text-rose-400 font-semibold"
-                    >
+                    <div role="alert" data-testid={`setting-error-${key}`} className="text-[11px] text-rose-400 font-semibold">
                       {validation.error}
                     </div>
                   )}
@@ -696,10 +586,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
             {enabledEntry && (
               <div className="flex items-center justify-between gap-2 pt-1">
                 {saveSuccess ? (
-                  <span
-                    data-testid="brick-settings-saved-badge"
-                    className="text-[11px] text-emerald-400 font-semibold"
-                  >
+                  <span data-testid="brick-settings-saved-badge" className="text-[11px] text-emerald-400 font-semibold">
                     ✓ Settings saved
                   </span>
                 ) : (
@@ -723,10 +610,7 @@ function BrickInspectorDetail({ brickId }: { brickId: string }) {
   );
 }
 
-const EXTRA_NODE_CONFIG_FIELDS: Record<
-  string,
-  Record<string, CatalogSettingDefinition>
-> = {
+const EXTRA_NODE_CONFIG_FIELDS: Record<string, Record<string, CatalogSettingDefinition>> = {
   "core.if": {
     field: { type: "string", default: "" },
     value: { type: "string", default: "" },
@@ -848,11 +732,7 @@ function NodeIoAndTestStepPanel({
 
   const displayOutputObj = useMemo(() => {
     if (!result) return null;
-    if (
-      result.output &&
-      typeof result.output === "object" &&
-      Object.keys(result.output).length > 0
-    ) {
+    if (result.output && typeof result.output === "object" && Object.keys(result.output).length > 0) {
       return result.output;
     }
     try {
@@ -862,10 +742,7 @@ function NodeIoAndTestStepPanel({
     }
   }, [result]);
 
-  const tableRows = useMemo(
-    () => (displayOutputObj ? flattenOutputTableRows(displayOutputObj) : []),
-    [displayOutputObj],
-  );
+  const tableRows = useMemo(() => (displayOutputObj ? flattenOutputTableRows(displayOutputObj) : []), [displayOutputObj]);
 
   return (
     <div
@@ -880,13 +757,8 @@ function NodeIoAndTestStepPanel({
     >
       <div className="flex items-center justify-between gap-2">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-            Preview Rehearsal (BYOC Preview)
-          </div>
-          <div
-            data-testid="test-step-input-source-badge"
-            className="text-[10px] font-mono text-sky-300 mt-0.5"
-          >
+          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Preview Rehearsal (BYOC Preview)</div>
+          <div data-testid="test-step-input-source-badge" className="text-[10px] font-mono text-sky-300 mt-0.5">
             {testInputSource === "pinned"
               ? `📌 Pinned output from ${upstreamNodeId ?? "upstream"}`
               : testInputSource === "upstream"
@@ -899,9 +771,7 @@ function NodeIoAndTestStepPanel({
             type="button"
             data-testid="pin-node-output-button"
             disabled={isViewer || isRunning || Boolean(jsonParseError && !displayOutputObj)}
-            onClick={() =>
-              void onPinOutput(displayOutputObj ?? pinnedOutput ?? parsedTestInput)
-            }
+            onClick={() => void onPinOutput(displayOutputObj ?? pinnedOutput ?? parsedTestInput)}
             title="Pin this node's output as non-semantic test data for downstream steps"
             className="px-2.5 py-1.5 rounded bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/50 text-sky-200 font-semibold text-[11px] disabled:opacity-40"
           >
@@ -938,17 +808,12 @@ function NodeIoAndTestStepPanel({
           className="p-2 rounded bg-sky-500/15 border border-sky-400/40 flex items-center justify-between gap-2 text-[11px] text-sky-200"
         >
           <span>📌 Pinned test output is active for this node (non-semantic).</span>
-          <span className="font-mono text-[10px] text-sky-300 truncate max-w-[160px]">
-            {JSON.stringify(pinnedOutput ?? {})}
-          </span>
+          <span className="font-mono text-[10px] text-sky-300 truncate max-w-[160px]">{JSON.stringify(pinnedOutput ?? {})}</span>
         </div>
       )}
 
       <div className="space-y-1">
-        <label
-          htmlFor={`test-step-input-${nodeId}`}
-          className="block text-[11px] font-semibold text-text-secondary"
-        >
+        <label htmlFor={`test-step-input-${nodeId}`} className="block text-[11px] font-semibold text-text-secondary">
           Test Input Payload (JSON)
         </label>
         <textarea
@@ -962,29 +827,20 @@ function NodeIoAndTestStepPanel({
           className="w-full p-2 rounded bg-slate-950 border border-border-strong font-mono text-[11px] text-text-primary disabled:opacity-50"
         />
         {jsonParseError && (
-          <div
-            role="alert"
-            data-testid="test-step-input-json-error"
-            className="text-[11px] text-rose-400 font-semibold"
-          >
+          <div role="alert" data-testid="test-step-input-json-error" className="text-[11px] text-rose-400 font-semibold">
             Invalid JSON: {jsonParseError}
           </div>
         )}
       </div>
 
       {result && (
-        <div
-          data-testid="test-step-result-container"
-          className="space-y-2.5 border-t border-border pt-2.5"
-        >
+        <div data-testid="test-step-result-container" className="space-y-2.5 border-t border-border pt-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span
                 data-testid="test-step-status-badge"
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold text-[11px] border ${
-                  result.status === "succeeded"
-                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
-                    : "bg-rose-500/15 border-rose-500/40 text-rose-300"
+                  result.status === "succeeded" ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" : "bg-rose-500/15 border-rose-500/40 text-rose-300"
                 }`}
               >
                 {result.status === "succeeded" ? "✓ Succeeded" : "✕ Failed"}
@@ -1003,9 +859,7 @@ function NodeIoAndTestStepPanel({
                 data-testid="test-step-view-mode-json"
                 onClick={() => onChangeOutputViewMode("json")}
                 className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                  outputViewMode === "json"
-                    ? "bg-accent/20 border-accent text-accent"
-                    : "bg-surface-control border-border text-text-secondary"
+                  outputViewMode === "json" ? "bg-accent/20 border-accent text-accent" : "bg-surface-control border-border text-text-secondary"
                 }`}
               >
                 JSON
@@ -1015,9 +869,7 @@ function NodeIoAndTestStepPanel({
                 data-testid="test-step-view-mode-table"
                 onClick={() => onChangeOutputViewMode("table")}
                 className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                  outputViewMode === "table"
-                    ? "bg-accent/20 border-accent text-accent"
-                    : "bg-surface-control border-border text-text-secondary"
+                  outputViewMode === "table" ? "bg-accent/20 border-accent text-accent" : "bg-surface-control border-border text-text-secondary"
                 }`}
               >
                 Table / Tree
@@ -1026,32 +878,18 @@ function NodeIoAndTestStepPanel({
           </div>
 
           {result.status === "failed" && result.error && (
-            <div
-              role="alert"
-              data-testid="test-step-error-card"
-              className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/40 space-y-1.5 text-[11px]"
-            >
+            <div role="alert" data-testid="test-step-error-card" className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/40 space-y-1.5 text-[11px]">
               <div className="font-bold text-rose-300">
-                <span className="uppercase text-[10px] text-rose-400 mr-1">
-                  What happened:
-                </span>
-                <span data-testid="test-step-error-what">
-                  {result.error.whatHappened}
-                </span>
+                <span className="uppercase text-[10px] text-rose-400 mr-1">What happened:</span>
+                <span data-testid="test-step-error-what">{result.error.whatHappened}</span>
               </div>
               <div className="text-rose-200 font-mono">
-                <span className="uppercase font-sans font-bold text-[10px] text-rose-400 mr-1">
-                  Why:
-                </span>
+                <span className="uppercase font-sans font-bold text-[10px] text-rose-400 mr-1">Why:</span>
                 <span data-testid="test-step-error-why">{result.error.why}</span>
               </div>
               <div className="text-amber-200">
-                <span className="uppercase font-bold text-[10px] text-amber-400 mr-1">
-                  What to do:
-                </span>
-                <span data-testid="test-step-error-todo">
-                  {result.error.whatToDo}
-                </span>
+                <span className="uppercase font-bold text-[10px] text-amber-400 mr-1">What to do:</span>
+                <span data-testid="test-step-error-todo">{result.error.whatToDo}</span>
               </div>
               {result.error.field && (
                 <div className="pt-1">
@@ -1074,9 +912,7 @@ function NodeIoAndTestStepPanel({
             aria-label={`Step output preview for ${nodeType}`}
             className="space-y-1 focus:outline-none focus:ring-2 focus:ring-accent rounded"
           >
-            <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-              Step Output ({nodeType})
-            </div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Step Output ({nodeType})</div>
             {outputViewMode === "json" ? (
               <pre
                 tabIndex={0}
@@ -1104,13 +940,9 @@ function NodeIoAndTestStepPanel({
                   <tbody>
                     {tableRows.map((row) => (
                       <tr key={row.path} className="border-b border-border/40">
-                        <td className="py-1 px-2 font-semibold text-amber-300">
-                          {row.path}
-                        </td>
+                        <td className="py-1 px-2 font-semibold text-amber-300">{row.path}</td>
                         <td className="py-1 px-2 text-sky-300">{row.type}</td>
-                        <td className="py-1 px-2 text-emerald-300">
-                          {row.valueText}
-                        </td>
+                        <td className="py-1 px-2 text-emerald-300">{row.valueText}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1124,13 +956,7 @@ function NodeIoAndTestStepPanel({
   );
 }
 
-function NodeInspectorDetail({
-  nodeId,
-  workflowId,
-}: {
-  nodeId: string;
-  workflowId?: string;
-}) {
+function NodeInspectorDetail({ nodeId, workflowId }: { nodeId: string; workflowId?: string }) {
   const projectState = useStudioStore((s) => s.projectState);
   const currentRevision = useStudioStore((s) => s.currentRevision);
   const catalog = useStudioStore((s) => s.catalog);
@@ -1139,12 +965,8 @@ function NodeInspectorDetail({
   const orgs = useStudioStore((s) => s.orgs);
   const activeOrgId = useStudioStore((s) => s.activeOrgId);
   const isMutating = useStudioStore((s) => s.isMutating);
-  const highlightedInspectorField = useStudioStore(
-    (s) => s.highlightedInspectorField,
-  );
-  const setHighlightedInspectorField = useStudioStore(
-    (s) => s.setHighlightedInspectorField,
-  );
+  const highlightedInspectorField = useStudioStore((s) => s.highlightedInspectorField);
+  const setHighlightedInspectorField = useStudioStore((s) => s.setHighlightedInspectorField);
   const canvasVisualDiff = useStudioStore((s) => s.canvasVisualDiff);
   const setDirtyTarget = useStudioStore((s) => s.setDirtyTarget);
   const commitOps = useStudioStore((s) => s.commitOps);
@@ -1152,9 +974,7 @@ function NodeInspectorDetail({
   const selectItem = useStudioStore((s) => s.selectItem);
   const stepTestResults = useStudioStore((s) => s.stepTestResults);
   const pinnedStepOutputs = useStudioStore((s) => s.pinnedStepOutputs);
-  const pinnedOutputsByWorkflow = useStudioStore(
-    (s) => s.pinnedOutputsByWorkflow,
-  );
+  const pinnedOutputsByWorkflow = useStudioStore((s) => s.pinnedOutputsByWorkflow);
   const isRunningTestStep = useStudioStore((s) => s.isRunningTestStep);
   const isRunningWorkflow = useStudioStore((s) => s.isRunningWorkflow);
   const runTestStep = useStudioStore((s) => s.runTestStep);
@@ -1173,54 +993,36 @@ function NodeInspectorDetail({
   const wf = useMemo(() => {
     if (
       activeReplayRun?.historicalWorkflow &&
-      (activeReplayRun.historicalWorkflow.id === workflowId ||
-        activeReplayRun.historicalWorkflow.nodes.some((n) => n.id === nodeId))
+      (activeReplayRun.historicalWorkflow.id === workflowId || activeReplayRun.historicalWorkflow.nodes.some((n) => n.id === nodeId))
     ) {
       return activeReplayRun.historicalWorkflow;
     }
     return (
-      activeReplayRun?.historicalState?.workflows.find(
-        (w) => w.id === workflowId || w.nodes.some((n) => n.id === nodeId),
-      ) ??
-      canvasVisualDiff?.toState.workflows.find(
-        (w) => w.id === workflowId || w.nodes.some((n) => n.id === nodeId),
-      ) ??
-      canvasVisualDiff?.fromState.workflows.find(
-        (w) => w.id === workflowId || w.nodes.some((n) => n.id === nodeId),
-      ) ??
-      projectState?.workflows.find(
-        (w) => w.id === workflowId || w.nodes.some((n) => n.id === nodeId),
-      )
+      activeReplayRun?.historicalState?.workflows.find((w) => w.id === workflowId || w.nodes.some((n) => n.id === nodeId)) ??
+      canvasVisualDiff?.toState.workflows.find((w) => w.id === workflowId || w.nodes.some((n) => n.id === nodeId)) ??
+      canvasVisualDiff?.fromState.workflows.find((w) => w.id === workflowId || w.nodes.some((n) => n.id === nodeId)) ??
+      projectState?.workflows.find((w) => w.id === workflowId || w.nodes.some((n) => n.id === nodeId))
     );
   }, [activeReplayRun, canvasVisualDiff, projectState?.workflows, workflowId, nodeId]);
 
   const node = wf?.nodes.find((n) => n.id === nodeId);
   const replayStepTelemetry = activeReplayRun?.nodeMap[nodeId] ?? null;
 
-  const nodeDef = useMemo(
-    () => (node ? getCatalogNodeDefinition(node.type, catalog) : null),
-    [node, catalog],
-  );
+  const nodeDef = useMemo(() => (node ? getCatalogNodeDefinition(node.type, catalog) : null), [node, catalog]);
 
   const nodeDataJson = JSON.stringify(node?.data ?? {});
   const [activeNodeTab, setActiveNodeTab] = useState<"params" | "io">("params");
   const [draftLabel, setDraftLabel] = useState(node?.label ?? node?.id ?? "");
   const [draftData, setDraftData] = useState<Record<string, unknown>>({});
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [activePillPickerField, setActivePillPickerField] = useState<string | null>(
-    null,
-  );
-  const [rawExpressionModeByField, setRawExpressionModeByField] = useState<
-    Record<string, boolean>
-  >({});
+  const [activePillPickerField, setActivePillPickerField] = useState<string | null>(null);
+  const [rawExpressionModeByField, setRawExpressionModeByField] = useState<Record<string, boolean>>({});
   const [newParamKey, setNewParamKey] = useState("");
   const [nodeInlineSecretOpen, setNodeInlineSecretOpen] = useState(false);
   const [nodeInlineHandle, setNodeInlineHandle] = useState("");
   const [nodeInlineValue, setNodeInlineValue] = useState("");
   const [testInputText, setTestInputText] = useState("{}");
-  const [testInputSource, setTestInputSource] = useState<
-    "pinned" | "upstream" | "custom"
-  >("custom");
+  const [testInputSource, setTestInputSource] = useState<"pinned" | "upstream" | "custom">("custom");
   const [outputViewMode, setOutputViewMode] = useState<"json" | "table">("json");
 
   const defaultUpstreamTestInput = useMemo(() => {
@@ -1230,22 +1032,13 @@ function NodeInspectorDetail({
     const upId = inEdge.source;
     const pinned = pinnedStepOutputs[`${wf.id}:${upId}`] ?? pinnedStepOutputs[upId];
     if (pinned !== undefined) {
-      const unwrapped =
-        typeof pinned === "object" &&
-        pinned !== null &&
-        "out" in pinned &&
-        Object.keys(pinned).length === 1
-          ? pinned.out
-          : pinned;
+      const unwrapped = typeof pinned === "object" && pinned !== null && "out" in pinned && Object.keys(pinned).length === 1 ? pinned.out : pinned;
       return { value: unwrapped, source: "pinned" as const, upstreamId: upId };
     }
     const lastRes = stepTestResults[`${wf.id}:${upId}`] ?? stepTestResults[upId];
     if (lastRes && lastRes.status === "succeeded") {
       const unwrapped =
-        typeof lastRes.output === "object" &&
-        lastRes.output !== null &&
-        "out" in lastRes.output &&
-        Object.keys(lastRes.output).length === 1
+        typeof lastRes.output === "object" && lastRes.output !== null && "out" in lastRes.output && Object.keys(lastRes.output).length === 1
           ? lastRes.output.out
           : lastRes.output;
       return { value: unwrapped, source: "upstream" as const, upstreamId: upId };
@@ -1315,18 +1108,11 @@ function NodeInspectorDetail({
   }
 
   const configEntries = Object.entries(mergedConfigMap);
-  const configValidation: Record<
-    string,
-    { ok: true; value: unknown } | { ok: false; error: string }
-  > = {};
-  const expressionValidationByField: Record<
-    string,
-    { ok: boolean; reason?: string }
-  > = {};
+  const configValidation: Record<string, { ok: true; value: unknown } | { ok: false; error: string }> = {};
+  const expressionValidationByField: Record<string, { ok: boolean; reason?: string }> = {};
 
   for (const [key, def] of configEntries) {
-    const rawVal =
-      key in draftData ? draftData[key] : (node.data?.[key] ?? def.default);
+    const rawVal = key in draftData ? draftData[key] : (node.data?.[key] ?? def.default);
     const strVal = typeof rawVal === "string" ? rawVal : "";
     if (strVal.includes("{{") || strVal.includes("}}")) {
       const exprRes = validateStepExpression(strVal, ancestorSchemaMap);
@@ -1348,18 +1134,9 @@ function NodeInspectorDetail({
 
   const incomingEdges = wf.edges.filter((e) => e.target === node.id);
   const outgoingEdges = wf.edges.filter((e) => e.source === node.id);
-  const studioIssues = computeStudioValidationIssues(
-    projectState,
-    catalog,
-    secrets,
-    readiness,
-  ).filter((iss) => iss.nodeId === node.id);
+  const studioIssues = computeStudioValidationIssues(projectState, catalog, secrets, readiness).filter((iss) => iss.nodeId === node.id);
   const nodeIssues = [
-    ...readiness.needs.filter(
-      (n) =>
-        n.path === `workflows.${wf.id}.nodes.${node.id}` ||
-        n.message.includes(node.id),
-    ),
+    ...readiness.needs.filter((n) => n.path === `workflows.${wf.id}.nodes.${node.id}` || n.message.includes(node.id)),
     ...studioIssues.map((iss) => ({
       code: iss.code,
       message: iss.message,
@@ -1367,14 +1144,9 @@ function NodeInspectorDetail({
   ];
 
   // Side-by-side node field diff when Canvas Visual Diff is active
-  const nodeVisualDiffUpdate = canvasVisualDiff?.diff.workflows.updated
-    .find((u) => u.id === wf.id)
-    ?.nodesUpdated.find((nu) => nu.id === node.id);
+  const nodeVisualDiffUpdate = canvasVisualDiff?.diff.workflows.updated.find((u) => u.id === wf.id)?.nodesUpdated.find((nu) => nu.id === node.id);
 
-  const selectedEntityName =
-    typeof draftData.entity === "string"
-      ? draftData.entity
-      : (effectivePorts?.boundEntity?.name ?? "");
+  const selectedEntityName = typeof draftData.entity === "string" ? draftData.entity : (effectivePorts?.boundEntity?.name ?? "");
 
   const handleSelectEntity = (entityName: string) => {
     setDraftData((prev) => {
@@ -1383,10 +1155,7 @@ function NodeInspectorDetail({
         delete next.entity;
       } else {
         next.entity = entityName;
-        if (
-          node.type === "core.brick_event" &&
-          (!next.event || next.event === "brick.updated")
-        ) {
+        if (node.type === "core.brick_event" && (!next.event || next.event === "brick.updated")) {
           next.event = `${entityName}.record_created`;
         }
       }
@@ -1398,17 +1167,11 @@ function NodeInspectorDetail({
   const handleInsertDataPill = (fieldKey: string, pillExpression: string) => {
     setDraftData((prev) => {
       const def = mergedConfigMap[fieldKey];
-      const existingRaw =
-        fieldKey in prev ? prev[fieldKey] : (node.data?.[fieldKey] ?? def?.default ?? "");
+      const existingRaw = fieldKey in prev ? prev[fieldKey] : (node.data?.[fieldKey] ?? def?.default ?? "");
       const existingStr = existingRaw === undefined || existingRaw === null ? "" : String(existingRaw);
 
       let nextVal: string;
-      if (
-        !existingStr ||
-        existingStr === "{{value}}" ||
-        fieldKey === "field" ||
-        fieldKey === "to"
-      ) {
+      if (!existingStr || existingStr === "{{value}}" || fieldKey === "field" || fieldKey === "to") {
         nextVal = pillExpression;
       } else if (existingStr.includes(pillExpression)) {
         nextVal = existingStr;
@@ -1494,17 +1257,9 @@ function NodeInspectorDetail({
     }
   };
 
-  const nodeSecretName =
-    node.type === "core.webhook"
-      ? "WEBHOOK_SIGNING_SECRET"
-      : "AUTHORIZATION_BEARER";
+  const nodeSecretName = node.type === "core.webhook" ? "WEBHOOK_SIGNING_SECRET" : "AUTHORIZATION_BEARER";
   const boundNodeSecretRef =
-    projectState?.secretRefs.find(
-      (sr) =>
-        (sr.targetKind === "connection" ||
-          (sr.targetKind as string) === "node") &&
-        sr.targetId === node.id,
-    )?.ref ?? "";
+    projectState?.secretRefs.find((sr) => (sr.targetKind === "connection" || (sr.targetKind as string) === "node") && sr.targetId === node.id)?.ref ?? "";
   const defaultNodeSecretHandle = `sec_${node.id.replace(/[^a-z0-9]+/gi, "_").toLowerCase()}_key`;
 
   const handleBindNodeSecret = async (ref: string) => {
@@ -1556,22 +1311,15 @@ function NodeInspectorDetail({
           className="p-2 rounded bg-amber-500/15 border border-amber-500/50 text-[11px] text-amber-200 flex items-center justify-between"
         >
           <span>
-            ⚑ Focused offending field:{" "}
-            <span className="font-mono font-bold text-accent">
-              {highlightedInspectorField}
-            </span>
+            ⚑ Focused offending field: <span className="font-mono font-bold text-accent">{highlightedInspectorField}</span>
           </span>
         </div>
       )}
 
       {nodeVisualDiffUpdate && canvasVisualDiff && (
-        <div
-          data-testid="inspector-node-side-by-side-diff"
-          className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/40 space-y-2 text-[11px]"
-        >
+        <div data-testid="inspector-node-side-by-side-diff" className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/40 space-y-2 text-[11px]">
           <div className="font-bold text-amber-300 font-mono">
-            ~ Side-by-Side Field Diff (r{canvasVisualDiff.fromRev} → r
-            {canvasVisualDiff.toRev})
+            ~ Side-by-Side Field Diff (r{canvasVisualDiff.fromRev} → r{canvasVisualDiff.toRev})
           </div>
           <table className="w-full font-mono text-[10px] border-collapse">
             <thead>
@@ -1582,48 +1330,26 @@ function NodeInspectorDetail({
               </tr>
             </thead>
             <tbody>
-              {nodeVisualDiffUpdate.before.label !==
-                nodeVisualDiffUpdate.after.label && (
+              {nodeVisualDiffUpdate.before.label !== nodeVisualDiffUpdate.after.label && (
                 <tr className="border-b border-border/50">
                   <td className="py-1 pr-2 font-bold text-text-primary">label</td>
-                  <td className="py-1 pr-2 text-rose-300">
-                    {JSON.stringify(nodeVisualDiffUpdate.before.label)}
-                  </td>
-                  <td className="py-1 text-emerald-300">
-                    {JSON.stringify(nodeVisualDiffUpdate.after.label)}
-                  </td>
+                  <td className="py-1 pr-2 text-rose-300">{JSON.stringify(nodeVisualDiffUpdate.before.label)}</td>
+                  <td className="py-1 text-emerald-300">{JSON.stringify(nodeVisualDiffUpdate.after.label)}</td>
                 </tr>
               )}
-              {Array.from(
-                new Set([
-                  ...Object.keys(nodeVisualDiffUpdate.before.data ?? {}),
-                  ...Object.keys(nodeVisualDiffUpdate.after.data ?? {}),
-                ]),
-              ).map((fieldKey) => {
-                const beforeVal = (
-                  nodeVisualDiffUpdate.before.data as
-                    | Record<string, unknown>
-                    | undefined
-                )?.[fieldKey];
-                const afterVal = (
-                  nodeVisualDiffUpdate.after.data as
-                    | Record<string, unknown>
-                    | undefined
-                )?.[fieldKey];
-                return (
-                  <tr key={fieldKey} className="border-b border-border/50">
-                    <td className="py-1 pr-2 font-bold text-text-primary">
-                      {fieldKey}
-                    </td>
-                    <td className="py-1 pr-2 text-rose-300">
-                      {JSON.stringify(beforeVal)}
-                    </td>
-                    <td className="py-1 text-emerald-300">
-                      {JSON.stringify(afterVal)}
-                    </td>
-                  </tr>
-                );
-              })}
+              {Array.from(new Set([...Object.keys(nodeVisualDiffUpdate.before.data ?? {}), ...Object.keys(nodeVisualDiffUpdate.after.data ?? {})])).map(
+                (fieldKey) => {
+                  const beforeVal = (nodeVisualDiffUpdate.before.data as Record<string, unknown> | undefined)?.[fieldKey];
+                  const afterVal = (nodeVisualDiffUpdate.after.data as Record<string, unknown> | undefined)?.[fieldKey];
+                  return (
+                    <tr key={fieldKey} className="border-b border-border/50">
+                      <td className="py-1 pr-2 font-bold text-text-primary">{fieldKey}</td>
+                      <td className="py-1 pr-2 text-rose-300">{JSON.stringify(beforeVal)}</td>
+                      <td className="py-1 text-emerald-300">{JSON.stringify(afterVal)}</td>
+                    </tr>
+                  );
+                },
+              )}
             </tbody>
           </table>
         </div>
@@ -1652,14 +1378,9 @@ function NodeInspectorDetail({
 
       {/* Run Replay Node Inspector Panel (AC 5) */}
       {activeReplayRun && (
-        <div
-          data-testid="inspector-run-replay-panel"
-          className="p-3 rounded-lg bg-slate-900/95 border border-sky-400/50 space-y-2.5 text-xs"
-        >
+        <div data-testid="inspector-run-replay-panel" className="p-3 rounded-lg bg-slate-900/95 border border-sky-400/50 space-y-2.5 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-bold text-sky-300">
-              ⏮ Run Replay Step Inspector (r{activeReplayRun.run.revision})
-            </span>
+            <span className="font-bold text-sky-300">⏮ Run Replay Step Inspector (r{activeReplayRun.run.revision})</span>
             <div className="flex items-center gap-1.5">
               <span
                 data-testid="replay-node-status"
@@ -1685,22 +1406,14 @@ function NodeInspectorDetail({
               >
                 {Math.round(replayStepTelemetry?.durationMs ?? 0)} ms
               </span>
-              <span
-                data-testid="replay-node-retries"
-                className="px-2 py-0.5 rounded bg-surface-base border border-border font-mono text-[10px] text-amber-300"
-              >
-                {replayStepTelemetry?.retries ?? 0}{" "}
-                {(replayStepTelemetry?.retries ?? 0) === 1 ? "retry" : "retries"}
+              <span data-testid="replay-node-retries" className="px-2 py-0.5 rounded bg-surface-base border border-border font-mono text-[10px] text-amber-300">
+                {replayStepTelemetry?.retries ?? 0} {(replayStepTelemetry?.retries ?? 0) === 1 ? "retry" : "retries"}
               </span>
             </div>
           </div>
 
-          {((replayStepTelemetry?.inputPreview ?? "").includes(
-            '"__truncated":true',
-          ) ||
-            (replayStepTelemetry?.outputPreview ?? "").includes(
-              '"__truncated":true',
-            )) && (
+          {((replayStepTelemetry?.inputPreview ?? "").includes('"__truncated":true') ||
+            (replayStepTelemetry?.outputPreview ?? "").includes('"__truncated":true')) && (
             <div
               role="status"
               data-testid="replay-preview-truncated-notice"
@@ -1711,18 +1424,9 @@ function NodeInspectorDetail({
           )}
 
           {replayStepTelemetry?.status === "failed" && (
-            <div
-              role="alert"
-              data-testid="replay-node-error-card"
-              className="p-2.5 rounded bg-rose-950/90 border border-rose-500/50 space-y-1.5"
-            >
-              <div
-                data-testid="replay-node-error-message"
-                className="font-bold text-rose-200 text-[11px]"
-              >
-                ✕ Step failed:{" "}
-                {(replayStepTelemetry.errorStack ?? "Step execution failed")
-                  .split("\n")[0]}
+            <div role="alert" data-testid="replay-node-error-card" className="p-2.5 rounded bg-rose-950/90 border border-rose-500/50 space-y-1.5">
+              <div data-testid="replay-node-error-message" className="font-bold text-rose-200 text-[11px]">
+                ✕ Step failed: {(replayStepTelemetry.errorStack ?? "Step execution failed").split("\n")[0]}
               </div>
               {replayStepTelemetry.errorStack && (
                 <pre
@@ -1736,9 +1440,7 @@ function NodeInspectorDetail({
           )}
 
           <div className="space-y-1">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-              Recorded Redacted Input Preview
-            </div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Recorded Redacted Input Preview</div>
             <pre
               data-testid="replay-node-input-preview"
               className="p-2 rounded bg-slate-950 border border-border font-mono text-[11px] text-sky-300 overflow-x-auto whitespace-pre-wrap"
@@ -1755,9 +1457,7 @@ function NodeInspectorDetail({
           </div>
 
           <div className="space-y-1">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-              Recorded Redacted Output Preview
-            </div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Recorded Redacted Output Preview</div>
             <pre
               data-testid="replay-node-output-preview"
               className="p-2 rounded bg-slate-950 border border-border font-mono text-[11px] text-emerald-300 overflow-x-auto whitespace-pre-wrap"
@@ -1784,30 +1484,19 @@ function NodeInspectorDetail({
                     onClick={() => {
                       let parsedReplayOut: unknown = {};
                       try {
-                        parsedReplayOut = JSON.parse(
-                          replayStepTelemetry?.outputPreview || "{}",
-                        );
+                        parsedReplayOut = JSON.parse(replayStepTelemetry?.outputPreview || "{}");
                       } catch {
                         parsedReplayOut = {
                           raw: replayStepTelemetry?.outputPreview ?? "",
                         };
                       }
-                      void pinNodeOutput(
-                        wf.id,
-                        node.id,
-                        parsedReplayOut,
-                        activeReplayRun.run.runId,
-                      );
+                      void pinNodeOutput(wf.id, node.id, parsedReplayOut, activeReplayRun.run.runId);
                     }}
                     className="px-2.5 py-1 rounded bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/50 text-sky-200 font-semibold text-[11px] disabled:opacity-40"
                   >
                     📌 Pin output as test data
                   </button>
-                  {Boolean(
-                    pinnedOutputsByWorkflow[wf.id]?.[node.id] ||
-                      pinnedStepOutputs[`${wf.id}:${node.id}`] ||
-                      pinnedStepOutputs[node.id],
-                  ) && (
+                  {Boolean(pinnedOutputsByWorkflow[wf.id]?.[node.id] || pinnedStepOutputs[`${wf.id}:${node.id}`] || pinnedStepOutputs[node.id]) && (
                     <button
                       type="button"
                       data-testid="unpin-node-output-button"
@@ -1824,11 +1513,7 @@ function NodeInspectorDetail({
                 <button
                   type="button"
                   data-testid={`run-resolved-by-retry-badge-${activeReplayRun.run.runId}`}
-                  onClick={() =>
-                    void startRunReplay(
-                      activeReplayRun.run.resolvedByRunId!,
-                    )
-                  }
+                  onClick={() => void startRunReplay(activeReplayRun.run.resolvedByRunId!)}
                   className="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 font-semibold text-[11px]"
                 >
                   ✓ Resolved by retry ({activeReplayRun.run.resolvedByRunId})
@@ -1842,11 +1527,7 @@ function NodeInspectorDetail({
               disabled={isViewer || isRunningWorkflow}
               onClick={async () => {
                 setRerunError(null);
-                const res = await rerunFromNode(
-                  activeReplayRun.run.runId,
-                  node.id,
-                  true,
-                );
+                const res = await rerunFromNode(activeReplayRun.run.runId, node.id, true);
                 if (!res.ok) {
                   setRerunError(res.error);
                 }
@@ -1859,11 +1540,7 @@ function NodeInspectorDetail({
           </div>
 
           {rerunError && (
-            <div
-              role="alert"
-              data-testid="rerun-from-node-error"
-              className="p-2 rounded bg-rose-500/15 border border-rose-500/40 text-[11px] text-rose-200"
-            >
+            <div role="alert" data-testid="rerun-from-node-error" className="p-2 rounded bg-rose-500/15 border border-rose-500/40 text-[11px] text-rose-200">
               {rerunError}
             </div>
           )}
@@ -1880,13 +1557,8 @@ function NodeInspectorDetail({
             e.preventDefault();
             const nextTab = activeNodeTab === "params" ? "io" : "params";
             setActiveNodeTab(nextTab);
-            const targetTestId =
-              nextTab === "params"
-                ? "inspector-node-tab-params"
-                : "inspector-node-tab-io";
-            const btn = e.currentTarget.querySelector<HTMLButtonElement>(
-              `[data-testid="${targetTestId}"]`,
-            );
+            const targetTestId = nextTab === "params" ? "inspector-node-tab-params" : "inspector-node-tab-io";
+            const btn = e.currentTarget.querySelector<HTMLButtonElement>(`[data-testid="${targetTestId}"]`);
             btn?.focus();
           }
         }}
@@ -1899,9 +1571,7 @@ function NodeInspectorDetail({
           data-testid="inspector-node-tab-params"
           onClick={() => setActiveNodeTab("params")}
           className={`flex-1 py-1 px-2 rounded text-[11px] font-semibold transition ${
-            activeNodeTab === "params"
-              ? "bg-accent text-slate-950 font-bold"
-              : "text-text-secondary hover:text-text-primary"
+            activeNodeTab === "params" ? "bg-accent text-slate-950 font-bold" : "text-text-secondary hover:text-text-primary"
           }`}
         >
           Params
@@ -1913,9 +1583,7 @@ function NodeInspectorDetail({
           data-testid="inspector-node-tab-io"
           onClick={() => setActiveNodeTab("io")}
           className={`flex-1 py-1 px-2 rounded text-[11px] font-semibold transition ${
-            activeNodeTab === "io"
-              ? "bg-accent text-slate-950 font-bold"
-              : "text-text-secondary hover:text-text-primary"
+            activeNodeTab === "io" ? "bg-accent text-slate-950 font-bold" : "text-text-secondary hover:text-text-primary"
           }`}
         >
           I/O &amp; Test Step
@@ -1941,22 +1609,11 @@ function NodeInspectorDetail({
           onChangeOutputViewMode={setOutputViewMode}
           result={stepTestResults[`${wf.id}:${node.id}`] ?? stepTestResults[node.id] ?? null}
           isPinned={Boolean(
-            pinnedOutputsByWorkflow[wf.id]?.[node.id] ||
-              pinnedStepOutputs[`${wf.id}:${node.id}`] !== undefined ||
-              pinnedStepOutputs[node.id] !== undefined,
+            pinnedOutputsByWorkflow[wf.id]?.[node.id] || pinnedStepOutputs[`${wf.id}:${node.id}`] !== undefined || pinnedStepOutputs[node.id] !== undefined,
           )}
-          pinnedOutput={
-            pinnedOutputsByWorkflow[wf.id]?.[node.id]?.output ??
-            pinnedStepOutputs[`${wf.id}:${node.id}`] ??
-            pinnedStepOutputs[node.id]
-          }
+          pinnedOutput={pinnedOutputsByWorkflow[wf.id]?.[node.id]?.output ?? pinnedStepOutputs[`${wf.id}:${node.id}`] ?? pinnedStepOutputs[node.id]}
           onPinOutput={async (outputToPin) => {
-            await pinNodeOutput(
-              wf.id,
-              node.id,
-              outputToPin,
-              activeReplayRun?.run.runId,
-            );
+            await pinNodeOutput(wf.id, node.id, outputToPin, activeReplayRun?.run.runId);
           }}
           onUnpinOutput={async () => {
             await unpinNodeOutput(wf.id, node.id);
@@ -1978,10 +1635,7 @@ function NodeInspectorDetail({
       {/* Editable Node Label, Entity Binding & Config with Structured Data-Pill Picker */}
       <div className={activeNodeTab === "io" ? "hidden" : "space-y-2.5 border-t border-border pt-3"}>
         <div>
-          <label
-            htmlFor="inspector-node-label-input"
-            className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1"
-          >
+          <label htmlFor="inspector-node-label-input" className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1">
             Step Label
           </label>
           <input
@@ -2009,10 +1663,7 @@ function NodeInspectorDetail({
 
         {/* Entity Binding for Dynamic col-* Ports */}
         <div>
-          <label
-            htmlFor="node-entity-select"
-            className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1"
-          >
+          <label htmlFor="node-entity-select" className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1">
             Bound Entity (Dynamic col-* Ports)
           </label>
           <select
@@ -2034,20 +1685,12 @@ function NodeInspectorDetail({
         </div>
 
         {/* Step Connection / Secret Binding (sec_*) */}
-        <div
-          data-testid="inspector-node-secret-binding"
-          className="p-2 rounded bg-surface-base border border-border space-y-2"
-        >
+        <div data-testid="inspector-node-secret-binding" className="p-2 rounded bg-surface-base border border-border space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                Step Secret / Connection ({nodeSecretName})
-              </div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Step Secret / Connection ({nodeSecretName})</div>
               {boundNodeSecretRef && (
-                <div
-                  data-testid="inspector-node-bound-secret-ref"
-                  className="font-mono text-[11px] text-amber-300 mt-0.5"
-                >
+                <div data-testid="inspector-node-bound-secret-ref" className="font-mono text-[11px] text-amber-300 mt-0.5">
                   Bound: {boundNodeSecretRef}
                 </div>
               )}
@@ -2090,13 +1733,8 @@ function NodeInspectorDetail({
           </select>
 
           {nodeInlineSecretOpen && (
-            <div
-              data-testid="inline-add-secret-form-node"
-              className="p-2 rounded bg-surface-raised border border-accent/40 space-y-1.5"
-            >
-              <div className="text-[10px] font-bold text-accent">
-                Create &amp; Seal Step Secret Inline (AES-GCM)
-              </div>
+            <div data-testid="inline-add-secret-form-node" className="p-2 rounded bg-surface-raised border border-accent/40 space-y-1.5">
+              <div className="text-[10px] font-bold text-accent">Create &amp; Seal Step Secret Inline (AES-GCM)</div>
               <input
                 type="text"
                 aria-label="Inline step secret handle"
@@ -2129,12 +1767,8 @@ function NodeInspectorDetail({
                   disabled={
                     isMutating ||
                     !nodeInlineValue.trim() ||
-                    !(nodeInlineHandle || defaultNodeSecretHandle)
-                      .trim()
-                      .startsWith("sec_") ||
-                    !isValidSecretRefHandle(
-                      (nodeInlineHandle || defaultNodeSecretHandle).trim(),
-                    ).ok
+                    !(nodeInlineHandle || defaultNodeSecretHandle).trim().startsWith("sec_") ||
+                    !isValidSecretRefHandle((nodeInlineHandle || defaultNodeSecretHandle).trim()).ok
                   }
                   onClick={() => void handleCreateNodeSecretInline()}
                   className="px-2.5 py-0.5 rounded bg-accent text-slate-950 font-bold text-[10px] disabled:opacity-40"
@@ -2147,67 +1781,51 @@ function NodeInspectorDetail({
         </div>
 
         {/* Live Dynamic Data-Driven Ports Preview */}
-        {effectivePorts &&
-          (effectivePorts.boundEntity || effectivePorts.placeholders.length > 0) && (
-            <div
-              data-testid="inspector-node-dynamic-ports"
-              className="p-2 rounded bg-surface-base border border-border space-y-1.5"
-            >
-              <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                Dynamic Data-Driven Ports
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {effectivePorts.outputs
-                  .filter((p) => p.id.startsWith("col-"))
-                  .map((p) => (
-                    <span
-                      key={`out-${p.id}`}
-                      data-testid={`dynamic-port-out-${p.id}`}
-                      className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 font-mono text-[10px] text-emerald-300"
-                    >
-                      out {p.id}:{p.dataType}
-                    </span>
-                  ))}
-                {effectivePorts.inputs
-                  .filter((p) => p.id.startsWith("col-") || p.id.startsWith("ph-"))
-                  .map((p) => (
-                    <span
-                      key={`in-${p.id}`}
-                      data-testid={`dynamic-port-in-${p.id}`}
-                      className="px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-500/40 font-mono text-[10px] text-sky-300"
-                    >
-                      in {p.id}:{p.dataType}
-                    </span>
-                  ))}
-              </div>
+        {effectivePorts && (effectivePorts.boundEntity || effectivePorts.placeholders.length > 0) && (
+          <div data-testid="inspector-node-dynamic-ports" className="p-2 rounded bg-surface-base border border-border space-y-1.5">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Dynamic Data-Driven Ports</div>
+            <div className="flex flex-wrap gap-1">
+              {effectivePorts.outputs
+                .filter((p) => p.id.startsWith("col-"))
+                .map((p) => (
+                  <span
+                    key={`out-${p.id}`}
+                    data-testid={`dynamic-port-out-${p.id}`}
+                    className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 font-mono text-[10px] text-emerald-300"
+                  >
+                    out {p.id}:{p.dataType}
+                  </span>
+                ))}
+              {effectivePorts.inputs
+                .filter((p) => p.id.startsWith("col-") || p.id.startsWith("ph-"))
+                .map((p) => (
+                  <span
+                    key={`in-${p.id}`}
+                    data-testid={`dynamic-port-in-${p.id}`}
+                    className="px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-500/40 font-mono text-[10px] text-sky-300"
+                  >
+                    in {p.id}:{p.dataType}
+                  </span>
+                ))}
             </div>
-          )}
+          </div>
+        )}
 
         {configEntries.length > 0 && (
           <div className="space-y-2.5 pt-1">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-              Node Configuration & Data Mapping
-            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Node Configuration & Data Mapping</div>
             {configEntries.map(([key, def]) => {
-              const currentVal =
-                key in draftData ? draftData[key] : (node.data?.[key] ?? def.default);
-              const currentStr =
-                currentVal === undefined || currentVal === null ? "" : String(currentVal);
+              const currentVal = key in draftData ? draftData[key] : (node.data?.[key] ?? def.default);
+              const currentStr = currentVal === undefined || currentVal === null ? "" : String(currentVal);
               const validation = configValidation[key];
               const exprValidation = expressionValidationByField[key];
               const supportsPills = def.type !== "boolean" && def.type !== "enum";
               const isPickerOpen = activePillPickerField === key;
               const isRawMode = Boolean(rawExpressionModeByField[key]);
-              const extractedPills = supportsPills
-                ? extractStepExpressionPills(currentStr)
-                : [];
+              const extractedPills = supportsPills ? extractStepExpressionPills(currentStr) : [];
 
               return (
-                <div
-                  key={key}
-                  data-testid={`node-config-field-${key}`}
-                  className="p-2 rounded bg-surface-base border border-border space-y-1.5"
-                >
+                <div key={key} data-testid={`node-config-field-${key}`} className="p-2 rounded bg-surface-base border border-border space-y-1.5">
                   <div className="flex items-center justify-between gap-1">
                     <span className="font-mono font-semibold text-text-primary">{key}</span>
                     {supportsPills && (
@@ -2216,11 +1834,7 @@ function NodeInspectorDetail({
                           type="button"
                           data-testid={`open-pill-picker-${key}`}
                           disabled={isViewer || isMutating}
-                          onClick={() =>
-                            setActivePillPickerField((prev) =>
-                              prev === key ? null : key,
-                            )
-                          }
+                          onClick={() => setActivePillPickerField((prev) => (prev === key ? null : key))}
                           className="px-1.5 py-0.5 rounded bg-accent/15 hover:bg-accent/25 border border-accent/40 text-accent font-semibold text-[10px] disabled:opacity-40"
                         >
                           + Insert data pill
@@ -2245,19 +1859,11 @@ function NodeInspectorDetail({
 
                   {/* Rendered Data Pill Chips */}
                   {extractedPills.length > 0 && (
-                    <div
-                      data-testid={`data-pill-chips-${key}`}
-                      className="flex flex-wrap items-center gap-1.5 py-1"
-                    >
+                    <div data-testid={`data-pill-chips-${key}`} className="flex flex-wrap items-center gap-1.5 py-1">
                       {extractedPills.map((pill, idx) => {
-                        const anc = upstreamAncestors.find(
-                          (a) => a.node.id === pill.nodeId,
-                        );
-                        const matchedField = anc?.fields.find(
-                          (f) => f.fieldName === pill.fieldPath,
-                        );
-                        const stepTitle =
-                          anc?.label ?? pill.nodeId ?? "Trigger";
+                        const anc = upstreamAncestors.find((a) => a.node.id === pill.nodeId);
+                        const matchedField = anc?.fields.find((f) => f.fieldName === pill.fieldPath);
+                        const stepTitle = anc?.label ?? pill.nodeId ?? "Trigger";
                         const badgeType = matchedField?.dataType ?? "any";
                         return (
                           <span
@@ -2371,12 +1977,7 @@ function NodeInspectorDetail({
                     />
                   ) : (
                     <input
-                      type={
-                        (def.type === "integer" || def.type === "number") &&
-                        !currentStr.includes("{{")
-                          ? "number"
-                          : "text"
-                      }
+                      type={(def.type === "integer" || def.type === "number") && !currentStr.includes("{{") ? "number" : "text"}
                       aria-label={`Node config ${key}`}
                       data-testid={`node-config-input-${key}`}
                       disabled={isViewer || isMutating}
@@ -2388,13 +1989,7 @@ function NodeInspectorDetail({
                       }}
                       onChange={(e) => {
                         const raw = e.target.value;
-                        const nextVal =
-                          (def.type === "integer" || def.type === "number") &&
-                          !raw.includes("{{")
-                            ? raw === ""
-                              ? ""
-                              : Number(raw)
-                            : raw;
+                        const nextVal = (def.type === "integer" || def.type === "number") && !raw.includes("{{") ? (raw === "" ? "" : Number(raw)) : raw;
                         setDraftData((prev) => {
                           const next = { ...prev, [key]: nextVal };
                           setDirtyTarget({
@@ -2424,36 +2019,21 @@ function NodeInspectorDetail({
                       className="mt-1.5 p-2 rounded-lg border space-y-2 shadow-lg"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
-                          Upstream Step Outputs (Click to Pick Pill)
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setActivePillPickerField(null)}
-                          className="text-[10px] text-text-muted hover:text-text-primary"
-                        >
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-accent">Upstream Step Outputs (Click to Pick Pill)</span>
+                        <button type="button" onClick={() => setActivePillPickerField(null)} className="text-[10px] text-text-muted hover:text-text-primary">
                           Close
                         </button>
                       </div>
 
                       {upstreamAncestors.length === 0 ? (
-                        <div className="text-[11px] text-text-muted">
-                          No upstream ancestor steps connected to this node. Connect an incoming wire first.
-                        </div>
+                        <div className="text-[11px] text-text-muted">No upstream ancestor steps connected to this node. Connect an incoming wire first.</div>
                       ) : (
                         <div className="space-y-2 max-h-48 overflow-y-auto">
                           {upstreamAncestors.map((anc) => (
-                            <div
-                              key={anc.node.id}
-                              data-testid={`pill-group-${anc.node.id}`}
-                              className="space-y-1"
-                            >
+                            <div key={anc.node.id} data-testid={`pill-group-${anc.node.id}`} className="space-y-1">
                               <div className="flex items-center justify-between text-[11px] font-semibold text-text-secondary">
                                 <span>
-                                  {anc.label}{" "}
-                                  <span className="font-mono text-[10px] text-text-muted">
-                                    ({anc.node.id})
-                                  </span>
+                                  {anc.label} <span className="font-mono text-[10px] text-text-muted">({anc.node.id})</span>
                                 </span>
                                 {anc.boundEntityName && (
                                   <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono text-[9px]">
@@ -2467,17 +2047,11 @@ function NodeInspectorDetail({
                                     key={`${anc.node.id}-${f.fieldName}`}
                                     type="button"
                                     data-testid={`pill-option-${anc.node.id}-${f.fieldName}`}
-                                    onClick={() =>
-                                      handleInsertDataPill(key, f.expression)
-                                    }
+                                    onClick={() => handleInsertDataPill(key, f.expression)}
                                     className="px-2 py-0.5 rounded bg-slate-800 hover:bg-amber-500/20 border border-slate-700 hover:border-amber-500/50 font-mono text-[10px] text-text-primary flex items-center gap-1 transition"
                                   >
-                                    <span className="font-semibold text-amber-300">
-                                      {f.label}
-                                    </span>
-                                    <span className="text-[9px] text-sky-300">
-                                      :{f.dataType}
-                                    </span>
+                                    <span className="font-semibold text-amber-300">{f.label}</span>
+                                    <span className="text-[9px] text-sky-300">:{f.dataType}</span>
                                   </button>
                                 ))}
                               </div>
@@ -2489,21 +2063,13 @@ function NodeInspectorDetail({
                   )}
 
                   {exprValidation && !exprValidation.ok && (
-                    <div
-                      role="alert"
-                      data-testid={`expression-validation-error-${key}`}
-                      className="text-[11px] text-rose-400 font-semibold"
-                    >
+                    <div role="alert" data-testid={`expression-validation-error-${key}`} className="text-[11px] text-rose-400 font-semibold">
                       {exprValidation.reason}
                     </div>
                   )}
 
                   {validation && !validation.ok && exprValidation?.ok && (
-                    <div
-                      role="alert"
-                      data-testid={`node-config-error-${key}`}
-                      className="text-[11px] text-rose-400 font-semibold"
-                    >
+                    <div role="alert" data-testid={`node-config-error-${key}`} className="text-[11px] text-rose-400 font-semibold">
                       {validation.error}
                     </div>
                   )}
@@ -2538,10 +2104,7 @@ function NodeInspectorDetail({
 
         <div className="flex items-center justify-between pt-1">
           {saveSuccess ? (
-            <span
-              data-testid="inspector-node-saved-badge"
-              className="text-[11px] text-emerald-400 font-semibold"
-            >
+            <span data-testid="inspector-node-saved-badge" className="text-[11px] text-emerald-400 font-semibold">
               ✓ Node saved
             </span>
           ) : (
@@ -2560,9 +2123,7 @@ function NodeInspectorDetail({
       </div>
 
       <div className="space-y-1.5 border-t border-border pt-3">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-          Parameters JSON
-        </div>
+        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Parameters JSON</div>
         <pre
           data-testid="inspector-node-config"
           className="p-2 rounded bg-surface-base border border-border font-mono text-[11px] text-text-secondary overflow-x-auto"
@@ -2572,9 +2133,7 @@ function NodeInspectorDetail({
       </div>
 
       <div className="space-y-1.5 border-t border-border pt-3">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-          Incoming Edges ({incomingEdges.length})
-        </div>
+        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Incoming Edges ({incomingEdges.length})</div>
         <div data-testid="inspector-node-incoming" className="space-y-1 font-mono text-[11px]">
           {incomingEdges.length === 0 ? (
             <div className="text-text-muted">None (root / trigger node)</div>
@@ -2589,9 +2148,7 @@ function NodeInspectorDetail({
       </div>
 
       <div className="space-y-1.5 border-t border-border pt-3">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-          Outgoing Edges ({outgoingEdges.length})
-        </div>
+        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Outgoing Edges ({outgoingEdges.length})</div>
         <div data-testid="inspector-node-outgoing" className="space-y-1 font-mono text-[11px]">
           {outgoingEdges.length === 0 ? (
             <div className="text-text-muted">None (terminal node)</div>
@@ -2606,9 +2163,7 @@ function NodeInspectorDetail({
       </div>
 
       <div className="space-y-1.5 border-t border-border pt-3">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-          Validation Status
-        </div>
+        <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Validation Status</div>
         <div data-testid="inspector-node-issues">
           {nodeIssues.length === 0 ? (
             <div className="text-emerald-400">✓ Valid node configuration</div>
@@ -2680,13 +2235,8 @@ export function RightDock() {
         </div>
 
         <div className="space-y-1.5 border-t border-border pt-3">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-            Generated REST CRUD Routes
-          </div>
-          <ul
-            data-testid="inspector-entity-routes"
-            className="space-y-1 font-mono text-[11px] text-sky-400"
-          >
+          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Generated REST CRUD Routes</div>
+          <ul data-testid="inspector-entity-routes" className="space-y-1 font-mono text-[11px] text-sky-400">
             <li>GET {baseRoute}</li>
             <li>POST {baseRoute}</li>
             <li>GET {baseRoute}/:id</li>
@@ -2696,9 +2246,7 @@ export function RightDock() {
         </div>
 
         <div className="space-y-1.5 border-t border-border pt-3">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-            Deterministic SQLite DDL Preview
-          </div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Deterministic SQLite DDL Preview</div>
           <pre
             data-testid="inspector-entity-ddl"
             className="p-2.5 rounded bg-surface-base border border-border font-mono text-[11px] text-emerald-300 overflow-x-auto whitespace-pre-wrap"
@@ -2727,29 +2275,19 @@ export function RightDock() {
     }
 
     if (selection.kind === "node") {
-      return (
-        <NodeInspectorDetail
-          nodeId={selection.id}
-          workflowId={selection.workflowId}
-        />
-      );
+      return <NodeInspectorDetail nodeId={selection.id} workflowId={selection.workflowId} />;
     }
 
     if (selection.kind === "revision") {
       const rev = revisions.find((r) => String(r.revision) === selection.id);
       if (!rev) return <div className="text-xs text-text-muted">Revision not found.</div>;
-      const authorText =
-        rev.author.type === "agent"
-          ? `agent:${rev.author.client ?? rev.author.id}`
-          : `human:${rev.author.id}`;
+      const authorText = rev.author.type === "agent" ? `agent:${rev.author.client ?? rev.author.id}` : `human:${rev.author.id}`;
       return (
         <div data-testid="inspector-revision-detail" className="space-y-3 text-xs">
           <h3 className="text-sm font-bold text-text-primary">Revision #{rev.revision}</h3>
           <div className="font-mono text-[11px] text-text-muted">Author: {authorText}</div>
           <div className="text-text-secondary">{rev.summary ?? "Blueprint revision"}</div>
-          <div className="font-mono text-[10px] text-text-muted break-all">
-            Hash: {rev.semanticHash}
-          </div>
+          <div className="font-mono text-[10px] text-text-muted break-all">Hash: {rev.semanticHash}</div>
         </div>
       );
     }
@@ -2758,11 +2296,7 @@ export function RightDock() {
   };
 
   return (
-    <aside
-      aria-label="Right Dock"
-      data-testid="right-dock"
-      className="w-80 shrink-0 bg-surface-raised border-l border-border flex flex-col"
-    >
+    <aside aria-label="Right Dock" data-testid="right-dock" className="w-80 shrink-0 bg-surface-raised border-l border-border flex flex-col">
       <div className="h-10 px-3 border-b border-border flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <button
@@ -2770,9 +2304,7 @@ export function RightDock() {
             data-testid="right-dock-tab-inspector"
             onClick={() => setRightDockTab("inspector")}
             className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
-              tab === "inspector"
-                ? "bg-surface-control text-accent"
-                : "text-text-muted hover:text-text-secondary"
+              tab === "inspector" ? "bg-surface-control text-accent" : "text-text-muted hover:text-text-secondary"
             }`}
           >
             Inspector
@@ -2782,9 +2314,7 @@ export function RightDock() {
             data-testid="right-dock-tab-ledger"
             onClick={() => setRightDockTab("ledger")}
             className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
-              tab === "ledger"
-                ? "bg-surface-control text-accent"
-                : "text-text-muted hover:text-text-secondary"
+              tab === "ledger" ? "bg-surface-control text-accent" : "text-text-muted hover:text-text-secondary"
             }`}
           >
             AI Change Ledger
@@ -2808,10 +2338,7 @@ export function RightDock() {
           <div data-testid="right-dock-inspector-panel" className="space-y-3">
             <SameObjectConflictCard />
             {!selection ? (
-              <div
-                data-testid="inspector-empty"
-                className="p-4 rounded bg-surface-base border border-border text-text-muted text-xs text-center"
-              >
+              <div data-testid="inspector-empty" className="p-4 rounded bg-surface-base border border-border text-text-muted text-xs text-center">
                 Select a brick, entity, workflow, node, or revision to inspect its read-only configuration and schema.
               </div>
             ) : selection.kind === "brick" ? (
@@ -2824,9 +2351,7 @@ export function RightDock() {
           </div>
         ) : (
           <div data-testid="right-dock-ledger-panel" className="space-y-2">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-2">
-              Recent Changesets ({revisions.length})
-            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-2">Recent Changesets ({revisions.length})</div>
             <ChangeLedgerFeed compact />
           </div>
         )}

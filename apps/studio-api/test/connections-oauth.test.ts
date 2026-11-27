@@ -138,12 +138,7 @@ describe("Story 10.2 — OAuth2 PKCE S256 Start/Callback, Case A Connections Vau
     let capturedTokenUrl = "";
 
     const mockOAuthFetcher: typeof fetch = async (input, init) => {
-      capturedTokenUrl =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
+      capturedTokenUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       capturedTokenRequestBody = String(init?.body ?? "");
       return new Response(
         JSON.stringify({
@@ -162,18 +157,15 @@ describe("Story 10.2 — OAuth2 PKCE S256 Start/Callback, Case A Connections Vau
     };
 
     // 1. Start OAuth2 PKCE flow
-    const startRes = await callStudio(
-      "/api/projects/oauth-proj/connections/oauth/slack/start",
-      {
-        cookie: aliceCookie,
-        orgId,
-        env: testEnv,
-        body: {
-          ref: "sec_slack_pkce",
-          scopes: ["chat:write", "channels:read"],
-        },
+    const startRes = await callStudio("/api/projects/oauth-proj/connections/oauth/slack/start", {
+      cookie: aliceCookie,
+      orgId,
+      env: testEnv,
+      body: {
+        ref: "sec_slack_pkce",
+        scopes: ["chat:write", "channels:read"],
       },
-    );
+    });
     expect(startRes.status).toBe(200);
     const startJson = (await startRes.json()) as {
       ok: boolean;
@@ -189,14 +181,11 @@ describe("Story 10.2 — OAuth2 PKCE S256 Start/Callback, Case A Connections Vau
     expect(startJson.authorizeUrl).toContain(`state=${encodeURIComponent(startJson.state)}`);
 
     // 2. Complete OAuth2 callback with valid state
-    const cbRes = await callStudio(
-      `/api/connections/oauth/slack/callback?state=${encodeURIComponent(startJson.state)}&code=auth_code_12345`,
-      {
-        method: "GET",
-        cookie: aliceCookie,
-        env: testEnv,
-      },
-    );
+    const cbRes = await callStudio(`/api/connections/oauth/slack/callback?state=${encodeURIComponent(startJson.state)}&code=auth_code_12345`, {
+      method: "GET",
+      cookie: aliceCookie,
+      env: testEnv,
+    });
     expect(cbRes.status).toBe(200);
     const cbJson = (await cbRes.json()) as {
       ok: boolean;
@@ -228,19 +217,12 @@ describe("Story 10.2 — OAuth2 PKCE S256 Start/Callback, Case A Connections Vau
       .first<{ ciphertext_b64: string; iv_b64: string; key_hint: string; status: string }>();
     expect(pxRow).toBeTruthy();
     expect(pxRow?.ciphertext_b64).not.toContain("xoxb_pkce_oauth_access_token_7788");
-    const unsealed = await unsealConnectionCredentials(
-      pxRow!.ciphertext_b64,
-      pxRow!.iv_b64,
-      PX_CONN_KEY,
-    );
+    const unsealed = await unsealConnectionCredentials(pxRow!.ciphertext_b64, pxRow!.iv_b64, PX_CONN_KEY);
     expect(unsealed.accessToken).toBe("xoxb_pkce_oauth_access_token_7788");
     expect(unsealed.refreshToken).toBe("xoxr_pkce_oauth_refresh_token_6655");
 
     // Verify studio_connections_metadata contains ONLY non-secret metadata
-    const metaRows = await studioDb
-      .prepare("SELECT * FROM studio_connections_metadata WHERE ref = ?")
-      .bind("sec_slack_pkce")
-      .all<Record<string, unknown>>();
+    const metaRows = await studioDb.prepare("SELECT * FROM studio_connections_metadata WHERE ref = ?").bind("sec_slack_pkce").all<Record<string, unknown>>();
     expect((metaRows.results ?? []).length).toBe(1);
     const metaJson = JSON.stringify(metaRows.results);
     expect(metaJson).not.toContain("xoxb_pkce_oauth_access_token_7788");
@@ -250,17 +232,12 @@ describe("Story 10.2 — OAuth2 PKCE S256 Start/Callback, Case A Connections Vau
 
   test("2. Tampered OAuth2 state on /api/connections/oauth/:app/callback returns 400 OAUTH_STATE_MISMATCH and writes zero connection rows", async () => {
     const { aliceCookie } = await seedHumanOwnerAndAgentToken();
-    const cbRes = await callStudio(
-      "/api/connections/oauth/slack/callback?state=st_tampered_csrf_99999&code=evil_code",
-      { method: "GET", cookie: aliceCookie },
-    );
+    const cbRes = await callStudio("/api/connections/oauth/slack/callback?state=st_tampered_csrf_99999&code=evil_code", { method: "GET", cookie: aliceCookie });
     expect(cbRes.status).toBe(400);
     const body = (await cbRes.json()) as { error: { code: string } };
     expect(body.error.code).toBe("OAUTH_STATE_MISMATCH");
 
-    const rows = await envDb
-      .prepare("SELECT COUNT(*) as cnt FROM px_connections")
-      .first<{ cnt: number }>();
+    const rows = await envDb.prepare("SELECT COUNT(*) as cnt FROM px_connections").first<{ cnt: number }>();
     expect(Number(rows?.cnt ?? 0)).toBe(0);
   });
 
@@ -305,49 +282,29 @@ describe("Story 10.2 — OAuth2 PKCE S256 Start/Callback, Case A Connections Vau
       connections: Array<{ ref: string; keyHint: string; status: string }>;
       connectionRequests: Array<{ app: string; status: string }>;
     };
-    expect(
-      listJson.connections.some(
-        (c) => c.ref === "sec_resend_live" && c.keyHint === "••••3344",
-      ),
-    ).toBe(true);
-    expect(
-      listJson.connectionRequests.some(
-        (r) => r.app === "github" && r.status === "pending",
-      ),
-    ).toBe(true);
+    expect(listJson.connections.some((c) => c.ref === "sec_resend_live" && c.keyHint === "••••3344")).toBe(true);
+    expect(listJson.connectionRequests.some((r) => r.app === "github" && r.status === "pending")).toBe(true);
     expect(JSON.stringify(listJson)).not.toContain("re_live_api_key_secret_3344");
 
     // Test connection
-    const testRes = await callStudio(
-      "/api/projects/oauth-proj/connections/sec_resend_live/test",
-      { method: "POST", cookie: aliceCookie, orgId },
-    );
+    const testRes = await callStudio("/api/projects/oauth-proj/connections/sec_resend_live/test", { method: "POST", cookie: aliceCookie, orgId });
     expect(testRes.status).toBe(200);
     const testJson = (await testRes.json()) as { ok: boolean; status: string };
     expect(testJson.ok).toBe(true);
     expect(testJson.status).toBe("connected");
 
     // Re-authorize connection with rotated key
-    const reauthRes = await callStudio(
-      "/api/projects/oauth-proj/connections/sec_resend_live/reauthorize",
-      {
-        cookie: aliceCookie,
-        orgId,
-        body: { value: "re_live_rotated_key_5566" },
-      },
-    );
+    const reauthRes = await callStudio("/api/projects/oauth-proj/connections/sec_resend_live/reauthorize", {
+      cookie: aliceCookie,
+      orgId,
+      body: { value: "re_live_rotated_key_5566" },
+    });
     expect(reauthRes.status).toBe(200);
 
     // Delete connection
-    const delRes = await callStudio(
-      "/api/projects/oauth-proj/connections/sec_resend_live",
-      { method: "DELETE", cookie: aliceCookie, orgId },
-    );
+    const delRes = await callStudio("/api/projects/oauth-proj/connections/sec_resend_live", { method: "DELETE", cookie: aliceCookie, orgId });
     expect(delRes.status).toBe(200);
-    const afterDel = await envDb
-      .prepare("SELECT * FROM px_connections WHERE ref = ?")
-      .bind("sec_resend_live")
-      .first();
+    const afterDel = await envDb.prepare("SELECT * FROM px_connections WHERE ref = ?").bind("sec_resend_live").first();
     expect(afterDel).toBeNull();
   });
 
@@ -367,14 +324,11 @@ describe("Story 10.2 — OAuth2 PKCE S256 Start/Callback, Case A Connections Vau
     const errCreate = (await resCreate.json()) as { error: { code: string } };
     expect(errCreate.error.code).toBe("FORBIDDEN_AGENT_SECRET_ACCESS");
 
-    const resStart = await callStudio(
-      "/api/projects/oauth-proj/connections/oauth/slack/start",
-      {
-        token: mcpToken,
-        orgId,
-        body: {},
-      },
-    );
+    const resStart = await callStudio("/api/projects/oauth-proj/connections/oauth/slack/start", {
+      token: mcpToken,
+      orgId,
+      body: {},
+    });
     expect(resStart.status).toBe(403);
   });
 
@@ -388,26 +342,18 @@ describe("Story 10.2 — OAuth2 PKCE S256 Start/Callback, Case A Connections Vau
       });
     const shared = await create("sec_s117_default", " default ");
     expect(shared.status).toBe(200);
-    const stored = await envDb
-      .prepare("SELECT workspace_id FROM px_connections WHERE ref = ?")
-      .bind("sec_s117_default")
-      .first<{ workspace_id: string }>();
+    const stored = await envDb.prepare("SELECT workspace_id FROM px_connections WHERE ref = ?").bind("sec_s117_default").first<{ workspace_id: string }>();
     expect(stored?.workspace_id).toBe("default");
 
     // Studio's preview workspace is the project's own; a foreign workspace is 403; a malformed one is 400.
     expect((await create("sec_s117_preview", " ws_default ")).status).toBe(200);
-    const trimmed = await envDb
-      .prepare("SELECT workspace_id FROM px_connections WHERE ref = ?")
-      .bind("sec_s117_preview")
-      .first<{ workspace_id: string }>();
+    const trimmed = await envDb.prepare("SELECT workspace_id FROM px_connections WHERE ref = ?").bind("sec_s117_preview").first<{ workspace_id: string }>();
     expect(trimmed?.workspace_id).toBe("ws_default");
     const foreign = await create("sec_s117_foreign", "ws_someone_else");
     expect(foreign.status).toBe(403);
     expect(((await foreign.json()) as { error: { code: string } }).error.code).toBe("WORKSPACE_NOT_IN_PROJECT");
     expect((await create("sec_s117_bad", "ws bad")).status).toBe(400);
-    const rows = await envDb
-      .prepare("SELECT COUNT(*) AS c FROM px_connections WHERE ref IN ('sec_s117_foreign', 'sec_s117_bad')")
-      .first<{ c: number }>();
+    const rows = await envDb.prepare("SELECT COUNT(*) AS c FROM px_connections WHERE ref IN ('sec_s117_foreign', 'sec_s117_bad')").first<{ c: number }>();
     expect(Number(rows?.c ?? 0)).toBe(0);
 
     // The OAuth start refuses a foreign workspace the same way, before any state is stored.

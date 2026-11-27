@@ -40,7 +40,10 @@ export interface ExportRequestRecord {
 export interface PrivacyServiceHooks {
   /** `requesterId` (story 2.6): who asked for the export; platform-wide records are included only for a self-export. */
   exportTenant?: (db: D1Like, subject: { workspaceId: string; userId?: string; requesterId?: string }) => Promise<Record<string, unknown>>;
-  eraseTenant?: (db: D1Like, subject: { workspaceId: string; userId?: string }) => Promise<{ deletedCount: number; retain: Array<{ table: string; reason?: string }> }>;
+  eraseTenant?: (
+    db: D1Like,
+    subject: { workspaceId: string; userId?: string },
+  ) => Promise<{ deletedCount: number; retain: Array<{ table: string; reason?: string }> }>;
 }
 
 export class DataPrivacyService {
@@ -59,7 +62,7 @@ export class DataPrivacyService {
     workspaceId: string,
     userId: string,
     consents: Partial<Record<ConsentCategory, boolean>>,
-    clientInfo: { ip?: string; userAgent?: string } = {}
+    clientInfo: { ip?: string; userAgent?: string } = {},
   ): Promise<Record<ConsentCategory, boolean>> {
     const now = new Date().toISOString();
     const categories: ConsentCategory[] = ["necessary", "analytics", "marketing", "preferences"];
@@ -69,11 +72,7 @@ export class DataPrivacyService {
         const id = `cns_${crypto.randomUUID().replace(/-/g, "")}`;
         const granted = cat === "necessary" ? 1 : consents[cat] ? 1 : 0;
 
-        const existing = await scoped(this.db, workspaceId).first<{ id: string }>(
-          "dpr_consents",
-          "user_id = ? AND category = ?",
-          [userId.trim(), cat]
-        );
+        const existing = await scoped(this.db, workspaceId).first<{ id: string }>("dpr_consents", "user_id = ? AND category = ?", [userId.trim(), cat]);
 
         if (existing) {
           await scoped(this.db, workspaceId).update(
@@ -85,7 +84,7 @@ export class DataPrivacyService {
               updated_at: now,
             },
             "user_id = ? AND category = ?",
-            [userId.trim(), cat]
+            [userId.trim(), cat],
           );
         } else {
           await scoped(this.db, workspaceId).insert("dpr_consents", {
@@ -108,11 +107,7 @@ export class DataPrivacyService {
    * Retrieves current consent status for a user.
    */
   async getConsents(workspaceId: string, userId: string): Promise<Record<ConsentCategory, boolean>> {
-    const rows = await scoped(this.db, workspaceId).select<{ category: ConsentCategory; granted: number }>(
-      "dpr_consents",
-      "user_id = ?",
-      [userId.trim()]
-    );
+    const rows = await scoped(this.db, workspaceId).select<{ category: ConsentCategory; granted: number }>("dpr_consents", "user_id = ?", [userId.trim()]);
 
     const result: Record<ConsentCategory, boolean> = {
       necessary: true, // Always required
@@ -211,29 +206,17 @@ export class DataPrivacyService {
   /**
    * Executes a GDPR Article 17 "Right to Erasure" cascade deletion.
    */
-  async requestErasure(
-    workspaceId: string,
-    userId: string,
-    reason?: string
-  ): Promise<ErasureRequestRecord> {
+  async requestErasure(workspaceId: string, userId: string, reason?: string): Promise<ErasureRequestRecord> {
     const reqId = `ers_${crypto.randomUUID().replace(/-/g, "")}`;
     const now = new Date().toISOString();
     let totalDeleted = 0;
 
     // 1. Delete consents
-    const delConsents = await scoped(this.db, workspaceId).delete(
-      "dpr_consents",
-      "user_id = ?",
-      [userId.trim()]
-    );
+    const delConsents = await scoped(this.db, workspaceId).delete("dpr_consents", "user_id = ?", [userId.trim()]);
     totalDeleted += delConsents.meta.changes;
 
     // 2. Clear exports
-    const delExports = await scoped(this.db, workspaceId).delete(
-      "dpr_export_requests",
-      "user_id = ?",
-      [userId.trim()]
-    );
+    const delExports = await scoped(this.db, workspaceId).delete("dpr_export_requests", "user_id = ?", [userId.trim()]);
     totalDeleted += delExports.meta.changes;
 
     // 3. Delegate erasure across all tenant tables via eraseTenant hook
@@ -268,9 +251,7 @@ export class DataPrivacyService {
   /**
    * Executes workspace-level erasure (tenant offboarding).
    */
-  async eraseWorkspace(
-    workspaceId: string
-  ): Promise<{ deletedCount: number; retain: Array<{ table: string; reason?: string }> }> {
+  async eraseWorkspace(workspaceId: string): Promise<{ deletedCount: number; retain: Array<{ table: string; reason?: string }> }> {
     let deletedCount = 0;
     let retain: Array<{ table: string; reason?: string }> = [];
 
@@ -292,11 +273,7 @@ export class DataPrivacyService {
    * Retrieves an erasure request record.
    */
   async getErasureRequest(workspaceId: string, erasureId: string): Promise<ErasureRequestRecord | null> {
-    const row = await scoped(this.db, workspaceId).first<ErasureRequestRecord>(
-      "dpr_erasure_requests",
-      "id = ?",
-      [erasureId]
-    );
+    const row = await scoped(this.db, workspaceId).first<ErasureRequestRecord>("dpr_erasure_requests", "id = ?", [erasureId]);
 
     return row || null;
   }

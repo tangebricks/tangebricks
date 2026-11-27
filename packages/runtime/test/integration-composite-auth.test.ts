@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { IntegrationManifestSchema } from "@poc/assembler";
 import type { IntegrationManifestFile } from "@poc/assembler";
-import {
-  callOperation,
-} from "../src/index.ts";
+import { callOperation } from "../src/index.ts";
 
 const compositeAuthManifest: IntegrationManifestFile = IntegrationManifestSchema.parse({
   manifestVersion: 2,
@@ -91,9 +89,7 @@ describe("Story UC3.3 — Composite header auth, static default headers, and pub
       } else if (Array.isArray(h)) {
         capturedHeaders = Object.fromEntries(h);
       } else if (h && typeof h === "object") {
-        capturedHeaders = Object.fromEntries(
-          Object.entries(h as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v]),
-        );
+        capturedHeaders = Object.fromEntries(Object.entries(h as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v]));
       }
       return new Response(JSON.stringify({ ok: true, order_id: "ord_123" }), {
         status: 200,
@@ -158,9 +154,7 @@ describe("Story UC3.3 — Composite header auth, static default headers, and pub
       } else if (Array.isArray(h)) {
         capturedHeaders = Object.fromEntries(h);
       } else if (h && typeof h === "object") {
-        capturedHeaders = Object.fromEntries(
-          Object.entries(h as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v]),
-        );
+        capturedHeaders = Object.fromEntries(Object.entries(h as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v]));
       }
       return new Response(JSON.stringify({ pong: true }), {
         status: 200,

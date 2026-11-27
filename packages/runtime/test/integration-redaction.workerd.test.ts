@@ -13,15 +13,7 @@ describe("UC1.5 — Manifest-derived redaction plus value-pattern scrubbing", ()
   const jwtToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.abc";
   const awsKey = "AKI" + "AIOSFODNN7EXAMPLE";
 
-  const ALL_SECRETS = [
-    privateTokenVal,
-    clientSecretVal,
-    stripeKey,
-    slackToken,
-    githubPat,
-    jwtToken,
-    awsKey,
-  ];
+  const ALL_SECRETS = [privateTokenVal, clientSecretVal, stripeKey, slackToken, githubPat, jwtToken, awsKey];
 
   const manifest: IntegrationManifestFile = {
     manifestVersion: 2,
@@ -95,14 +87,11 @@ describe("UC1.5 — Manifest-derived redaction plus value-pattern scrubbing", ()
       });
     });
 
-    const executor = createIntegrationOperationExecutor(
-      manifest,
-      manifest.operations[0]!,
-      { fetcher, resolveHost: undefined },
-    );
+    const executor = createIntegrationOperationExecutor(manifest, manifest.operations[0]!, { fetcher, resolveHost: undefined });
 
     const emittedLogs: Array<{ level: string; message: string; fields?: Record<string, unknown> }> = [];
-    const ctx: ExecutionContext = { workspaceId: "ws_test",
+    const ctx: ExecutionContext = {
+      workspaceId: "ws_test",
       nodeId: "test_node_redaction",
       runId: "run_redaction_test",
       idempotencyKey: "run_redaction_test:test_node_redaction",
@@ -111,16 +100,28 @@ describe("UC1.5 — Manifest-derived redaction plus value-pattern scrubbing", ()
         x_client_secret: clientSecretVal,
       },
       payload: {},
-      secret: () => { throw new Error("not configured"); },
-      binding: () => { throw new Error("not configured"); },
+      secret: () => {
+        throw new Error("not configured");
+      },
+      binding: () => {
+        throw new Error("not configured");
+      },
       connection: ((_name: unknown) => ({
         token: privateTokenVal,
       })) as ExecutionContext["connection"],
       log: {
-        debug: async (message, fields) => { emittedLogs.push({ level: "debug", message, fields }); },
-        info: async (message, fields) => { emittedLogs.push({ level: "info", message, fields }); },
-        warn: async (message, fields) => { emittedLogs.push({ level: "warn", message, fields }); },
-        error: async (message, fields) => { emittedLogs.push({ level: "error", message, fields }); },
+        debug: async (message, fields) => {
+          emittedLogs.push({ level: "debug", message, fields });
+        },
+        info: async (message, fields) => {
+          emittedLogs.push({ level: "info", message, fields });
+        },
+        warn: async (message, fields) => {
+          emittedLogs.push({ level: "warn", message, fields });
+        },
+        error: async (message, fields) => {
+          emittedLogs.push({ level: "error", message, fields });
+        },
       },
     };
 
@@ -138,19 +139,13 @@ describe("UC1.5 — Manifest-derived redaction plus value-pattern scrubbing", ()
 
     // None of the sensitive strings must appear in the thrown message
     for (const secret of ALL_SECRETS) {
-      expect(
-        errorMessage.includes(secret),
-        `Expected error message not to leak secret "${secret}", but found it in: ${errorMessage}`,
-      ).toBe(false);
+      expect(errorMessage.includes(secret), `Expected error message not to leak secret "${secret}", but found it in: ${errorMessage}`).toBe(false);
     }
 
     // None of the sensitive strings must appear in emitted telemetry logs
     const fullLogsDump = JSON.stringify(emittedLogs);
     for (const secret of ALL_SECRETS) {
-      expect(
-        fullLogsDump.includes(secret),
-        `Expected logs not to leak secret "${secret}", but found it in: ${fullLogsDump}`,
-      ).toBe(false);
+      expect(fullLogsDump.includes(secret), `Expected logs not to leak secret "${secret}", but found it in: ${fullLogsDump}`).toBe(false);
     }
   });
 
@@ -176,10 +171,7 @@ describe("UC1.5 — Manifest-derived redaction plus value-pattern scrubbing", ()
 
     const dump = JSON.stringify(scrubbed);
     for (const secret of ALL_SECRETS) {
-      expect(
-        dump.includes(secret),
-        `Expected redacted payload not to leak "${secret}", but found it in: ${dump}`,
-      ).toBe(false);
+      expect(dump.includes(secret), `Expected redacted payload not to leak "${secret}", but found it in: ${dump}`).toBe(false);
     }
     expect(scrubbed.safeField).toBe("public_information");
     expect(dump).toContain(REDACTED_PLACEHOLDER);

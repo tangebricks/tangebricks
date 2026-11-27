@@ -1,13 +1,5 @@
 import { z } from "zod";
-import {
-  BRICK_CATEGORIES,
-  BRICK_MATURITIES,
-  assemble,
-  checkBrickConfig,
-  computeArtifactHashes,
-  projectIntegrationToNodes,
-  sha256Hex,
-} from "@poc/assembler";
+import { BRICK_CATEGORIES, BRICK_MATURITIES, assemble, checkBrickConfig, computeArtifactHashes, projectIntegrationToNodes, sha256Hex } from "@poc/assembler";
 import type { Catalog, ManifestNodeDefinition } from "@poc/assembler";
 import {
   OP_TYPES,
@@ -24,24 +16,11 @@ import {
   toActionableIssue,
   toAssemblerBlueprint,
 } from "@poc/blueprint";
-import type {
-  ActionableIssue,
-  BlueprintState,
-  BlueprintValidationError,
-  IssueEnrichmentContext,
-  Op,
-  OpType,
-  SemanticDiff,
-} from "@poc/blueprint";
+import type { ActionableIssue, BlueprintState, BlueprintValidationError, IssueEnrichmentContext, Op, OpType, SemanticDiff } from "@poc/blueprint";
 import { entitySchema, parseEntities, relationKeyHint, validateGraph } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { storeBuild } from "./store.ts";
-import type {
-  BlueprintAuthor,
-  BlueprintClient,
-  BlueprintConflictError,
-  SettingValue,
-} from "./store.ts";
+import type { BlueprintAuthor, BlueprintClient, BlueprintConflictError, SettingValue } from "./store.ts";
 
 export const DEFAULT_MCP_AUTHOR: BlueprintAuthor = {
   type: "agent",
@@ -55,10 +34,7 @@ export interface ToolAnnotations {
   idempotentHint: boolean;
 }
 
-export type StudioRequestFn = (
-  path: string,
-  init?: RequestInit,
-) => Promise<Response>;
+export type StudioRequestFn = (path: string, init?: RequestInit) => Promise<Response>;
 
 export interface ToolContext {
   db: D1Like;
@@ -95,19 +71,9 @@ export interface Tool {
   run(context: ToolContext, args: never): Promise<ToolResult>;
 }
 
-export const DESTRUCTIVE_OP_KINDS = [
-  "remove_brick",
-  "remove_entity",
-  "remove_workflow",
-  "remove_node",
-] as const;
+export const DESTRUCTIVE_OP_KINDS = ["remove_brick", "remove_entity", "remove_workflow", "remove_node"] as const;
 
-export const MONEY_AFFECTING_BRICKS = [
-  "credit-wallet",
-  "subscription-plans",
-  "metered-usage",
-  "checkout-gateway",
-] as const;
+export const MONEY_AFFECTING_BRICKS = ["credit-wallet", "subscription-plans", "metered-usage", "checkout-gateway"] as const;
 
 export interface OpSafetyMetadata {
   destructiveHint: boolean;
@@ -231,13 +197,9 @@ const SAFE_METADATA_KEY_SET = new Set([
   "connectionstatus",
 ]);
 
-const SENSITIVE_KEY_REGEX =
-  /(?:secret|token|password|api_?key|private_?key|authorization|cookie|ciphertext|encrypted_value|raw_?secret|client_?secret)/i;
+const SENSITIVE_KEY_REGEX = /(?:secret|token|password|api_?key|private_?key|authorization|cookie|ciphertext|encrypted_value|raw_?secret|client_?secret)/i;
 
-export function scrubMcpSecrets<T>(
-  value: T,
-  extraCanaries: readonly string[] = [],
-): T {
+export function scrubMcpSecrets<T>(value: T, extraCanaries: readonly string[] = []): T {
   const canaries = extraCanaries.filter((c) => typeof c === "string" && c.length >= 4);
 
   const scrubString = (str: string): string => {
@@ -264,11 +226,7 @@ export function scrubMcpSecrets<T>(
       const out: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
         const lower = k.toLowerCase();
-        if (
-          !SAFE_METADATA_KEY_SET.has(lower) &&
-          SENSITIVE_KEY_REGEX.test(k) &&
-          typeof v === "string"
-        ) {
+        if (!SAFE_METADATA_KEY_SET.has(lower) && SENSITIVE_KEY_REGEX.test(k) && typeof v === "string") {
           out[k] = "[REDACTED]";
         } else {
           out[k] = walk(v);
@@ -299,13 +257,8 @@ const refuse = (...reasons: string[]): ToolResult => ({
   isError: true,
 });
 
-function formatValidationFailure(
-  issues: BlueprintValidationError[],
-  ctx: IssueEnrichmentContext = {},
-): ToolResult {
-  const actionableIssues: ActionableIssue[] = issues.map((issue) =>
-    toActionableIssue(issue, ctx),
-  );
+function formatValidationFailure(issues: BlueprintValidationError[], ctx: IssueEnrichmentContext = {}): ToolResult {
+  const actionableIssues: ActionableIssue[] = issues.map((issue) => toActionableIssue(issue, ctx));
   return {
     isError: true,
     text: JSON.stringify({
@@ -318,9 +271,7 @@ function formatValidationFailure(
             path: issue.path,
             message: issue.message,
             suggestedFix: issue.suggestedFix ?? actionable.suggestedFix,
-            ...(actionable.remediationOp
-              ? { remediationOp: actionable.remediationOp }
-              : {}),
+            ...(actionable.remediationOp ? { remediationOp: actionable.remediationOp } : {}),
           };
         }),
         actionableIssues,
@@ -338,10 +289,7 @@ function formatValidationFailure(
   };
 }
 
-function formatConflictFailure(
-  error: BlueprintConflictError,
-  failedOp?: Record<string, unknown>,
-): ToolResult {
+function formatConflictFailure(error: BlueprintConflictError, failedOp?: Record<string, unknown>): ToolResult {
   const actionableIssues = buildConflictActionableIssues({
     baseRev: error.baseRevision,
     currentRev: error.currentRevision,
@@ -372,22 +320,15 @@ function formatConflictFailure(
 }
 
 /** What the project still lacks before it can be built: the reasons the assembler would give right now. */
-function stillNeeds(
-  _project: string,
-  state: BlueprintState,
-  catalog: Catalog,
-): string[] {
+function stillNeeds(_project: string, state: BlueprintState, catalog: Catalog): string[] {
   if (state.bricks.length === 0) return ["no brick is enabled yet"];
   const result = assemble(toAssemblerBlueprint(state), catalog);
   return result.ok ? [] : result.errors;
 }
 
-const reservedRoutes = (catalog: Catalog) =>
-  new Set(Object.values(catalog.bricks).flatMap((b) => b.manifest.routePrefixes));
+const reservedRoutes = (catalog: Catalog) => new Set(Object.values(catalog.bricks).flatMap((b) => b.manifest.routePrefixes));
 
-const settingText = (
-  definition: Catalog["bricks"][string]["manifest"]["settings"][string],
-): string =>
+const settingText = (definition: Catalog["bricks"][string]["manifest"]["settings"][string]): string =>
   definition.type === "integer"
     ? `whole number ${definition.min} to ${definition.max}, default ${definition.default}`
     : definition.type === "enum"
@@ -401,24 +342,13 @@ async function catalogHash(catalog: Catalog): Promise<string> {
     .sort()
     .map((id) => {
       const m = catalog.bricks[id]!.manifest;
-      return [
-        m.id,
-        m.version,
-        m.ui?.category ?? "",
-        m.ui?.maturity ?? "unrated",
-        m.ui?.summary ?? "",
-      ];
+      return [m.id, m.version, m.ui?.category ?? "", m.ui?.maturity ?? "unrated", m.ui?.summary ?? ""];
     });
   return (await sha256Hex(JSON.stringify(signature))).slice(0, 12);
 }
 
 async function nodesCatalogHash(catalog: Catalog): Promise<string> {
-  const nodes = collectCatalogNodes(catalog).map((n) => [
-    n.type,
-    n.role,
-    n.source,
-    n.app,
-  ]);
+  const nodes = collectCatalogNodes(catalog).map((n) => [n.type, n.role, n.source, n.app]);
   return (await sha256Hex(JSON.stringify(nodes))).slice(0, 12);
 }
 
@@ -426,10 +356,7 @@ function encodeCursor(offset: number, hash: string): string {
   return btoa(`${offset}:${hash}`);
 }
 
-function decodeCursor(
-  cursor: string,
-  expectedHash: string,
-): { ok: true; offset: number } | { ok: false; error: string } {
+function decodeCursor(cursor: string, expectedHash: string): { ok: true; offset: number } | { ok: false; error: string } {
   let decoded: string;
   try {
     decoded = atob(cursor.replace(/-/g, "+").replace(/_/g, "/"));
@@ -461,9 +388,7 @@ function collectCatalogNodes(catalog: Catalog): CatalogNodeEntry[] {
   for (const [packId, pack] of Object.entries(catalog.nodePacks ?? {})) {
     for (const node of pack.manifest.nodes ?? []) {
       const isInt = node.type.startsWith("int:");
-      const app = isInt
-        ? (node.type.slice(4).split(".")[0] ?? packId)
-        : packId;
+      const app = isInt ? (node.type.slice(4).split(".")[0] ?? packId) : packId;
       entries.set(node.type, {
         type: node.type,
         label: node.label,
@@ -494,8 +419,7 @@ function collectCatalogNodes(catalog: Catalog): CatalogNodeEntry[] {
   }
 
   for (const [appId, intEntry] of Object.entries(catalog.integrations ?? {})) {
-    const nodes =
-      intEntry.nodes ?? projectIntegrationToNodes(intEntry.manifest);
+    const nodes = intEntry.nodes ?? projectIntegrationToNodes(intEntry.manifest);
     for (const node of nodes) {
       if (!entries.has(node.type)) {
         entries.set(node.type, {
@@ -511,9 +435,7 @@ function collectCatalogNodes(catalog: Catalog): CatalogNodeEntry[] {
     }
   }
 
-  return [...entries.values()].sort((a, b) =>
-    a.type < b.type ? -1 : a.type > b.type ? 1 : 0,
-  );
+  return [...entries.values()].sort((a, b) => (a.type < b.type ? -1 : a.type > b.type ? 1 : 0));
 }
 
 const searchBricksInputSchema = z.object({
@@ -531,18 +453,10 @@ const searchBricksInputSchema = z.object({
  * one of its `ui.keywords` is the query or starts with it ("team" finds "teams"). Each word of a multi-word query must
  * match on its own.
  */
-export function brickMatchesQuery(
-  brick: { haystack: string; keywords: readonly string[] },
-  query: string,
-): boolean {
+export function brickMatchesQuery(brick: { haystack: string; keywords: readonly string[] }, query: string): boolean {
   if (brick.haystack.includes(query)) return true;
   const words = query.split(/\s+/).filter(Boolean);
-  return (
-    words.length > 0 &&
-    words.every(
-      (w) => brick.haystack.includes(w) || brick.keywords.some((k) => k.startsWith(w)),
-    )
-  );
+  return words.length > 0 && words.every((w) => brick.haystack.includes(w) || brick.keywords.some((k) => k.startsWith(w)));
 }
 
 async function runSearchBricks(
@@ -574,63 +488,39 @@ async function runSearchBricks(
       id: manifest.id,
       summary,
       category,
-      maturity: (manifest.ui?.maturity ?? "unrated") as z.infer<
-        typeof maturityFilter
-      >,
+      maturity: (manifest.ui?.maturity ?? "unrated") as z.infer<typeof maturityFilter>,
       provides: manifest.provides,
       keywords: manifest.ui?.keywords ?? [],
-      haystack:
-        `${manifest.id} ${displayName} ${summary} ${category} ${manifest.provides.join(" ")}`.toLowerCase(),
+      haystack: `${manifest.id} ${displayName} ${summary} ${category} ${manifest.provides.join(" ")}`.toLowerCase(),
     };
   });
   // Every filter but maturity, so the bricks hidden for being experimental can be counted and named in the note.
   const matching = all.filter((b) => {
-    if (args.category !== undefined && b.category !== args.category)
-      return false;
-    if (
-      args.capability !== undefined &&
-      !b.provides.includes(args.capability)
-    )
-      return false;
+    if (args.category !== undefined && b.category !== args.category) return false;
+    if (args.capability !== undefined && !b.provides.includes(args.capability)) return false;
     if (q && !brickMatchesQuery(b, q)) return false;
     return true;
   });
   const filtered = matching
-    .filter((b) =>
-      args.maturity !== undefined
-        ? b.maturity === args.maturity
-        : b.maturity !== "experimental",
-    )
+    .filter((b) => (args.maturity !== undefined ? b.maturity === args.maturity : b.maturity !== "experimental"))
     .sort((a, b) => (a.id < b.id ? -1 : 1));
-  const hiddenExperimental =
-    args.maturity === undefined
-      ? matching.filter((b) => b.maturity === "experimental").length
-      : 0;
+  const hiddenExperimental = args.maturity === undefined ? matching.filter((b) => b.maturity === "experimental").length : 0;
 
   const limit = args.limit ?? BRICK_LIST_DEFAULT_LIMIT;
-  const items = filtered
-    .slice(offset, offset + limit)
-    .map(({ id, summary, category, maturity }) => ({
-      id,
-      summary: (summary.split(/[.,;—]/)[0] ?? summary).slice(0, 32).trim() || id,
-      category,
-      maturity,
-    }));
-  const nextCursor =
-    offset + limit < filtered.length
-      ? encodeCursor(offset + limit, hash)
-      : null;
+  const items = filtered.slice(offset, offset + limit).map(({ id, summary, category, maturity }) => ({
+    id,
+    summary: (summary.split(/[.,;—]/)[0] ?? summary).slice(0, 32).trim() || id,
+    category,
+    maturity,
+  }));
+  const nextCursor = offset + limit < filtered.length ? encodeCursor(offset + limit, hash) : null;
   const total = filtered.length;
   const noteParts: string[] = [];
   if (nextCursor !== null) {
-    noteParts.push(
-      `Showing ${offset + 1}-${offset + items.length} of ${total}: pass nextCursor for more, or limit:${BRICK_LIST_MAX_LIMIT} for all.`,
-    );
+    noteParts.push(`Showing ${offset + 1}-${offset + items.length} of ${total}: pass nextCursor for more, or limit:${BRICK_LIST_MAX_LIMIT} for all.`);
   }
   if (hiddenExperimental > 0) {
-    noteParts.push(
-      `${hiddenExperimental} more experimental bricks: pass maturity:'experimental'.`,
-    );
+    noteParts.push(`${hiddenExperimental} more experimental bricks: pass maturity:'experimental'.`);
   }
   const page = {
     items,
@@ -656,7 +546,8 @@ async function runSearchBricks(
 
 const searchBricks: Tool = {
   name: "search_bricks",
-  description: "List the bricks you can enable, 10 a page with total and a note on what else exists; limit:100 returns the complete list in one answer. Filters: query, capability, category, maturity (experimental is hidden unless asked).",
+  description:
+    "List the bricks you can enable, 10 a page with total and a note on what else exists; limit:100 returns the complete list in one answer. Filters: query, capability, category, maturity (experimental is hidden unless asked).",
   input: searchBricksInputSchema,
   readOnly: true,
   annotations: {
@@ -669,7 +560,8 @@ const searchBricks: Tool = {
 
 const listBricks: Tool = {
   name: "list_bricks",
-  description: "List the bricks you can enable, 10 a page with total and a note on what else exists; limit:100 returns the complete list in one answer. Filters: query, capability, category, maturity (experimental is hidden unless asked).",
+  description:
+    "List the bricks you can enable, 10 a page with total and a note on what else exists; limit:100 returns the complete list in one answer. Filters: query, capability, category, maturity (experimental is hidden unless asked).",
   input: searchBricksInputSchema,
   readOnly: true,
   annotations: {
@@ -692,10 +584,7 @@ const getBrick: Tool = {
   },
   async run({ catalog }, args: { id: string }) {
     const entry = catalog.bricks[args.id];
-    if (!entry)
-      return refuse(
-        `unknown brick "${args.id}" (available: ${Object.keys(catalog.bricks).sort().join(", ")})`,
-      );
+    if (!entry) return refuse(`unknown brick "${args.id}" (available: ${Object.keys(catalog.bricks).sort().join(", ")})`);
     const { manifest } = entry;
     const entryAny = entry as unknown as Record<string, unknown>;
     const manifestAny = manifest as unknown as Record<string, unknown>;
@@ -711,25 +600,14 @@ const getBrick: Tool = {
       summary: manifest.ui?.summary ?? "",
       category: manifest.ui?.category ?? "data",
       maturity: manifest.ui?.maturity ?? "unrated",
-      ...(manifest.ui?.maturityReason
-        ? { maturityReason: manifest.ui.maturityReason }
-        : {}),
+      ...(manifest.ui?.maturityReason ? { maturityReason: manifest.ui.maturityReason } : {}),
       ...(derivedTier ? { derivedTier } : {}),
       ...(evidenceGitSha ? { evidence: { gitSha: evidenceGitSha } } : {}),
       provides: manifest.provides,
       needs: manifest.requires,
-      settings: Object.fromEntries(
-        Object.entries(manifest.settings).map(([name, definition]) => [
-          name,
-          settingText(definition),
-        ]),
-      ),
+      settings: Object.fromEntries(Object.entries(manifest.settings).map(([name, definition]) => [name, settingText(definition)])),
       servesEntities:
-        manifest.worker?.routes?.some((r) =>
-          Object.values(r.options || {}).some(
-            (v) => typeof v === "object" && v !== null && "$entities" in v,
-          ),
-        ) ?? false,
+        manifest.worker?.routes?.some((r) => Object.values(r.options || {}).some((v) => typeof v === "object" && v !== null && "$entities" in v)) ?? false,
       routes: manifest.routePrefixes,
       conflicts: manifest.conflicts ?? [],
     });
@@ -796,10 +674,7 @@ const searchNodes: Tool = {
       source: n.source,
       app: n.app,
     }));
-    const nextCursor =
-      offset + limit < filtered.length
-        ? encodeCursor(offset + limit, hash)
-        : null;
+    const nextCursor = offset + limit < filtered.length ? encodeCursor(offset + limit, hash) : null;
 
     return ok({ items, nextCursor });
   },
@@ -821,9 +696,7 @@ const getNode: Tool = {
     const allNodes = collectCatalogNodes(catalog);
     const entry = allNodes.find((n) => n.type === args.type);
     if (!entry) {
-      return refuse(
-        `unknown node "${args.type}" (use search_nodes to discover available node types)`,
-      );
+      return refuse(`unknown node "${args.type}" (use search_nodes to discover available node types)`);
     }
     const { definition } = entry;
     return ok({
@@ -836,12 +709,7 @@ const getNode: Tool = {
       availability: definition.availability ?? "available",
       inputs: definition.inputs,
       outputs: definition.outputs,
-      config: Object.fromEntries(
-        Object.entries(definition.config ?? {}).map(([name, def]) => [
-          name,
-          settingText(def),
-        ]),
-      ),
+      config: Object.fromEntries(Object.entries(definition.config ?? {}).map(([name, def]) => [name, settingText(def)])),
       secrets: definition.secrets ?? [],
       bindings: definition.bindings ?? [],
       durable: definition.durable ?? true,
@@ -894,19 +762,7 @@ const getBlueprintSlice: Tool = {
   input: z.object({
     project: projectName,
     rev: z.number().int().min(0).optional(),
-    sections: z
-      .array(
-        z.enum([
-          "identity",
-          "bricks",
-          "entities",
-          "workflows",
-          "secretRefs",
-          "metadata",
-          "readiness",
-        ]),
-      )
-      .optional(),
+    sections: z.array(z.enum(["identity", "bricks", "entities", "workflows", "secretRefs", "metadata", "readiness"])).optional(),
     workflowId: z.string().optional(),
     entityName: z.string().optional(),
     brickId: z.string().optional(),
@@ -922,15 +778,7 @@ const getBlueprintSlice: Tool = {
     args: {
       project: string;
       rev?: number;
-      sections?: Array<
-        | "identity"
-        | "bricks"
-        | "entities"
-        | "workflows"
-        | "secretRefs"
-        | "metadata"
-        | "readiness"
-      >;
+      sections?: Array<"identity" | "bricks" | "entities" | "workflows" | "secretRefs" | "metadata" | "readiness">;
       workflowId?: string;
       entityName?: string;
       brickId?: string;
@@ -946,9 +794,7 @@ const getBlueprintSlice: Tool = {
     if (args.workflowId !== undefined) {
       const wf = state.workflows.find((w) => w.id === args.workflowId);
       if (!wf) {
-        return refuse(
-          `unknown workflow "${args.workflowId}" in project "${args.project}"`,
-        );
+        return refuse(`unknown workflow "${args.workflowId}" in project "${args.project}"`);
       }
       slice.workflow = wf;
     }
@@ -956,9 +802,7 @@ const getBlueprintSlice: Tool = {
     if (args.entityName !== undefined) {
       const entity = state.entities.find((e) => e.name === args.entityName);
       if (!entity) {
-        return refuse(
-          `unknown entity "${args.entityName}" in project "${args.project}"`,
-        );
+        return refuse(`unknown entity "${args.entityName}" in project "${args.project}"`);
       }
       slice.entity = entity;
     }
@@ -966,18 +810,14 @@ const getBlueprintSlice: Tool = {
     if (args.brickId !== undefined) {
       const brick = state.bricks.find((b) => b.id === args.brickId);
       if (!brick) {
-        return refuse(
-          `brick "${args.brickId}" is not enabled on project "${args.project}"`,
-        );
+        return refuse(`brick "${args.brickId}" is not enabled on project "${args.project}"`);
       }
       slice.brick = brick;
     }
 
     const requestedSections =
       args.sections ??
-      (args.workflowId === undefined &&
-      args.entityName === undefined &&
-      args.brickId === undefined
+      (args.workflowId === undefined && args.entityName === undefined && args.brickId === undefined
         ? (["identity", "bricks", "entities", "workflows", "secretRefs"] as const)
         : []);
 
@@ -998,19 +838,11 @@ const getBlueprintSlice: Tool = {
   },
 };
 
-async function loadBoundConnectionIds(
-  db: D1Like,
-  project: string,
-  state: BlueprintState,
-  studioRequest?: StudioRequestFn,
-): Promise<string[]> {
+async function loadBoundConnectionIds(db: D1Like, project: string, state: BlueprintState, studioRequest?: StudioRequestFn): Promise<string[]> {
   const refs = new Set<string>(state.secretRefs.map((sr) => sr.ref));
   if (studioRequest) {
     try {
-      const res = await studioRequest(
-        `/api/projects/${encodeURIComponent(project)}/secrets`,
-        { method: "GET" },
-      );
+      const res = await studioRequest(`/api/projects/${encodeURIComponent(project)}/secrets`, { method: "GET" });
       if (res.ok) {
         const body = (await res.json()) as {
           secrets?: Array<{ ref?: string; status?: string }>;
@@ -1027,12 +859,7 @@ async function loadBoundConnectionIds(
   }
   try {
     const rows = (
-      await db
-        .prepare(
-          `SELECT ref, status FROM studio_secret_vault WHERE project_id = ? ORDER BY ref ASC`,
-        )
-        .bind(project)
-        .all<{ ref: string; status: string }>()
+      await db.prepare(`SELECT ref, status FROM studio_secret_vault WHERE project_id = ? ORDER BY ref ASC`).bind(project).all<{ ref: string; status: string }>()
     ).results;
     for (const r of rows ?? []) {
       if (r.ref && r.status !== "missing") {
@@ -1045,9 +872,7 @@ async function loadBoundConnectionIds(
   try {
     const metaRows = (
       await db
-        .prepare(
-          `SELECT ref, status FROM studio_connections_metadata WHERE project_id = ? ORDER BY ref ASC`,
-        )
+        .prepare(`SELECT ref, status FROM studio_connections_metadata WHERE project_id = ? ORDER BY ref ASC`)
         .bind(project)
         .all<{ ref: string; status: string }>()
     ).results;
@@ -1062,9 +887,7 @@ async function loadBoundConnectionIds(
   try {
     const pxRows = (
       await db
-        .prepare(
-          `SELECT ref, status FROM px_connections WHERE (project_id = ? OR project_id = 'default') ORDER BY ref ASC`,
-        )
+        .prepare(`SELECT ref, status FROM px_connections WHERE (project_id = ? OR project_id = 'default') ORDER BY ref ASC`)
         .bind(project)
         .all<{ ref: string; status: string }>()
     ).results;
@@ -1092,21 +915,13 @@ const validateBlueprint: Tool = {
     destructiveHint: false,
     idempotentHint: true,
   },
-  async run(
-    { db, catalog, blueprint, studioRequest },
-    args: { project: string; rev?: number },
-  ) {
+  async run({ db, catalog, blueprint, studioRequest }, args: { project: string; rev?: number }) {
     const stored = await blueprint.getProject(args.project, args.rev);
     const state = stored?.state ?? createEmptyBlueprint(args.project);
     const rev = stored?.revision ?? 0;
     const readiness = computeReadiness(state, catalog);
     const registry = buildCatalogNodeRegistry(catalog);
-    const boundConnectionIds = await loadBoundConnectionIds(
-      db,
-      args.project,
-      state,
-      studioRequest,
-    );
+    const boundConnectionIds = await loadBoundConnectionIds(db, args.project, state, studioRequest);
     const actionableIssues = collectBlueprintActionableIssues(state, {
       catalog,
       nodeRegistry: registry,
@@ -1114,23 +929,16 @@ const validateBlueprint: Tool = {
       availableConnectionIds: boundConnectionIds,
     });
     const unboundIssuePaths = new Set(
-      actionableIssues
-        .filter((i) => i.code === "UNBOUND_CONNECTION")
-        .map((i) => i.path.replace(/^\//, "").replace(/\//g, ".")),
+      actionableIssues.filter((i) => i.code === "UNBOUND_CONNECTION").map((i) => i.path.replace(/^\//, "").replace(/\//g, ".")),
     );
-    const filteredNeeds = readiness.needs.filter(
-      (n) => n.code !== "UNBOUND_CONNECTION" || unboundIssuePaths.has(n.path),
-    );
+    const filteredNeeds = readiness.needs.filter((n) => n.code !== "UNBOUND_CONNECTION" || unboundIssuePaths.has(n.path));
     const assemblerNeeds = stillNeeds(args.project, state, catalog);
 
     return ok({
       project: args.project,
       rev,
       revision: rev,
-      ready:
-        filteredNeeds.length === 0 &&
-        actionableIssues.length === 0 &&
-        assemblerNeeds.length === 0,
+      ready: filteredNeeds.length === 0 && actionableIssues.length === 0 && assemblerNeeds.length === 0,
       needs: filteredNeeds,
       assemblerErrors: assemblerNeeds,
       issues: actionableIssues,
@@ -1143,9 +951,7 @@ const brickItem = z.union([
   brickId,
   z.strictObject({
     id: brickId,
-    config: z
-      .record(z.string(), z.union([z.number(), z.string(), z.boolean()]))
-      .optional(),
+    config: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])).optional(),
   }),
 ]);
 
@@ -1171,15 +977,11 @@ const enableBrick: Tool = {
     { catalog, blueprint, author, reviewRequired, hasLiveProduction },
     args: {
       project: string;
-      bricks: Array<
-        string | { id: string; config?: Record<string, SettingValue> }
-      >;
+      bricks: Array<string | { id: string; config?: Record<string, SettingValue> }>;
     },
   ) {
     const wanted = args.bricks.map((item) =>
-      typeof item === "string"
-        ? { id: item, config: {} as Record<string, SettingValue> }
-        : { id: item.id, config: item.config ?? {} },
+      typeof item === "string" ? { id: item, config: {} as Record<string, SettingValue> } : { id: item.id, config: item.config ?? {} },
     );
     const problems: string[] = [];
     const seen = new Set<string>();
@@ -1235,7 +1037,13 @@ const enableBrick: Tool = {
           revision: applied.data.revision,
           blueprint: applied.data.state,
         };
-        return ok({ project: args.project, enabled: result.blueprint.bricks.map((b) => b.id), needs: stillNeeds(args.project, result.blueprint, catalog), revision: result.revision, entities: result.blueprint.entities.map((e) => e.name) });
+        return ok({
+          project: args.project,
+          enabled: result.blueprint.bricks.map((b) => b.id),
+          needs: stillNeeds(args.project, result.blueprint, catalog),
+          revision: result.revision,
+          entities: result.blueprint.entities.map((e) => e.name),
+        });
       }
 
       if (applied.status === 409) {
@@ -1249,23 +1057,17 @@ const enableBrick: Tool = {
         continue;
       }
 
-      return refuse(
-        ...applied.error.issues.map((i) => i.message),
-        "nothing was changed",
-      );
+      return refuse(...applied.error.issues.map((i) => i.message), "nothing was changed");
     }
 
-    return refuse(
-      "the project is being changed by many calls at once; try again",
-      "nothing was changed",
-    );
+    return refuse("the project is being changed by many calls at once; try again", "nothing was changed");
   },
 };
 
 const defineEntity: Tool = {
   name: "define_entity",
   description:
-    "Declare or replace entity tables and fields on a project. Field types: text, longtext (up to 100000 chars), number (integer), boolean, enum (values), date (YYYY-MM-DD), money (stored and returned as {amount, currency}: amount an integer in minor units, currency one of the field's declared ISO-4217 currencies, e.g. currencies [\"INR\"]), and relation. A relation field points at another declared entity with the relation key: {\"name\":\"customer_id\",\"type\":\"relation\",\"relation\":\"customer\"}; its value is the id of a row of that entity in the same workspace.",
+    'Declare or replace entity tables and fields on a project. Field types: text, longtext (up to 100000 chars), number (integer), boolean, enum (values), date (YYYY-MM-DD), money (stored and returned as {amount, currency}: amount an integer in minor units, currency one of the field\'s declared ISO-4217 currencies, e.g. currencies ["INR"]), and relation. A relation field points at another declared entity with the relation key: {"name":"customer_id","type":"relation","relation":"customer"}; its value is the id of a row of that entity in the same workspace.',
   input: z.object({
     project: projectName,
     entities: z.array(entitySchema).min(1).max(MAX_PER_CALL),
@@ -1276,10 +1078,7 @@ const defineEntity: Tool = {
     destructiveHint: false,
     idempotentHint: true,
   },
-  async run(
-    { catalog, blueprint, author, reviewRequired, hasLiveProduction },
-    args: { project: string; entities: unknown[] },
-  ) {
+  async run({ catalog, blueprint, author, reviewRequired, hasLiveProduction }, args: { project: string; entities: unknown[] }) {
     const reserved = reservedRoutes(catalog);
     let current = await blueprint.getProject(args.project);
     // A relation may target an entity declared in this call or one the project already has.
@@ -1302,9 +1101,7 @@ const defineEntity: Tool = {
 
     const callId = ++macroCallCounter;
     for (let attempt = 0; attempt < 40; attempt += 1) {
-      const existingNames = new Set(
-        current?.state.entities.map((e) => e.name) ?? [],
-      );
+      const existingNames = new Set(current?.state.entities.map((e) => e.name) ?? []);
       const baseRevision = current?.revision ?? 0;
       const ops: Op[] = declared.map((ent, idx) =>
         existingNames.has(ent.name)
@@ -1348,16 +1145,10 @@ const defineEntity: Tool = {
         continue;
       }
 
-      return refuse(
-        ...applied.error.issues.map((i) => i.message),
-        "nothing was changed",
-      );
+      return refuse(...applied.error.issues.map((i) => i.message), "nothing was changed");
     }
 
-    return refuse(
-      "the project is being changed by many calls at once; try again",
-      "nothing was changed",
-    );
+    return refuse("the project is being changed by many calls at once; try again", "nothing was changed");
   },
 };
 
@@ -1370,31 +1161,19 @@ export function isMoneyNodeType(nodeType: unknown): boolean {
 
 const WORKFLOW_EDIT_OPS = new Set(["update_node", "remove_node", "connect_edges", "disconnect_edge"]);
 
-function classifyOpsSafety(
-  ops: ReadonlyArray<Record<string, unknown>>,
-  currentState?: BlueprintState | null,
-) {
+function classifyOpsSafety(ops: ReadonlyArray<Record<string, unknown>>, currentState?: BlueprintState | null) {
   const destructiveOps: string[] = [];
   const moneyAffectingOps: string[] = [];
   const destructiveSet = new Set<string>(DESTRUCTIVE_OP_KINDS);
   const moneyBrickSet = new Set<string>(MONEY_AFFECTING_BRICKS);
   // Workflows that already hold a money node: any edit to their nodes or wiring changes how money moves.
-  const moneyWorkflows = new Set(
-    (currentState?.workflows ?? [])
-      .filter((wf) => (wf.nodes ?? []).some((n) => isMoneyNodeType(n.type)))
-      .map((wf) => wf.id),
-  );
+  const moneyWorkflows = new Set((currentState?.workflows ?? []).filter((wf) => (wf.nodes ?? []).some((n) => isMoneyNodeType(n.type))).map((wf) => wf.id));
   const asRecord = (v: unknown) => (typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {});
 
   for (const op of ops) {
     const t = typeof op.type === "string" ? op.type : "";
     const id = typeof op.opId === "string" ? op.opId : t;
-    const targetBrick =
-      typeof op.brickId === "string"
-        ? op.brickId
-        : typeof op.targetId === "string"
-          ? op.targetId
-          : "";
+    const targetBrick = typeof op.brickId === "string" ? op.brickId : typeof op.targetId === "string" ? op.targetId : "";
     if (destructiveSet.has(t)) {
       destructiveOps.push(targetBrick ? `${t}:${targetBrick}` : `${t}:${id}`);
     }
@@ -1405,10 +1184,7 @@ function classifyOpsSafety(
     const workflowId = typeof op.workflowId === "string" ? op.workflowId : "";
     if (t === "add_node" && isMoneyNodeType(asRecord(op.node).type)) {
       moneyAffectingOps.push(`add_node:${String(asRecord(op.node).type)}`);
-    } else if (
-      t === "update_node" &&
-      (isMoneyNodeType(op.nodeType) || isMoneyNodeType(asRecord(op.patch).type) || isMoneyNodeType(asRecord(op.node).type))
-    ) {
+    } else if (t === "update_node" && (isMoneyNodeType(op.nodeType) || isMoneyNodeType(asRecord(op.patch).type) || isMoneyNodeType(asRecord(op.node).type))) {
       moneyAffectingOps.push(`update_node:${workflowId}`);
     } else if (t === "add_workflow" && ((asRecord(op.workflow).nodes as unknown[] | undefined) ?? []).some((n) => isMoneyNodeType(asRecord(n).type))) {
       moneyAffectingOps.push(`add_workflow:${String(asRecord(op.workflow).id)}`);
@@ -1474,11 +1250,7 @@ export function classifyApplyRisk(
   for (const op of ops) {
     if (op.type !== "set_metadata") continue;
     const metadata = op.metadata;
-    if (
-      typeof metadata === "object" &&
-      metadata !== null &&
-      Object.prototype.hasOwnProperty.call(metadata, "catalogVersion")
-    ) {
+    if (typeof metadata === "object" && metadata !== null && Object.prototype.hasOwnProperty.call(metadata, "catalogVersion")) {
       reasons.push("brick upgrade: set_metadata.catalogVersion");
     } else if (op.replace === true && options.currentCatalogVersion) {
       // replace drops every metadata key it does not name, so it removes the pinned catalogVersion: a brick upgrade.
@@ -1486,9 +1258,7 @@ export function classifyApplyRisk(
     }
   }
   if (options.liveProduction) {
-    reasons.push(
-      "production: the project has a live production deployment, so a direct edit would reach it",
-    );
+    reasons.push("production: the project has a live production deployment, so a direct edit would reach it");
   }
   return { risky: reasons.length > 0, reasons };
 }
@@ -1500,8 +1270,7 @@ export function proposalRequiredError(project: string, reasons: readonly string[
       code: "PROPOSAL_REQUIRED",
       message: `These ops cannot be applied directly by an agent (${reasons.join("; ")}). Nothing was changed.`,
       reasons: [...reasons],
-      remediation:
-        'Send the ops with mode "propose" (the default for MCP), then ask an editor to review and accept the proposal in Studio.',
+      remediation: 'Send the ops with mode "propose" (the default for MCP), then ask an editor to review and accept the proposal in Studio.',
     },
     project,
   };
@@ -1514,14 +1283,9 @@ async function proposalRequiredRefusal(
   ops: ReadonlyArray<Record<string, unknown>>,
 ): Promise<ToolResult | null> {
   if (context.reviewRequired === false) return null;
-  const liveProduction = context.hasLiveProduction
-    ? await context.hasLiveProduction(project)
-    : false;
-  const needsState = ops.some(
-    (op) => (op.type === "set_metadata" && op.replace === true) || WORKFLOW_EDIT_OPS.has(String(op.type)),
-  );
-  const currentState =
-    needsState && context.blueprint ? ((await context.blueprint.getProject(project))?.state ?? null) : null;
+  const liveProduction = context.hasLiveProduction ? await context.hasLiveProduction(project) : false;
+  const needsState = ops.some((op) => (op.type === "set_metadata" && op.replace === true) || WORKFLOW_EDIT_OPS.has(String(op.type)));
+  const currentState = needsState && context.blueprint ? ((await context.blueprint.getProject(project))?.state ?? null) : null;
   const risk = classifyApplyRisk(ops, {
     liveProduction,
     currentCatalogVersion: currentState?.metadata?.catalogVersion ?? null,
@@ -1567,13 +1331,7 @@ const applyOpsTool: Tool = {
   ) {
     // Reject any attempt to pass raw secret values inside ops
     for (const op of args.ops) {
-      if (
-        "secretValue" in op ||
-        "rawSecret" in op ||
-        "apiKey" in op ||
-        "cloudflareToken" in op ||
-        "password" in op
-      ) {
+      if ("secretValue" in op || "rawSecret" in op || "apiKey" in op || "cloudflareToken" in op || "password" in op) {
         return refuse(
           "RAW_SECRET_FORBIDDEN: MCP tools never accept raw secret values; use request_connection to obtain a Studio consent link",
           "nothing was changed",
@@ -1581,8 +1339,7 @@ const applyOpsTool: Tool = {
       }
     }
 
-    const effectiveBaseRevision =
-      args.expectedRev ?? args.baseRev ?? args.baseRevision;
+    const effectiveBaseRevision = args.expectedRev ?? args.baseRev ?? args.baseRevision;
     // AD-V8: an agent's edit is a proposal unless it asks to apply, and it may apply only preview-safe ops.
     const effectiveMode = args.mode ?? "propose";
     if (effectiveMode === "apply") {
@@ -1599,9 +1356,7 @@ const applyOpsTool: Tool = {
     }
     const applied = await blueprint.applyOps({
       project: args.project,
-      ...(effectiveBaseRevision !== undefined
-        ? { baseRevision: effectiveBaseRevision }
-        : {}),
+      ...(effectiveBaseRevision !== undefined ? { baseRevision: effectiveBaseRevision } : {}),
       author: author ?? DEFAULT_MCP_AUTHOR,
       ...(args.summary !== undefined ? { summary: args.summary } : {}),
       ops: args.ops,
@@ -1621,12 +1376,8 @@ const applyOpsTool: Tool = {
 
     const safety = classifyOpsSafety(args.ops);
     const targetState = applied.data.proposedState ?? applied.data.state;
-    const targetReadiness =
-      applied.data.proposedReadiness ?? applied.data.readiness;
-    const buildHash =
-      targetState.bricks.length > 0
-        ? computeBlueprintBuildHash(targetState)
-        : undefined;
+    const targetReadiness = applied.data.proposedReadiness ?? applied.data.readiness;
+    const buildHash = targetState.bricks.length > 0 ? computeBlueprintBuildHash(targetState) : undefined;
 
     return ok({
       project: args.project,
@@ -1634,9 +1385,7 @@ const applyOpsTool: Tool = {
       revision: applied.data.revision,
       mode: effectiveMode,
       ...(applied.data.status ? { status: applied.data.status } : {}),
-      ...(applied.data.proposalId
-        ? { proposalId: applied.data.proposalId }
-        : {}),
+      ...(applied.data.proposalId ? { proposalId: applied.data.proposalId } : {}),
       // A compact record: the full one (proposed state, readiness) is in Studio, where the proposal is reviewed.
       ...(applied.data.proposal
         ? {
@@ -1653,13 +1402,9 @@ const applyOpsTool: Tool = {
         : {}),
       // AD-V8: the reviewer sees the full semantic diff in Studio; the agent gets what changes, by name.
       ...(applied.data.diff ? { diffSummary: summarizeSemanticDiff(applied.data.diff) } : {}),
-      ...(applied.data.rebasedFrom !== undefined
-        ? { rebasedFrom: applied.data.rebasedFrom }
-        : {}),
+      ...(applied.data.rebasedFrom !== undefined ? { rebasedFrom: applied.data.rebasedFrom } : {}),
       semanticHash: applied.data.semanticHash,
-      ...(applied.data.proposedSemanticHash
-        ? { proposedSemanticHash: applied.data.proposedSemanticHash }
-        : {}),
+      ...(applied.data.proposedSemanticHash ? { proposedSemanticHash: applied.data.proposedSemanticHash } : {}),
       ...(buildHash ? { buildHash } : {}),
       enabled: targetState.bricks.map((b) => b.id),
       entities: targetState.entities.map((e) => e.name),
@@ -1708,22 +1453,14 @@ const requestConnection: Tool = {
     },
   ) {
     const effectiveProvider = args.provider ?? args.app ?? "custom";
-    const effectiveRef =
-      args.ref ??
-      args.suggestedRef ??
-      `sec_${effectiveProvider.toLowerCase().replace(/[^a-z0-9_]/g, "_")}_key`;
+    const effectiveRef = args.ref ?? args.suggestedRef ?? `sec_${effectiveProvider.toLowerCase().replace(/[^a-z0-9_]/g, "_")}_key`;
 
     const handleCheck = isValidSecretRefHandle(effectiveRef);
     if (!handleCheck.ok) {
-      return refuse(
-        `RAW_SECRET_FORBIDDEN: invalid secret reference handle "${effectiveRef}" (${handleCheck.reason}); never pass raw credentials over MCP`,
-      );
+      return refuse(`RAW_SECRET_FORBIDDEN: invalid secret reference handle "${effectiveRef}" (${handleCheck.reason}); never pass raw credentials over MCP`);
     }
 
-    const origin = (baseUrl ?? "https://studio.projectx.local").replace(
-      /\/$/,
-      "",
-    );
+    const origin = (baseUrl ?? "https://studio.projectx.local").replace(/\/$/, "");
     const params = new URLSearchParams({
       ref: effectiveRef,
       provider: effectiveProvider,
@@ -1740,19 +1477,16 @@ const requestConnection: Tool = {
     const connectUrl = `${origin}/projects/${encodeURIComponent(args.project)}/connections/new?app=${encodeURIComponent(effectiveProvider)}&ref=${encodeURIComponent(effectiveRef)}`;
 
     if (studioRequest) {
-      await studioRequest(
-        `/api/projects/${encodeURIComponent(args.project)}/connections/requests`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            app: effectiveProvider,
-            reason: args.reason ?? `Connect ${effectiveProvider} for workflow execution`,
-            scopes: args.scopes ?? [],
-            suggestedRef: effectiveRef,
-          }),
-        },
-      ).catch(() => {});
+      await studioRequest(`/api/projects/${encodeURIComponent(args.project)}/connections/requests`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          app: effectiveProvider,
+          reason: args.reason ?? `Connect ${effectiveProvider} for workflow execution`,
+          scopes: args.scopes ?? [],
+          suggestedRef: effectiveRef,
+        }),
+      }).catch(() => {});
     } else if (db) {
       try {
         await db
@@ -1807,10 +1541,7 @@ const listConnections: Tool = {
   },
   async run({ db, blueprint, studioRequest }, args: { project: string }) {
     if (studioRequest) {
-      const res = await studioRequest(
-        `/api/projects/${encodeURIComponent(args.project)}/secrets`,
-        { method: "GET" },
-      );
+      const res = await studioRequest(`/api/projects/${encodeURIComponent(args.project)}/secrets`, { method: "GET" });
       if (res.ok) {
         const body = (await res.json()) as {
           secrets?: Array<Record<string, unknown>>;
@@ -1823,10 +1554,7 @@ const listConnections: Tool = {
           label: String(s.label ?? s.ref ?? ""),
           scopes: Array.isArray(s.scopes) ? s.scopes.map(String) : [],
           status: String(s.status ?? "configured"),
-          connectionStatus: String(
-            s.connectionStatus ??
-              (s.status === "valid" ? "connected" : (s.status ?? "connected")),
-          ),
+          connectionStatus: String(s.connectionStatus ?? (s.status === "valid" ? "connected" : (s.status ?? "connected"))),
           expiresAt: s.expiresAt ? String(s.expiresAt) : null,
           lastCheckedAt: s.lastCheckedAt ? String(s.lastCheckedAt) : null,
           keyHint: s.keyHint ? String(s.keyHint) : null,
@@ -1946,10 +1674,7 @@ const listConnections: Tool = {
       // px_connections table not present in standalone DB
     }
 
-    const allRefs = new Set<string>([
-      ...secretRefs.map((sr) => sr.ref),
-      ...vaultByRef.keys(),
-    ]);
+    const allRefs = new Set<string>([...secretRefs.map((sr) => sr.ref), ...vaultByRef.keys()]);
 
     const connections = [...allRefs].sort().map((ref) => {
       const v = vaultByRef.get(ref);
@@ -2120,31 +1845,21 @@ const testWorkflow: Tool = {
         payload.runStatus ??
         payload.finalStatus ??
         (payload.status === "queued" && Array.isArray(payload.steps)
-          ? (payload.steps as Array<{ status?: string }>).some(
-              (s) => s.status === "failed",
-            )
+          ? (payload.steps as Array<{ status?: string }>).some((s) => s.status === "failed")
             ? "failed"
             : "succeeded"
           : payload.status) ??
         "succeeded";
       const storedForWf = await blueprint.getProject(args.project);
-      const wfDef = storedForWf?.state.workflows.find(
-        (w) => w.id === args.workflowId,
-      );
-      const rawSteps = (
-        Array.isArray(payload.steps)
-          ? payload.steps
-          : Array.isArray(payload.stepEvents)
-            ? payload.stepEvents
-            : []
-      ) as Array<Record<string, unknown>>;
+      const wfDef = storedForWf?.state.workflows.find((w) => w.id === args.workflowId);
+      const rawSteps = (Array.isArray(payload.steps) ? payload.steps : Array.isArray(payload.stepEvents) ? payload.stepEvents : []) as Array<
+        Record<string, unknown>
+      >;
       const stepIssues: ActionableIssue[] = [];
       for (const st of rawSteps) {
         if (st.status === "failed") {
           const stNodeId = String(st.nodeId ?? st.node_id ?? "n_unknown");
-          const stErr = String(
-            st.error ?? st.errorStack ?? st.error_stack ?? "Step execution failed",
-          );
+          const stErr = String(st.error ?? st.errorStack ?? st.error_stack ?? "Step execution failed");
           const nodeDef = wfDef?.nodes.find((n) => n.id === stNodeId);
           const actionable = buildRuntimeStepActionableIssue({
             workflowId: args.workflowId,
@@ -2171,23 +1886,15 @@ const testWorkflow: Tool = {
     }
     const wf = stored.state.workflows.find((w) => w.id === args.workflowId);
     if (!wf) {
-      return refuse(
-        `unknown workflow "${args.workflowId}" in project "${args.project}"`,
-      );
+      return refuse(`unknown workflow "${args.workflowId}" in project "${args.project}"`);
     }
     const registry = buildCatalogNodeRegistry(catalog);
     const { order } = validateGraph(wf.nodes, wf.edges, registry);
     const orderIndex = new Map(order.map((id, idx) => [id, idx]));
-    const orderedNodes = [...wf.nodes].sort(
-      (a, b) => (orderIndex.get(a.id) ?? 9999) - (orderIndex.get(b.id) ?? 9999),
-    );
-    const targetNodes = args.nodeId
-      ? orderedNodes.filter((n) => n.id === args.nodeId)
-      : orderedNodes;
+    const orderedNodes = [...wf.nodes].sort((a, b) => (orderIndex.get(a.id) ?? 9999) - (orderIndex.get(b.id) ?? 9999));
+    const targetNodes = args.nodeId ? orderedNodes.filter((n) => n.id === args.nodeId) : orderedNodes;
     if (args.nodeId && targetNodes.length === 0) {
-      return refuse(
-        `unknown node "${args.nodeId}" in workflow "${args.workflowId}"`,
-      );
+      return refuse(`unknown node "${args.nodeId}" in workflow "${args.workflowId}"`);
     }
 
     // Story 1.4: a standalone run records the verified workspace and the token's project; never a default workspace.
@@ -2220,8 +1927,7 @@ const testWorkflow: Tool = {
     let runStatus: "succeeded" | "failed" = "succeeded";
     let runError: string | null = null;
 
-    const pillRe =
-      /\{\{\s*steps\.([a-zA-Z0-9_-]+)\.output\.([a-zA-Z0-9_.-]+)\s*\}\}/g;
+    const pillRe = /\{\{\s*steps\.([a-zA-Z0-9_-]+)\.output\.([a-zA-Z0-9_.-]+)\s*\}\}/g;
 
     for (const node of targetNodes) {
       const stepId = `step_${runId}_${node.id}`;
@@ -2243,13 +1949,7 @@ const testWorkflow: Tool = {
           const rootField = fieldPath.split(".")[0]!;
           const srcOut = stepOutputs[srcNode];
           if (!srcOut) continue;
-          const availableKeys = Object.keys(srcOut).filter(
-            (k) =>
-              k !== "rehearsed" &&
-              k !== "nodeId" &&
-              k !== "nodeType" &&
-              k !== "received",
-          );
+          const availableKeys = Object.keys(srcOut).filter((k) => k !== "rehearsed" && k !== "nodeId" && k !== "nodeType" && k !== "received");
           if (availableKeys.length > 0 && !(rootField in srcOut)) {
             missingInputError = `RUN_STEP_MISSING_INPUT: Step "${node.id}" field "${dataKey}" mapped to "{{steps.${srcNode}.output.${fieldPath}}}", but field "${fieldPath}" does not exist on upstream node "${srcNode}" output (available fields: ${availableKeys.join(", ")})`;
             missingFieldInfo = {
@@ -2341,9 +2041,7 @@ const testWorkflow: Tool = {
       }
 
       const stepOut = scrubMcpSecrets({
-        ...(typeof safeInput === "object" && safeInput !== null
-          ? (safeInput as Record<string, unknown>)
-          : {}),
+        ...(typeof safeInput === "object" && safeInput !== null ? (safeInput as Record<string, unknown>) : {}),
         nodeId: node.id,
         nodeType: node.type,
         rehearsed: true,
@@ -2366,19 +2064,7 @@ const testWorkflow: Tool = {
             step_id, run_id, workflow_id, blueprint_rev, node_id, node_type, attempt, status, started_at, finished_at, duration_ms, input_json, output_json, project_id
           ) VALUES (?, ?, ?, ?, ?, ?, 1, 'succeeded', ?, ?, 2, ?, ?, ?)`,
         )
-        .bind(
-          stepId,
-          runId,
-          wf.id,
-          stored.revision,
-          node.id,
-          node.type,
-          now,
-          now,
-          JSON.stringify(safeInput),
-          JSON.stringify(stepOut),
-          runProject,
-        )
+        .bind(stepId, runId, wf.id, stored.revision, node.id, node.type, now, now, JSON.stringify(safeInput), JSON.stringify(stepOut), runProject)
         .run();
     }
 
@@ -2394,9 +2080,7 @@ const testWorkflow: Tool = {
           `log_${runId}`,
           now,
           `Executed workflow ${wf.id} (${steps.length} steps)`,
-          lastStep.nodeType.includes(".")
-            ? lastStep.nodeType.split(".")[0]!
-            : null,
+          lastStep.nodeType.includes(".") ? lastStep.nodeType.split(".")[0]! : null,
           wf.id,
           runId,
           lastStep.nodeId,
@@ -2450,9 +2134,7 @@ const listRuns: Tool = {
     project: projectName,
     env: z.enum(["preview", "production"]).optional(),
     workflowId: z.string().optional(),
-    status: z
-      .enum(["queued", "running", "succeeded", "failed", "cancelled"])
-      .optional(),
+    status: z.enum(["queued", "running", "succeeded", "failed", "cancelled"]).optional(),
     since: z.string().optional(),
     limit: z.number().int().min(1).max(10).optional(),
     cursor: z.string().optional(),
@@ -2489,10 +2171,7 @@ const listRuns: Tool = {
       if (args.since) qs.set("from", args.since);
       if (args.cursor) qs.set("cursor", args.cursor);
 
-      const res = await studioRequest(
-        `/api/projects/${encodeURIComponent(args.project)}/runs?${qs.toString()}`,
-        { method: "GET" },
-      );
+      const res = await studioRequest(`/api/projects/${encodeURIComponent(args.project)}/runs?${qs.toString()}`, { method: "GET" });
       if (res.ok) {
         const body = (await res.json()) as {
           runs?: Array<Record<string, unknown>>;
@@ -2503,10 +2182,7 @@ const listRuns: Tool = {
           workflowId: String(r.workflowId ?? r.workflow_id ?? ""),
           blueprintRev: Number(r.blueprintRev ?? r.blueprint_rev ?? 1),
           status: String(r.status ?? ""),
-          durationMs:
-            r.durationMs !== undefined && r.durationMs !== null
-              ? Number(r.durationMs)
-              : null,
+          durationMs: r.durationMs !== undefined && r.durationMs !== null ? Number(r.durationMs) : null,
         }));
         return ok({
           project: args.project,
@@ -2558,8 +2234,7 @@ const listRuns: Tool = {
     ).results;
 
     const slice = (rows ?? []).slice(0, limit);
-    const nextCursor =
-      (rows ?? []).length > limit ? String(offset + limit) : null;
+    const nextCursor = (rows ?? []).length > limit ? String(offset + limit) : null;
 
     return ok({
       project: args.project,
@@ -2611,27 +2286,13 @@ const getRunTrace: Tool = {
         const body = (await res.json()) as Record<string, unknown>;
         const runObj = (body.run as Record<string, unknown> | undefined) ?? {};
         const wfId = String(runObj.workflowId ?? runObj.workflow_id ?? "wf_1");
-        const wfDef = storedForTrace?.state.workflows.find(
-          (w) => w.id === wfId,
-        );
-        const rawSteps = (
-          Array.isArray(body.stepEvents)
-            ? body.stepEvents
-            : Array.isArray(body.steps)
-              ? body.steps
-              : []
-        ) as Array<Record<string, unknown>>;
+        const wfDef = storedForTrace?.state.workflows.find((w) => w.id === wfId);
+        const rawSteps = (Array.isArray(body.stepEvents) ? body.stepEvents : Array.isArray(body.steps) ? body.steps : []) as Array<Record<string, unknown>>;
         const traceIssues: ActionableIssue[] = [];
         for (const st of rawSteps) {
           if (st.status === "failed") {
             const stNodeId = String(st.nodeId ?? st.node_id ?? "n_unknown");
-            const stErr = String(
-              st.errorStack ??
-                st.error_stack ??
-                st.error ??
-                runObj.errorStack ??
-                "Step execution failed",
-            );
+            const stErr = String(st.errorStack ?? st.error_stack ?? st.error ?? runObj.errorStack ?? "Step execution failed");
             const nodeDef = wfDef?.nodes.find((n) => n.id === stNodeId);
             const actionable = buildRuntimeStepActionableIssue({
               workflowId: wfId,
@@ -2651,9 +2312,7 @@ const getRunTrace: Tool = {
         );
       }
       if (res.status === 404) {
-        return refuse(
-          `run "${args.runId}" not found in project "${args.project}"`,
-        );
+        return refuse(`run "${args.runId}" not found in project "${args.project}"`);
       }
       return studioErrorResult(res);
     }
@@ -2683,9 +2342,7 @@ const getRunTrace: Tool = {
       }>();
 
     if (!runRow) {
-      return refuse(
-        `run "${args.runId}" not found in project "${args.project}"`,
-      );
+      return refuse(`run "${args.runId}" not found in project "${args.project}"`);
     }
 
     const stepRows = (
@@ -2722,9 +2379,7 @@ const getRunTrace: Tool = {
       }
     };
 
-    const wfDef = storedForTrace?.state.workflows.find(
-      (w) => w.id === runRow.workflow_id,
-    );
+    const wfDef = storedForTrace?.state.workflows.find((w) => w.id === runRow.workflow_id);
     const traceIssues: ActionableIssue[] = [];
     const formattedSteps = (stepRows ?? []).map((s) => {
       const parsedError = parseSafe(s.error_json);
@@ -2732,9 +2387,7 @@ const getRunTrace: Tool = {
       if (s.status === "failed") {
         const errMsg =
           s.error_stack ??
-          (typeof parsedError === "object" &&
-          parsedError !== null &&
-          "message" in parsedError
+          (typeof parsedError === "object" && parsedError !== null && "message" in parsedError
             ? String((parsedError as { message?: unknown }).message)
             : String(parsedError ?? "Step execution failed"));
         const nodeDef = wfDef?.nodes.find((n) => n.id === s.node_id);
@@ -2773,8 +2426,7 @@ const getRunTrace: Tool = {
         status: runRow.status,
         startedAt: runRow.started_at,
         finishedAt: runRow.finished_at,
-        durationMs:
-          runRow.duration_ms !== null ? Number(runRow.duration_ms) : null,
+        durationMs: runRow.duration_ms !== null ? Number(runRow.duration_ms) : null,
         input: parseSafe(runRow.input_json),
         output: parseSafe(runRow.output_json),
         error: parseSafe(runRow.error_json),
@@ -2837,10 +2489,9 @@ const queryLogs: Tool = {
       if (args.q) qs.set("q", args.q);
       if (args.cursor) qs.set("cursor", args.cursor);
 
-      const res = await studioRequest(
-        `/api/projects/${encodeURIComponent(args.project)}/environments/${encodeURIComponent(env)}/logs?${qs.toString()}`,
-        { method: "GET" },
-      );
+      const res = await studioRequest(`/api/projects/${encodeURIComponent(args.project)}/environments/${encodeURIComponent(env)}/logs?${qs.toString()}`, {
+        method: "GET",
+      });
       if (res.ok) {
         const body = (await res.json()) as {
           logs?: Array<Record<string, unknown>>;
@@ -2921,8 +2572,7 @@ const queryLogs: Tool = {
     ).results;
 
     const slice = (rows ?? []).slice(0, limit);
-    const nextCursor =
-      (rows ?? []).length > limit ? String(offset + limit) : null;
+    const nextCursor = (rows ?? []).length > limit ? String(offset + limit) : null;
 
     const items = slice.map((r) =>
       scrubMcpSecrets({
@@ -2950,10 +2600,7 @@ const queryLogs: Tool = {
 export const NO_DEPLOY_TARGET_REMEDIATION =
   "Connect a Cloudflare target first: in Studio, connect a Cloudflare account (verify and save an API token) for this project's org, then retry deploy_apply.";
 
-export function noDeployTargetIssue(
-  project: string,
-  env: string,
-): ActionableIssue {
+export function noDeployTargetIssue(project: string, env: string): ActionableIssue {
   return {
     code: "NO_TARGET",
     path: "/deploy/target",
@@ -2990,8 +2637,7 @@ function studioConnectionsUrl(baseUrl: string | undefined, project: string): str
 
 const deployPlan: Tool = {
   name: "deploy_plan",
-  description:
-    "Generate deployment diff plan. Generated secrets are created on approval (preview only); optional secrets never block.",
+  description: "Generate deployment diff plan. Generated secrets are created on approval (preview only); optional secrets never block.",
   input: z.strictObject({
     project: projectName,
     env: z.enum(["preview", "production"]).optional(),
@@ -3016,31 +2662,19 @@ const deployPlan: Tool = {
     const targetEnv = args.env ?? args.target ?? "preview";
     const connectionsUrl = studioConnectionsUrl(baseUrl, args.project);
     if (studioRequest) {
-      const res = await studioRequest(
-        `/api/projects/${encodeURIComponent(args.project)}/environments/${encodeURIComponent(targetEnv)}/plan`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(
-            args.rev !== undefined ? { rev: args.rev } : {},
-          ),
-        },
-      );
+      const res = await studioRequest(`/api/projects/${encodeURIComponent(args.project)}/environments/${encodeURIComponent(targetEnv)}/plan`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(args.rev !== undefined ? { rev: args.rev } : {}),
+      });
       const body = (await res.json()) as Record<string, unknown>;
       const errCode = (body.error as { code?: string } | undefined)?.code;
       if (res.ok) {
-        const planId =
-          typeof body.planId === "string"
-            ? body.planId
-            : `plan_${args.project}_${targetEnv}_r${String(body.revision ?? args.rev ?? 1)}`;
+        const planId = typeof body.planId === "string" ? body.planId : `plan_${args.project}_${targetEnv}_r${String(body.revision ?? args.rev ?? 1)}`;
         const rawBlockers = Array.isArray(body.blockers) ? body.blockers : [];
         const actionableBlockers = rawBlockers.map((b) => {
           const msg =
-            typeof b === "string"
-              ? b
-              : typeof b === "object" && b !== null && "message" in b
-                ? String((b as { message?: unknown }).message)
-                : String(b);
+            typeof b === "string" ? b : typeof b === "object" && b !== null && "message" in b ? String((b as { message?: unknown }).message) : String(b);
           return buildDeployBlockerActionableIssue(msg, { connectionsUrl });
         });
         // Story 1.19: names only, never a value: which secrets the approved deploy generates and which are optional.
@@ -3062,17 +2696,14 @@ const deployPlan: Tool = {
           ...(secretNamesWith("will_generate").length > 0 ? { willGenerateSecrets: secretNamesWith("will_generate") } : {}),
           ...(secretNamesWith("optional_missing").length > 0 ? { optionalSecretsNotConfigured: secretNamesWith("optional_missing") } : {}),
           destructiveWarnings:
-            typeof body.d1 === "object" &&
-            body.d1 !== null &&
-            Array.isArray((body.d1 as { destructiveWarnings?: unknown[] }).destructiveWarnings)
+            typeof body.d1 === "object" && body.d1 !== null && Array.isArray((body.d1 as { destructiveWarnings?: unknown[] }).destructiveWarnings)
               ? (body.d1 as { destructiveWarnings: unknown[] }).destructiveWarnings
               : [],
         });
       }
       if (errCode !== "DEPLOY_TARGET_NOT_CONNECTED") {
         const errMsg =
-          typeof (body.error as { message?: unknown } | undefined)?.message ===
-          "string"
+          typeof (body.error as { message?: unknown } | undefined)?.message === "string"
             ? String((body.error as { message: string }).message)
             : "Deploy plan blocked";
         const actionable = buildDeployBlockerActionableIssue(errMsg, { connectionsUrl });
@@ -3091,9 +2722,7 @@ const deployPlan: Tool = {
 
     const stored = await blueprint.getProject(args.project, args.rev);
     if (!stored || stored.state.bricks.length === 0) {
-      return refuse(
-        `project "${args.project}" has no enabled bricks to plan deployment`,
-      );
+      return refuse(`project "${args.project}" has no enabled bricks to plan deployment`);
     }
     const assembled = assemble(toAssemblerBlueprint(stored.state), catalog);
     if (!assembled.ok) {
@@ -3101,17 +2730,11 @@ const deployPlan: Tool = {
     }
     const hashes = await computeArtifactHashes(
       assembled.files,
-      stored.state.metadata?.catalogVersion
-        ? { catalogVersion: stored.state.metadata.catalogVersion }
-        : undefined,
+      stored.state.metadata?.catalogVersion ? { catalogVersion: stored.state.metadata.catalogVersion } : undefined,
     );
     const blockers: ActionableIssue[] =
       targetEnv === "production" && stored.state.identity === "stub"
-        ? [
-            buildDeployBlockerActionableIssue(
-              "Production deployments cannot use stub identity; enable core-auth and set identity to core-auth.",
-            ),
-          ]
+        ? [buildDeployBlockerActionableIssue("Production deployments cannot use stub identity; enable core-auth and set identity to core-auth.")]
         : [];
     const planId = `plan_${args.project}_${targetEnv}_r${stored.revision}_${hashes.buildHash.slice(0, 8)}`;
 
@@ -3167,45 +2790,28 @@ const deployApply: Tool = {
     },
   ) {
     const targetEnv = args.env ?? args.target ?? "preview";
-    const effectivePlanId =
-      args.planId ?? `plan_${args.project}_${targetEnv}`;
+    const effectivePlanId = args.planId ?? `plan_${args.project}_${targetEnv}`;
     if (studioRequest) {
-      const res = await studioRequest(
-        `/api/projects/${encodeURIComponent(args.project)}/environments/${encodeURIComponent(targetEnv)}/deploy`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            planId: effectivePlanId,
-            ...(args.rev !== undefined ? { rev: args.rev } : {}),
-            ...(args.confirmDestructive !== undefined
-              ? { confirmDestructive: args.confirmDestructive }
-              : {}),
-            ...(args.confirmedMigrationNames !== undefined
-              ? { confirmedMigrationNames: args.confirmedMigrationNames }
-              : {}),
-            ...(args.approvalId !== undefined ? { approvalId: args.approvalId } : {}),
-          }),
-        },
-      );
+      const res = await studioRequest(`/api/projects/${encodeURIComponent(args.project)}/environments/${encodeURIComponent(targetEnv)}/deploy`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          planId: effectivePlanId,
+          ...(args.rev !== undefined ? { rev: args.rev } : {}),
+          ...(args.confirmDestructive !== undefined ? { confirmDestructive: args.confirmDestructive } : {}),
+          ...(args.confirmedMigrationNames !== undefined ? { confirmedMigrationNames: args.confirmedMigrationNames } : {}),
+          ...(args.approvalId !== undefined ? { approvalId: args.approvalId } : {}),
+        }),
+      });
       const body = (await res.json()) as Record<string, unknown>;
       const errCode = (body.error as { code?: string } | undefined)?.code;
       if (res.ok) {
-        const envObj =
-          typeof body.environment === "object" && body.environment !== null
-            ? (body.environment as Record<string, unknown>)
-            : {};
+        const envObj = typeof body.environment === "object" && body.environment !== null ? (body.environment as Record<string, unknown>) : {};
         // Story 0.9 (R-F): report only what studio returned. A missing status or deployment id is an
         // error, never a default "deployed" or an invented id.
-        const deploymentId =
-          body.deployId ?? body.deploymentId ?? envObj.lastDeploymentId;
+        const deploymentId = body.deployId ?? body.deploymentId ?? envObj.lastDeploymentId;
         const status = body.status ?? envObj.status;
-        if (
-          typeof deploymentId !== "string" ||
-          deploymentId.length === 0 ||
-          typeof status !== "string" ||
-          status.length === 0
-        ) {
+        if (typeof deploymentId !== "string" || deploymentId.length === 0 || typeof status !== "string" || status.length === 0) {
           return {
             isError: true,
             text: JSON.stringify({
@@ -3237,7 +2843,9 @@ const deployApply: Tool = {
             body.workerUrl ??
             (typeof body.deployment === "object" && body.deployment !== null ? (body.deployment as { url?: unknown }).url : undefined) ??
             envObj.workerUrl ??
-            (typeof envObj.deployedState === "object" && envObj.deployedState !== null ? (envObj.deployedState as { workerUrl?: unknown }).workerUrl : undefined) ??
+            (typeof envObj.deployedState === "object" && envObj.deployedState !== null
+              ? (envObj.deployedState as { workerUrl?: unknown }).workerUrl
+              : undefined) ??
             null,
         });
       }
@@ -3263,9 +2871,7 @@ const deployApply: Tool = {
 
     const stored = await blueprint.getProject(args.project, args.rev);
     if (!stored || stored.state.bricks.length === 0) {
-      return refuse(
-        `project "${args.project}" has no enabled bricks to deploy`,
-      );
+      return refuse(`project "${args.project}" has no enabled bricks to deploy`);
     }
     if (targetEnv === "production" && stored.state.identity === "stub") {
       const actionable = buildDeployBlockerActionableIssue(
@@ -3293,8 +2899,7 @@ const deployApply: Tool = {
 
 export const revertToRevisionTool: Tool = {
   name: "revert_to_revision",
-  description:
-    "Revert a project to an earlier revision by applying stored inverse operations.",
+  description: "Revert a project to an earlier revision by applying stored inverse operations.",
   input: z.object({
     project: projectName,
     targetRevision: z.number().int().min(0),
@@ -3319,9 +2924,7 @@ export const revertToRevisionTool: Tool = {
     const reverted = await blueprint.revertToRevision({
       project: args.project,
       targetRevision: args.targetRevision,
-      ...(args.baseRevision !== undefined
-        ? { baseRevision: args.baseRevision }
-        : {}),
+      ...(args.baseRevision !== undefined ? { baseRevision: args.baseRevision } : {}),
       author: author ?? DEFAULT_MCP_AUTHOR,
     });
 
@@ -3345,8 +2948,7 @@ export const revertToRevisionTool: Tool = {
 
 const buildProject: Tool = {
   name: "build_project",
-  description:
-    "Assemble and store project files; returns count, bytes and hash.",
+  description: "Assemble and store project files; returns count, bytes and hash.",
   input: z.object({ project: projectName }),
   readOnly: false,
   annotations: {
@@ -3356,14 +2958,18 @@ const buildProject: Tool = {
   },
   async run({ db, catalog, blueprint }, args: { project: string }) {
     const stored = await blueprint.getProject(args.project);
-    if (!stored)
-      return refuse(`unknown project "${args.project}": enable a brick first`);
-    if (stored.state.bricks.length === 0)
-      return refuse("no brick is enabled yet", "nothing was built");
+    if (!stored) return refuse(`unknown project "${args.project}": enable a brick first`);
+    if (stored.state.bricks.length === 0) return refuse("no brick is enabled yet", "nothing was built");
     const assembled = assemble(toAssemblerBlueprint(stored.state), catalog);
     if (!assembled.ok) return refuse(...assembled.errors, "nothing was built");
     const summary = await storeBuild(db, args.project, assembled.files);
-    return ok({ project: args.project, ...summary, bricks: assembled.order, entities: stored.state.entities.map((e) => (e as { name: string }).name), revision: stored.revision });
+    return ok({
+      project: args.project,
+      ...summary,
+      bricks: assembled.order,
+      entities: stored.state.entities.map((e) => (e as { name: string }).name),
+      revision: stored.revision,
+    });
   },
 };
 
@@ -3392,13 +2998,7 @@ export const TOOLS: ReadonlyArray<Tool> = [
 /**
  * Backward-compatible legacy macro tools preserved for CP0/CP1 harnesses (e.g. poc:h9).
  */
-export const LEGACY_TOOLS: ReadonlyArray<Tool> = [
-  listBricks,
-  enableBrick,
-  defineEntity,
-  buildProject,
-  revertToRevisionTool,
-];
+export const LEGACY_TOOLS: ReadonlyArray<Tool> = [listBricks, enableBrick, defineEntity, buildProject, revertToRevisionTool];
 
 export const ALL_TOOLS: ReadonlyArray<Tool> = [...TOOLS, ...LEGACY_TOOLS];
 
@@ -3440,10 +3040,8 @@ const ALIAS_SCHEMA_PROPS = new Set([
 ]);
 
 function trim(node: unknown): Record<string, unknown> {
-  if (Array.isArray(node))
-    return node.map(trim) as unknown as Record<string, unknown>;
-  if (typeof node !== "object" || node === null)
-    return node as Record<string, unknown>;
+  if (Array.isArray(node)) return node.map(trim) as unknown as Record<string, unknown>;
+  if (typeof node !== "object" || node === null) return node as Record<string, unknown>;
   const obj = node as Record<string, unknown>;
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
@@ -3465,9 +3063,7 @@ function trim(node: unknown): Record<string, unknown> {
     if (key === "type" && "const" in obj) continue;
     if (key === "properties" && typeof value === "object" && value !== null) {
       const props: Record<string, unknown> = {};
-      for (const [pKey, pVal] of Object.entries(
-        value as Record<string, unknown>,
-      )) {
+      for (const [pKey, pVal] of Object.entries(value as Record<string, unknown>)) {
         if (ALIAS_SCHEMA_PROPS.has(pKey)) continue;
         props[pKey] = trim(pVal);
       }
@@ -3480,17 +3076,12 @@ function trim(node: unknown): Record<string, unknown> {
 }
 
 /** Checks the arguments against the tool's schema. A failure is a tool error the model can read and correct, not a protocol error. */
-export function checkArguments(
-  tool: Tool,
-  args: unknown,
-): { ok: true; value: never } | { ok: false; message: string } {
+export function checkArguments(tool: Tool, args: unknown): { ok: true; value: never } | { ok: false; message: string } {
   const parsed = tool.input.safeParse(args ?? {});
   if (parsed.success) return { ok: true, value: parsed.data as never };
   return {
     ok: false,
-    message: parsed.error.issues
-      .flatMap((issue) => readableIssue(issue, []))
-      .join("; "),
+    message: parsed.error.issues.flatMap((issue) => readableIssue(issue, [])).join("; "),
   };
 }
 
@@ -3505,15 +3096,9 @@ interface Issue {
 function readableIssue(issue: Issue, base: PropertyKey[]): string[] {
   const path = [...base, ...issue.path];
   if (issue.code === "invalid_union" && issue.errors) {
-    const closest = issue.errors.find(
-      (branch) =>
-        branch.length > 0 &&
-        !branch.every((i) => i.code === "invalid_type" && i.path.length === 0),
-    );
+    const closest = issue.errors.find((branch) => branch.length > 0 && !branch.every((i) => i.code === "invalid_type" && i.path.length === 0));
     if (closest) return closest.flatMap((inner) => readableIssue(inner, path));
-    return [
-      `${path.join(".")}: is not one of the allowed forms (see the tool's schema)`,
-    ];
+    return [`${path.join(".")}: is not one of the allowed forms (see the tool's schema)`];
   }
   const hint = issue.code === "unrecognized_keys" ? relationKeyHint(issue.keys) : null;
   return [`${path.length > 0 ? path.join(".") + ": " : ""}${issue.message}${hint ? ` (${hint})` : ""}`];

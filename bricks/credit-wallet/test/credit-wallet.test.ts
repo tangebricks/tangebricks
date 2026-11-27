@@ -90,7 +90,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
         amountMilli: 15,
         reason: `Concurrent deduction ${i}`,
         idempotencyKey: `concurrent_deduct_${i}`,
-      })
+      }),
     );
 
     const results = await Promise.all(deductionPromises);
@@ -143,10 +143,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     expect(conf2.credited).toBe(false);
 
     // Third confirmation concurrently
-    const [c3, c4] = await Promise.all([
-      wallet.confirmOrder(order.orderId),
-      wallet.confirmOrder(order.orderId),
-    ]);
+    const [c3, c4] = await Promise.all([wallet.confirmOrder(order.orderId), wallet.confirmOrder(order.orderId)]);
     expect(c3.credited).toBe(false);
     expect(c4.credited).toBe(false);
 
@@ -155,10 +152,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     expect(finalBal).toBe(50_000);
 
     // Ledger must contain exactly 1 topup row
-    const ledgerRows = await db
-      .prepare("SELECT * FROM credit_ledger WHERE workspace_id = ? AND type = 'topup'")
-      .bind(WS_TEST)
-      .all<any>();
+    const ledgerRows = await db.prepare("SELECT * FROM credit_ledger WHERE workspace_id = ? AND type = 'topup'").bind(WS_TEST).all<any>();
     expect(ledgerRows.results).toHaveLength(1);
     expect(ledgerRows.results![0].amount_milli).toBe(50_000);
   });
@@ -217,7 +211,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
         userId: "usr_alice",
         amountMilli: 10.5,
         reason: "Fractional",
-      })
+      }),
     ).rejects.toThrow(RangeError);
 
     await expect(
@@ -226,7 +220,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
         userId: "usr_alice",
         amountMilli: -5,
         reason: "Negative amount",
-      })
+      }),
     ).rejects.toThrow(RangeError);
 
     await expect(
@@ -235,16 +229,12 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
         userId: "usr_alice",
         amountMilli: 0,
         reason: "Zero amount",
-      })
+      }),
     ).rejects.toThrow(RangeError);
 
-    await expect(
-      wallet.openWallet("ws_bad", -10)
-    ).rejects.toThrow(RangeError);
+    await expect(wallet.openWallet("ws_bad", -10)).rejects.toThrow(RangeError);
 
-    await expect(
-      wallet.openWallet("ws_bad_frac", 12.34)
-    ).rejects.toThrow(RangeError);
+    await expect(wallet.openWallet("ws_bad_frac", 12.34)).rejects.toThrow(RangeError);
 
     // Balance untouched
     expect(await wallet.getBalanceMilli(WS_TEST)).toBe(50);
@@ -347,10 +337,7 @@ describe("Credit Wallet Brick Behaviour Suite", () => {
     expect(await wallet.getBalanceMilli(WS_OTHER)).toBe(10);
 
     // Ledger for WS_TEST has 0 rows
-    const testLedger = await db
-      .prepare("SELECT count(*) as count FROM credit_ledger WHERE workspace_id = ?")
-      .bind(WS_TEST)
-      .first<{ count: number }>();
+    const testLedger = await db.prepare("SELECT count(*) as count FROM credit_ledger WHERE workspace_id = ?").bind(WS_TEST).first<{ count: number }>();
     expect(testLedger?.count).toBe(0);
   });
 });

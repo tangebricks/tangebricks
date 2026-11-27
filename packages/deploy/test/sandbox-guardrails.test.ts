@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  assemble,
-  computeBuildHash,
-  computeCodeHash,
-  computeGraphHash,
-} from "@poc/assembler";
+import { assemble, computeBuildHash, computeCodeHash, computeGraphHash } from "@poc/assembler";
 import { catalog } from "@poc/assembler/catalog";
 import aiCreditsSaasJson from "../../../presets/ai-credits-saas.blueprint.json";
 import {
@@ -76,24 +71,14 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
     const dispatcher = createSandboxDispatcher(platform);
 
     // Seed 9,999 requests and run the 10,000th request via dispatcher
-    platform.setDailyRequestCount(
-      "sbx-quota-10k",
-      SANDBOX_DAILY_REQUEST_LIMIT - 1,
-      clockMs,
-    );
+    platform.setDailyRequestCount("sbx-quota-10k", SANDBOX_DAILY_REQUEST_LIMIT - 1, clockMs);
 
-    const req10000 = await dispatcher.fetch(
-      new Request("https://sbx-quota-10k.sandbox.projectx.dev/health"),
-    );
+    const req10000 = await dispatcher.fetch(new Request("https://sbx-quota-10k.sandbox.projectx.dev/health"));
     expect(req10000.status).toBe(200);
-    expect(platform.getDailyRequestCount("sbx-quota-10k", clockMs)).toBe(
-      SANDBOX_DAILY_REQUEST_LIMIT,
-    );
+    expect(platform.getDailyRequestCount("sbx-quota-10k", clockMs)).toBe(SANDBOX_DAILY_REQUEST_LIMIT);
 
     // 10,001st request must fail with 429 SANDBOX_QUOTA_EXCEEDED + upgrade CTA
-    const req10001 = await dispatcher.fetch(
-      new Request("https://sbx-quota-10k.sandbox.projectx.dev/health"),
-    );
+    const req10001 = await dispatcher.fetch(new Request("https://sbx-quota-10k.sandbox.projectx.dev/health"));
     expect(req10001.status).toBe(429);
     const body10001 = (await req10001.json()) as {
       error: {
@@ -109,9 +94,7 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
 
     // Advancing clock to next UTC day resets the counter
     clockMs = Date.parse("2026-11-02T00:01:00.000Z");
-    const nextDayRes = await dispatcher.fetch(
-      new Request("https://sbx-quota-10k.sandbox.projectx.dev/health"),
-    );
+    const nextDayRes = await dispatcher.fetch(new Request("https://sbx-quota-10k.sandbox.projectx.dev/health"));
     expect(nextDayRes.status).toBe(200);
   });
 
@@ -132,15 +115,10 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
     if (!dbRecord) return;
 
     const guardedD1 = dbRecord.d1Binding;
-    await guardedD1
-      .prepare("CREATE TABLE IF NOT EXISTS sample_items (id TEXT PRIMARY KEY, name TEXT)")
-      .run();
+    await guardedD1.prepare("CREATE TABLE IF NOT EXISTS sample_items (id TEXT PRIMARY KEY, name TEXT)").run();
 
     // Insert 1 initial row before cap is reached
-    await guardedD1
-      .prepare("INSERT INTO sample_items (id, name) VALUES (?, ?)")
-      .bind("row_1", "Alpha")
-      .run();
+    await guardedD1.prepare("INSERT INTO sample_items (id, name) VALUES (?, ?)").bind("row_1", "Alpha").run();
     const initialStats = await guardedD1.getStorageStats();
     expect(initialStats.totalRows).toBeGreaterThanOrEqual(1);
 
@@ -148,39 +126,24 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
     guardedD1.setSimulatedStorageStats({ totalRows: SANDBOX_D1_MAX_ROWS });
 
     // INSERT must fail with 403 SANDBOX_STORAGE_CAP_EXCEEDED
-    await expect(
-      guardedD1
-        .prepare("INSERT INTO sample_items (id, name) VALUES (?, ?)")
-        .bind("row_overflow", "Blocked")
-        .run(),
-    ).rejects.toMatchObject({
+    await expect(guardedD1.prepare("INSERT INTO sample_items (id, name) VALUES (?, ?)").bind("row_overflow", "Blocked").run()).rejects.toMatchObject({
       code: "SANDBOX_STORAGE_CAP_EXCEEDED",
       status: 403,
     });
 
     // UPDATE must also fail with 403 SANDBOX_STORAGE_CAP_EXCEEDED
-    await expect(
-      guardedD1
-        .prepare("UPDATE sample_items SET name = ? WHERE id = ?")
-        .bind("Updated", "row_1")
-        .run(),
-    ).rejects.toMatchObject({
+    await expect(guardedD1.prepare("UPDATE sample_items SET name = ? WHERE id = ?").bind("Updated", "row_1").run()).rejects.toMatchObject({
       code: "SANDBOX_STORAGE_CAP_EXCEEDED",
       status: 403,
     });
 
     // SELECT succeeds even when storage cap is reached
-    const selectRes = await guardedD1
-      .prepare("SELECT * FROM sample_items")
-      .all();
+    const selectRes = await guardedD1.prepare("SELECT * FROM sample_items").all();
     expect(selectRes.success).toBe(true);
     expect(selectRes.results.length).toBeGreaterThanOrEqual(1);
 
     // DELETE succeeds so user can free space
-    const deleteRes = await guardedD1
-      .prepare("DELETE FROM sample_items WHERE id = ?")
-      .bind("row_1")
-      .run();
+    const deleteRes = await guardedD1.prepare("DELETE FROM sample_items WHERE id = ?").bind("row_1").run();
     expect(deleteRes.success).toBe(true);
 
     // Also verify 25 MB byte cap blocks INSERT/UPDATE via dispatcher HTTP response (403 SANDBOX_STORAGE_CAP_EXCEEDED)
@@ -190,14 +153,11 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
     });
     const dispatcher = createSandboxDispatcher(platform);
     const writeRes = await dispatcher.fetch(
-      new Request(
-        "https://sbx-storage-cap.sandbox.projectx.dev/data/sample_items",
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ id: "row_bytes_overflow", name: "TooBig" }),
-        },
-      ),
+      new Request("https://sbx-storage-cap.sandbox.projectx.dev/data/sample_items", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: "row_bytes_overflow", name: "TooBig" }),
+      }),
     );
     expect(writeRes.status).toBe(403);
     const writeErrBody = (await writeRes.json()) as {
@@ -208,11 +168,7 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
     expect(writeErrBody.error.maxBytes).toBe(25 * 1024 * 1024);
 
     // GET (SELECT) and DELETE via dispatcher still succeed at 25 MB cap
-    const readRes = await dispatcher.fetch(
-      new Request(
-        "https://sbx-storage-cap.sandbox.projectx.dev/data/sample_items",
-      ),
-    );
+    const readRes = await dispatcher.fetch(new Request("https://sbx-storage-cap.sandbox.projectx.dev/data/sample_items"));
     expect(readRes.status).toBe(200);
   });
 
@@ -236,16 +192,12 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
 
     // Before expiry (6 days later): returns 200 OK
     clockMs = startMs + 6 * 24 * 60 * 60 * 1000;
-    const activeRes = await dispatcher.fetch(
-      new Request("https://sbx-ttl-7d.sandbox.projectx.dev/health"),
-    );
+    const activeRes = await dispatcher.fetch(new Request("https://sbx-ttl-7d.sandbox.projectx.dev/health"));
     expect(activeRes.status).toBe(200);
 
     // Past 7-day TTL: returns 410 SANDBOX_EXPIRED
     clockMs = startMs + SANDBOX_TTL_MS + 1000;
-    const expiredRes = await dispatcher.fetch(
-      new Request("https://sbx-ttl-7d.sandbox.projectx.dev/health"),
-    );
+    const expiredRes = await dispatcher.fetch(new Request("https://sbx-ttl-7d.sandbox.projectx.dev/health"));
     expect(expiredRes.status).toBe(410);
     const expiredBody = (await expiredRes.json()) as {
       error: { code: string; message: string };
@@ -298,9 +250,7 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
 
     // 4. Advancing clock by 61 seconds allows outbound requests again
     clockMs += 61_000;
-    const afterWindowRes = await guardedFetch(
-      "https://api.github.com/zen?call=after",
-    );
+    const afterWindowRes = await guardedFetch("https://api.github.com/zen?call=after");
     expect(afterWindowRes.status).toBe(200);
   });
 
@@ -317,30 +267,18 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
     await sandboxTarget.apply(artifact, target);
 
     // 1. Binding sk_live_12345 on HostedSandboxTarget fails with 403 SANDBOX_LIVE_PAYMENTS_BLOCKED
-    await expect(
-      sandboxTarget.putSecret(target, "STRIPE_SECRET_KEY", "sk_live_12345"),
-    ).rejects.toMatchObject({
+    await expect(sandboxTarget.putSecret(target, "STRIPE_SECRET_KEY", "sk_live_12345")).rejects.toMatchObject({
       code: "SANDBOX_LIVE_PAYMENTS_BLOCKED",
       status: 403,
     });
 
     // 2. Direct helper check for sk_live_*, rk_live_*, whsec_live_*
-    expect(() =>
-      assertNoLivePaymentCredential("STRIPE_SECRET_KEY", "sk_live_12345"),
-    ).toThrowError(SandboxGuardrailError);
-    expect(() =>
-      assertNoLivePaymentCredential("STRIPE_RESTRICTED_KEY", "rk_live_98765"),
-    ).toThrowError(SandboxGuardrailError);
-    expect(() =>
-      assertNoLivePaymentCredential("STRIPE_WEBHOOK_SECRET", "whsec_live_abcdef"),
-    ).toThrowError(SandboxGuardrailError);
+    expect(() => assertNoLivePaymentCredential("STRIPE_SECRET_KEY", "sk_live_12345")).toThrowError(SandboxGuardrailError);
+    expect(() => assertNoLivePaymentCredential("STRIPE_RESTRICTED_KEY", "rk_live_98765")).toThrowError(SandboxGuardrailError);
+    expect(() => assertNoLivePaymentCredential("STRIPE_WEBHOOK_SECRET", "whsec_live_abcdef")).toThrowError(SandboxGuardrailError);
 
     // 3. Binding sk_test_12345 succeeds cleanly
-    const testSecret = await sandboxTarget.putSecret(
-      target,
-      "STRIPE_SECRET_KEY",
-      "sk_test_12345",
-    );
+    const testSecret = await sandboxTarget.putSecret(target, "STRIPE_SECRET_KEY", "sk_test_12345");
     expect(testSecret.secretName).toBe("STRIPE_SECRET_KEY");
 
     // 4. Outbound fetch to Stripe /v1/charges or /v1/payment_intents with sk_live_* or without test key fails with 403 SANDBOX_LIVE_PAYMENTS_BLOCKED
@@ -353,42 +291,31 @@ describe("Story 9.2 — Sandbox quotas, 7-day TTL expiry, and abuse/SSRF/live-pa
         }),
     });
 
-    const liveChargeRes = await guardedFetch(
-      "https://api.stripe.com/v1/charges",
-      {
-        method: "POST",
-        headers: { authorization: "Bearer sk_live_12345" },
-      },
-    );
+    const liveChargeRes = await guardedFetch("https://api.stripe.com/v1/charges", {
+      method: "POST",
+      headers: { authorization: "Bearer sk_live_12345" },
+    });
     expect(liveChargeRes.status).toBe(403);
     const liveChargeBody = (await liveChargeRes.json()) as {
       error: { code: string };
     };
     expect(liveChargeBody.error.code).toBe("SANDBOX_LIVE_PAYMENTS_BLOCKED");
 
-    const noTestKeyIntentRes = await guardedFetch(
-      "https://api.stripe.com/v1/payment_intents",
-      {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-      },
-    );
+    const noTestKeyIntentRes = await guardedFetch("https://api.stripe.com/v1/payment_intents", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+    });
     expect(noTestKeyIntentRes.status).toBe(403);
     const noTestKeyIntentBody = (await noTestKeyIntentRes.json()) as {
       error: { code: string };
     };
-    expect(noTestKeyIntentBody.error.code).toBe(
-      "SANDBOX_LIVE_PAYMENTS_BLOCKED",
-    );
+    expect(noTestKeyIntentBody.error.code).toBe("SANDBOX_LIVE_PAYMENTS_BLOCKED");
 
     // 5. Outbound fetch to Stripe /v1/charges with Bearer sk_test_12345 succeeds
-    const testChargeRes = await guardedFetch(
-      "https://api.stripe.com/v1/charges",
-      {
-        method: "POST",
-        headers: { authorization: "Bearer sk_test_12345" },
-      },
-    );
+    const testChargeRes = await guardedFetch("https://api.stripe.com/v1/charges", {
+      method: "POST",
+      headers: { authorization: "Bearer sk_test_12345" },
+    });
     expect(testChargeRes.status).toBe(200);
   });
 });

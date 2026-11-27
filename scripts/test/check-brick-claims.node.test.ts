@@ -6,12 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, test } from "vitest";
 import { ManifestSchema } from "../../packages/assembler/src/schemas.ts";
-import {
-  checkAllBrickClaims,
-  checkBrickClaims,
-  findStubMarkers,
-  formatBrickClaimViolation,
-} from "../check-brick-claims.ts";
+import { checkAllBrickClaims, checkBrickClaims, findStubMarkers, formatBrickClaimViolation } from "../check-brick-claims.ts";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const tempDirs: string[] = [];
@@ -20,9 +15,7 @@ afterAll(() => {
   for (const dir of tempDirs) rmSync(dir, { recursive: true, force: true });
 });
 
-function fixtureBricks(
-  bricks: Record<string, { summary?: string; maturityReason?: string; description?: string; src?: Record<string, string> }>,
-): string {
+function fixtureBricks(bricks: Record<string, { summary?: string; maturityReason?: string; description?: string; src?: Record<string, string> }>): string {
   const root = mkdtempSync(join(tmpdir(), "px-brick-claims-"));
   tempDirs.push(root);
   for (const [id, spec] of Object.entries(bricks)) {
@@ -70,7 +63,16 @@ describe("check:brick-claims (story 1.21)", () => {
   });
 
   test("every quarantined brick marks the quarantined code path", () => {
-    const quarantined = ["admin-console", "agent-sandbox", "custom-domains", "document-pdf", "marketplace-splits", "oauth-server", "realtime-presence", "workflow-dag"];
+    const quarantined = [
+      "admin-console",
+      "agent-sandbox",
+      "custom-domains",
+      "document-pdf",
+      "marketplace-splits",
+      "oauth-server",
+      "realtime-presence",
+      "workflow-dag",
+    ];
     for (const id of quarantined) {
       expect(findStubMarkers(join(repoRoot, "bricks", id)).length, id).toBeGreaterThan(0);
     }
@@ -114,7 +116,10 @@ describe("check:brick-claims (story 1.21)", () => {
 
   test("a claim with a marker passes; an empty marker fails; an error code such as NOT_CONFIGURED is not a claim", () => {
     const dir = fixtureBricks({
-      honest: { maturityReason: "Stub: verify reports success without a DNS call", src: { "lib/verify.ts": "/* px-stub: no DNS call */\nexport const ok = true;\n" } },
+      honest: {
+        maturityReason: "Stub: verify reports success without a DNS call",
+        src: { "lib/verify.ts": "/* px-stub: no DNS call */\nexport const ok = true;\n" },
+      },
       empty: { maturityReason: "Stub: returns a fixed answer", src: { "index.ts": "// px-stub:\nexport const ok = true;\n" } },
       coded: { maturityReason: "Payment routes answer 503 NOT_CONFIGURED until a gateway is passed" },
     });

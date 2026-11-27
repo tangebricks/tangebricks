@@ -18,15 +18,9 @@ describe("Story 7.3 — ActionableIssueSchema & Structured Error Remediation (AC
   const registry = buildCatalogNodeRegistry(catalog);
 
   it("converts dot-delimited and bracketed paths into RFC 6901 JSON pointers", () => {
-    expect(toJsonPointerPath("bricks.credit-wallet")).toBe(
-      "/bricks/credit-wallet",
-    );
-    expect(
-      toJsonPointerPath("workflows.wf_1.nodes.n_2.data.amount"),
-    ).toBe("/workflows/wf_1/nodes/n_2/data/amount");
-    expect(toJsonPointerPath("/entities/invoices/fields/0")).toBe(
-      "/entities/invoices/fields/0",
-    );
+    expect(toJsonPointerPath("bricks.credit-wallet")).toBe("/bricks/credit-wallet");
+    expect(toJsonPointerPath("workflows.wf_1.nodes.n_2.data.amount")).toBe("/workflows/wf_1/nodes/n_2/data/amount");
+    expect(toJsonPointerPath("/entities/invoices/fields/0")).toBe("/entities/invoices/fields/0");
   });
 
   it("maps all 8+ graph validator error classes, blueprint capability/conflict/setting/entity rules, connection rules, stale baseRev, runtime failures, and deploy blockers to ActionableIssueSchema", () => {
@@ -38,9 +32,7 @@ describe("Story 7.3 — ActionableIssueSchema & Structured Error Remediation (AC
       catalog,
       nodeRegistry: registry,
     });
-    const missingCap = missingCapIssues.find(
-      (i) => i.code === "MISSING_CAPABILITY_PROVIDER",
-    );
+    const missingCap = missingCapIssues.find((i) => i.code === "MISSING_CAPABILITY_PROVIDER");
     expect(missingCap).toBeDefined();
     expect(ActionableIssueSchema.safeParse(missingCap).success).toBe(true);
     expect(missingCap?.path).toBe("/bricks/credit-wallet");
@@ -111,9 +103,7 @@ describe("Story 7.3 — ActionableIssueSchema & Structured Error Remediation (AC
       catalog,
       nodeRegistry: registry,
     });
-    const wireMismatch = wireIssues.find(
-      (i) => i.code === "PORT_TYPE_MISMATCH",
-    );
+    const wireMismatch = wireIssues.find((i) => i.code === "PORT_TYPE_MISMATCH");
     expect(wireMismatch).toBeDefined();
     expect(ActionableIssueSchema.safeParse(wireMismatch).success).toBe(true);
     expect(wireMismatch?.path).toBe("/workflows/wf_1/edges/e_bad");
@@ -234,14 +224,10 @@ describe("Story 7.3 — ActionableIssueSchema & Structured Error Remediation (AC
       boundConnectionIds: ["sec_stripe_valid"],
       availableConnectionIds: ["sec_stripe_valid"],
     });
-    const unboundIssue = unboundIssues.find(
-      (i) => i.code === "UNBOUND_CONNECTION",
-    );
+    const unboundIssue = unboundIssues.find((i) => i.code === "UNBOUND_CONNECTION");
     expect(unboundIssue).toBeDefined();
     expect(ActionableIssueSchema.safeParse(unboundIssue).success).toBe(true);
-    expect(unboundIssue?.path).toBe(
-      "/workflows/wf_1/nodes/n_2/data/connectionRef",
-    );
+    expect(unboundIssue?.path).toBe("/workflows/wf_1/nodes/n_2/data/connectionRef");
     expect(unboundIssue?.remediationOp).toEqual({
       kind: "update_node",
       payloadExample: {
@@ -258,21 +244,14 @@ describe("Story 7.3 — ActionableIssueSchema & Structured Error Remediation (AC
         { id: "credit-wallet", config: { creditsPerUnit: 0 } },
       ],
     });
-    const settingIssues = collectBlueprintActionableIssues(
-      invalidBrickCfgState,
-      {
-        catalog,
-        nodeRegistry: registry,
-      },
-    );
-    const settingIssue = settingIssues.find(
-      (i) => i.code === "INVALID_SETTING_VALUE",
-    );
+    const settingIssues = collectBlueprintActionableIssues(invalidBrickCfgState, {
+      catalog,
+      nodeRegistry: registry,
+    });
+    const settingIssue = settingIssues.find((i) => i.code === "INVALID_SETTING_VALUE");
     expect(settingIssue).toBeDefined();
     expect(ActionableIssueSchema.safeParse(settingIssue).success).toBe(true);
-    expect(settingIssue?.path).toBe(
-      "/bricks/credit-wallet/config/creditsPerUnit",
-    );
+    expect(settingIssue?.path).toBe("/bricks/credit-wallet/config/creditsPerUnit");
     expect(settingIssue?.remediationOp?.kind).toBe("configure_brick");
 
     // 8. Remaining graph validator codes: no_trigger, multi_trigger, duplicate_node, unknown_brick, bad_ref
@@ -349,9 +328,7 @@ describe("Story 7.3 — ActionableIssueSchema & Structured Error Remediation (AC
         patch: { data: { amount: 50 } },
       },
     })[0]!;
-    expect(ActionableIssueSchema.safeParse(conflictActionable).success).toBe(
-      true,
-    );
+    expect(ActionableIssueSchema.safeParse(conflictActionable).success).toBe(true);
     expect(conflictActionable.code).toBe("STALE_BASE_REV");
     expect(conflictActionable.path).toBe("/workflow/wf_1/node/n_2");
     expect(conflictActionable.remediationOp?.payloadExample.baseRev).toBe(2);
@@ -364,13 +341,9 @@ describe("Story 7.3 — ActionableIssueSchema & Structured Error Remediation (AC
         'RUN_STEP_MISSING_INPUT: Step "n_2" field "customerId" mapped to "{{steps.t_1.output.bad_id}}", but field "bad_id" does not exist on upstream node "t_1" output (available fields: customer_id, email)',
       nodeData: { customerId: "{{steps.t_1.output.bad_id}}" },
     });
-    expect(ActionableIssueSchema.safeParse(runtimeMissingInput).success).toBe(
-      true,
-    );
+    expect(ActionableIssueSchema.safeParse(runtimeMissingInput).success).toBe(true);
     expect(runtimeMissingInput.code).toBe("RUN_STEP_MISSING_INPUT");
-    expect(runtimeMissingInput.path).toBe(
-      "/workflows/wf_1/nodes/n_2/data/customerId",
-    );
+    expect(runtimeMissingInput.path).toBe("/workflows/wf_1/nodes/n_2/data/customerId");
     expect(runtimeMissingInput.remediationOp).toEqual({
       kind: "update_node",
       payloadExample: {
@@ -385,9 +358,7 @@ describe("Story 7.3 — ActionableIssueSchema & Structured Error Remediation (AC
     });
 
     // 12. DEPLOY_STUB_IDENTITY_REFUSED
-    const deployBlocker = buildDeployBlockerActionableIssue(
-      "Production deployments cannot use stub identity; enable core-auth and set identity to core-auth.",
-    );
+    const deployBlocker = buildDeployBlockerActionableIssue("Production deployments cannot use stub identity; enable core-auth and set identity to core-auth.");
     expect(ActionableIssueSchema.safeParse(deployBlocker).success).toBe(true);
     expect(deployBlocker.code).toBe("DEPLOY_STUB_IDENTITY_REFUSED");
     expect(deployBlocker.path).toBe("/identity");

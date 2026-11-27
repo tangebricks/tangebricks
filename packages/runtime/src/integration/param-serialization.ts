@@ -21,10 +21,7 @@ function flattenDeepObject(prefix: string, obj: unknown): [string, string][] {
   }
 }
 
-export function serializeParam(
-  param: IntegrationOperationParam,
-  value: unknown,
-): SerializedParam {
+export function serializeParam(param: IntegrationOperationParam, value: unknown): SerializedParam {
   // 1. Enum validation
   if (value !== undefined && value !== null) {
     if (param.enum && param.enum.length > 0) {
@@ -35,12 +32,7 @@ export function serializeParam(
         );
       }
     }
-    if (
-      param.dataType === "array" &&
-      Array.isArray(value) &&
-      param.items?.enum &&
-      param.items.enum.length > 0
-    ) {
+    if (param.dataType === "array" && Array.isArray(value) && param.items?.enum && param.items.enum.length > 0) {
       for (const item of value) {
         if (!param.items.enum.includes(item as any)) {
           throw new IntegrationCallError(
@@ -54,10 +46,9 @@ export function serializeParam(
 
   // 2. Style validation
   if (param.style === "label" || param.style === "matrix") {
-    throw new IntegrationCallError(
-      `INTEGRATION_UNSUPPORTED_FEATURE: Parameter "${param.name}" style "${param.style}" is unsupported`,
-      { code: "INTEGRATION_UNSUPPORTED_FEATURE" },
-    );
+    throw new IntegrationCallError(`INTEGRATION_UNSUPPORTED_FEATURE: Parameter "${param.name}" style "${param.style}" is unsupported`, {
+      code: "INTEGRATION_UNSUPPORTED_FEATURE",
+    });
   }
 
   const wireName = param.wireName ?? param.name;
@@ -89,7 +80,7 @@ export function serializeParam(
 
   // in === "query"
   const style = param.style ?? "form";
-  const explode = param.explode ?? (style === "form");
+  const explode = param.explode ?? style === "form";
 
   if (style === "deepObject") {
     if (Array.isArray(value)) {

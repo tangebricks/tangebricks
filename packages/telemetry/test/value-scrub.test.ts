@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  redactStructuredLogEntry,
-  redactTelemetryPayload,
-  redactTelemetryString,
-} from "../src/index.ts";
+import { redactStructuredLogEntry, redactTelemetryPayload, redactTelemetryString } from "../src/index.ts";
 
 describe("UC9.3 — Value-pattern secret scrubbing in telemetry", () => {
   const sampleJwt =
@@ -13,14 +9,12 @@ describe("UC9.3 — Value-pattern secret scrubbing in telemetry", () => {
   const sampleRkLive = "rk_" + "live_51Hzzzzzzzzzzzzzzzzzzzzzzz";
   const sampleWhsec = "whs" + "ec_1234567890abcdef1234567890abcdef";
   const sampleGhp = "ghp" + "_0123456789abcdef0123456789abcdef0123";
-  const sampleGithubPat =
-    "git" + "hub_pat_11AAAAAAA0000000000000_123456789012345678901234567890";
+  const sampleGithubPat = "git" + "hub_pat_11AAAAAAA0000000000000_123456789012345678901234567890";
   const sampleSlackXoxb = "xox" + "b-123456789-987654321-abcdef123456";
   const sampleSlackXoxp = "xox" + "p-111111111-222222222-333333333-abcdef";
   const sampleAwsAkia = "AKI" + "AIOSFODNN7EXAMPLE";
   const sampleGoogleAiza = "AIz" + "aSyA12345678901234567890123456789012";
-  const samplePem =
-    "---" + "--BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----";
+  const samplePem = "---" + "--BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----";
 
   const positiveCases: Array<{
     kind: string;
@@ -138,28 +132,16 @@ describe("UC9.3 — Value-pattern secret scrubbing in telemetry", () => {
     it("redacts each secret string pattern into [REDACTED:<kind>] in free text (redactTelemetryString)", () => {
       for (const tc of positiveCases) {
         const scrubbed = redactTelemetryString(tc.embeddedMessage);
-        expect(
-          scrubbed,
-          `Expected ${tc.kind} to not contain raw secret ${tc.rawSecret}`,
-        ).not.toContain(tc.rawSecret);
-        expect(
-          scrubbed,
-          `Expected ${tc.kind} to contain placeholder ${tc.expectedPlaceholder}`,
-        ).toContain(tc.expectedPlaceholder);
+        expect(scrubbed, `Expected ${tc.kind} to not contain raw secret ${tc.rawSecret}`).not.toContain(tc.rawSecret);
+        expect(scrubbed, `Expected ${tc.kind} to contain placeholder ${tc.expectedPlaceholder}`).toContain(tc.expectedPlaceholder);
       }
     });
 
     it("redacts URL query values for key|token|sig|signature|access_token into [REDACTED:url_query]", () => {
       for (const tc of urlQueryCases) {
         const scrubbed = redactTelemetryString(tc.url);
-        expect(
-          scrubbed,
-          `Expected URL to not contain raw query secret ${tc.rawSecret}`,
-        ).not.toContain(tc.rawSecret);
-        expect(
-          scrubbed,
-          `Expected URL to contain ${tc.expectedRedactedSubstring}`,
-        ).toContain(tc.expectedRedactedSubstring);
+        expect(scrubbed, `Expected URL to not contain raw query secret ${tc.rawSecret}`).not.toContain(tc.rawSecret);
+        expect(scrubbed, `Expected URL to contain ${tc.expectedRedactedSubstring}`).toContain(tc.expectedRedactedSubstring);
       }
     });
 
@@ -192,12 +174,8 @@ describe("UC9.3 — Value-pattern secret scrubbing in telemetry", () => {
 
         expect(entry.message).not.toContain(tc.rawSecret);
         expect(entry.message).toContain(tc.expectedPlaceholder);
-        expect(
-          (entry.fields as Record<string, unknown>).note,
-        ).not.toContain(tc.rawSecret);
-        expect(
-          String((entry.fields as Record<string, unknown>).note),
-        ).toContain(tc.expectedPlaceholder);
+        expect((entry.fields as Record<string, unknown>).note).not.toContain(tc.rawSecret);
+        expect(String((entry.fields as Record<string, unknown>).note)).toContain(tc.expectedPlaceholder);
         expect(entry.errorStack).not.toContain(tc.rawSecret);
         expect(entry.errorStack).toContain(tc.expectedPlaceholder);
       }
@@ -206,8 +184,7 @@ describe("UC9.3 — Value-pattern secret scrubbing in telemetry", () => {
     it("preserves negative controls: UUIDs, ISO dates, and sha256 build hashes unchanged", () => {
       const validUuid = "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d";
       const validIsoDate = "2026-11-06T13:07:42.123Z";
-      const validSha256 =
-        "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0";
+      const validSha256 = "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0";
 
       const text = `Deployment ${validSha256} triggered at ${validIsoDate} for instance ${validUuid}. Non-secret query: https://example.com/asset?build=${validSha256}&instanceId=${validUuid}`;
 

@@ -16,7 +16,14 @@ import { loadDeployment } from "../packages/deploy/src/context.ts";
 import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
 import { MCP_TOKEN_BINDING, bundleMcpWorker, mcpMigration, mcpTokenRecords } from "../packages/deploy/src/mcp-bundle.ts";
 import { WORKER_SIZE_LIMIT_BYTES } from "../packages/deploy/src/bundle.ts";
-import { MEASURED_PROJECTS, REVIEWER_SURFACE_MISSING, SESSION_PROJECT, canonicalMcp, evaluateMcp, runMcpMeasurement } from "../packages/deploy/src/mcp-measure.ts";
+import {
+  MEASURED_PROJECTS,
+  REVIEWER_SURFACE_MISSING,
+  SESSION_PROJECT,
+  canonicalMcp,
+  evaluateMcp,
+  runMcpMeasurement,
+} from "../packages/deploy/src/mcp-measure.ts";
 import type { McpFacts, McpResult } from "../packages/deploy/src/mcp-measure.ts";
 import { overTheNetwork } from "../packages/deploy/src/network.ts";
 import { redactCallsAndResult } from "./lib/redact-subdomain.ts";
@@ -105,7 +112,9 @@ let versionsBefore: string[] | null = null;
 try {
   const v = await client.listVersions(deployment.names.script);
   versionsBefore = v ? v.map((item) => item.id) : null;
-  out(`project Worker ${deployment.names.script} currently has ${versionsBefore?.length ?? 0} version(s); newest ${versionsBefore?.[0]?.slice(0, 8) ?? "none"}`);
+  out(
+    `project Worker ${deployment.names.script} currently has ${versionsBefore?.length ?? 0} version(s); newest ${versionsBefore?.[0]?.slice(0, 8) ?? "none"}`,
+  );
 } catch (err) {
   console.error(`could not read versions of ${deployment.names.script}: ${err instanceof Error ? err.message : String(err)}`);
 }
@@ -233,7 +242,10 @@ const secrets: Record<string, string> = {
 };
 // the account's workers.dev subdomain never reaches the evidence; callsSha256 is taken over the redacted calls text
 const { callsText, result: first } = redactCallsAndResult(canonicalMcp(facts), measured);
-for (const [name, text] of [["mcp-calls.json", callsText], ["mcp-result.json", JSON.stringify(first, null, 2)]] as const) {
+for (const [name, text] of [
+  ["mcp-calls.json", callsText],
+  ["mcp-result.json", JSON.stringify(first, null, 2)],
+] as const) {
   const hits = findSecrets(text, secrets);
   if (hits.length > 0) {
     console.error(`refusing to write ${name}: it contains ${hits.join(" and ")}`);

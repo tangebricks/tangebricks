@@ -135,7 +135,9 @@ const refusalScenario = once(async () => {
   const afterSingle = { balance: await wallet.getBalanceMilli(WS), rows: await ledgerCount() };
 
   await wallet.openWallet("ws-race", 10_000);
-  const results = await Promise.all(Array.from({ length: 5 }, () => wallet.deduct({ workspaceId: "ws-race", userId: "user-1", amountMilli: 4_000, reason: "usage" })));
+  const results = await Promise.all(
+    Array.from({ length: 5 }, () => wallet.deduct({ workspaceId: "ws-race", userId: "user-1", amountMilli: 4_000, reason: "usage" })),
+  );
   const accepted = results.filter((r) => r.ok).length;
   const afterRace = { balance: await wallet.getBalanceMilli("ws-race"), rows: await ledgerCount("ws-race") };
 
@@ -218,7 +220,9 @@ describe("the rest of the wallet's behaviour", () => {
     await reset();
     const insert = (id: string, balanceAfter: number, key: string | null) =>
       db
-        .prepare("INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, idempotency_key) VALUES (?, 'w', 'u', 'topup', 1, ?, 'r', ?)")
+        .prepare(
+          "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount_milli, balance_after_milli, reason, idempotency_key) VALUES (?, 'w', 'u', 'topup', 1, ?, 'r', ?)",
+        )
         .bind(id, balanceAfter, key)
         .run();
     await expect(insert("a", -1, null)).rejects.toThrow(/CHECK constraint failed: balance_after_milli >= 0/);

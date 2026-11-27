@@ -25,7 +25,15 @@ export type { BalanceImportReport, BalanceImportRow, ImportBalancesOptions } fro
 export type { ConfirmResult, DeductResult, IdempotencyMatch, OrderRow, TransferResult, Wallet, WalletOptions } from "./wallet.ts";
 import { NotConfiguredError, type Executor } from "@poc/sdk";
 import { deductCreditsExecutor } from "./brick.ts";
-export { DEDUCT_CREDITS, WALLET_DB_BINDING, WorkspaceMismatchError, creditWalletBricks, creditWalletExecutors, deductCreditsExecutor, deductCreditsManifest } from "./brick.ts";
+export {
+  DEDUCT_CREDITS,
+  WALLET_DB_BINDING,
+  WorkspaceMismatchError,
+  creditWalletBricks,
+  creditWalletExecutors,
+  deductCreditsExecutor,
+  deductCreditsManifest,
+} from "./brick.ts";
 
 /**
  * The `credit-wallet.debit` workflow node. Story 0.9: it is the D1-backed deduction (`deductCreditsExecutor`),
@@ -40,7 +48,5 @@ export async function executeWalletDebit(ctx: Parameters<Executor>[0]): Promise<
  * NOT_CONFIGURED instead of returning a made-up balance.
  */
 export async function executeWalletCredit(ctx: Parameters<Executor>[0]): Promise<Record<string, unknown>> {
-  throw new NotConfiguredError(
-    `credit-wallet.credit (${ctx.nodeId}): no credit executor is configured; no credits were added.`,
-  );
+  throw new NotConfiguredError(`credit-wallet.credit (${ctx.nodeId}): no credit executor is configured; no credits were added.`);
 }

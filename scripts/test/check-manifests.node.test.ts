@@ -6,11 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, test } from "vitest";
 import { buildCatalog } from "../build-catalog.ts";
-import {
-  checkAllBricks,
-  checkIntegrationConformance,
-  formatViolationLine,
-} from "../check-manifests.ts";
+import { checkAllBricks, checkIntegrationConformance, formatViolationLine } from "../check-manifests.ts";
 import { IMPORTER_VERSION } from "../../packages/integrations/src/importer.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -170,9 +166,7 @@ describe("scripts/check-manifests.ts conformance checks", () => {
       indexTs: `export function createDifferentRoutes() { return {}; }\n`,
     });
     const lines = checkAllBricks(bricksDir).map(formatViolationLine);
-    expect(lines).toContain(
-      'missing-factory: worker.routes: factory "createItemRoutes" is not exported as a function by ./src/index.ts',
-    );
+    expect(lines).toContain('missing-factory: worker.routes: factory "createItemRoutes" is not exported as a function by ./src/index.ts');
 
     const cli = runCli(bricksDir);
     expect(cli.status).toBe(1);
@@ -198,9 +192,7 @@ export function createItemRoutes(options: { undeclaredLimit?: number } = {}) {
 `,
     });
     const lines = checkAllBricks(bricksDir).map(formatViolationLine);
-    expect(lines).toEqual([
-      'undeclared-setting: settings: setting "undeclaredLimit" is read in source but not declared in settings',
-    ]);
+    expect(lines).toEqual(['undeclared-setting: settings: setting "undeclaredLimit" is read in source but not declared in settings']);
   });
 
   test("unread setting declared in manifest fails with settings violation", () => {
@@ -215,9 +207,7 @@ export function createItemRoutes() {
 `,
     });
     const lines = checkAllBricks(bricksDir).map(formatViolationLine);
-    expect(lines).toEqual([
-      'unread-setting: settings: setting "maxItems" is declared in settings but never read in source',
-    ]);
+    expect(lines).toEqual(['unread-setting: settings: setting "maxItems" is declared in settings but never read in source']);
   });
 
   test("npm dependency mismatch fails with npmDependencies violation", () => {
@@ -232,9 +222,7 @@ export function createItemRoutes() {
       },
     });
     const lines = checkAllBricks(bricksDir).map(formatViolationLine);
-    expect(lines).toEqual([
-      "dep-mismatch: npmDependencies: manifest declares hono@4.13.13 but package.json has 4.12.0",
-    ]);
+    expect(lines).toEqual(["dep-mismatch: npmDependencies: manifest declares hono@4.13.13 but package.json has 4.12.0"]);
   });
 
   test("undeclared env binding referenced in source fails with bindings violation", () => {
@@ -249,9 +237,7 @@ export function createItemRoutes(options: { maxItems?: number } = {}) {
 `,
     });
     const lines = checkAllBricks(bricksDir).map(formatViolationLine);
-    expect(lines).toEqual([
-      "undeclared-env: bindings: env.SECRET_BUCKET is referenced in source but not declared in bindings or secrets",
-    ]);
+    expect(lines).toEqual(["undeclared-env: bindings: env.SECRET_BUCKET is referenced in source but not declared in bindings or secrets"]);
   });
 
   test("table without workspace_id fails with migrations violation unless listed in globalTables with a reason", () => {
@@ -295,9 +281,7 @@ export function createItemRoutes(options: { maxItems?: number } = {}) {
       },
     });
     const lines = checkAllBricks(bricksDir).map(formatViolationLine);
-    expect(lines).toEqual([
-      'missing-privacy: privacy: table "fake_items" has workspace_id but no privacy rule in manifest.privacy.tables',
-    ]);
+    expect(lines).toEqual(['missing-privacy: privacy: table "fake_items" has workspace_id but no privacy rule in manifest.privacy.tables']);
   });
 
   test("story 1.10: a tenant table not in workspaceData fails; one exempt with a reason passes; a declared table must exist and have workspace_id", () => {
@@ -356,7 +340,10 @@ CREATE TABLE IF NOT EXISTS global_items (
     // A declared table must be created by the brick's migrations and have workspace_id.
     const notTenant = createFakeBricksWorkspace({
       id: "not-tenant-data",
-      manifest: { globalTables, workspaceData: { tables: [{ table: "fake_items" }, { table: "ghost_items" }], exempt: [{ table: "global_items", reason: "Global anyway" }] } },
+      manifest: {
+        globalTables,
+        workspaceData: { tables: [{ table: "fake_items" }, { table: "ghost_items" }], exempt: [{ table: "global_items", reason: "Global anyway" }] },
+      },
       migrationSql: itemsAndGlobal,
     });
     expect(checkAllBricks(notTenant).map(formatViolationLine)).toEqual([
@@ -599,7 +586,11 @@ export class CustomWorkflow extends WorkflowEntrypoint {}
       id: "zero-limit",
       manifest: { rateLimits: [{ method: "POST", path: "/items", bucket: "items-z", limit: 0, windowSeconds: 60, key: "ip" }] },
     });
-    expect(checkAllBricks(zero).map(formatViolationLine).some((l) => l.startsWith("zero-limit: schema: rateLimits"))).toBe(true);
+    expect(
+      checkAllBricks(zero)
+        .map(formatViolationLine)
+        .some((l) => l.startsWith("zero-limit: schema: rateLimits")),
+    ).toBe(true);
   });
 
   test("untrusted brick without isolation dispatch fails with trust violation", () => {
@@ -610,9 +601,7 @@ export class CustomWorkflow extends WorkflowEntrypoint {}
       },
     });
     const lines = checkAllBricks(bricksDir).map(formatViolationLine);
-    expect(lines).toEqual([
-      'untrusted-brick: schema: trust: untrusted requires isolation: "dispatch"',
-    ]);
+    expect(lines).toEqual(['untrusted-brick: schema: trust: untrusted requires isolation: "dispatch"']);
   });
 
   test("brick version cannot be 0.0.0 and package.json version must match (UC8.2 AC2)", () => {
@@ -715,17 +704,12 @@ export class CustomWorkflow extends WorkflowEntrypoint {}
 
     // Without live-canary evidence, production integration fails conformance
     const violations = checkIntegrationConformance(appDir, "slack");
-    expect(violations.map(formatViolationLine)).toContain(
-      "slack: ui.maturity: declared production, derived beta: LIVE_CANARY_STALE",
-    );
+    expect(violations.map(formatViolationLine)).toContain("slack: ui.maturity: declared production, derived beta: LIVE_CANARY_STALE");
 
     // With live-canary evidence, production integration passes conformance
     const canaryDir = join(tmpRoot, "evidence", "live-canary");
     mkdirSync(canaryDir, { recursive: true });
-    writeFileSync(
-      join(canaryDir, "slack.json"),
-      JSON.stringify({ status: "pass", verifiedAt: new Date().toISOString() }),
-    );
+    writeFileSync(join(canaryDir, "slack.json"), JSON.stringify({ status: "pass", verifiedAt: new Date().toISOString() }));
     expect(checkIntegrationConformance(appDir, "slack")).toEqual([]);
   });
 
@@ -749,9 +733,7 @@ export class CustomWorkflow extends WorkflowEntrypoint {}
     writeFileSync(join(evidenceDir, "tier-evidence.json"), JSON.stringify(tierRows));
 
     for (const app of apps) {
-      const raw = JSON.parse(
-        readFileSync(join(integrationsDir, app, "integration.json"), "utf8"),
-      );
+      const raw = JSON.parse(readFileSync(join(integrationsDir, app, "integration.json"), "utf8"));
       expect(raw.ui.maturity).toBe("beta");
       expect(raw.ui.maturityReason).toBe(expectedReason);
       const violations = checkIntegrationConformance(join(integrationsDir, app), app, tmpRoot);

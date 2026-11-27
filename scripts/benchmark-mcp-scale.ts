@@ -62,15 +62,7 @@ const TIERS: ScaleTier[] = [
   },
   {
     name: "Tier 2: Medium SaaS (7 Bricks, 2 Tables)",
-    bricks: [
-      "multi-workspace",
-      "credit-wallet",
-      "dynamic-entities",
-      "core-auth",
-      "audit-trail",
-      "feature-flags",
-      "checkout-gateway",
-    ],
+    bricks: ["multi-workspace", "credit-wallet", "dynamic-entities", "core-auth", "audit-trail", "feature-flags", "checkout-gateway"],
     entities: [ENTITY_INVOICES, ENTITY_CLIENTS],
   },
   {
@@ -182,9 +174,7 @@ async function runMcpBenchmark(tier: ScaleTier) {
   const app = createMcpApp({
     catalog,
     blueprintClient,
-    verifyToken: createStaticTokenVerifier([
-      { token: TOKEN, userId: "user:benchmark", projectId: `proj-${tier.bricks.length}`, scopes: ["read", "edit"] },
-    ]),
+    verifyToken: createStaticTokenVerifier([{ token: TOKEN, userId: "user:benchmark", projectId: `proj-${tier.bricks.length}`, scopes: ["read", "edit"] }]),
     // Standalone runs record an explicit, verified workspace (story 1.4); the benchmark names its own.
     standaloneWorkspaceId: "ws_benchmark",
   });
@@ -232,7 +222,11 @@ async function runMcpBenchmark(tier: ScaleTier) {
     if (proposeResult.isError) throw new Error(`apply_ops failed: ${JSON.stringify(proposeResult)}`);
     const proposed = JSON.parse((proposeResult.content as Array<{ text: string }>)[0]!.text) as { proposalId: string; status: string };
     if (proposed.status !== "pending") throw new Error(`expected a pending proposal, got ${proposed.status}`);
-    const accepted = await blueprintClient.acceptProposal!({ project: projectName, proposalId: proposed.proposalId, reviewer: { type: "human", id: "benchmark:reviewer" } });
+    const accepted = await blueprintClient.acceptProposal!({
+      project: projectName,
+      proposalId: proposed.proposalId,
+      reviewer: { type: "human", id: "benchmark:reviewer" },
+    });
     if (!accepted.ok) throw new Error(`the reviewer could not accept ${proposed.proposalId}: ${accepted.error.message}`);
   }
 
@@ -331,7 +325,9 @@ async function main() {
     },
     prov,
   );
-  console.log(`\n10-Brick Session Ratio: ${tenBrickSession.ratioPercent}% (${tenBrickSession.conversationTokens} conversation tokens / ${tenBrickSession.firstPartySourceTokens} first-party source tokens)`);
+  console.log(
+    `\n10-Brick Session Ratio: ${tenBrickSession.ratioPercent}% (${tenBrickSession.conversationTokens} conversation tokens / ${tenBrickSession.firstPartySourceTokens} first-party source tokens)`,
+  );
   console.log(`Evidence written to: ${outPath}`);
 
   console.log("\nSummary Table:");

@@ -25,7 +25,10 @@ export function openSqliteD1(path: string): D1Like & { close(): void } {
         return execute({ sql, params });
       },
       async all<Row>() {
-        const rows = sqlite.prepare(sql).all(...params).map((row) => ({ ...row }) as Row);
+        const rows = sqlite
+          .prepare(sql)
+          .all(...params)
+          .map((row) => ({ ...row }) as Row);
         return { results: rows, success: true, meta: { changes: 0 } } as D1Result<Row>;
       },
     };

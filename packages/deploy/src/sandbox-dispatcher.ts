@@ -29,11 +29,7 @@ export class SandboxGuardrailError extends Error {
   readonly code: SandboxGuardrailCode;
   readonly status: 403 | 404 | 410 | 429;
 
-  constructor(
-    code: SandboxGuardrailCode,
-    status: 403 | 404 | 410 | 429,
-    message: string,
-  ) {
+  constructor(code: SandboxGuardrailCode, status: 403 | 404 | 410 | 429, message: string) {
     super(message);
     this.name = "SandboxGuardrailError";
     this.code = code;
@@ -70,16 +66,9 @@ const LIVE_PAYMENT_KEY_PATTERNS: readonly RegExp[] = [
   /\blive_cashfree_[A-Za-z0-9_]+\b/i,
 ];
 
-const LIVE_PAYMENT_HOSTS: readonly string[] = [
-  "api.cashfree.com",
-  "payout.cashfree.com",
-  "checkout.stripe.com",
-];
+const LIVE_PAYMENT_HOSTS: readonly string[] = ["api.cashfree.com", "payout.cashfree.com", "checkout.stripe.com"];
 
-export function isLivePaymentCredential(
-  secretNameOrRef: string,
-  secretValue: string,
-): { blocked: boolean; reason?: string } {
+export function isLivePaymentCredential(secretNameOrRef: string, secretValue: string): { blocked: boolean; reason?: string } {
   const trimmedVal = secretValue.trim();
   for (const pattern of LIVE_PAYMENT_KEY_PATTERNS) {
     if (pattern.test(trimmedVal)) {
@@ -92,9 +81,7 @@ export function isLivePaymentCredential(
   const lowerName = secretNameOrRef.toLowerCase();
   const lowerVal = trimmedVal.toLowerCase();
   if (
-    (lowerName.includes("stripe") ||
-      lowerName.includes("cashfree") ||
-      lowerName.includes("payment")) &&
+    (lowerName.includes("stripe") || lowerName.includes("cashfree") || lowerName.includes("payment")) &&
     (lowerVal.startsWith("live_") || lowerVal.includes("_prod_"))
   ) {
     return {
@@ -105,17 +92,13 @@ export function isLivePaymentCredential(
   return { blocked: false };
 }
 
-export function assertNoLivePaymentCredential(
-  secretNameOrRef: string,
-  secretValue: string,
-): void {
+export function assertNoLivePaymentCredential(secretNameOrRef: string, secretValue: string): void {
   const check = isLivePaymentCredential(secretNameOrRef, secretValue);
   if (check.blocked) {
     throw new SandboxGuardrailError(
       "SANDBOX_LIVE_PAYMENTS_BLOCKED",
       403,
-      check.reason ??
-        "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
+      check.reason ?? "Live payment credentials (sk_live_*, Cashfree production keys) are blocked in hosted sandboxes.",
     );
   }
 }
@@ -130,11 +113,7 @@ export function inspectOutboundPaymentAndSsrf(
   } catch {
     return {
       blocked: true,
-      error: new SandboxGuardrailError(
-        "SANDBOX_SSRF_BLOCKED",
-        403,
-        `Invalid outbound URL "${String(inputUrl)}" in sandbox environment.`,
-      ),
+      error: new SandboxGuardrailError("SANDBOX_SSRF_BLOCKED", 403, `Invalid outbound URL "${String(inputUrl)}" in sandbox environment.`),
     };
   }
 
@@ -165,11 +144,7 @@ export function inspectOutboundPaymentAndSsrf(
   if (parsed.protocol !== "https:") {
     return {
       blocked: true,
-      error: new SandboxGuardrailError(
-        "SANDBOX_SSRF_BLOCKED",
-        403,
-        `Outbound request in hosted sandbox must use https: (received "${parsed.protocol}").`,
-      ),
+      error: new SandboxGuardrailError("SANDBOX_SSRF_BLOCKED", 403, `Outbound request in hosted sandbox must use https: (received "${parsed.protocol}").`),
     };
   }
 
@@ -200,8 +175,7 @@ export function inspectOutboundPaymentAndSsrf(
         error: new SandboxGuardrailError(
           "SANDBOX_LIVE_PAYMENTS_BLOCKED",
           403,
-          check.reason ??
-            "Outbound request carrying live payment credentials (sk_live_*) is blocked in hosted sandbox.",
+          check.reason ?? "Outbound request carrying live payment credentials (sk_live_*) is blocked in hosted sandbox.",
         ),
       };
     }
@@ -218,8 +192,7 @@ export function inspectOutboundPaymentAndSsrf(
         error: new SandboxGuardrailError(
           "SANDBOX_LIVE_PAYMENTS_BLOCKED",
           403,
-          bodyCheck.reason ??
-            "Outbound request body containing live payment credentials is blocked in hosted sandbox.",
+          bodyCheck.reason ?? "Outbound request body containing live payment credentials is blocked in hosted sandbox.",
         ),
       };
     }
@@ -284,10 +257,7 @@ function isWriteSqlMutation(sql: string): boolean {
   return /^(?:INSERT|UPDATE|REPLACE)\b/i.test(cleaned);
 }
 
-export function wrapSandboxD1WithStorageCap(
-  underlyingDb: D1Like,
-  options: SandboxStorageCapOptions = {},
-): GuardedSandboxD1 {
+export function wrapSandboxD1WithStorageCap(underlyingDb: D1Like, options: SandboxStorageCapOptions = {}): GuardedSandboxD1 {
   const maxRows = options.maxRows ?? SANDBOX_D1_MAX_ROWS;
   const maxBytes = options.maxBytes ?? SANDBOX_D1_MAX_BYTES;
   let simulatedRows: number | null = options.initialRows ?? null;
@@ -299,12 +269,8 @@ export function wrapSandboxD1WithStorageCap(
 
     if (simulatedBytes === null) {
       try {
-        const pageCountRow = await underlyingDb
-          .prepare("PRAGMA page_count")
-          .first<{ page_count?: number }>();
-        const pageSizeRow = await underlyingDb
-          .prepare("PRAGMA page_size")
-          .first<{ page_size?: number }>();
+        const pageCountRow = await underlyingDb.prepare("PRAGMA page_count").first<{ page_count?: number }>();
+        const pageSizeRow = await underlyingDb.prepare("PRAGMA page_size").first<{ page_size?: number }>();
         const pageCount = Number(pageCountRow?.page_count ?? 0);
         const pageSize = Number(pageSizeRow?.page_size ?? 4096);
         if (pageCount > 0 && pageSize > 0) {
@@ -318,16 +284,12 @@ export function wrapSandboxD1WithStorageCap(
     if (simulatedRows === null) {
       try {
         const tablesRes = await underlyingDb
-          .prepare(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'",
-          )
+          .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'")
           .all<{ name: string }>();
         let sum = 0;
         for (const tbl of tablesRes.results ?? []) {
           if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tbl.name)) continue;
-          const cntRow = await underlyingDb
-            .prepare(`SELECT COUNT(*) AS cnt FROM "${tbl.name}"`)
-            .first<{ cnt?: number }>();
+          const cntRow = await underlyingDb.prepare(`SELECT COUNT(*) AS cnt FROM "${tbl.name}"`).first<{ cnt?: number }>();
           sum += Number(cntRow?.cnt ?? 0);
         }
         totalRows = sum;
@@ -425,16 +387,8 @@ export function createSandboxOutboundFetch(options: {
         headers: { "content-type": "application/json" },
       }));
 
-  return async (
-    input: Request | string | URL,
-    init?: RequestInit,
-  ): Promise<Response> => {
-    const urlStr =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url;
+  return async (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
+    const urlStr = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
 
     const paymentAndSsrf = inspectOutboundPaymentAndSsrf(urlStr, init);
     if (paymentAndSsrf.blocked) {
@@ -481,10 +435,7 @@ export interface SandboxWorkerRecord {
   createdAt: string;
   updatedAt: string;
   expiresAt: string;
-  customHandler?: (
-    request: Request,
-    env: Record<string, unknown>,
-  ) => Response | Promise<Response>;
+  customHandler?: (request: Request, env: Record<string, unknown>) => Response | Promise<Response>;
 }
 
 export interface SandboxDatabaseRecord {
@@ -539,18 +490,13 @@ function matchesSqlComparison(cell: unknown, op: string, value: unknown): boolea
  * `CAST("col" AS TEXT) LIKE ?N`, the shapes the data browser compiles. `complete` is false when the WHERE also holds
  * a clause of another shape (left to the special cases around it).
  */
-function parseSimpleWhere(
-  sql: string,
-  bound: unknown[],
-): { present: boolean; complete: boolean; matches: (row: Record<string, unknown>) => boolean } {
+function parseSimpleWhere(sql: string, bound: unknown[]): { present: boolean; complete: boolean; matches: (row: Record<string, unknown>) => boolean } {
   const where = sql.match(/\bWHERE\s+([\s\S]+?)(?:\s+ORDER\s+BY\b|\s+GROUP\s+BY\b|\s+LIMIT\b|\s*;|$)/i);
   if (!where) return { present: false, complete: true, matches: () => true };
   const tests: Array<(row: Record<string, unknown>) => boolean> = [];
   let complete = true;
   for (const part of where[1]!.split(/\s+AND\s+/i)) {
-    const m = part
-      .trim()
-      .match(/^(?:CAST\(\s*)?["`]?([A-Za-z_][A-Za-z0-9_]*)["`]?(?:\s+AS\s+TEXT\s*\))?\s*(=|>|<|LIKE)\s*\?(\d+)$/i);
+    const m = part.trim().match(/^(?:CAST\(\s*)?["`]?([A-Za-z_][A-Za-z0-9_]*)["`]?(?:\s+AS\s+TEXT\s*\))?\s*(=|>|<|LIKE)\s*\?(\d+)$/i);
     const value = m ? bound[Number(m[3]) - 1] : undefined;
     if (!m || value === undefined) {
       complete = false;
@@ -564,11 +510,7 @@ function parseSimpleWhere(
 }
 
 /** Keeps the rows that satisfy the statement's simple WHERE clauses (see `parseSimpleWhere`). */
-function applySimpleWhereClauses(
-  rows: Array<Record<string, unknown>>,
-  sql: string,
-  bound: unknown[],
-): Array<Record<string, unknown>> {
+function applySimpleWhereClauses(rows: Array<Record<string, unknown>>, sql: string, bound: unknown[]): Array<Record<string, unknown>> {
   return rows.filter(parseSimpleWhere(sql, bound).matches);
 }
 
@@ -708,23 +650,17 @@ function createLightweightInMemoryD1(): D1Like {
       },
       async run<T = Record<string, unknown>>(): Promise<D1Result<T>> {
         const trimmed = sql.trim();
-        const createMatches = trimmed.matchAll(
-          /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`]?([A-Za-z0-9_]+)["`]?/gi,
-        );
+        const createMatches = trimmed.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`]?([A-Za-z0-9_]+)["`]?/gi);
         for (const m of createMatches) {
           ensureTable(m[1]!, trimmed);
         }
-        const dropMatches = trimmed.matchAll(
-          /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?["`]?([A-Za-z0-9_]+)["`]?/gi,
-        );
+        const dropMatches = trimmed.matchAll(/DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?["`]?([A-Za-z0-9_]+)["`]?/gi);
         for (const m of dropMatches) {
           tables.delete(m[1]!);
           tableSchemas.delete(m[1]!);
         }
         // A table rebuild: ALTER TABLE a RENAME TO b moves the rows and the schema.
-        const renameMatch = trimmed.match(
-          /^ALTER\s+TABLE\s+["`]?([A-Za-z0-9_]+)["`]?\s+RENAME\s+TO\s+["`]?([A-Za-z0-9_]+)["`]?/i,
-        );
+        const renameMatch = trimmed.match(/^ALTER\s+TABLE\s+["`]?([A-Za-z0-9_]+)["`]?\s+RENAME\s+TO\s+["`]?([A-Za-z0-9_]+)["`]?/i);
         if (renameMatch) {
           const [, from, to] = renameMatch as unknown as [string, string, string];
           tables.set(to, tables.get(from) ?? []);
@@ -760,9 +696,7 @@ function createLightweightInMemoryD1(): D1Like {
           const tbl = insertMatch[1]!;
           const colsRaw = insertMatch[2];
           const valsRaw = insertMatch[3];
-          const cols = colsRaw
-            ? colsRaw.split(",").map((c) => c.trim().replace(/^["`]|["`]$/g, ""))
-            : ["id", "value"];
+          const cols = colsRaw ? colsRaw.split(",").map((c) => c.trim().replace(/^["`]|["`]$/g, "")) : ["id", "value"];
           const parsedLiterals =
             bound.length === 0 && valsRaw
               ? valsRaw.split(",").map((v) => {
@@ -797,14 +731,10 @@ function createLightweightInMemoryD1(): D1Like {
           }
           simulatedPageCount += 1;
         }
-        const deleteMatch = trimmed.match(
-          /^DELETE\s+FROM\s+["`]?([A-Za-z0-9_]+)["`]?/i,
-        );
+        const deleteMatch = trimmed.match(/^DELETE\s+FROM\s+["`]?([A-Za-z0-9_]+)["`]?/i);
         // UPDATE t SET "c" = ?N, ... WHERE <simple clauses>: only the matching rows change; a WHERE of another shape
         // changes nothing rather than every row.
-        const updateMatch = trimmed.match(
-          /^UPDATE\s+["`]?([A-Za-z0-9_]+)["`]?\s+SET\s+([\s\S]+?)\s+WHERE\s/i,
-        );
+        const updateMatch = trimmed.match(/^UPDATE\s+["`]?([A-Za-z0-9_]+)["`]?\s+SET\s+([\s\S]+?)\s+WHERE\s/i);
         if (updateMatch) {
           const tbl = updateMatch[1]!;
           const assignments: Array<[string, unknown]> = [];
@@ -867,9 +797,7 @@ function createLightweightInMemoryD1(): D1Like {
           };
         }
         if (trimmed.includes("FROM sqlite_master")) {
-          const results = [...tables.keys()]
-            .filter((n) => !n.startsWith("sqlite_") && !n.startsWith("_cf_"))
-            .map((name) => ({ name })) as unknown as T[];
+          const results = [...tables.keys()].filter((n) => !n.startsWith("sqlite_") && !n.startsWith("_cf_")).map((name) => ({ name })) as unknown as T[];
           return { results, success: true, meta: { changes: 0 } };
         }
         const fromMatch = trimmed.match(/FROM\s+["`]?([A-Za-z0-9_]+)["`]?/i);
@@ -882,10 +810,7 @@ function createLightweightInMemoryD1(): D1Like {
           if (/WHERE\s+["`]?id["`]?\s*=\s*\?(?:1)?/i.test(trimmed) && bound.length > 0) {
             rows = rows.filter((r) => r.id === bound[0]);
           }
-          if (
-            /WHERE\s+["`]?workspace_id["`]?\s*=\s*\?1\s+AND\s+["`]?id["`]?\s*=\s*\?2/i.test(trimmed) &&
-            bound.length >= 2
-          ) {
+          if (/WHERE\s+["`]?workspace_id["`]?\s*=\s*\?1\s+AND\s+["`]?id["`]?\s*=\s*\?2/i.test(trimmed) && bound.length >= 2) {
             rows = rows.filter((r) => r.workspace_id === bound[0] && r.id === bound[1]);
           }
           // runStoredGraph: `id = ?1 AND workspace_id IN (?2, '__app__')`, the run's own row before the app-wide one
@@ -945,10 +870,7 @@ export class SandboxDispatchPlatform {
   private outboundRpmLimit: number;
   private maxRows: number;
   private maxBytes: number;
-  private studioEventsSink?: (
-    sandboxId: string,
-    request: Request,
-  ) => Response | Promise<Response>;
+  private studioEventsSink?: (sandboxId: string, request: Request) => Response | Promise<Response>;
 
   constructor(options?: {
     now?: () => number;
@@ -957,17 +879,12 @@ export class SandboxDispatchPlatform {
     outboundRpmLimit?: number;
     maxD1Rows?: number;
     maxD1Bytes?: number;
-    studioEventsSink?: (
-      sandboxId: string,
-      request: Request,
-    ) => Response | Promise<Response>;
+    studioEventsSink?: (sandboxId: string, request: Request) => Response | Promise<Response>;
   }) {
     this.nowFn = options?.now ?? (() => Date.now());
-    this.createD1Factory =
-      options?.createD1 ?? (() => createLightweightInMemoryD1());
+    this.createD1Factory = options?.createD1 ?? (() => createLightweightInMemoryD1());
     this.dailyLimit = options?.dailyRequestLimit ?? SANDBOX_DAILY_REQUEST_LIMIT;
-    this.outboundRpmLimit =
-      options?.outboundRpmLimit ?? SANDBOX_OUTBOUND_RPM_LIMIT;
+    this.outboundRpmLimit = options?.outboundRpmLimit ?? SANDBOX_OUTBOUND_RPM_LIMIT;
     this.maxRows = options?.maxD1Rows ?? SANDBOX_D1_MAX_ROWS;
     this.maxBytes = options?.maxD1Bytes ?? SANDBOX_D1_MAX_BYTES;
     this.studioEventsSink = options?.studioEventsSink;
@@ -1058,10 +975,7 @@ export class SandboxDispatchPlatform {
     return { worker, d1 };
   }
 
-  getWorker(
-    dispatchNamespace: string,
-    sandboxId: string,
-  ): SandboxWorkerRecord | null {
+  getWorker(dispatchNamespace: string, sandboxId: string): SandboxWorkerRecord | null {
     return this.workers.get(`${dispatchNamespace}:${sandboxId}`) ?? null;
   }
 
@@ -1075,9 +989,7 @@ export class SandboxDispatchPlatform {
   }
 
   getDatabase(sandboxIdOrDbName: string): SandboxDatabaseRecord | null {
-    const normalized = sandboxIdOrDbName.startsWith("px_sbx_")
-      ? sandboxIdOrDbName
-      : `px_sbx_${sandboxIdOrDbName}`;
+    const normalized = sandboxIdOrDbName.startsWith("px_sbx_") ? sandboxIdOrDbName : `px_sbx_${sandboxIdOrDbName}`;
     return this.databases.get(normalized) ?? null;
   }
 
@@ -1098,11 +1010,7 @@ export class SandboxDispatchPlatform {
     // 9000 then 9002, statement by statement, so a fresh sandbox database ends where an upgraded one does. These are not
     // recorded anywhere, so a reused database is read first: only what its graph table still lacks is applied.
     const graphColumns = ((await rawD1.prepare(`PRAGMA table_info(${GRAPH_TABLE})`).all<{ name: string }>()).results ?? []).map((c) => c.name);
-    const pendingGraphMigrations = graphColumns.includes("workspace_id")
-      ? []
-      : graphColumns.length > 0
-        ? GRAPH_MIGRATIONS.slice(1)
-        : GRAPH_MIGRATIONS;
+    const pendingGraphMigrations = graphColumns.includes("workspace_id") ? [] : graphColumns.length > 0 ? GRAPH_MIGRATIONS.slice(1) : GRAPH_MIGRATIONS;
     for (const migration of pendingGraphMigrations) await applyMigration(rawD1, migration.sql);
     const guarded = wrapSandboxD1WithStorageCap(rawD1, {
       maxRows: this.maxRows,
@@ -1123,10 +1031,7 @@ export class SandboxDispatchPlatform {
     return record;
   }
 
-  async applyMigration(
-    sandboxId: string,
-    migration: { name: string; sql: string; sha256: string },
-  ): Promise<void> {
+  async applyMigration(sandboxId: string, migration: { name: string; sql: string; sha256: string }): Promise<void> {
     const db = await this.ensureDatabase(sandboxId);
     if (db.appliedMigrations.some((m) => m.name === migration.name)) {
       return;
@@ -1157,18 +1062,13 @@ export class SandboxDispatchPlatform {
       db.graphHash = graphHash;
     }
     await db.rawD1
-      .prepare(
-        `INSERT OR REPLACE INTO ${GRAPH_TABLE} (workspace_id, id, graph, updated_at) VALUES (?1, ?2, ?3, ?4)`,
-      )
+      .prepare(`INSERT OR REPLACE INTO ${GRAPH_TABLE} (workspace_id, id, graph, updated_at) VALUES (?1, ?2, ?3, ?4)`)
       .bind(workspaceId, graphId, graphJson, updatedAt)
       .run();
     return { graphId, updatedAt };
   }
 
-  async putScheduleRows(
-    sandboxId: string,
-    schedules: Array<Record<string, unknown>>,
-  ): Promise<{ count: number; updatedAt: string }> {
+  async putScheduleRows(sandboxId: string, schedules: Array<Record<string, unknown>>): Promise<{ count: number; updatedAt: string }> {
     const db = await this.ensureDatabase(sandboxId);
     this.mutatingOps += 1;
     db.schedules = [...schedules];
@@ -1201,9 +1101,7 @@ export class SandboxDispatchPlatform {
     const existing = this.workers.get(key);
     const nowIso = new Date(this.nowFn()).toISOString();
     const createdAt = existing?.createdAt ?? nowIso;
-    const expiresAt =
-      existing?.expiresAt ??
-      new Date(Date.parse(createdAt) + SANDBOX_TTL_MS).toISOString();
+    const expiresAt = existing?.expiresAt ?? new Date(Date.parse(createdAt) + SANDBOX_TTL_MS).toISOString();
     const versionId = `sbx_ver_${this.versionCounter++}_${input.codeHash.slice(0, 8)}`;
 
     const record: SandboxWorkerRecord = {
@@ -1219,8 +1117,7 @@ export class SandboxDispatchPlatform {
       databaseName: db.name,
       // Fresh random keys per sandbox: deriving them from the (public) sandbox id would let anyone compute them.
       pxConnKey: existing?.pxConnKey ?? `px_conn_key_${randomKeyHex()}`,
-      telemetryHmacKey:
-        existing?.telemetryHmacKey ?? `px_telemetry_hmac_${randomKeyHex()}`,
+      telemetryHmacKey: existing?.telemetryHmacKey ?? `px_telemetry_hmac_${randomKeyHex()}`,
       secrets: {
         ...existing?.secrets,
         ...input.secrets,
@@ -1237,19 +1134,12 @@ export class SandboxDispatchPlatform {
     return record;
   }
 
-  putSecret(
-    dispatchNamespace: string,
-    sandboxId: string,
-    secretName: string,
-    secretValue: string,
-  ): SandboxWorkerRecord {
+  putSecret(dispatchNamespace: string, sandboxId: string, secretName: string, secretValue: string): SandboxWorkerRecord {
     assertNoLivePaymentCredential(secretName, secretValue);
     const key = `${dispatchNamespace}:${sandboxId}`;
     const existing = this.workers.get(key);
     if (!existing) {
-      throw new Error(
-        `Sandbox worker "${sandboxId}" not found in dispatch namespace "${dispatchNamespace}".`,
-      );
+      throw new Error(`Sandbox worker "${sandboxId}" not found in dispatch namespace "${dispatchNamespace}".`);
     }
     this.mutatingOps += 1;
     existing.secrets[secretName] = secretValue;
@@ -1257,10 +1147,7 @@ export class SandboxDispatchPlatform {
     return existing;
   }
 
-  destroySandbox(
-    dispatchNamespace: string,
-    sandboxId: string,
-  ): { removedWorker: boolean; removedDatabase: boolean } {
+  destroySandbox(dispatchNamespace: string, sandboxId: string): { removedWorker: boolean; removedDatabase: boolean } {
     const key = `${dispatchNamespace}:${sandboxId}`;
     const hadWorker = this.workers.delete(key);
     const dbName = `px_sbx_${sandboxId}`;
@@ -1272,10 +1159,7 @@ export class SandboxDispatchPlatform {
     return { removedWorker: hadWorker, removedDatabase: hadDb };
   }
 
-  createOutboundFetchForSandbox(
-    sandboxId: string,
-    baseFetch?: typeof fetch,
-  ): typeof fetch {
+  createOutboundFetchForSandbox(sandboxId: string, baseFetch?: typeof fetch): typeof fetch {
     return createSandboxOutboundFetch({
       sandboxId,
       maxRequestsPerMinute: this.outboundRpmLimit,
@@ -1285,18 +1169,12 @@ export class SandboxDispatchPlatform {
     });
   }
 
-  createDispatchNamespaceBinding(
-    dispatchNamespace: string = DEFAULT_SANDBOX_DISPATCH_NAMESPACE,
-  ): DispatchNamespaceBinding {
+  createDispatchNamespaceBinding(dispatchNamespace: string = DEFAULT_SANDBOX_DISPATCH_NAMESPACE): DispatchNamespaceBinding {
     return {
       get: (sandboxId: string): DispatchWorkerStub => {
         const worker = this.getWorker(dispatchNamespace, sandboxId);
         if (!worker) {
-          throw new SandboxGuardrailError(
-            "SANDBOX_NOT_FOUND",
-            404,
-            `Sandbox worker "${sandboxId}" is not deployed in namespace "${dispatchNamespace}".`,
-          );
+          throw new SandboxGuardrailError("SANDBOX_NOT_FOUND", 404, `Sandbox worker "${sandboxId}" is not deployed in namespace "${dispatchNamespace}".`);
         }
         const db = this.getDatabase(sandboxId);
         const outboundFetch = this.createOutboundFetchForSandbox(sandboxId);
@@ -1362,48 +1240,31 @@ export class SandboxDispatchPlatform {
             }
 
             if (url.pathname.startsWith("/data/") && db) {
-              const tableName = url.pathname
-                .slice("/data/".length)
-                .replace(/[^A-Za-z0-9_]/g, "");
+              const tableName = url.pathname.slice("/data/".length).replace(/[^A-Za-z0-9_]/g, "");
               if (tableName) {
                 try {
                   if (request.method === "POST" || request.method === "PUT") {
-                    const body = (await request.json().catch(() => ({}))) as Record<
-                      string,
-                      unknown
-                    >;
+                    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
                     const cols = Object.keys(body);
                     const vals = Object.values(body);
                     const placeholders = cols.map(() => "?").join(", ");
                     await db.d1Binding
-                      .prepare(
-                        `INSERT INTO "${tableName}" (${cols.join(", ")}) VALUES (${placeholders})`,
-                      )
+                      .prepare(`INSERT INTO "${tableName}" (${cols.join(", ")}) VALUES (${placeholders})`)
                       .bind(...vals)
                       .run();
-                    return new Response(
-                      JSON.stringify({ ok: true, table: tableName, inserted: true }),
-                      {
-                        status: 201,
-                        headers: { "content-type": "application/json" },
-                      },
-                    );
+                    return new Response(JSON.stringify({ ok: true, table: tableName, inserted: true }), {
+                      status: 201,
+                      headers: { "content-type": "application/json" },
+                    });
                   }
                   if (request.method === "DELETE") {
-                    await db.d1Binding
-                      .prepare(`DELETE FROM "${tableName}"`)
-                      .run();
-                    return new Response(
-                      JSON.stringify({ ok: true, table: tableName, deleted: true }),
-                      {
-                        status: 200,
-                        headers: { "content-type": "application/json" },
-                      },
-                    );
+                    await db.d1Binding.prepare(`DELETE FROM "${tableName}"`).run();
+                    return new Response(JSON.stringify({ ok: true, table: tableName, deleted: true }), {
+                      status: 200,
+                      headers: { "content-type": "application/json" },
+                    });
                   }
-                  const rowsRes = await db.d1Binding
-                    .prepare(`SELECT * FROM "${tableName}"`)
-                    .all();
+                  const rowsRes = await db.d1Binding.prepare(`SELECT * FROM "${tableName}"`).all();
                   return new Response(
                     JSON.stringify({
                       ok: true,
@@ -1453,8 +1314,7 @@ export class SandboxDispatchPlatform {
           now?: number;
         },
   ): Promise<Response> {
-    const opts =
-      typeof options === "object" && options !== null ? options : undefined;
+    const opts = typeof options === "object" && options !== null ? options : undefined;
     const explicitNamespace = opts?.dispatchNamespace;
     const sandboxId = extractSandboxIdFromRequest(request);
     if (!sandboxId) {
@@ -1462,8 +1322,7 @@ export class SandboxDispatchPlatform {
         JSON.stringify({
           error: {
             code: "SANDBOX_NOT_FOUND",
-            message:
-              "Could not resolve sandboxId from hostname (<sandboxId>.sandbox.projectx.dev) or x-px-sandbox-id header.",
+            message: "Could not resolve sandboxId from hostname (<sandboxId>.sandbox.projectx.dev) or x-px-sandbox-id header.",
           },
         }),
         { status: 404, headers: { "content-type": "application/json" } },
@@ -1472,28 +1331,14 @@ export class SandboxDispatchPlatform {
 
     const worker = explicitNamespace
       ? this.getWorker(explicitNamespace, sandboxId)
-      : (this.getWorker(DEFAULT_SANDBOX_DISPATCH_NAMESPACE, sandboxId) ??
-        this.getSandbox(sandboxId)?.worker ??
-        null);
+      : (this.getWorker(DEFAULT_SANDBOX_DISPATCH_NAMESPACE, sandboxId) ?? this.getSandbox(sandboxId)?.worker ?? null);
     if (!worker) {
-      return new SandboxGuardrailError(
-        "SANDBOX_NOT_FOUND",
-        404,
-        `Sandbox "${sandboxId}" is not deployed or has been destroyed.`,
-      ).toResponse();
+      return new SandboxGuardrailError("SANDBOX_NOT_FOUND", 404, `Sandbox "${sandboxId}" is not deployed or has been destroyed.`).toResponse();
     }
-    const namespace =
-      worker.dispatchNamespace ||
-      explicitNamespace ||
-      DEFAULT_SANDBOX_DISPATCH_NAMESPACE;
+    const namespace = worker.dispatchNamespace || explicitNamespace || DEFAULT_SANDBOX_DISPATCH_NAMESPACE;
 
     // Check 7-day TTL expiry first (Story 9.2 AC 3)
-    const nowMs =
-      typeof options === "number"
-        ? options
-        : typeof opts?.now === "number"
-          ? opts.now
-          : this.nowFn();
+    const nowMs = typeof options === "number" ? options : typeof opts?.now === "number" ? opts.now : this.nowFn();
     if (nowMs >= Date.parse(worker.expiresAt)) {
       return new SandboxGuardrailError(
         "SANDBOX_EXPIRED",
@@ -1602,37 +1447,21 @@ export interface SandboxDispatcherOptions {
   now?: () => number;
 }
 
-export function createSandboxDispatcher(
-  platformOrOptions:
-    | SandboxDispatchPlatform
-    | SandboxDispatcherOptions = defaultSandboxDispatchPlatform,
-) {
+export function createSandboxDispatcher(platformOrOptions: SandboxDispatchPlatform | SandboxDispatcherOptions = defaultSandboxDispatchPlatform) {
   const isPlatformInstance =
-    platformOrOptions instanceof SandboxDispatchPlatform ||
-    typeof (platformOrOptions as SandboxDispatchPlatform)?.dispatchRequest ===
-      "function";
+    platformOrOptions instanceof SandboxDispatchPlatform || typeof (platformOrOptions as SandboxDispatchPlatform)?.dispatchRequest === "function";
   const resolvedPlatform = isPlatformInstance
     ? (platformOrOptions as SandboxDispatchPlatform)
-    : ((platformOrOptions as SandboxDispatcherOptions)?.platform ??
-      defaultSandboxDispatchPlatform);
-  const nowFn = !isPlatformInstance
-    ? (platformOrOptions as SandboxDispatcherOptions)?.now
-    : undefined;
+    : ((platformOrOptions as SandboxDispatcherOptions)?.platform ?? defaultSandboxDispatchPlatform);
+  const nowFn = !isPlatformInstance ? (platformOrOptions as SandboxDispatcherOptions)?.now : undefined;
 
   return {
-    async fetch(
-      request: Request,
-      env?: SandboxDispatcherEnv,
-    ): Promise<Response> {
+    async fetch(request: Request, env?: SandboxDispatcherEnv): Promise<Response> {
       const activePlatform = env?.SANDBOX_PLATFORM ?? resolvedPlatform;
       if (env?.DISPATCH_NAMESPACE && !env?.SANDBOX_PLATFORM) {
         const sandboxId = extractSandboxIdFromRequest(request);
         if (!sandboxId) {
-          return new SandboxGuardrailError(
-            "SANDBOX_NOT_FOUND",
-            404,
-            "Missing sandboxId in hostname or x-px-sandbox-id header.",
-          ).toResponse();
+          return new SandboxGuardrailError("SANDBOX_NOT_FOUND", 404, "Missing sandboxId in hostname or x-px-sandbox-id header.").toResponse();
         }
         try {
           const stub = env.DISPATCH_NAMESPACE.get(sandboxId);
@@ -1641,17 +1470,10 @@ export function createSandboxDispatcher(
           if (err instanceof SandboxGuardrailError) {
             return err.toResponse();
           }
-          return new SandboxGuardrailError(
-            "SANDBOX_NOT_FOUND",
-            404,
-            err instanceof Error ? err.message : "Sandbox worker not found",
-          ).toResponse();
+          return new SandboxGuardrailError("SANDBOX_NOT_FOUND", 404, err instanceof Error ? err.message : "Sandbox worker not found").toResponse();
         }
       }
-      return activePlatform.dispatchRequest(
-        request,
-        nowFn ? nowFn() : undefined,
-      );
+      return activePlatform.dispatchRequest(request, nowFn ? nowFn() : undefined);
     },
   };
 }

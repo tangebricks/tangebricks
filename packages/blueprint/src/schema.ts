@@ -1,11 +1,5 @@
 import { z } from "zod";
-import {
-  LONGTEXT_DEFAULT_LENGTH,
-  LONGTEXT_MAX_LENGTH,
-  MONEY_CURRENCY_SUFFIX,
-  RESERVED_FIELD_NAMES,
-  entitySchema,
-} from "@poc/sdk";
+import { LONGTEXT_DEFAULT_LENGTH, LONGTEXT_MAX_LENGTH, MONEY_CURRENCY_SUFFIX, RESERVED_FIELD_NAMES, entitySchema } from "@poc/sdk";
 import type { Entity as SdkEntity, EntityField as SdkEntityField } from "@poc/sdk";
 import type { Blueprint } from "@poc/assembler";
 
@@ -21,12 +15,9 @@ export const ENTITY_RELATION_PATTERN = /^[a-z][a-z0-9_]{0,39}(?:\.[a-z][a-z0-9_]
 
 const RAW_CREDENTIAL_PREFIX =
   /^(?:sk_live_|sk_test_|pk_live_|pk_test_|rk_live_|rk_test_|whsec_|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|xox[baprs]-|AKIA[0-9A-Z]{8,}|AIza[0-9A-Za-z_-]{10,}|eyJ[A-Za-z0-9_-]{5,}\.|Bearer\s|Basic\s|token\s)/i;
-const CLEAN_SECRET_REF_HANDLE =
-  /^(?:sec_[A-Za-z0-9_-]{1,59}|ref_[A-Za-z0-9_-]{1,59}|[A-Z][A-Z0-9_]{1,63}|[a-z][a-z0-9_-]{1,63})$/;
+const CLEAN_SECRET_REF_HANDLE = /^(?:sec_[A-Za-z0-9_-]{1,59}|ref_[A-Za-z0-9_-]{1,59}|[A-Z][A-Z0-9_]{1,63}|[a-z][a-z0-9_-]{1,63})$/;
 
-export function isValidSecretRefHandle(
-  ref: unknown,
-): { ok: true } | { ok: false; reason: string } {
+export function isValidSecretRefHandle(ref: unknown): { ok: true } | { ok: false; reason: string } {
   if (typeof ref !== "string" || ref.length === 0) {
     return { ok: false, reason: "secret ref handle must be a non-empty string" };
   }
@@ -59,11 +50,7 @@ export function isValidSecretRefHandle(
 
 export const ProjectSlugSchema = z.string().regex(PROJECT_SLUG_PATTERN);
 export const BrickIdSchema = z.string().regex(BRICK_ID_PATTERN);
-export const SettingValueSchema = z.union([
-  z.number().finite(),
-  z.string().max(200),
-  z.boolean(),
-]);
+export const SettingValueSchema = z.union([z.number().finite(), z.string().max(200), z.boolean()]);
 export type SettingValue = z.infer<typeof SettingValueSchema>;
 
 export const BrickEntrySchema = z.strictObject({
@@ -145,7 +132,10 @@ export const EntityFieldSchema = z.discriminatedUnion("type", [
   z.strictObject({
     ...entityFieldCommon,
     type: z.literal("money"),
-    currencies: z.array(z.string().regex(/^[A-Z]{3}$/, "must be a 3-letter upper-case ISO-4217 code such as INR")).min(1).max(20),
+    currencies: z
+      .array(z.string().regex(/^[A-Z]{3}$/, "must be a 3-letter upper-case ISO-4217 code such as INR"))
+      .min(1)
+      .max(20),
   }),
   z.strictObject({
     ...entityFieldCommon,
@@ -167,12 +157,7 @@ export const EntityDefinitionSchema = z
     for (const field of entity.fields) {
       if (seen.has(field.name)) problem(`field "${field.name}" is declared twice`);
       seen.add(field.name);
-      if (
-        (field.type === "number" || field.type === "integer") &&
-        field.min !== undefined &&
-        field.max !== undefined &&
-        field.min > field.max
-      ) {
+      if ((field.type === "number" || field.type === "integer") && field.min !== undefined && field.max !== undefined && field.min > field.max) {
         problem(`field "${field.name}" has min above max`);
       }
       if (field.type === "enum" && new Set(field.values).size !== field.values.length) {
@@ -185,9 +170,7 @@ export const EntityDefinitionSchema = z
     // A money field takes a second column, <name>__currency; no declared field may use that name.
     for (const field of entity.fields) {
       if (field.type === "money" && seen.has(field.name + MONEY_CURRENCY_SUFFIX)) {
-        problem(
-          `field "${field.name}${MONEY_CURRENCY_SUFFIX}" uses the name of the currency column of money field "${field.name}"`,
-        );
+        problem(`field "${field.name}${MONEY_CURRENCY_SUFFIX}" uses the name of the currency column of money field "${field.name}"`);
       }
     }
   });
@@ -356,9 +339,7 @@ export const BlueprintStateSchema = z.strictObject({
 export type BlueprintState = z.infer<typeof BlueprintStateSchema>;
 
 export function sortRecordKeys<T>(record: Readonly<Record<string, T>>): Record<string, T> {
-  return Object.fromEntries(
-    Object.entries(record).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
-  );
+  return Object.fromEntries(Object.entries(record).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
 export function canonicalizeValue<T>(value: T): T {
@@ -383,9 +364,7 @@ export function normalizeBlueprintState(state: BlueprintState): BlueprintState {
     }))
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
-  const entities: EntityDefinition[] = [...state.entities]
-    .map((e) => canonicalizeValue(e))
-    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const entities: EntityDefinition[] = [...state.entities].map((e) => canonicalizeValue(e)).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   const workflows: Workflow[] = [...state.workflows]
     .map((w) => ({
@@ -398,9 +377,7 @@ export function normalizeBlueprintState(state: BlueprintState): BlueprintState {
           type: n.type,
           ...(n.label !== undefined ? { label: n.label } : {}),
           data: canonicalizeValue(n.data ?? {}),
-          ...(n.position !== undefined
-            ? { position: { x: n.position.x, y: n.position.y } }
-            : {}),
+          ...(n.position !== undefined ? { position: { x: n.position.x, y: n.position.y } } : {}),
         }))
         .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
       edges: [...w.edges]
@@ -439,11 +416,7 @@ export function normalizeBlueprintState(state: BlueprintState): BlueprintState {
     metadata.catalogVersion = state.metadata.catalogVersion;
   }
   if (state.metadata?.layout !== undefined) {
-    metadata.layout = sortRecordKeys(
-      Object.fromEntries(
-        Object.entries(state.metadata.layout).map(([k, pos]) => [k, { x: pos.x, y: pos.y }]),
-      ),
-    );
+    metadata.layout = sortRecordKeys(Object.fromEntries(Object.entries(state.metadata.layout).map(([k, pos]) => [k, { x: pos.x, y: pos.y }])));
   }
   if (state.metadata?.viewport !== undefined) {
     metadata.viewport = {
@@ -465,10 +438,7 @@ export function normalizeBlueprintState(state: BlueprintState): BlueprintState {
   };
 }
 
-export function createEmptyBlueprint(
-  project: string,
-  init?: Partial<Omit<BlueprintState, "project">>,
-): BlueprintState {
+export function createEmptyBlueprint(project: string, init?: Partial<Omit<BlueprintState, "project">>): BlueprintState {
   const parsedProject = ProjectSlugSchema.parse(project);
   return normalizeBlueprintState({
     project: parsedProject,
@@ -487,9 +457,7 @@ export function toAssemblerBlueprint(state: BlueprintState): Blueprint {
   return {
     project: normalized.project,
     identity: normalized.identity,
-    bricks: normalized.bricks.map((b) =>
-      Object.keys(b.config).length > 0 ? { id: b.id, config: b.config } : b.id,
-    ),
+    bricks: normalized.bricks.map((b) => (Object.keys(b.config).length > 0 ? { id: b.id, config: b.config } : b.id)),
     entities: normalized.entities.map(toSdkEntity),
     ...(normalized.workflows.length > 0 ? { workflows: normalized.workflows } : {}),
     ...(normalized.secretRefs.length > 0 ? { secretRefs: normalized.secretRefs } : {}),

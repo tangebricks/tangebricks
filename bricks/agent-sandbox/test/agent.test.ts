@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_agent_sandbox.sql?raw";
-import {
-  AgentSandboxService,
-  createAgentSandboxRoutes,
-} from "../src/index.ts";
+import { AgentSandboxService, createAgentSandboxRoutes } from "../src/index.ts";
 import type { AgentEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -45,7 +42,7 @@ describe("Agent Sandbox & MCP Tool Registry Core Logic", () => {
         required: ["operation", "a", "b"],
       },
       "built_in",
-      "calculator"
+      "calculator",
     );
 
     expect(calcTool.name).toBe("calculator");
@@ -67,14 +64,7 @@ describe("Agent Sandbox & MCP Tool Registry Core Logic", () => {
 
   it("validates required schema fields before executing tools", async () => {
     const service = new AgentSandboxService(db);
-    await service.registerTool(
-      WS_ALPHA,
-      "math",
-      "Math tool",
-      { type: "object", required: ["operation", "a", "b"] },
-      "built_in",
-      "calculator"
-    );
+    await service.registerTool(WS_ALPHA, "math", "Math tool", { type: "object", required: ["operation", "a", "b"] }, "built_in", "calculator");
 
     // Call missing 'b' parameter
     const failRes = await service.callTool(WS_ALPHA, "math", { operation: "add", a: 5 });
@@ -135,20 +125,24 @@ describe("Agent Sandbox HTTP API", () => {
     app.route("/api", createAgentSandboxRoutes());
 
     // 1. POST /mcp/tools
-    const regRes = await app.request("/api/mcp/tools", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        name: "text_modifier",
-        description: "Modifies text case",
-        parametersSchema: {
-          type: "object",
-          required: ["text", "action"],
-        },
-        handlerType: "built_in",
-        handlerTarget: "string_transform",
-      }),
-    }, { DB: db });
+    const regRes = await app.request(
+      "/api/mcp/tools",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          name: "text_modifier",
+          description: "Modifies text case",
+          parametersSchema: {
+            type: "object",
+            required: ["text", "action"],
+          },
+          handlerType: "built_in",
+          handlerTarget: "string_transform",
+        }),
+      },
+      { DB: db },
+    );
     expect(regRes.status).toBe(201);
 
     // 2. GET /mcp/tools
@@ -159,27 +153,35 @@ describe("Agent Sandbox HTTP API", () => {
     expect(listJson.tools[0]?.name).toBe("text_modifier");
 
     // 3. POST /mcp/tools/:name/call
-    const callRes = await app.request("/api/mcp/tools/text_modifier/call", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        arguments: { text: "hello edge world", action: "upper" },
-      }),
-    }, { DB: db });
+    const callRes = await app.request(
+      "/api/mcp/tools/text_modifier/call",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          arguments: { text: "hello edge world", action: "upper" },
+        }),
+      },
+      { DB: db },
+    );
     expect(callRes.status).toBe(200);
     const callJson = (await callRes.json()) as { ok: boolean; output: string };
     expect(callJson.ok).toBe(true);
     expect(callJson.output).toBe("HELLO EDGE WORLD");
 
     // 4. POST /mcp/sessions
-    const sessRes = await app.request("/api/mcp/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        agentName: "CodeAssistant",
-        initialState: { model: "claude-3-5-sonnet" },
-      }),
-    }, { DB: db });
+    const sessRes = await app.request(
+      "/api/mcp/sessions",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          agentName: "CodeAssistant",
+          initialState: { model: "claude-3-5-sonnet" },
+        }),
+      },
+      { DB: db },
+    );
     expect(sessRes.status).toBe(201);
 
     // 5. GET /mcp/invocations

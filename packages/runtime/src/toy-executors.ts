@@ -6,11 +6,7 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 function dig(value: unknown, path: string): unknown {
   return path
     .split(".")
-    .reduce<unknown>(
-      (at, key) =>
-        typeof at === "object" && at !== null && Object.hasOwn(at, key) ? (at as Record<string, unknown>)[key] : undefined,
-      value,
-    );
+    .reduce<unknown>((at, key) => (typeof at === "object" && at !== null && Object.hasOwn(at, key) ? (at as Record<string, unknown>)[key] : undefined), value);
 }
 
 /** Behaviour for the toy bricks in @poc/sdk. Real bricks bring their own executors. */

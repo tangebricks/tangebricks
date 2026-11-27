@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  IntegrationManifestSchema,
-  nodeDefinition,
-  projectIntegrationToNodes,
-} from "../src/index.ts";
+import { IntegrationManifestSchema, nodeDefinition, projectIntegrationToNodes } from "../src/index.ts";
 import type { IntegrationManifestFile } from "../src/index.ts";
 
-function makeValidIntegrationManifest(
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+function makeValidIntegrationManifest(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     manifestVersion: 2,
     kind: "integration",
@@ -149,9 +143,7 @@ describe("Story 10.1 — IntegrationManifestSchema and projectIntegrationToNodes
       response: {},
       sideEffects: "read",
     }));
-    const atLimit = IntegrationManifestSchema.safeParse(
-      makeValidIntegrationManifest({ operations: thirtyOps }),
-    );
+    const atLimit = IntegrationManifestSchema.safeParse(makeValidIntegrationManifest({ operations: thirtyOps }));
     expect(atLimit.success).toBe(true);
 
     const thirtyOneOps = [
@@ -165,9 +157,7 @@ describe("Story 10.1 — IntegrationManifestSchema and projectIntegrationToNodes
         sideEffects: "read",
       },
     ];
-    const overLimit = IntegrationManifestSchema.safeParse(
-      makeValidIntegrationManifest({ operations: thirtyOneOps }),
-    );
+    const overLimit = IntegrationManifestSchema.safeParse(makeValidIntegrationManifest({ operations: thirtyOneOps }));
     expect(overLimit.success).toBe(false);
     if (!overLimit.success) {
       expect(overLimit.error.issues.some((i) => i.path.includes("operations"))).toBe(true);
@@ -175,14 +165,10 @@ describe("Story 10.1 — IntegrationManifestSchema and projectIntegrationToNodes
   });
 
   it("rejects non-HTTPS baseUrl, empty allowedHosts, wildcard hosts, localhost, and private IP literals", () => {
-    const httpBase = IntegrationManifestSchema.safeParse(
-      makeValidIntegrationManifest({ baseUrl: "http://api.stripe.com" }),
-    );
+    const httpBase = IntegrationManifestSchema.safeParse(makeValidIntegrationManifest({ baseUrl: "http://api.stripe.com" }));
     expect(httpBase.success).toBe(false);
 
-    const emptyHosts = IntegrationManifestSchema.safeParse(
-      makeValidIntegrationManifest({ allowedHosts: [] }),
-    );
+    const emptyHosts = IntegrationManifestSchema.safeParse(makeValidIntegrationManifest({ allowedHosts: [] }));
     expect(emptyHosts.success).toBe(false);
 
     const wildcardHost = IntegrationManifestSchema.safeParse(
@@ -231,11 +217,7 @@ describe("Story 10.1 — IntegrationManifestSchema and projectIntegrationToNodes
     );
     expect(betaMissingReason.success).toBe(false);
     if (!betaMissingReason.success) {
-      expect(
-        betaMissingReason.error.issues.some((i) =>
-          i.path.join(".").includes("ui.maturityReason"),
-        ),
-      ).toBe(true);
+      expect(betaMissingReason.error.issues.some((i) => i.path.join(".").includes("ui.maturityReason"))).toBe(true);
     }
 
     const experimentalWithReason = IntegrationManifestSchema.safeParse(
@@ -253,9 +235,7 @@ describe("Story 10.1 — IntegrationManifestSchema and projectIntegrationToNodes
   });
 
   it("projects integration operations into valid ManifestNodeDefinition[] with type int:<app>.<operationId> and executor integration.operation", () => {
-    const manifest: IntegrationManifestFile = IntegrationManifestSchema.parse(
-      makeValidIntegrationManifest(),
-    );
+    const manifest: IntegrationManifestFile = IntegrationManifestSchema.parse(makeValidIntegrationManifest());
     const nodes = projectIntegrationToNodes(manifest);
     expect(nodes).toHaveLength(2);
 
@@ -265,20 +245,14 @@ describe("Story 10.1 — IntegrationManifestSchema and projectIntegrationToNodes
     expect(createNode.role).toBe("action");
     expect(createNode.sideEffects).toBe("write");
     expect(createNode.durable).toBe(true);
-    expect(createNode.inputs.map((p) => p.id)).toEqual(
-      expect.arrayContaining(["idempotencyKey", "email", "name", "in"]),
-    );
-    expect(createNode.outputs.map((p) => p.id)).toEqual(
-      expect.arrayContaining(["id", "email", "out", "status", "body"]),
-    );
+    expect(createNode.inputs.map((p) => p.id)).toEqual(expect.arrayContaining(["idempotencyKey", "email", "name", "in"]));
+    expect(createNode.outputs.map((p) => p.id)).toEqual(expect.arrayContaining(["id", "email", "out", "status", "body"]));
 
     const listNode = nodes[1]!;
     expect(listNode.type).toBe("int:stripe.list_customers");
     expect(listNode.executor).toBe("integration.operation");
     expect(listNode.sideEffects).toBe("read");
-    expect(listNode.inputs.map((p) => p.id)).toEqual(
-      expect.arrayContaining(["accountId", "limit", "in"]),
-    );
+    expect(listNode.inputs.map((p) => p.id)).toEqual(expect.arrayContaining(["accountId", "limit", "in"]));
 
     for (const n of nodes) {
       const validated = nodeDefinition.safeParse(n);

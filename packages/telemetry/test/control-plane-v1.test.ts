@@ -85,13 +85,20 @@ describe("story 1.17: control-plane v1 signing", () => {
   test("admitExecutingControlRequest: signature, path, time, requestId and replay", async () => {
     const secret = await deriveProjectSecret(ROOT, "proj-a", "control-plane");
     const path = "/__px/runs";
-    const make = async (body: string, headers: Record<string, string>) =>
-      new Request(`http://w.invalid${path}`, { method: "POST", headers, body });
+    const make = async (body: string, headers: Record<string, string>) => new Request(`http://w.invalid${path}`, { method: "POST", headers, body });
 
     const body = JSON.stringify({ requestId: crypto.randomUUID(), workspaceId: "ws_a" });
-    const fresh = await admitExecutingControlRequest(await make(body, await signControlPlaneRequest(secret, "POST", path, body)), { secret, rawBody: body, db });
+    const fresh = await admitExecutingControlRequest(await make(body, await signControlPlaneRequest(secret, "POST", path, body)), {
+      secret,
+      rawBody: body,
+      db,
+    });
     expect(fresh.ok).toBe(true);
-    const replay = await admitExecutingControlRequest(await make(body, await signControlPlaneRequest(secret, "POST", path, body)), { secret, rawBody: body, db });
+    const replay = await admitExecutingControlRequest(await make(body, await signControlPlaneRequest(secret, "POST", path, body)), {
+      secret,
+      rawBody: body,
+      db,
+    });
     expect(replay.ok ? 200 : replay.response.status).toBe(409);
     if (!replay.ok) expect(((await replay.response.json()) as { error: { code: string } }).error.code).toBe("DUPLICATE_REQUEST");
 

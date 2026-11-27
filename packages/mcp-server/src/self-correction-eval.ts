@@ -60,8 +60,7 @@ export function createDirectMcpCaller(ctx: ToolContext): McpCallFn {
       return {
         isError: true,
         text: JSON.stringify({ error: parsed.error.issues }),
-        json: <T = Record<string, unknown>>() =>
-          ({ error: parsed.error.issues }) as unknown as T,
+        json: <T = Record<string, unknown>>() => ({ error: parsed.error.issues }) as unknown as T,
       };
     }
     const res = await tool.run(ctx, parsed.data as never);
@@ -80,11 +79,7 @@ export function createDirectMcpCaller(ctx: ToolContext): McpCallFn {
  */
 export async function runSelfCorrectionEvalSuite(params: {
   callMcp: McpCallFn;
-  seedProject: (
-    project: string,
-    state: BlueprintState,
-    revision?: number,
-  ) => Promise<void>;
+  seedProject: (project: string, state: BlueprintState, revision?: number) => Promise<void>;
   /**
    * AD-V8: the human reviewer. An agent's apply_ops is a proposal by default; the harness accepts each pending proposal
    * as a Studio editor would, outside the MCP surface (it is not a tool call and does not count against the budget).
@@ -116,9 +111,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       json: <T = Record<string, unknown>>() => T;
     }> => {
       if (trace.length >= MAX_SELF_CORRECTION_TOOL_CALLS) {
-        throw new Error(
-          `Exceeded MAX_SELF_CORRECTION_TOOL_CALLS (${MAX_SELF_CORRECTION_TOOL_CALLS})`,
-        );
+        throw new Error(`Exceeded MAX_SELF_CORRECTION_TOOL_CALLS (${MAX_SELF_CORRECTION_TOOL_CALLS})`);
       }
       const res = await callMcp(tool, args);
       trace.push({
@@ -148,9 +141,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       ready: boolean;
       issues: ActionableIssue[];
     }>();
-    const issue = v1.issues.find(
-      (i) => i.code === "MISSING_CAPABILITY_PROVIDER",
-    )!;
+    const issue = v1.issues.find((i) => i.code === "MISSING_CAPABILITY_PROVIDER")!;
     trace[0]!.detectedIssue = issue;
     const schemaValid = ActionableIssueSchema.safeParse(issue).success;
 
@@ -177,11 +168,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       code: "MISSING_CAPABILITY_PROVIDER",
       name: "credit-wallet enabled without multi-workspace",
       project,
-      passed:
-        schemaValid &&
-        v2.ready &&
-        v2.issues.length === 0 &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && v2.ready && v2.issues.length === 0 && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,
@@ -239,11 +226,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       code: "BRICK_CONFLICT",
       name: "conflicting bricks document-parsing and document-pdf enabled together",
       project,
-      passed:
-        schemaValid &&
-        v2.ready &&
-        v2.issues.length === 0 &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && v2.ready && v2.issues.length === 0 && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,
@@ -340,11 +323,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       code: "PORT_TYPE_MISMATCH",
       name: "string output port wired to number input port",
       project,
-      passed:
-        schemaValid &&
-        v2.ready &&
-        v2.issues.length === 0 &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && v2.ready && v2.issues.length === 0 && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,
@@ -433,11 +412,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       code: "GRAPH_CYCLE",
       name: "directed cycle outside a loop node",
       project,
-      passed:
-        schemaValid &&
-        v2.ready &&
-        v2.issues.length === 0 &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && v2.ready && v2.issues.length === 0 && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,
@@ -503,11 +478,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       code: "UNREACHABLE_NODE",
       name: "action node with no incoming path from trigger",
       project,
-      passed:
-        schemaValid &&
-        v2.ready &&
-        v2.issues.length === 0 &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && v2.ready && v2.issues.length === 0 && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,
@@ -607,12 +578,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       code: "UNBOUND_CONNECTION",
       name: "node referencing unbound connectionRef resolved via list_connections",
       project,
-      passed:
-        schemaValid &&
-        applied.ready &&
-        finalCheck.ready &&
-        finalCheck.issues.length === 0 &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && applied.ready && finalCheck.ready && finalCheck.issues.length === 0 && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,
@@ -669,11 +635,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       code: "INVALID_SETTING_VALUE",
       name: "brick configured with out-of-range setting value (creditsPerUnit: 0)",
       project,
-      passed:
-        schemaValid &&
-        v2.ready &&
-        v2.issues.length === 0 &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && v2.ready && v2.issues.length === 0 && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,
@@ -789,11 +751,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       code: "STALE_BASE_REV",
       name: "apply_ops with outdated baseRev refreshes slice and retries cleanly",
       project,
-      passed:
-        schemaValid &&
-        retryRes.rev === 3 &&
-        retryRes.ready &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && retryRes.rev === 3 && retryRes.ready && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,
@@ -860,9 +818,7 @@ export async function runSelfCorrectionEvalSuite(params: {
     ).json<{
       issues: ActionableIssue[];
     }>();
-    const issue = traceRes.issues.find(
-      (i) => i.code === "RUN_STEP_MISSING_INPUT",
-    )!;
+    const issue = traceRes.issues.find((i) => i.code === "RUN_STEP_MISSING_INPUT")!;
     trace[0]!.detectedIssue = issue;
     const schemaValid = ActionableIssueSchema.safeParse(issue).success;
 
@@ -893,20 +849,14 @@ export async function runSelfCorrectionEvalSuite(params: {
         input: { customer_id: "cust_999" },
       })
     ).json<{ status: string; issues?: ActionableIssue[] }>();
-    const verifyBlueprint = (
-      await callMcp("validate_blueprint", { project })
-    ).json<{ ready: boolean }>();
+    const verifyBlueprint = (await callMcp("validate_blueprint", { project })).json<{ ready: boolean }>();
 
     scenarios.push({
       id: 9,
       code: "RUN_STEP_MISSING_INPUT",
       name: "workflow step 2 fails on missing upstream field; repaired after get_run_trace + query_logs",
       project,
-      passed:
-        schemaValid &&
-        verifyRun.status === "succeeded" &&
-        verifyBlueprint.ready &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && verifyRun.status === "succeeded" && verifyBlueprint.ready && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,
@@ -960,9 +910,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       blockers: ActionableIssue[];
       issues: ActionableIssue[];
     }>();
-    const issue = (plan1.issues ?? plan1.blockers).find(
-      (i) => i.code === "DEPLOY_STUB_IDENTITY_REFUSED",
-    )!;
+    const issue = (plan1.issues ?? plan1.blockers).find((i) => i.code === "DEPLOY_STUB_IDENTITY_REFUSED")!;
     trace[0]!.detectedIssue = issue;
     const schemaValid = ActionableIssueSchema.safeParse(issue).success;
 
@@ -998,12 +946,7 @@ export async function runSelfCorrectionEvalSuite(params: {
       code: "DEPLOY_STUB_IDENTITY_REFUSED",
       name: "production deploy_plan refuses stub identity and guides switching to core-auth",
       project,
-      passed:
-        schemaValid &&
-        plan2.action === "apply" &&
-        plan2.blockers.length === 0 &&
-        verifyBp.ready &&
-        trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
+      passed: schemaValid && plan2.action === "apply" && plan2.blockers.length === 0 && verifyBp.ready && trace.length <= MAX_SELF_CORRECTION_TOOL_CALLS,
       toolCallsUsed: trace.length,
       maxToolCallsAllowed: MAX_SELF_CORRECTION_TOOL_CALLS,
       initialIssue: issue,

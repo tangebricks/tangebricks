@@ -31,9 +31,7 @@ export async function refreshEvidence(): Promise<void> {
   // 1. Refuse to run on a dirty tree
   const status = execSync("git status --porcelain", { cwd: repoRoot, encoding: "utf8" }).trim();
   if (status.length > 0) {
-    console.error(
-      `EVIDENCE_REFRESH_DIRTY_TREE: Working tree has uncommitted changes:\n${status}\nStash or commit before running evidence:refresh.`,
-    );
+    console.error(`EVIDENCE_REFRESH_DIRTY_TREE: Working tree has uncommitted changes:\n${status}\nStash or commit before running evidence:refresh.`);
     process.exit(1);
   }
 
@@ -83,7 +81,13 @@ export async function refreshEvidence(): Promise<void> {
   mkdirSync(fuzzDir, { recursive: true });
   runCmd(
     process.execPath,
-    [join(repoRoot, "node_modules", "vitest", "vitest.mjs"), "run", "--reporter=dot", "--reporter=./reporters/evidence-reporter.ts", "packages/assembler/test/cross-tenant.fuzz.test.ts"],
+    [
+      join(repoRoot, "node_modules", "vitest", "vitest.mjs"),
+      "run",
+      "--reporter=dot",
+      "--reporter=./reporters/evidence-reporter.ts",
+      "packages/assembler/test/cross-tenant.fuzz.test.ts",
+    ],
     { ...process.env, POC_EVIDENCE_DIR: fuzzDir },
   );
   copyFileSync(join(fuzzDir, "cross-tenant-fuzz.json"), join(stagingDir, "cross-tenant-fuzz.json"));
@@ -110,14 +114,12 @@ export async function refreshEvidence(): Promise<void> {
     process.exit(result.code);
   }
   console.log(`[evidence:refresh] Wrote ${result.written.length} evidence file(s) with identical provenance.`);
-  console.log("[evidence:refresh] SUCCESS: evidence and PROOF.md refreshed with identical commit SHA and gitDirty: false; proof:check and evidence:check pass.");
+  console.log(
+    "[evidence:refresh] SUCCESS: evidence and PROOF.md refreshed with identical commit SHA and gitDirty: false; proof:check and evidence:check pass.",
+  );
 }
 
-if (
-  process.argv[1] &&
-  (import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}` ||
-    process.argv[1].endsWith("refresh-evidence.ts"))
-) {
+if (process.argv[1] && (import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}` || process.argv[1].endsWith("refresh-evidence.ts"))) {
   refreshEvidence().catch((err) => {
     console.error(err);
     process.exit(1);

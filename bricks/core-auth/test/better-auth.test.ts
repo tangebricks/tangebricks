@@ -385,14 +385,10 @@ describe("core-auth on Better Auth in workerd + D1", () => {
     });
 
     try {
-      const callbackRes = await call(
-        app,
-        `/api/auth/callback/github?code=gh_auth_code_xyz&state=${encodeURIComponent(state!)}`,
-        {
-          method: "GET",
-          cookie: stateCookie,
-        },
-      );
+      const callbackRes = await call(app, `/api/auth/callback/github?code=gh_auth_code_xyz&state=${encodeURIComponent(state!)}`, {
+        method: "GET",
+        cookie: stateCookie,
+      });
       expect(callbackRes.status).toBe(302);
       expect(callbackRes.headers.get("location")).toBe("https://example.test/dashboard");
 
@@ -469,10 +465,7 @@ describe("core-auth session hardening (story 0.14)", () => {
   test("HASHED_STORE and DB_ROW_REPLAY: the session row holds sha256(token), and that value is refused as a bearer or cookie", async () => {
     const app = buildApp();
     const { token, userId } = await signUp(app, "hashed@example.com");
-    const row = await db
-      .prepare('SELECT "token" FROM "session" WHERE "userId" = ?')
-      .bind(userId)
-      .first<{ token: string }>();
+    const row = await db.prepare('SELECT "token" FROM "session" WHERE "userId" = ?').bind(userId).first<{ token: string }>();
     expect(row).not.toBeNull();
     expect(row!.token).not.toBe(token);
     expect(row!.token).toBe(await sha256HexString(token));
@@ -505,10 +498,7 @@ describe("core-auth session hardening (story 0.14)", () => {
     const legacyToken2 = "LegacyRawSessionTokenSecond012345";
     await db.prepare('UPDATE "session" SET "token" = ? WHERE "userId" = ?').bind(legacyToken2, second.userId).run();
     expect((await call(app, "/api/auth/me", { token: legacyToken2 })).status).toBe(200);
-    const row2 = await db
-      .prepare('SELECT "token" FROM "session" WHERE "userId" = ?')
-      .bind(second.userId)
-      .first<{ token: string }>();
+    const row2 = await db.prepare('SELECT "token" FROM "session" WHERE "userId" = ?').bind(second.userId).first<{ token: string }>();
     expect(row2!.token).toBe(await sha256HexString(legacyToken2));
   });
 

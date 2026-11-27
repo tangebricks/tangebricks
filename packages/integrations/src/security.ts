@@ -1,9 +1,7 @@
 import { derefObject, isPlainObject } from "./util.ts";
 import type { ImportSpecFormat } from "./types.ts";
 import type { IntegrationAuthDefinition } from "@poc/assembler";
-export function parseSecurityRequirements(
-  sec: unknown,
-): Array<Array<{ scheme: string; scopes?: string[] }>> {
+export function parseSecurityRequirements(sec: unknown): Array<Array<{ scheme: string; scopes?: string[] }>> {
   if (!Array.isArray(sec)) return [];
   const result: Array<Array<{ scheme: string; scopes?: string[] }>> = [];
   for (const item of sec) {
@@ -87,8 +85,7 @@ export function satisfiesRequirement(
   schemes: Record<string, any>,
 ): boolean {
   if (!curationAuth) return false;
-  const authObj: IntegrationAuthDefinition =
-    typeof curationAuth === "string" ? { type: curationAuth as any } : curationAuth;
+  const authObj: IntegrationAuthDefinition = typeof curationAuth === "string" ? { type: curationAuth as any } : curationAuth;
   if (req.length === 0) return authObj.type === "none";
 
   for (const item of req) {
@@ -96,9 +93,7 @@ export function satisfiesRequirement(
     if (!s) return false;
 
     if (authObj.type === "oauth2") {
-      const match =
-        s.type === "oauth2" ||
-        (s.type === "http" && s.scheme === "bearer");
+      const match = s.type === "oauth2" || (s.type === "http" && s.scheme === "bearer");
       if (!match) return false;
     } else if (authObj.type === "basic") {
       const match = s.type === "http" && s.scheme === "basic";
@@ -121,9 +116,7 @@ export function satisfiesRequirement(
     } else if (authObj.type === "headers") {
       const templateHeaders = authObj.headers ?? {};
       if (s.type === "apiKey" && s.in === "header") {
-        const matchesKey = Object.keys(templateHeaders).some(
-          (k) => k.toLowerCase() === (s.name ?? "").toLowerCase(),
-        );
+        const matchesKey = Object.keys(templateHeaders).some((k) => k.toLowerCase() === (s.name ?? "").toLowerCase());
         if (!matchesKey) return false;
       } else {
         return false;
@@ -136,10 +129,7 @@ export function satisfiesRequirement(
   return true;
 }
 
-export function hasUnsupportedScheme(
-  req: Array<{ scheme: string; scopes?: string[] }>,
-  schemes: Record<string, any>,
-): boolean {
+export function hasUnsupportedScheme(req: Array<{ scheme: string; scopes?: string[] }>, schemes: Record<string, any>): boolean {
   return req.some((item) => {
     const s = schemes[item.scheme];
     if (!s) return false;
@@ -148,4 +138,3 @@ export function hasUnsupportedScheme(
     return false;
   });
 }
-

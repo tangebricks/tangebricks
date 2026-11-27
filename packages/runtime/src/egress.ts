@@ -22,17 +22,11 @@ export class IntegrationEgressError extends Error {
   }
 }
 
-export function createHardenedFetch(
-  base: IntegrationFetcher,
-  policy: EgressPolicy,
-): IntegrationFetcher {
+export function createHardenedFetch(base: IntegrationFetcher, policy: EgressPolicy): IntegrationFetcher {
   const timeoutMs = policy.timeoutMs ?? 15_000;
   const maxResponseBytes = policy.maxResponseBytes ?? 10 * 1024 * 1024;
   const maxRedirects = policy.maxRedirects ?? 5;
-  const resolveHost =
-    Object.prototype.hasOwnProperty.call(policy, "resolveHost")
-      ? policy.resolveHost
-      : defaultResolveHost;
+  const resolveHost = Object.prototype.hasOwnProperty.call(policy, "resolveHost") ? policy.resolveHost : defaultResolveHost;
 
   const validateTargetUrl = (targetUrl: URL, isRedirect: boolean): void => {
     const hostname = targetUrl.hostname.toLowerCase();
@@ -49,10 +43,7 @@ export function createHardenedFetch(
           `Redirect target "${hostname}" is forbidden (must be https, default port, without credentials, and in allowedHosts [${policy.allowedHosts.join(", ")}])`,
         );
       }
-      throw new IntegrationEgressError(
-        "INTEGRATION_HOST_FORBIDDEN",
-        `Target host "${hostname}" is not in allowedHosts [${policy.allowedHosts.join(", ")}]`,
-      );
+      throw new IntegrationEgressError("INTEGRATION_HOST_FORBIDDEN", `Target host "${hostname}" is not in allowedHosts [${policy.allowedHosts.join(", ")}]`);
     }
   };
 
@@ -61,10 +52,7 @@ export function createHardenedFetch(
     const ips = await resolveHost(hostname);
     for (const ip of ips) {
       if (isPrivateAddress(ip)) {
-        throw new IntegrationEgressError(
-          "INTEGRATION_PRIVATE_ADDRESS",
-          `Host "${hostname}" resolved to private IP "${ip}"`,
-        );
+        throw new IntegrationEgressError("INTEGRATION_PRIVATE_ADDRESS", `Host "${hostname}" resolved to private IP "${ip}"`);
       }
     }
   };
@@ -80,9 +68,7 @@ export function createHardenedFetch(
     }
 
     let currentMethod = init?.method ?? (input instanceof Request ? input.method : "GET");
-    const currentHeaders = new Headers(
-      init?.headers ?? (input instanceof Request ? input.headers : undefined),
-    );
+    const currentHeaders = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
     let currentBody = init?.body ?? (input instanceof Request ? input.body : undefined);
 
     let redirectCount = 0;
@@ -126,10 +112,7 @@ export function createHardenedFetch(
           });
         } catch (fetchErr: unknown) {
           if (timeoutFired) {
-            throw new IntegrationEgressError(
-              "INTEGRATION_TIMEOUT",
-              `Request to "${currentUrl.hostname}" timed out after ${timeoutMs}ms`,
-            );
+            throw new IntegrationEgressError("INTEGRATION_TIMEOUT", `Request to "${currentUrl.hostname}" timed out after ${timeoutMs}ms`);
           }
           throw fetchErr;
         }
@@ -138,10 +121,7 @@ export function createHardenedFetch(
         if ([301, 302, 303, 307, 308].includes(response.status)) {
           redirectCount += 1;
           if (redirectCount > maxRedirects) {
-            throw new IntegrationEgressError(
-              "INTEGRATION_TOO_MANY_REDIRECTS",
-              `Exceeded max redirects of ${maxRedirects} for host "${currentUrl.hostname}"`,
-            );
+            throw new IntegrationEgressError("INTEGRATION_TOO_MANY_REDIRECTS", `Exceeded max redirects of ${maxRedirects} for host "${currentUrl.hostname}"`);
           }
 
           const locationHeader = response.headers.get("location");
@@ -176,10 +156,7 @@ export function createHardenedFetch(
           }
 
           // RFC 9110 / 7231 method rewriting for 301, 302, 303
-          if (
-            response.status === 303 ||
-            ((response.status === 301 || response.status === 302) && currentMethod === "POST")
-          ) {
+          if (response.status === 303 || ((response.status === 301 || response.status === 302) && currentMethod === "POST")) {
             currentMethod = "GET";
             currentBody = undefined;
             currentHeaders.delete("content-type");

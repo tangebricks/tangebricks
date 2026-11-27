@@ -1,7 +1,7 @@
 // The lefthook git hooks end to end. lefthook.yml and the scripts it runs are copied into a temporary git repository,
 // the pinned lefthook binary installs the hooks there, and real `git commit`s must then be refused for a staged unused
 // variable (pre-commit oxlint) and for an unsigned message (commit-msg), while a clean signed commit and a JSON-only
-// commit (the shape of an evidence refresh) go through.
+// commit (the shape of an evidence refresh) go through, and an unformatted staged file is committed as Prettier formats it.
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,6 +14,8 @@ const lefthookBin = join(repoRoot, "node_modules", "lefthook", "bin", "index.js"
 const copied = [
   "lefthook.yml",
   ".oxlintrc.json",
+  ".prettierrc.json",
+  ".prettierignore",
   ".gitleaks.toml",
   "scripts/check-commit-msg.ts",
   "scripts/check-dco.ts",
@@ -97,6 +99,15 @@ describe("lefthook hooks (temporary repository)", () => {
     const ignored = git("commit", "-s", "-m", "test: add fixture");
     expect(ignored.status, ignored.output).toBe(0);
     expect(git("rev-list", "--count", "HEAD").output.trim()).toBe("3");
+
+    // pre-commit Prettier: an unformatted staged file is formatted and re-staged before oxlint, so the commit holds the
+    // formatted text and nothing is left unstaged.
+    writeFileSync(join(dir, "src", "ugly.ts"), "export const answer = {a:1,b:'two'}\n", "utf8");
+    expect(git("add", "src/ugly.ts").status).toBe(0);
+    const formatted = git("commit", "-s", "-m", "feat: add answer");
+    expect(formatted.status, formatted.output).toBe(0);
+    expect(git("show", "HEAD:src/ugly.ts").output).toBe('export const answer = { a: 1, b: "two" };\n');
+    expect(git("status", "--porcelain").output.trim()).toBe("");
   });
 });
 

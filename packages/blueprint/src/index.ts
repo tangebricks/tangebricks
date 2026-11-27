@@ -119,23 +119,10 @@ export {
   toActionableIssue,
   toJsonPointerPath,
 } from "./issues.ts";
-export type {
-  ActionableIssue,
-  DocumentedErrorCode,
-  IssueEnrichmentContext,
-  RemediationOp,
-} from "./issues.ts";
+export type { ActionableIssue, DocumentedErrorCode, IssueEnrichmentContext, RemediationOp } from "./issues.ts";
 
-export {
-  evaluateProposalSelection,
-  summarizeProposalOps,
-} from "./proposals.ts";
-export type {
-  ProposalActor,
-  ProposalRecord,
-  ProposalSelectionEvaluation,
-  ProposalStatus,
-} from "./proposals.ts";
+export { evaluateProposalSelection, summarizeProposalOps } from "./proposals.ts";
+export type { ProposalActor, ProposalRecord, ProposalSelectionEvaluation, ProposalStatus } from "./proposals.ts";
 
 export {
   canonicalCodePayload,
@@ -168,8 +155,4 @@ export {
   serializeBlueprintBundle,
   validateBundleNoRawSecrets,
 } from "./export.ts";
-export type {
-  BlueprintBundle,
-  ExportedRevisionMeta,
-  ParseBlueprintBundleResult,
-} from "./export.ts";
+export type { BlueprintBundle, ExportedRevisionMeta, ParseBlueprintBundleResult } from "./export.ts";

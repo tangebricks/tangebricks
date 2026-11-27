@@ -144,9 +144,7 @@ describe("story 1.4 — deployed Worker telemetry and data routes: signing, work
       db.prepare("DROP TABLE IF EXISTS ent_invoices"),
       db.prepare("DROP TABLE IF EXISTS credit_ledger"),
       db.prepare("DROP TABLE IF EXISTS credit_wallets"),
-      db.prepare(
-        "CREATE TABLE ent_invoices (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, invoice_number TEXT NOT NULL, amount INTEGER NOT NULL)",
-      ),
+      db.prepare("CREATE TABLE ent_invoices (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, invoice_number TEXT NOT NULL, amount INTEGER NOT NULL)"),
       db.prepare(
         "CREATE TABLE credit_ledger (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, type TEXT NOT NULL, amount INTEGER NOT NULL, balance_after INTEGER NOT NULL, reason TEXT NOT NULL, metadata TEXT, idempotency_key TEXT, created_at TEXT NOT NULL)",
       ),
@@ -167,13 +165,7 @@ describe("story 1.4 — deployed Worker telemetry and data routes: signing, work
       it("WORKER_PATH_ONLY_SIG and legacy schemes: pathname-only, body-only, GET:<path?query> and query-less control-plane signatures are 401", async () => {
         const url = routeUrl(route.path, WS_A);
         const signedAt = String(Math.floor(Date.now() / 1000));
-        const legacyPayloads = [
-          url.pathname,
-          `${url.pathname}${url.search}`,
-          `GET:${url.pathname}${url.search}`,
-          `GET ${url.pathname}${url.search}\n`,
-          "",
-        ];
+        const legacyPayloads = [url.pathname, `${url.pathname}${url.search}`, `GET:${url.pathname}${url.search}`, `GET ${url.pathname}${url.search}\n`, ""];
         for (const payload of legacyPayloads) {
           const sig = await signTelemetryPayload(payload, SECRET);
           expect((await call(url, { [TELEMETRY_SIGNATURE_HEADER]: sig })).status).toBe(401);
@@ -304,7 +296,9 @@ describe("story 1.4 — deployed Worker telemetry and data routes: signing, work
     expect(await workspaceHasBrowsableData(db, "ws_only_in_ledger")).toBe(false);
     expect(await workspaceHasBrowsableData(db, "ws_nowhere")).toBe(false);
     await db.prepare("CREATE TABLE IF NOT EXISTS many_ws_s117 (id INTEGER PRIMARY KEY, workspace_id TEXT NOT NULL)").run();
-    await db.batch(Array.from({ length: 150 }, (_, i) => db.prepare("INSERT INTO many_ws_s117 (workspace_id) VALUES (?1)").bind(`ws_many_${String(i).padStart(3, "0")}`)));
+    await db.batch(
+      Array.from({ length: 150 }, (_, i) => db.prepare("INSERT INTO many_ws_s117 (workspace_id) VALUES (?1)").bind(`ws_many_${String(i).padStart(3, "0")}`)),
+    );
     expect(await workspaceHasBrowsableData(db, "ws_many_149")).toBe(true); // past the first hundred a listing returns
     await db.prepare("DROP TABLE many_ws_s117").run();
   });

@@ -27,12 +27,10 @@ function resolveDependencyClosure(targetId: string, selected: Set<string>, catal
     for (const req of entry.manifest.requires) {
       const reqName = req.includes("@") ? req.slice(0, req.indexOf("@")) : req;
       const alreadyProvided = [...closure].some((id) =>
-        catalog.bricks[id]?.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === reqName)
+        catalog.bricks[id]?.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === reqName),
       );
       if (alreadyProvided) continue;
-      const provider = ids.find((id) =>
-        catalog.bricks[id]!.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === reqName)
-      );
+      const provider = ids.find((id) => catalog.bricks[id]!.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === reqName));
       if (provider && !closure.has(provider)) {
         closure.add(provider);
         queue.push(provider);

@@ -52,9 +52,7 @@ export const MCP_TEST_REVIEWER_ENTRYPOINT = "TestReviewer";
  * way a Studio editor would (AD-V8). It is not a route of the endpoint and not an MCP tool: it is reachable only through a
  * service binding the test harness configures, so an agent calling the endpoint cannot reach it.
  */
-export async function bundleMcpWorker(
-  options: { testReviewer?: boolean } = {},
-): Promise<Omit<WorkerBundle, "dynamicEvaluation">> {
+export async function bundleMcpWorker(options: { testReviewer?: boolean } = {}): Promise<Omit<WorkerBundle, "dynamicEvaluation">> {
   const server = JSON.stringify(slash(join(repoRoot, "packages", "mcp-server", "src", "index.ts")));
   const catalog = JSON.stringify(slash(join(repoRoot, "packages", "assembler", "catalog.generated.ts")));
   const entry = options.testReviewer

@@ -117,30 +117,20 @@ describe("Story 5.3 — SQL Destructive-Migration Guard (analyzeSqlMigrations)",
     expect(
       warnings.some(
         (w) =>
-          w.migrationName === "0006_narrow_amount.sql" &&
-          w.kind === "type_narrowing" &&
-          w.affectedTable === "orders" &&
-          w.affectedColumn === "total_amount",
+          w.migrationName === "0006_narrow_amount.sql" && w.kind === "type_narrowing" && w.affectedTable === "orders" && w.affectedColumn === "total_amount",
+      ),
+    ).toBe(true);
+
+    expect(
+      warnings.some(
+        (w) => w.migrationName === "0007_sqlite_rebuild_narrow.sql" && w.kind === "type_narrowing" && w.affectedTable === "users" && w.affectedColumn === "age",
       ),
     ).toBe(true);
 
     expect(
       warnings.some(
         (w) =>
-          w.migrationName === "0007_sqlite_rebuild_narrow.sql" &&
-          w.kind === "type_narrowing" &&
-          w.affectedTable === "users" &&
-          w.affectedColumn === "age",
-      ),
-    ).toBe(true);
-
-    expect(
-      warnings.some(
-        (w) =>
-          w.migrationName === "0007_sqlite_rebuild_narrow.sql" &&
-          w.kind === "drop_column" &&
-          w.affectedTable === "users" &&
-          w.affectedColumn === "legacy_bio",
+          w.migrationName === "0007_sqlite_rebuild_narrow.sql" && w.kind === "drop_column" && w.affectedTable === "users" && w.affectedColumn === "legacy_bio",
       ),
     ).toBe(true);
   });

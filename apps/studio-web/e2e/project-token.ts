@@ -38,10 +38,7 @@ async function orgOf(cookie: string, project: string, orgIds: string[]): Promise
 }
 
 /** A bearer token bound to `project` (created in Acme first if it does not exist), for "Claude Desktop". */
-export async function e2eProjectToken(
-  project: string,
-  scopes: readonly string[] = ["read", "edit", "deploy", "connect"],
-): Promise<string> {
+export async function e2eProjectToken(project: string, scopes: readonly string[] = ["read", "edit", "deploy", "connect"]): Promise<string> {
   const key = `${project}|${scopes.join(",")}`;
   const cached = tokens.get(key);
   if (cached) return cached;
@@ -53,11 +50,14 @@ export async function e2eProjectToken(
   const acme = orgs.find((o) => o.slug === "acme") ?? orgs[0];
   if (!acme) throw new Error("Alice belongs to no org");
 
-  let orgId = await orgOf(cookie, project, orgs.map((o) => o.id));
+  let orgId = await orgOf(
+    cookie,
+    project,
+    orgs.map((o) => o.id),
+  );
   if (!orgId) {
     const created = await api(`/api/orgs/${encodeURIComponent(acme.id)}/projects`, { cookie, body: { project } });
-    if (created.status !== 201 && created.status !== 409)
-      throw new Error(`could not create ${project}: HTTP ${created.status}`);
+    if (created.status !== 201 && created.status !== 409) throw new Error(`could not create ${project}: HTTP ${created.status}`);
     orgId = acme.id;
   }
 

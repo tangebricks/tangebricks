@@ -90,9 +90,12 @@ export class UserProfileService {
    */
   async getProfile(userIdRaw: string): Promise<UserProfile> {
     const userId = userIdRaw.trim();
-    const row = await this.db.prepare(
-      "SELECT user_id, display_name, avatar_url, bio, locale, timezone, theme, preferences_json, created_at, updated_at FROM profile_users WHERE user_id = ?"
-    ).bind(userId).first<RawProfileRow>();
+    const row = await this.db
+      .prepare(
+        "SELECT user_id, display_name, avatar_url, bio, locale, timezone, theme, preferences_json, created_at, updated_at FROM profile_users WHERE user_id = ?",
+      )
+      .bind(userId)
+      .first<RawProfileRow>();
 
     if (row) {
       return this.parseRow(row);
@@ -126,9 +129,7 @@ export class UserProfileService {
       bio: string | null;
     }
 
-    const row = await this.db.prepare(
-      "SELECT user_id, display_name, avatar_url, bio FROM profile_users WHERE user_id = ?"
-    ).bind(userId).first<PublicRow>();
+    const row = await this.db.prepare("SELECT user_id, display_name, avatar_url, bio FROM profile_users WHERE user_id = ?").bind(userId).first<PublicRow>();
 
     if (!row) return null;
     return row;
@@ -149,7 +150,9 @@ export class UserProfileService {
     const theme = input.theme && ["light", "dark", "system"].includes(input.theme) ? input.theme : existing.theme;
     const now = new Date().toISOString();
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO profile_users (
         user_id, display_name, avatar_url, bio, locale, timezone, theme, preferences_json, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -161,18 +164,10 @@ export class UserProfileService {
         timezone = excluded.timezone,
         theme = excluded.theme,
         updated_at = excluded.updated_at
-    `).bind(
-      userId,
-      displayName,
-      avatarUrl,
-      bio,
-      locale,
-      timezone,
-      theme,
-      JSON.stringify(existing.preferences),
-      existing.created_at,
-      now
-    ).run();
+    `,
+      )
+      .bind(userId, displayName, avatarUrl, bio, locale, timezone, theme, JSON.stringify(existing.preferences), existing.created_at, now)
+      .run();
 
     return {
       user_id: userId,
@@ -192,10 +187,7 @@ export class UserProfileService {
    * Merges user custom preferences (e.g. notification settings, UI toggles).
    * Validates serialized JSON length does not exceed 4096 bytes.
    */
-  async updatePreferences(
-    userIdRaw: string,
-    updates: Record<string, unknown>
-  ): Promise<{ ok: boolean; profile?: UserProfile; error?: string }> {
+  async updatePreferences(userIdRaw: string, updates: Record<string, unknown>): Promise<{ ok: boolean; profile?: UserProfile; error?: string }> {
     const userId = userIdRaw.trim();
     const existing = await this.getProfile(userId);
 
@@ -207,25 +199,30 @@ export class UserProfileService {
 
     const now = new Date().toISOString();
 
-    await this.db.prepare(`
+    await this.db
+      .prepare(
+        `
       INSERT INTO profile_users (
         user_id, display_name, avatar_url, bio, locale, timezone, theme, preferences_json, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         preferences_json = excluded.preferences_json,
         updated_at = excluded.updated_at
-    `).bind(
-      userId,
-      existing.display_name,
-      existing.avatar_url,
-      existing.bio,
-      existing.locale,
-      existing.timezone,
-      existing.theme,
-      serialized,
-      existing.created_at,
-      now
-    ).run();
+    `,
+      )
+      .bind(
+        userId,
+        existing.display_name,
+        existing.avatar_url,
+        existing.bio,
+        existing.locale,
+        existing.timezone,
+        existing.theme,
+        serialized,
+        existing.created_at,
+        now,
+      )
+      .run();
 
     return {
       ok: true,

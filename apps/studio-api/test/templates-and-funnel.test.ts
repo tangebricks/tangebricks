@@ -1,34 +1,15 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
-import {
-  computeBlueprintBuildHash,
-  computeBlueprintGraphHash,
-  semanticHash,
-} from "@poc/blueprint";
-import {
-  app as studioApp,
-  ensureDefaultTestAuth,
-  ensureStudioD1Schema,
-  recordStudioOnboardingEvent,
-} from "../src/index.ts";
-import type {
-  OnboardingFunnelAnalyticsReport,
-  ProjectStatePayload,
-  StarterTemplateDescriptor,
-  StudioApiEnv,
-  StudioOnboardingEvent,
-} from "../src/index.ts";
+import { computeBlueprintBuildHash, computeBlueprintGraphHash, semanticHash } from "@poc/blueprint";
+import { app as studioApp, ensureDefaultTestAuth, ensureStudioD1Schema, recordStudioOnboardingEvent } from "../src/index.ts";
+import type { OnboardingFunnelAnalyticsReport, ProjectStatePayload, StarterTemplateDescriptor, StudioApiEnv, StudioOnboardingEvent } from "../src/index.ts";
 import { signInTestHuman } from "./human-session.ts";
 import { ensureTestAuthForPath } from "./project-token.ts";
 import { postOpsWithReview } from "./human-session.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 
-async function studioReq(
-  path: string,
-  init: RequestInit = {},
-  targetEnv: StudioApiEnv = studioEnv,
-): Promise<Response> {
+async function studioReq(path: string, init: RequestInit = {}, targetEnv: StudioApiEnv = studioEnv): Promise<Response> {
   const { headers: authHeaders } = await ensureTestAuthForPath(targetEnv, path);
   const headers = new Headers(init.headers);
   for (const [k, v] of Object.entries(authHeaders)) {
@@ -69,11 +50,7 @@ async function createHumanSession(
   const cookieHeader = setCookie.split(";")[0] ?? "";
   const authHeader = `Bearer ${regBody.token}`;
 
-  const req = async (
-    path: string,
-    init: RequestInit = {},
-    envOverride: Partial<StudioApiEnv> = {},
-  ): Promise<Response> => {
+  const req = async (path: string, init: RequestInit = {}, envOverride: Partial<StudioApiEnv> = {}): Promise<Response> => {
     const headers = new Headers(init.headers);
     if (cookieHeader && !headers.has("cookie")) {
       headers.set("cookie", cookieHeader);
@@ -111,12 +88,7 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
     const res = await studioReq("/api/templates");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { templates: StarterTemplateDescriptor[] };
-    expect(body.templates.map((t) => t.id)).toEqual([
-      "ai-credits-saas",
-      "b2b-workspace-app",
-      "marketplace",
-      "stripe-discord-ops",
-    ]);
+    expect(body.templates.map((t) => t.id)).toEqual(["ai-credits-saas", "b2b-workspace-app", "marketplace", "stripe-discord-ops"]);
 
     for (const tpl of body.templates) {
       expect(tpl.bricks.length).toBeGreaterThanOrEqual(4);
@@ -137,11 +109,7 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
     // Story 0.15: MCP tokens cannot create projects, so a signed-in owner of the default org creates them; the reads below
     // use each project's own token.
     const owner = await signInTestHuman(studioEnv, "tpl-owner");
-    for (const templateId of [
-      "ai-credits-saas",
-      "b2b-workspace-app",
-      "marketplace",
-    ] as const) {
+    for (const templateId of ["ai-credits-saas", "b2b-workspace-app", "marketplace"] as const) {
       const slug = `tpl-${templateId}`;
       const createRes = await studioReq("/api/projects", {
         method: "POST",
@@ -192,26 +160,24 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
     // AD-V8: the template's workflow holds a money node, so the token's edit there is proposed and the owner accepts it.
     const { headers: moveHeaders } = await ensureTestAuthForPath(studioEnv, `/api/projects/${targetSlug}/ops`);
     const moveRes = await postOpsWithReview(studioEnv, targetSlug, moveHeaders, {
-        baseRevision: beforeState.revision,
-        ops: [
-          {
-            opId: "move-node-pos-1",
-            type: "update_node",
-            workflowId: wf.id,
-            nodeId: firstNode.id,
-            patch: {
-              position: { x: 720, y: 540 },
-            },
+      baseRevision: beforeState.revision,
+      ops: [
+        {
+          opId: "move-node-pos-1",
+          type: "update_node",
+          workflowId: wf.id,
+          nodeId: firstNode.id,
+          patch: {
+            position: { x: 720, y: 540 },
           },
-        ],
-      });
+        },
+      ],
+    });
     expect(moveRes.status).toBe(200);
 
     const afterRes = await studioReq(`/api/projects/${targetSlug}`);
     const afterState = (await afterRes.json()) as ProjectStatePayload;
-    const movedNode = afterState.state.workflows[0]!.nodes.find(
-      (n) => n.id === firstNode.id,
-    )!;
+    const movedNode = afterState.state.workflows[0]!.nodes.find((n) => n.id === firstNode.id)!;
     expect(movedNode.position).toEqual({ x: 720, y: 540 });
 
     expect(afterState.semanticHash).toBe(beforeSemanticHash);
@@ -238,9 +204,7 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
     const initialState = (await initialRes.json()) as ProjectStatePayload;
     expect(initialState.revision).toBe(1);
     expect(initialState.readiness.ready).toBe(false);
-    const unboundConnectionNeeds = initialState.readiness.needs.filter(
-      (n) => n.code === "UNBOUND_CONNECTION",
-    );
+    const unboundConnectionNeeds = initialState.readiness.needs.filter((n) => n.code === "UNBOUND_CONNECTION");
     expect(unboundConnectionNeeds.length).toBe(1);
     expect(unboundConnectionNeeds[0]?.message).toContain("sec_discord_bot");
 
@@ -329,62 +293,50 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
     expect(editRes2.status).toBe(200);
 
     // 4. Run Test Step on a workflow node (records first_test_step_run once per project)
-    const stepRes = await human.req(
-      `/api/projects/${projectSlug}/workflows/rbac_audit_workflow/nodes/n_record_created/test-step`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          input: {
-            title: "Launch Project",
-            status: "active",
-            workspaceId: "ws_123",
-          },
-        }),
-      },
-    );
+    const stepRes = await human.req(`/api/projects/${projectSlug}/workflows/rbac_audit_workflow/nodes/n_record_created/test-step`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        input: {
+          title: "Launch Project",
+          status: "active",
+          workspaceId: "ws_123",
+        },
+      }),
+    });
     expect(stepRes.status).toBe(200);
 
     // 5. Connect Cloudflare wizard funnel events + verify-and-save
-    const wizOpenRes = await human.req(
-      `/api/orgs/${orgId}/cloudflare-tokens/funnel-event`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          step: "wizard_opened",
-          projectId: projectSlug,
-        }),
-      },
-    );
+    const wizOpenRes = await human.req(`/api/orgs/${orgId}/cloudflare-tokens/funnel-event`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        step: "wizard_opened",
+        projectId: projectSlug,
+      }),
+    });
     expect(wizOpenRes.status).toBe(201);
 
-    const linkClickRes = await human.req(
-      `/api/orgs/${orgId}/cloudflare-tokens/funnel-event`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          step: "template_link_clicked",
-          projectId: projectSlug,
-        }),
-      },
-    );
+    const linkClickRes = await human.req(`/api/orgs/${orgId}/cloudflare-tokens/funnel-event`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        step: "template_link_clicked",
+        projectId: projectSlug,
+      }),
+    });
     expect(linkClickRes.status).toBe(201);
 
-    const verifyRes = await human.req(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          token: "cf_valid_all_scopes_token_funnel_12345",
-          accountId: "0123456789abcdef0123456789abcdef",
-          accountName: "Funnel Cloudflare Account",
-          projectId: projectSlug,
-        }),
-      },
-    );
+    const verifyRes = await human.req(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        token: "cf_valid_all_scopes_token_funnel_12345",
+        accountId: "0123456789abcdef0123456789abcdef",
+        accountName: "Funnel Cloudflare Account",
+        projectId: projectSlug,
+      }),
+    });
     expect(verifyRes.status).toBe(201);
 
     // 6. Bind core-auth required secrets so preview deploy preflight passes
@@ -409,25 +361,19 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
     }
 
     // 7. Deploy to preview (records first_preview_deploy_started & first_preview_deploy_succeeded)
-    const previewDeployRes = await human.req(
-      `/api/projects/${projectSlug}/environments/preview/deploy`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ orgId }),
-      },
-    );
+    const previewDeployRes = await human.req(`/api/projects/${projectSlug}/environments/preview/deploy`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgId }),
+    });
     expect(previewDeployRes.status).toBe(200);
 
     // 8. Promote to production (records first_production_deploy_succeeded)
-    const prodPromoteRes = await human.req(
-      `/api/projects/${projectSlug}/environments/production/promote`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ orgId }),
-      },
-    );
+    const prodPromoteRes = await human.req(`/api/projects/${projectSlug}/environments/production/promote`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgId }),
+    });
     expect(prodPromoteRes.status).toBe(200);
 
     // Verify recorded studio_onboarding_events for this org
@@ -451,20 +397,19 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
     expect(recordedSteps).toContain("first_production_deploy_succeeded");
 
     // Ensure first_blueprint_edit was recorded only once despite 2 edit calls
-    expect(
-      eventsBody.events.filter(
-        (e) =>
-          e.projectId === projectSlug && e.step === "first_blueprint_edit",
-      ).length,
-    ).toBe(1);
+    expect(eventsBody.events.filter((e) => e.projectId === projectSlug && e.step === "first_blueprint_edit").length).toBe(1);
 
     // 9. Query operator funnel report endpoint
     // Story 16: /api/admin/* is for platform operators only (PX_PLATFORM_OPERATORS); an org owner is not one.
     const refusedFunnel = await human.req(`/api/admin/onboarding-funnel?orgId=${orgId}`);
     expect(refusedFunnel.status).toBe(403);
-    const funnelRes = await human.req(`/api/admin/onboarding-funnel?orgId=${orgId}`, {}, {
-      PX_PLATFORM_OPERATORS: human.userId,
-    });
+    const funnelRes = await human.req(
+      `/api/admin/onboarding-funnel?orgId=${orgId}`,
+      {},
+      {
+        PX_PLATFORM_OPERATORS: human.userId,
+      },
+    );
     expect(funnelRes.status).toBe(200);
     const report = (await funnelRes.json()) as OnboardingFunnelAnalyticsReport;
     expect(report.stepCounts.signup_completed).toBeGreaterThanOrEqual(1);
@@ -473,12 +418,8 @@ describe("Story 8.1 — Starter templates, layout coordinate persistence, and on
     expect(report.stepCounts.first_test_step_run).toBeGreaterThanOrEqual(1);
     expect(report.stepCounts.connect_cf_wizard_opened).toBeGreaterThanOrEqual(1);
     expect(report.stepCounts.connect_cf_verified).toBeGreaterThanOrEqual(1);
-    expect(
-      report.stepCounts.first_preview_deploy_succeeded,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      report.stepCounts.first_production_deploy_succeeded,
-    ).toBeGreaterThanOrEqual(1);
+    expect(report.stepCounts.first_preview_deploy_succeeded).toBeGreaterThanOrEqual(1);
+    expect(report.stepCounts.first_production_deploy_succeeded).toBeGreaterThanOrEqual(1);
     expect(report.connectCloudflare.dropOffRate).toBe(0);
     expect(report.connectCloudflare.cp9TriggerFired).toBe(false);
     expect(report.ttfd.sampleSize).toBeGreaterThanOrEqual(1);

@@ -14,34 +14,46 @@ const CreateJobSchema = z.object({
 
 const ExecuteImportSchema = z.object({
   csvText: z.string().min(1),
-  mappings: z.array(
-    z.object({
-      csvColumn: z.string().min(1),
-      targetField: z.string().min(1),
-      type: z.enum(["string", "number", "boolean", "date"]),
-      required: z.boolean().optional(),
-    })
-  ).min(1),
+  mappings: z
+    .array(
+      z.object({
+        csvColumn: z.string().min(1),
+        targetField: z.string().min(1),
+        type: z.enum(["string", "number", "boolean", "date"]),
+        required: z.boolean().optional(),
+      }),
+    )
+    .min(1),
 });
 
 const CreateGridViewSchema = z.object({
   entityType: z.string().min(1).max(64),
   name: z.string().min(1).max(100),
-  columns: z.array(z.object({
-    key: z.string(),
-    label: z.string(),
-    width: z.number().optional(),
-    visible: z.boolean().optional(),
-  })),
-  filters: z.array(z.object({
-    field: z.string(),
-    operator: z.string(),
-    value: z.unknown(),
-  })).optional(),
-  sort: z.array(z.object({
-    field: z.string(),
-    direction: z.enum(["asc", "desc"]),
-  })).optional(),
+  columns: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      width: z.number().optional(),
+      visible: z.boolean().optional(),
+    }),
+  ),
+  filters: z
+    .array(
+      z.object({
+        field: z.string(),
+        operator: z.string(),
+        value: z.unknown(),
+      }),
+    )
+    .optional(),
+  sort: z
+    .array(
+      z.object({
+        field: z.string(),
+        direction: z.enum(["asc", "desc"]),
+      }),
+    )
+    .optional(),
 });
 
 export function createTabularRoutes(): Hono<TabularEnv> {
@@ -87,11 +99,7 @@ export function createTabularRoutes(): Hono<TabularEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("tabularService") || new TabularService(c.env.DB);
-    const job = await service.createImportJob(
-      workspaceId,
-      parsed.data.targetEntityType,
-      parsed.data.filename
-    );
+    const job = await service.createImportJob(workspaceId, parsed.data.targetEntityType, parsed.data.filename);
 
     return c.json({ job }, 201);
   });
@@ -115,12 +123,7 @@ export function createTabularRoutes(): Hono<TabularEnv> {
 
     const service = c.get("tabularService") || new TabularService(c.env.DB);
     try {
-      const result = await service.executeImport(
-        ctx.workspaceId,
-        jobId,
-        parsed.data.csvText,
-        parsed.data.mappings as FieldMapping[]
-      );
+      const result = await service.executeImport(ctx.workspaceId, jobId, parsed.data.csvText, parsed.data.mappings as FieldMapping[]);
       return c.json(result, 200);
     } catch (err: unknown) {
       if (err instanceof ImportJobNotFoundError) return c.json({ error: "Import job not found" }, 404);
@@ -169,7 +172,7 @@ export function createTabularRoutes(): Hono<TabularEnv> {
       parsed.data.name,
       parsed.data.columns,
       parsed.data.filters,
-      parsed.data.sort
+      parsed.data.sort,
     );
 
     return c.json({ view }, 201);

@@ -12,11 +12,7 @@ import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 import type { D1Like, D1Result, D1Statement } from "../packages/sdk/src/index.ts";
-import {
-  STUDIO_ONBOARDING_STEPS,
-  computeOnboardingFunnelAnalytics,
-  recordStudioOnboardingEvent,
-} from "../apps/studio-api/src/security/token-vault.ts";
+import { STUDIO_ONBOARDING_STEPS, computeOnboardingFunnelAnalytics, recordStudioOnboardingEvent } from "../apps/studio-api/src/security/token-vault.ts";
 import type { OnboardingFunnelAnalytics } from "../apps/studio-api/src/security/token-vault.ts";
 
 function createInMemorySqliteD1(): D1Like {
@@ -68,10 +64,7 @@ function createInMemorySqliteD1(): D1Like {
   };
 }
 
-export async function generateBetaFunnelReport(
-  db: D1Like,
-  filter?: { orgId?: string },
-): Promise<OnboardingFunnelAnalytics> {
+export async function generateBetaFunnelReport(db: D1Like, filter?: { orgId?: string }): Promise<OnboardingFunnelAnalytics> {
   return computeOnboardingFunnelAnalytics(db, filter);
 }
 
@@ -82,9 +75,7 @@ export function formatBetaFunnelReportTable(report: OnboardingFunnelAnalytics): 
   lines.push(
     `Median TTFD         : ${report.medianTtfdMinutes !== null ? `${report.medianTtfdMinutes} min` : "N/A"} (target <= ${report.ttfdTargetMinutes} min) -> ${report.ttfdPassed ? "PASS" : "EXCEEDED"}`,
   );
-  lines.push(
-    `P90 TTFD            : ${report.p90TtfdMinutes !== null ? `${report.p90TtfdMinutes} min` : "N/A"} (sample size: ${report.ttfd.sampleSize})`,
-  );
+  lines.push(`P90 TTFD            : ${report.p90TtfdMinutes !== null ? `${report.p90TtfdMinutes} min` : "N/A"} (sample size: ${report.ttfd.sampleSize})`);
   lines.push(
     `CF Wizard Drop-Off  : ${(report.dropOffRate * 100).toFixed(1)}% (${report.verifiedCount}/${report.wizardOpenedCount} verified, threshold <= 25.0%)`,
   );
@@ -95,13 +86,7 @@ export function formatBetaFunnelReportTable(report: OnboardingFunnelAnalytics): 
   lines.push("Step".padEnd(36) + " | " + "Events".padStart(8) + " | " + "Unique Actors".padStart(13));
   lines.push("-".repeat(64));
   for (const step of STUDIO_ONBOARDING_STEPS) {
-    lines.push(
-      [
-        step.padEnd(36),
-        String(report.stepCounts[step] ?? 0).padStart(8),
-        String(report.uniqueActorsByStep[step] ?? 0).padStart(13),
-      ].join(" | "),
-    );
+    lines.push([step.padEnd(36), String(report.stepCounts[step] ?? 0).padStart(8), String(report.uniqueActorsByStep[step] ?? 0).padStart(13)].join(" | "));
   }
   return lines.join("\n");
 }
@@ -195,9 +180,6 @@ async function main(): Promise<void> {
   console.log(`\n[beta:funnel-report] Evidence written to ${outPath}`);
 }
 
-if (
-  import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` ||
-  process.argv[1]?.endsWith("beta-funnel-report.ts")
-) {
+if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || process.argv[1]?.endsWith("beta-funnel-report.ts")) {
   await main();
 }

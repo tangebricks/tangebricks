@@ -132,10 +132,13 @@ export function requireScope(scope: string): MiddlewareHandler<ApiKeyEnv> {
 
     const hasScope = key.scopes.includes("*") || key.scopes.includes(scope);
     if (!hasScope) {
-      return c.json({
-        error: "Insufficient API key permissions",
-        requiredScope: scope,
-      }, 403);
+      return c.json(
+        {
+          error: "Insufficient API key permissions",
+          requiredScope: scope,
+        },
+        403,
+      );
     }
 
     await next();

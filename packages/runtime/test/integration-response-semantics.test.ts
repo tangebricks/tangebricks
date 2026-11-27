@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as assembler from "@poc/assembler";
 import type { IntegrationManifestFile } from "@poc/assembler";
-import {
-  callOperation,
-  createIntegrationOperationExecutor,
-} from "../src/index.ts";
+import { callOperation, createIntegrationOperationExecutor } from "../src/index.ts";
 
 describe("UC3.8: integration response semantics and pagination", () => {
   const baseUi = {
@@ -54,9 +51,7 @@ describe("UC3.8: integration response semantics and pagination", () => {
           headers: { "content-type": "application/json" },
         });
 
-      await expect(
-        callOperation(manifest, "getChannel", {}, { connection: null, fetcher }),
-      ).rejects.toMatchObject({
+      await expect(callOperation(manifest, "getChannel", {}, { connection: null, fetcher })).rejects.toMatchObject({
         code: "INTEGRATION_PROVIDER_ERROR",
         providerCode: "channel_not_found",
       });
@@ -76,7 +71,7 @@ describe("UC3.8: integration response semantics and pagination", () => {
           payload: {},
           connection: null as any,
           secret: () => "",
-          binding: () => ({} as any),
+          binding: () => ({}) as any,
         }),
       ).rejects.toThrow(/INTEGRATION_PROVIDER_ERROR/);
     });
@@ -114,9 +109,7 @@ describe("UC3.8: integration response semantics and pagination", () => {
           headers: { "content-type": "application/json" },
         });
 
-      await expect(
-        callOperation(manifest, "listUsers", {}, { connection: null, fetcher }),
-      ).rejects.toMatchObject({
+      await expect(callOperation(manifest, "listUsers", {}, { connection: null, fetcher })).rejects.toMatchObject({
         code: "INTEGRATION_PROVIDER_ERROR",
         providerCode: "invalid_auth",
       });
@@ -151,9 +144,7 @@ describe("UC3.8: integration response semantics and pagination", () => {
           headers: { "content-type": "application/json" },
         });
 
-      await expect(
-        callOperation(manifest, "checkJob", { id: "j1" }, { connection: null, fetcher: failingFetcher }),
-      ).rejects.toMatchObject({
+      await expect(callOperation(manifest, "checkJob", { id: "j1" }, { connection: null, fetcher: failingFetcher })).rejects.toMatchObject({
         code: "INTEGRATION_PROVIDER_ERROR",
       });
 
@@ -163,12 +154,7 @@ describe("UC3.8: integration response semantics and pagination", () => {
           headers: { "content-type": "application/json" },
         });
 
-      const res = await callOperation(
-        manifest,
-        "checkJob",
-        { id: "j1" },
-        { connection: null, fetcher: succeedingFetcher },
-      );
+      const res = await callOperation(manifest, "checkJob", { id: "j1" }, { connection: null, fetcher: succeedingFetcher });
       expect(res.ok).toBe(true);
       expect((res.data as any).status).toBe("succeeded");
     });
@@ -183,10 +169,7 @@ describe("UC3.8: integration response semantics and pagination", () => {
         offsetsCalled.push(offset);
         return new Response(
           JSON.stringify({
-            items: [
-              { id: `item_${offset + 1}` },
-              { id: `item_${offset + 2}` },
-            ],
+            items: [{ id: `item_${offset + 1}` }, { id: `item_${offset + 2}` }],
             total: 10,
           }),
           { status: 200, headers: { "content-type": "application/json" } },
@@ -268,9 +251,7 @@ describe("UC3.8: integration response semantics and pagination", () => {
         ],
       } as any;
 
-      await expect(
-        callOperation(manifest, "listData", {}, { connection: null, fetcher }),
-      ).rejects.toMatchObject({
+      await expect(callOperation(manifest, "listData", {}, { connection: null, fetcher })).rejects.toMatchObject({
         code: "INTEGRATION_HOST_FORBIDDEN",
       });
       expect(pageCount).toBe(1);
@@ -449,7 +430,7 @@ describe("UC3.8: integration response semantics and pagination", () => {
         payload: {},
         connection: null as any,
         secret: () => "",
-        binding: () => ({} as any),
+        binding: () => ({}) as any,
       });
       expect(nodeRes.truncated).toBe(true);
       expect(nodeRes.nextCursor).toBe("3");
@@ -508,9 +489,7 @@ describe("UC3.8: integration response semantics and pagination", () => {
             {
               any: [
                 {
-                  all: [
-                    { path: "too.deep", equals: true },
-                  ],
+                  all: [{ path: "too.deep", equals: true }],
                 },
               ],
             },

@@ -133,20 +133,10 @@ export class CustomDomainService {
     // Check if primary
     let isPrimary = input.isPrimary ? 1 : 0;
     if (isPrimary === 1) {
-      await scoped(this.db, input.workspaceId).update(
-        "dom_domains",
-        { is_primary: 0 },
-        undefined,
-        []
-      );
+      await scoped(this.db, input.workspaceId).update("dom_domains", { is_primary: 0 }, undefined, []);
     } else {
       // If workspace has 0 domains, make first one primary automatically
-      const existing = await scoped(this.db, input.workspaceId).select(
-        "dom_domains",
-        undefined,
-        [],
-        { limit: 1 }
-      );
+      const existing = await scoped(this.db, input.workspaceId).select("dom_domains", undefined, [], { limit: 1 });
       if (existing.length === 0) {
         isPrimary = 1;
       }
@@ -185,11 +175,7 @@ export class CustomDomainService {
    * Retrieves domain by workspace and ID.
    */
   async getDomain(workspaceId: string, domainId: string): Promise<CustomDomainWithInstructions | null> {
-    const row = await scoped(this.db, workspaceId).first<RawDomainRow>(
-      "dom_domains",
-      "id = ?",
-      [domainId]
-    );
+    const row = await scoped(this.db, workspaceId).first<RawDomainRow>("dom_domains", "id = ?", [domainId]);
 
     return row ? this.mapRow(row) : null;
   }
@@ -205,15 +191,16 @@ export class CustomDomainService {
     dnsStatus: DnsStatus;
   } | null> {
     const normHost = hostname.trim().toLowerCase();
-    const row = await this.db.prepare(
-      "SELECT workspace_id, hostname, is_primary, ssl_status, dns_status FROM dom_domains WHERE hostname = ?"
-    ).bind(normHost).first<{
-      workspace_id: string;
-      hostname: string;
-      is_primary: number;
-      ssl_status: SslStatus;
-      dns_status: DnsStatus;
-    }>();
+    const row = await this.db
+      .prepare("SELECT workspace_id, hostname, is_primary, ssl_status, dns_status FROM dom_domains WHERE hostname = ?")
+      .bind(normHost)
+      .first<{
+        workspace_id: string;
+        hostname: string;
+        is_primary: number;
+        ssl_status: SslStatus;
+        dns_status: DnsStatus;
+      }>();
 
     if (!row) return null;
 
@@ -232,7 +219,7 @@ export class CustomDomainService {
   async verifyDomain(
     workspaceId: string,
     domainId: string,
-    mockDnsResolver?: (hostname: string, type: string) => Promise<{ matches: boolean; error?: string }>
+    mockDnsResolver?: (hostname: string, type: string) => Promise<{ matches: boolean; error?: string }>,
   ): Promise<CustomDomainWithInstructions> {
     const domain = await this.getDomain(workspaceId, domainId);
     if (!domain) {
@@ -270,7 +257,7 @@ export class CustomDomainService {
         verified_at: verifiedAt,
       },
       "id = ?",
-      [domainId]
+      [domainId],
     );
 
     const updated = await this.getDomain(workspaceId, domainId);
@@ -284,19 +271,9 @@ export class CustomDomainService {
     const target = await this.getDomain(workspaceId, domainId);
     if (!target) return false;
 
-    await scoped(this.db, workspaceId).update(
-      "dom_domains",
-      { is_primary: 0 },
-      undefined,
-      []
-    );
+    await scoped(this.db, workspaceId).update("dom_domains", { is_primary: 0 }, undefined, []);
 
-    const res = await scoped(this.db, workspaceId).update(
-      "dom_domains",
-      { is_primary: 1 },
-      "id = ?",
-      [domainId]
-    );
+    const res = await scoped(this.db, workspaceId).update("dom_domains", { is_primary: 1 }, "id = ?", [domainId]);
 
     return res.meta.changes > 0;
   }
@@ -305,12 +282,7 @@ export class CustomDomainService {
    * Lists all domains for workspace.
    */
   async listDomains(workspaceId: string): Promise<CustomDomainWithInstructions[]> {
-    const rows = await scoped(this.db, workspaceId).select<RawDomainRow>(
-      "dom_domains",
-      undefined,
-      [],
-      { orderBy: "is_primary DESC, created_at DESC" }
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawDomainRow>("dom_domains", undefined, [], { orderBy: "is_primary DESC, created_at DESC" });
 
     return rows.map((r) => this.mapRow(r));
   }
@@ -319,11 +291,7 @@ export class CustomDomainService {
    * Deletes domain mapping.
    */
   async deleteDomain(workspaceId: string, domainId: string): Promise<boolean> {
-    const res = await scoped(this.db, workspaceId).delete(
-      "dom_domains",
-      "id = ?",
-      [domainId]
-    );
+    const res = await scoped(this.db, workspaceId).delete("dom_domains", "id = ?", [domainId]);
 
     return res.meta.changes > 0;
   }

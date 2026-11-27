@@ -231,10 +231,7 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
     const proposed = (await agentOpsRes.json()) as { status?: string; proposalId?: string; revision: number };
     expect(proposed.status).toBe("pending");
     expect(proposed.revision).toBe(1);
-    const acceptRes = await callStudio(
-      `/api/projects/${projectSlug}/proposals/${proposed.proposalId}/accept`,
-      { cookie: aliceCookie, body: {} },
-    );
+    const acceptRes = await callStudio(`/api/projects/${projectSlug}/proposals/${proposed.proposalId}/accept`, { cookie: aliceCookie, body: {} });
     expect(acceptRes.status).toBe(200);
     const rev2 = (await acceptRes.json()) as ProjectStatePayload;
     expect(rev2.revision).toBe(2);
@@ -260,9 +257,7 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
 
     // Verify studio_audit_log recorded org.create, project.create, org.mcp_token.create, and 2 project.ops mutations
     const auditRows = await studioDb
-      .prepare(
-        "SELECT action, actor_type, actor_id, status FROM studio_audit_log WHERE org_id = ? ORDER BY created_at ASC",
-      )
+      .prepare("SELECT action, actor_type, actor_id, status FROM studio_audit_log WHERE org_id = ? ORDER BY created_at ASC")
       .bind(acmeOrgId)
       .all<{ action: string; actor_type: string; actor_id: string; status: string }>();
     const actions = (auditRows.results ?? []).map((r) => `${r.action}:${r.status}`);
@@ -325,27 +320,18 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
     expect((await callStudio("/api/projects/bob-proj", { cookie: forgedCookie })).status).toBe(401);
 
     // Forged MCP token returns 401
-    expect(
-      (await callStudio("/api/projects/bob-proj", { token: "px_mcp_00000000000000000000" })).status,
-    ).toBe(401);
-    expect(
-      (await callStudioMcp("list_bricks", {}, { token: "px_mcp_00000000000000000000" })).status,
-    ).toBe(401);
+    expect((await callStudio("/api/projects/bob-proj", { token: "px_mcp_00000000000000000000" })).status).toBe(401);
+    expect((await callStudioMcp("list_bricks", {}, { token: "px_mcp_00000000000000000000" })).status).toBe(401);
 
     // Revoke MCP token via DELETE /api/orgs/:orgId/mcp-tokens/:tokenId -> subsequent calls return 401
-    const revokeRes = await callStudio(
-      `/api/orgs/${bobOrgId}/mcp-tokens/${mcpTokenData.id}`,
-      {
-        method: "DELETE",
-        cookie: bobCookie,
-      },
-    );
+    const revokeRes = await callStudio(`/api/orgs/${bobOrgId}/mcp-tokens/${mcpTokenData.id}`, {
+      method: "DELETE",
+      cookie: bobCookie,
+    });
     expect(revokeRes.status).toBe(200);
 
     expect((await callStudio("/api/orgs", { token: mcpTokenData.token })).status).toBe(401);
-    expect(
-      (await callStudio("/api/projects/bob-proj", { token: mcpTokenData.token })).status,
-    ).toBe(401);
+    expect((await callStudio("/api/projects/bob-proj", { token: mcpTokenData.token })).status).toBe(401);
     expect(
       (
         await callStudioMcp(
@@ -432,11 +418,7 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
     const aliceListRes = await callStudio("/api/projects", { token: aliceToken });
     expect(aliceListRes.status).toBe(200);
     // Only Org A's own project is listed; nothing of Org B's.
-    expect(
-      ((await aliceListRes.json()) as { projects: Array<{ project: string }> }).projects.map(
-        (p) => p.project,
-      ),
-    ).toEqual(["alpha-own-app"]);
+    expect(((await aliceListRes.json()) as { projects: Array<{ project: string }> }).projects.map((p) => p.project)).toEqual(["alpha-own-app"]);
 
     // Alice (Org A) cannot read state, revisions, diff, or export of Org B's project -> 403/404
     for (const readPath of [
@@ -593,10 +575,7 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
     });
     expect(veraGetRevs.status).toBe(200);
 
-    const veraGetDiff = await callStudio(
-      "/api/projects/rbac-workflow-app/diff?from=1&to=2",
-      { cookie: veraCookie },
-    );
+    const veraGetDiff = await callStudio("/api/projects/rbac-workflow-app/diff?from=1&to=2", { cookie: veraCookie });
     expect(veraGetDiff.status).toBe(200);
 
     // Vera (viewer) CAN subscribe to WebSocket (/api/projects/:project/ws -> 101 Switching Protocols)
@@ -610,10 +589,7 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
     veraWsRes.webSocket?.close(1000, "done");
 
     // Count audit log entries before Vera's forbidden mutation attempts
-    const beforeAudit = await studioDb
-      .prepare("SELECT COUNT(*) AS n FROM studio_audit_log WHERE org_id = ?")
-      .bind(orgId)
-      .first<{ n: number }>();
+    const beforeAudit = await studioDb.prepare("SELECT COUNT(*) AS n FROM studio_audit_log WHERE org_id = ?").bind(orgId).first<{ n: number }>();
     const countBefore = Number(beforeAudit?.n ?? 0);
 
     // 4a. Vera (viewer) attempting POST /ops -> 403 Forbidden with FORBIDDEN_ROLE
@@ -692,12 +668,7 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
 
     const rows = forbiddenLogs.results ?? [];
     expect(rows).toHaveLength(4);
-    expect(rows.map((r) => r.action)).toEqual([
-      "project.ops",
-      "project.revert",
-      "project.import",
-      "mcp.apply_ops",
-    ]);
+    expect(rows.map((r) => r.action)).toEqual(["project.ops", "project.revert", "project.import", "mcp.apply_ops"]);
     expect(rows[0]).toMatchObject({
       project_id: "rbac-workflow-app",
       actor_type: "human",
@@ -713,10 +684,7 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
       status: "forbidden",
     });
 
-    const afterAudit = await studioDb
-      .prepare("SELECT COUNT(*) AS n FROM studio_audit_log WHERE org_id = ?")
-      .bind(orgId)
-      .first<{ n: number }>();
+    const afterAudit = await studioDb.prepare("SELECT COUNT(*) AS n FROM studio_audit_log WHERE org_id = ?").bind(orgId).first<{ n: number }>();
     expect(Number(afterAudit?.n ?? 0)).toBe(countBefore + 4);
 
     // Verify project state was not modified by any of Vera's attempts (still at revision 2)
@@ -726,9 +694,6 @@ describe("Story 2.1 — Studio Better Auth login, organizations, roles, and audi
     expect(finalStateRes.status).toBe(200);
     const finalState = (await finalStateRes.json()) as ProjectStatePayload;
     expect(finalState.revision).toBe(2);
-    expect(finalState.state.bricks.map((b) => b.id)).toEqual([
-      "credit-wallet",
-      "multi-workspace",
-    ]);
+    expect(finalState.state.bricks.map((b) => b.id)).toEqual(["credit-wallet", "multi-workspace"]);
   });
 });

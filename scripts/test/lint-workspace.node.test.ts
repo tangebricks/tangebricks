@@ -27,11 +27,7 @@ describe("lint-workspace", () => {
   it("exits 1 and names both directories when two workspace package.json files share a name", () => {
     const fixtureRoot = mkdtempSync(join(tmpdir(), "lint-workspace-dup-"));
     try {
-      writeFileSync(
-        join(fixtureRoot, "pnpm-workspace.yaml"),
-        ["packages:", "  - packages/*", "  - bricks/*", ""].join("\n"),
-        "utf8",
-      );
+      writeFileSync(join(fixtureRoot, "pnpm-workspace.yaml"), ["packages:", "  - packages/*", "  - bricks/*", ""].join("\n"), "utf8");
 
       const pkgDir = join(fixtureRoot, "packages", "dup-pkg");
       const brickDir = join(fixtureRoot, "bricks", "dup-pkg");
@@ -40,21 +36,9 @@ describe("lint-workspace", () => {
       mkdirSync(brickDir, { recursive: true });
       mkdirSync(uniqueDir, { recursive: true });
 
-      writeFileSync(
-        join(pkgDir, "package.json"),
-        JSON.stringify({ name: "@poc/dup-pkg", version: "0.0.1" }, null, 2),
-        "utf8",
-      );
-      writeFileSync(
-        join(brickDir, "package.json"),
-        JSON.stringify({ name: "@poc/dup-pkg", version: "0.0.1" }, null, 2),
-        "utf8",
-      );
-      writeFileSync(
-        join(uniqueDir, "package.json"),
-        JSON.stringify({ name: "@poc/unique-pkg", version: "0.0.1" }, null, 2),
-        "utf8",
-      );
+      writeFileSync(join(pkgDir, "package.json"), JSON.stringify({ name: "@poc/dup-pkg", version: "0.0.1" }, null, 2), "utf8");
+      writeFileSync(join(brickDir, "package.json"), JSON.stringify({ name: "@poc/dup-pkg", version: "0.0.1" }, null, 2), "utf8");
+      writeFileSync(join(uniqueDir, "package.json"), JSON.stringify({ name: "@poc/unique-pkg", version: "0.0.1" }, null, 2), "utf8");
 
       const result = lintWorkspace(fixtureRoot);
       expect(result.ok).toBe(false);

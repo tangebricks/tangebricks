@@ -54,7 +54,11 @@ describe("manifest secret declarations (story 1.19)", () => {
   });
 
   test("no catalog brick generates a third-party credential: only core-auth's own signing secret is generated", () => {
-    const generated = Object.entries(catalog.bricks).flatMap(([id, b]) => secretDeclarations(b.manifest).filter((d) => d.generate).map((d) => `${id}.${d.name}`));
+    const generated = Object.entries(catalog.bricks).flatMap(([id, b]) =>
+      secretDeclarations(b.manifest)
+        .filter((d) => d.generate)
+        .map((d) => `${id}.${d.name}`),
+    );
     expect(generated).toEqual(["core-auth.BETTER_AUTH_SECRET"]);
   });
 });

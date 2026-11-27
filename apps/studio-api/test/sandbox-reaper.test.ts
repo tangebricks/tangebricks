@@ -1,18 +1,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, test } from "vitest";
-import {
-  SANDBOX_TTL_MS,
-  app as studioApp,
-  ensureStudioD1Schema,
-  getStudioSandboxPlatform,
-  pruneExpiredSandboxes,
-} from "../src/index.ts";
-import type {
-  ProjectStatePayload,
-  PruneExpiredSandboxesResult,
-  StudioApiEnv,
-  StudioSandboxSummary,
-} from "../src/index.ts";
+import { SANDBOX_TTL_MS, app as studioApp, ensureStudioD1Schema, getStudioSandboxPlatform, pruneExpiredSandboxes } from "../src/index.ts";
+import type { ProjectStatePayload, PruneExpiredSandboxesResult, StudioApiEnv, StudioSandboxSummary } from "../src/index.ts";
 
 const studioEnv = env as unknown as StudioApiEnv;
 
@@ -47,11 +36,7 @@ async function createHumanSession(
   const cookieHeader = setCookie.split(";")[0] ?? "";
   const authHeader = `Bearer ${regBody.token}`;
 
-  const req = async (
-    path: string,
-    init: RequestInit = {},
-    envOverride: Partial<StudioApiEnv> = {},
-  ): Promise<Response> => {
+  const req = async (path: string, init: RequestInit = {}, envOverride: Partial<StudioApiEnv> = {}): Promise<Response> => {
     const headers = new Headers(init.headers);
     if (cookieHeader && !headers.has("cookie")) {
       headers.set("cookie", cookieHeader);
@@ -196,11 +181,7 @@ describe("Story 9.2 — Sandbox 7-day TTL reaper & studio-api live-payment guard
     // 6. Verify BlueprintDO.getSummary() and GET /api/projects/:project + revisions remain 100% intact!
     const doId = studioEnv.BLUEPRINT_DO.idFromName(project);
     const doStub = studioEnv.BLUEPRINT_DO.get(doId);
-    const summaryRes = await doStub.fetch(
-      new Request(
-        `https://do.internal/summary?project=${encodeURIComponent(project)}`,
-      ),
-    );
+    const summaryRes = await doStub.fetch(new Request(`https://do.internal/summary?project=${encodeURIComponent(project)}`));
     expect(summaryRes.status).toBe(200);
     const summary = (await summaryRes.json()) as {
       project: string;
@@ -217,9 +198,7 @@ describe("Story 9.2 — Sandbox 7-day TTL reaper & studio-api live-payment guard
     expect(projRes.status).toBe(200);
     const projState = (await projRes.json()) as ProjectStatePayload;
     expect(projState.revision).toBe(2);
-    expect(
-      projState.state.entities.some((e) => e.name === "reaper_check_items"),
-    ).toBe(true);
+    expect(projState.state.entities.some((e) => e.name === "reaper_check_items")).toBe(true);
 
     const revsRes = await req(`/api/projects/${project}/revisions`);
     expect(revsRes.status).toBe(200);

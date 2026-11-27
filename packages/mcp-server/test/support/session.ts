@@ -62,8 +62,7 @@ export async function runSession(steps: Step[]): Promise<SessionResult> {
     const blueprintClient = createInMemoryBlueprintClient(catalog, undefined, deterministicMeasurementSources());
     const app = createMcpApp({ catalog, verifyToken: testTokenVerifier, blueprintClient });
     // Story 0.15: a session's token is bound to the one project its steps build.
-    const sessionProject =
-      steps.map((step) => projectOf({ params: { arguments: step.args } })).find((p) => p !== undefined) ?? "session";
+    const sessionProject = steps.map((step) => projectOf({ params: { arguments: step.args } })).find((p) => p !== undefined) ?? "session";
     const TOKEN = testToken(sessionProject);
     const exchanges: Exchange[] = [];
 
@@ -81,12 +80,26 @@ export async function runSession(steps: Step[]): Promise<SessionResult> {
       } catch {
         // a GET or DELETE has no body
       }
-      exchanges.push({ httpMethod: request.method, rpc, tool, status: response.status, requestBody, responseBody, requestTokens: countTokens(requestBody), responseTokens: countTokens(responseBody) });
+      exchanges.push({
+        httpMethod: request.method,
+        rpc,
+        tool,
+        status: response.status,
+        requestBody,
+        responseBody,
+        requestTokens: countTokens(requestBody),
+        responseTokens: countTokens(responseBody),
+      });
       return response;
     };
 
     const client = new Client({ name: "h9-session", version: "1.0.0" });
-    await client.connect(new StreamableHTTPClientTransport(new URL("http://localhost/mcp"), { fetch: recordingFetch, requestInit: { headers: { authorization: `Bearer ${TOKEN}` } } }));
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL("http://localhost/mcp"), {
+        fetch: recordingFetch,
+        requestInit: { headers: { authorization: `Bearer ${TOKEN}` } },
+      }),
+    );
     const instructions = client.getInstructions() ?? "";
     const { tools } = await client.listTools();
 

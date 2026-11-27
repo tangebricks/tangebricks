@@ -5,10 +5,7 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_in_app_notifications.sql?raw";
 import mwMigration from "../../multi-workspace/migrations/0001_multi_workspace.sql?raw";
-import {
-  NotificationService,
-  createNotificationRoutes,
-} from "../src/index.ts";
+import { NotificationService, createNotificationRoutes } from "../src/index.ts";
 import type { NotificationEnv } from "../src/middleware.ts";
 
 const db = env.DB as D1Like;
@@ -142,15 +139,19 @@ describe("In-App Notification HTTP API", () => {
     await addMember(WS_ALPHA, USER_ALICE, "owner");
 
     // 1. POST /notifications
-    const createRes = await app.request("/api/notifications", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: "Deployment Finished",
-        body: "Worker deployed to edge successfully",
-        type: "success",
-      }),
-    }, { DB: db });
+    const createRes = await app.request(
+      "/api/notifications",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Deployment Finished",
+          body: "Worker deployed to edge successfully",
+          type: "success",
+        }),
+      },
+      { DB: db },
+    );
     expect(createRes.status).toBe(201);
     const createJson = (await createRes.json()) as { notification: { id: string } };
     const notifId = createJson.notification.id;
@@ -168,9 +169,13 @@ describe("In-App Notification HTTP API", () => {
     expect(listJson.notifications).toHaveLength(1);
 
     // 4. PATCH /notifications/:id/read
-    const readRes = await app.request(`/api/notifications/${notifId}/read`, {
-      method: "PATCH",
-    }, { DB: db });
+    const readRes = await app.request(
+      `/api/notifications/${notifId}/read`,
+      {
+        method: "PATCH",
+      },
+      { DB: db },
+    );
     expect(readRes.status).toBe(200);
 
     // 5. Verify badge is 0
@@ -179,9 +184,13 @@ describe("In-App Notification HTTP API", () => {
     expect(reCountJson.unread_count).toBe(0);
 
     // 6. DELETE /notifications/:id
-    const delRes = await app.request(`/api/notifications/${notifId}`, {
-      method: "DELETE",
-    }, { DB: db });
+    const delRes = await app.request(
+      `/api/notifications/${notifId}`,
+      {
+        method: "DELETE",
+      },
+      { DB: db },
+    );
     expect(delRes.status).toBe(200);
   });
 
@@ -227,11 +236,15 @@ describe("In-App Notification HTTP API", () => {
       return app;
     }
     const create = (app: Hono<NotificationEnv>, body: Record<string, unknown> | string) =>
-      app.request("/api/notifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: typeof body === "string" ? body : JSON.stringify(body),
-      }, { DB: db });
+      app.request(
+        "/api/notifications",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: typeof body === "string" ? body : JSON.stringify(body),
+        },
+        { DB: db },
+      );
     async function notifCount(): Promise<number> {
       const row = await db.prepare("SELECT COUNT(*) AS n FROM notif_notifications").first<{ n: number }>();
       return Number(row?.n ?? 0);

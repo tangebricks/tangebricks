@@ -3,13 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BricksView } from "../src/components/BricksView.tsx";
 import { MaturityBadge } from "../src/components/Badges.tsx";
 import { useStudioStore } from "../src/store.ts";
-import {
-  DEFAULT_CATALOG,
-  DEFAULT_INTEGRATIONS,
-  type BlueprintState,
-  type CatalogBrickManifest,
-  type CatalogIntegrationManifest,
-} from "../src/types.ts";
+import { DEFAULT_CATALOG, DEFAULT_INTEGRATIONS, type BlueprintState, type CatalogBrickManifest, type CatalogIntegrationManifest } from "../src/types.ts";
 
 const sampleBlueprint: BlueprintState = {
   schemaVersion: 2,
@@ -72,10 +66,7 @@ const customCatalog: Record<string, CatalogBrickManifest> = {
   },
 };
 
-const customIntegrations: Record<
-  string,
-  { manifest: CatalogIntegrationManifest; nodes?: any[] }
-> = {
+const customIntegrations: Record<string, { manifest: CatalogIntegrationManifest; nodes?: any[] }> = {
   ...DEFAULT_INTEGRATIONS,
   "stripe-live": {
     manifest: {
@@ -175,14 +166,10 @@ describe("UC5.7: Studio shows tier evidence (derived tier, last run SHA/date, li
     // Open details popover
     fireEvent.click(betaBrickBadge);
     expect(screen.getByText(/Verified at abc1234 on 2026-11-08/i)).toBeDefined();
-    expect(
-      screen.getByText(/Test assertions below production minimum/i),
-    ).toBeDefined();
+    expect(screen.getByText(/Test assertions below production minimum/i)).toBeDefined();
 
     // 2. Integration row with liveVerifiedAt
-    const stripeIntegrationBadge = screen.getByTestId(
-      "integration-maturity-stripe-live",
-    );
+    const stripeIntegrationBadge = screen.getByTestId("integration-maturity-stripe-live");
     expect(stripeIntegrationBadge.textContent).toContain("Beta");
 
     fireEvent.click(stripeIntegrationBadge);
@@ -190,35 +177,24 @@ describe("UC5.7: Studio shows tier evidence (derived tier, last run SHA/date, li
     expect(screen.getByText(/Live check: 2026-11-08/i)).toBeDefined();
 
     // 3. Integration row without liveVerifiedAt shows "Never live-checked" (AC3)
-    const discordIntegrationBadge = screen.getByTestId(
-      "integration-maturity-discord-stale",
-    );
+    const discordIntegrationBadge = screen.getByTestId("integration-maturity-discord-stale");
     expect(discordIntegrationBadge.textContent).toContain("Beta");
     fireEvent.click(discordIntegrationBadge);
     expect(screen.getByText(/Never live-checked/i)).toBeDefined();
 
     // 4. Row without evidence shows "Unverified", not "Production" (AC1, AC2)
-    const unverifiedBrickBadge = screen.getByTestId(
-      "enabled-brick-maturity-test-unverified-brick",
-    );
+    const unverifiedBrickBadge = screen.getByTestId("enabled-brick-maturity-test-unverified-brick");
     expect(unverifiedBrickBadge.textContent).toContain("Unverified");
     expect(unverifiedBrickBadge.textContent).not.toContain("Production");
 
-    const unverifiedIntBadge = screen.getByTestId(
-      "integration-maturity-unverified-integration",
-    );
+    const unverifiedIntBadge = screen.getByTestId("integration-maturity-unverified-integration");
     expect(unverifiedIntBadge.textContent).toContain("Unverified");
     expect(unverifiedIntBadge.textContent).not.toContain("Production");
   });
 
   it("MaturityBadge standalone unit tests: handles derivedTier, evidence formatting, blockers, and unverified fallback", () => {
     // Row without evidence must show Unverified, not Production (AC1, AC2)
-    const { unmount } = render(
-      <MaturityBadge
-        testId="badge-no-evidence"
-        tier="production"
-      />,
-    );
+    const { unmount } = render(<MaturityBadge testId="badge-no-evidence" tier="production" />);
     const badgeNoEv = screen.getByTestId("badge-no-evidence");
     expect(badgeNoEv.textContent).toContain("Unverified");
     expect(badgeNoEv.textContent).not.toContain("Production");

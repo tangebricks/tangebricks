@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_data_privacy.sql?raw";
-import {
-  DataPrivacyService,
-  createPrivacyRoutes,
-} from "../src/index.ts";
+import { DataPrivacyService, createPrivacyRoutes } from "../src/index.ts";
 import type { PrivacyEnv } from "../src/middleware.ts";
 
 const db = env.DB as D1Like;
@@ -37,12 +34,7 @@ describe("Data Privacy & GDPR Core Service", () => {
     expect(initial.marketing).toBe(false);
 
     // User accepts analytics & marketing
-    const updated = await service.setConsents(
-      WS_ALPHA,
-      "usr_alice",
-      { analytics: true, marketing: true },
-      { ip: "192.0.2.1", userAgent: "Mozilla/5.0" }
-    );
+    const updated = await service.setConsents(WS_ALPHA, "usr_alice", { analytics: true, marketing: true }, { ip: "192.0.2.1", userAgent: "Mozilla/5.0" });
 
     expect(updated.necessary).toBe(true);
     expect(updated.analytics).toBe(true);
@@ -95,11 +87,7 @@ describe("Data Privacy & GDPR Core Service", () => {
     await service.requestDataExport(WS_ALPHA, "usr_bob");
 
     // Execute erasure
-    const erasure = await service.requestErasure(
-      WS_ALPHA,
-      "usr_bob",
-      "Closing my account and requesting full data wipe"
-    );
+    const erasure = await service.requestErasure(WS_ALPHA, "usr_bob", "Closing my account and requesting full data wipe");
 
     expect(erasure.id).toMatch(/^ers_[a-f0-9]{32}$/);
     expect(erasure.status).toBe("completed");
@@ -150,7 +138,7 @@ describe("Data Privacy REST Endpoints", () => {
           consents: { analytics: true, marketing: true },
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(consentRes.status).toBe(200);
     const consentJson = (await consentRes.json()) as any;
@@ -164,7 +152,7 @@ describe("Data Privacy REST Endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(exportRes.status).toBe(201);
     const exportJson = (await exportRes.json()) as any;
@@ -179,7 +167,7 @@ describe("Data Privacy REST Endpoints", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: "User GDPR request via web UI" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(eraseRes.status).toBe(201);
     const eraseJson = (await eraseRes.json()) as any;
@@ -187,11 +175,7 @@ describe("Data Privacy REST Endpoints", () => {
     expect(eraseJson.deleted_records_count).toBeGreaterThanOrEqual(1);
 
     // 4. Fetch Erasure status
-    const getEraseRes = await app.request(
-      `http://localhost/privacy/erasure/${eraseJson.id}`,
-      { method: "GET" },
-      { DB: db }
-    );
+    const getEraseRes = await app.request(`http://localhost/privacy/erasure/${eraseJson.id}`, { method: "GET" }, { DB: db });
     expect(getEraseRes.status).toBe(200);
   });
 
@@ -199,8 +183,7 @@ describe("Data Privacy REST Endpoints", () => {
     const service = new DataPrivacyService(db);
     await service.setConsents(WS_ALPHA, "usr_a", { analytics: true });
     await service.setConsents(WS_BETA, "usr_b", { analytics: true });
-    const count = async (ws: string) =>
-      (await db.prepare("SELECT COUNT(*) AS n FROM dpr_consents WHERE workspace_id = ?").bind(ws).first<{ n: number }>())!.n;
+    const count = async (ws: string) => (await db.prepare("SELECT COUNT(*) AS n FROM dpr_consents WHERE workspace_id = ?").bind(ws).first<{ n: number }>())!.n;
 
     const app = createApp(WS_ALPHA, "usr_owner_a", "owner");
     // Query names B: refused, and neither workspace is touched.
@@ -240,11 +223,23 @@ describe("Data Privacy REST Endpoints", () => {
     };
     const before = await counts();
     const json = { "Content-Type": "application/json" };
-    for (const [role, status] of [[null, 401], ["member", 403], ["admin", 403]] as const) {
+    for (const [role, status] of [
+      [null, 401],
+      ["member", 403],
+      ["admin", 403],
+    ] as const) {
       const app = createApp(WS_ALPHA, "usr_caller", role);
-      const exp = await app.request("http://localhost/privacy/export", { method: "POST", headers: json, body: JSON.stringify({ userId: "usr_a" }) }, { DB: db });
+      const exp = await app.request(
+        "http://localhost/privacy/export",
+        { method: "POST", headers: json, body: JSON.stringify({ userId: "usr_a" }) },
+        { DB: db },
+      );
       expect(exp.status).toBe(status);
-      const ers = await app.request("http://localhost/privacy/erasure", { method: "POST", headers: json, body: JSON.stringify({ userId: "usr_a" }) }, { DB: db });
+      const ers = await app.request(
+        "http://localhost/privacy/erasure",
+        { method: "POST", headers: json, body: JSON.stringify({ userId: "usr_a" }) },
+        { DB: db },
+      );
       expect(ers.status).toBe(status);
       const bad = await app.request("http://localhost/privacy/erasure", { method: "POST", headers: json, body: JSON.stringify({ userId: 42 }) }, { DB: db });
       expect(bad.status).toBe(status);
@@ -254,7 +249,11 @@ describe("Data Privacy REST Endpoints", () => {
     expect(await counts()).toEqual(before);
 
     const owner = createApp(WS_ALPHA, "usr_owner", "owner");
-    const exp = await owner.request("http://localhost/privacy/export", { method: "POST", headers: json, body: JSON.stringify({ userId: "usr_a" }) }, { DB: db });
+    const exp = await owner.request(
+      "http://localhost/privacy/export",
+      { method: "POST", headers: json, body: JSON.stringify({ userId: "usr_a" }) },
+      { DB: db },
+    );
     expect(exp.status).toBe(201);
   });
 
@@ -270,7 +269,11 @@ describe("Data Privacy REST Endpoints", () => {
   it("story 0.6: consents — a member acts only on themselves; another userId needs owner/admin", async () => {
     const json = { "Content-Type": "application/json" };
     const set = (role: string, body: Record<string, unknown>) =>
-      createApp(WS_ALPHA, "usr_self", role).request("http://localhost/privacy/consents", { method: "POST", headers: json, body: JSON.stringify(body) }, { DB: db });
+      createApp(WS_ALPHA, "usr_self", role).request(
+        "http://localhost/privacy/consents",
+        { method: "POST", headers: json, body: JSON.stringify(body) },
+        { DB: db },
+      );
     const get = (role: string, query = "") => createApp(WS_ALPHA, "usr_self", role).request(`http://localhost/privacy/consents${query}`, {}, { DB: db });
     const service = new DataPrivacyService(db);
     await service.setConsents(WS_ALPHA, "usr_other", { marketing: false });

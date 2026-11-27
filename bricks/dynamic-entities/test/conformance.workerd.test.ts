@@ -38,13 +38,15 @@ runBrickConformance({
     "0001_items.sql": ddl,
   },
   seed: async (db, { workspaceA, workspaceB }) => {
-    await db.prepare(
-      `INSERT OR IGNORE INTO ent_items ("id", "workspace_id", "title", "price") VALUES (?, ?, ?, ?)`
-    ).bind("11111111-1111-4111-8111-111111111111", workspaceA, "Item Alpha", 100).run();
+    await db
+      .prepare(`INSERT OR IGNORE INTO ent_items ("id", "workspace_id", "title", "price") VALUES (?, ?, ?, ?)`)
+      .bind("11111111-1111-4111-8111-111111111111", workspaceA, "Item Alpha", 100)
+      .run();
 
-    await db.prepare(
-      `INSERT OR IGNORE INTO ent_items ("id", "workspace_id", "title", "price") VALUES (?, ?, ?, ?)`
-    ).bind("22222222-2222-4222-8222-222222222222", workspaceB, "Item Beta", 200).run();
+    await db
+      .prepare(`INSERT OR IGNORE INTO ent_items ("id", "workspace_id", "title", "price") VALUES (?, ?, ?, ?)`)
+      .bind("22222222-2222-4222-8222-222222222222", workspaceB, "Item Beta", 200)
+      .run();
   },
   testRequests: [
     {

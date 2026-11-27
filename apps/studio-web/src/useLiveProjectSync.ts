@@ -1,9 +1,5 @@
 import { useEffect } from "react";
-import {
-  fetchProjectDetail,
-  fetchProjectRevisions,
-  fetchTelemetryEvents,
-} from "./api.ts";
+import { fetchProjectDetail, fetchProjectRevisions, fetchTelemetryEvents } from "./api.ts";
 import type { StructuredLogEntryPayload } from "./api.ts";
 import { useStudioStore } from "./store.ts";
 import type { IncomingRevisionEnvelope, IncomingTelemetryFrame } from "./store.ts";
@@ -74,9 +70,7 @@ export function useLiveProjectSync(enabled = true) {
     // Skip real WebSocket connections in synthetic benchmark mode or non-http environments
     if (
       (import.meta.env.DEV && window.location.search.includes("benchmark=200")) ||
-      (!window.location.protocol.startsWith("http") &&
-        window.location.hostname !== "localhost" &&
-        window.location.hostname !== "127.0.0.1")
+      (!window.location.protocol.startsWith("http") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1")
     ) {
       return;
     }
@@ -88,10 +82,7 @@ export function useLiveProjectSync(enabled = true) {
     let wsRevisionSeen = -1;
 
     const syncLatestFromHttp = () => {
-      Promise.all([
-        fetchProjectDetail(activeProjectId).catch(() => null),
-        fetchProjectRevisions(activeProjectId).catch(() => []),
-      ]).then(([detail, revs]) => {
+      Promise.all([fetchProjectDetail(activeProjectId).catch(() => null), fetchProjectRevisions(activeProjectId).catch(() => [])]).then(([detail, revs]) => {
         if (disposed) return;
         const store = useStudioStore.getState();
         if (store.activeProjectId !== activeProjectId) return;
@@ -120,9 +111,7 @@ export function useLiveProjectSync(enabled = true) {
       if (disposed) return;
       const sinceRev = wsRevisionSeen >= 0 ? wsRevisionSeen : 0;
       const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProto}//${window.location.host}/api/projects/${encodeURIComponent(
-        activeProjectId,
-      )}/ws?sinceRevision=${sinceRev}`;
+      const wsUrl = `${wsProto}//${window.location.host}/api/projects/${encodeURIComponent(activeProjectId)}/ws?sinceRevision=${sinceRev}`;
 
       try {
         ws = new WebSocket(wsUrl);
@@ -152,10 +141,7 @@ export function useLiveProjectSync(enabled = true) {
           const frame = JSON.parse(String(event.data)) as WsFrame;
           if (frame.type === "connected") {
             useStudioStore.getState().setSyncStatus("Live");
-            if (
-              typeof frame.currentRevision === "number" &&
-              frame.currentRevision > useStudioStore.getState().currentRevision
-            ) {
+            if (typeof frame.currentRevision === "number" && frame.currentRevision > useStudioStore.getState().currentRevision) {
               syncLatestFromHttp();
             }
           } else if (frame.type === "revision") {
@@ -171,9 +157,7 @@ export function useLiveProjectSync(enabled = true) {
           } else if (frame.type === "telemetry") {
             useStudioStore.getState().applyIncomingTelemetryFrame(frame);
           } else if (frame.type === "log" && frame.entry) {
-            window.dispatchEvent(
-              new CustomEvent("px-studio-log-frame", { detail: frame }),
-            );
+            window.dispatchEvent(new CustomEvent("px-studio-log-frame", { detail: frame }));
           }
         } catch {
           // Ignore malformed frames

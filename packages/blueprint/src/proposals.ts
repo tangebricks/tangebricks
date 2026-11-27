@@ -12,11 +12,7 @@ import type { ReadinessResult } from "./readiness.ts";
 import { normalizeBlueprintState } from "./schema.ts";
 import type { BlueprintState } from "./schema.ts";
 
-export type ProposalStatus =
-  | "pending"
-  | "accepted"
-  | "partially_accepted"
-  | "rejected";
+export type ProposalStatus = "pending" | "accepted" | "partially_accepted" | "rejected";
 
 export interface ProposalActor {
   type: "human" | "agent";
@@ -134,7 +130,7 @@ export function summarizeProposalOps(ops: ReadonlyArray<Op>): string {
  */
 export function evaluateProposalSelection(
   currentState: BlueprintState,
-  proposalOps: ReadonlyArray< unknown>,
+  proposalOps: ReadonlyArray<unknown>,
   selectedOpIds: ReadonlyArray<string> | undefined,
   catalog: Catalog,
   nodeRegistry?: Registry,
@@ -244,9 +240,7 @@ export function evaluateProposalSelection(
       status: 422,
       error: {
         code: "VALIDATION_FAILED",
-        message:
-          applied.errors[0]?.message ??
-          "Selected proposal operations failed validation",
+        message: applied.errors[0]?.message ?? "Selected proposal operations failed validation",
         issues: applied.errors,
       },
     };
@@ -257,24 +251,14 @@ export function evaluateProposalSelection(
 
   if (isPartial) {
     const baseReadiness = computeReadiness(normalizedBase, catalog, effectiveRegistry);
-    const baseNeedKeys = new Set(
-      baseReadiness.needs.map((n) => `${n.code}:${n.path}`),
-    );
+    const baseNeedKeys = new Set(baseReadiness.needs.map((n) => `${n.code}:${n.path}`));
 
     const fullApplied = applyOps(normalizedBase, parsedOps, catalog, effectiveRegistry);
-    const fullNeedKeys = new Set(
-      fullApplied.ok
-        ? computeReadiness(fullApplied.state, catalog, effectiveRegistry).needs.map(
-            (n) => `${n.code}:${n.path}`,
-          )
-        : [],
-    );
+    const fullNeedKeys = new Set(fullApplied.ok ? computeReadiness(fullApplied.state, catalog, effectiveRegistry).needs.map((n) => `${n.code}:${n.path}`) : []);
 
     const brokenReadinessNeeds = readiness.needs.filter(
       (need) =>
-        BLOCKING_PARTIAL_READINESS_CODES.has(need.code) &&
-        !baseNeedKeys.has(`${need.code}:${need.path}`) &&
-        !fullNeedKeys.has(`${need.code}:${need.path}`),
+        BLOCKING_PARTIAL_READINESS_CODES.has(need.code) && !baseNeedKeys.has(`${need.code}:${need.path}`) && !fullNeedKeys.has(`${need.code}:${need.path}`),
     );
 
     if (brokenReadinessNeeds.length > 0) {

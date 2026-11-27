@@ -16,9 +16,7 @@ const sampleBlueprint: BlueprintState = {
         { id: "n-trigger", type: "trigger.manual", label: "Onboarding Trigger", data: {} },
         { id: "n-notify", type: "in-app-notifications.send", label: "Send Welcome Alert", data: { channel: "inbox" } },
       ],
-      edges: [
-        { id: "e1", source: "n-trigger", target: "n-notify" },
-      ],
+      edges: [{ id: "e1", source: "n-trigger", target: "n-notify" }],
     },
   ],
 };
@@ -47,9 +45,7 @@ describe("Story 2.2: Clean-room apps/studio-web scaffold, login flow, and 3-pane
       if (url.includes("/api/orgs")) {
         return new Response(
           JSON.stringify({
-            orgs: [
-              { id: "org_acme", slug: "acme", name: "Acme Labs", role: "owner" },
-            ],
+            orgs: [{ id: "org_acme", slug: "acme", name: "Acme Labs", role: "owner" }],
           }),
           { status: 200, headers: { "content-type": "application/json" } },
         );

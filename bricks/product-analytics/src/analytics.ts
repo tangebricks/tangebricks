@@ -140,17 +140,10 @@ export class ProductAnalyticsService {
   /**
    * Aliases an anonymous device ID with an authenticated user identity retroactively.
    */
-  async identify(
-    workspaceId: string,
-    anonymousId: string,
-    userId: string
-  ): Promise<{ updatedCount: number }> {
-    const res = await scoped(this.db, workspaceId).update(
-      "evt_analytics_events",
-      { user_id: userId.trim() },
-      "anonymous_id = ? AND user_id IS NULL",
-      [anonymousId.trim()]
-    );
+  async identify(workspaceId: string, anonymousId: string, userId: string): Promise<{ updatedCount: number }> {
+    const res = await scoped(this.db, workspaceId).update("evt_analytics_events", { user_id: userId.trim() }, "anonymous_id = ? AND user_id IS NULL", [
+      anonymousId.trim(),
+    ]);
 
     return { updatedCount: res.meta.changes };
   }
@@ -158,10 +151,7 @@ export class ProductAnalyticsService {
   /**
    * Aggregates event totals grouped by event name.
    */
-  async getEventCounts(
-    workspaceId: string,
-    options: { eventNames?: string[] } = {}
-  ): Promise<Record<string, number>> {
+  async getEventCounts(workspaceId: string, options: { eventNames?: string[] } = {}): Promise<Record<string, number>> {
     let query = "SELECT event_name, COUNT(*) as count FROM evt_analytics_events WHERE workspace_id = ?";
     const params: unknown[] = [workspaceId];
 
@@ -190,11 +180,7 @@ export class ProductAnalyticsService {
   /**
    * Defines a new conversion funnel.
    */
-  async createFunnel(
-    workspaceId: string,
-    nameRaw: string,
-    steps: string[]
-  ): Promise<Funnel> {
+  async createFunnel(workspaceId: string, nameRaw: string, steps: string[]): Promise<Funnel> {
     const id = `fnl_${crypto.randomUUID().replace(/-/g, "")}`;
     const name = nameRaw.trim();
     const cleanSteps = steps.map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -221,11 +207,7 @@ export class ProductAnalyticsService {
    */
   async getFunnel(funnelId: string, workspaceId?: string): Promise<Funnel | null> {
     if (!workspaceId) return null;
-    const row = await scoped(this.db, workspaceId).first<RawFunnelRow>(
-      "evt_funnels",
-      "id = ?",
-      [funnelId]
-    );
+    const row = await scoped(this.db, workspaceId).first<RawFunnelRow>("evt_funnels", "id = ?", [funnelId]);
 
     if (!row) return null;
 
@@ -246,16 +228,22 @@ export class ProductAnalyticsService {
     let previousActors = new Set<string>();
 
     for (const [i, stepName] of funnel.steps.entries()) {
-
       // Query distinct actors (user_id if present, else anonymous_id) for this step
       interface ActorRow {
         actor: string;
       }
-      const rows = (await scoped(this.db, workspaceId).raw(`
+      const rows = (
+        await scoped(this.db, workspaceId)
+          .raw(
+            `
         SELECT DISTINCT COALESCE(user_id, anonymous_id) as actor
         FROM evt_analytics_events
         WHERE workspace_id = ? AND event_name = ?
-      `, [workspaceId, stepName]).all<ActorRow>()).results;
+      `,
+            [workspaceId, stepName],
+          )
+          .all<ActorRow>()
+      ).results;
 
       const currentActors = new Set(rows.map((r) => r.actor));
 
@@ -288,9 +276,7 @@ export class ProductAnalyticsService {
 
     const firstStepCount = stepReports[0]?.count || 0;
     const finalStepCount = stepReports[stepReports.length - 1]?.count || 0;
-    const overallConversion = firstStepCount > 0
-      ? Math.round((finalStepCount / firstStepCount) * 1000) / 1000
-      : 0;
+    const overallConversion = firstStepCount > 0 ? Math.round((finalStepCount / firstStepCount) * 1000) / 1000 : 0;
 
     return {
       funnelId: funnel.id,

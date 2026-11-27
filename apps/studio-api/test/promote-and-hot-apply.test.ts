@@ -5,10 +5,7 @@ import type { D1Like } from "@poc/sdk";
 import studioAuthOrgsSql from "../migrations/0001_studio_auth_orgs.sql?raw";
 import studioSecretVaultSql from "../migrations/0002_studio_secret_vault.sql?raw";
 import cp5DeployTokensSql from "../migrations/0003_cp5_deploy_tokens.sql?raw";
-import {
-  getProjectAssembleCount,
-  resetStudioDeployTestState,
-} from "../src/index.ts";
+import { getProjectAssembleCount, resetStudioDeployTestState } from "../src/index.ts";
 import { appWithPlaceholderExecutors as studioApp } from "./placeholder-executors.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 
@@ -116,16 +113,13 @@ describe("Story 5.4 — Content-Addressed Build Cache, Preview-to-Production Pro
       body: { project: projectId },
     });
 
-    const connectRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        token: ownerSessionToken,
-        body: {
-          token: VALID_CF_TOKEN,
-          projectId,
-        },
+    const connectRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      token: ownerSessionToken,
+      body: {
+        token: VALID_CF_TOKEN,
+        projectId,
       },
-    );
+    });
     expect(connectRes.status).toBe(201);
 
     // Seed core-auth, dynamic-entities, workflow-engine, and an initial workflow
@@ -211,11 +205,7 @@ describe("Story 5.4 — Content-Addressed Build Cache, Preview-to-Production Pro
     });
     expect(ops1Res.status).toBe(200);
 
-    for (const secName of [
-      "BETTER_AUTH_SECRET",
-      "GITHUB_CLIENT_ID",
-      "GITHUB_CLIENT_SECRET",
-    ]) {
+    for (const secName of ["BETTER_AUTH_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) {
       const secretRes = await callStudio(`/api/projects/${projectId}/secrets`, {
         token: ownerSessionToken,
         headers: { "x-org-id": orgId },
@@ -236,14 +226,11 @@ describe("Story 5.4 — Content-Addressed Build Cache, Preview-to-Production Pro
     }
 
     // 1. Deploy initial revision to preview -> calls assemble() once and caches in `builds` table
-    const previewDeploy1Res = await callStudio(
-      `/api/projects/${projectId}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const previewDeploy1Res = await callStudio(`/api/projects/${projectId}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(previewDeploy1Res.status).toBe(200);
     const previewDeploy1 = (await previewDeploy1Res.json()) as {
       ok: true;
@@ -295,14 +282,11 @@ describe("Story 5.4 — Content-Addressed Build Cache, Preview-to-Production Pro
     expect((ledgerStepsRows.results ?? []).length).toBeGreaterThanOrEqual(4);
 
     // 2. Idempotent re-deploy of the same revision to preview -> action: "noop", 0 mutating calls, "No changes"
-    const previewRedeployRes = await callStudio(
-      `/api/projects/${projectId}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const previewRedeployRes = await callStudio(`/api/projects/${projectId}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(previewRedeployRes.status).toBe(200);
     const previewRedeploy = (await previewRedeployRes.json()) as typeof previewDeploy1;
     expect(previewRedeploy.action).toBe("noop");
@@ -315,14 +299,11 @@ describe("Story 5.4 — Content-Addressed Build Cache, Preview-to-Production Pro
 
     // 3. Promote from preview to production via POST /api/projects/:project/environments/production/promote
     // Asserts identical buildHash and 0 second assemble() invocation
-    const promoteRes = await callStudio(
-      `/api/projects/${projectId}/environments/production/promote`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const promoteRes = await callStudio(`/api/projects/${projectId}/environments/production/promote`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(promoteRes.status).toBe(200);
     const promoteBody = (await promoteRes.json()) as typeof previewDeploy1 & {
       promotedFromEnv?: string;
@@ -339,28 +320,22 @@ describe("Story 5.4 — Content-Addressed Build Cache, Preview-to-Production Pro
     expect(promoteBody.scriptUploadCount).toBe(2);
 
     // Verify workflow run before graph edit debits amount: 15 (balance 100 -> 85)
-    const runV1Res = await callStudio(
-      `/api/projects/${projectId}/workflows/wf-order-notify/run`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {
-          env: "preview",
-          useDeployedGraph: true,
-          triggerPayload: { orderId: "ord_1", balance: 100 },
-        },
+    const runV1Res = await callStudio(`/api/projects/${projectId}/workflows/wf-order-notify/run`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {
+        env: "preview",
+        useDeployedGraph: true,
+        triggerPayload: { orderId: "ord_1", balance: 100 },
       },
-    );
+    });
     expect(runV1Res.status).toBe(200);
     const runV1Body = (await runV1Res.json()) as {
       ok: boolean;
       outputs: Record<string, Record<string, unknown>>;
     };
     expect(runV1Body.ok).toBe(true);
-    expect(
-      (runV1Body.outputs.n_debit?.out as { debited?: number } | undefined)
-        ?.debited,
-    ).toBe(15);
+    expect((runV1Body.outputs.n_debit?.out as { debited?: number } | undefined)?.debited).toBe(15);
 
     // 4. Edit ONLY the workflow node in the next revision -> codeHash stays identical, graphHash changes
     const ops2Res = await callStudio(`/api/projects/${projectId}/ops`, {
@@ -384,14 +359,11 @@ describe("Story 5.4 — Content-Addressed Build Cache, Preview-to-Production Pro
     expect(ops2Res.status).toBe(200);
 
     // Verify preview plan shows action === "hot_apply_graphs" and liveWithoutRedeploy === true
-    const hotPlanRes = await callStudio(
-      `/api/projects/${projectId}/environments/preview/plan`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const hotPlanRes = await callStudio(`/api/projects/${projectId}/environments/preview/plan`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(hotPlanRes.status).toBe(200);
     const hotPlan = (await hotPlanRes.json()) as {
       action: string;
@@ -407,14 +379,11 @@ describe("Story 5.4 — Content-Addressed Build Cache, Preview-to-Production Pro
     expect(hotPlan.worker.changed).toBe(false);
 
     // Execute hot-apply deploy on preview -> 0 additional Worker script uploads, versionId unchanged
-    const hotApplyRes = await callStudio(
-      `/api/projects/${projectId}/environments/preview/deploy`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {},
-      },
-    );
+    const hotApplyRes = await callStudio(`/api/projects/${projectId}/environments/preview/deploy`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {},
+    });
     expect(hotApplyRes.status).toBe(200);
     const hotApplyBody = (await hotApplyRes.json()) as typeof previewDeploy1;
     expect(hotApplyBody.action).toBe("hot_apply_graphs");
@@ -422,34 +391,26 @@ describe("Story 5.4 — Content-Addressed Build Cache, Preview-to-Production Pro
     expect(hotApplyBody.statusMessage).toBe("Live without redeploy");
     expect(hotApplyBody.codeHash).toBe(previewDeploy1.codeHash);
     expect(hotApplyBody.graphHash).toBe(hotPlan.graphHash);
-    expect(hotApplyBody.deployment.versionId).toBe(
-      previewDeploy1.deployment.versionId,
-    );
+    expect(hotApplyBody.deployment.versionId).toBe(previewDeploy1.deployment.versionId);
     // Still 2 total script uploads (1 preview + 1 production; 0 added by hot-apply!)
     expect(hotApplyBody.scriptUploadCount).toBe(2);
 
     // 5. Next /run call executes the hot-applied v2 graph (debits 40 instead of 15)
-    const runV2Res = await callStudio(
-      `/api/projects/${projectId}/workflows/wf-order-notify/run`,
-      {
-        token: ownerSessionToken,
-        headers: { "x-org-id": orgId },
-        body: {
-          env: "preview",
-          useDeployedGraph: true,
-          triggerPayload: { orderId: "ord_2", balance: 100 },
-        },
+    const runV2Res = await callStudio(`/api/projects/${projectId}/workflows/wf-order-notify/run`, {
+      token: ownerSessionToken,
+      headers: { "x-org-id": orgId },
+      body: {
+        env: "preview",
+        useDeployedGraph: true,
+        triggerPayload: { orderId: "ord_2", balance: 100 },
       },
-    );
+    });
     expect(runV2Res.status).toBe(200);
     const runV2Body = (await runV2Res.json()) as {
       ok: boolean;
       outputs: Record<string, Record<string, unknown>>;
     };
     expect(runV2Body.ok).toBe(true);
-    expect(
-      (runV2Body.outputs.n_debit?.out as { debited?: number } | undefined)
-        ?.debited,
-    ).toBe(40);
+    expect((runV2Body.outputs.n_debit?.out as { debited?: number } | undefined)?.debited).toBe(40);
   });
 });

@@ -124,8 +124,7 @@ describe("restore drill, target mode (story 1.3): one named existing staging dat
     fake.exec(name, "INSERT INTO orders VALUES ('o1', 10)");
     return { fake, client, uuid, name };
   }
-  const writes = (fake: ReturnType<typeof setupFake>["fake"]) =>
-    fake.requests.filter((r) => r.method !== "GET");
+  const writes = (fake: ReturnType<typeof setupFake>["fake"]) => fake.requests.filter((r) => r.method !== "GET");
 
   test("restores the canary after the destructive change, matches the fingerprint, drops the canary and writes redacted evidence", async () => {
     const { fake, client, uuid, name } = seedStaging();
@@ -158,9 +157,9 @@ describe("restore drill, target mode (story 1.3): one named existing staging dat
 
   test("refuses a database whose live name is not --expect-name, before any write", async () => {
     const { fake, client, uuid } = seedStaging("other-app-staging");
-    await expect(
-      runTargetRestoreDrill({ client, targetDb: uuid, expectName: "cephlow-app-staging", writeEvidenceFile: false, log: () => {} }),
-    ).rejects.toThrow(/REFUSED.*not 'cephlow-app-staging'/);
+    await expect(runTargetRestoreDrill({ client, targetDb: uuid, expectName: "cephlow-app-staging", writeEvidenceFile: false, log: () => {} })).rejects.toThrow(
+      /REFUSED.*not 'cephlow-app-staging'/,
+    );
     expect(writes(fake)).toHaveLength(0);
   });
 
@@ -212,9 +211,9 @@ describe("restore drill, target mode (story 1.3): one named existing staging dat
     const { fake, client, uuid, name } = seedStaging();
     const dir = mkdtempSync(join(tmpdir(), "drill-evidence-"));
     const evidencePath = join(dir, "restore-drill.json");
-    await expect(
-      runTargetRestoreDrill({ client, targetDb: uuid, expectName: name, evidencePath, log: () => {}, _failAtStep: "restore" }),
-    ).rejects.toThrow(/simulated failure at restore/);
+    await expect(runTargetRestoreDrill({ client, targetDb: uuid, expectName: name, evidencePath, log: () => {}, _failAtStep: "restore" })).rejects.toThrow(
+      /simulated failure at restore/,
+    );
     const db = fake.state().databases.find((d) => d.name === name)!;
     expect(db.tables).not.toContain(CANARY_TABLE);
     expect(fake.rows(name, "SELECT COUNT(*) AS n FROM users")).toEqual([{ n: 2 }]);
@@ -225,9 +224,9 @@ describe("restore drill, target mode (story 1.3): one named existing staging dat
   test("refuses to run over a leftover canary table", async () => {
     const { fake, client, uuid, name } = seedStaging();
     fake.exec(name, `CREATE TABLE ${CANARY_TABLE} (id TEXT)`);
-    await expect(
-      runTargetRestoreDrill({ client, targetDb: uuid, expectName: name, writeEvidenceFile: false, log: () => {} }),
-    ).rejects.toThrow(/REFUSED.*already exists/);
+    await expect(runTargetRestoreDrill({ client, targetDb: uuid, expectName: name, writeEvidenceFile: false, log: () => {} })).rejects.toThrow(
+      /REFUSED.*already exists/,
+    );
     expect(fake.requests.filter((r) => r.method === "POST" && !r.path.endsWith("/query"))).toHaveLength(0);
   });
 });

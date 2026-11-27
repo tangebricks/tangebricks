@@ -3,7 +3,20 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { beforeAll, describe, expect, test } from "vitest";
 import { parseHypotheses, verdict } from "@poc/harness";
-import { BURSTS, REST_SPACING_MS, RUNS, UNKNOWN_SHARE_LIMIT, canonicalHosted, classifyDeduct, classifyTopup, evaluateHostedH5, hostedViolations, makeSpacer, restD1, runHostedH5 } from "../src/h5-hosted.ts";
+import {
+  BURSTS,
+  REST_SPACING_MS,
+  RUNS,
+  UNKNOWN_SHARE_LIMIT,
+  canonicalHosted,
+  classifyDeduct,
+  classifyTopup,
+  evaluateHostedH5,
+  hostedViolations,
+  makeSpacer,
+  restD1,
+  runHostedH5,
+} from "../src/h5-hosted.ts";
 import type { HostedCalls, HostedDeps, HostedResult, HostedRun } from "../src/h5-hosted.ts";
 import { createRedactor, findSecrets } from "../src/provisioner/index.ts";
 import type { Breaks } from "../client/support/rehearsal-world.ts";
@@ -17,7 +30,13 @@ const root = resolve(import.meta.dirname, "..", "..", "..");
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const h5 = parseHypotheses(JSON.parse(readFileSync(join(root, "hypotheses.json"), "utf8"))).hypotheses.find((h) => h.id === "H5")!;
-const LOCAL_CHECKS = { controlLosesUpdates: true, orderCreditedOnce: true, insufficientRefusesUnchanged: true, graphDeductChangesBalanceOnce: true, portedTestsPass: true };
+const LOCAL_CHECKS = {
+  controlLosesUpdates: true,
+  orderCreditedOnce: true,
+  insufficientRefusesUnchanged: true,
+  graphDeductChangesBalanceOnce: true,
+  portedTestsPass: true,
+};
 const SMALL = { runs: 4, bursts: 2, restSpacingMs: 1 };
 
 async function hosted(breaks: Breaks = {}, over: Partial<HostedDeps> = {}) {
@@ -42,7 +61,8 @@ async function hosted(breaks: Breaks = {}, over: Partial<HostedDeps> = {}) {
   });
   return { world, calls, result, lines };
 }
-const evaluate = (calls: HostedCalls | string, result: HostedResult, requiredRuns: number = SMALL.runs) => evaluateHostedH5({ callsText: typeof calls === "string" ? calls : canonicalHosted(calls), result, requiredRuns });
+const evaluate = (calls: HostedCalls | string, result: HostedResult, requiredRuns: number = SMALL.runs) =>
+  evaluateHostedH5({ callsText: typeof calls === "string" ? calls : canonicalHosted(calls), result, requiredRuns });
 
 let clean: Awaited<ReturnType<typeof hosted>>;
 beforeAll(async () => {
@@ -114,7 +134,9 @@ describe("the adapter and the protocol, on a clean rehearsal", () => {
   });
 
   test("neither the token, the account id nor the access key is in the files or the lines printed", () => {
-    expect(findSecrets(canonicalHosted(clean.calls) + JSON.stringify(clean.result) + clean.lines.join("\n"), { token: TOKEN, accountId: ACCOUNT, accessKey: KEY })).toEqual([]);
+    expect(
+      findSecrets(canonicalHosted(clean.calls) + JSON.stringify(clean.result) + clean.lines.join("\n"), { token: TOKEN, accountId: ACCOUNT, accessKey: KEY }),
+    ).toEqual([]);
   });
 
   test("the rule's constants are the ones the rule states", () => {
@@ -148,17 +170,69 @@ describe("what the files say when re-read", () => {
   const violations: Array<[string, Edit, RegExp]> = [
     ["a balance that is not start plus the ledger", (c: HostedCalls) => void (run1(c).final!.balance! += 1), /final balance .* but the starting balance/],
     ["a negative balance", (c: HostedCalls) => void (run1(c).final!.balance = -3), /negative/],
-    ["a ledger row lost (an accepted deduction without its row)", (c: HostedCalls) => void run1(c).final!.ledger.splice(run1(c).final!.ledger.findIndex((r) => r.type === "deduction"), 1), /accepted but only|does not match a replay|final balance/],
-    ["a deduction row invented", (c: HostedCalls) => void run1(c).final!.ledger.push({ type: "deduction", amount: -3, balance_after: 0, metadata: "{}", idempotency_key: null }), /ledger rows for deductions of 3|final balance|replay/],
+    [
+      "a ledger row lost (an accepted deduction without its row)",
+      (c: HostedCalls) =>
+        void run1(c).final!.ledger.splice(
+          run1(c).final!.ledger.findIndex((r) => r.type === "deduction"),
+          1,
+        ),
+      /accepted but only|does not match a replay|final balance/,
+    ],
+    [
+      "a deduction row invented",
+      (c: HostedCalls) => void run1(c).final!.ledger.push({ type: "deduction", amount: -3, balance_after: 0, metadata: "{}", idempotency_key: null }),
+      /ledger rows for deductions of 3|final balance|replay/,
+    ],
     ["a balance_after that a replay does not reproduce", (c: HostedCalls) => void (run1(c).final!.ledger[0]!.balance_after += 7), /does not match a replay/],
     ["a negative balance_after", (c: HostedCalls) => void (run1(c).final!.ledger[0]!.balance_after = -1), /negative balance_after|replay/],
-    ["an order credited twice", (c: HostedCalls) => void run1(c).final!.ledger.push({ ...run1(c).final!.ledger.find((r) => r.type === "topup")! }), /orders credited more than once|final balance/],
-    ["an order credited for another amount", (c: HostedCalls) => void (run1(c).final!.ledger.find((r) => r.type === "topup")!.amount += 1), /credited .*, not the/],
-    ["a top-up row for an order nobody asked for", (c: HostedCalls) => void (run1(c).final!.ledger.find((r) => r.type === "topup")!.metadata = JSON.stringify({ order_id: "order_nobody" })), /never requested/],
-    ["an accepted top-up with no row", (c: HostedCalls) => void run1(c).final!.ledger.splice(run1(c).final!.ledger.findIndex((r) => r.type === "topup"), 1), /reported credited once but has 0|final balance|replay/],
-    ["a top-up confirmed twice that did not credit exactly once", (c: HostedCalls) => void ((run1(c).topups[0]!.result = "violation"), (run1(c).topups[0]!.confirmations = [{ status: "PAID", credited: true }, { status: "PAID", credited: true }])), /confirmed twice with no error/],
-    ["a refused deduction that left a trace", (c: HostedCalls) => void ((run1(c).deducts.find((d) => d.result === "accepted")!.result = "refused"), (run1(c).deducts.find((d) => d.result === "refused")!.status = 402)), /ledger rows for deductions of/],
-    ["a ledger row of a kind no operation makes", (c: HostedCalls) => void (run1(c).final!.ledger[0]!.type = "refund"), /kind no operation makes|final balance|replay/],
+    [
+      "an order credited twice",
+      (c: HostedCalls) => void run1(c).final!.ledger.push({ ...run1(c).final!.ledger.find((r) => r.type === "topup")! }),
+      /orders credited more than once|final balance/,
+    ],
+    [
+      "an order credited for another amount",
+      (c: HostedCalls) => void (run1(c).final!.ledger.find((r) => r.type === "topup")!.amount += 1),
+      /credited .*, not the/,
+    ],
+    [
+      "a top-up row for an order nobody asked for",
+      (c: HostedCalls) => void (run1(c).final!.ledger.find((r) => r.type === "topup")!.metadata = JSON.stringify({ order_id: "order_nobody" })),
+      /never requested/,
+    ],
+    [
+      "an accepted top-up with no row",
+      (c: HostedCalls) =>
+        void run1(c).final!.ledger.splice(
+          run1(c).final!.ledger.findIndex((r) => r.type === "topup"),
+          1,
+        ),
+      /reported credited once but has 0|final balance|replay/,
+    ],
+    [
+      "a top-up confirmed twice that did not credit exactly once",
+      (c: HostedCalls) =>
+        void (
+          (run1(c).topups[0]!.result = "violation"),
+          (run1(c).topups[0]!.confirmations = [
+            { status: "PAID", credited: true },
+            { status: "PAID", credited: true },
+          ])
+        ),
+      /confirmed twice with no error/,
+    ],
+    [
+      "a refused deduction that left a trace",
+      (c: HostedCalls) =>
+        void ((run1(c).deducts.find((d) => d.result === "accepted")!.result = "refused"), (run1(c).deducts.find((d) => d.result === "refused")!.status = 402)),
+      /ledger rows for deductions of/,
+    ],
+    [
+      "a ledger row of a kind no operation makes",
+      (c: HostedCalls) => void (run1(c).final!.ledger[0]!.type = "refund"),
+      /kind no operation makes|final balance|replay/,
+    ],
     ["a wallet that is gone", (c: HostedCalls) => void (run1(c).final!.balance = null), /wallet row is missing/],
   ];
   test.each(violations)("%s is a violation, so holdsOnHostedD1 is false (a kill of H5)", (_name, edit, reason) => {
@@ -181,7 +255,17 @@ describe("what the files say when re-read", () => {
 
   test("a run that wrote to anything but rows, or whose Worker moved, or is not the deploy's, says nothing", () => {
     for (const edit of [
-      (c: HostedCalls) => void c.clients[0]!.calls.push({ n: 99, atMs: 0, method: "PUT", path: "/accounts/{account}/workers/scripts/x", status: 200, ms: 1, outcome: "ok", attempt: 1 }),
+      (c: HostedCalls) =>
+        void c.clients[0]!.calls.push({
+          n: 99,
+          atMs: 0,
+          method: "PUT",
+          path: "/accounts/{account}/workers/scripts/x",
+          status: 200,
+          ms: 1,
+          outcome: "ok",
+          attempt: 1,
+        }),
       (c: HostedCalls) => void (c.facts.versions.after = ["other"]),
       (c: HostedCalls) => void (c.facts.versions.before = null),
       (c: HostedCalls) => void (c.facts.deployedVersionFromH10 = "not-this-one"),
@@ -194,7 +278,11 @@ describe("what the files say when re-read", () => {
 });
 
 // Hand-built runs, so each rule of the definition is tried on its own: every damage below satisfies all the other rules.
-const ok = (balance: number, ledger: HostedRun["final"] extends infer F ? (F extends { ledger: infer L } ? L : never) : never, over: Partial<HostedRun> = {}): HostedRun => ({
+const ok = (
+  balance: number,
+  ledger: HostedRun["final"] extends infer F ? (F extends { ledger: infer L } ? L : never) : never,
+  over: Partial<HostedRun> = {},
+): HostedRun => ({
   run: 1,
   workspaceId: "w",
   start: 10,
@@ -204,23 +292,52 @@ const ok = (balance: number, ledger: HostedRun["final"] extends infer F ? (F ext
   final: { balance, ledger, orders: [] },
   ...over,
 });
-const dedRow = (amount: number, balanceAfter: number) => ({ type: "deduction", amount: -amount, balance_after: balanceAfter, metadata: "{}", idempotency_key: null });
-const topRow = (order: string, amount: number, balanceAfter: number) => ({ type: "topup", amount, balance_after: balanceAfter, metadata: JSON.stringify({ order_id: order }), idempotency_key: `order:${order}` });
+const dedRow = (amount: number, balanceAfter: number) => ({
+  type: "deduction",
+  amount: -amount,
+  balance_after: balanceAfter,
+  metadata: "{}",
+  idempotency_key: null,
+});
+const topRow = (order: string, amount: number, balanceAfter: number) => ({
+  type: "topup",
+  amount,
+  balance_after: balanceAfter,
+  metadata: JSON.stringify({ order_id: order }),
+  idempotency_key: `order:${order}`,
+});
 const credited = { status: "PAID", credited: true };
 const already = { status: "already_processed", credited: false };
 
 describe("each rule of the definition, on its own", () => {
   test("a run that is consistent in every respect is clean (the base the damage below is made from)", () => {
-    expect(hostedViolations(ok(7, [dedRow(3, 7)], { deducts: [{ amount: 3, result: "accepted", status: 200 }], ops: [{ kind: "deduct", amount: 3 }] }))).toEqual([]);
-    expect(hostedViolations(ok(15, [topRow("o1", 5, 15)], { topups: [{ orderId: "o1", amount: 5, result: "accepted", confirmations: [credited, already] }], ops: [{ kind: "topup", amount: 5, orderId: "o1" }] }))).toEqual([]);
+    expect(
+      hostedViolations(ok(7, [dedRow(3, 7)], { deducts: [{ amount: 3, result: "accepted", status: 200 }], ops: [{ kind: "deduct", amount: 3 }] })),
+    ).toEqual([]);
+    expect(
+      hostedViolations(
+        ok(15, [topRow("o1", 5, 15)], {
+          topups: [{ orderId: "o1", amount: 5, result: "accepted", confirmations: [credited, already] }],
+          ops: [{ kind: "topup", amount: 5, orderId: "o1" }],
+        }),
+      ),
+    ).toEqual([]);
     expect(hostedViolations(ok(10, []))).toEqual([]);
   });
 
   test("story 2.5: a run in thousandths (scale 1000) is judged with the workload's amounts scaled up, in integers", () => {
-    const run = ok(7_000, [dedRow(3_000, 7_000)], { scale: 1000, deducts: [{ amount: 3, result: "accepted", status: 200 }], ops: [{ kind: "deduct", amount: 3 }] });
+    const run = ok(7_000, [dedRow(3_000, 7_000)], {
+      scale: 1000,
+      deducts: [{ amount: 3, result: "accepted", status: 200 }],
+      ops: [{ kind: "deduct", amount: 3 }],
+    });
     expect(hostedViolations(run)).toEqual([]);
     // A row of an amount no operation asked for (here 3 thousandths, not 3 credits) is a violation.
-    const stray = ok(9_997, [dedRow(3, 9_997)], { scale: 1000, ops: [{ kind: "deduct", amount: 3 }], deducts: [{ amount: 3, result: "refused", status: 402 }] });
+    const stray = ok(9_997, [dedRow(3, 9_997)], {
+      scale: 1000,
+      ops: [{ kind: "deduct", amount: 3 }],
+      deducts: [{ amount: 3, result: "refused", status: 402 }],
+    });
     expect(hostedViolations(stray).join("|")).toMatch(/1 ledger rows for deductions of an amount no operation asked for/);
   });
 
@@ -235,7 +352,10 @@ describe("each rule of the definition, on its own", () => {
     const run = ok(10, [dedRow(15, -5), topRow("o1", 15, 10)], {
       deducts: [{ amount: 15, result: "accepted", status: 200 }],
       topups: [{ orderId: "o1", amount: 15, result: "accepted", confirmations: [credited, already] }],
-      ops: [{ kind: "deduct", amount: 15 }, { kind: "topup", amount: 15, orderId: "o1" }],
+      ops: [
+        { kind: "deduct", amount: 15 },
+        { kind: "topup", amount: 15, orderId: "o1" },
+      ],
     });
     expect(hostedViolations(run)).toEqual(["1 ledger rows with a negative balance_after"]);
   });
@@ -254,16 +374,24 @@ describe("each rule of the definition, on its own", () => {
     const unknown = { amount: 3, result: "unknown" as const, status: 502 };
     expect(hostedViolations(ok(10, [], { deducts: [unknown], ops: [{ kind: "deduct", amount: 3 }] }))).toEqual([]);
     expect(hostedViolations(ok(7, [dedRow(3, 7)], { deducts: [unknown], ops: [{ kind: "deduct", amount: 3 }] }))).toEqual([]);
-    expect(hostedViolations(ok(4, [dedRow(3, 7), dedRow(3, 4)], { deducts: [unknown], ops: [{ kind: "deduct", amount: 3 }] })).join(" ")).toMatch(/2 ledger rows for deductions of 3 but only 0 accepted and 1 unknown/);
+    expect(hostedViolations(ok(4, [dedRow(3, 7), dedRow(3, 4)], { deducts: [unknown], ops: [{ kind: "deduct", amount: 3 }] })).join(" ")).toMatch(
+      /2 ledger rows for deductions of 3 but only 0 accepted and 1 unknown/,
+    );
   });
 
   test("an order credited twice is a violation even when its outcome is unknown and the balance and replay are consistent", () => {
-    const run = ok(20, [topRow("o1", 5, 15), topRow("o1", 5, 20)], { topups: [{ orderId: "o1", amount: 5, result: "unknown", confirmations: [{ error: "lost" }, credited] }], ops: [{ kind: "topup", amount: 5, orderId: "o1" }] });
+    const run = ok(20, [topRow("o1", 5, 15), topRow("o1", 5, 20)], {
+      topups: [{ orderId: "o1", amount: 5, result: "unknown", confirmations: [{ error: "lost" }, credited] }],
+      ops: [{ kind: "topup", amount: 5, orderId: "o1" }],
+    });
     expect(hostedViolations(run)).toEqual(["1 orders credited more than once"]);
   });
 
   test("an order reported credited once but with no row is a violation even when the balance and replay are consistent", () => {
-    const run = ok(10, [], { topups: [{ orderId: "o1", amount: 5, result: "accepted", confirmations: [credited, already] }], ops: [{ kind: "topup", amount: 5, orderId: "o1" }] });
+    const run = ok(10, [], {
+      topups: [{ orderId: "o1", amount: 5, result: "accepted", confirmations: [credited, already] }],
+      ops: [{ kind: "topup", amount: 5, orderId: "o1" }],
+    });
     expect(hostedViolations(run)).toEqual(["order o1 was reported credited once but has 0 ledger rows"]);
   });
 
@@ -274,15 +402,30 @@ describe("each rule of the definition, on its own", () => {
   });
 
   test("an order confirmed twice with no error that credits it twice, or not at all, is a violation by the answers alone", () => {
-    for (const confirmations of [[credited, credited], [already, already]]) {
-      const run = ok(10, [], { topups: [{ orderId: "o1", amount: 5, result: "violation", confirmations }], ops: [{ kind: "topup", amount: 5, orderId: "o1" }] });
+    for (const confirmations of [
+      [credited, credited],
+      [already, already],
+    ]) {
+      const run = ok(10, [], {
+        topups: [{ orderId: "o1", amount: 5, result: "violation", confirmations }],
+        ops: [{ kind: "topup", amount: 5, orderId: "o1" }],
+      });
       expect(hostedViolations(run).join(" ")).toMatch(/confirmed twice with no error/);
     }
   });
 });
 
 describe("what each answer means", () => {
-  test.each([[200, "accepted"], [402, "refused"], [500, "unknown"], [502, "unknown"], [401, "unknown"], [404, "unknown"], [201, "unknown"], [null, "unknown"]] as const)("a deduction answered %s is %s", (status, meaning) => {
+  test.each([
+    [200, "accepted"],
+    [402, "refused"],
+    [500, "unknown"],
+    [502, "unknown"],
+    [401, "unknown"],
+    [404, "unknown"],
+    [201, "unknown"],
+    [null, "unknown"],
+  ] as const)("a deduction answered %s is %s", (status, meaning) => {
     expect(classifyDeduct(status)).toBe(meaning);
   });
 
@@ -307,7 +450,11 @@ describe("what each answer means", () => {
       (c: HostedCalls) => void (run1(c).deducts.find((d) => d.result === "refused" || d.result === "accepted")!.status = 500),
       (c: HostedCalls) => void (run1(c).deducts[0]!.result = run1(c).deducts[0]!.result === "accepted" ? "unknown" : "accepted"),
       (c: HostedCalls) => void (run1(c).topups[0]!.result = "unknown"),
-      (c: HostedCalls) => void (run1(c).topups[0]!.confirmations = [{ status: "PAID", credited: true }, { status: "PAID", credited: true }]),
+      (c: HostedCalls) =>
+        void (run1(c).topups[0]!.confirmations = [
+          { status: "PAID", credited: true },
+          { status: "PAID", credited: true },
+        ]),
     ]) {
       const e = tampered(edit);
       expect(e.checks).toEqual({});
@@ -352,7 +499,12 @@ describe("outcomes that are not known", () => {
         return undefined;
       },
     });
-    const tops = r.calls.facts.runs.flatMap((x) => x.topups.map((t) => ({ t, rows: x.final!.ledger.filter((row) => row.type === "topup" && JSON.parse(row.metadata ?? "{}").order_id === t.orderId).length })));
+    const tops = r.calls.facts.runs.flatMap((x) =>
+      x.topups.map((t) => ({
+        t,
+        rows: x.final!.ledger.filter((row) => row.type === "topup" && JSON.parse(row.metadata ?? "{}").order_id === t.orderId).length,
+      })),
+    );
     const unknown = tops.filter((x) => x.t.result === "unknown");
     expect(unknown.length).toBe(6);
     expect(unknown.every((x) => x.t.confirmations.some((c) => "error" in c))).toBe(true);
@@ -398,11 +550,13 @@ describe("outcomes that are not known", () => {
     const allowed = Math.floor(ops * UNKNOWN_SHARE_LIMIT);
     const setUnknown = (calls: HostedCalls, count: number) => {
       let left = count;
-      for (const run of calls.facts.runs) for (const d of run.deducts) if (left > 0) {
-        d.result = "unknown";
-        d.status = 502;
-        left -= 1;
-      }
+      for (const run of calls.facts.runs)
+        for (const d of run.deducts)
+          if (left > 0) {
+            d.result = "unknown";
+            d.status = 502;
+            left -= 1;
+          }
     };
     const make = (count: number) => {
       const calls = clone(base);
@@ -419,25 +573,43 @@ describe("outcomes that are not known", () => {
 describe("pieces", () => {
   test("the spacer starts calls at least the gap apart, across everything that shares it", async () => {
     const starts: number[] = [];
-    const space = makeSpacer(100, () => performance.now(), (ms) => new Promise((r) => setTimeout(r, ms)));
-    await Promise.all([1, 2, 3, 4, 5].map(async () => {
-      await space();
-      starts.push(performance.now());
-    }));
+    const space = makeSpacer(
+      100,
+      () => performance.now(),
+      (ms) => new Promise((r) => setTimeout(r, ms)),
+    );
+    await Promise.all(
+      [1, 2, 3, 4, 5].map(async () => {
+        await space();
+        starts.push(performance.now());
+      }),
+    );
     starts.sort((a, b) => a - b);
     for (let i = 1; i < starts.length; i += 1) expect(starts[i]! - starts[i - 1]!).toBeGreaterThanOrEqual(80);
   });
   test("the adapter refuses a batch of statements it did not prepare", async () => {
     const world = await rehearsalWorld();
-    const db = restD1(world.cloudflareClient(() => performance.now()), "db-1", async () => undefined);
+    const db = restD1(
+      world.cloudflareClient(() => performance.now()),
+      "db-1",
+      async () => undefined,
+    );
     await expect(db.batch([{} as never])).rejects.toThrow(/did not prepare/);
   });
 
   test("the adapter carries the database's own error text, which is how the wallet tells a refused overdraw from a failure", async () => {
     const world = await rehearsalWorld();
-    const db = restD1(world.cloudflareClient(() => performance.now()), "db-1", async () => undefined);
+    const db = restD1(
+      world.cloudflareClient(() => performance.now()),
+      "db-1",
+      async () => undefined,
+    );
     await db.prepare("INSERT INTO credit_wallets (workspace_id, balance_milli) VALUES (?, ?)").bind("w", 1).run();
-    await expect(db.batch([db.prepare("UPDATE credit_wallets SET balance_milli = balance_milli - ? WHERE workspace_id = ?").bind(5, "w")])).rejects.toThrow(/CHECK constraint failed: balance_milli >= 0/);
-    expect((await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind("w").first<{ balance_milli: number }>())!.balance_milli).toBe(1); // rolled back
+    await expect(db.batch([db.prepare("UPDATE credit_wallets SET balance_milli = balance_milli - ? WHERE workspace_id = ?").bind(5, "w")])).rejects.toThrow(
+      /CHECK constraint failed: balance_milli >= 0/,
+    );
+    expect(
+      (await db.prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?").bind("w").first<{ balance_milli: number }>())!.balance_milli,
+    ).toBe(1); // rolled back
   });
 });

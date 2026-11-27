@@ -193,7 +193,13 @@ describe("UC0.1 evidence provenance and stamp helper", () => {
   it("check-evidence CLI rejects all-zero gitSha", () => {
     const res = checkWithExtraFile("bad-sha-fixture.json", {
       test: true,
-      provenance: { generatedAt: new Date().toISOString(), gitSha: "0000000000000000000000000000000000000000", gitDirty: false, generator: "scripts/test.ts", inputKind: "measured" },
+      provenance: {
+        generatedAt: new Date().toISOString(),
+        gitSha: "0000000000000000000000000000000000000000",
+        gitDirty: false,
+        generator: "scripts/test.ts",
+        inputKind: "measured",
+      },
     });
     expect(res.status).toBe(1);
     expect(res.stderr).toContain("all-zero");
@@ -217,19 +223,11 @@ describe("UC0.1 evidence provenance and stamp helper", () => {
     try {
       const targetPath = join(tempRoot, "evidence", "test-ts.json");
       expect(() => {
-        writeEvidence(
-          targetPath,
-          { generatedAt: "2026-11-01T00:00:00.000Z", test: 1 },
-          prov,
-        );
+        writeEvidence(targetPath, { generatedAt: "2026-11-01T00:00:00.000Z", test: 1 }, prov);
       }).toThrow(/EVIDENCE_HARDCODED_TIMESTAMP/);
 
       expect(() => {
-        writeEvidence(
-          targetPath,
-          { test: 2 },
-          { ...prov, generatedAt: "2026-11-01T00:00:00.000Z" },
-        );
+        writeEvidence(targetPath, { test: 2 }, { ...prov, generatedAt: "2026-11-01T00:00:00.000Z" });
       }).toThrow(/EVIDENCE_HARDCODED_TIMESTAMP/);
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });

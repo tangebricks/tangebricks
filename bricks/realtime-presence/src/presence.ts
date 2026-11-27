@@ -55,11 +55,7 @@ export class RealtimePresenceService {
     const id = `room_${crypto.randomUUID().replace(/-/g, "")}`;
     const now = new Date().toISOString();
 
-    const existing = await scoped(this.db, workspaceId).first<{ id: string }>(
-      "pres_rooms",
-      "name = ?",
-      [name]
-    );
+    const existing = await scoped(this.db, workspaceId).first<{ id: string }>("pres_rooms", "name = ?", [name]);
     if (existing) return existing.id;
 
     try {
@@ -70,11 +66,7 @@ export class RealtimePresenceService {
       });
       return id;
     } catch {
-      const row = await scoped(this.db, workspaceId).first<{ id: string }>(
-        "pres_rooms",
-        "name = ?",
-        [name]
-      );
+      const row = await scoped(this.db, workspaceId).first<{ id: string }>("pres_rooms", "name = ?", [name]);
       return row?.id || id;
     }
   }
@@ -90,7 +82,7 @@ export class RealtimePresenceService {
       cursor?: CursorPosition;
       status?: PresenceStatus;
       metadata?: Record<string, unknown>;
-    } = {}
+    } = {},
   ): Promise<PresenceParticipant> {
     const roomId = await this.getOrCreateRoom(workspaceId, roomName);
     const id = `sess_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -104,11 +96,7 @@ export class RealtimePresenceService {
       id: string;
       cursor_json: string | null;
       metadata_json: string | null;
-    }>(
-      "pres_sessions",
-      "room_id = ? AND user_id = ?",
-      [roomId, user.userId.trim()]
-    );
+    }>("pres_sessions", "room_id = ? AND user_id = ?", [roomId, user.userId.trim()]);
 
     if (existing) {
       await scoped(this.db, workspaceId).update(
@@ -121,7 +109,7 @@ export class RealtimePresenceService {
           last_heartbeat_at: nowMs,
         },
         "room_id = ? AND user_id = ?",
-        [roomId, user.userId.trim()]
+        [roomId, user.userId.trim()],
       );
     } else {
       await scoped(this.db, workspaceId).insert("pres_sessions", {
@@ -151,21 +139,14 @@ export class RealtimePresenceService {
   /**
    * Retrieves active presence participants in a room, filtering out expired sessions.
    */
-  async getRoomPresence(
-    workspaceId: string,
-    roomNameRaw: string,
-    ttlSeconds = this.defaultTtlSeconds
-  ): Promise<RoomPresence> {
+  async getRoomPresence(workspaceId: string, roomNameRaw: string, ttlSeconds = this.defaultTtlSeconds): Promise<RoomPresence> {
     const roomName = roomNameRaw.trim().toLowerCase();
     const roomId = await this.getOrCreateRoom(workspaceId, roomName);
     const thresholdMs = Date.now() - ttlSeconds * 1000;
 
-    const rows = await scoped(this.db, workspaceId).select<RawSessionRow>(
-      "pres_sessions",
-      "room_id = ? AND status != 'offline'",
-      [roomId],
-      { orderBy: "last_heartbeat_at DESC" }
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawSessionRow>("pres_sessions", "room_id = ? AND status != 'offline'", [roomId], {
+      orderBy: "last_heartbeat_at DESC",
+    });
 
     const activeParticipants: PresenceParticipant[] = [];
 
@@ -214,19 +195,10 @@ export class RealtimePresenceService {
    */
   async leaveRoom(workspaceId: string, roomNameRaw: string, userId: string): Promise<boolean> {
     const roomName = roomNameRaw.trim().toLowerCase();
-    const room = await scoped(this.db, workspaceId).first<{ id: string }>(
-      "pres_rooms",
-      "name = ?",
-      [roomName]
-    );
+    const room = await scoped(this.db, workspaceId).first<{ id: string }>("pres_rooms", "name = ?", [roomName]);
     if (!room) return false;
 
-    const res = await scoped(this.db, workspaceId).update(
-      "pres_sessions",
-      { status: "offline" },
-      "user_id = ? AND room_id = ?",
-      [userId.trim(), room.id]
-    );
+    const res = await scoped(this.db, workspaceId).update("pres_sessions", { status: "offline" }, "user_id = ? AND room_id = ?", [userId.trim(), room.id]);
 
     return res.meta.changes > 0;
   }
@@ -237,7 +209,7 @@ export class RealtimePresenceService {
   async getUserStatus(
     workspaceId: string,
     userId: string,
-    ttlSeconds = this.defaultTtlSeconds
+    ttlSeconds = this.defaultTtlSeconds,
   ): Promise<{ online: boolean; status: PresenceStatus; lastSeenAt: number | null }> {
     const thresholdMs = Date.now() - ttlSeconds * 1000;
     interface StatusRow {
@@ -245,12 +217,10 @@ export class RealtimePresenceService {
       last_heartbeat_at: number;
     }
 
-    const rows = await scoped(this.db, workspaceId).select<StatusRow>(
-      "pres_sessions",
-      "user_id = ?",
-      [userId.trim()],
-      { orderBy: "last_heartbeat_at DESC", limit: 1 }
-    );
+    const rows = await scoped(this.db, workspaceId).select<StatusRow>("pres_sessions", "user_id = ?", [userId.trim()], {
+      orderBy: "last_heartbeat_at DESC",
+      limit: 1,
+    });
 
     const row = rows[0] || null;
 

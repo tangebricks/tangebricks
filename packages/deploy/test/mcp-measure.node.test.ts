@@ -5,7 +5,19 @@ import type { D1Like } from "@poc/sdk";
 import { INVOICE_FLOW_BLUEPRINT } from "../../../test/support/blueprints.ts";
 import { FULL_SESSION, INVOICES as H9_INVOICES } from "../../mcp-server/test/support/session.ts";
 import { MCP_MIGRATION_NAME, MCP_TEST_REVIEWER_ENTRYPOINT, MCP_TOKEN_BINDING, bundleMcpWorker, mcpMigration, mcpTokenRecords } from "../src/mcp-bundle.ts";
-import { FULL_BLUEPRINT, FULL_STEPS, INVOICES, LADDER, MEASURED_PROJECTS, REVIEWER_SURFACE_MISSING, SESSION_PROJECT, canonicalMcp, classifyBuild, evaluateMcp, runMcpMeasurement } from "../src/mcp-measure.ts";
+import {
+  FULL_BLUEPRINT,
+  FULL_STEPS,
+  INVOICES,
+  LADDER,
+  MEASURED_PROJECTS,
+  REVIEWER_SURFACE_MISSING,
+  SESSION_PROJECT,
+  canonicalMcp,
+  classifyBuild,
+  evaluateMcp,
+  runMcpMeasurement,
+} from "../src/mcp-measure.ts";
 import type { McpDeps, McpFacts, McpResult } from "../src/mcp-measure.ts";
 import { findSecrets } from "../src/provisioner/index.ts";
 import { mcpResourceNames } from "../src/provisioner/names.ts";
@@ -27,7 +39,11 @@ const BUILD_LIMIT_PAGE = `<!DOCTYPE html><html><head><title>Worker exceeded reso
 type Wrap = (request: Request, forward: () => Promise<Response>, body: string) => Promise<Response> | null;
 function deps(over: Partial<McpDeps> = {}, wrap?: Wrap): McpDeps {
   const forward = async (request: Request, body: string) =>
-    (await mf.dispatchFetch(request.url, { method: request.method, headers: Object.fromEntries(request.headers), body: body || undefined } as never)) as unknown as Response;
+    (await mf.dispatchFetch(request.url, {
+      method: request.method,
+      headers: Object.fromEntries(request.headers),
+      body: body || undefined,
+    } as never)) as unknown as Response;
   let clock = 0;
   return {
     url: URL_BASE,
@@ -42,7 +58,9 @@ function deps(over: Partial<McpDeps> = {}, wrap?: Wrap): McpDeps {
     clock: () => (clock += 3),
     nowIso: () => "2026-10-21T12:00:00.000Z",
     readStoredFiles: async (project) => {
-      const rows = (await db.prepare("SELECT path, content FROM mcp_files WHERE project = ? ORDER BY path").bind(project).all<{ path: string; content: string }>()).results;
+      const rows = (
+        await db.prepare("SELECT path, content FROM mcp_files WHERE project = ? ORDER BY path").bind(project).all<{ path: string; content: string }>()
+      ).results;
       return rows.length === 0 ? null : Object.fromEntries(rows.map((r) => [r.path, r.content]));
     },
     hide: (text) => text.split(TOKEN).join("[hidden]"),
@@ -71,7 +89,17 @@ beforeAll(async () => {
   // AD-V8: the sessions run against the uploaded app plus a test-only reviewer entrypoint (bundleMcpWorker({ testReviewer })),
   // reachable only through this service binding; the size and import checks below use the bundle that is uploaded.
   const reviewed = await bundleMcpWorker({ testReviewer: true });
-  mf = new Miniflare(convertV4MiniflareOptions({ name: "mcp", modules: true, script: reviewed.code, compatibilityDate: "2026-10-01", d1Databases: ["DB"], bindings: { [MCP_TOKEN_BINDING]: TOKEN_RECORDS }, serviceBindings: { REVIEWER: { name: "mcp", entrypoint: MCP_TEST_REVIEWER_ENTRYPOINT } } } as never));
+  mf = new Miniflare(
+    convertV4MiniflareOptions({
+      name: "mcp",
+      modules: true,
+      script: reviewed.code,
+      compatibilityDate: "2026-10-01",
+      d1Databases: ["DB"],
+      bindings: { [MCP_TOKEN_BINDING]: TOKEN_RECORDS },
+      serviceBindings: { REVIEWER: { name: "mcp", entrypoint: MCP_TEST_REVIEWER_ENTRYPOINT } },
+    } as never),
+  );
   await mf.ready;
   db = (await mf.getD1Database("DB")) as unknown as D1Like;
   await applyMigration(db, mcpMigration().sql);
@@ -128,15 +156,29 @@ describe("the measured session is the scored one", () => {
   });
 
   test("the smaller projects grow one thing at a time", () => {
-    expect(LADDER.map((r) => [r.bricks.length, r.entities.length])).toEqual([[1, 0], [2, 0], [3, 0], [3, 1]]);
+    expect(LADDER.map((r) => [r.bricks.length, r.entities.length])).toEqual([
+      [1, 0],
+      [2, 0],
+      [3, 0],
+      [3, 1],
+    ]);
   });
 });
 
 describe("how an answer to build_project is classed", () => {
-  const built = JSON.stringify({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: JSON.stringify({ project: "p", files: 9, bytes: 10, hash: "a".repeat(64) }) }] } });
+  const built = JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    result: { content: [{ type: "text", text: JSON.stringify({ project: "p", files: 9, bytes: 10, hash: "a".repeat(64) }) }] },
+  });
   test.each([
     ["a summary with a hash", 200, built, "built"],
-    ["a tool error", 200, JSON.stringify({ jsonrpc: "2.0", id: 1, result: { isError: true, content: [{ type: "text", text: "no brick is enabled yet" }] } }), "other"],
+    [
+      "a tool error",
+      200,
+      JSON.stringify({ jsonrpc: "2.0", id: 1, result: { isError: true, content: [{ type: "text", text: "no brick is enabled yet" }] } }),
+      "other",
+    ],
     ["Cloudflare's resource-limit page", 503, BUILD_LIMIT_PAGE, "resource_limit"],
     ["the plain form of the same refusal", 503, "error code: 1102", "resource_limit"],
     ["the same words under another status", 500, "Worker exceeded resource limits", "resource_limit"],
@@ -168,7 +210,12 @@ describe("against the real bundle in workerd", () => {
     const { facts, result } = await run();
     expect(facts.closed).toEqual({ noToken: 401, wrongToken: 401 });
     expect(facts.session.connected).toBe(true);
-    expect(facts.session.answers.map((a) => [a.tool, a.isError])).toEqual([["list_bricks", false], ["apply_ops", false], ["define_entity", false], ["build_project", false]]);
+    expect(facts.session.answers.map((a) => [a.tool, a.isError])).toEqual([
+      ["list_bricks", false],
+      ["apply_ops", false],
+      ["define_entity", false],
+      ["build_project", false],
+    ]);
     expect(facts.session.toolCalls).toBe(4);
     expect(facts.storedAfterSession).toMatchObject({ read: true, fileCount: 15, sameFiles: true, differing: [] });
     expect(facts.storedAfterSession!.projectHash).toBe(facts.directHash);
@@ -180,7 +227,18 @@ describe("against the real bundle in workerd", () => {
   });
 
   test("the notes say what happened, without judging it", async () => {
-    const { facts, result } = await run({ deploy: { bytes: 864402, gzipBytes: 144355, sha256: "x".repeat(64), percentOfLimit: 1.29, limitBytes: 64 * 1024 * 1024, startupTimeMs: 12, changes: [], reachableAfterMs: null } });
+    const { facts, result } = await run({
+      deploy: {
+        bytes: 864402,
+        gzipBytes: 144355,
+        sha256: "x".repeat(64),
+        percentOfLimit: 1.29,
+        limitBytes: 64 * 1024 * 1024,
+        startupTimeMs: 12,
+        changes: [],
+        reachableAfterMs: null,
+      },
+    });
     const e = evaluate(facts, result);
     expect(e.believed).toBe(true);
     expect(e.summary).toEqual({ fullBuilt: 10, fullLimit: 0, fullOther: 0, sessionBuilt: true, sameAsDirect: true });
@@ -201,7 +259,8 @@ describe("against the real bundle in workerd", () => {
 });
 
 describe("when Cloudflare stops the build", () => {
-  const limitOnFull: Wrap = (request, forward, body) => (isBuild(body) && /"project":"invoice-flow"/.test(body) ? Promise.resolve(new Response(BUILD_LIMIT_PAGE, { status: 503 })) : null);
+  const limitOnFull: Wrap = (request, forward, body) =>
+    isBuild(body) && /"project":"invoice-flow"/.test(body) ? Promise.resolve(new Response(BUILD_LIMIT_PAGE, { status: 503 })) : null;
 
   test("every build of the full project is counted as the limit, the session says where it stopped, and the smaller projects are built", async () => {
     const { facts, result } = await run({}, limitOnFull);
@@ -211,7 +270,12 @@ describe("when Cloudflare stops the build", () => {
     expect(facts.storedAfterSession).toBeNull();
     expect(facts.repeats.map((a) => a.outcome)).toEqual(Array(10).fill("resource_limit"));
     expect(facts.ladderRun).toBe(true);
-    expect(facts.ladder.map((r) => [r.label, r.setupOk, r.builds.length, r.builds.every((b) => b.outcome === "built")])).toEqual([["1 brick", true, 5, true], ["2 bricks", true, 5, true], ["3 bricks", true, 5, true], ["3 bricks and the table", true, 5, true]]);
+    expect(facts.ladder.map((r) => [r.label, r.setupOk, r.builds.length, r.builds.every((b) => b.outcome === "built")])).toEqual([
+      ["1 brick", true, 5, true],
+      ["2 bricks", true, 5, true],
+      ["3 bricks", true, 5, true],
+      ["3 bricks and the table", true, 5, true],
+    ]);
     expect(result.completed).toBe(true); // a limit is a finding, not a fault
     const text = evaluate(facts, result).notes.join("\n");
     expect(text).toMatch(/it stopped at build_project/);
@@ -220,7 +284,8 @@ describe("when Cloudflare stops the build", () => {
   });
 
   test("a limit that bites only the biggest projects shows where it starts", async () => {
-    const onlyTable: Wrap = (request, forward, body) => (isBuild(body) && /"project":"(invoice-flow|ladder-3t|ladder-3)"/.test(body) ? Promise.resolve(new Response("error code: 1102", { status: 503 })) : null);
+    const onlyTable: Wrap = (request, forward, body) =>
+      isBuild(body) && /"project":"(invoice-flow|ladder-3t|ladder-3)"/.test(body) ? Promise.resolve(new Response("error code: 1102", { status: 503 })) : null;
     const { facts } = await run({}, onlyTable);
     expect(facts.ladder.map((r) => r.builds.map((b) => b.outcome === "built").every(Boolean))).toEqual([true, true, false, false]);
     expect(facts.ladder[2]!.builds.every((b) => b.outcome === "resource_limit")).toBe(true);
@@ -228,7 +293,8 @@ describe("when Cloudflare stops the build", () => {
 
   test("a limit that only sometimes bites is counted each time, and the stored files are still read when some builds worked", async () => {
     let seen = 0;
-    const sometimes: Wrap = (request, forward, body) => (isBuild(body) && /"project":"invoice-flow"/.test(body) && (seen += 1) % 3 === 0 ? Promise.resolve(new Response(BUILD_LIMIT_PAGE, { status: 503 })) : null);
+    const sometimes: Wrap = (request, forward, body) =>
+      isBuild(body) && /"project":"invoice-flow"/.test(body) && (seen += 1) % 3 === 0 ? Promise.resolve(new Response(BUILD_LIMIT_PAGE, { status: 503 })) : null;
     const { facts, result } = await run({}, sometimes);
     const outcomes = facts.repeats.map((a) => a.outcome);
     expect(outcomes.filter((o) => o === "resource_limit").length).toBeGreaterThanOrEqual(3);
@@ -250,7 +316,10 @@ describe("when something is wrong that is not the limit", () => {
   });
 
   test("an endpoint that lets a caller in without the token is not a completed run", async () => {
-    const open: Wrap = (request, forward, body) => (!request.headers.get("authorization") && /"method":"ping"/.test(body) ? Promise.resolve(new Response('{"jsonrpc":"2.0","id":1,"result":{}}', { status: 200 })) : null);
+    const open: Wrap = (request, forward, body) =>
+      !request.headers.get("authorization") && /"method":"ping"/.test(body)
+        ? Promise.resolve(new Response('{"jsonrpc":"2.0","id":1,"result":{}}', { status: 200 }))
+        : null;
     const { facts, result } = await run({}, open);
     expect(facts.closed.noToken).toBe(200);
     expect(result.completed).toBe(false);
@@ -289,7 +358,9 @@ describe("when something is wrong that is not the limit", () => {
 
 describe("reading the evidence again", () => {
   test("a file that was edited is not believed, whether the hash was left alone or rewritten to agree with a changed class", async () => {
-    const { facts, result } = await run({}, (request, forward, body) => (isBuild(body) && /"project":"invoice-flow"/.test(body) ? Promise.resolve(new Response(BUILD_LIMIT_PAGE, { status: 503 })) : null));
+    const { facts, result } = await run({}, (request, forward, body) =>
+      isBuild(body) && /"project":"invoice-flow"/.test(body) ? Promise.resolve(new Response(BUILD_LIMIT_PAGE, { status: 503 })) : null,
+    );
     const good = canonicalMcp(facts);
     expect(evaluateMcp({ callsText: good, result }).believed).toBe(true);
     // 1. a class edited, the hash left alone
@@ -308,11 +379,16 @@ describe("reading the evidence again", () => {
   });
 
   test("the class of every attempt is judged again from its answer, in the smaller projects too", async () => {
-    const { facts, result } = await run({}, (request, forward, body) => (isBuild(body) && /"project":"invoice-flow"/.test(body) ? Promise.resolve(new Response(BUILD_LIMIT_PAGE, { status: 503 })) : null));
+    const { facts, result } = await run({}, (request, forward, body) =>
+      isBuild(body) && /"project":"invoice-flow"/.test(body) ? Promise.resolve(new Response(BUILD_LIMIT_PAGE, { status: 503 })) : null,
+    );
     const edited = structuredClone(facts);
     edited.ladder[1]!.builds[2]!.outcome = "resource_limit";
     const { createHash } = await import("node:crypto");
-    const e = evaluateMcp({ callsText: canonicalMcp(edited), result: { ...result, callsSha256: createHash("sha256").update(canonicalMcp(edited)).digest("hex") } });
+    const e = evaluateMcp({
+      callsText: canonicalMcp(edited),
+      result: { ...result, callsSha256: createHash("sha256").update(canonicalMcp(edited)).digest("hex") },
+    });
     expect(e.believed).toBe(false);
   });
 });

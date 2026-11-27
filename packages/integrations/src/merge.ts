@@ -74,9 +74,7 @@ export function mergeOperations(options: MergeOperationsOptions): MergedOperatio
         : [...extractedMap.keys()];
 
   if (targetOpIds.length === 0) {
-    throw new Error(
-      `OPENAPI_IMPORT_EMPTY_OPERATIONS: Curation for "${curation.app}" resulted in 0 operations (must include 1..30 operations)`,
-    );
+    throw new Error(`OPENAPI_IMPORT_EMPTY_OPERATIONS: Curation for "${curation.app}" resulted in 0 operations (must include 1..30 operations)`);
   }
   if (targetOpIds.length > 30 && !options.skipOperationCap) {
     throw new Error(
@@ -92,9 +90,7 @@ export function mergeOperations(options: MergeOperationsOptions): MergedOperatio
     const opKey = overlayInfo?.opKey ?? opId;
 
     if (!baseOp && !overlay) {
-      throw new Error(
-        `OPENAPI_IMPORT_MISSING_OPERATION: Curated operation "${opId}" was not found in ${format} spec for "${curation.app}"`,
-      );
+      throw new Error(`OPENAPI_IMPORT_MISSING_OPERATION: Curated operation "${opId}" was not found in ${format} spec for "${curation.app}"`);
     }
 
     if (!baseOp && overlay) {
@@ -217,18 +213,14 @@ export function mergeOperations(options: MergeOperationsOptions): MergedOperatio
     const summary = overlay?.summary ?? baseOp?.summary ?? label;
     const params = overlay?.params ?? baseOp?.params;
     const body = overlay?.body ?? baseOp?.body;
-    const response =
-      overlay?.response !== undefined
-        ? { ...baseOp?.response, ...overlay.response }
-        : (baseOp?.response ?? {});
+    const response = overlay?.response !== undefined ? { ...baseOp?.response, ...overlay.response } : (baseOp?.response ?? {});
     const pagination = overlay?.pagination ?? baseOp?.pagination;
     const errorWhen = overlay?.errorWhen ?? (baseOp as any)?.errorWhen;
     const successWhen = overlay?.successWhen ?? (baseOp as any)?.successWhen;
     const rateLimit = overlay?.rateLimit ?? baseOp?.rateLimit ?? curation.defaultRateLimit;
     const idempotency = overlay?.idempotency ?? (baseOp as any)?.idempotency;
     const errorMappings = overlay?.errorMappings ?? baseOp?.errorMappings;
-    const sideEffects =
-      overlay?.sideEffects ?? baseOp?.sideEffects ?? (method === "GET" ? "read" : "write");
+    const sideEffects = overlay?.sideEffects ?? baseOp?.sideEffects ?? (method === "GET" ? "read" : "write");
 
     mergedOperations.push({
       operationId: opId,

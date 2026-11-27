@@ -34,10 +34,7 @@ interface CallOptions {
   body?: unknown;
 }
 
-async function callStudio(
-  path: string,
-  options: CallOptions = {},
-): Promise<Response> {
+async function callStudio(path: string, options: CallOptions = {}): Promise<Response> {
   const headers = new Headers(options.headers);
   if (options.token) headers.set("authorization", `Bearer ${options.token}`);
 
@@ -249,8 +246,8 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     // (and the app's px_connections row) are written straight to that sandbox D1 first.
     await activateTestSandbox(studioDb, { project, orgId });
     await seedRowsDirectly(sandboxDb, {
-          ddl: [
-            `CREATE TABLE IF NOT EXISTS ent_invoices (
+      ddl: [
+        `CREATE TABLE IF NOT EXISTS ent_invoices (
               id TEXT PRIMARY KEY,
               workspace_id TEXT NOT NULL,
               invoice_number TEXT NOT NULL,
@@ -261,54 +258,47 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
               created_at TEXT NOT NULL DEFAULT (datetime('now')),
               updated_at TEXT NOT NULL DEFAULT (datetime('now'))
             );`,
-            `CREATE TABLE IF NOT EXISTS webhooks (
+        `CREATE TABLE IF NOT EXISTS webhooks (
               id TEXT PRIMARY KEY,
               workspace_id TEXT NOT NULL,
               target_url TEXT NOT NULL,
               event_type TEXT NOT NULL,
               signing_secret TEXT NOT NULL
             );`,
-            `CREATE TABLE IF NOT EXISTS px_connections (
+        `CREATE TABLE IF NOT EXISTS px_connections (
               id TEXT PRIMARY KEY,
               workspace_id TEXT NOT NULL,
               provider TEXT NOT NULL,
               secret_token TEXT NOT NULL
             );`,
-          ],
-          tables: {
-            ent_invoices: invoiceRows,
-            webhooks: webhookRows,
-            px_connections: [
-              {
-                id: "conn_1",
-                workspace_id: "workspace_A",
-                provider: "stripe",
-                secret_token: "sk_live_secret_999",
-              },
-            ],
+      ],
+      tables: {
+        ent_invoices: invoiceRows,
+        webhooks: webhookRows,
+        px_connections: [
+          {
+            id: "conn_1",
+            workspace_id: "workspace_A",
+            provider: "stripe",
+            secret_token: "sk_live_secret_999",
           },
+        ],
+      },
     });
-    const seedRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/seed`,
-      { token: ownerToken, body: { orgId } },
-    );
+    const seedRes = await callStudio(`/api/projects/${project}/environments/preview/data/seed`, { token: ownerToken, body: { orgId } });
     expect(seedRes.status).toBe(200);
   });
 
   it("serves workspaces, table catalog (without px_connections or secret columns), and strictly isolated rows for workspace_A (AC 1, AC 3, AC 5)", async () => {
-    const wsRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/workspaces?orgId=${orgId}`,
-      { token: viewerToken },
-    );
+    const wsRes = await callStudio(`/api/projects/${project}/environments/preview/data/workspaces?orgId=${orgId}`, { token: viewerToken });
     expect(wsRes.status).toBe(200);
     const wsBody = (await wsRes.json()) as { workspaces: string[] };
     expect(wsBody.workspaces).toContain("workspace_A");
     expect(wsBody.workspaces).toContain("workspace_B");
 
-    const tablesRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables?workspaceId=workspace_A&orgId=${orgId}`,
-      { token: viewerToken },
-    );
+    const tablesRes = await callStudio(`/api/projects/${project}/environments/preview/data/tables?workspaceId=workspace_A&orgId=${orgId}`, {
+      token: viewerToken,
+    });
     expect(tablesRes.status).toBe(200);
     const tablesBody = (await tablesRes.json()) as {
       tables: Array<{
@@ -322,9 +312,7 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     expect(names).toContain("webhooks");
     expect(names).not.toContain("px_connections");
 
-    const invCols = tablesBody.tables
-      .find((t) => t.name === "invoices")!
-      .columns.map((c) => c.name);
+    const invCols = tablesBody.tables.find((t) => t.name === "invoices")!.columns.map((c) => c.name);
     expect(invCols).not.toContain("secret_token");
     expect(invCols).not.toContain("password_hash");
 
@@ -340,9 +328,7 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     };
     expect(advRowsBody.totalCount).toBe(10);
     expect(advRowsBody.rows).toHaveLength(10);
-    expect(
-      advRowsBody.rows.every((r) => r.workspace_id === "workspace_A"),
-    ).toBe(true);
+    expect(advRowsBody.rows.every((r) => r.workspace_id === "workspace_A")).toBe(true);
     for (const r of advRowsBody.rows) {
       expect(r).not.toHaveProperty("secret_token");
       expect(r).not.toHaveProperty("password_hash");
@@ -351,78 +337,66 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
 
   it("enforces RBAC (viewer rejected on writes), rejects production writes with 403 PRODUCTION_DATA_WRITE_FORBIDDEN, blocks cross-workspace PATCH/DELETE, and records data_browser_audit_log on preview writes (AC 2, AC 3, AC 5)", async () => {
     // 1. Viewer role cannot mutate preview rows (403)
-    const viewerWriteRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables/invoices/rows`,
-      {
-        method: "POST",
-        token: viewerToken,
-        body: {
-          orgId,
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-          row: { invoice_number: "INV-V-1", amount: 100, status: "open" },
-        },
+    const viewerWriteRes = await callStudio(`/api/projects/${project}/environments/preview/data/tables/invoices/rows`, {
+      method: "POST",
+      token: viewerToken,
+      body: {
+        orgId,
+        workspaceId: "workspace_A",
+        confirmWrite: true,
+        row: { invoice_number: "INV-V-1", amount: 100, status: "open" },
       },
-    );
+    });
     expect(viewerWriteRes.status).toBe(403);
 
     // 2. Production environment rejects POST, PATCH, and DELETE with 403 PRODUCTION_DATA_WRITE_FORBIDDEN
     for (const method of ["POST", "PATCH", "DELETE"] as const) {
-      const prodRes = await callStudio(
-        `/api/projects/${project}/environments/production/data/tables/invoices/rows`,
-        {
-          method,
-          token: ownerToken,
-          body: {
-            orgId,
-            workspaceId: "workspace_A",
-            rowId: "inv_A_01",
-            confirmWrite: true,
-            row: { invoice_number: "INV-P-1", amount: 100, status: "open" },
-          },
+      const prodRes = await callStudio(`/api/projects/${project}/environments/production/data/tables/invoices/rows`, {
+        method,
+        token: ownerToken,
+        body: {
+          orgId,
+          workspaceId: "workspace_A",
+          rowId: "inv_A_01",
+          confirmWrite: true,
+          row: { invoice_number: "INV-P-1", amount: 100, status: "open" },
         },
-      );
+      });
       expect(prodRes.status).toBe(403);
       const prodErr = (await prodRes.json()) as { error: { code: string } };
       expect(prodErr.error.code).toBe("PRODUCTION_DATA_WRITE_FORBIDDEN");
     }
 
     // 3. Cross-workspace PATCH / DELETE of workspace_B row while scoped to workspace_A returns 404 and records 0 audit rows
-    const crossPatchRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables/invoices/rows/inv_B_01`,
-      {
-        method: "PATCH",
-        token: ownerToken,
-        body: {
-          orgId,
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-          patch: { status: "paid", amount: 1 },
-        },
+    const crossPatchRes = await callStudio(`/api/projects/${project}/environments/preview/data/tables/invoices/rows/inv_B_01`, {
+      method: "PATCH",
+      token: ownerToken,
+      body: {
+        orgId,
+        workspaceId: "workspace_A",
+        confirmWrite: true,
+        patch: { status: "paid", amount: 1 },
       },
-    );
+    });
     expect(crossPatchRes.status).toBe(404);
 
     // 4. Confirmed insert, update, and delete on workspace_A in preview succeed and write complete data_browser_audit_log rows
     // Story 1.17: a client-supplied requestId is never signed; Studio mints a fresh one for the write.
-    const insertRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables/invoices/rows?requestId=x`,
-      {
-        method: "POST",
-        token: ownerToken,
-        body: {
-          orgId,
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-          row: {
-            id: "inv_A_99",
-            invoice_number: "INV-A-99",
-            amount: 4200,
-            status: "open",
-          },
+    const insertRes = await callStudio(`/api/projects/${project}/environments/preview/data/tables/invoices/rows?requestId=x`, {
+      method: "POST",
+      token: ownerToken,
+      body: {
+        orgId,
+        workspaceId: "workspace_A",
+        confirmWrite: true,
+        row: {
+          id: "inv_A_99",
+          invoice_number: "INV-A-99",
+          amount: 4200,
+          status: "open",
         },
       },
-    );
+    });
     expect(insertRes.status).toBe(201);
     const insertBody = (await insertRes.json()) as {
       auditId: string;
@@ -436,43 +410,36 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     expect((claimed.results ?? []).map((r) => r.request_id)).not.toContain("x");
     expect((claimed.results ?? []).some((r) => /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(r.request_id))).toBe(true);
 
-    const updateRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables/invoices/rows/inv_A_99`,
-      {
-        method: "PATCH",
-        token: ownerToken,
-        body: {
-          orgId,
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-          patch: {
-            amount: 4500,
-            status: "paid",
-          },
+    const updateRes = await callStudio(`/api/projects/${project}/environments/preview/data/tables/invoices/rows/inv_A_99`, {
+      method: "PATCH",
+      token: ownerToken,
+      body: {
+        orgId,
+        workspaceId: "workspace_A",
+        confirmWrite: true,
+        patch: {
+          amount: 4500,
+          status: "paid",
         },
       },
-    );
+    });
     expect(updateRes.status).toBe(200);
 
-    const deleteRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables/invoices/rows/inv_A_99`,
-      {
-        method: "DELETE",
-        token: ownerToken,
-        body: {
-          orgId,
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-        },
+    const deleteRes = await callStudio(`/api/projects/${project}/environments/preview/data/tables/invoices/rows/inv_A_99`, {
+      method: "DELETE",
+      token: ownerToken,
+      body: {
+        orgId,
+        workspaceId: "workspace_A",
+        confirmWrite: true,
       },
-    );
+    });
     expect(deleteRes.status).toBe(200);
 
     // Verify all 3 audit log records in data_browser_audit_log
-    const auditRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/audit-log?workspaceId=workspace_A&orgId=${orgId}`,
-      { token: ownerToken },
-    );
+    const auditRes = await callStudio(`/api/projects/${project}/environments/preview/data/audit-log?workspaceId=workspace_A&orgId=${orgId}`, {
+      token: ownerToken,
+    });
     expect(auditRes.status).toBe(200);
     const auditBody = (await auditRes.json()) as {
       entries: Array<{
@@ -495,9 +462,7 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     const operations = auditBody.entries.map((e) => e.operation).sort();
     expect(operations).toEqual(["delete", "insert", "update"]);
 
-    const insertEntry = auditBody.entries.find(
-      (e) => e.operation === "insert",
-    )!;
+    const insertEntry = auditBody.entries.find((e) => e.operation === "insert")!;
     expect(insertEntry.workspaceId).toBe("workspace_A");
     expect(insertEntry.tableName).toBe("invoices");
     expect(insertEntry.rowId).toBe("inv_A_99");
@@ -510,16 +475,12 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
       status: "open",
     });
 
-    const updateEntry = auditBody.entries.find(
-      (e) => e.operation === "update",
-    )!;
+    const updateEntry = auditBody.entries.find((e) => e.operation === "update")!;
     expect(updateEntry.beforeSnapshot?.amount).toBe(4200);
     expect(updateEntry.afterSnapshot?.amount).toBe(4500);
     expect(updateEntry.afterSnapshot?.status).toBe("paid");
 
-    const deleteEntry = auditBody.entries.find(
-      (e) => e.operation === "delete",
-    )!;
+    const deleteEntry = auditBody.entries.find((e) => e.operation === "delete")!;
     expect(deleteEntry.beforeSnapshot?.amount).toBe(4500);
     expect(deleteEntry.afterSnapshot).toBeNull();
   });
@@ -552,29 +513,26 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     });
     expect(opsRes.status).toBe(200);
 
-    const seedRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/seed`,
-      {
-        token: ownerToken,
-        body: {
-          orgId,
-          tables: {
-            ent_notes_log: [
-              {
-                id: "11111111-1111-4111-8111-111111111111",
-                workspace_id: "workspace_A",
-                title: "hello",
-                invoice_ref: "22222222-2222-4222-8222-222222222222",
-                due_on: "2026-11-26",
-                fee: 1999,
-                fee__currency: "INR",
-              },
-            ],
-            ent_invoices: [{ id: "inv_A_99", workspace_id: "workspace_A", invoice_number: "INV-A-99", amount: 1, status: "open" }],
-          },
+    const seedRes = await callStudio(`/api/projects/${project}/environments/preview/data/seed`, {
+      token: ownerToken,
+      body: {
+        orgId,
+        tables: {
+          ent_notes_log: [
+            {
+              id: "11111111-1111-4111-8111-111111111111",
+              workspace_id: "workspace_A",
+              title: "hello",
+              invoice_ref: "22222222-2222-4222-8222-222222222222",
+              due_on: "2026-11-26",
+              fee: 1999,
+              fee__currency: "INR",
+            },
+          ],
+          ent_invoices: [{ id: "inv_A_99", workspace_id: "workspace_A", invoice_number: "INV-A-99", amount: 1, status: "open" }],
         },
       },
-    );
+    });
     expect(seedRes.status).toBe(200);
     const columns = (await sandboxDb.prepare(`SELECT name FROM pragma_table_info('ent_notes_log')`).all<{ name: string }>()).results.map((r) => r.name);
     expect(columns).toEqual(expect.arrayContaining(["title", "payload", "seen_at", "invoice_ref", "due_on", "fee", "fee__currency", "body"]));
@@ -590,7 +548,10 @@ describe("Story 6.1 — Studio API Data Browser (/api/projects/:project/environm
     };
     const state = {
       ...current.state,
-      entities: [...current.state.entities, { name: "tickets", workspaceScoped: true, fields: [{ name: "owner_id", type: "relation", relation: "users.id", required: false }] }],
+      entities: [
+        ...current.state.entities,
+        { name: "tickets", workspaceScoped: true, fields: [{ name: "owner_id", type: "relation", relation: "users.id", required: false }] },
+      ],
     };
     const seeded = await stub.fetch("http://blueprint-do/seed", { method: "POST", body: JSON.stringify({ project, state, revision: current.revision + 1 }) });
     expect(seeded.status).toBe(200);

@@ -18,11 +18,7 @@ import {
   projectIntegrationToNodes,
   secretNames,
 } from "../packages/assembler/src/schemas.ts";
-import type {
-  BrickManifestFile,
-  IntegrationManifestFile,
-  NodePackManifestFile,
-} from "../packages/assembler/src/schemas.ts";
+import type { BrickManifestFile, IntegrationManifestFile, NodePackManifestFile } from "../packages/assembler/src/schemas.ts";
 import { deriveTier, loadTierPolicy, TIER_RANK } from "./lib/derive-tier.ts";
 import type { MaturityTier } from "./lib/derive-tier.ts";
 
@@ -41,9 +37,7 @@ export function loadTierEvidenceMap(rootDir = ROOT): Map<string, any> {
     : // Committed evidence unless a run directory is named explicitly (evidence:refresh sets POC_EVIDENCE_DIR).
       // A leftover .evidence-run/ from an earlier step is never picked up implicitly.
       join(rootDir, "evidence");
-  const p = process.env.POC_TIER_EVIDENCE_PATH
-    ? resolve(process.env.POC_TIER_EVIDENCE_PATH)
-    : join(evidenceDir, "tier-evidence.json");
+  const p = process.env.POC_TIER_EVIDENCE_PATH ? resolve(process.env.POC_TIER_EVIDENCE_PATH) : join(evidenceDir, "tier-evidence.json");
 
   if (existsSync(p)) {
     try {
@@ -246,11 +240,7 @@ function collectSettingsAndEnvFromSource(
           paramIdent = firstParam.name.text;
         } else if (ts.isObjectBindingPattern(firstParam.name)) {
           for (const el of firstParam.name.elements) {
-            const key = el.propertyName && ts.isIdentifier(el.propertyName)
-              ? el.propertyName.text
-              : ts.isIdentifier(el.name)
-                ? el.name.text
-                : null;
+            const key = el.propertyName && ts.isIdentifier(el.propertyName) ? el.propertyName.text : ts.isIdentifier(el.name) ? el.name.text : null;
             if (key) readSettings.add(key);
           }
         }
@@ -270,11 +260,7 @@ function collectSettingsAndEnvFromSource(
           node.initializer.text === paramIdent
         ) {
           for (const el of node.name.elements) {
-            const key = el.propertyName && ts.isIdentifier(el.propertyName)
-              ? el.propertyName.text
-              : ts.isIdentifier(el.name)
-                ? el.name.text
-                : null;
+            const key = el.propertyName && ts.isIdentifier(el.propertyName) ? el.propertyName.text : ts.isIdentifier(el.name) ? el.name.text : null;
             if (key) readSettings.add(key);
           }
         }
@@ -325,9 +311,7 @@ function collectSettingsAndEnvFromSource(
           const routePath = firstArg.text;
           if (routePath.startsWith("/")) {
             const fullPath = `${mountBase.replace(/\/+$/, "")}/${routePath.replace(/^\/+/, "")}`;
-            const relativeToApi = fullPath.startsWith("/api/")
-              ? fullPath.slice("/api/".length)
-              : fullPath.replace(/^\/+/, "");
+            const relativeToApi = fullPath.startsWith("/api/") ? fullPath.slice("/api/".length) : fullPath.replace(/^\/+/, "");
             const firstSegment = relativeToApi.split("/").filter(Boolean)[0] ?? "";
             if (firstSegment && !firstSegment.startsWith(":")) {
               mountedRoutes.push({ path: routePath, firstSegment });
@@ -509,9 +493,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   }
 
   // 4. Migrations check & workspace_id column check
-  const globalTables = new Set(
-    (manifest.globalTables ?? []).filter((g) => g.reason.trim().length > 0).map((g) => g.table),
-  );
+  const globalTables = new Set((manifest.globalTables ?? []).filter((g) => g.reason.trim().length > 0).map((g) => g.table));
   // Story 1.10: every table the migrations create, and whether it has workspace_id, for the workspaceData checks below.
   const createdTables = new Map<string, boolean>();
   for (const mig of manifest.migrations) {
@@ -529,9 +511,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
     if (lintRes.class === "destructive") {
       const header = lintRes.header;
       const validContract =
-        header?.phase === "contract" &&
-        header.expands &&
-        manifest.migrations.some((m) => m === header.expands || m.endsWith(`/${header.expands}`));
+        header?.phase === "contract" && header.expands && manifest.migrations.some((m) => m === header.expands || m.endsWith(`/${header.expands}`));
       if (!validContract) {
         violations.push({
           brick: brickName,
@@ -550,10 +530,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
         });
       }
       if (hasWorkspaceId && !globalTables.has(table)) {
-        const hasPrivacy = Boolean(
-          manifest.privacy?.tables?.[table] ||
-          manifest.privacy?.hookTables?.includes(table)
-        );
+        const hasPrivacy = Boolean(manifest.privacy?.tables?.[table] || manifest.privacy?.hookTables?.includes(table));
         if (!hasPrivacy) {
           violations.push({
             brick: brickName,
@@ -602,7 +579,9 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   const migrationsDir = join(brickDir, "migrations");
   if (existsSync(migrationsDir) && statSync(migrationsDir).isDirectory()) {
     const declaredSet = new Set(manifest.migrations);
-    for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort()) {
+    for (const file of readdirSync(migrationsDir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()) {
       const rel = `migrations/${file}`;
       if (!declaredSet.has(rel)) {
         violations.push({
@@ -644,11 +623,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   const srcFiles = listTsSourceFiles(join(brickDir, "src"));
   const factoryNames = new Set(manifest.worker.routes.map((r) => r.factory));
   const mountPoints = manifest.worker.routes.map((r) => r.mountAt);
-  const { readSettings, envRefs, mountedRoutes, forbiddenRuntimeConstructs } = collectSettingsAndEnvFromSource(
-    srcFiles,
-    factoryNames,
-    mountPoints,
-  );
+  const { readSettings, envRefs, mountedRoutes, forbiddenRuntimeConstructs } = collectSettingsAndEnvFromSource(srcFiles, factoryNames, mountPoints);
 
   for (const detail of forbiddenRuntimeConstructs) {
     violations.push({
@@ -721,7 +696,15 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
   const optionToSetting = new Map<string, string>();
   for (const route of manifest.worker.routes) {
     for (const [optName, optVal] of Object.entries(route.options)) {
-      if (typeof optVal === "object" && ("$call" in optVal || "$entities" in optVal || "$privacy" in optVal || "$workspaceData" in optVal || "$capability" in optVal || "$capabilitySetting" in optVal)) {
+      if (
+        typeof optVal === "object" &&
+        ("$call" in optVal ||
+          "$entities" in optVal ||
+          "$privacy" in optVal ||
+          "$workspaceData" in optVal ||
+          "$capability" in optVal ||
+          "$capabilitySetting" in optVal)
+      ) {
         nonSettingOptions.add(optName);
       } else if (typeof optVal === "object" && "$setting" in optVal) {
         optionToSetting.set(optName, optVal.$setting);
@@ -816,9 +799,7 @@ export function checkBrickConformance(brickDir: string, brickName = brickDir.spl
     if (tierEvidenceMap.size > 0 || process.env.POC_EVIDENCE_DIR) {
       const tierEvidence = tierEvidenceMap.get(brickName);
       const policy = loadTierPolicy(
-        existsSync(join(resolvedRoot, "scripts", "tier-policy.json"))
-          ? join(resolvedRoot, "scripts", "tier-policy.json")
-          : undefined,
+        existsSync(join(resolvedRoot, "scripts", "tier-policy.json")) ? join(resolvedRoot, "scripts", "tier-policy.json") : undefined,
       );
       const derived = deriveTier(manifest, tierEvidence, null, null, policy);
       if (TIER_RANK[declaredTier] > TIER_RANK[derived.tier]) {
@@ -974,21 +955,14 @@ export function checkIntegrationConformance(
         field: "ui.behaviourTest",
         detail: `ui.behaviourTest is required when ui.maturity is "${manifest.ui.maturity}"`,
       });
-    } else if (
-      !existsSync(join(integrationDir, manifest.ui.behaviourTest)) &&
-      !existsSync(join(ROOT, manifest.ui.behaviourTest))
-    ) {
+    } else if (!existsSync(join(integrationDir, manifest.ui.behaviourTest)) && !existsSync(join(ROOT, manifest.ui.behaviourTest))) {
       violations.push({
         brick: appName,
         field: "ui.behaviourTest",
         detail: `declared behaviourTest "${manifest.ui.behaviourTest}" does not exist`,
       });
     }
-  } else if (
-    manifest.ui.behaviourTest &&
-    !existsSync(join(integrationDir, manifest.ui.behaviourTest)) &&
-    !existsSync(join(ROOT, manifest.ui.behaviourTest))
-  ) {
+  } else if (manifest.ui.behaviourTest && !existsSync(join(integrationDir, manifest.ui.behaviourTest)) && !existsSync(join(ROOT, manifest.ui.behaviourTest))) {
     violations.push({
       brick: appName,
       field: "ui.behaviourTest",
@@ -1019,10 +993,7 @@ export function checkIntegrationConformance(
     try {
       const report = JSON.parse(readFileSync(reportPath, "utf8"));
       const lossEntries = (report.entries ?? []).filter(
-        (e: any) =>
-          e.status === "approximated" ||
-          e.status === "unsupported" ||
-          (typeof e.code === "string" && e.code.endsWith("_LOSS")),
+        (e: any) => e.status === "approximated" || e.status === "unsupported" || (typeof e.code === "string" && e.code.endsWith("_LOSS")),
       );
       const curationPath = existsSync(join(integrationDir, "curation.config.json"))
         ? join(integrationDir, "curation.config.json")
@@ -1047,9 +1018,7 @@ export function checkIntegrationConformance(
           } catch {}
         }
         unackCount = lossEntries.filter(
-          (e: any) =>
-            !acks.has(`${e.op ?? "<doc>"}:${e.code}`) &&
-            !acks.has(`${e.op ?? "<doc>"}:${e.code}:${e.pointer ?? ""}`),
+          (e: any) => !acks.has(`${e.op ?? "<doc>"}:${e.code}`) && !acks.has(`${e.op ?? "<doc>"}:${e.code}:${e.pointer ?? ""}`),
         ).length;
       }
       fidelityReport = {
@@ -1063,9 +1032,7 @@ export function checkIntegrationConformance(
   if (tierEvidenceMap.size > 0 || process.env.POC_EVIDENCE_DIR) {
     const tierEvidence = tierEvidenceMap.get(appName);
     const policy = loadTierPolicy(
-      existsSync(join(resolvedRoot, "scripts", "tier-policy.json"))
-        ? join(resolvedRoot, "scripts", "tier-policy.json")
-        : undefined,
+      existsSync(join(resolvedRoot, "scripts", "tier-policy.json")) ? join(resolvedRoot, "scripts", "tier-policy.json") : undefined,
     );
     const derived = deriveTier(manifest, tierEvidence, fidelityReport, liveCanary, policy);
     const declaredTier = manifest.ui.maturity as MaturityTier;

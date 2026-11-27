@@ -4,28 +4,9 @@ import type { Catalog } from "@poc/assembler";
 import type { D1Like } from "@poc/sdk";
 import { isMcpScope, requiredScopeForTool, scopesAllow } from "./auth.ts";
 import type { McpTokenVerifier, McpVerifiedToken } from "./auth.ts";
-import {
-  ProjectOutOfScopeError,
-  createInMemoryBlueprintClient,
-  pinBlueprintClient,
-  resolveBlueprintClient,
-  withinRateLimit,
-} from "./store.ts";
-import type {
-  BlueprintAuthor,
-  BlueprintClient,
-  BlueprintDoNamespaceLike,
-} from "./store.ts";
-import {
-  ALL_TOOLS,
-  LEGACY_TOOLS,
-  TOOLS,
-  checkArguments,
-  revertToRevisionTool,
-  toolDescriptions,
-  type StudioRequestFn,
-  type Tool,
-} from "./tools.ts";
+import { ProjectOutOfScopeError, createInMemoryBlueprintClient, pinBlueprintClient, resolveBlueprintClient, withinRateLimit } from "./store.ts";
+import type { BlueprintAuthor, BlueprintClient, BlueprintDoNamespaceLike } from "./store.ts";
+import { ALL_TOOLS, LEGACY_TOOLS, TOOLS, checkArguments, revertToRevisionTool, toolDescriptions, type StudioRequestFn, type Tool } from "./tools.ts";
 
 // A stateless MCP server over HTTP, written against the 2025-11-25 revision of the protocol (Streamable HTTP, JSON
 // responses only). "Stateless" means the Worker keeps nothing between calls: it assigns no session id (the revision
@@ -97,16 +78,10 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
   const app = new Hono<McpEnv>();
   const allowedOrigins = new Set(options.allowedOrigins ?? []);
   const callsPerMinute = options.callsPerMinute ?? 120;
-  const fallbackBlueprintClient =
-    options.blueprintClient ?? createInMemoryBlueprintClient(options.catalog);
+  const fallbackBlueprintClient = options.blueprintClient ?? createInMemoryBlueprintClient(options.catalog);
 
   type Ctx = Context<McpEnv>;
-  const json = (
-    c: Ctx,
-    status: 200 | 400 | 401 | 403 | 406 | 413 | 415 | 429 | 503,
-    body: unknown,
-    headers: Record<string, string> = {},
-  ) =>
+  const json = (c: Ctx, status: 200 | 400 | 401 | 403 | 406 | 413 | 415 | 429 | 503, body: unknown, headers: Record<string, string> = {}) =>
     new Response(JSON.stringify(body), {
       status,
       headers: { "content-type": "application/json", ...headers },
@@ -120,24 +95,16 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
   app.post("/mcp", async (c) => {
     // 1. Where it came from. A browser page always sends Origin; a program does not.
     const origin = c.req.header("origin");
-    if (origin !== undefined && !allowedOrigins.has(origin))
-      return json(c, 403, rpcError(null, ERR.invalidRequest, "origin not allowed"));
+    if (origin !== undefined && !allowedOrigins.has(origin)) return json(c, 403, rpcError(null, ERR.invalidRequest, "origin not allowed"));
 
     // 2. Who is asking. With no verifier the server refuses everyone: an unconfigured endpoint is closed, not open.
     const verifyToken = options.verifyToken;
-    if (!verifyToken)
-      return json(
-        c,
-        503,
-        rpcError(null, ERR.internal, "this server has no token verifier configured"),
-      );
+    if (!verifyToken) return json(c, 503, rpcError(null, ERR.internal, "this server has no token verifier configured"));
     const given = /^Bearer (.+)$/.exec(c.req.header("authorization") ?? "")?.[1];
     let verified: McpVerifiedToken | null = null;
     if (given !== undefined) {
       try {
-        verified = acceptVerified(
-          await verifyToken(given, (c.env ?? {}) as unknown as Record<string, unknown>),
-        );
+        verified = acceptVerified(await verifyToken(given, (c.env ?? {}) as unknown as Record<string, unknown>));
       } catch {
         verified = null;
       }
@@ -151,26 +118,16 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
     // 3. Is it a request this server can read at all.
     const version = c.req.header("mcp-protocol-version");
     if (version !== undefined && version !== PROTOCOL_VERSION)
-      return json(
-        c,
-        400,
-        rpcError(
-          null,
-          ERR.invalidRequest,
-          `unsupported MCP-Protocol-Version; this server speaks ${PROTOCOL_VERSION}`,
-        ),
-      );
+      return json(c, 400, rpcError(null, ERR.invalidRequest, `unsupported MCP-Protocol-Version; this server speaks ${PROTOCOL_VERSION}`));
     if (!/^application\/json\b/i.test(c.req.header("content-type") ?? ""))
       return json(c, 415, rpcError(null, ERR.invalidRequest, "send Content-Type: application/json"));
     const accept = c.req.header("accept");
     if (accept !== undefined && !/application\/json|\*\/\*/.test(accept))
       return json(c, 406, rpcError(null, ERR.invalidRequest, "this server answers application/json"));
     const declared = Number(c.req.header("content-length") ?? 0);
-    if (declared > MAX_BODY_BYTES)
-      return json(c, 413, rpcError(null, ERR.invalidRequest, "request too large"));
+    if (declared > MAX_BODY_BYTES) return json(c, 413, rpcError(null, ERR.invalidRequest, "request too large"));
     const text = await c.req.text();
-    if (new TextEncoder().encode(text).length > MAX_BODY_BYTES)
-      return json(c, 413, rpcError(null, ERR.invalidRequest, "request too large"));
+    if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) return json(c, 413, rpcError(null, ERR.invalidRequest, "request too large"));
 
     let message: unknown;
     try {
@@ -180,11 +137,7 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
     }
     // One message per request: batching was removed from the protocol.
     if (typeof message !== "object" || message === null || Array.isArray(message))
-      return json(
-        c,
-        400,
-        rpcError(null, ERR.invalidRequest, "send one JSON-RPC message, not a list"),
-      );
+      return json(c, 400, rpcError(null, ERR.invalidRequest, "send one JSON-RPC message, not a list"));
     const rpc = message as {
       jsonrpc?: unknown;
       id?: unknown;
@@ -193,21 +146,17 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
       result?: unknown;
       error?: unknown;
     };
-    if (rpc.jsonrpc !== "2.0")
-      return json(c, 400, rpcError(null, ERR.invalidRequest, 'jsonrpc must be "2.0"'));
+    if (rpc.jsonrpc !== "2.0") return json(c, 400, rpcError(null, ERR.invalidRequest, 'jsonrpc must be "2.0"'));
 
     // A response or a notification gets no answer: 202 and nothing else.
     const isResponse = ("result" in rpc || "error" in rpc) && !("method" in rpc);
     if (isResponse) return new Response(null, { status: 202 });
-    if (typeof rpc.method !== "string")
-      return json(c, 400, rpcError(null, ERR.invalidRequest, "a message needs a method"));
+    if (typeof rpc.method !== "string") return json(c, 400, rpcError(null, ERR.invalidRequest, "a message needs a method"));
     if (!("id" in rpc)) return new Response(null, { status: 202 });
-    if (typeof rpc.id !== "string" && typeof rpc.id !== "number")
-      return json(c, 400, rpcError(null, ERR.invalidRequest, "id must be a string or a number"));
+    if (typeof rpc.id !== "string" && typeof rpc.id !== "number") return json(c, 400, rpcError(null, ERR.invalidRequest, "id must be a string or a number"));
     const id = rpc.id;
     const params = (rpc.params ?? {}) as Record<string, unknown>;
-    if (typeof params !== "object" || Array.isArray(params))
-      return json(c, 200, rpcError(id, ERR.invalidParams, "params must be an object"));
+    if (typeof params !== "object" || Array.isArray(params)) return json(c, 200, rpcError(id, ERR.invalidParams, "params must be an object"));
 
     try {
       switch (rpc.method) {
@@ -219,78 +168,38 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
               protocolVersion: PROTOCOL_VERSION,
               capabilities: { tools: { listChanged: false } },
               serverInfo: SERVER_INFO,
-              instructions:
-                "Build a project: enable_brick, define_entity, or apply_ops, then build_project.",
+              instructions: "Build a project: enable_brick, define_entity, or apply_ops, then build_project.",
             }),
           );
         case "ping":
           return json(c, 200, rpcResult(id, {}));
         case "tools/list":
-          return json(
-            c,
-            200,
-            rpcResult(id, { tools: toolDescriptions(options.tools ?? TOOLS) }),
-          );
+          return json(c, 200, rpcResult(id, { tools: toolDescriptions(options.tools ?? TOOLS) }));
         case "tools/call": {
           const name = params.name;
           let rawArgs =
-            typeof params.arguments === "object" &&
-            params.arguments !== null &&
-            !Array.isArray(params.arguments)
+            typeof params.arguments === "object" && params.arguments !== null && !Array.isArray(params.arguments)
               ? (params.arguments as Record<string, unknown>)
               : params.arguments === undefined
                 ? {} // no `arguments` field is an empty object, so the project default below still applies
                 : undefined;
-          const isRevertAlias =
-            name === "apply_ops" &&
-            rawArgs !== undefined &&
-            ("revertTo" in rawArgs || "targetRevision" in rawArgs) &&
-            !("ops" in rawArgs);
-          const activeAllTools = options.tools
-            ? [...options.tools, ...LEGACY_TOOLS]
-            : ALL_TOOLS;
+          const isRevertAlias = name === "apply_ops" && rawArgs !== undefined && ("revertTo" in rawArgs || "targetRevision" in rawArgs) && !("ops" in rawArgs);
+          const activeAllTools = options.tools ? [...options.tools, ...LEGACY_TOOLS] : ALL_TOOLS;
           const tool =
             typeof name === "string"
               ? isRevertAlias
                 ? revertToRevisionTool
-                : (activeAllTools.find((t) => t.name === name) ??
-                  (name === "revert_to_revision" ? revertToRevisionTool : undefined))
+                : (activeAllTools.find((t) => t.name === name) ?? (name === "revert_to_revision" ? revertToRevisionTool : undefined))
               : undefined;
-          if (!tool)
-            return json(
-              c,
-              200,
-              rpcError(
-                id,
-                ERR.invalidParams,
-                `Unknown tool: ${typeof name === "string" ? name.slice(0, 100) : "(no name)"}`,
-              ),
-            );
+          if (!tool) return json(c, 200, rpcError(id, ERR.invalidParams, `Unknown tool: ${typeof name === "string" ? name.slice(0, 100) : "(no name)"}`));
           // The tool's project defaults to the token's project; any other project, or a write the token's scopes do not
           // allow, is refused before any work.
-          if (rawArgs !== undefined && !("project" in rawArgs))
-            rawArgs = { ...rawArgs, project: caller.projectId };
-          const targetProject =
-            rawArgs !== undefined && typeof rawArgs.project === "string"
-              ? rawArgs.project
-              : caller.projectId;
-          if (targetProject !== caller.projectId)
-            return json(
-              c,
-              403,
-              rpcError(id, ERR.invalidRequest, "this token is bound to a different project"),
-            );
+          if (rawArgs !== undefined && !("project" in rawArgs)) rawArgs = { ...rawArgs, project: caller.projectId };
+          const targetProject = rawArgs !== undefined && typeof rawArgs.project === "string" ? rawArgs.project : caller.projectId;
+          if (targetProject !== caller.projectId) return json(c, 403, rpcError(id, ERR.invalidRequest, "this token is bound to a different project"));
           const requiredScope = requiredScopeForTool(tool.name, tool.readOnly);
           if (!scopesAllow(caller.scopes, requiredScope))
-            return json(
-              c,
-              403,
-              rpcError(
-                id,
-                ERR.invalidRequest,
-                `this token lacks the "${requiredScope}" scope for ${tool.name}`,
-              ),
-            );
+            return json(c, 403, rpcError(id, ERR.invalidRequest, `this token lacks the "${requiredScope}" scope for ${tool.name}`));
           // Counted before any work, so a flood is refused cheaply.
           if (!(await withinRateLimit(c.env.DB, callsPerMinute)))
             return json(c, 429, rpcError(id, ERR.internal, "too many tool calls; wait a minute"), {
@@ -301,12 +210,8 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
               ? {
                   project: rawArgs.project,
                   targetRevision: rawArgs.revertTo ?? rawArgs.targetRevision,
-                  ...(rawArgs.baseRevision !== undefined
-                    ? { baseRevision: rawArgs.baseRevision }
-                    : {}),
-                  ...(rawArgs.approvalId !== undefined
-                    ? { approvalId: rawArgs.approvalId }
-                    : {}),
+                  ...(rawArgs.baseRevision !== undefined ? { baseRevision: rawArgs.baseRevision } : {}),
+                  ...(rawArgs.approvalId !== undefined ? { approvalId: rawArgs.approvalId } : {}),
                 }
               : (rawArgs ?? params.arguments);
           const checked = checkArguments(tool, effectiveArgs);
@@ -320,10 +225,7 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
                 isError: true,
               }),
             );
-          const blueprint = pinBlueprintClient(
-            options.blueprintClient ?? resolveBlueprintClient(c.env, fallbackBlueprintClient),
-            caller.projectId,
-          );
+          const blueprint = pinBlueprintClient(options.blueprintClient ?? resolveBlueprintClient(c.env, fallbackBlueprintClient), caller.projectId);
           // The author is the verified token's user; request headers cannot set it.
           const author: BlueprintAuthor = {
             type: "agent",
@@ -362,15 +264,10 @@ export function createMcpApp(options: McpOptions): Hono<McpEnv> {
           );
         }
         default:
-          return json(
-            c,
-            200,
-            rpcError(id, ERR.methodNotFound, `Method not found: ${rpc.method.slice(0, 100)}`),
-          );
+          return json(c, 200, rpcError(id, ERR.methodNotFound, `Method not found: ${rpc.method.slice(0, 100)}`));
       }
     } catch (error) {
-      if (error instanceof ProjectOutOfScopeError)
-        return json(c, 403, rpcError(id, ERR.invalidRequest, error.message));
+      if (error instanceof ProjectOutOfScopeError) return json(c, 403, rpcError(id, ERR.invalidRequest, error.message));
       console.error("mcp:", error);
       return json(c, 200, rpcError(id, ERR.internal, "internal error"));
     }

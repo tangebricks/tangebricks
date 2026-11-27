@@ -1,6 +1,14 @@
 import { Hono, type Context } from "hono";
 import { z } from "zod";
-import { NotConfiguredError, checkGatewayOrder, isPaymentCurrency, readBoundedText, type GatewayOrder, type PaymentGateway, type WebhookVerification } from "@poc/sdk";
+import {
+  NotConfiguredError,
+  checkGatewayOrder,
+  isPaymentCurrency,
+  readBoundedText,
+  type GatewayOrder,
+  type PaymentGateway,
+  type WebhookVerification,
+} from "@poc/sdk";
 import { CheckoutService, calculateTax, type GatewayType } from "./checkout.ts";
 import { checkoutMiddleware, type CheckoutEnv } from "./middleware.ts";
 
@@ -91,7 +99,9 @@ export function createCheckoutRoutes(options: CheckoutRoutesOptions = {}): Hono<
     if (!session) {
       // A signed event for a session this brick never recorded (an orphan provider order, or another brick's).
       // Acknowledged so the provider stops retrying, but loudly, so it can be reconciled.
-      console.error(`checkout-gateway: signed payment webhook for an unknown session (order ${verified.orderId}, provider ref ${verified.providerRef ?? "none"})`);
+      console.error(
+        `checkout-gateway: signed payment webhook for an unknown session (order ${verified.orderId}, provider ref ${verified.providerRef ?? "none"})`,
+      );
       return c.json({ received: true, status: "ignored" }, 200);
     }
     if (session.status === "completed") return c.json({ received: true, status: "already_processed" }, 200);

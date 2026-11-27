@@ -5,11 +5,7 @@ import { Hono } from "hono";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import mwMigrationSql from "../../multi-workspace/migrations/0001_multi_workspace.sql?raw";
-import {
-  createOidcMiddleware,
-  verifyJwt,
-  type OidcVerifyConfig,
-} from "../src/index.ts";
+import { createOidcMiddleware, verifyJwt, type OidcVerifyConfig } from "../src/index.ts";
 
 // WebCrypto test helpers to create JWKS and JWT tokens
 async function generateRsaKeyPair() {
@@ -37,10 +33,7 @@ async function generateEcdsaKeyPair() {
 }
 
 function base64UrlEncode(bytes: Uint8Array | string): string {
-  const binary =
-    typeof bytes === "string"
-      ? btoa(bytes)
-      : btoa(String.fromCharCode(...bytes));
+  const binary = typeof bytes === "string" ? btoa(bytes) : btoa(String.fromCharCode(...bytes));
   return binary.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
@@ -49,22 +42,14 @@ type Jwk = webcrypto.JsonWebKey & { kid?: string };
 /** The key type crypto.subtle.sign takes (CryptoKey is only a value in the Node globals). */
 type SigningKey = webcrypto.CryptoKey;
 
-async function signJwt(
-  header: Record<string, unknown>,
-  payload: Record<string, unknown>,
-  key: SigningKey,
-): Promise<string> {
+async function signJwt(header: Record<string, unknown>, payload: Record<string, unknown>, key: SigningKey): Promise<string> {
   const encHeader = base64UrlEncode(JSON.stringify(header));
   const encPayload = base64UrlEncode(JSON.stringify(payload));
   const data = new TextEncoder().encode(`${encHeader}.${encPayload}`);
 
   let signature: ArrayBuffer;
   if (key.algorithm.name === "ECDSA") {
-    signature = await crypto.subtle.sign(
-      { name: "ECDSA", hash: "SHA-256" },
-      key,
-      data,
-    );
+    signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, data);
   } else if (key.algorithm.name === "RSASSA-PKCS1-v1_5") {
     signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, data);
   } else if (key.algorithm.name === "HMAC") {
@@ -80,21 +65,13 @@ async function signJwt(
 const membershipDb = env.DB as unknown as D1Like;
 
 /** A Worker env whose DB holds the multi-workspace tables with exactly these memberships. */
-async function membershipEnv(
-  members: Array<{ workspaceId: string; userId: string; role: "owner" | "admin" | "member" }>,
-): Promise<{ DB: D1Like }> {
+async function membershipEnv(members: Array<{ workspaceId: string; userId: string; role: "owner" | "admin" | "member" }>): Promise<{ DB: D1Like }> {
   await membershipDb.prepare("DROP TABLE IF EXISTS mw_members").run();
   await membershipDb.prepare("DROP TABLE IF EXISTS mw_workspaces").run();
   await applyMigration(membershipDb, mwMigrationSql);
   for (const m of members) {
-    await membershipDb
-      .prepare("INSERT OR IGNORE INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)")
-      .bind(m.workspaceId, m.workspaceId, m.userId)
-      .run();
-    await membershipDb
-      .prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, ?)")
-      .bind(m.workspaceId, m.userId, m.role)
-      .run();
+    await membershipDb.prepare("INSERT OR IGNORE INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(m.workspaceId, m.workspaceId, m.userId).run();
+    await membershipDb.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, ?)").bind(m.workspaceId, m.userId, m.role).run();
   }
   return { DB: membershipDb };
 }
@@ -362,9 +339,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
       { iss: issuer, aud: "api://default", sub: "u1", exp: nowSec - 60 },
       keyPair.privateKey,
     );
-    await expect(
-      verifyJwt(expiredToken, baseConfig, { fetcher, now: () => nowSec * 1000 }),
-    ).rejects.toMatchObject({ code: "token_expired" });
+    await expect(verifyJwt(expiredToken, baseConfig, { fetcher, now: () => nowSec * 1000 })).rejects.toMatchObject({ code: "token_expired" });
 
     // 2. nbf in future beyond skew
     const futureToken = await signJwt(
@@ -372,9 +347,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
       { iss: issuer, aud: "api://default", sub: "u1", exp: nowSec + 3600, nbf: nowSec + 120 },
       keyPair.privateKey,
     );
-    await expect(
-      verifyJwt(futureToken, baseConfig, { fetcher, now: () => nowSec * 1000 }),
-    ).rejects.toMatchObject({ code: "token_not_yet_valid" });
+    await expect(verifyJwt(futureToken, baseConfig, { fetcher, now: () => nowSec * 1000 })).rejects.toMatchObject({ code: "token_not_yet_valid" });
 
     // 3. Wrong issuer
     const wrongIssToken = await signJwt(
@@ -382,9 +355,7 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
       { iss: "https://attacker.example.com", aud: "api://default", sub: "u1", exp: nowSec + 3600 },
       keyPair.privateKey,
     );
-    await expect(
-      verifyJwt(wrongIssToken, baseConfig, { fetcher, now: () => nowSec * 1000 }),
-    ).rejects.toMatchObject({ code: "issuer_mismatch" });
+    await expect(verifyJwt(wrongIssToken, baseConfig, { fetcher, now: () => nowSec * 1000 })).rejects.toMatchObject({ code: "issuer_mismatch" });
 
     // 4. Wrong audience
     const wrongAudToken = await signJwt(
@@ -392,35 +363,23 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
       { iss: issuer, aud: "api://wrong", sub: "u1", exp: nowSec + 3600 },
       keyPair.privateKey,
     );
-    await expect(
-      verifyJwt(wrongAudToken, baseConfig, { fetcher, now: () => nowSec * 1000 }),
-    ).rejects.toMatchObject({ code: "audience_mismatch" });
+    await expect(verifyJwt(wrongAudToken, baseConfig, { fetcher, now: () => nowSec * 1000 })).rejects.toMatchObject({ code: "audience_mismatch" });
 
     // 5. alg: none
     const algNoneToken = `${base64UrlEncode(JSON.stringify({ alg: "none", typ: "JWT" }))}.${base64UrlEncode(
       JSON.stringify({ iss: issuer, aud: "api://default", sub: "u1", exp: nowSec + 3600 }),
     )}.`;
-    await expect(
-      verifyJwt(algNoneToken, baseConfig, { fetcher, now: () => nowSec * 1000 }),
-    ).rejects.toMatchObject({ code: "alg_not_allowed" });
+    await expect(verifyJwt(algNoneToken, baseConfig, { fetcher, now: () => nowSec * 1000 })).rejects.toMatchObject({ code: "alg_not_allowed" });
 
     // 6. Algorithm confusion: HS256 signed with RSA public key bytes
     const rsaExportedPub = await crypto.subtle.exportKey("spki", keyPair.publicKey);
-    const hmacKey = await crypto.subtle.importKey(
-      "raw",
-      rsaExportedPub,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
+    const hmacKey = await crypto.subtle.importKey("raw", rsaExportedPub, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const confusionToken = await signJwt(
       { alg: "HS256", typ: "JWT", kid: "neg-key-1" },
       { iss: issuer, aud: "api://default", sub: "u1", exp: nowSec + 3600 },
       hmacKey,
     );
-    await expect(
-      verifyJwt(confusionToken, baseConfig, { fetcher, now: () => nowSec * 1000 }),
-    ).rejects.toMatchObject({ code: "alg_not_allowed" });
+    await expect(verifyJwt(confusionToken, baseConfig, { fetcher, now: () => nowSec * 1000 })).rejects.toMatchObject({ code: "alg_not_allowed" });
 
     // 7. Unknown kid after refetch
     const unknownKidToken = await signJwt(
@@ -428,24 +387,24 @@ describe("UC9.6 — OIDC Verify conformance test suite", () => {
       { iss: issuer, aud: "api://default", sub: "u1", exp: nowSec + 3600 },
       keyPair.privateKey,
     );
-    await expect(
-      verifyJwt(unknownKidToken, baseConfig, { fetcher, now: () => nowSec * 1000 }),
-    ).rejects.toMatchObject({ code: "kid_unknown" });
+    await expect(verifyJwt(unknownKidToken, baseConfig, { fetcher, now: () => nowSec * 1000 })).rejects.toMatchObject({ code: "kid_unknown" });
 
     // 8. Malformed token
-    await expect(
-      verifyJwt("not-a-valid-token", baseConfig, { fetcher, now: () => nowSec * 1000 }),
-    ).rejects.toMatchObject({ code: "malformed_token" });
+    await expect(verifyJwt("not-a-valid-token", baseConfig, { fetcher, now: () => nowSec * 1000 })).rejects.toMatchObject({ code: "malformed_token" });
 
     // 9. Down JWKS endpoint with expired/no cache
     const failingFetcher = async (): Promise<Response> => {
       return new Response("Service Unavailable", { status: 503 });
     };
     await expect(
-      verifyJwt(expiredToken, { ...baseConfig, jwksUri: "https://down.example.com/jwks.json" }, {
-        fetcher: failingFetcher,
-        now: () => nowSec * 1000,
-      }),
+      verifyJwt(
+        expiredToken,
+        { ...baseConfig, jwksUri: "https://down.example.com/jwks.json" },
+        {
+          fetcher: failingFetcher,
+          now: () => nowSec * 1000,
+        },
+      ),
     ).rejects.toMatchObject({ code: "jwks_unavailable" });
   });
 
@@ -650,9 +609,7 @@ describe("oidc-verify claim and membership hardening (story 0.14)", () => {
     expect(await codeOf(verifyJwt(await sign({ exp: nowSec() - 120 }), config, { fetcher }))).toBe("token_expired");
     expect(await codeOf(verifyJwt(await sign({ exp: nowSec() - 30 }), config, { fetcher }))).toBe("accepted");
     // The skew is configurable.
-    expect(
-      await codeOf(verifyJwt(await sign({ exp: nowSec() - 30 }), { ...config, clockSkewSec: 0 }, { fetcher })),
-    ).toBe("token_expired");
+    expect(await codeOf(verifyJwt(await sign({ exp: nowSec() - 30 }), { ...config, clockSkewSec: 0 }, { fetcher }))).toBe("token_expired");
   });
 
   it("JWT_FUTURE_NBF: nbf or iat in the future beyond the skew is refused", async () => {
@@ -660,9 +617,7 @@ describe("oidc-verify claim and membership hardening (story 0.14)", () => {
     const exp = nowSec() + 3600;
     expect(await codeOf(verifyJwt(await sign({ exp, nbf: nowSec() + 300 }), config, { fetcher }))).toBe("token_not_yet_valid");
     expect(await codeOf(verifyJwt(await sign({ exp, iat: nowSec() + 300 }), config, { fetcher }))).toBe("token_issued_in_future");
-    expect(await codeOf(verifyJwt(await sign({ exp, nbf: nowSec() + 30, iat: nowSec() + 30 }), config, { fetcher }))).toBe(
-      "accepted",
-    );
+    expect(await codeOf(verifyJwt(await sign({ exp, nbf: nowSec() + 30, iat: nowSec() + 30 }), config, { fetcher }))).toBe("accepted");
   });
 
   it("aud and iss stay required", async () => {
@@ -670,9 +625,7 @@ describe("oidc-verify claim and membership hardening (story 0.14)", () => {
     const exp = nowSec() + 3600;
     expect(await codeOf(verifyJwt(await sign({ exp, aud: undefined }), config, { fetcher }))).toBe("audience_mismatch");
     expect(await codeOf(verifyJwt(await sign({ exp, iss: undefined }), config, { fetcher }))).toBe("issuer_mismatch");
-    expect(await codeOf(verifyJwt(await sign({ exp, aud: "" }), { ...config, audience: "" }, { fetcher }))).toBe(
-      "audience_mismatch",
-    );
+    expect(await codeOf(verifyJwt(await sign({ exp, aud: "" }), { ...config, audience: "" }, { fetcher }))).toBe("audience_mismatch");
   });
 
   it("JWT_NOT_MEMBER: a valid token whose subject is not in the mapped workspace gets 403", async () => {

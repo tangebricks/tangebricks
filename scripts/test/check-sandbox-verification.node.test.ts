@@ -30,10 +30,7 @@ describe("Story UC0.2 — sandbox verification generator", () => {
 
     for (const field of guardrailFields) {
       const regex = new RegExp(`\\b${field}\\s*:\\s*true\\b`);
-      expect(
-        regex.test(src),
-        `scripts/check-sandbox-verification.ts must not hardcode '${field}: true'`,
-      ).toBe(false);
+      expect(regex.test(src), `scripts/check-sandbox-verification.ts must not hardcode '${field}: true'`).toBe(false);
     }
   });
 
@@ -127,11 +124,7 @@ describe("Story UC0.2 — sandbox verification generator", () => {
       const assertionResults: Array<{ fullName: string; status: string }> = [];
 
       for (const [key, testName] of Object.entries(map)) {
-        if (
-          key === "guardrails.livePaymentsBlocked.liveSecretPrefixBlocked" ||
-          key === "liveSecretPrefixBlocked" ||
-          testName === liveSecretTestName
-        ) {
+        if (key === "guardrails.livePaymentsBlocked.liveSecretPrefixBlocked" || key === "liveSecretPrefixBlocked" || testName === liveSecretTestName) {
           assertionResults.push({ fullName: testName, status: "failed" });
         } else {
           assertionResults.push({ fullName: testName, status: "passed" });
@@ -145,10 +138,7 @@ describe("Story UC0.2 — sandbox verification generator", () => {
         });
       }
 
-      writeFileSync(
-        stubResultsFile,
-        JSON.stringify({ testResults: [{ assertionResults }] }),
-      );
+      writeFileSync(stubResultsFile, JSON.stringify({ testResults: [{ assertionResults }] }));
 
       const res = spawnSync(process.execPath, [checkSandboxScript], {
         cwd: repoRoot,
@@ -169,10 +159,7 @@ describe("Story UC0.2 — sandbox verification generator", () => {
 
       expect(existsSync(outPath), "Evidence JSON must be generated").toBe(true);
       const report = JSON.parse(readFileSync(outPath, "utf8"));
-      expect(
-        report.guardrails.livePaymentsBlocked.liveSecretPrefixBlocked,
-        "liveSecretPrefixBlocked must be false",
-      ).toBe(false);
+      expect(report.guardrails.livePaymentsBlocked.liveSecretPrefixBlocked, "liveSecretPrefixBlocked must be false").toBe(false);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }

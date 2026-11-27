@@ -14,17 +14,12 @@ describe("UC8.9 — Refactor sweep (UC8)", () => {
     const lineCount = lines.length;
 
     // Line count at UC8.1 start (commit b6c534d) was 5,447 lines; context cites 5,791 at earlier baseline.
-    expect(
-      lineCount,
-      `target.ts line count must be lower than at UC8.1 start (5447 lines), but got ${lineCount}`,
-    ).toBeLessThan(5447);
+    expect(lineCount, `target.ts line count must be lower than at UC8.1 start (5447 lines), but got ${lineCount}`).toBeLessThan(5447);
   });
 
   it("Task 2: target.ts does not import unused symbols from migration-lint.ts", () => {
     const content = readFileSync(TARGET_TS_PATH, "utf8");
-    const migrationLintImportMatch = content.match(
-      /import\s*\{([^}]+)\}\s*from\s*["']\.\/migration-lint(?:\.ts)?["']/,
-    );
+    const migrationLintImportMatch = content.match(/import\s*\{([^}]+)\}\s*from\s*["']\.\/migration-lint(?:\.ts)?["']/);
     expect(migrationLintImportMatch, "import from ./migration-lint.ts must exist").toBeTruthy();
 
     const importedSymbols = migrationLintImportMatch![1]!
@@ -46,16 +41,10 @@ describe("UC8.9 — Refactor sweep (UC8)", () => {
       content.includes('from "../packages/assembler/src/schemas.ts"') ||
       content.includes('from "../packages/assembler/src/schemas"') ||
       content.includes('from "@poc/assembler"');
-    expect(
-      hasAssemblerImport,
-      'bricks/contracts.ts must import from "../packages/assembler/src/schemas.ts" or "@poc/assembler"',
-    ).toBe(true);
+    expect(hasAssemblerImport, 'bricks/contracts.ts must import from "../packages/assembler/src/schemas.ts" or "@poc/assembler"').toBe(true);
 
     // Must not duplicate SettingDefinitionSchema or SettingDeprecatedSchema inline
-    expect(
-      content.includes('z.discriminatedUnion("type", ['),
-      "bricks/contracts.ts must not duplicate settingDefinition schema inline",
-    ).toBe(false);
+    expect(content.includes('z.discriminatedUnion("type", ['), "bricks/contracts.ts must not duplicate settingDefinition schema inline").toBe(false);
   });
 
   it("Task 3: bricks/contracts.ts exported schemas validate valid and invalid brick definitions", async () => {

@@ -32,16 +32,27 @@ let mf: Miniflare;
 // plain and secret bindings) into it. What is started is real workerd, given only the text of the bundle.
 const start = (bindings: Record<string, string> = BINDINGS) =>
   new Miniflare(convertV4MiniflareOptions({ modules: true, script: bundle.code, compatibilityDate: "2026-10-01", d1Databases: ["DB"], bindings }));
-const sendTo = (target: Miniflare, headers: Record<string, string> = {}) => async (request: Request) => {
-  const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
-  return (await target.dispatchFetch(request.url, { method: request.method, headers: { ...Object.fromEntries(request.headers), ...headers }, body } as never)) as unknown as Response;
-};
-const get = async (target: Miniflare, path: string, init: RequestInit = {}) => (await target.dispatchFetch(`http://deployed.invalid${path}`, init as never)) as unknown as Response;
-const count = async (target: Miniflare, table: string) => ((await ((await target.getD1Database("DB")) as unknown as D1Like).prepare(`SELECT COUNT(*) AS n FROM ${table}`).first<{ n: number }>())?.n ?? -1);
+const sendTo =
+  (target: Miniflare, headers: Record<string, string> = {}) =>
+  async (request: Request) => {
+    const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
+    return (await target.dispatchFetch(request.url, {
+      method: request.method,
+      headers: { ...Object.fromEntries(request.headers), ...headers },
+      body,
+    } as never)) as unknown as Response;
+  };
+const get = async (target: Miniflare, path: string, init: RequestInit = {}) =>
+  (await target.dispatchFetch(`http://deployed.invalid${path}`, init as never)) as unknown as Response;
+const count = async (target: Miniflare, table: string) =>
+  (await ((await target.getD1Database("DB")) as unknown as D1Like).prepare(`SELECT COUNT(*) AS n FROM ${table}`).first<{ n: number }>())?.n ?? -1;
 
 async function migrate(target: Miniflare) {
   const db = (await target.getD1Database("DB")) as unknown as D1Like;
-  for (const path of Object.keys(files).filter((p) => p.startsWith("migrations/")).sort()) await applyMigration(db, files[path]!);
+  for (const path of Object.keys(files)
+    .filter((p) => p.startsWith("migrations/"))
+    .sort())
+    await applyMigration(db, files[path]!);
 }
 
 beforeAll(async () => {
@@ -121,7 +132,11 @@ describe("the access key, in a real workerd running the bundle", () => {
   test("without the key every path but GET /demo is refused, and nothing is created", async () => {
     for (const path of protectedPaths) {
       for (const method of ["GET", "POST"]) {
-        const res = await get(mf, path, { method, headers: { "x-test-user": "alice", ...(method === "POST" ? { "content-type": "application/json" } : {}) }, ...(method === "POST" ? { body: JSON.stringify({ name: "Sneaky" }) } : {}) });
+        const res = await get(mf, path, {
+          method,
+          headers: { "x-test-user": "alice", ...(method === "POST" ? { "content-type": "application/json" } : {}) },
+          ...(method === "POST" ? { body: JSON.stringify({ name: "Sneaky" }) } : {}),
+        });
         expect(res.status, `${method} ${path}`).toBe(401);
       }
     }
@@ -204,7 +219,7 @@ describe("what the bundler refuses", () => {
   test("the demo page's script cannot close its own tag early", () => {
     const html = wrapDemoPage('var a = "x</script><img src=x onerror=alert(1)>"; var b = "</SCRIPT >";');
     expect(html.match(/<\/script/gi)).toHaveLength(1); // only the real closing tag
-    expect(html).toContain('<\\/script><img src=x onerror=alert(1)>');
+    expect(html).toContain("<\\/script><img src=x onerror=alert(1)>");
     expect(html).toContain("<\\/script >"); // the upper-case form is written in lower case behind the backslash, which is still the same text to JavaScript
     expect(html).not.toMatch(/<\/SCRIPT/);
     expect(html.endsWith("</script></body></html>")).toBe(true);
@@ -219,7 +234,10 @@ describe("what the bundler refuses", () => {
 
   test("a node:* import is left external and the bundle reports it needs nodejs_compat (story 1.19)", async () => {
     const dir = join(OUT_DIR, "deploy-test", "node-import");
-    await writeProject(dir, { "src/index.ts": 'import { createHash } from "node:crypto";\nexport default { fetch: () => new Response(createHash("sha256").update("x").digest("hex")) };\n' });
+    await writeProject(dir, {
+      "src/index.ts":
+        'import { createHash } from "node:crypto";\nexport default { fetch: () => new Response(createHash("sha256").update("x").digest("hex")) };\n',
+    });
     const withNode = await bundleWorker({ projectDir: dir, demoHtml: "<p>x</p>" });
     expect(withNode.code).toMatch(/from "node:crypto"/);
     expect(withNode.compatibilityFlags).toEqual(["nodejs_compat"]);
@@ -250,7 +268,10 @@ describe("the deploy package's own source", () => {
       .filter((p) => /\.tsx?$/.test(p) && !p.includes("node_modules"))
       .map((p) => join(dir, p));
   const own = [...list(join(root, "packages", "deploy", "src")), ...list(join(root, "packages", "deploy", "client"))];
-  const bricks = [...["credit-wallet", "multi-workspace", "dynamic-entities"].flatMap((p) => list(join(root, "bricks", p, "src"))), ...list(join(root, "packages", "sdk", "src"))];
+  const bricks = [
+    ...["credit-wallet", "multi-workspace", "dynamic-entities"].flatMap((p) => list(join(root, "bricks", p, "src"))),
+    ...list(join(root, "packages", "sdk", "src")),
+  ];
 
   test("the files to scan were found", () => {
     expect(own.length).toBeGreaterThanOrEqual(5);
@@ -273,14 +294,18 @@ describe("the deploy package's own source", () => {
 
   test("the client page has no network code of its own: it reaches the server only through the brick's client", () => {
     const page = readFileSync(join(root, "packages", "deploy", "client", "demo-entry.tsx"), "utf8");
-    const code = codeLines(page).map((l) => l.text).join("\n");
+    const code = codeLines(page)
+      .map((l) => l.text)
+      .join("\n");
     expect(code).not.toMatch(/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon/);
     expect(code).toMatch(/createWalletClient/);
   });
 
   test("third-party code in the bundle may evaluate code (zod checks whether the runtime allows it); the list is printed, not hidden", () => {
     const rules = [...new Set(bundle.dynamicEvaluation.map((h) => h.rule))];
-    console.log(`dynamic evaluation in the bundle (third-party code, not ours): ${bundle.dynamicEvaluation.length} lines, rules: ${rules.join(", ") || "none"}`);
+    console.log(
+      `dynamic evaluation in the bundle (third-party code, not ours): ${bundle.dynamicEvaluation.length} lines, rules: ${rules.join(", ") || "none"}`,
+    );
     for (const hit of bundle.dynamicEvaluation.slice(0, 5)) console.log(`  line ${hit.line} (${hit.where}): ${hit.text.slice(0, 80)}`);
     expect(Array.isArray(bundle.dynamicEvaluation)).toBe(true);
   });

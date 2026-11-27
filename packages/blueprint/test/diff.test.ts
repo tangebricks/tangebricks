@@ -1,11 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { catalog } from "@poc/assembler/catalog";
-import {
-  applyOps,
-  computeSemanticDiff,
-  createEmptyBlueprint,
-  semanticHash,
-} from "../src/index.ts";
+import { applyOps, computeSemanticDiff, createEmptyBlueprint, semanticHash } from "../src/index.ts";
 import type { BlueprintState } from "../src/index.ts";
 
 describe("Story 1.5 — computeSemanticDiff (AC 1, AC 4)", () => {

@@ -1,15 +1,5 @@
 import { validateGraph } from "@poc/sdk";
-import type {
-  BrickManifest,
-  ConnectionLookupSelector,
-  D1Like,
-  ExecutionContext,
-  Executors,
-  GraphEdge,
-  GraphNode,
-  Registry,
-  ValidationIssue,
-} from "@poc/sdk";
+import type { BrickManifest, ConnectionLookupSelector, D1Like, ExecutionContext, Executors, GraphEdge, GraphNode, Registry, ValidationIssue } from "@poc/sdk";
 import {
   TELEMETRY_SIGNATURE_HEADER,
   collectSecretKeyedValues,
@@ -23,19 +13,10 @@ import {
   truncateTelemetryPreview,
   upsertRunRecord,
 } from "@poc/telemetry";
-import type {
-  RunRecord,
-  StepEvent,
-  StepStatus,
-  StructuredLogEntry,
-  TelemetryWebhookPayload,
-} from "@poc/telemetry";
+import type { RunRecord, StepEvent, StepStatus, StructuredLogEntry, TelemetryWebhookPayload } from "@poc/telemetry";
 import { resolveCaseAConnection } from "./connections.ts";
 import { resolveStepExpressions } from "./expressions.ts";
-import {
-  collectConnectionsMapSecrets,
-  getRegisteredTokenUrlsByApp,
-} from "./integration-executor.ts";
+import { collectConnectionsMapSecrets, getRegisteredTokenUrlsByApp } from "./integration-executor.ts";
 import { parseDurationMs, stepPolicyFor } from "./step-policy.ts";
 
 export interface Graph {
@@ -149,12 +130,7 @@ const TENANT_WORKSPACE_ID = /^[A-Za-z0-9_-]{1,64}$/;
  */
 const RESERVED_TENANT_WORKSPACE_IDS: ReadonlySet<string> = new Set(["default"]);
 export function isTenantWorkspaceId(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    TENANT_WORKSPACE_ID.test(value) &&
-    !value.includes("__") &&
-    !RESERVED_TENANT_WORKSPACE_IDS.has(value.toLowerCase())
-  );
+  return typeof value === "string" && TENANT_WORKSPACE_ID.test(value) && !value.includes("__") && !RESERVED_TENANT_WORKSPACE_IDS.has(value.toLowerCase());
 }
 
 /**
@@ -206,10 +182,7 @@ export interface RunGraphOptions {
   oauthFetcher?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 }
 
-export function computeStrictUpstreamAncestors(
-  graph: Graph,
-  fromNodeId: string,
-): Set<string> {
+export function computeStrictUpstreamAncestors(graph: Graph, fromNodeId: string): Set<string> {
   const byId = new Set(graph.nodes.map((n) => n.id));
   const incomingByTarget = new Map<string, string[]>();
   for (const edge of graph.edges) {
@@ -234,10 +207,7 @@ export function computeStrictUpstreamAncestors(
   return ancestors;
 }
 
-export function computeDownstreamSubgraph(
-  graph: Graph,
-  fromNodeId: string,
-): Set<string> {
+export function computeDownstreamSubgraph(graph: Graph, fromNodeId: string): Set<string> {
   const byId = new Set(graph.nodes.map((n) => n.id));
   const outgoingBySource = new Map<string, string[]>();
   for (const edge of graph.edges) {
@@ -263,14 +233,8 @@ export function computeDownstreamSubgraph(
   return downstream;
 }
 
-export function normalizeNodePortOutput(
-  rawOutput: unknown,
-): Record<string, unknown> {
-  if (
-    typeof rawOutput === "object" &&
-    rawOutput !== null &&
-    !Array.isArray(rawOutput)
-  ) {
+export function normalizeNodePortOutput(rawOutput: unknown): Record<string, unknown> {
+  if (typeof rawOutput === "object" && rawOutput !== null && !Array.isArray(rawOutput)) {
     const rec = rawOutput as Record<string, unknown>;
     if (Object.hasOwn(rec, "out")) {
       return structuredClone(rec);
@@ -325,10 +289,7 @@ function resolveNodeRetryPolicy(
     return { limit: 0, delayMs: 0 };
   }
   const limit = Math.min(Math.max(0, configured.limit), canonical.retries.limit);
-  const delayMs =
-    typeof configured.delayMs === "number"
-      ? configured.delayMs
-      : parseDurationMs(canonical.retries.delay);
+  const delayMs = typeof configured.delayMs === "number" ? configured.delayMs : parseDurationMs(canonical.retries.delay);
   return { limit, delayMs };
 }
 
@@ -395,16 +356,13 @@ export async function runGraph(
   const done = new Map<string, Promise<boolean>>();
 
   const telemetryCfg = options.telemetry;
-  const telemetryDb =
-    telemetryCfg?.db ??
-    (telemetryCfg && isD1Like(options.env?.DB) ? (options.env.DB as D1Like) : undefined);
+  const telemetryDb = telemetryCfg?.db ?? (telemetryCfg && isD1Like(options.env?.DB) ? (options.env.DB as D1Like) : undefined);
   const telemetryActive = Boolean(telemetryCfg || telemetryDb);
   // Studio stamps its rows with the authorised project (story 1.4); a deployed Worker leaves it unset.
   const telemetryWrite = { projectId: telemetryCfg?.projectId };
   // The webhook names the project it reports for; Studio refuses a payload that names none or another one.
   const webhookProject =
-    telemetryCfg?.project ??
-    (typeof options.env?.PX_PROJECT_ID === "string" && options.env.PX_PROJECT_ID ? options.env.PX_PROJECT_ID : undefined);
+    telemetryCfg?.project ?? (typeof options.env?.PX_PROJECT_ID === "string" && options.env.PX_PROJECT_ID ? options.env.PX_PROJECT_ID : undefined);
 
   const trackedSecrets = new Set<string>();
   const secretFieldNames = new Set<string>();
@@ -494,18 +452,13 @@ export async function runGraph(
   const runId =
     options.runId ??
     telemetryCfg?.runId ??
-    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? `run_${crypto.randomUUID()}`
-      : `run_${Date.now()}`);
+    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? `run_${crypto.randomUUID()}` : `run_${Date.now()}`);
   const workflowId = telemetryCfg?.workflowId ?? "wf_default";
   const revision = telemetryCfg?.revision ?? 0;
   const triggerType = telemetryCfg?.triggerType ?? "manual";
   // Webhooks are signed with the project's derived secret only (story 1.4), never the shared root secret.
   const telemetrySecret =
-    telemetryCfg?.webhookSecret ??
-    (typeof options.env?.PX_TELEMETRY_WEBHOOK_SECRET === "string"
-      ? options.env.PX_TELEMETRY_WEBHOOK_SECRET
-      : undefined);
+    telemetryCfg?.webhookSecret ?? (typeof options.env?.PX_TELEMETRY_WEBHOOK_SECRET === "string" ? options.env.PX_TELEMETRY_WEBHOOK_SECRET : undefined);
   const webhookUrl = telemetryCfg?.webhookUrl;
   const webhookFetcher = telemetryCfg?.webhookFetcher ?? globalThis.fetch;
 
@@ -575,26 +528,17 @@ export async function runGraph(
       secretValues: trackedSecrets,
       secretFieldNames,
     };
-    const effectiveEnvName =
-      telemetryCfg?.envName ??
-      (typeof options.env?.PX_ENV === "string" ? options.env.PX_ENV : "preview");
+    const effectiveEnvName = telemetryCfg?.envName ?? (typeof options.env?.PX_ENV === "string" ? options.env.PX_ENV : "preview");
     const captureStepIoInProd =
       telemetryCfg?.captureStepIoInProd !== undefined
         ? telemetryCfg.captureStepIoInProd
-        : options.env?.PX_CAPTURE_STEP_IO_IN_PROD === false ||
-            options.env?.PX_CAPTURE_STEP_IO_IN_PROD === "false"
+        : options.env?.PX_CAPTURE_STEP_IO_IN_PROD === false || options.env?.PX_CAPTURE_STEP_IO_IN_PROD === "false"
           ? false
           : true;
     const suppressProdIo = effectiveEnvName === "production" && !captureStepIoInProd;
-    const inputPreview = suppressProdIo
-      ? "{}"
-      : truncateTelemetryPreview(params.inputValue, redactOpts);
-    const outputPreview = suppressProdIo
-      ? "{}"
-      : truncateTelemetryPreview(params.outputValue, redactOpts);
-    const redactedErrorStack = params.errorStack
-      ? redactTelemetryString(params.errorStack, redactOpts)
-      : null;
+    const inputPreview = suppressProdIo ? "{}" : truncateTelemetryPreview(params.inputValue, redactOpts);
+    const outputPreview = suppressProdIo ? "{}" : truncateTelemetryPreview(params.outputValue, redactOpts);
+    const redactedErrorStack = params.errorStack ? redactTelemetryString(params.errorStack, redactOpts) : null;
 
     let stepEvent: StepEvent = {
       eventId: `${runId}:${params.nodeId}:${params.status}:${eventCounter}`,
@@ -630,9 +574,7 @@ export async function runGraph(
     });
   };
 
-  const downstreamSubgraph = options.fromNodeId
-    ? computeDownstreamSubgraph(graph, options.fromNodeId)
-    : null;
+  const downstreamSubgraph = options.fromNodeId ? computeDownstreamSubgraph(graph, options.fromNodeId) : null;
 
   if (telemetryActive && runId) {
     if (telemetryDb) {
@@ -664,10 +606,7 @@ export async function runGraph(
 
         if (
           options.reusedNodeIds?.has(id) ||
-          (options.seededOutputs &&
-            Object.hasOwn(options.seededOutputs, id) &&
-            downstreamSubgraph &&
-            !downstreamSubgraph.has(id))
+          (options.seededOutputs && Object.hasOwn(options.seededOutputs, id) && downstreamSubgraph && !downstreamSubgraph.has(id))
         ) {
           const seededVal = options.seededOutputs?.[id] ?? {};
           result.outputs[id] = normalizeNodePortOutput(seededVal);
@@ -678,9 +617,7 @@ export async function runGraph(
             retries: 0,
             inputValue: {
               reused: true,
-              ...(telemetryCfg?.retryOfRunId
-                ? { sourceRunId: telemetryCfg.retryOfRunId }
-                : {}),
+              ...(telemetryCfg?.retryOfRunId ? { sourceRunId: telemetryCfg.retryOfRunId } : {}),
             },
             outputValue: result.outputs[id],
             errorStack: null,
@@ -718,10 +655,7 @@ export async function runGraph(
           }
           return true;
         };
-        if (
-          unreachable.has(id) ||
-          !incoming.every((e, idx) => upstream[idx] && isEdgeTaken(e))
-        ) {
+        if (unreachable.has(id) || !incoming.every((e, idx) => upstream[idx] && isEdgeTaken(e))) {
           result.skipped.push(id);
           await emitStepTelemetry({
             nodeId: id,
@@ -762,9 +696,7 @@ export async function runGraph(
         try {
           const nodeManifest = registry.get(node.type);
           const isIsolated = nodeManifest?.isolation === "dispatch";
-          const executor =
-            executors.get(node.type) ??
-            (nodeManifest?.executor ? executors.get(nodeManifest.executor) : undefined);
+          const executor = executors.get(node.type) ?? (nodeManifest?.executor ? executors.get(nodeManifest.executor) : undefined);
           if (!isIsolated && !executor) throw new Error(`no executor registered for ${node.type}`);
           const declared = nodeManifest?.secrets ?? [];
           const secret = (name: string): string => {
@@ -783,9 +715,7 @@ export async function runGraph(
             if (value === undefined || value === null) throw new Error(`binding "${name}" is declared by ${node.type} but was not provided`);
             return value as T;
           };
-          const connectionDb =
-            (isD1Like(options.env?.DB) ? (options.env.DB as D1Like) : undefined) ??
-            telemetryDb;
+          const connectionDb = (isD1Like(options.env?.DB) ? (options.env.DB as D1Like) : undefined) ?? telemetryDb;
           const connKey =
             typeof options.env?.PX_CONN_KEY === "string"
               ? options.env.PX_CONN_KEY
@@ -800,15 +730,10 @@ export async function runGraph(
               : typeof options.fetcher === "function"
                 ? options.fetcher
                 : typeof options.env?.__OAUTH_FETCHER === "function"
-                  ? (options.env.__OAUTH_FETCHER as (
-                      input: string | URL | Request,
-                      init?: RequestInit,
-                    ) => Promise<Response>)
+                  ? (options.env.__OAUTH_FETCHER as (input: string | URL | Request, init?: RequestInit) => Promise<Response>)
                   : undefined;
 
-          const connection = <T = Record<string, unknown>>(
-            nameOrSelector: string | ConnectionLookupSelector,
-          ): T | Promise<T> => {
+          const connection = <T = Record<string, unknown>>(nameOrSelector: string | ConnectionLookupSelector): T | Promise<T> => {
             if (typeof nameOrSelector === "string") {
               const fromConnections = options.connections?.[nameOrSelector];
               const fromEnv = options.env?.[nameOrSelector];
@@ -837,9 +762,7 @@ export async function runGraph(
             }
 
             if (connectionDb) {
-              const inferredApp = node.type.startsWith("int:")
-                ? node.type.slice("int:".length).split(".")[0]
-                : undefined;
+              const inferredApp = node.type.startsWith("int:") ? node.type.slice("int:".length).split(".")[0] : undefined;
               return resolveCaseAConnection(nameOrSelector, {
                 db: connectionDb,
                 connKey,
@@ -862,33 +785,23 @@ export async function runGraph(
                 revision,
                 nodeId: id,
                 onConnectionExpired: async (ev) => {
-                  await nodeLogger.warn(
-                    `connection.expired: Connection "${ev.ref}" (${ev.app}) expired: ${ev.reason}`,
-                    {
-                      event: "connection.expired",
-                      ref: ev.ref,
-                      app: ev.app,
-                      status: "expired",
-                      reason: ev.reason,
-                    },
-                  );
+                  await nodeLogger.warn(`connection.expired: Connection "${ev.ref}" (${ev.app}) expired: ${ev.reason}`, {
+                    event: "connection.expired",
+                    ref: ev.ref,
+                    app: ev.app,
+                    status: "expired",
+                    reason: ev.reason,
+                  });
                 },
               }) as unknown as T;
             }
 
-            const label =
-              typeof nameOrSelector === "string"
-                ? nameOrSelector
-                : (nameOrSelector.ref ?? nameOrSelector.app ?? "unknown");
+            const label = typeof nameOrSelector === "string" ? nameOrSelector : (nameOrSelector.ref ?? nameOrSelector.app ?? "unknown");
             throw new Error(`connection "${label}" was not provided`);
           };
           inputs = gatherInputs(incoming, result.outputs);
           checkMissingStepInputFields(id, node.data, result.outputs);
-          resolvedData = resolveStepExpressions(
-            node.data,
-            result.outputs,
-            options.payload,
-          ) as Readonly<Record<string, unknown>>;
+          resolvedData = resolveStepExpressions(node.data, result.outputs, options.payload) as Readonly<Record<string, unknown>>;
 
           await emitStepTelemetry({
             nodeId: id,
@@ -952,14 +865,10 @@ export async function runGraph(
                 typeof (resolvedData as Record<string, unknown>)?.iteration === "number" ||
                 typeof (resolvedData as Record<string, unknown>)?.iteration === "string"
                   ? (resolvedData as Record<string, unknown>).iteration
-                  : typeof (inputs as Record<string, unknown>)?.iteration === "number" ||
-                      typeof (inputs as Record<string, unknown>)?.iteration === "string"
+                  : typeof (inputs as Record<string, unknown>)?.iteration === "number" || typeof (inputs as Record<string, unknown>)?.iteration === "string"
                     ? (inputs as Record<string, unknown>).iteration
                     : undefined;
-              const idempotencyKey =
-                iteration !== undefined
-                  ? `${runId}:${id}:${iteration}`
-                  : `${runId}:${id}`;
+              const idempotencyKey = iteration !== undefined ? `${runId}:${id}:${iteration}` : `${runId}:${id}`;
 
               let call: () => Promise<Record<string, unknown>>;
               if (isIsolated) {
@@ -1036,8 +945,7 @@ export async function runGraph(
           return true;
         } catch (error) {
           const rawMessage = error instanceof Error ? error.message : String(error);
-          const rawStack =
-            error instanceof Error ? (error.stack ?? `${error.name}: ${error.message}`) : String(error);
+          const rawStack = error instanceof Error ? (error.stack ?? `${error.name}: ${error.message}`) : String(error);
           const redactedMessage = redactTelemetryString(rawMessage, {
             secretValues: trackedSecrets,
             secretFieldNames,
@@ -1052,9 +960,7 @@ export async function runGraph(
             firstRedactedErrorStack = redactedStack;
           }
           if (telemetryActive && runId) {
-            const alreadyLoggedErrorForNode = emittedLogs.some(
-              (entry) => entry.nodeId === id && entry.level === "error",
-            );
+            const alreadyLoggedErrorForNode = emittedLogs.some((entry) => entry.nodeId === id && entry.level === "error");
             if (!alreadyLoggedErrorForNode) {
               const inferredBrickId =
                 typeof resolvedData.brickId === "string" && resolvedData.brickId.trim()

@@ -22,12 +22,7 @@ import { proofExecutors, proofRegistry } from "../src/worker/proof-bricks.ts";
 import { WORKFLOW_RUNS_PATH, createProofRoutes, signControlPlaneRequest } from "../src/worker/proof-routes.ts";
 import { isExcludedDataBrowserTable } from "../src/worker/data-browser.ts";
 import { lintMigration } from "../src/migration-lint.ts";
-import {
-  HostedSandboxTarget,
-  MockCloudflareControlPlane,
-  SandboxDispatchPlatform,
-  createByocProvisioner,
-} from "../src/index.ts";
+import { HostedSandboxTarget, MockCloudflareControlPlane, SandboxDispatchPlatform, createByocProvisioner } from "../src/index.ts";
 import type { DeployBuildArtifactInput, DeployTarget } from "../src/index.ts";
 import { sqliteD1 } from "../../../test/support/sqlite-d1.ts";
 import { listRunRecords, upsertRunRecord } from "@poc/telemetry";
@@ -37,12 +32,26 @@ import { listRunRecords, upsertRunRecord } from "@poc/telemetry";
 // Studio deploy path is the only writer and writes app-wide rows. Each test below is one row of the story's I/O matrix.
 
 const node = (id: string, type: string, data: Record<string, unknown> = {}) => ({ id, type, data });
-const wire = (source: string, sourceHandle: string, target: string, targetHandle: string) => ({ id: `${source}.${sourceHandle}-${target}.${targetHandle}`, source, target, sourceHandle, targetHandle });
+const wire = (source: string, sourceHandle: string, target: string, targetHandle: string) => ({
+  id: `${source}.${sourceHandle}-${target}.${targetHandle}`,
+  source,
+  target,
+  sourceHandle,
+  targetHandle,
+});
 const pick = (id: string, path: string) => node(id, "transform.pick", { path });
 /** (a + b) * c */
 const MULTIPLY: Graph = {
   nodes: [node("t", "trigger.manual"), pick("pa", "a"), pick("pb", "b"), pick("pc", "c"), node("add", "proof.add"), node("mul", "proof.multiply")],
-  edges: [wire("t", "out", "pa", "in"), wire("t", "out", "pb", "in"), wire("t", "out", "pc", "in"), wire("pa", "out", "add", "a"), wire("pb", "out", "add", "b"), wire("add", "out", "mul", "a"), wire("pc", "out", "mul", "b")],
+  edges: [
+    wire("t", "out", "pa", "in"),
+    wire("t", "out", "pb", "in"),
+    wire("t", "out", "pc", "in"),
+    wire("pa", "out", "add", "a"),
+    wire("pb", "out", "add", "b"),
+    wire("add", "out", "mul", "a"),
+    wire("pc", "out", "mul", "b"),
+  ],
 };
 /** (a + b) + c: the same graph, told apart by its answer. */
 const ADD: Graph = { ...MULTIPLY, nodes: MULTIPLY.nodes.map((n) => (n.id === "mul" ? node("mul", "proof.add") : n)) };
@@ -50,7 +59,9 @@ const PAYLOAD = { a: 2, b: 3, c: 4 };
 const WS_A = "3f2b8c1e-5a4d-4e6f-9a7b-1c2d3e4f5a6b"; // the multi-workspace brick's ids are UUIDs
 const WS_B = "ws-b";
 
-const step: StepLike = { do: (async (_name: string, a: unknown, b?: () => Promise<unknown>) => (typeof a === "function" ? (a as () => Promise<unknown>)() : b!())) as StepLike["do"] };
+const step: StepLike = {
+  do: (async (_name: string, a: unknown, b?: () => Promise<unknown>) => (typeof a === "function" ? (a as () => Promise<unknown>)() : b!())) as StepLike["do"],
+};
 const nonRetryable = (message: string) => Object.assign(new Error(message), { nonRetryable: true });
 
 let world: ReturnType<typeof sqliteD1>;
@@ -58,8 +69,20 @@ const store = (workspaceId: string, id: string, graph: Graph) =>
   world.db.prepare(`INSERT INTO ${GRAPH_TABLE} (workspace_id, id, graph, updated_at) VALUES (?, ?, ?, 'now')`).run(workspaceId, id, JSON.stringify(graph));
 const rows = () => world.db.prepare(`SELECT workspace_id, id, graph, updated_at FROM ${GRAPH_TABLE} ORDER BY workspace_id, id`).all();
 const runAs = (workspaceId: unknown, graphId = "g", telemetry?: { runId: string }) =>
-  runStoredGraph({ step, db: world.d1, params: { graphId, workspaceId: workspaceId as string, payload: PAYLOAD, ...(telemetry ? { telemetry } : {}) }, env: {}, registry: proofRegistry, executors: proofExecutors, nonRetryable });
-const refusal = async (promise: Promise<unknown>) => (await promise.then(() => null, (e: unknown) => e)) as (Error & { nonRetryable?: boolean }) | null;
+  runStoredGraph({
+    step,
+    db: world.d1,
+    params: { graphId, workspaceId: workspaceId as string, payload: PAYLOAD, ...(telemetry ? { telemetry } : {}) },
+    env: {},
+    registry: proofRegistry,
+    executors: proofExecutors,
+    nonRetryable,
+  });
+const refusal = async (promise: Promise<unknown>) =>
+  (await promise.then(
+    () => null,
+    (e: unknown) => e,
+  )) as (Error & { nonRetryable?: boolean }) | null;
 
 beforeEach(() => {
   world = sqliteD1();
@@ -110,9 +133,13 @@ describe("which graph a run loads", () => {
     store(APP_WORKSPACE, "g", MULTIPLY);
     store(WS_A, "g", ADD);
     const ran: string[] = [];
-    const watching = new Map<string, Executor>([...proofExecutors].map(([type, exec]): [string, Executor] => [type, (ctx) => (ran.push(ctx.nodeId), exec(ctx))]));
+    const watching = new Map<string, Executor>(
+      [...proofExecutors].map(([type, exec]): [string, Executor] => [type, (ctx) => (ran.push(ctx.nodeId), exec(ctx))]),
+    );
     world.statements.length = 0;
-    const error = await refusal(runStoredGraph({ step, db: world.d1, params: { graphId: "g", payload: PAYLOAD }, env: {}, registry: proofRegistry, executors: watching, nonRetryable }));
+    const error = await refusal(
+      runStoredGraph({ step, db: world.d1, params: { graphId: "g", payload: PAYLOAD }, env: {}, registry: proofRegistry, executors: watching, nonRetryable }),
+    );
     expect(error?.message).toMatch(/^NO_WORKSPACE: /);
     expect(error?.nonRetryable).toBe(true);
     expect(ran).toEqual([]);
@@ -153,7 +180,14 @@ describe("which graph a run loads", () => {
   });
 
   test("a workspace's run resolves a workspace connection in that workspace, and every executor sees ctx.workspaceId", async () => {
-    const connManifest: BrickManifest = { type: "x.conn", category: "action", inputs: [{ id: "in", dataType: "json" }], outputs: [{ id: "out", dataType: "json" }], configSchema: z.object({}), secrets: [] };
+    const connManifest: BrickManifest = {
+      type: "x.conn",
+      category: "action",
+      inputs: [{ id: "in", dataType: "json" }],
+      outputs: [{ id: "out", dataType: "json" }],
+      configSchema: z.object({}),
+      secrets: [],
+    };
     const registry = createRegistry([...proofRegistry.values(), connManifest]);
     const tryConnection: Executor = async (ctx) => {
       try {
@@ -168,7 +202,17 @@ describe("which graph a run loads", () => {
     store(APP_WORKSPACE, "conn", graph);
     const env = { DB: world.d1 };
     const runFor = async (workspaceId: string) =>
-      (await runStoredGraph({ step, db: world.d1, params: { graphId: "conn", workspaceId, payload: { ...PAYLOAD, workspaceId: WS_B } }, env, registry, executors, nonRetryable })).outputs.c;
+      (
+        await runStoredGraph({
+          step,
+          db: world.d1,
+          params: { graphId: "conn", workspaceId, payload: { ...PAYLOAD, workspaceId: WS_B } },
+          env,
+          registry,
+          executors,
+          nonRetryable,
+        })
+      ).outputs.c;
     const direct = (await runGraph(graph, registry, executors, { payload: PAYLOAD, env, runId: "r", workspaceId: WS_A })).outputs.c;
     expect(String(direct?.out)).toContain(WS_A);
     const stored = await runFor(WS_A);
@@ -223,7 +267,10 @@ describe("the routes behind the shared access key", () => {
   const routes = createProofRoutes({ now: () => 0 });
   const call = async (method: string, path: string, body?: string) => {
     const wf = workflowBinding();
-    const response = await routes(new Request(`http://deployed.invalid${path}`, { method, ...(body === undefined ? {} : { body, headers: { "content-type": "application/json" } }) }), { DB: world.d1, GRAPH_RUNNER: wf.binding });
+    const response = await routes(
+      new Request(`http://deployed.invalid${path}`, { method, ...(body === undefined ? {} : { body, headers: { "content-type": "application/json" } }) }),
+      { DB: world.d1, GRAPH_RUNNER: wf.binding },
+    );
     return { status: response?.status ?? null, json: response ? ((await response.json()) as Record<string, unknown>) : null, created: wf.created };
   };
 
@@ -275,7 +322,12 @@ describe("the routes behind the shared access key", () => {
   });
 
   test("POC_RUNS_UNVERIFIED (story 1.1): POST /poc/runs is refused 403 NO_VERIFIED_WORKSPACE and no Workflow instance is created, whatever the body names", async () => {
-    for (const body of [JSON.stringify({ graphId: "g", payload: PAYLOAD }), JSON.stringify({ graphId: "g", workspaceId: WS_A, payload: PAYLOAD }), "not json", "{}"]) {
+    for (const body of [
+      JSON.stringify({ graphId: "g", payload: PAYLOAD }),
+      JSON.stringify({ graphId: "g", workspaceId: WS_A, payload: PAYLOAD }),
+      "not json",
+      "{}",
+    ]) {
       const refused = await call("POST", "/poc/runs", body);
       expect(refused.status, body).toBe(403);
       expect((refused.json!.error as { code: string }).code).toBe("NO_VERIFIED_WORKSPACE");
@@ -287,11 +339,20 @@ describe("the routes behind the shared access key", () => {
     const SECRET = "control-plane-secret-0123456789";
     const ACCESS_KEY = "shared-access-key-0123456789";
     const REQUEST_ID = "6f1c2d3e-4a5b-4c6d-8e7f-90a1b2c3d4e5";
-    const signed = async (body: unknown, secret = SECRET, env: Record<string, unknown> = { PX_TELEMETRY_SECRET: SECRET, POC_ACCESS_KEY: ACCESS_KEY }, instances?: Map<string, unknown>) => {
+    const signed = async (
+      body: unknown,
+      secret = SECRET,
+      env: Record<string, unknown> = { PX_TELEMETRY_SECRET: SECRET, POC_ACCESS_KEY: ACCESS_KEY },
+      instances?: Map<string, unknown>,
+    ) => {
       const wf = workflowBinding(instances);
       const text = typeof body === "string" ? body : JSON.stringify({ requestId: crypto.randomUUID(), ...(body as object) });
       const response = await routes(
-        new Request(`http://deployed.invalid${WORKFLOW_RUNS_PATH}`, { method: "POST", body: text, headers: { "content-type": "application/json", ...(await signControlPlaneRequest(secret, "POST", WORKFLOW_RUNS_PATH, text)) } }),
+        new Request(`http://deployed.invalid${WORKFLOW_RUNS_PATH}`, {
+          method: "POST",
+          body: text,
+          headers: { "content-type": "application/json", ...(await signControlPlaneRequest(secret, "POST", WORKFLOW_RUNS_PATH, text)) },
+        }),
         { DB: world.d1, GRAPH_RUNNER: wf.binding, ...env },
       );
       return { status: response?.status ?? null, json: response ? ((await response.json()) as Record<string, unknown>) : null, created: wf.created };
@@ -324,7 +385,12 @@ describe("the routes behind the shared access key", () => {
       const text = JSON.stringify({ requestId: REQUEST_ID, graphId: "g", workspaceId: WS_A });
       const send = async (headers: Record<string, string>) => {
         const wf = workflowBinding();
-        const response = await routes(new Request(`http://deployed.invalid${WORKFLOW_RUNS_PATH}`, { method: "POST", body: text, headers }), { DB: world.d1, GRAPH_RUNNER: wf.binding, PX_TELEMETRY_SECRET: SECRET, POC_ACCESS_KEY: ACCESS_KEY });
+        const response = await routes(new Request(`http://deployed.invalid${WORKFLOW_RUNS_PATH}`, { method: "POST", body: text, headers }), {
+          DB: world.d1,
+          GRAPH_RUNNER: wf.binding,
+          PX_TELEMETRY_SECRET: SECRET,
+          POC_ACCESS_KEY: ACCESS_KEY,
+        });
         return { status: response?.status, created: wf.created };
       };
       for (const headers of [
@@ -404,7 +470,8 @@ describe("the migration", () => {
   });
 
   test("a fresh database and an upgraded one end in the same schema, keyed (workspace_id, id)", () => {
-    const schemaOf = (db: ReturnType<typeof sqliteD1>["db"]) => db.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name").all();
+    const schemaOf = (db: ReturnType<typeof sqliteD1>["db"]) =>
+      db.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name").all();
     const fresh = sqliteD1();
     for (const m of GRAPH_MIGRATIONS) fresh.db.exec(m.sql);
     const upgraded = sqliteD1();
@@ -412,7 +479,10 @@ describe("the migration", () => {
     upgraded.db.prepare(`INSERT INTO ${GRAPH_TABLE} (id, graph, updated_at) VALUES ('g', '{}', 'then')`).run();
     upgraded.db.exec(GRAPH_WORKSPACE_MIGRATION.sql);
     expect(schemaOf(upgraded.db)).toEqual(schemaOf(fresh.db));
-    const pk = (fresh.db.prepare(`PRAGMA table_info(${GRAPH_TABLE})`).all() as Array<{ name: string; pk: number }>).filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+    const pk = (fresh.db.prepare(`PRAGMA table_info(${GRAPH_TABLE})`).all() as Array<{ name: string; pk: number }>)
+      .filter((c) => c.pk > 0)
+      .sort((a, b) => a.pk - b.pk)
+      .map((c) => c.name);
     expect(pk).toEqual(["workspace_id", "id"]);
   });
 
@@ -431,7 +501,8 @@ describe("the migration", () => {
   test("applied statement by statement (as the deploy and the sandbox do), it ends the same as applied at once", async () => {
     const split = sqliteD1();
     for (const m of GRAPH_MIGRATIONS) await applyMigration(split.d1, m.sql);
-    const schemaOf = (db: ReturnType<typeof sqliteD1>["db"]) => db.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name").all();
+    const schemaOf = (db: ReturnType<typeof sqliteD1>["db"]) =>
+      db.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name").all();
     expect(schemaOf(split.db)).toEqual(schemaOf(world.db));
   });
 });
@@ -453,15 +524,31 @@ describe("STUDIO_DEPLOY: the Studio deploy path writes app-wide rows with the co
     const sandboxDb = sqliteD1();
     const platform = new SandboxDispatchPlatform({ createD1: () => sandboxDb.d1 });
     const target = new HostedSandboxTarget({ platform });
-    const deployTarget = { type: "platform-sandbox" as const, sandboxId: "sbx-ws-graphs", dispatchNamespace: "px-sandbox-preview", projectId: "ws-scoped-graphs" };
+    const deployTarget = {
+      type: "platform-sandbox" as const,
+      sandboxId: "sbx-ws-graphs",
+      dispatchNamespace: "px-sandbox-preview",
+      projectId: "ws-scoped-graphs",
+    };
     await target.apply(artifact("graph_1"), deployTarget);
-    const stored = () => sandboxDb.db.prepare(`SELECT workspace_id, id, graph FROM ${GRAPH_TABLE} ORDER BY id`).all() as Array<{ workspace_id: string; id: string; graph: string }>;
-    expect(stored().map((r) => [r.workspace_id, r.id])).toEqual([[APP_WORKSPACE, "wf-one"], [APP_WORKSPACE, "wf-two"]]);
+    const stored = () =>
+      sandboxDb.db.prepare(`SELECT workspace_id, id, graph FROM ${GRAPH_TABLE} ORDER BY id`).all() as Array<{
+        workspace_id: string;
+        id: string;
+        graph: string;
+      }>;
+    expect(stored().map((r) => [r.workspace_id, r.id])).toEqual([
+      [APP_WORKSPACE, "wf-one"],
+      [APP_WORKSPACE, "wf-two"],
+    ]);
     await target.putGraph([{ ...MULTIPLY, id: "wf-one", nodes: ADD.nodes }], deployTarget, undefined, { graphHash: "graph_2" });
     expect(stored().every((r) => r.workspace_id === APP_WORKSPACE)).toBe(true);
     const record = platform.getDatabase("sbx-ws-graphs")!;
     expect(Object.values(record.graphs).every((g) => g.workspaceId === APP_WORKSPACE)).toBe(true);
-    const pk = (sandboxDb.db.prepare(`PRAGMA table_info(${GRAPH_TABLE})`).all() as Array<{ name: string; pk: number }>).filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+    const pk = (sandboxDb.db.prepare(`PRAGMA table_info(${GRAPH_TABLE})`).all() as Array<{ name: string; pk: number }>)
+      .filter((c) => c.pk > 0)
+      .sort((a, b) => a.pk - b.pk)
+      .map((c) => c.name);
     expect(pk).toEqual(["workspace_id", "id"]);
   });
 
@@ -542,17 +629,31 @@ describe("the sandbox's graph migrations on a reused database", () => {
     reused.db.prepare("INSERT INTO px_http_rollups (bucket_minute, request_count) VALUES ('2026-10-01T00:00:00.000Z', 4)").run();
     await new SandboxDispatchPlatform({ createD1: () => reused.d1 }).ensureDatabase("sbx-reused-telemetry");
 
-    const cols = (table: string) => (reused.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string; pk: number }>);
+    const cols = (table: string) => reused.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string; pk: number }>;
     expect(cols("px_runs").map((c) => c.name)).toContain("project_id");
     expect(cols("px_step_events").map((c) => c.name)).toEqual(expect.arrayContaining(["workspace_id", "project_id"]));
-    expect(cols("px_http_rollups").filter((c) => c.pk > 0).map((c) => c.name)).toEqual(expect.arrayContaining(["workspace_id", "project_id"]));
+    expect(
+      cols("px_http_rollups")
+        .filter((c) => c.pk > 0)
+        .map((c) => c.name),
+    ).toEqual(expect.arrayContaining(["workspace_id", "project_id"]));
     expect(reused.db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_px_runs_ws_started'").all()).toHaveLength(1);
     // The old row is kept with the workspace it was stored with (never rewritten).
     expect(reused.db.prepare("SELECT workspace_id FROM px_runs WHERE run_id = 'run_old'").all()).toEqual([{ workspace_id: "ws_default" }]);
     expect(await listRunRecords(reused.d1, { workspaceId: WS_A })).toEqual([]);
     expect(reused.db.prepare("SELECT request_count FROM px_http_rollups").all()).toEqual([{ request_count: 4 }]);
 
-    await upsertRunRecord(reused.d1, { runId: "run_new", workflowId: "wf", revision: 0, triggerType: "manual", workspaceId: WS_A, status: "succeeded", durationMs: 1, retries: 0, startedAt: "2026-11-01T00:00:00.000Z" });
+    await upsertRunRecord(reused.d1, {
+      runId: "run_new",
+      workflowId: "wf",
+      revision: 0,
+      triggerType: "manual",
+      workspaceId: WS_A,
+      status: "succeeded",
+      durationMs: 1,
+      retries: 0,
+      startedAt: "2026-11-01T00:00:00.000Z",
+    });
     expect((await listRunRecords(reused.d1, { workspaceId: WS_A })).map((r) => r.runId)).toEqual(["run_new"]);
   });
 });

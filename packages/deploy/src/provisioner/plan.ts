@@ -31,13 +31,17 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
 
 /** The lock stored with the deploy that is live now (or, failing that, the newest successful one); null when none was stored. */
 export async function readDeployedLock(client: DeployInput["client"], databaseId: string, liveVersionId: string | null): Promise<ProjectLock | null> {
-  const [table] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", params: [DEPLOY_HISTORY_TABLE] }]);
+  const [table] = await client.queryDatabase(databaseId, [
+    { sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", params: [DEPLOY_HISTORY_TABLE] },
+  ]);
   if (table!.results.length === 0) return null;
   const [columns] = await client.queryDatabase(databaseId, [{ sql: `SELECT name FROM pragma_table_info('${DEPLOY_HISTORY_TABLE}') WHERE name = 'lock_json'` }]);
   if (columns!.results.length === 0) return null;
   const select = `SELECT lock_json FROM ${DEPLOY_HISTORY_TABLE} WHERE lock_json IS NOT NULL AND status = 'success'`;
   if (liveVersionId) {
-    const [row] = await client.queryDatabase(databaseId, [{ sql: `${select} AND to_version_id = ? ORDER BY started_at DESC LIMIT 1`, params: [liveVersionId] }]);
+    const [row] = await client.queryDatabase(databaseId, [
+      { sql: `${select} AND to_version_id = ? ORDER BY started_at DESC LIMIT 1`, params: [liveVersionId] },
+    ]);
     if (row!.results[0]) return JSON.parse(String(row!.results[0].lock_json)) as ProjectLock;
   }
   const [latest] = await client.queryDatabase(databaseId, [{ sql: `${select} ORDER BY started_at DESC LIMIT 1` }]);
@@ -53,9 +57,13 @@ export async function planDeploy(input: DeployPlanInput): Promise<DeployPlan> {
   // what the live deploy recorded
   let recorded: { upload_sha256?: string; version_id?: string; last_good_version_id?: string } | undefined;
   if (databaseId) {
-    const [table] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", params: [DEPLOY_TABLE] }]);
+    const [table] = await client.queryDatabase(databaseId, [
+      { sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", params: [DEPLOY_TABLE] },
+    ]);
     if (table!.results.length > 0) {
-      const [row] = await client.queryDatabase(databaseId, [{ sql: `SELECT upload_sha256, version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1` }]);
+      const [row] = await client.queryDatabase(databaseId, [
+        { sql: `SELECT upload_sha256, version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1` },
+      ]);
       recorded = row!.results[0] as typeof recorded;
     }
   }
@@ -67,7 +75,8 @@ export async function planDeploy(input: DeployPlanInput): Promise<DeployPlan> {
     const [rows] = await client.queryDatabase(databaseId, [{ sql: `SELECT name, sha256 FROM ${MIGRATIONS_TABLE}` }]);
     for (const r of rows!.results) applied.set(String(r.name), String(r.sha256));
   }
-  const allowDestructive = input.allowDestructive === true || input.ledger.entries().some((e) => e.kind === "allow_destructive" || e.name === "allow_destructive");
+  const allowDestructive =
+    input.allowDestructive === true || input.ledger.entries().some((e) => e.kind === "allow_destructive" || e.name === "allow_destructive");
   const migrationPlan = planMigrations(input.migrations, applied, { allowDestructive, hashOf: sha256 });
   const migrations: PlannedMigration[] = migrationPlan.migrations;
   blocking.push(...migrationPlan.blocks.map((b) => b.message));
@@ -119,7 +128,11 @@ type Shaped = { type: string; name: string; workflowName?: string; className?: s
 const byName = (a: Shaped, b: Shaped) => a.name.localeCompare(b.name);
 /** A binding as this tool would upload it, reduced to what Cloudflare reports back (no ids, no secret text). */
 function shapeBinding(b: Record<string, unknown>): Shaped {
-  return { type: String(b.type), name: String(b.name), ...(b.type === "workflow" ? { workflowName: String(b.workflow_name), className: String(b.class_name) } : {}) };
+  return {
+    type: String(b.type),
+    name: String(b.name),
+    ...(b.type === "workflow" ? { workflowName: String(b.workflow_name), className: String(b.class_name) } : {}),
+  };
 }
 function shapeDeployedBinding(b: Shaped): Shaped {
   return { type: b.type, name: b.name, ...(b.type === "workflow" ? { workflowName: b.workflowName as string, className: b.className as string } : {}) };

@@ -90,8 +90,12 @@ function runNode(script: string, args: string[], cwd: string, timeout: number) {
     child.stderr.on("data", (chunk) => (output += chunk));
     child.on("error", (error) => {
       clearTimeout(timer);
-      done({ ok: false, timedOut, output: `${output}
-${error.message}`.trim() });
+      done({
+        ok: false,
+        timedOut,
+        output: `${output}
+${error.message}`.trim(),
+      });
     });
     child.on("close", (code) => {
       clearTimeout(timer);
@@ -157,7 +161,10 @@ beforeAll(async () => {
   cpSync(FIXTURE, appDir, { recursive: true, filter: (src) => !src.split(sep).includes("node_modules") });
   const manifestPath = join(appDir, "package.json");
   const fileSpec = (name: string) => `file:${tarballs[name as PackageName]}`;
-  writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replace(/TARBALL:(@poc\/[a-z-]+)/g, (_, name: string) => fileSpec(name)));
+  writeFileSync(
+    manifestPath,
+    readFileSync(manifestPath, "utf8").replace(/TARBALL:(@poc\/[a-z-]+)/g, (_, name: string) => fileSpec(name)),
+  );
   expect(readFileSync(manifestPath, "utf8")).not.toContain("TARBALL:");
 
   // 4. Install as a standalone project: no workspace, cache first. CI sets CI=true, which would default pnpm to a
@@ -212,9 +219,7 @@ beforeAll(async () => {
   bundleInputs = Object.keys(result.metafile!.inputs);
 
   // 6. Run it in workerd with a D1 binding.
-  mf = new Miniflare(
-    convertV4MiniflareOptions({ modules: true, script: result.outputFiles[0]!.text, compatibilityDate: "2026-10-01", d1Databases: ["DB"] }),
-  );
+  mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: result.outputFiles[0]!.text, compatibilityDate: "2026-10-01", d1Databases: ["DB"] }));
   await mf.ready;
 
   // 7. Apply the migrations the installed packages ship, in the order each manifest lists them.
@@ -261,7 +266,10 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       expect(files, name).toContain("package.json");
       if (name !== "@poc/sdk") {
         expect(files, name).toContain("brick.manifest.json");
-        expect(files.some((f) => f.startsWith("migrations/") && f.endsWith(".sql")), name).toBe(true);
+        expect(
+          files.some((f) => f.startsWith("migrations/") && f.endsWith(".sql")),
+          name,
+        ).toBe(true);
       }
       const stray = files.filter((f) => /^(test|client|fixtures)\//.test(f) || /\.test\.tsx?$/.test(f));
       expect(stray, name).toEqual([]);
@@ -294,7 +302,10 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
     }
     const normalised = bundleInputs.map((i) => i.split(sep).join("/"));
     for (const name of Object.keys(PACKAGES)) {
-      expect(normalised.some((i) => i.includes(`node_modules/${name}/src/`)), name).toBe(true);
+      expect(
+        normalised.some((i) => i.includes(`node_modules/${name}/src/`)),
+        name,
+      ).toBe(true);
     }
     expect(normalised.some((i) => i.includes("node_modules/hono/"))).toBe(true);
   });
@@ -312,7 +323,17 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
     const db = (await mf!.getD1Database("DB")) as unknown as D1Like;
     const { results } = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all<{ name: string }>();
     const tables = results.map((r) => r.name);
-    for (const table of ["mw_workspaces", "mw_members", "mw_invites", "credit_wallets", "credit_ledger", "credit_orders", "credit_action_costs", "audit_events", "px_rate_limits"]) {
+    for (const table of [
+      "mw_workspaces",
+      "mw_members",
+      "mw_invites",
+      "credit_wallets",
+      "credit_ledger",
+      "credit_orders",
+      "credit_action_costs",
+      "audit_events",
+      "px_rate_limits",
+    ]) {
       expect(tables).toContain(table);
     }
   });
@@ -376,7 +397,9 @@ describe("story 2.2: smoke test of the mounted bricks in workerd", () => {
     expect((await call("GET", "/v1/wallet", { user: A, ws: wsA })).json).toMatchObject({ currentBalance: 42.75, currentBalanceMilli: 42_750 });
     // The new routes are mounted behind their rate limits too; neither request below moves anything.
     expect((await call("POST", "/v1/wallet/charge", { user: A, ws: wsA, body: { action: "nothing.priced", idempotencyKey: "c-1" } })).status).toBe(404);
-    expect((await call("POST", "/v1/wallet/transfer", { user: A, ws: wsA, body: { toWorkspaceId: "ws-nowhere", amount: 1, idempotencyKey: "t-1" } })).status).toBe(404);
+    expect(
+      (await call("POST", "/v1/wallet/transfer", { user: A, ws: wsA, body: { toWorkspaceId: "ws-nowhere", amount: 1, idempotencyKey: "t-1" } })).status,
+    ).toBe(404);
   });
 
   test("A records an audit entry and lists it", async () => {

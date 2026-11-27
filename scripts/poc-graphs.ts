@@ -11,7 +11,16 @@ import { canonical11, evaluateH11, runH11 } from "../packages/deploy/src/h11.ts"
 import type { H11Result } from "../packages/deploy/src/h11.ts";
 import { scanTreesForSecrets } from "../packages/deploy/src/leak-scan.ts";
 import { deriveProjectSecret } from "../packages/telemetry/src/index.ts";
-import { CredentialsError, createClient, createRedactor, fileKeyStore, fileStore, findSecrets, loadCredentials, loadOrCreateAccessKey } from "../packages/deploy/src/provisioner/index.ts";
+import {
+  CredentialsError,
+  createClient,
+  createRedactor,
+  fileKeyStore,
+  fileStore,
+  findSecrets,
+  loadCredentials,
+  loadOrCreateAccessKey,
+} from "../packages/deploy/src/provisioner/index.ts";
 import { redactCallsAndResult } from "./lib/redact-subdomain.ts";
 import { resolveWorkerUrl } from "../packages/deploy/src/context.ts";
 
@@ -54,7 +63,13 @@ if (!existsSync(h10Path)) {
   console.error("evidence/deployed/h10-calls.json is missing: run scripts/poc-deploy.ts first");
   process.exit(2);
 }
-const h10 = JSON.parse(readFileSync(h10Path, "utf8")) as { facts: { url: string | null; names: { suffix: string; script: string; database: string; workflow: string }; readings: { afterFourth?: { databaseId: string | null; latestVersionId: string | null } } } };
+const h10 = JSON.parse(readFileSync(h10Path, "utf8")) as {
+  facts: {
+    url: string | null;
+    names: { suffix: string; script: string; database: string; workflow: string };
+    readings: { afterFourth?: { databaseId: string | null; latestVersionId: string | null } };
+  };
+};
 const { url, names } = h10.facts;
 const databaseId = h10.facts.readings.afterFourth?.databaseId ?? null;
 const ledger = fileStore(join(stateDir, "ledger.json")).read();
@@ -98,7 +113,10 @@ const { calls, result: measured } = await runH11({
 const secrets = { token: credentials.token, accountId: credentials.accountId, accessKey, signingSecret, rootSecret };
 // the account's workers.dev subdomain never reaches the evidence; callsSha256 is taken over the redacted calls text
 const { callsText, result: first } = redactCallsAndResult(canonical11(calls), measured);
-for (const [name, text] of [["h11-calls.json", callsText], ["h11-result.json", JSON.stringify(first, null, 2)]] as const) {
+for (const [name, text] of [
+  ["h11-calls.json", callsText],
+  ["h11-result.json", JSON.stringify(first, null, 2)],
+] as const) {
   const hits = findSecrets(text, secrets);
   if (hits.length > 0) {
     console.error(`refusing to write ${name}: it contains ${hits.join(" and ")}`);
@@ -137,4 +155,6 @@ for (const [name, value] of Object.entries(evaluation.checks)) out(`  ${value ? 
 for (const note of evaluation.notes) out(`  note: ${note}`);
 out(`leak scan: ${scan.filesScanned} files in the two repositories, ${scan.found.length === 0 ? "no secret found" : `FOUND: ${scan.found.join("; ")}`}`);
 out(`attempt ${attempts.length} recorded; evidence in evidence/deployed/`);
-process.exit(final.completed && Object.keys(evaluation.checks).length === 9 && Object.values(evaluation.checks).every(Boolean) && scan.found.length === 0 ? 0 : 1);
+process.exit(
+  final.completed && Object.keys(evaluation.checks).length === 9 && Object.values(evaluation.checks).every(Boolean) && scan.found.length === 0 ? 0 : 1,
+);

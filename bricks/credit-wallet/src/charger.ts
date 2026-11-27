@@ -50,15 +50,7 @@ export interface WalletCharger {
    * Nothing is refunded (`NOTHING_TO_REFUND`) unless that deduction is on the ledger, and never more than it took, so
    * it is safe to call when it is unknown whether the deduction committed.
    */
-  refund(
-    db: D1Like,
-    workspaceId: string,
-    milli: number,
-    idempotencyKey: string,
-    againstKey: string,
-    reason: string,
-    userId?: string,
-  ): Promise<RefundResult>;
+  refund(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, againstKey: string, reason: string, userId?: string): Promise<RefundResult>;
   /** The ledger entry recorded under a key in this workspace, as thousandths moved, or null if none. */
   settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ milli: number; type: "deduction" | "topup" } | null>;
   /**
@@ -120,7 +112,11 @@ export const walletCharger: WalletCharger = Object.freeze({
     return {
       ok: false,
       code:
-        result.reason === "insufficient_balance" ? "INSUFFICIENT_CREDITS" : result.reason === "idempotency_key_reused" ? "IDEMPOTENCY_KEY_REUSED" : "WALLET_NOT_FOUND",
+        result.reason === "insufficient_balance"
+          ? "INSUFFICIENT_CREDITS"
+          : result.reason === "idempotency_key_reused"
+            ? "IDEMPOTENCY_KEY_REUSED"
+            : "WALLET_NOT_FOUND",
       balanceMilli: result.balanceMilli ?? 0,
     };
   },

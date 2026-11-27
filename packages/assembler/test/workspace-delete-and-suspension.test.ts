@@ -61,9 +61,11 @@ const declared: Array<{ brick: string; table: string; tombstone: boolean }> = [
   // The shell's schedule mirror, purged because each row belongs to one workspace.
   { brick: "shell", table: "px_schedules", tombstone: false },
 ];
-const bucket = (env as unknown as {
-  BUCKET: { put(key: string, value: string): Promise<unknown>; list(o: { prefix: string }): Promise<{ objects: Array<{ key: string }> }> };
-}).BUCKET;
+const bucket = (
+  env as unknown as {
+    BUCKET: { put(key: string, value: string): Promise<unknown>; list(o: { prefix: string }): Promise<{ objects: Array<{ key: string }> }> };
+  }
+).BUCKET;
 
 // What the allowlisted privacy routes and B's AI call answer (the routes' own answers, not the suspension check's).
 const EXPORT_STATUS = 201;
@@ -82,15 +84,40 @@ const NOT_WORKSPACE_SCOPED: ReadonlyArray<{ method: string; path: RegExp; reason
   { method: "GET", path: /^\/(healthz|readyz|openapi\.json)$/, reason: "platform probes and the API description; no workspace" },
   { method: "*", path: /^\/api\/auth\/[a-z-]+(\/[a-z-]+)?$/, reason: "sign-up, sign-in, session and password routes act for a user, not a workspace" },
   { method: "*", path: /^\/api\/(me\/(profile|preferences)|users\/:id\/profile)$/, reason: "user-profile: the caller's own account, not workspace data" },
-  { method: "POST", path: /^\/api\/payments\/verify$/, reason: "a payment already charged must still complete and be credited (story 0.21); no workspace guard" },
-  { method: "POST", path: /^\/api\/webhooks\/(in\/:subscriptionId|ingress\/:slug)$/, reason: "inbound webhooks are signed by the sender and carry no workspace context" },
-  { method: "POST", path: /^\/api\/(payments|checkout)\/webhook$/, reason: "payment provider webhooks (story 2.3) are signed by the provider and carry no workspace context; a payment already charged must still be recorded" },
-  { method: "*", path: /^\/api\/message-webhooks\/:[A-Za-z0-9_]+$/, reason: "outbound delivery-status webhooks (story 2.4) are signed by the provider and carry no workspace context; a message already sent must still get its status" },
-  { method: "*", path: /^\/api\/workspaces(\/.*)?$/, reason: "multi-workspace's own routes: creating/listing take no workspace; the workspace-scoped writes check suspension in the handler" },
-  { method: "*", path: /^\/api\/platform\/.+$/, reason: "platform-admin (story 2.6): operators act across workspaces (that is how a workspace is suspended and unsuspended); PX_PLATFORM_OPERATORS only" },
+  {
+    method: "POST",
+    path: /^\/api\/payments\/verify$/,
+    reason: "a payment already charged must still complete and be credited (story 0.21); no workspace guard",
+  },
+  {
+    method: "POST",
+    path: /^\/api\/webhooks\/(in\/:subscriptionId|ingress\/:slug)$/,
+    reason: "inbound webhooks are signed by the sender and carry no workspace context",
+  },
+  {
+    method: "POST",
+    path: /^\/api\/(payments|checkout)\/webhook$/,
+    reason: "payment provider webhooks (story 2.3) are signed by the provider and carry no workspace context; a payment already charged must still be recorded",
+  },
+  {
+    method: "*",
+    path: /^\/api\/message-webhooks\/:[A-Za-z0-9_]+$/,
+    reason:
+      "outbound delivery-status webhooks (story 2.4) are signed by the provider and carry no workspace context; a message already sent must still get its status",
+  },
+  {
+    method: "*",
+    path: /^\/api\/workspaces(\/.*)?$/,
+    reason: "multi-workspace's own routes: creating/listing take no workspace; the workspace-scoped writes check suspension in the handler",
+  },
+  {
+    method: "*",
+    path: /^\/api\/platform\/.+$/,
+    reason: "platform-admin (story 2.6): operators act across workspaces (that is how a workspace is suspended and unsuspended); PX_PLATFORM_OPERATORS only",
+  },
 ];
 
-const MULTI_WORKSPACE_TABLES =new Set(["mw_workspaces", "mw_members", "mw_invites"]);
+const MULTI_WORKSPACE_TABLES = new Set(["mw_workspaces", "mw_members", "mw_invites"]);
 
 interface Column {
   name: string;
@@ -143,7 +170,10 @@ async function seedRow(table: string, ws: string): Promise<Record<string, unknow
   }
   const names = columns.map((c) => `"${c.name}"`).join(", ");
   const marks = columns.map(() => "?").join(", ");
-  await db.prepare(`INSERT INTO "${table}" (${names}) VALUES (${marks})`).bind(...columns.map((c) => values[c.name])).run();
+  await db
+    .prepare(`INSERT INTO "${table}" (${names}) VALUES (${marks})`)
+    .bind(...columns.map((c) => values[c.name]))
+    .run();
   return values;
 }
 
@@ -155,7 +185,9 @@ async function rowsOf(table: string, ws: string): Promise<Array<Record<string, u
 async function countAll(): Promise<Record<string, number>> {
   const tables = (
     await db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE '%_fts_%' ORDER BY name")
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE '%_fts_%' ORDER BY name",
+      )
       .all<{ name: string }>()
   ).results;
   const counts: Record<string, number> = {};
@@ -233,7 +265,10 @@ describe("workspace delete cascade in the assembled max-compatible app (story 1.
         // Declared tombstone (kept for audit) without a deleted_at column: kept as it was.
         expect(aRows.length, `${brick} ${table} keeps A's audit rows`).toBeGreaterThan(0);
       } else if (tombstone) {
-        expect(aRows.every((r) => r.deleted_at !== null), `${brick} ${table} marks A's rows deleted`).toBe(true);
+        expect(
+          aRows.every((r) => r.deleted_at !== null),
+          `${brick} ${table} marks A's rows deleted`,
+        ).toBe(true);
       } else {
         expect(aRows, `${brick} ${table} still holds rows of the deleted workspace`).toEqual([]);
       }
@@ -294,7 +329,7 @@ describe("suspension enforcement in the assembled max-compatible app (story 1.10
 
   function expectSuspended(res: { status: number; text: string }, label: string): void {
     expect(res.status, `${label}: ${res.text.slice(0, 300)}`).toBe(403);
-  if (!res.text.includes("WORKSPACE_SUSPENDED")) throw new Error(`${label}: ${res.status} ${res.text.slice(0, 300)}`);
+    if (!res.text.includes("WORKSPACE_SUSPENDED")) throw new Error(`${label}: ${res.status} ${res.text.slice(0, 300)}`);
     expect((JSON.parse(res.text) as { code?: string }).code, label).toBe("WORKSPACE_SUSPENDED");
   }
 
@@ -314,7 +349,10 @@ describe("suspension enforcement in the assembled max-compatible app (story 1.10
     expectSuspended(await call(app!, "GET", "/api/ai/usage", { user: "alice", ws: wsA }), "GET /api/ai/usage");
     expectSuspended(await call(app!, "GET", "/api/wallet", { user: "alice", ws: wsA }), "GET /api/wallet");
     expectSuspended(await call(app!, "POST", "/api/wallet/deduct", { user: "alice", ws: wsA, body: { amount: 1, reason: "x" } }), "POST /api/wallet/deduct");
-    expectSuspended(await call(app!, "POST", "/api/payments/create-order", { user: "alice", ws: wsA, body: { amount: 100 } }), "POST /api/payments/create-order");
+    expectSuspended(
+      await call(app!, "POST", "/api/payments/create-order", { user: "alice", ws: wsA, body: { amount: 100 } }),
+      "POST /api/payments/create-order",
+    );
     expectSuspended(await call(app!, "GET", "/api/notifications", { user: "alice", ws: wsA }), "GET /api/notifications");
     expectSuspended(await call(app!, "POST", "/api/records", { user: "alice", ws: wsA, body: { title: "t" } }), "POST /api/records");
 
@@ -368,7 +406,13 @@ describe("suspension enforcement in the assembled max-compatible app (story 1.10
     for (const e of exempted.sort((x, y) => rank(x) - rank(y))) {
       exemptAnswers[`${e.method} ${e.path}`] = (await call(app!, e.method, e.concrete, { user: "alice", ws: wsA, body: {} })).status;
     }
-    for (const sample of ["POST /api/ai/generate", "GET /api/wallet", "POST /api/wallet/deduct", "POST /api/privacy/consents", "DELETE /api/privacy/workspace"]) {
+    for (const sample of [
+      "POST /api/ai/generate",
+      "GET /api/wallet",
+      "POST /api/wallet/deduct",
+      "POST /api/privacy/consents",
+      "DELETE /api/privacy/workspace",
+    ]) {
       expect(swept).toContain(sample);
     }
     // Coverage: every route of the app is behind the suspension check, or on the allowlist, or on NOT_WORKSPACE_SCOPED.
@@ -398,7 +442,6 @@ describe("suspension enforcement in the assembled max-compatible app (story 1.10
     expect((await call(app!, "GET", "/api/notifications", { user: "bob", ws: wsB })).status).toBe(200);
     const bAi = await call(app!, "POST", "/api/ai/generate", { user: "bob", ws: wsB, body: { prompt: "hello" } });
     expect(bAi.status, bAi.text).toBe(B_AI_STATUS);
-
   });
 });
 
@@ -443,7 +486,9 @@ describe("operator suspension through platform-admin in the assembled max-compat
     expect((await call(app!, "DELETE", `/api/workspaces/${wsA}`, { user: "alice" })).status).toBe(403);
     expect(await db.prepare("SELECT suspended_reason FROM mw_workspaces WHERE id = ?").bind(wsA).first()).toEqual({ suspended_reason: "operator" });
     // The owner cannot lift it either.
-    expect((await call(app!, "POST", `/api/platform/workspaces/${wsA}/unsuspend`, { user: "alice", body: { reason: "please" }, env: operatorEnv })).status).toBe(403);
+    expect(
+      (await call(app!, "POST", `/api/platform/workspaces/${wsA}/unsuspend`, { user: "alice", body: { reason: "please" }, env: operatorEnv })).status,
+    ).toBe(403);
     expectSuspendedRow(await db.prepare("SELECT suspended FROM mw_workspaces WHERE id = ?").bind(wsA).first<{ suspended: number }>(), 1);
 
     const unsuspended = await asOperator("POST", `/api/platform/workspaces/${wsA}/unsuspend`, { reason: "resolved" });
@@ -452,7 +497,10 @@ describe("operator suspension through platform-admin in the assembled max-compat
     expect((await call(app!, "GET", "/api/wallet", { user: "carol", ws: wsA })).status).toBe(200);
 
     const audit = (
-      await db.prepare("SELECT actor_id, action, target_id, metadata_json FROM audit_events WHERE workspace_id = ? ORDER BY rowid").bind(wsA).all<{ actor_id: string; action: string; target_id: string; metadata_json: string }>()
+      await db
+        .prepare("SELECT actor_id, action, target_id, metadata_json FROM audit_events WHERE workspace_id = ? ORDER BY rowid")
+        .bind(wsA)
+        .all<{ actor_id: string; action: string; target_id: string; metadata_json: string }>()
     ).results;
     expect(audit.map((r) => [r.actor_id, r.action, r.target_id, (JSON.parse(r.metadata_json) as { reason: string }).reason])).toEqual([
       [OPERATOR, "platform.workspace.suspend", wsA, "chargeback fraud"],
@@ -485,7 +533,12 @@ describe("operator suspension through platform-admin in the assembled max-compat
     expect((JSON.parse(wallet.text) as { currentBalanceMilli: number }).currentBalanceMilli).toBe(12500);
     expect((await asOperator("POST", `/api/platform/workspaces/${wsA}/credits`, { amount: 12.5, idempotencyKey: "k" })).status).toBe(400);
     expect((await asOperator("POST", `/api/platform/workspaces/${wsA}/credits`, { amount: 1_000_000.001, reason: "r", idempotencyKey: "k" })).status).toBe(400);
-    const actions = (await db.prepare("SELECT action, metadata_json FROM audit_events WHERE workspace_id = ? ORDER BY rowid").bind(wsA).all<{ action: string; metadata_json: string }>()).results;
+    const actions = (
+      await db
+        .prepare("SELECT action, metadata_json FROM audit_events WHERE workspace_id = ? ORDER BY rowid")
+        .bind(wsA)
+        .all<{ action: string; metadata_json: string }>()
+    ).results;
     // Append-only: one pending row, one applied outcome naming it; the retry reused the row and added nothing.
     expect(actions.map((r) => [r.action, (JSON.parse(r.metadata_json) as { status: string }).status])).toEqual([
       ["platform.credits.grant", "pending"],
@@ -499,7 +552,11 @@ describe("platform-wide privacy records in the assembled max-compatible app (sto
     await resetAndMigrate(db, sql);
     const wsA = await newWorkspace("alice", "Workspace A");
     await joinAsMember(app!, wsA, "alice", "carol");
-    await db.prepare("INSERT INTO pa_user_approvals (user_id, status, decided_by, reason) VALUES ('carol', 'rejected', 'olivia', 'fraud'), ('alice', 'approved', 'olivia', 'ok')").run();
+    await db
+      .prepare(
+        "INSERT INTO pa_user_approvals (user_id, status, decided_by, reason) VALUES ('carol', 'rejected', 'olivia', 'fraud'), ('alice', 'approved', 'olivia', 'ok')",
+      )
+      .run();
     const other = await call(app!, "POST", "/api/privacy/export", { user: "alice", ws: wsA, body: { userId: "carol" } });
     expect(other.status, other.text.slice(0, 200)).toBe(201);
     const otherData = (JSON.parse(other.text) as { export_data: Record<string, unknown> }).export_data;
@@ -507,7 +564,9 @@ describe("platform-wide privacy records in the assembled max-compatible app (sto
     expect(other.text).not.toContain("fraud");
     const self = await call(app!, "POST", "/api/privacy/export", { user: "alice", ws: wsA, body: {} });
     expect(self.status).toBe(201);
-    expect((JSON.parse(self.text) as { export_data: Record<string, unknown> }).export_data.pa_user_approvals).toEqual([expect.objectContaining({ user_id: "alice", status: "approved" })]);
+    expect((JSON.parse(self.text) as { export_data: Record<string, unknown> }).export_data.pa_user_approvals).toEqual([
+      expect.objectContaining({ user_id: "alice", status: "approved" }),
+    ]);
   });
 });
 

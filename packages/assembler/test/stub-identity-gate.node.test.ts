@@ -24,7 +24,10 @@ describe("UC9.8 — stub identity is refused for production at assembly", () => 
     const result = assemble(blueprint, catalog);
     if (!result.ok) throw new Error(result.errors.join("; "));
     const source = result.files["src/identity.stub.ts"]!;
-    const stub = (await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)).stubIdentity as (c: unknown, next: () => Promise<unknown>) => Promise<Response | unknown>;
+    const stub = (await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`)).stubIdentity as (
+      c: unknown,
+      next: () => Promise<unknown>,
+    ) => Promise<Response | unknown>;
     const ctx = (env: Record<string, string>) => ({
       env,
       req: { header: (n: string) => (n === "x-test-user" ? "mallory" : undefined) },

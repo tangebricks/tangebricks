@@ -11,10 +11,7 @@ export interface AuthorBadgeProps {
 
 export function AuthorBadge({ testId, authorLabel, isAgent }: AuthorBadgeProps) {
   return (
-    <span
-      data-testid={testId}
-      className="px-2 py-0.5 rounded bg-sky-400/15 border border-sky-400/30 text-sky-300 font-mono text-[10px]"
-    >
+    <span data-testid={testId} className="px-2 py-0.5 rounded bg-sky-400/15 border border-sky-400/30 text-sky-300 font-mono text-[10px]">
       {isAgent ? "🤖 " : "👤 "}
       {authorLabel}
     </span>
@@ -37,15 +34,7 @@ export interface MaturityBadgeProps {
   isIntegration?: boolean;
 }
 
-export function MaturityBadge({
-  testId,
-  tier,
-  derivedTier,
-  blockers = [],
-  reason,
-  evidence,
-  isIntegration,
-}: MaturityBadgeProps) {
+export function MaturityBadge({ testId, tier, derivedTier, blockers = [], reason, evidence, isIntegration }: MaturityBadgeProps) {
   const [open, setOpen] = useState(false);
 
   let effectiveTier: DisplayMaturity;
@@ -72,12 +61,8 @@ export function MaturityBadge({
           : "bg-slate-500/20 text-slate-300 border-slate-500/40";
 
   const shortSha = evidence?.gitSha ? evidence.gitSha.slice(0, 7) : null;
-  const verifiedDate = evidence?.runAt
-    ? new Date(evidence.runAt).toISOString().split("T")[0]
-    : null;
-  const liveCheckDate = evidence?.liveVerifiedAt
-    ? new Date(evidence.liveVerifiedAt).toISOString().split("T")[0]
-    : null;
+  const verifiedDate = evidence?.runAt ? new Date(evidence.runAt).toISOString().split("T")[0] : null;
+  const liveCheckDate = evidence?.liveVerifiedAt ? new Date(evidence.liveVerifiedAt).toISOString().split("T")[0] : null;
 
   return (
     <div className="relative inline-block">
@@ -125,32 +110,20 @@ export function MaturityBadge({
 
           <div className="space-y-1 text-[11px] text-text-secondary">
             {shortSha ? (
-              <div>
-                {`Verified at ${shortSha}${verifiedDate ? ` on ${verifiedDate}` : ""}`}
-              </div>
+              <div>{`Verified at ${shortSha}${verifiedDate ? ` on ${verifiedDate}` : ""}`}</div>
             ) : (
               <div className="text-amber-300">Unverified (no run evidence)</div>
             )}
 
-            {evidence?.assertionCount !== undefined && (
-              <div>Assertions: {evidence.assertionCount}</div>
-            )}
+            {evidence?.assertionCount !== undefined && <div>Assertions: {evidence.assertionCount}</div>}
 
             {(isIntegration || evidence?.liveVerifiedAt !== undefined) && (
-              <div>
-                {liveCheckDate ? (
-                  <span>Live check: {liveCheckDate}</span>
-                ) : (
-                  <span className="text-amber-300">Never live-checked</span>
-                )}
-              </div>
+              <div>{liveCheckDate ? <span>Live check: {liveCheckDate}</span> : <span className="text-amber-300">Never live-checked</span>}</div>
             )}
 
             {blockers.length > 0 && (
               <div className="pt-1 border-t border-border space-y-1">
-                <div className="font-semibold text-amber-300 text-[10px] uppercase tracking-wider">
-                  Blockers:
-                </div>
+                <div className="font-semibold text-amber-300 text-[10px] uppercase tracking-wider">Blockers:</div>
                 <ul className="list-disc pl-4 space-y-0.5 text-text-muted text-[11px]">
                   {blockers.map((b, idx) => (
                     <li key={`${b}-${idx}`}>{humanizeBlocker(b)}</li>
@@ -159,11 +132,7 @@ export function MaturityBadge({
               </div>
             )}
 
-            {reason && (
-              <div className="pt-1 text-[10px] text-text-muted italic border-t border-border">
-                {reason}
-              </div>
-            )}
+            {reason && <div className="pt-1 text-[10px] text-text-muted italic border-t border-border">{reason}</div>}
           </div>
         </div>
       )}

@@ -16,14 +16,9 @@ export interface WebhookVerifyRequest {
   url?: string;
 }
 
-export type WebhookVerifyResult =
-  | { ok: true }
-  | { ok: false; reason: WebhookVerifyReason };
+export type WebhookVerifyResult = { ok: true } | { ok: false; reason: WebhookVerifyReason };
 
-function getHeader(
-  headers: Record<string, string | string[] | undefined> | Headers,
-  headerName: string,
-): string | undefined {
+function getHeader(headers: Record<string, string | string[] | undefined> | Headers, headerName: string): string | undefined {
   if (typeof (headers as Headers).get === "function") {
     const val = (headers as Headers).get(headerName);
     return val ?? undefined;
@@ -85,19 +80,14 @@ export async function verifyWithScheme(
   }
 
   const requiresTimestamp =
-    hasTimestampConfig ||
-    scheme.signedPayload.includes("{timestamp}") ||
-    (scheme.toleranceSec !== undefined && scheme.toleranceSec > 0);
+    hasTimestampConfig || scheme.signedPayload.includes("{timestamp}") || (scheme.toleranceSec !== undefined && scheme.toleranceSec > 0);
 
   if (requiresTimestamp && (timestamp === null || !timestampStr)) {
     return { ok: false, reason: "WEBHOOK_TIMESTAMP_MISSING" };
   }
 
   // 3. Tolerance replay check: default tolerance is 300 when a timestamp is present
-  const toleranceSec =
-    scheme.toleranceSec !== undefined
-      ? scheme.toleranceSec
-      : (hasTimestampConfig && nowSeconds !== undefined ? 300 : undefined);
+  const toleranceSec = scheme.toleranceSec !== undefined ? scheme.toleranceSec : hasTimestampConfig && nowSeconds !== undefined ? 300 : undefined;
 
   if (toleranceSec !== undefined && toleranceSec > 0 && timestamp !== null) {
     const currentSec = nowSeconds ?? Math.floor(Date.now() / 1000);
@@ -189,10 +179,7 @@ export async function verifyWithScheme(
       return { ok: false, reason: "WEBHOOK_SIGNATURE_MALFORMED" };
     }
     let publicKeyBytes: Uint8Array;
-    if (
-      scheme.secretEncoding === "base64" ||
-      (!/^[0-9a-fA-F]{64}$/.test(rawKey) && /^[A-Za-z0-9+/=]{43,44}$/.test(rawKey))
-    ) {
+    if (scheme.secretEncoding === "base64" || (!/^[0-9a-fA-F]{64}$/.test(rawKey) && /^[A-Za-z0-9+/=]{43,44}$/.test(rawKey))) {
       try {
         publicKeyBytes = fromBase64(rawKey);
       } catch {
@@ -214,13 +201,7 @@ export async function verifyWithScheme(
 
     let cryptoKey: Awaited<ReturnType<typeof crypto.subtle.importKey>>;
     try {
-      cryptoKey = await crypto.subtle.importKey(
-        "raw",
-        publicKeyBytes,
-        { name: "Ed25519" },
-        false,
-        ["verify"],
-      );
+      cryptoKey = await crypto.subtle.importKey("raw", publicKeyBytes, { name: "Ed25519" }, false, ["verify"]);
     } catch {
       return { ok: false, reason: "WEBHOOK_SIGNATURE_MALFORMED" };
     }
@@ -231,12 +212,7 @@ export async function verifyWithScheme(
         return { ok: false, reason: "WEBHOOK_SIGNATURE_MALFORMED" };
       }
       try {
-        const valid = await crypto.subtle.verify(
-          "Ed25519",
-          cryptoKey,
-          candidateBytes,
-          payloadBytes,
-        );
+        const valid = await crypto.subtle.verify("Ed25519", cryptoKey, candidateBytes, payloadBytes);
         if (valid) {
           return { ok: true };
         }
@@ -276,18 +252,8 @@ export async function verifyWithScheme(
   }
 
   const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    secretBytes,
-    { name: "HMAC", hash: hashAlg },
-    false,
-    ["sign"],
-  );
-  const signatureBuf = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    enc.encode(signedPayload),
-  );
+  const key = await crypto.subtle.importKey("raw", secretBytes, { name: "HMAC", hash: hashAlg }, false, ["sign"]);
+  const signatureBuf = await crypto.subtle.sign("HMAC", key, enc.encode(signedPayload));
   const expectedBytes = new Uint8Array(signatureBuf);
 
   // 8. Constant-time comparison

@@ -152,16 +152,11 @@ export class AuditTrailService {
     }
 
     const where = whereClauses.length > 0 ? whereClauses.join(" AND ") : undefined;
-    const rows = await scoped(this.db, workspaceId).select<RawAuditRow>(
-      "audit_events",
-      where,
-      params,
-      {
-        orderBy: "created_at DESC",
-        limit: filter.limit || 50,
-        offset: filter.offset || 0,
-      },
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawAuditRow>("audit_events", where, params, {
+      orderBy: "created_at DESC",
+      limit: filter.limit || 50,
+      offset: filter.offset || 0,
+    });
     return rows.map((r) => this.parseRow(r));
   }
 
@@ -170,18 +165,7 @@ export class AuditTrailService {
    */
   async exportCsv(workspaceId: string, filter: AuditListFilter = {}): Promise<string> {
     const events = await this.list(workspaceId, { ...filter, limit: 1000 });
-    const headers = [
-      "id",
-      "timestamp",
-      "actor_id",
-      "actor_type",
-      "actor_email",
-      "action",
-      "target_type",
-      "target_id",
-      "ip_address",
-      "metadata",
-    ];
+    const headers = ["id", "timestamp", "actor_id", "actor_type", "actor_email", "action", "target_type", "target_id", "ip_address", "metadata"];
 
     const escapeCsv = (val: string | null | undefined): string => {
       if (val === null || val === undefined) return '""';
@@ -192,18 +176,20 @@ export class AuditTrailService {
     const lines = [headers.join(",")];
 
     for (const e of events) {
-      lines.push([
-        escapeCsv(e.id),
-        escapeCsv(e.created_at),
-        escapeCsv(e.actor_id),
-        escapeCsv(e.actor_type),
-        escapeCsv(e.actor_email),
-        escapeCsv(e.action),
-        escapeCsv(e.target_type),
-        escapeCsv(e.target_id),
-        escapeCsv(e.ip_address),
-        escapeCsv(JSON.stringify(e.metadata)),
-      ].join(","));
+      lines.push(
+        [
+          escapeCsv(e.id),
+          escapeCsv(e.created_at),
+          escapeCsv(e.actor_id),
+          escapeCsv(e.actor_type),
+          escapeCsv(e.actor_email),
+          escapeCsv(e.action),
+          escapeCsv(e.target_type),
+          escapeCsv(e.target_id),
+          escapeCsv(e.ip_address),
+          escapeCsv(JSON.stringify(e.metadata)),
+        ].join(","),
+      );
     }
 
     return lines.join("\n");

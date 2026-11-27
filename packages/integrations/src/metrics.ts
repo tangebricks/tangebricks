@@ -10,19 +10,15 @@ export interface ImportTokenMetrics {
   readonly perOperationTokens: Record<string, number>;
 }
 
-
 export function countO200kTokens(text: string): number {
   return encode(text).length;
 }
-
 
 /**
  * Computes compact, detail, and search-page token metrics for an integration manifest
  * using `gpt-tokenizer` (`o200k_base`).
  */
-export function measureIntegrationTokenMetrics(
-  manifest: IntegrationManifestFile,
-): ImportTokenMetrics {
+export function measureIntegrationTokenMetrics(manifest: IntegrationManifestFile): ImportTokenMetrics {
   const projectedNodes = projectIntegrationToNodes(manifest);
 
   const compactSummary = {
@@ -95,4 +91,3 @@ export function measureIntegrationTokenMetrics(
     perOperationTokens,
   };
 }
-

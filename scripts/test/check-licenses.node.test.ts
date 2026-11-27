@@ -34,19 +34,13 @@ describe("scripts/check-licenses.ts — checkLicenses", () => {
   it("AND_EXPRESSION: Apache-2.0 AND LGPL-3.0-or-later passes only via the @img/sharp- exception", () => {
     const license = "Apache-2.0 AND LGPL-3.0-or-later";
     expect(checkLicenses({ [license]: [pkg("@img/sharp-win32-x64"), pkg("@img/sharp-linux-x64")] })).toEqual([]);
-    expect(checkLicenses({ [license]: [pkg("not-sharp")] })).toEqual([
-      { name: "not-sharp", version: "1.0.0", license },
-    ]);
+    expect(checkLicenses({ [license]: [pkg("not-sharp")] })).toEqual([{ name: "not-sharp", version: "1.0.0", license }]);
   });
 
   it("AND_EXPRESSION: standalone LGPL-3.0-or-later passes only via the @img/sharp-libvips- exception", () => {
     const license = "LGPL-3.0-or-later";
-    expect(
-      checkLicenses({ [license]: [pkg("@img/sharp-libvips-linux-x64"), pkg("@img/sharp-libvips-linuxmusl-x64")] }),
-    ).toEqual([]);
-    expect(checkLicenses({ [license]: [pkg("@img/sharp-linux-x64")] })).toEqual([
-      { name: "@img/sharp-linux-x64", version: "1.0.0", license },
-    ]);
+    expect(checkLicenses({ [license]: [pkg("@img/sharp-libvips-linux-x64"), pkg("@img/sharp-libvips-linuxmusl-x64")] })).toEqual([]);
+    expect(checkLicenses({ [license]: [pkg("@img/sharp-linux-x64")] })).toEqual([{ name: "@img/sharp-linux-x64", version: "1.0.0", license }]);
   });
 
   it("GROUPING: parentheses are respected and AND binds tighter than OR", () => {
@@ -88,9 +82,7 @@ describe("scripts/check-licenses.ts — checkLicenses", () => {
   });
 
   it("NAMED_EXCEPTION: splaytree-ts and wellknown pass, each with a reason", () => {
-    expect(
-      checkLicenses({ "BDS-3-Clause": [pkg("splaytree-ts", "1.0.2")], BSD: [pkg("wellknown", "0.5.0")] }),
-    ).toEqual([]);
+    expect(checkLicenses({ "BDS-3-Clause": [pkg("splaytree-ts", "1.0.2")], BSD: [pkg("wellknown", "0.5.0")] })).toEqual([]);
     for (const e of LICENSE_EXCEPTIONS) {
       expect(e.reason.trim().length).toBeGreaterThan(0);
     }

@@ -97,19 +97,11 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
 
     const modal = screen.getByTestId("brick-enable-modal");
     expect(modal).toBeDefined();
-    expect(screen.getByTestId("brick-enable-requires").textContent).toContain(
-      "Also turns on: multi-workspace (required)",
-    );
-    expect(screen.getByTestId("brick-enable-req-multi-workspace").textContent).toContain(
-      "provides workspace-context",
-    );
-    expect(screen.getByTestId("brick-enable-adds").textContent).toContain(
-      "migrations/0001_credit_wallet.sql",
-    );
+    expect(screen.getByTestId("brick-enable-requires").textContent).toContain("Also turns on: multi-workspace (required)");
+    expect(screen.getByTestId("brick-enable-req-multi-workspace").textContent).toContain("provides workspace-context");
+    expect(screen.getByTestId("brick-enable-adds").textContent).toContain("migrations/0001_credit_wallet.sql");
     expect(screen.getByTestId("brick-enable-adds").textContent).toContain("/api/wallet");
-    expect(screen.getByTestId("brick-enable-adds").textContent).toContain(
-      "credit-wallet.debit (action)",
-    );
+    expect(screen.getByTestId("brick-enable-adds").textContent).toContain("credit-wallet.debit (action)");
 
     fireEvent.click(screen.getByTestId("brick-enable-confirm"));
 
@@ -147,15 +139,9 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
 
     // Click Turn on on outbound-webhooks (conflicts with enabled subscription-plans)
     fireEvent.click(screen.getByTestId("catalog-brick-enable-outbound-webhooks"));
-    expect(screen.getByTestId("brick-enable-conflicts").textContent).toContain(
-      "subscription-plans",
-    );
-    expect(screen.getByTestId("brick-enable-conflicts").textContent).toContain(
-      "Both mount routes under the /api/subscriptions prefix",
-    );
-    expect(
-      (screen.getByTestId("brick-enable-confirm") as HTMLButtonElement).disabled,
-    ).toBe(true);
+    expect(screen.getByTestId("brick-enable-conflicts").textContent).toContain("subscription-plans");
+    expect(screen.getByTestId("brick-enable-conflicts").textContent).toContain("Both mount routes under the /api/subscriptions prefix");
+    expect((screen.getByTestId("brick-enable-confirm") as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.click(screen.getByTestId("brick-enable-cancel"));
 
@@ -165,9 +151,7 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
 
     const confirmBtn = screen.getByTestId("brick-enable-confirm") as HTMLButtonElement;
     expect(confirmBtn.disabled).toBe(true);
-    expect(screen.getByTestId("experimental-confirm-box").textContent).toContain(
-      "I understand this brick is experimental: Executes in isolated Worker",
-    );
+    expect(screen.getByTestId("experimental-confirm-box").textContent).toContain("I understand this brick is experimental: Executes in isolated Worker");
 
     fireEvent.click(screen.getByTestId("experimental-confirm-checkbox"));
     expect(confirmBtn.disabled).toBe(false);
@@ -176,11 +160,7 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
   it("3. displays dependent bricks and referencing workflows in Disable Brick Impact modal before dispatching remove_brick", () => {
     const withWallet: BlueprintState = {
       ...baseBlueprint,
-      bricks: [
-        ...baseBlueprint.bricks,
-        { id: "multi-workspace", config: {} },
-        { id: "credit-wallet", config: { creditsPerUnit: 1, minOrderAmount: 1 } },
-      ],
+      bricks: [...baseBlueprint.bricks, { id: "multi-workspace", config: {} }, { id: "credit-wallet", config: { creditsPerUnit: 1, minOrderAmount: 1 } }],
     };
 
     useStudioStore.getState().resetStore({
@@ -197,16 +177,12 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
     // Clicking Turn off on multi-workspace warns that credit-wallet and subscription-plans depend on workspace-context
     fireEvent.click(screen.getByTestId("enabled-brick-disable-multi-workspace"));
     expect(screen.getByTestId("brick-disable-modal")).toBeDefined();
-    expect(screen.getByTestId("brick-disable-dep-credit-wallet").textContent).toContain(
-      "requires workspace-context",
-    );
+    expect(screen.getByTestId("brick-disable-dep-credit-wallet").textContent).toContain("requires workspace-context");
     fireEvent.click(screen.getByTestId("brick-disable-cancel"));
 
     // Clicking Turn off on credit-wallet warns that Checkout Flow (wf-checkout) uses credit-wallet.debit
     fireEvent.click(screen.getByTestId("enabled-brick-disable-credit-wallet"));
-    expect(screen.getByTestId("brick-disable-wf-wf-checkout").textContent).toContain(
-      "Checkout Flow (wf-checkout): nodes [n2]",
-    );
+    expect(screen.getByTestId("brick-disable-wf-wf-checkout").textContent).toContain("Checkout Flow (wf-checkout): nodes [n2]");
   });
 
   it("4. renders auto-generated Inspector forms for 3 distinct brick settings shapes (integer + slider, enum select, boolean switch), validates live, and dispatches configure_brick + bind_secret_ref", async () => {
@@ -222,9 +198,7 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
       let nextBricks = currentState.bricks;
       let nextSecrets = currentState.secretRefs;
       if (op.type === "configure_brick") {
-        nextBricks = currentState.bricks.map((b) =>
-          b.id === op.brickId ? { ...b, config: op.config } : b,
-        );
+        nextBricks = currentState.bricks.map((b) => (b.id === op.brickId ? { ...b, config: op.config } : b));
       } else if (op.type === "bind_secret_ref") {
         nextSecrets = [
           ...currentState.secretRefs,
@@ -261,11 +235,7 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
 
     const stateWith3Bricks: BlueprintState = {
       ...baseBlueprint,
-      bricks: [
-        ...baseBlueprint.bricks,
-        { id: "multi-workspace", config: {} },
-        { id: "credit-wallet", config: { creditsPerUnit: 1, minOrderAmount: 1 } },
-      ],
+      bricks: [...baseBlueprint.bricks, { id: "multi-workspace", config: {} }, { id: "credit-wallet", config: { creditsPerUnit: 1, minOrderAmount: 1 } }],
     };
 
     useStudioStore.getState().resetStore({
@@ -281,23 +251,15 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
 
     // Brick 1: credit-wallet (integer input + slider + live min/max validation)
     fireEvent.click(screen.getByTestId("enabled-brick-card-credit-wallet"));
-    const creditsInput = screen.getByTestId(
-      "setting-input-creditsPerUnit",
-    ) as HTMLInputElement;
-    const creditsSlider = screen.getByTestId(
-      "setting-slider-creditsPerUnit",
-    ) as HTMLInputElement;
+    const creditsInput = screen.getByTestId("setting-input-creditsPerUnit") as HTMLInputElement;
+    const creditsSlider = screen.getByTestId("setting-slider-creditsPerUnit") as HTMLInputElement;
     expect(creditsInput.value).toBe("1");
     expect(creditsSlider.value).toBe("1");
 
     // Out-of-bounds value (0 < min 1) shows field error immediately and disables Save
     fireEvent.change(creditsInput, { target: { value: "0" } });
-    expect(screen.getByTestId("setting-error-creditsPerUnit").textContent).toContain(
-      "between 1 and 1000000",
-    );
-    expect(
-      (screen.getByTestId("brick-settings-save") as HTMLButtonElement).disabled,
-    ).toBe(true);
+    expect(screen.getByTestId("setting-error-creditsPerUnit").textContent).toContain("between 1 and 1000000");
+    expect((screen.getByTestId("brick-settings-save") as HTMLButtonElement).disabled).toBe(true);
 
     // Valid integer (25) clears error and enables Save
     fireEvent.change(creditsInput, { target: { value: "25" } });
@@ -317,9 +279,7 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
 
     // Brick 2: omnichannel-outbound (enum select dropdown)
     fireEvent.click(screen.getByTestId("enabled-brick-card-omnichannel-outbound"));
-    const channelSelect = screen.getByTestId(
-      "setting-select-defaultChannel",
-    ) as HTMLSelectElement;
+    const channelSelect = screen.getByTestId("setting-select-defaultChannel") as HTMLSelectElement;
     expect(channelSelect.value).toBe("email");
     fireEvent.change(channelSelect, { target: { value: "slack" } });
     fireEvent.click(screen.getByTestId("brick-settings-save"));
@@ -352,17 +312,10 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
 
     // Secret reference binding on core-auth: rejects raw plaintext and binds sec_* handle
     fireEvent.click(screen.getByTestId("enabled-brick-card-core-auth"));
-    const secretInput = screen.getByTestId(
-      "secret-ref-input-BETTER_AUTH_SECRET",
-    ) as HTMLInputElement;
+    const secretInput = screen.getByTestId("secret-ref-input-BETTER_AUTH_SECRET") as HTMLInputElement;
     fireEvent.change(secretInput, { target: { value: "sk_" + "live_plaintext_secret" } });
-    expect(screen.getByTestId("secret-ref-error-BETTER_AUTH_SECRET").textContent).toContain(
-      "opaque handle matching sec_*",
-    );
-    expect(
-      (screen.getByTestId("secret-ref-bind-BETTER_AUTH_SECRET") as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    expect(screen.getByTestId("secret-ref-error-BETTER_AUTH_SECRET").textContent).toContain("opaque handle matching sec_*");
+    expect((screen.getByTestId("secret-ref-bind-BETTER_AUTH_SECRET") as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.change(secretInput, { target: { value: "sec_better_auth_prod" } });
     expect(screen.queryByTestId("secret-ref-error-BETTER_AUTH_SECRET")).toBeNull();
@@ -412,12 +365,8 @@ describe("Brick catalog enable/disable & auto-generated JSON-Schema settings ins
     await waitFor(() => {
       expect(screen.getByTestId("mutation-error-alert")).toBeDefined();
     });
-    expect(screen.getByTestId("mutation-error-alert").textContent).toContain(
-      "422",
-    );
+    expect(screen.getByTestId("mutation-error-alert").textContent).toContain("422");
     // Server state is preserved — cron-alarms was NOT fake-enabled locally
-    expect(
-      useStudioStore.getState().projectState?.bricks.some((b) => b.id === "cron-alarms"),
-    ).toBe(false);
+    expect(useStudioStore.getState().projectState?.bricks.some((b) => b.id === "cron-alarms")).toBe(false);
   });
 });

@@ -28,7 +28,6 @@ interface Seen {
   body: string | null;
 }
 
-
 // A fetch that never answers but honours its abort signal (as the platform fetch does).
 const hangingFetch = (_url: string, init?: RequestInit) =>
   new Promise<Response>((_, reject) => {
@@ -98,7 +97,15 @@ describe("WhatsApp Cloud API adapter: send", () => {
       template: {
         name: "order_update",
         language: { code: "en_US" },
-        components: [{ type: "body", parameters: [{ type: "text", text: "Asha" }, { type: "text", text: "shipped" }] }],
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: "Asha" },
+              { type: "text", text: "shipped" },
+            ],
+          },
+        ],
       },
     });
   });
@@ -130,23 +137,39 @@ describe("WhatsApp Cloud API adapter: send", () => {
       retryable: true,
       retryAfterMs: 2000,
     });
-    expect(await adapter(() => new Response("bad gateway", { status: 502 })).a.send(channel(), { recipient: "+919876543210", body: "x" }, creds)).toMatchObject({
-      status: "failed",
-      retryable: false,
-    });
-    expect(await adapter(() => new Response("busy", { status: 503, headers: { "retry-after": "1" } })).a.send(channel(), { recipient: "+919876543210", body: "x" }, creds)).toMatchObject({
+    expect(await adapter(() => new Response("bad gateway", { status: 502 })).a.send(channel(), { recipient: "+919876543210", body: "x" }, creds)).toMatchObject(
+      {
+        status: "failed",
+        retryable: false,
+      },
+    );
+    expect(
+      await adapter(() => new Response("busy", { status: 503, headers: { "retry-after": "1" } })).a.send(
+        channel(),
+        { recipient: "+919876543210", body: "x" },
+        creds,
+      ),
+    ).toMatchObject({
       status: "failed",
       retryable: true,
     });
     const down = adapter(() => {
       throw new TypeError("network down");
     });
-    expect(await down.a.send(channel(), { recipient: "+919876543210", body: "x" }, creds)).toEqual({ status: "failed", error: "META_UNKNOWN_OUTCOME", retryable: false });
+    expect(await down.a.send(channel(), { recipient: "+919876543210", body: "x" }, creds)).toEqual({
+      status: "failed",
+      error: "META_UNKNOWN_OUTCOME",
+      retryable: false,
+    });
   });
 
   it("a fetch that times out, or a body that never finishes, is UNKNOWN_OUTCOME for send and unavailable for verify", async () => {
     const timedOut = createMetaWhatsAppAdapter({ fetch: hangingFetch, resolveHost: null, timeoutMs: 30 });
-    expect(await timedOut.send(channel(), { recipient: "+919876543210", body: "x" }, creds)).toEqual({ status: "failed", error: "META_UNKNOWN_OUTCOME", retryable: false });
+    expect(await timedOut.send(channel(), { recipient: "+919876543210", body: "x" }, creds)).toEqual({
+      status: "failed",
+      error: "META_UNKNOWN_OUTCOME",
+      retryable: false,
+    });
     expect(await timedOut.verifySender(channel(), creds)).toEqual({ method: "unavailable", error: "META_UNKNOWN_OUTCOME" });
     expect(await adapter(() => endlessBody(200), 30).a.send(channel(), { recipient: "+919876543210", body: "x" }, creds)).toEqual({
       status: "failed",
@@ -157,7 +180,9 @@ describe("WhatsApp Cloud API adapter: send", () => {
   });
 
   it("a 2xx without messages[0].id is never sent", async () => {
-    expect(await adapter(() => json({ messaging_product: "whatsapp", messages: [] })).a.send(channel(), { recipient: "+919876543210", body: "x" }, creds)).toEqual({
+    expect(
+      await adapter(() => json({ messaging_product: "whatsapp", messages: [] })).a.send(channel(), { recipient: "+919876543210", body: "x" }, creds),
+    ).toEqual({
       status: "failed",
       error: "META_NO_MESSAGE_ID",
       retryable: false,
@@ -226,22 +251,33 @@ describe("WhatsApp Cloud API adapter: status webhook", () => {
     const { a } = adapter(() => json({}));
     const body = JSON.stringify(delivered);
     expect(await a.parseStatusWebhook!(body, new Headers(), creds, channel())).toEqual({ kind: "invalid" });
-    expect(await a.parseStatusWebhook!(body, new Headers({ "x-hub-signature-256": await signature(body, "other") }), creds, channel())).toEqual({ kind: "invalid" });
-    expect(await a.parseStatusWebhook!(`${body} `, new Headers({ "x-hub-signature-256": await signature(body) }), creds, channel())).toEqual({ kind: "invalid" });
-    expect(await a.parseStatusWebhook!(body, new Headers({ "x-hub-signature-256": await signature(body) }), { accessToken: TOKEN }, channel())).toEqual({ kind: "invalid" });
+    expect(await a.parseStatusWebhook!(body, new Headers({ "x-hub-signature-256": await signature(body, "other") }), creds, channel())).toEqual({
+      kind: "invalid",
+    });
+    expect(await a.parseStatusWebhook!(`${body} `, new Headers({ "x-hub-signature-256": await signature(body) }), creds, channel())).toEqual({
+      kind: "invalid",
+    });
+    expect(await a.parseStatusWebhook!(body, new Headers({ "x-hub-signature-256": await signature(body) }), { accessToken: TOKEN }, channel())).toEqual({
+      kind: "invalid",
+    });
   });
 
   it("statuses for another phone-number id, and inbound messages, are ignored", async () => {
     const { a } = adapter(() => json({}));
     const body = JSON.stringify(delivered);
-    expect(await a.parseStatusWebhook!(body, new Headers({ "x-hub-signature-256": await signature(body) }), creds, channel(undefined, "5550001"))).toEqual({ kind: "ignored" });
+    expect(await a.parseStatusWebhook!(body, new Headers({ "x-hub-signature-256": await signature(body) }), creds, channel(undefined, "5550001"))).toEqual({
+      kind: "ignored",
+    });
     const inboundBody = JSON.stringify(inbound);
-    expect(await a.parseStatusWebhook!(inboundBody, new Headers({ "x-hub-signature-256": await signature(inboundBody) }), creds, channel())).toEqual({ kind: "ignored" });
+    expect(await a.parseStatusWebhook!(inboundBody, new Headers({ "x-hub-signature-256": await signature(inboundBody) }), creds, channel())).toEqual({
+      kind: "ignored",
+    });
   });
 
   it("the GET verify challenge echoes hub.challenge only for the channel's verify token", () => {
     const { a } = adapter(() => json({}));
-    const q = (token: string, challenge = "1158201444", mode = "subscribe") => new URLSearchParams({ "hub.mode": mode, "hub.verify_token": token, "hub.challenge": challenge });
+    const q = (token: string, challenge = "1158201444", mode = "subscribe") =>
+      new URLSearchParams({ "hub.mode": mode, "hub.verify_token": token, "hub.challenge": challenge });
     expect(a.answerWebhookChallenge!(q("verify-me-123"), creds, channel())).toBe("1158201444");
     expect(a.answerWebhookChallenge!(q("wrong"), creds, channel())).toBeNull();
     expect(a.answerWebhookChallenge!(q("verify-me-123", "1", "unsubscribe"), creds, channel())).toBeNull();

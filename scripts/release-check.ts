@@ -79,9 +79,7 @@ export function runReleaseCheckCli(argv: string[] = process.argv.slice(2)): numb
   return 0;
 }
 
-const isMain =
-  process.argv[1] !== undefined &&
-  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+const isMain = process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 
 if (isMain) {
   process.exit(runReleaseCheckCli());

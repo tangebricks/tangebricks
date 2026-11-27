@@ -107,7 +107,7 @@ export function createJobQueueRoutes(): Hono<JobEnv> {
       workspaceId,
       jobId,
       parsed.success ? parsed.data.result : undefined,
-      parsed.success ? parsed.data.attemptCount : undefined
+      parsed.success ? parsed.data.attemptCount : undefined,
     );
 
     if (!ok) {
@@ -138,12 +138,7 @@ export function createJobQueueRoutes(): Hono<JobEnv> {
     }
 
     const service = c.get("jobService") || new JobQueueService(c.env.DB);
-    const job = await service.fail(
-      workspaceId,
-      jobId,
-      parsed.data.error,
-      parsed.data.attemptCount
-    );
+    const job = await service.fail(workspaceId, jobId, parsed.data.error, parsed.data.attemptCount);
 
     if (!job) {
       return c.json({ error: "Job not found" }, 404);

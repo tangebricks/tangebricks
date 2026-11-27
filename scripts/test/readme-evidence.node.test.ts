@@ -80,7 +80,9 @@ describe("README generated section (readme:check)", () => {
   });
 
   it("H12_NOTE: the H12 row carries the hand-edit note", () => {
-    const row = extractWhatWorks(readme())!.split("\n").find((l) => l.startsWith("| H12 |") && l.includes("hand-edited"));
+    const row = extractWhatWorks(readme())!
+      .split("\n")
+      .find((l) => l.startsWith("| H12 |") && l.includes("hand-edited"));
     expect(row).toBeDefined();
     expect(row).toContain("result file edited by hand on 2026-10-28 (commit 8f83415) without a re-run");
   });
@@ -205,9 +207,7 @@ describe("live evidence integrity (evidence/deployed/integrity.json)", () => {
   });
 
   it("LIVE_LABEL_CHANGED: dropping H12's pinned hand-edit status or note fails", () => {
-    expect(KNOWN_HAND_EDITS["evidence/deployed/h12-result.json"]?.note).toBe(
-      "result file edited by hand on 2026-10-28 (commit 8f83415) without a re-run",
-    );
+    expect(KNOWN_HAND_EDITS["evidence/deployed/h12-result.json"]?.note).toBe("result file edited by hand on 2026-10-28 (commit 8f83415) without a re-run");
     for (const mutate of [
       (e: Record<string, unknown>) => {
         e.status = "recorded";

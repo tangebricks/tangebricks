@@ -1,28 +1,6 @@
-import {
-  Background,
-  BackgroundVariant,
-  Controls,
-  Handle,
-  MiniMap,
-  Position,
-  ReactFlow,
-  ReactFlowProvider,
-  useReactFlow,
-} from "@xyflow/react";
-import type {
-  Connection,
-  Edge,
-  Node,
-  NodeProps,
-} from "@xyflow/react";
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Background, BackgroundVariant, Controls, Handle, MiniMap, Position, ReactFlow, ReactFlowProvider, useReactFlow } from "@xyflow/react";
+import type { Connection, Edge, Node, NodeProps } from "@xyflow/react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent, MouseEvent } from "react";
 import { getActiveRole, useStudioStore } from "../store.ts";
 import type { NodeLiveTelemetryState } from "../store.ts";
@@ -57,8 +35,7 @@ if (typeof globalThis.ResizeObserver === "undefined") {
     unobserve() {}
     disconnect() {}
   }
-  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
-    PolyfillResizeObserver;
+  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = PolyfillResizeObserver;
 }
 
 export interface StudioCanvasNodeData extends Record<string, unknown> {
@@ -118,17 +95,8 @@ export function computeEdgeItemCount(
         return null;
       }
     }
-    const portVal =
-      sourceHandle in rec
-        ? rec[sourceHandle]
-        : "out" in rec
-          ? rec.out
-          : rec;
-    const count = Array.isArray(portVal)
-      ? portVal.length
-      : portVal === null || portVal === undefined
-        ? 0
-        : 1;
+    const portVal = sourceHandle in rec ? rec[sourceHandle] : "out" in rec ? rec.out : rec;
+    const count = Array.isArray(portVal) ? portVal.length : portVal === null || portVal === undefined ? 0 : 1;
     if (count === 0 && sourceHandle !== "out") {
       return null;
     }
@@ -165,12 +133,7 @@ function classifyNodeRole(type: string): {
       outputPort: "payload:json",
     };
   }
-  if (
-    type.startsWith("logic.") ||
-    type.startsWith("transform.") ||
-    type.startsWith("util.") ||
-    type.startsWith("core.")
-  ) {
+  if (type.startsWith("logic.") || type.startsWith("transform.") || type.startsWith("util.") || type.startsWith("core.")) {
     return {
       role: "logic",
       icon: "⑂",
@@ -246,13 +209,7 @@ export function computeDeterministicDagLayout(
     ids.forEach((id, idx) => {
       const nodeObj = nodes.find((n) => n.id === id);
       const saved = existingLayout?.[id] ?? nodeObj?.position;
-      if (
-        saved &&
-        typeof saved.x === "number" &&
-        Number.isFinite(saved.x) &&
-        typeof saved.y === "number" &&
-        Number.isFinite(saved.y)
-      ) {
+      if (saved && typeof saved.x === "number" && Number.isFinite(saved.x) && typeof saved.y === "number" && Number.isFinite(saved.y)) {
         result[id] = { x: saved.x, y: saved.y };
       } else {
         result[id] = {
@@ -266,10 +223,7 @@ export function computeDeterministicDagLayout(
   return result;
 }
 
-export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
-  data,
-  selected,
-}: NodeProps<Node<StudioCanvasNodeData>>) {
+export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({ data, selected }: NodeProps<Node<StudioCanvasNodeData>>) {
   const selectItem = useStudioStore((s) => s.selectItem);
   const roleMeta = classifyNodeRole(data.nodeType);
 
@@ -296,9 +250,7 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
         e.preventDefault();
         handleActivate();
         setTimeout(() => {
-          const inspectorEl = document.querySelector<HTMLElement>(
-            '[data-testid="inspector-node-tab-params"], [data-testid="inspector-node-label-input"]',
-          );
+          const inspectorEl = document.querySelector<HTMLElement>('[data-testid="inspector-node-tab-params"], [data-testid="inspector-node-label-input"]');
           inspectorEl?.focus();
         }, 0);
         return;
@@ -308,12 +260,7 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
         handleActivate();
         return;
       }
-      if (
-        !e.ctrlKey &&
-        !e.metaKey &&
-        !e.altKey &&
-        e.key.toLowerCase() === "c"
-      ) {
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "c") {
         e.preventDefault();
         e.stopPropagation();
         data.onOpenConnectMenu?.(data.nodeId);
@@ -340,16 +287,8 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
     [handleActivate, data],
   );
 
-  const inputPorts =
-    data.inputs && data.inputs.length > 0
-      ? data.inputs
-      : data.role !== "trigger"
-        ? [{ id: "in", dataType: "any" as const }]
-        : [];
-  const outputPorts =
-    data.outputs && data.outputs.length > 0
-      ? data.outputs
-      : [{ id: "out", dataType: "any" as const }];
+  const inputPorts = data.inputs && data.inputs.length > 0 ? data.inputs : data.role !== "trigger" ? [{ id: "in", dataType: "any" as const }] : [];
+  const outputPorts = data.outputs && data.outputs.length > 0 ? data.outputs : [{ id: "out", dataType: "any" as const }];
 
   const primaryInPort = inputPorts[0];
   const primaryOutPort = outputPorts[0];
@@ -394,10 +333,7 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
     >
       {/* Typed Input Port Handles */}
       {inputPorts.map((port, idx) => {
-        const topPct =
-          inputPorts.length === 1
-            ? "50%"
-            : `${Math.round(((idx + 1) / (inputPorts.length + 1)) * 100)}%`;
+        const topPct = inputPorts.length === 1 ? "50%" : `${Math.round(((idx + 1) / (inputPorts.length + 1)) * 100)}%`;
         return (
           <Handle
             key={`in-${port.id}`}
@@ -418,21 +354,10 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
       {/* Header: Role Icon + Label + Multi-select + Badges */}
       <div className="flex items-start justify-between gap-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span
-            title={`Role: ${data.role}`}
-            className="px-1.5 py-0.5 rounded bg-surface-control text-accent text-[11px] font-bold shrink-0"
-          >
+          <span title={`Role: ${data.role}`} className="px-1.5 py-0.5 rounded bg-surface-control text-accent text-[11px] font-bold shrink-0">
             {roleMeta.icon}
           </span>
-          <span
-            className={`font-bold truncate ${
-              data.diffStatus === "removed"
-                ? "line-through text-rose-300"
-                : "text-text-primary"
-            }`}
-          >
-            {data.label}
-          </span>
+          <span className={`font-bold truncate ${data.diffStatus === "removed" ? "line-through text-rose-300" : "text-text-primary"}`}>{data.label}</span>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -508,18 +433,12 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
             data-testid={`node-telemetry-badge-${data.nodeId}`}
             data-status={data.telemetry.status}
             data-reduced-motion={data.prefersReducedMotion ? "true" : "false"}
-            title={
-              data.telemetry.status === "failed"
-                ? (data.telemetry.errorStack ?? "Step execution failed")
-                : `Status: ${data.telemetry.status}`
-            }
+            title={data.telemetry.status === "failed" ? (data.telemetry.errorStack ?? "Step execution failed") : `Status: ${data.telemetry.status}`}
             className={`px-2 py-0.5 rounded border text-[10px] font-bold flex items-center justify-between gap-1.5 ${
               data.telemetry.status === "queued"
                 ? "bg-slate-800/90 border-slate-600 text-slate-200"
                 : data.telemetry.status === "running"
-                  ? `bg-sky-500/20 border-sky-400 text-sky-200 ${
-                      data.prefersReducedMotion ? "" : "animate-pulse"
-                    }`
+                  ? `bg-sky-500/20 border-sky-400 text-sky-200 ${data.prefersReducedMotion ? "" : "animate-pulse"}`
                   : data.telemetry.status === "succeeded"
                     ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-300"
                     : data.telemetry.status === "failed"
@@ -530,11 +449,7 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
             <span className="inline-flex items-center gap-1">
               <span
                 aria-hidden="true"
-                className={
-                  data.telemetry.status === "running" && !data.prefersReducedMotion
-                    ? "inline-block animate-spin"
-                    : "inline-block"
-                }
+                className={data.telemetry.status === "running" && !data.prefersReducedMotion ? "inline-block animate-spin" : "inline-block"}
               >
                 {data.telemetry.status === "queued"
                   ? "⏳"
@@ -559,10 +474,7 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
               </span>
             </span>
             {data.telemetry.status === "succeeded" && (
-              <span
-                data-testid={`node-telemetry-duration-${data.nodeId}`}
-                className="font-mono text-[10px] text-emerald-200"
-              >
+              <span data-testid={`node-telemetry-duration-${data.nodeId}`} className="font-mono text-[10px] text-emerald-200">
                 {Math.round(data.telemetry.durationMs)} ms
               </span>
             )}
@@ -590,9 +502,7 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
           <span
             data-testid={`node-port-in-${data.nodeId}`}
             data-port-datatype={primaryInPort.dataType}
-            onMouseEnter={() =>
-              data.onPortHover?.(data.nodeId, primaryInPort.id, "input")
-            }
+            onMouseEnter={() => data.onPortHover?.(data.nodeId, primaryInPort.id, "input")}
             className="inline-flex items-center gap-1 text-sky-400 truncate"
           >
             <span>◆</span>
@@ -623,9 +533,7 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
         <div
           data-testid={`node-author-badge-${data.nodeId}`}
           className={`mt-1.5 px-1.5 py-0.5 rounded text-[10px] font-mono truncate ${
-            data.isAgentAuthor
-              ? "bg-sky-400/15 text-sky-300 border border-sky-400/30"
-              : "bg-surface-control text-text-secondary"
+            data.isAgentAuthor ? "bg-sky-400/15 text-sky-300 border border-sky-400/30" : "bg-surface-control text-text-secondary"
           }`}
         >
           {data.isAgentAuthor ? `🤖 ${data.authorBadge}` : `👤 ${data.authorBadge}`}
@@ -634,10 +542,7 @@ export const StudioWorkflowNodeCard = memo(function StudioWorkflowNodeCard({
 
       {/* Typed Output Port Handles */}
       {outputPorts.map((port, idx) => {
-        const topPct =
-          outputPorts.length === 1
-            ? "50%"
-            : `${Math.round(((idx + 1) / (outputPorts.length + 1)) * 100)}%`;
+        const topPct = outputPorts.length === 1 ? "50%" : `${Math.round(((idx + 1) / (outputPorts.length + 1)) * 100)}%`;
         return (
           <Handle
             key={`out-${port.id}`}
@@ -678,14 +583,7 @@ export function createSynthetic200NodeBlueprint(): BlueprintState {
     const layer = Math.floor(i / 10);
     const row = i % 10;
     const id = `node-${i + 1}`;
-    const type =
-      i === 0
-        ? "trigger.manual"
-        : i % 3 === 0
-          ? "transform.pick"
-          : i % 2 === 0
-            ? "credit-wallet.debit"
-            : "in-app-notifications.send";
+    const type = i === 0 ? "trigger.manual" : i % 3 === 0 ? "transform.pick" : i % 2 === 0 ? "credit-wallet.debit" : "in-app-notifications.send";
     nodes.push({
       id,
       type,
@@ -765,26 +663,14 @@ interface InnerCanvasProps {
   workflow: WorkflowDefinition;
   layout?: Record<string, { x: number; y: number }>;
   isViewer: boolean;
-  onAddPaletteNodeAt: (
-    item: PaletteNodeItem,
-    coords?: { x: number; y: number },
-  ) => Promise<void>;
+  onAddPaletteNodeAt: (item: PaletteNodeItem, coords?: { x: number; y: number }) => Promise<void>;
   paletteItems: PaletteNodeItem[];
 }
 
-function InnerWorkflowCanvas({
-  workflow,
-  layout,
-  isViewer,
-  onAddPaletteNodeAt,
-  paletteItems,
-}: InnerCanvasProps) {
+function InnerWorkflowCanvas({ workflow, layout, isViewer, onAddPaletteNodeAt, paletteItems }: InnerCanvasProps) {
   const catalog = useStudioStore((s) => s.catalog);
   const projectState = useStudioStore((s) => s.projectState);
-  const entities = useMemo(
-    () => projectState?.entities ?? [],
-    [projectState?.entities],
-  );
+  const entities = useMemo(() => projectState?.entities ?? [], [projectState?.entities]);
   const readiness = useStudioStore((s) => s.readiness);
   const secrets = useStudioStore((s) => s.secrets);
   const selection = useStudioStore((s) => s.selection);
@@ -798,17 +684,11 @@ function InnerWorkflowCanvas({
   const setNodeSearch = useStudioStore((s) => s.setWorkflowNodeSearch);
   const selectItem = useStudioStore((s) => s.selectItem);
   const commitOps = useStudioStore((s) => s.commitOps);
-  const nodeTelemetryByWorkflow = useStudioStore(
-    (s) => s.nodeTelemetryByWorkflow,
-  );
+  const nodeTelemetryByWorkflow = useStudioStore((s) => s.nodeTelemetryByWorkflow);
   const isRunningWorkflow = useStudioStore((s) => s.isRunningWorkflow);
   const prefersReducedMotion = useStudioStore((s) => s.prefersReducedMotion);
-  const executeWorkflowTestRun = useStudioStore(
-    (s) => s.executeWorkflowTestRun,
-  );
-  const clearWorkflowTelemetry = useStudioStore(
-    (s) => s.clearWorkflowTelemetry,
-  );
+  const executeWorkflowTestRun = useStudioStore((s) => s.executeWorkflowTestRun);
+  const clearWorkflowTelemetry = useStudioStore((s) => s.clearWorkflowTelemetry);
   const activeReplayRun = useStudioStore((s) => s.activeReplayRun);
   const exitRunReplay = useStudioStore((s) => s.exitRunReplay);
   const runsList = useStudioStore((s) => s.runsList);
@@ -821,9 +701,7 @@ function InnerWorkflowCanvas({
   const loadProjectRuns = useStudioStore((s) => s.loadProjectRuns);
   const startRunReplay = useStudioStore((s) => s.startRunReplay);
   const pinnedStepOutputs = useStudioStore((s) => s.pinnedStepOutputs);
-  const pinnedOutputsByWorkflow = useStudioStore(
-    (s) => s.pinnedOutputsByWorkflow,
-  );
+  const pinnedOutputsByWorkflow = useStudioStore((s) => s.pinnedOutputsByWorkflow);
   const usePinnedData = useStudioStore((s) => s.usePinnedData);
   const setUsePinnedData = useStudioStore((s) => s.setUsePinnedData);
   const loadWorkflowPins = useStudioStore((s) => s.loadWorkflowPins);
@@ -869,10 +747,7 @@ function InnerWorkflowCanvas({
         return null;
       }
     })();
-    if (
-      (params.get("drawer") === "logs" || savedTab === "logs") &&
-      !runHistoryDrawerOpen
-    ) {
+    if ((params.get("drawer") === "logs" || savedTab === "logs") && !runHistoryDrawerOpen) {
       setRunHistoryDrawerOpen(true);
     }
   }, [runHistoryDrawerOpen, setRunHistoryDrawerOpen]);
@@ -884,28 +759,19 @@ function InnerWorkflowCanvas({
   const isReplayMode = Boolean(activeReplayRun);
 
   const wfTelemetry = useMemo(
-    () =>
-      activeReplayRun
-        ? activeReplayRun.nodeMap
-        : (nodeTelemetryByWorkflow[workflow.id] ?? {}),
+    () => (activeReplayRun ? activeReplayRun.nodeMap : (nodeTelemetryByWorkflow[workflow.id] ?? {})),
     [activeReplayRun, nodeTelemetryByWorkflow, workflow.id],
   );
 
   const filteredClientRuns = useMemo(() => {
     return runsList.filter((r) => {
-      if (
-        runsFilters.workflowId !== "all" &&
-        r.workflowId !== runsFilters.workflowId
-      ) {
+      if (runsFilters.workflowId !== "all" && r.workflowId !== runsFilters.workflowId) {
         return false;
       }
       if (runsFilters.status !== "all" && r.status !== runsFilters.status) {
         return false;
       }
-      if (
-        runsFilters.trigger !== "all" &&
-        r.triggerType !== runsFilters.trigger
-      ) {
+      if (runsFilters.trigger !== "all" && r.triggerType !== runsFilters.trigger) {
         return false;
       }
       if (runsFilters.from && r.startedAt < runsFilters.from) {
@@ -919,26 +785,18 @@ function InnerWorkflowCanvas({
   }, [runsList, runsFilters]);
 
   const [showTestWorkflowPanel, setShowTestWorkflowPanel] = useState(false);
-  const [testWorkflowPayloadText, setTestWorkflowPayloadText] = useState(
-    '{\n  "amount": 50,\n  "balance": 200,\n  "workspaceId": "ws_preview"\n}',
-  );
-  const [testWorkflowEnv, setTestWorkflowEnv] = useState<"preview" | "production">(
-    "preview",
-  );
+  const [testWorkflowPayloadText, setTestWorkflowPayloadText] = useState('{\n  "amount": 50,\n  "balance": 200,\n  "workspaceId": "ws_preview"\n}');
+  const [testWorkflowEnv, setTestWorkflowEnv] = useState<"preview" | "production">("preview");
   const [testWorkflowError, setTestWorkflowError] = useState<string | null>(null);
 
   const handleRunWorkflowNow = useCallback(async () => {
     if (isViewer || isRunningWorkflow) return;
     let parsedPayload: unknown = {};
     try {
-      parsedPayload = testWorkflowPayloadText.trim()
-        ? JSON.parse(testWorkflowPayloadText)
-        : {};
+      parsedPayload = testWorkflowPayloadText.trim() ? JSON.parse(testWorkflowPayloadText) : {};
       setTestWorkflowError(null);
     } catch (err) {
-      setTestWorkflowError(
-        `Invalid trigger JSON: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      setTestWorkflowError(`Invalid trigger JSON: ${err instanceof Error ? err.message : String(err)}`);
       return;
     }
     const res = await executeWorkflowTestRun(workflow.id, {
@@ -949,15 +807,7 @@ function InnerWorkflowCanvas({
     if (!res.ok) {
       setTestWorkflowError(res.error);
     }
-  }, [
-    isViewer,
-    isRunningWorkflow,
-    testWorkflowPayloadText,
-    executeWorkflowTestRun,
-    workflow.id,
-    testWorkflowEnv,
-    usePinnedData,
-  ]);
+  }, [isViewer, isRunningWorkflow, testWorkflowPayloadText, executeWorkflowTestRun, workflow.id, testWorkflowEnv, usePinnedData]);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const reactFlow = useReactFlow();
@@ -969,9 +819,7 @@ function InnerWorkflowCanvas({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
-  const [clipboardNodes, setClipboardNodes] = useState<
-    Array<{ node: WorkflowNode; position: { x: number; y: number } }>
-  >([]);
+  const [clipboardNodes, setClipboardNodes] = useState<Array<{ node: WorkflowNode; position: { x: number; y: number } }>>([]);
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
 
   // Active wire connection / port validation state
@@ -981,12 +829,8 @@ function InnerWorkflowCanvas({
   } | null>(null);
   const [wireSourceValue, setWireSourceValue] = useState<string>("");
   const [wireTargetValue, setWireTargetValue] = useState<string>("");
-  const [wireValidationError, setWireValidationError] = useState<string | null>(
-    null,
-  );
-  const [connectMenuSourceNodeId, setConnectMenuSourceNodeId] = useState<
-    string | null
-  >(null);
+  const [wireValidationError, setWireValidationError] = useState<string | null>(null);
+  const [connectMenuSourceNodeId, setConnectMenuSourceNodeId] = useState<string | null>(null);
   const setLiveAnnouncement = useStudioStore((s) => s.setLiveAnnouncement);
 
   useEffect(() => {
@@ -997,8 +841,7 @@ function InnerWorkflowCanvas({
       }
     };
     window.addEventListener("studio:open-connect-menu", onOpenConnectEvent);
-    return () =>
-      window.removeEventListener("studio:open-connect-menu", onOpenConnectEvent);
+    return () => window.removeEventListener("studio:open-connect-menu", onOpenConnectEvent);
   }, []);
 
   const handleOpenConnectMenu = useCallback((nodeId: string) => {
@@ -1015,8 +858,7 @@ function InnerWorkflowCanvas({
           targetId = downEdge.target;
         } else {
           const idx = workflow.nodes.findIndex((n) => n.id === nodeId);
-          const nextNode =
-            workflow.nodes[(idx + 1) % workflow.nodes.length];
+          const nextNode = workflow.nodes[(idx + 1) % workflow.nodes.length];
           targetId = nextNode?.id;
         }
       } else {
@@ -1025,10 +867,7 @@ function InnerWorkflowCanvas({
           targetId = upEdge.source;
         } else {
           const idx = workflow.nodes.findIndex((n) => n.id === nodeId);
-          const prevNode =
-            workflow.nodes[
-              (idx - 1 + workflow.nodes.length) % workflow.nodes.length
-            ];
+          const prevNode = workflow.nodes[(idx - 1 + workflow.nodes.length) % workflow.nodes.length];
           targetId = prevNode?.id;
         }
       }
@@ -1038,9 +877,7 @@ function InnerWorkflowCanvas({
           id: targetId,
           workflowId: workflow.id,
         });
-        const el = document.querySelector<HTMLElement>(
-          `[data-testid="canvas-node-${targetId}"]`,
-        );
+        const el = document.querySelector<HTMLElement>(`[data-testid="canvas-node-${targetId}"]`);
         el?.focus();
       }
     },
@@ -1053,15 +890,9 @@ function InnerWorkflowCanvas({
     localPositionsRef.current = {};
   }, [workflow.id, layoutJson]);
 
-  const basePositions = useMemo(
-    () => computeDeterministicDagLayout(workflow.nodes, workflow.edges, layout),
-    [workflow.nodes, workflow.edges, layout],
-  );
+  const basePositions = useMemo(() => computeDeterministicDagLayout(workflow.nodes, workflow.edges, layout), [workflow.nodes, workflow.edges, layout]);
 
-  const positions = useMemo(
-    () => ({ ...basePositions, ...localPositionsRef.current }),
-    [basePositions],
-  );
+  const positions = useMemo(() => ({ ...basePositions, ...localPositionsRef.current }), [basePositions]);
 
   const persistLayoutCoalesced = useCallback(
     (nextLayoutPatch: Record<string, { x: number; y: number }>, flushImmediate: boolean) => {
@@ -1111,9 +942,7 @@ function InnerWorkflowCanvas({
       if (!additive) {
         return [nodeId];
       }
-      return prev.includes(nodeId)
-        ? prev.filter((id) => id !== nodeId)
-        : [...prev, nodeId];
+      return prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId];
     });
   }, []);
 
@@ -1122,15 +951,7 @@ function InnerWorkflowCanvas({
       const src = activeConnectSourceRef.current;
       if (!src || side !== "input") return;
       if (src.nodeId === targetNodeId) return;
-      const check = validateWorkflowConnection(
-        workflow,
-        src.nodeId,
-        src.handleId,
-        targetNodeId,
-        targetPortId,
-        catalog,
-        entities,
-      );
+      const check = validateWorkflowConnection(workflow, src.nodeId, src.handleId, targetNodeId, targetPortId, catalog, entities);
       if (!check.ok && check.reason) {
         setWireValidationError(check.reason);
       } else {
@@ -1144,11 +965,7 @@ function InnerWorkflowCanvas({
     // Keep error banner visible if selected in wire bar; otherwise keep last drag error briefly
   }, []);
 
-  const validationIssues = useMemo(
-    () =>
-      computeStudioValidationIssues(projectState, catalog, secrets, readiness),
-    [projectState, catalog, secrets, readiness],
-  );
+  const validationIssues = useMemo(() => computeStudioValidationIssues(projectState, catalog, secrets, readiness), [projectState, catalog, secrets, readiness]);
 
   const issueByNode = useMemo(() => {
     const map = new Map<string, string>();
@@ -1221,30 +1038,20 @@ function InnerWorkflowCanvas({
   const baseRfNodes = useMemo<Array<Node<StudioCanvasNodeData>>>(() => {
     const ghostLayout = computeDeterministicDagLayout(
       effectiveCanvasNodes,
-      [
-        ...workflow.edges,
-        ...(workflowVisualDiff ? [...workflowVisualDiff.removedEdges.values()] : []),
-      ],
+      [...workflow.edges, ...(workflowVisualDiff ? [...workflowVisualDiff.removedEdges.values()] : [])],
       { ...canvasVisualDiff?.fromState.metadata?.layout, ...layout },
     );
     return effectiveCanvasNodes.map((node) => {
-      const pos =
-        localPositionsRef.current[node.id] ??
-        basePositions[node.id] ??
-        ghostLayout[node.id] ?? { x: 48, y: 48 };
+      const pos = localPositionsRef.current[node.id] ?? basePositions[node.id] ?? ghostLayout[node.id] ?? { x: 48, y: 48 };
       const roleMeta = classifyNodeRole(node.type);
       const effectivePorts = getEffectiveNodePorts(node, catalog, entities);
       const issueMsg = issueByNode.get(node.id);
       const highlightKey = `node:${workflow.id}:${node.id}`;
       const fallbackHighlightKey = `node:${node.id}`;
-      const highlight =
-        highlightedTargets[highlightKey] ?? highlightedTargets[fallbackHighlightKey];
-      const authorFromData =
-        typeof node.data?.lastAuthor === "string" ? node.data.lastAuthor : undefined;
+      const highlight = highlightedTargets[highlightKey] ?? highlightedTargets[fallbackHighlightKey];
+      const authorFromData = typeof node.data?.lastAuthor === "string" ? node.data.lastAuthor : undefined;
       const effectiveAuthor = highlight?.authorLabel ?? authorFromData;
-      const isSelected =
-        (selection?.kind === "node" && selection.id === node.id) ||
-        selectedNodeIds.includes(node.id);
+      const isSelected = (selection?.kind === "node" && selection.id === node.id) || selectedNodeIds.includes(node.id);
 
       let diffStatus: "added" | "removed" | "changed" | null = null;
       if (workflowVisualDiff) {
@@ -1286,16 +1093,11 @@ function InnerWorkflowCanvas({
           hasValidationIssue: Boolean(issueMsg),
           validationMessage: issueMsg,
           authorBadge: effectiveAuthor,
-          isAgentAuthor:
-            highlight?.isAgent ?? Boolean(effectiveAuthor?.startsWith("agent:")),
+          isAgentAuthor: highlight?.isAgent ?? Boolean(effectiveAuthor?.startsWith("agent:")),
           isHighlighted: Boolean(highlight),
           diffStatus,
           telemetry: wfTelemetry[node.id],
-          isPinned: Boolean(
-            pinnedOutputsByWorkflow[workflow.id]?.[node.id] ||
-              pinnedStepOutputs[`${workflow.id}:${node.id}`] ||
-              pinnedStepOutputs[node.id],
-          ),
+          isPinned: Boolean(pinnedOutputsByWorkflow[workflow.id]?.[node.id] || pinnedStepOutputs[`${workflow.id}:${node.id}`] || pinnedStepOutputs[node.id]),
           prefersReducedMotion,
         },
       };
@@ -1351,11 +1153,7 @@ function InnerWorkflowCanvas({
     for (const edge of workflow.edges) {
       const upstream = wfTelemetry[edge.source];
       const downstream = wfTelemetry[edge.target];
-      const computed = computeEdgeItemCount(
-        upstream,
-        edge.sourceHandle ?? "out",
-        downstream,
-      );
+      const computed = computeEdgeItemCount(upstream, edge.sourceHandle ?? "out", downstream);
       if (computed) {
         map.set(edge.id, computed);
       }
@@ -1376,19 +1174,10 @@ function InnerWorkflowCanvas({
         sourceHandle: edge.sourceHandle ?? "out",
         targetHandle: edge.targetHandle ?? "in",
         selected: isEdgeSelected,
-        animated:
-          (isAddedEdge ||
-            wfTelemetry[edge.target]?.status === "running") &&
-          !prefersReducedMotion,
+        animated: (isAddedEdge || wfTelemetry[edge.target]?.status === "running") && !prefersReducedMotion,
         ...(itemInfo ? { label: itemInfo.label } : {}),
         style: {
-          stroke: isAddedEdge
-            ? "#10b981"
-            : isTraversed
-              ? "#10b981"
-              : isEdgeSelected
-                ? "#38bdf8"
-                : "#f59e0b",
+          stroke: isAddedEdge ? "#10b981" : isTraversed ? "#10b981" : isEdgeSelected ? "#38bdf8" : "#f59e0b",
           strokeWidth: isAddedEdge || isEdgeSelected || isTraversed ? 2.5 : 1.5,
         },
       };
@@ -1417,14 +1206,7 @@ function InnerWorkflowCanvas({
     }
 
     return activeEdges;
-  }, [
-    workflow.edges,
-    selectedEdgeIds,
-    workflowVisualDiff,
-    edgeItemCounts,
-    wfTelemetry,
-    prefersReducedMotion,
-  ]);
+  }, [workflow.edges, selectedEdgeIds, workflowVisualDiff, edgeItemCounts, wfTelemetry, prefersReducedMotion]);
 
   const handleNodeDrag = useCallback(
     (_event: unknown, node: Node<StudioCanvasNodeData>) => {
@@ -1452,15 +1234,7 @@ function InnerWorkflowCanvas({
 
   const checkIsValidConnection = useCallback(
     (conn: Edge | Connection) => {
-      const res = validateWorkflowConnection(
-        workflow,
-        conn.source ?? "",
-        conn.sourceHandle,
-        conn.target ?? "",
-        conn.targetHandle,
-        catalog,
-        entities,
-      );
+      const res = validateWorkflowConnection(workflow, conn.source ?? "", conn.sourceHandle, conn.target ?? "", conn.targetHandle, catalog, entities);
       if (!res.ok && res.reason) {
         setWireValidationError(res.reason);
       } else {
@@ -1474,15 +1248,7 @@ function InnerWorkflowCanvas({
   const handleConnect = useCallback(
     async (conn: Connection) => {
       if (isViewer || isMutating || !conn.source || !conn.target) return;
-      const check = validateWorkflowConnection(
-        workflow,
-        conn.source,
-        conn.sourceHandle,
-        conn.target,
-        conn.targetHandle,
-        catalog,
-        entities,
-      );
+      const check = validateWorkflowConnection(workflow, conn.source, conn.sourceHandle, conn.target, conn.targetHandle, catalog, entities);
       if (!check.ok) {
         setWireValidationError(check.reason ?? "Incompatible port connection");
         return;
@@ -1527,15 +1293,7 @@ function InnerWorkflowCanvas({
     const [srcNodeId, srcPortId] = wireSourceValue.split("::");
     const [dstNodeId, dstPortId] = wireTargetValue.split("::");
     if (!srcNodeId || !dstNodeId) return null;
-    return validateWorkflowConnection(
-      workflow,
-      srcNodeId,
-      srcPortId,
-      dstNodeId,
-      dstPortId,
-      catalog,
-      entities,
-    );
+    return validateWorkflowConnection(workflow, srcNodeId, srcPortId, dstNodeId, dstPortId, catalog, entities);
   }, [wireSourceValue, wireTargetValue, workflow, catalog, entities]);
 
   useEffect(() => {
@@ -1562,12 +1320,7 @@ function InnerWorkflowCanvas({
   };
 
   const handleCopySelected = useCallback(() => {
-    const effectiveIds =
-      selectedNodeIds.length > 0
-        ? selectedNodeIds
-        : selection?.kind === "node"
-          ? [selection.id]
-          : [];
+    const effectiveIds = selectedNodeIds.length > 0 ? selectedNodeIds : selection?.kind === "node" ? [selection.id] : [];
     if (effectiveIds.length === 0) return;
 
     const copied: Array<{ node: WorkflowNode; position: { x: number; y: number } }> = [];
@@ -1587,9 +1340,7 @@ function InnerWorkflowCanvas({
 
   const handlePasteClipboard = useCallback(async () => {
     if (isViewer || isMutating || clipboardNodes.length === 0) return;
-    const workflowHasTrigger = workflow.nodes.some((n) =>
-      isTriggerNodeType(n.type, catalog),
-    );
+    const workflowHasTrigger = workflow.nodes.some((n) => isTriggerNodeType(n.type, catalog));
     const stamp = Date.now();
     const ops: Array<Record<string, unknown>> = [];
     const nextLayout: Record<string, { x: number; y: number }> = {
@@ -1607,10 +1358,7 @@ function InnerWorkflowCanvas({
       const baseSlug = item.node.id.replace(/-copy-\d+$/, "");
       let candidateId = `${baseSlug}-copy-${pastedIndex}`;
       let suffix = pastedIndex;
-      while (
-        workflow.nodes.some((n) => n.id === candidateId) ||
-        newSelectedIds.includes(candidateId)
-      ) {
+      while (workflow.nodes.some((n) => n.id === candidateId) || newSelectedIds.includes(candidateId)) {
         suffix += 1;
         candidateId = `${baseSlug}-copy-${suffix}`;
       }
@@ -1655,18 +1403,7 @@ function InnerWorkflowCanvas({
         });
       }
     }
-  }, [
-    isViewer,
-    isMutating,
-    clipboardNodes,
-    workflow.nodes,
-    workflow.id,
-    catalog,
-    layout,
-    positions,
-    commitOps,
-    selectItem,
-  ]);
+  }, [isViewer, isMutating, clipboardNodes, workflow.nodes, workflow.id, catalog, layout, positions, commitOps, selectItem]);
 
   const handleDeleteSelected = useCallback(
     async (explicitNodeId?: string) => {
@@ -1680,107 +1417,88 @@ function InnerWorkflowCanvas({
             : [];
       const edgeIdsToDelete = explicitNodeId ? [] : [...selectedEdgeIds];
 
-    if (nodeIdsToDelete.length === 0 && edgeIdsToDelete.length === 0) return;
+      if (nodeIdsToDelete.length === 0 && edgeIdsToDelete.length === 0) return;
 
-    const stamp = Date.now();
-    const forwardOps: Array<Record<string, unknown>> = [];
-    const restoreNodes: WorkflowNode[] = [];
-    const restoreEdgesMap = new Map<string, WorkflowEdge>();
-    const restoreLayout: Record<string, { x: number; y: number }> = {
-      ...layout,
-      ...positions,
-    };
+      const stamp = Date.now();
+      const forwardOps: Array<Record<string, unknown>> = [];
+      const restoreNodes: WorkflowNode[] = [];
+      const restoreEdgesMap = new Map<string, WorkflowEdge>();
+      const restoreLayout: Record<string, { x: number; y: number }> = {
+        ...layout,
+        ...positions,
+      };
 
-    for (const edgeId of edgeIdsToDelete) {
-      const existingEdge = workflow.edges.find((e) => e.id === edgeId);
-      if (
-        existingEdge &&
-        !nodeIdsToDelete.includes(existingEdge.source) &&
-        !nodeIdsToDelete.includes(existingEdge.target)
-      ) {
-        forwardOps.push({
-          opId: `del-edge-${edgeId}-${stamp}`,
-          type: "disconnect_edge",
-          workflowId: workflow.id,
-          edgeId,
-        });
-        restoreEdgesMap.set(existingEdge.id, structuredClone(existingEdge));
-      }
-    }
-
-    for (const nodeId of nodeIdsToDelete) {
-      const existingNode = workflow.nodes.find((n) => n.id === nodeId);
-      if (!existingNode) continue;
-      restoreNodes.push(structuredClone(existingNode));
-      for (const edge of workflow.edges) {
-        if (edge.source === nodeId || edge.target === nodeId) {
-          restoreEdgesMap.set(edge.id, structuredClone(edge));
+      for (const edgeId of edgeIdsToDelete) {
+        const existingEdge = workflow.edges.find((e) => e.id === edgeId);
+        if (existingEdge && !nodeIdsToDelete.includes(existingEdge.source) && !nodeIdsToDelete.includes(existingEdge.target)) {
+          forwardOps.push({
+            opId: `del-edge-${edgeId}-${stamp}`,
+            type: "disconnect_edge",
+            workflowId: workflow.id,
+            edgeId,
+          });
+          restoreEdgesMap.set(existingEdge.id, structuredClone(existingEdge));
         }
       }
-      forwardOps.push({
-        opId: `del-node-${nodeId}-${stamp}`,
-        type: "remove_node",
-        workflowId: workflow.id,
-        nodeId,
-      });
-    }
 
-    if (forwardOps.length === 0) return;
+      for (const nodeId of nodeIdsToDelete) {
+        const existingNode = workflow.nodes.find((n) => n.id === nodeId);
+        if (!existingNode) continue;
+        restoreNodes.push(structuredClone(existingNode));
+        for (const edge of workflow.edges) {
+          if (edge.source === nodeId || edge.target === nodeId) {
+            restoreEdgesMap.set(edge.id, structuredClone(edge));
+          }
+        }
+        forwardOps.push({
+          opId: `del-node-${nodeId}-${stamp}`,
+          type: "remove_node",
+          workflowId: workflow.id,
+          nodeId,
+        });
+      }
 
-    const inverseOps: Array<Record<string, unknown>> = [];
-    for (const node of restoreNodes) {
-      inverseOps.push({
-        opId: `undo-add-node-${node.id}-${stamp}`,
-        type: "add_node",
-        workflowId: workflow.id,
-        node,
-      });
-    }
-    const edgesToRestore = [...restoreEdgesMap.values()];
-    if (edgesToRestore.length > 0) {
-      inverseOps.push({
-        opId: `undo-connect-edges-${stamp}`,
-        type: "connect_edges",
-        workflowId: workflow.id,
-        edges: edgesToRestore,
-      });
-    }
-    if (restoreNodes.length > 0) {
-      inverseOps.push({
-        opId: `undo-layout-${stamp}`,
-        type: "set_metadata",
-        metadata: { layout: restoreLayout },
-      });
-    }
+      if (forwardOps.length === 0) return;
 
-    const res = await commitOps(
-      forwardOps,
-      `Delete ${restoreNodes.length} node(s), ${edgeIdsToDelete.length} edge(s)`,
-    );
-    if (res.ok) {
-      setSelectedNodeIds([]);
-      setSelectedEdgeIds([]);
-      setUndoToast({
-        message:
-          restoreNodes.length > 0
-            ? `Deleted ${restoreNodes.map((n) => n.label ?? n.id).join(", ")}`
-            : `Disconnected ${edgeIdsToDelete.length} edge(s)`,
-        inverseOps,
-      });
-    }
-  }, [
-    isViewer,
-    isMutating,
-    selectedNodeIds,
-    selectedEdgeIds,
-    selection,
-    layout,
-    positions,
-    workflow.edges,
-    workflow.nodes,
-    workflow.id,
-    commitOps,
-  ]);
+      const inverseOps: Array<Record<string, unknown>> = [];
+      for (const node of restoreNodes) {
+        inverseOps.push({
+          opId: `undo-add-node-${node.id}-${stamp}`,
+          type: "add_node",
+          workflowId: workflow.id,
+          node,
+        });
+      }
+      const edgesToRestore = [...restoreEdgesMap.values()];
+      if (edgesToRestore.length > 0) {
+        inverseOps.push({
+          opId: `undo-connect-edges-${stamp}`,
+          type: "connect_edges",
+          workflowId: workflow.id,
+          edges: edgesToRestore,
+        });
+      }
+      if (restoreNodes.length > 0) {
+        inverseOps.push({
+          opId: `undo-layout-${stamp}`,
+          type: "set_metadata",
+          metadata: { layout: restoreLayout },
+        });
+      }
+
+      const res = await commitOps(forwardOps, `Delete ${restoreNodes.length} node(s), ${edgeIdsToDelete.length} edge(s)`);
+      if (res.ok) {
+        setSelectedNodeIds([]);
+        setSelectedEdgeIds([]);
+        setUndoToast({
+          message:
+            restoreNodes.length > 0 ? `Deleted ${restoreNodes.map((n) => n.label ?? n.id).join(", ")}` : `Disconnected ${edgeIdsToDelete.length} edge(s)`,
+          inverseOps,
+        });
+      }
+    },
+    [isViewer, isMutating, selectedNodeIds, selectedEdgeIds, selection, layout, positions, workflow.edges, workflow.nodes, workflow.id, commitOps],
+  );
 
   useEffect(() => {
     deleteSingleNodeRef.current = (nodeId: string) => {
@@ -1790,9 +1508,7 @@ function InnerWorkflowCanvas({
 
   const connectMenuData = useMemo(() => {
     if (!connectMenuSourceNodeId) return null;
-    const sourceNode = workflow.nodes.find(
-      (n) => n.id === connectMenuSourceNodeId,
-    );
+    const sourceNode = workflow.nodes.find((n) => n.id === connectMenuSourceNodeId);
     if (!sourceNode) return null;
     const sourceEff = getEffectiveNodePorts(sourceNode, catalog, entities);
     const sourcePort = sourceEff.outputs[0] ?? {
@@ -1813,20 +1529,9 @@ function InnerWorkflowCanvas({
       if (targetNode.id === sourceNode.id) continue;
       const targetEff = getEffectiveNodePorts(targetNode, catalog, entities);
       const targetDef = getCatalogNodeDefinition(targetNode.type, catalog);
-      const ports =
-        targetEff.inputs.length > 0
-          ? targetEff.inputs
-          : [{ id: "in", dataType: "any" as const }];
+      const ports = targetEff.inputs.length > 0 ? targetEff.inputs : [{ id: "in", dataType: "any" as const }];
       for (const port of ports) {
-        const check = validateWorkflowConnection(
-          workflow,
-          sourceNode.id,
-          sourcePort.id,
-          targetNode.id,
-          port.id,
-          catalog,
-          entities,
-        );
+        const check = validateWorkflowConnection(workflow, sourceNode.id, sourcePort.id, targetNode.id, port.id, catalog, entities);
         options.push({
           targetNodeId: targetNode.id,
           targetNodeLabel: targetNode.label ?? targetNode.id,
@@ -1836,14 +1541,8 @@ function InnerWorkflowCanvas({
           reason: check.reason,
         });
       }
-      if (
-        targetDef.role !== "trigger" &&
-        !options.some(
-          (o) => o.targetNodeId === targetNode.id && !o.ok,
-        )
-      ) {
-        const mismatchType =
-          sourcePort.dataType === "number" ? "boolean" : "number";
+      if (targetDef.role !== "trigger" && !options.some((o) => o.targetNodeId === targetNode.id && !o.ok)) {
+        const mismatchType = sourcePort.dataType === "number" ? "boolean" : "number";
         options.push({
           targetNodeId: targetNode.id,
           targetNodeLabel: targetNode.label ?? targetNode.id,
@@ -1877,15 +1576,11 @@ function InnerWorkflowCanvas({
   useEffect(() => {
     if (!connectMenuData) return;
     setTimeout(() => {
-      const firstEnabled = document.querySelector<HTMLButtonElement>(
-        '[data-testid="keyboard-connect-to-menu"] button[data-connect-compatible="true"]',
-      );
+      const firstEnabled = document.querySelector<HTMLButtonElement>('[data-testid="keyboard-connect-to-menu"] button[data-connect-compatible="true"]');
       if (firstEnabled) {
         firstEnabled.focus();
       } else {
-        const closeBtn = document.querySelector<HTMLButtonElement>(
-          '[data-testid="keyboard-connect-to-close"]',
-        );
+        const closeBtn = document.querySelector<HTMLButtonElement>('[data-testid="keyboard-connect-to-close"]');
         closeBtn?.focus();
       }
     }, 0);
@@ -1900,10 +1595,7 @@ function InnerWorkflowCanvas({
 
   const handleAutoLayout = async () => {
     if (isViewer || isMutating) return;
-    const freshDagLayout = computeDeterministicDagLayout(
-      workflow.nodes,
-      workflow.edges,
-    );
+    const freshDagLayout = computeDeterministicDagLayout(workflow.nodes, workflow.edges);
     const mergedLayout = {
       ...layout,
       ...freshDagLayout,
@@ -1938,10 +1630,7 @@ function InnerWorkflowCanvas({
       const trimmed = q.trim().toLowerCase();
       if (!trimmed) return;
       const found = workflow.nodes.find(
-        (n) =>
-          n.id.toLowerCase().includes(trimmed) ||
-          (n.label ?? "").toLowerCase().includes(trimmed) ||
-          n.type.toLowerCase().includes(trimmed),
+        (n) => n.id.toLowerCase().includes(trimmed) || (n.label ?? "").toLowerCase().includes(trimmed) || n.type.toLowerCase().includes(trimmed),
       );
       if (found) {
         selectItem({ kind: "node", id: found.id, workflowId: workflow.id });
@@ -1990,12 +1679,7 @@ function InnerWorkflowCanvas({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
-    handleFitView,
-    handleCopySelected,
-    handlePasteClipboard,
-    handleDeleteSelected,
-  ]);
+  }, [handleFitView, handleCopySelected, handlePasteClipboard, handleDeleteSelected]);
 
   const handleCanvasDragOver = (e: DragEvent<HTMLDivElement>) => {
     if (isViewer) return;
@@ -2088,10 +1772,7 @@ function InnerWorkflowCanvas({
           <button
             type="button"
             data-testid="canvas-copy-button"
-            disabled={
-              isViewer ||
-              (selectedNodeIds.length === 0 && selection?.kind !== "node")
-            }
+            disabled={isViewer || (selectedNodeIds.length === 0 && selection?.kind !== "node")}
             onClick={handleCopySelected}
             title="Copy selected node(s) (Ctrl+C)"
             className="px-2 py-1 rounded bg-surface-control hover:bg-slate-700 border border-border-strong text-xs text-text-secondary disabled:opacity-40"
@@ -2111,13 +1792,7 @@ function InnerWorkflowCanvas({
           <button
             type="button"
             data-testid="delete-selected-button"
-            disabled={
-              isViewer ||
-              isMutating ||
-              (selectedNodeIds.length === 0 &&
-                selectedEdgeIds.length === 0 &&
-                selection?.kind !== "node")
-            }
+            disabled={isViewer || isMutating || (selectedNodeIds.length === 0 && selectedEdgeIds.length === 0 && selection?.kind !== "node")}
             onClick={() => void handleDeleteSelected()}
             title="Delete selected node(s) or edge(s) (Delete)"
             className="px-2 py-1 rounded bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-xs text-rose-300 disabled:opacity-40"
@@ -2127,12 +1802,7 @@ function InnerWorkflowCanvas({
           <button
             type="button"
             data-testid="compare-on-canvas-button"
-            onClick={() =>
-              void startCanvasVisualDiff(
-                Math.max(0, currentRevision - 1),
-                currentRevision,
-              )
-            }
+            onClick={() => void startCanvasVisualDiff(Math.max(0, currentRevision - 1), currentRevision)}
             title="Compare revisions directly on the workflow canvas"
             className={`px-2.5 py-1 rounded border text-xs font-semibold transition ${
               canvasVisualDiff
@@ -2155,9 +1825,7 @@ function InnerWorkflowCanvas({
           <label
             title="Short-circuit pinned nodes and feed their pinned outputs to downstream steps during preview rehearsal runs"
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs font-semibold cursor-pointer select-none transition ${
-              usePinnedData
-                ? "bg-sky-500/20 text-sky-200 border-sky-400/60"
-                : "bg-surface-control hover:bg-slate-700 border-border-strong text-text-secondary"
+              usePinnedData ? "bg-sky-500/20 text-sky-200 border-sky-400/60" : "bg-surface-control hover:bg-slate-700 border-border-strong text-text-secondary"
             }`}
           >
             <input
@@ -2248,12 +1916,9 @@ function InnerWorkflowCanvas({
           className="p-3 rounded-lg bg-slate-900/95 border border-sky-400/60 flex flex-wrap items-center justify-between gap-3 text-xs"
         >
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/50 text-sky-200 font-bold text-[11px]">
-              ⏮ Run Replay
-            </span>
+            <span className="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/50 text-sky-200 font-bold text-[11px]">⏮ Run Replay</span>
             <span className="font-mono font-bold text-text-primary">
-              Replay: Run {activeReplayRun.run.runId.slice(0, 16)} · Revision r
-              {activeReplayRun.run.revision} · {activeReplayRun.run.startedAt}
+              Replay: Run {activeReplayRun.run.runId.slice(0, 16)} · Revision r{activeReplayRun.run.revision} · {activeReplayRun.run.startedAt}
             </span>
             <span
               data-testid="run-replay-status-badge"
@@ -2265,16 +1930,11 @@ function InnerWorkflowCanvas({
                     : "bg-slate-800 border-slate-600 text-slate-300"
               }`}
             >
-              {activeReplayRun.run.status === "succeeded"
-                ? "✓ Succeeded"
-                : activeReplayRun.run.status === "failed"
-                  ? "✕ Failed"
-                  : activeReplayRun.run.status}
+              {activeReplayRun.run.status === "succeeded" ? "✓ Succeeded" : activeReplayRun.run.status === "failed" ? "✕ Failed" : activeReplayRun.run.status}
               {" · "}
               {Math.round(activeReplayRun.run.durationMs)} ms
             </span>
-            {(activeReplayRun.isHistoricalRevision ||
-              activeReplayRun.run.revision !== currentRevision) && (
+            {(activeReplayRun.isHistoricalRevision || activeReplayRun.run.revision !== currentRevision) && (
               <span
                 data-testid="run-replay-historical-rev-badge"
                 className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/50 text-amber-200 font-mono text-[11px]"
@@ -2296,30 +1956,18 @@ function InnerWorkflowCanvas({
 
       {/* Test Workflow Custom Trigger Payload Drawer */}
       {showTestWorkflowPanel && (
-        <div
-          data-testid="test-workflow-panel"
-          className="p-3 rounded-lg bg-surface-raised border border-emerald-500/40 space-y-2 text-xs"
-        >
+        <div data-testid="test-workflow-panel" className="p-3 rounded-lg bg-surface-raised border border-emerald-500/40 space-y-2 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-bold text-emerald-300">
-              ▶ Test Workflow Trigger Payload ({workflow.name})
-            </span>
+            <span className="font-bold text-emerald-300">▶ Test Workflow Trigger Payload ({workflow.name})</span>
             <div className="flex items-center gap-2">
-              <label
-                htmlFor="test-workflow-env-select"
-                className="text-[11px] text-text-secondary"
-              >
+              <label htmlFor="test-workflow-env-select" className="text-[11px] text-text-secondary">
                 Environment:
               </label>
               <select
                 id="test-workflow-env-select"
                 data-testid="test-workflow-env-select"
                 value={testWorkflowEnv}
-                onChange={(e) =>
-                  setTestWorkflowEnv(
-                    e.target.value === "production" ? "production" : "preview",
-                  )
-                }
+                onChange={(e) => setTestWorkflowEnv(e.target.value === "production" ? "production" : "preview")}
                 className="px-2 py-1 rounded bg-surface-control border border-border-strong font-mono text-[11px] text-text-primary"
               >
                 <option value="preview">preview (default)</option>
@@ -2362,9 +2010,7 @@ function InnerWorkflowCanvas({
           data-testid="canvas-edge-telemetry-bar"
           className="flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-emerald-500/30 text-[11px]"
         >
-          <span className="font-semibold text-text-secondary">
-            Traversed Edges:
-          </span>
+          <span className="font-semibold text-text-secondary">Traversed Edges:</span>
           {[...edgeItemCounts.entries()].map(([edgeId, info]) => {
             const edgeObj = workflow.edges.find((e) => e.id === edgeId);
             return (
@@ -2385,15 +2031,11 @@ function InnerWorkflowCanvas({
 
       {/* Canvas Visual Diff Banner */}
       {canvasVisualDiff && workflowVisualDiff && (
-        <div
-          data-testid="canvas-visual-diff-banner"
-          className="p-3 rounded-lg bg-slate-900/95 border border-amber-500/50 space-y-2 text-xs"
-        >
+        <div data-testid="canvas-visual-diff-banner" className="p-3 rounded-lg bg-slate-900/95 border border-amber-500/50 space-y-2 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-amber-300">
-                ⇄ Canvas Visual Diff: r{canvasVisualDiff.fromRev} → r
-                {canvasVisualDiff.toRev}
+                ⇄ Canvas Visual Diff: r{canvasVisualDiff.fromRev} → r{canvasVisualDiff.toRev}
               </span>
               <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-mono text-[11px]">
                 +{workflowVisualDiff.addedNodes.size} Added Nodes
@@ -2424,8 +2066,7 @@ function InnerWorkflowCanvas({
               Exit Diff ✕
             </button>
           </div>
-          {(workflowVisualDiff.addedEdges.size > 0 ||
-            workflowVisualDiff.removedEdges.size > 0) && (
+          {(workflowVisualDiff.addedEdges.size > 0 || workflowVisualDiff.removedEdges.size > 0) && (
             <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-border">
               {[...workflowVisualDiff.addedEdges.values()].map((e) => (
                 <span
@@ -2463,9 +2104,7 @@ function InnerWorkflowCanvas({
               const srcId = connectMenuData.sourceNode.id;
               setConnectMenuSourceNodeId(null);
               setTimeout(() => {
-                const nodeEl = document.querySelector<HTMLElement>(
-                  `[data-testid="canvas-node-${srcId}"], [data-testid="workflow-outline-step-${srcId}"]`,
-                );
+                const nodeEl = document.querySelector<HTMLElement>(`[data-testid="canvas-node-${srcId}"], [data-testid="workflow-outline-step-${srcId}"]`);
                 nodeEl?.focus();
               }, 0);
               return;
@@ -2473,19 +2112,10 @@ function InnerWorkflowCanvas({
             if (e.key === "ArrowDown" || e.key === "ArrowUp") {
               e.preventDefault();
               e.stopPropagation();
-              const enabledBtns = Array.from(
-                e.currentTarget.querySelectorAll<HTMLButtonElement>(
-                  'button[data-connect-compatible="true"]',
-                ),
-              );
+              const enabledBtns = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button[data-connect-compatible="true"]'));
               if (enabledBtns.length === 0) return;
-              const currentIdx = enabledBtns.indexOf(
-                document.activeElement as HTMLButtonElement,
-              );
-              const nextIdx =
-                e.key === "ArrowDown"
-                  ? (currentIdx + 1) % enabledBtns.length
-                  : (currentIdx - 1 + enabledBtns.length) % enabledBtns.length;
+              const currentIdx = enabledBtns.indexOf(document.activeElement as HTMLButtonElement);
+              const nextIdx = e.key === "ArrowDown" ? (currentIdx + 1) % enabledBtns.length : (currentIdx - 1 + enabledBtns.length) % enabledBtns.length;
               enabledBtns[nextIdx]?.focus();
             }
           }}
@@ -2494,15 +2124,10 @@ function InnerWorkflowCanvas({
           <div className="flex items-center justify-between gap-2">
             <div>
               <span className="font-bold text-accent">
-                Connect to… from{" "}
-                {connectMenuData.sourceNode.label ??
-                  connectMenuData.sourceNode.id}{" "}
-                ({connectMenuData.sourcePort.id}:
+                Connect to… from {connectMenuData.sourceNode.label ?? connectMenuData.sourceNode.id} ({connectMenuData.sourcePort.id}:
                 {connectMenuData.sourcePort.dataType})
               </span>
-              <span className="ml-2 text-[11px] text-text-muted">
-                Use Arrow keys + Enter to wire compatible port, or Esc to cancel
-              </span>
+              <span className="ml-2 text-[11px] text-text-muted">Use Arrow keys + Enter to wire compatible port, or Esc to cancel</span>
             </div>
             <button
               type="button"
@@ -2511,9 +2136,7 @@ function InnerWorkflowCanvas({
                 const srcId = connectMenuData.sourceNode.id;
                 setConnectMenuSourceNodeId(null);
                 setTimeout(() => {
-                  const nodeEl = document.querySelector<HTMLElement>(
-                    `[data-testid="canvas-node-${srcId}"], [data-testid="workflow-outline-step-${srcId}"]`,
-                  );
+                  const nodeEl = document.querySelector<HTMLElement>(`[data-testid="canvas-node-${srcId}"], [data-testid="workflow-outline-step-${srcId}"]`);
                   nodeEl?.focus();
                 }, 0);
               }}
@@ -2523,10 +2146,7 @@ function InnerWorkflowCanvas({
             </button>
           </div>
 
-          <ul
-            aria-label="Candidate target input ports"
-            className="space-y-1.5"
-          >
+          <ul aria-label="Candidate target input ports" className="space-y-1.5">
             {connectMenuData.options.map((opt) => (
               <li key={`${opt.targetNodeId}:${opt.portId}`}>
                 <button
@@ -2540,9 +2160,7 @@ function InnerWorkflowCanvas({
                   onClick={async () => {
                     if (!opt.ok) return;
                     const srcId = connectMenuData.sourceNode.id;
-                    const srcLabel =
-                      connectMenuData.sourceNode.label ??
-                      connectMenuData.sourceNode.id;
+                    const srcLabel = connectMenuData.sourceNode.label ?? connectMenuData.sourceNode.id;
                     setConnectMenuSourceNodeId(null);
                     await handleConnect({
                       source: srcId,
@@ -2550,9 +2168,7 @@ function InnerWorkflowCanvas({
                       target: opt.targetNodeId,
                       targetHandle: opt.portId,
                     });
-                    setLiveAnnouncement(
-                      `Connected ${srcLabel} (${connectMenuData.sourcePort.id}) to ${opt.targetNodeLabel} (${opt.portId})`,
-                    );
+                    setLiveAnnouncement(`Connected ${srcLabel} (${connectMenuData.sourcePort.id}) to ${opt.targetNodeLabel} (${opt.portId})`);
                     setTimeout(() => {
                       const nodeEl = document.querySelector<HTMLElement>(
                         `[data-testid="canvas-node-${srcId}"], [data-testid="workflow-outline-step-${srcId}"]`,
@@ -2568,14 +2184,10 @@ function InnerWorkflowCanvas({
                 >
                   <span>
                     {opt.ok ? "✓ " : "✕ "}
-                    {opt.targetNodeLabel} ({opt.targetNodeId}) · {opt.portId}:
-                    {opt.portDataType}
+                    {opt.targetNodeLabel} ({opt.targetNodeId}) · {opt.portId}:{opt.portDataType}
                   </span>
                   {!opt.ok && opt.reason && (
-                    <span
-                      data-testid={`connect-to-incompatible-reason-${opt.targetNodeId}-${opt.portId}`}
-                      className="text-[10px] text-rose-300 font-sans"
-                    >
+                    <span data-testid={`connect-to-incompatible-reason-${opt.targetNodeId}-${opt.portId}`} className="text-[10px] text-rose-300 font-sans">
                       {opt.reason}
                     </span>
                   )}
@@ -2627,13 +2239,7 @@ function InnerWorkflowCanvas({
           <button
             type="button"
             data-testid="wire-connect-button"
-            disabled={
-              isViewer ||
-              isMutating ||
-              !wireSourceValue ||
-              !wireTargetValue ||
-              Boolean(wirePreviewCheck && !wirePreviewCheck.ok)
-            }
+            disabled={isViewer || isMutating || !wireSourceValue || !wireTargetValue || Boolean(wirePreviewCheck && !wirePreviewCheck.ok)}
             onClick={() => void handleWireBarConnect()}
             className="px-2.5 py-1 rounded bg-accent text-slate-950 font-bold text-xs hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -2650,11 +2256,7 @@ function InnerWorkflowCanvas({
           className="px-3 py-2 rounded-lg bg-rose-950/90 border border-rose-500/60 text-xs text-rose-200 flex items-center justify-between gap-2"
         >
           <span>⚠ {wireValidationError}</span>
-          <button
-            type="button"
-            onClick={() => setWireValidationError(null)}
-            className="text-[11px] font-mono text-rose-300 hover:text-white"
-          >
+          <button type="button" onClick={() => setWireValidationError(null)} className="text-[11px] font-mono text-rose-300 hover:text-white">
             Dismiss
           </button>
         </div>
@@ -2677,11 +2279,7 @@ function InnerWorkflowCanvas({
             >
               Undo
             </button>
-            <button
-              type="button"
-              onClick={() => setUndoToast(null)}
-              className="text-[11px] text-text-muted hover:text-text-primary"
-            >
+            <button type="button" onClick={() => setUndoToast(null)} className="text-[11px] text-text-muted hover:text-text-primary">
               ✕
             </button>
           </div>
@@ -2741,20 +2339,11 @@ function InnerWorkflowCanvas({
             });
           }}
           onEdgeClick={(_event, edge) => {
-            setSelectedEdgeIds((prev) =>
-              prev.includes(edge.id)
-                ? prev.filter((id) => id !== edge.id)
-                : [edge.id],
-            );
+            setSelectedEdgeIds((prev) => (prev.includes(edge.id) ? prev.filter((id) => id !== edge.id) : [edge.id]));
           }}
           proOptions={{ hideAttribution: true }}
         >
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={22}
-            size={1.2}
-            color="#1e293b"
-          />
+          <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="#1e293b" />
           <Controls showInteractive={false} />
           <MiniMap
             data-testid="workflow-minimap"
@@ -2774,11 +2363,7 @@ function InnerWorkflowCanvas({
         >
           {/* Drawer Sub-Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-border">
-            <div
-              role="tablist"
-              aria-label="Runs and Logs tabs"
-              className="flex items-center gap-1.5"
-            >
+            <div role="tablist" aria-label="Runs and Logs tabs" className="flex items-center gap-1.5">
               <button
                 type="button"
                 role="tab"
@@ -2789,9 +2374,7 @@ function InnerWorkflowCanvas({
                   void loadProjectRuns();
                 }}
                 className={`px-2.5 py-1 rounded border text-xs font-semibold transition ${
-                  drawerSubTab === "runs"
-                    ? "bg-accent/20 text-accent border-accent"
-                    : "bg-surface-control hover:bg-slate-700 border-border text-text-secondary"
+                  drawerSubTab === "runs" ? "bg-accent/20 text-accent border-accent" : "bg-surface-control hover:bg-slate-700 border-border text-text-secondary"
                 }`}
               >
                 ◷ Run History ({filteredClientRuns.length})
@@ -2803,9 +2386,7 @@ function InnerWorkflowCanvas({
                 data-testid="runs-drawer-subtab-logs"
                 onClick={() => setDrawerSubTab("logs")}
                 className={`px-2.5 py-1 rounded border text-xs font-semibold transition ${
-                  drawerSubTab === "logs"
-                    ? "bg-accent/20 text-accent border-accent"
-                    : "bg-surface-control hover:bg-slate-700 border-border text-text-secondary"
+                  drawerSubTab === "logs" ? "bg-accent/20 text-accent border-accent" : "bg-surface-control hover:bg-slate-700 border-border text-text-secondary"
                 }`}
               >
                 ▤ Structured Logs &amp; Errors
@@ -2819,12 +2400,8 @@ function InnerWorkflowCanvas({
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-text-primary">
-                    ◷ Run History &amp; Execution Logs ({filteredClientRuns.length})
-                  </span>
-                  <span className="text-[11px] text-text-muted">
-                    Click any run to enter historical Run Replay on the canvas
-                  </span>
+                  <span className="font-bold text-text-primary">◷ Run History &amp; Execution Logs ({filteredClientRuns.length})</span>
+                  <span className="text-[11px] text-text-muted">Click any run to enter historical Run Replay on the canvas</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <select
@@ -2914,26 +2491,20 @@ function InnerWorkflowCanvas({
               </div>
 
               {filteredClientRuns.length === 0 ? (
-                <div
-                  data-testid="runs-empty-state"
-                  className="p-3 rounded bg-surface-base border border-border text-text-muted text-center"
-                >
+                <div data-testid="runs-empty-state" className="p-3 rounded bg-surface-base border border-border text-text-muted text-center">
                   No matching workflow runs found for the current filters.
                 </div>
               ) : (
                 <div className="space-y-1.5 max-h-64 overflow-y-auto">
                   {filteredClientRuns.map((run) => {
-                    const isActiveReplay =
-                      activeReplayRun?.run.runId === run.runId;
+                    const isActiveReplay = activeReplayRun?.run.runId === run.runId;
                     return (
                       <div
                         key={run.runId}
                         data-testid={`run-row-${run.runId}`}
                         onClick={() => void startRunReplay(run.runId, runsFilters.env)}
                         className={`p-2.5 rounded border flex flex-wrap items-center justify-between gap-2 cursor-pointer transition ${
-                          isActiveReplay
-                            ? "bg-sky-950/40 border-sky-400/60"
-                            : "bg-surface-base hover:bg-surface-control border-border"
+                          isActiveReplay ? "bg-sky-950/40 border-sky-400/60" : "bg-surface-base hover:bg-surface-control border-border"
                         }`}
                       >
                         <div className="flex flex-wrap items-center gap-2">
@@ -2957,15 +2528,9 @@ function InnerWorkflowCanvas({
                                   ? "⟳ Running"
                                   : "⏳ Queued"}
                           </span>
-                          <span className="font-mono font-semibold text-text-primary">
-                            {run.runId}
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded bg-surface-control font-mono text-[10px] text-accent">
-                            r{run.revision}
-                          </span>
-                          <span className="font-mono text-[11px] text-text-secondary">
-                            {run.workflowId}
-                          </span>
+                          <span className="font-mono font-semibold text-text-primary">{run.runId}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-surface-control font-mono text-[10px] text-accent">r{run.revision}</span>
+                          <span className="font-mono text-[11px] text-text-secondary">{run.workflowId}</span>
                           <span className="px-1.5 py-0.5 rounded bg-surface-control border border-border font-mono text-[10px] text-text-muted">
                             trigger: {run.triggerType}
                           </span>
@@ -3066,51 +2631,36 @@ export function WorkflowCanvasView() {
     }
     const toWfs = canvasVisualDiff.toState.workflows ?? [];
     const toIds = new Set(toWfs.map((w) => w.id));
-    const removedWfs = (canvasVisualDiff.fromState.workflows ?? []).filter(
-      (w) => !toIds.has(w.id),
-    );
+    const removedWfs = (canvasVisualDiff.fromState.workflows ?? []).filter((w) => !toIds.has(w.id));
     return [...toWfs, ...removedWfs];
   }, [canvasVisualDiff, projectState?.workflows]);
   const enabledBrickIds = useMemo(
-    () =>
-      (
-        canvasVisualDiff?.toState.bricks ??
-        projectState?.bricks ??
-        []
-      ).map((b) => b.id),
+    () => (canvasVisualDiff?.toState.bricks ?? projectState?.bricks ?? []).map((b) => b.id),
     [canvasVisualDiff?.toState.bricks, projectState?.bricks],
   );
 
   const activeWorkflow = useMemo(
-    () =>
-      activeReplayRun?.historicalWorkflow ??
-      workflows.find((w) => w.id === activeWorkflowId) ??
-      workflows[0] ??
-      null,
+    () => activeReplayRun?.historicalWorkflow ?? workflows.find((w) => w.id === activeWorkflowId) ?? workflows[0] ?? null,
     [activeReplayRun?.historicalWorkflow, workflows, activeWorkflowId],
   );
 
   const isBenchmark200 = projectState?.project === "synthetic-200-benchmark";
   const [paletteOpen, setPaletteOpen] = useState(!isBenchmark200);
   const [paletteSearch, setPaletteSearch] = useState("");
-  const [triggerLimitWarning, setTriggerLimitWarning] = useState<string | null>(
-    null,
-  );
+  const [triggerLimitWarning, setTriggerLimitWarning] = useState<string | null>(null);
 
   // Workflow create / rename / delete states
   const [showNewWorkflowForm, setShowNewWorkflowForm] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState("");
   const [showRenameWorkflowForm, setShowRenameWorkflowForm] = useState(false);
   const [renameWorkflowValue, setRenameWorkflowValue] = useState("");
-  const [pendingDeleteWorkflow, setPendingDeleteWorkflow] =
-    useState<WorkflowDefinition | null>(null);
+  const [pendingDeleteWorkflow, setPendingDeleteWorkflow] = useState<WorkflowDefinition | null>(null);
 
   // Disabled brick enable prompt from palette
-  const [pendingEnableBrickFromPalette, setPendingEnableBrickFromPalette] =
-    useState<{
-      item: PaletteNodeItem;
-      preview: BrickEnablePreview;
-    } | null>(null);
+  const [pendingEnableBrickFromPalette, setPendingEnableBrickFromPalette] = useState<{
+    item: PaletteNodeItem;
+    preview: BrickEnablePreview;
+  } | null>(null);
 
   // Inline Connect {app} modal when dropping an integration node without a bound connection
   const [pendingConnectAppModal, setPendingConnectAppModal] = useState<{
@@ -3121,14 +2671,9 @@ export function WorkflowCanvasView() {
   } | null>(null);
   const [inlineConnectRef, setInlineConnectRef] = useState("");
   const [inlineConnectValue, setInlineConnectValue] = useState("");
-  const [inlineConnectError, setInlineConnectError] = useState<string | null>(
-    null,
-  );
+  const [inlineConnectError, setInlineConnectError] = useState<string | null>(null);
 
-  const paletteItems = useMemo(
-    () => getPaletteCatalogItems(catalog ?? DEFAULT_CATALOG, enabledBrickIds),
-    [catalog, enabledBrickIds],
-  );
+  const paletteItems = useMemo(() => getPaletteCatalogItems(catalog ?? DEFAULT_CATALOG, enabledBrickIds), [catalog, enabledBrickIds]);
 
   const filteredPaletteItems = useMemo(() => {
     const q = paletteSearch.trim().toLowerCase();
@@ -3145,9 +2690,7 @@ export function WorkflowCanvasView() {
 
   const workflowHasTrigger = useMemo(() => {
     if (!activeWorkflow) return false;
-    return activeWorkflow.nodes.some((n) =>
-      isTriggerNodeType(n.type, catalog ?? DEFAULT_CATALOG),
-    );
+    return activeWorkflow.nodes.some((n) => isTriggerNodeType(n.type, catalog ?? DEFAULT_CATALOG));
   }, [activeWorkflow, catalog]);
 
   const handleCreateWorkflow = async () => {
@@ -3265,18 +2808,12 @@ export function WorkflowCanvasView() {
       if (!activeWorkflow || isViewer || isMutating) return;
 
       if (item.role === "trigger" && workflowHasTrigger) {
-        setTriggerLimitWarning(
-          `Workflow "${activeWorkflow.name}" already has a trigger node. Only one trigger node is allowed per workflow.`,
-        );
+        setTriggerLimitWarning(`Workflow "${activeWorkflow.name}" already has a trigger node. Only one trigger node is allowed per workflow.`);
         return;
       }
 
       if (item.sourceKind === "brick" && !item.isBrickEnabled && item.brickId) {
-        const preview = computeBrickEnablePreview(
-          item.brickId,
-          projectState ?? null,
-          catalog ?? DEFAULT_CATALOG,
-        );
+        const preview = computeBrickEnablePreview(item.brickId, projectState ?? null, catalog ?? DEFAULT_CATALOG);
         if (preview) {
           setPendingEnableBrickFromPalette({ item, preview });
           return;
@@ -3337,20 +2874,10 @@ export function WorkflowCanvasView() {
           workflowId: activeWorkflow.id,
         });
         if (item.type.startsWith("int:")) {
-          const appSlug =
-            item.app ?? item.type.slice(4).split(".")[0] ?? "integration";
+          const appSlug = item.app ?? item.type.slice(4).split(".")[0] ?? "integration";
           const hasBoundSecret =
-            secrets.some(
-              (s) =>
-                s.appOrBrick === appSlug ||
-                s.ref === `sec_${appSlug}` ||
-                s.ref.startsWith(`sec_${appSlug}_`),
-            ) ||
-            (projectState?.secretRefs ?? []).some(
-              (sr) =>
-                sr.ref === `sec_${appSlug}` ||
-                sr.ref.startsWith(`sec_${appSlug}_`),
-            );
+            secrets.some((s) => s.appOrBrick === appSlug || s.ref === `sec_${appSlug}` || s.ref.startsWith(`sec_${appSlug}_`)) ||
+            (projectState?.secretRefs ?? []).some((sr) => sr.ref === `sec_${appSlug}` || sr.ref.startsWith(`sec_${appSlug}_`));
           if (!hasBoundSecret) {
             setInlineConnectRef(`sec_${appSlug}`);
             setInlineConnectValue("");
@@ -3365,25 +2892,14 @@ export function WorkflowCanvasView() {
         }
       }
     },
-    [
-      activeWorkflow,
-      isViewer,
-      isMutating,
-      workflowHasTrigger,
-      projectState,
-      catalog,
-      secrets,
-      commitOps,
-      selectItem,
-    ],
+    [activeWorkflow, isViewer, isMutating, workflowHasTrigger, projectState, catalog, secrets, commitOps, selectItem],
   );
 
   const handleConfirmInlineConnectApp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pendingConnectAppModal) return;
     setInlineConnectError(null);
-    const trimmedRef =
-      inlineConnectRef.trim() || `sec_${pendingConnectAppModal.app}`;
+    const trimmedRef = inlineConnectRef.trim() || `sec_${pendingConnectAppModal.app}`;
     const trimmedValue = inlineConnectValue.trim();
     if (!trimmedValue) {
       setInlineConnectError("Please enter a credential value to seal.");
@@ -3391,10 +2907,7 @@ export function WorkflowCanvasView() {
     }
     const res = await upsertSecret({
       ref: trimmedRef,
-      kind:
-        pendingConnectAppModal.authType === "hmac_webhook_only"
-          ? "webhook_secret"
-          : "api_key",
+      kind: pendingConnectAppModal.authType === "hmac_webhook_only" ? "webhook_secret" : "api_key",
       label: `${pendingConnectAppModal.app} Connection`,
       appOrBrick: pendingConnectAppModal.app,
       value: trimmedValue,
@@ -3472,10 +2985,7 @@ export function WorkflowCanvasView() {
       },
     });
 
-    const res = await commitOps(
-      ops,
-      `Turn on ${preview.brickId} and add ${item.label}`,
-    );
+    const res = await commitOps(ops, `Turn on ${preview.brickId} and add ${item.label}`);
     if (res.ok) {
       setPendingEnableBrickFromPalette(null);
       selectItem({
@@ -3491,9 +3001,7 @@ export function WorkflowCanvasView() {
       {/* Header + Workflow Selector + Create/Rename/Delete + Outline Toggle */}
       <div className="p-4 rounded-lg bg-surface-raised border border-border flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-text-primary">
-            Workflows — Graph Canvas ({workflows.length})
-          </h2>
+          <h2 className="text-base font-bold text-text-primary">Workflows — Graph Canvas ({workflows.length})</h2>
           <p className="text-xs text-text-muted mt-0.5">
             Projected directly from BlueprintState with searchable node palette, typed port validation, and deterministic DAG auto-layout.
           </p>
@@ -3502,10 +3010,7 @@ export function WorkflowCanvasView() {
         <div className="flex flex-wrap items-center gap-2">
           {workflows.length > 0 && (
             <div className="flex items-center gap-2">
-              <label
-                htmlFor="workflow-select-dropdown"
-                className="text-xs text-text-secondary"
-              >
+              <label htmlFor="workflow-select-dropdown" className="text-xs text-text-secondary">
                 Workflow:
               </label>
               <select
@@ -3572,9 +3077,7 @@ export function WorkflowCanvasView() {
             aria-pressed={paletteOpen}
             onClick={() => setPaletteOpen((p) => !p)}
             className={`px-3 py-1.5 rounded border text-xs font-semibold transition ${
-              paletteOpen
-                ? "bg-surface-control text-accent border-accent"
-                : "bg-surface-control text-text-secondary border-border-strong"
+              paletteOpen ? "bg-surface-control text-accent border-accent" : "bg-surface-control text-text-secondary border-border-strong"
             }`}
           >
             {paletteOpen ? "◧ Hide Palette" : "◧ Node Palette"}
@@ -3598,10 +3101,7 @@ export function WorkflowCanvasView() {
 
       {/* Inline New Workflow Form */}
       {showNewWorkflowForm && (
-        <div
-          data-testid="new-workflow-form"
-          className="p-3 rounded-lg bg-surface-raised border border-accent flex items-center gap-2 text-xs"
-        >
+        <div data-testid="new-workflow-form" className="p-3 rounded-lg bg-surface-raised border border-accent flex items-center gap-2 text-xs">
           <label htmlFor="new-workflow-name-input" className="font-semibold text-text-secondary">
             Workflow Name:
           </label>
@@ -3635,10 +3135,7 @@ export function WorkflowCanvasView() {
 
       {/* Inline Rename Workflow Form */}
       {showRenameWorkflowForm && activeWorkflow && (
-        <div
-          data-testid="rename-workflow-form"
-          className="p-3 rounded-lg bg-surface-raised border border-accent flex items-center gap-2 text-xs"
-        >
+        <div data-testid="rename-workflow-form" className="p-3 rounded-lg bg-surface-raised border border-accent flex items-center gap-2 text-xs">
           <label htmlFor="rename-workflow-input" className="font-semibold text-text-secondary">
             Rename Workflow:
           </label>
@@ -3671,10 +3168,7 @@ export function WorkflowCanvasView() {
 
       {/* Workflow List Bar (AC 1) */}
       {workflows.length > 0 && (
-        <div
-          data-testid="workflow-selector-cards"
-          className="grid grid-cols-3 gap-3"
-        >
+        <div data-testid="workflow-selector-cards" className="grid grid-cols-3 gap-3">
           {workflows.map((wf) => {
             const isSelected = activeWorkflow?.id === wf.id;
             return (
@@ -3709,8 +3203,7 @@ export function WorkflowCanvasView() {
 
       {!activeWorkflow ? (
         <div className="p-6 rounded-lg bg-surface-raised border border-border text-center text-xs text-text-muted">
-          No workflows defined in this blueprint yet. Click{" "}
-          <span className="font-bold text-accent">+ New Workflow</span> above to create one.
+          No workflows defined in this blueprint yet. Click <span className="font-bold text-accent">+ New Workflow</span> above to create one.
         </div>
       ) : (
         <>
@@ -3726,18 +3219,12 @@ export function WorkflowCanvasView() {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-accent">
                   Workflow Step Outline — {activeWorkflow.name} ({activeWorkflow.nodes.length} steps)
                 </h3>
-                <span className="text-[11px] text-text-muted font-mono">
-                  Press Enter to inspect step · Press C to connect ports · Alt+O to toggle
-                </span>
+                <span className="text-[11px] text-text-muted font-mono">Press Enter to inspect step · Press C to connect ports · Alt+O to toggle</span>
               </div>
               <ol className="space-y-2 text-xs list-decimal list-inside">
                 {activeWorkflow.nodes.map((node, stepIdx) => {
-                  const upstream = activeWorkflow.edges
-                    .filter((e) => e.target === node.id)
-                    .map((e) => e.source);
-                  const downstream = activeWorkflow.edges
-                    .filter((e) => e.source === node.id)
-                    .map((e) => e.target);
+                  const upstream = activeWorkflow.edges.filter((e) => e.target === node.id).map((e) => e.source);
+                  const downstream = activeWorkflow.edges.filter((e) => e.source === node.id).map((e) => e.target);
 
                   return (
                     <li
@@ -3760,12 +3247,7 @@ export function WorkflowCanvasView() {
                           }, 0);
                           return;
                         }
-                        if (
-                          !e.ctrlKey &&
-                          !e.metaKey &&
-                          !e.altKey &&
-                          e.key.toLowerCase() === "c"
-                        ) {
+                        if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "c") {
                           e.preventDefault();
                           window.dispatchEvent(
                             new CustomEvent("studio:open-connect-menu", {
@@ -3779,15 +3261,10 @@ export function WorkflowCanvasView() {
                           const nextIdx =
                             e.key === "ArrowDown"
                               ? (stepIdx + 1) % activeWorkflow.nodes.length
-                              : (stepIdx - 1 + activeWorkflow.nodes.length) %
-                                activeWorkflow.nodes.length;
+                              : (stepIdx - 1 + activeWorkflow.nodes.length) % activeWorkflow.nodes.length;
                           const nextNode = activeWorkflow.nodes[nextIdx];
                           if (nextNode) {
-                            document
-                              .querySelector<HTMLElement>(
-                                `[data-testid="workflow-outline-step-${nextNode.id}"]`,
-                              )
-                              ?.focus();
+                            document.querySelector<HTMLElement>(`[data-testid="workflow-outline-step-${nextNode.id}"]`)?.focus();
                           }
                         }
                       }}
@@ -3804,10 +3281,9 @@ export function WorkflowCanvasView() {
                                 workflowId: activeWorkflow.id,
                               });
                               setTimeout(() => {
-                                const inspectorEl =
-                                  document.querySelector<HTMLElement>(
-                                    '[data-testid="inspector-node-tab-params"], [data-testid="inspector-node-label-input"]',
-                                  );
+                                const inspectorEl = document.querySelector<HTMLElement>(
+                                  '[data-testid="inspector-node-tab-params"], [data-testid="inspector-node-label-input"]',
+                                );
                                 inspectorEl?.focus();
                               }, 0);
                             }}
@@ -3815,9 +3291,7 @@ export function WorkflowCanvasView() {
                           >
                             {node.label ?? node.id} ({node.id})
                           </button>{" "}
-                          <span className="font-mono text-[11px] text-accent">
-                            [{node.type}]
-                          </span>
+                          <span className="font-mono text-[11px] text-accent">[{node.type}]</span>
                         </div>
                         <button
                           type="button"
@@ -3836,8 +3310,8 @@ export function WorkflowCanvasView() {
                         </button>
                       </div>
                       <div className="text-[11px] text-text-muted font-mono mt-1">
-                        Upstream: {upstream.length > 0 ? upstream.join(", ") : "none (root)"} ·{" "}
-                        Downstream: {downstream.length > 0 ? downstream.join(", ") : "none (terminal)"}
+                        Upstream: {upstream.length > 0 ? upstream.join(", ") : "none (root)"} · Downstream:{" "}
+                        {downstream.length > 0 ? downstream.join(", ") : "none (terminal)"}
                       </div>
                     </li>
                   );
@@ -3855,12 +3329,8 @@ export function WorkflowCanvasView() {
                 className="w-72 shrink-0 rounded-lg bg-surface-raised border border-border p-3 space-y-3 max-h-[680px] overflow-y-auto"
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">
-                    Node Palette
-                  </h3>
-                  <span className="text-[10px] font-mono text-text-muted">
-                    {filteredPaletteItems.length} nodes
-                  </span>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">Node Palette</h3>
+                  <span className="text-[10px] font-mono text-text-muted">{filteredPaletteItems.length} nodes</span>
                 </div>
 
                 <input
@@ -3870,11 +3340,7 @@ export function WorkflowCanvasView() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      const firstEnabled = filteredPaletteItems.find(
-                        (i) =>
-                          i.isBrickEnabled &&
-                          !(i.role === "trigger" && workflowHasTrigger),
-                      );
+                      const firstEnabled = filteredPaletteItems.find((i) => i.isBrickEnabled && !(i.role === "trigger" && workflowHasTrigger));
                       if (firstEnabled) {
                         void handleAddPaletteNodeAt(firstEnabled);
                       }
@@ -3892,21 +3358,16 @@ export function WorkflowCanvasView() {
                     data-testid="palette-trigger-limit-warning"
                     className="p-2 rounded bg-amber-500/15 border border-amber-500/40 text-[11px] text-amber-200"
                   >
-                    {triggerLimitWarning ??
-                      "Active workflow already has a trigger node (max 1 trigger per workflow)."}
+                    {triggerLimitWarning ?? "Active workflow already has a trigger node (max 1 trigger per workflow)."}
                   </div>
                 )}
 
                 {PALETTE_GROUPS.map((group) => {
-                  const groupItems = filteredPaletteItems.filter(
-                    (i) => i.category === group.key,
-                  );
+                  const groupItems = filteredPaletteItems.filter((i) => i.category === group.key);
                   if (groupItems.length === 0) return null;
 
                   const enabledItems = groupItems.filter((i) => i.isBrickEnabled);
-                  const disabledBrickItems = groupItems.filter(
-                    (i) => !i.isBrickEnabled,
-                  );
+                  const disabledBrickItems = groupItems.filter((i) => !i.isBrickEnabled);
 
                   return (
                     <div
@@ -3921,16 +3382,9 @@ export function WorkflowCanvasView() {
                       <div className="space-y-1.5">
                         {enabledItems.map((item) => {
                           const badge = formatMaturityBadge(item.maturity);
-                          const isTriggerBlocked =
-                            item.role === "trigger" && workflowHasTrigger;
-                          const inSummary =
-                            item.inputs.length > 0
-                              ? item.inputs.map((p) => `${p.id}:${p.dataType}`).join(",")
-                              : "none";
-                          const outSummary =
-                            item.outputs.length > 0
-                              ? item.outputs.map((p) => `${p.id}:${p.dataType}`).join(",")
-                              : "none";
+                          const isTriggerBlocked = item.role === "trigger" && workflowHasTrigger;
+                          const inSummary = item.inputs.length > 0 ? item.inputs.map((p) => `${p.id}:${p.dataType}`).join(",") : "none";
+                          const outSummary = item.outputs.length > 0 ? item.outputs.map((p) => `${p.id}:${p.dataType}`).join(",") : "none";
 
                           return (
                             <button
@@ -3938,10 +3392,7 @@ export function WorkflowCanvasView() {
                               type="button"
                               draggable={!isViewer && !isTriggerBlocked}
                               onDragStart={(e) => {
-                                e.dataTransfer.setData(
-                                  "application/projectx-node-type",
-                                  item.type,
-                                );
+                                e.dataTransfer.setData("application/projectx-node-type", item.type);
                                 e.dataTransfer.effectAllowed = "copy";
                               }}
                               disabled={isViewer || isMutating || isTriggerBlocked}
@@ -3950,9 +3401,7 @@ export function WorkflowCanvasView() {
                               className="w-full p-2 rounded bg-surface-base hover:bg-surface-control border border-border hover:border-border-strong text-left transition space-y-1 disabled:opacity-45 disabled:cursor-not-allowed"
                             >
                               <div className="flex items-center justify-between gap-1">
-                                <span className="font-bold text-xs text-text-primary truncate">
-                                  {item.label}
-                                </span>
+                                <span className="font-bold text-xs text-text-primary truncate">{item.label}</span>
                                 <span
                                   className="px-1.5 py-0.5 rounded bg-surface-control text-[10px] font-mono text-text-secondary shrink-0"
                                   title={item.maturityReason ?? badge.label}
@@ -3960,14 +3409,8 @@ export function WorkflowCanvasView() {
                                   {badge.icon} {badge.label}
                                 </span>
                               </div>
-                              <div className="font-mono text-[10px] text-accent truncate">
-                                {item.type}
-                              </div>
-                              {item.summary && (
-                                <div className="text-[11px] text-text-muted line-clamp-2">
-                                  {item.summary}
-                                </div>
-                              )}
+                              <div className="font-mono text-[10px] text-accent truncate">{item.type}</div>
+                              {item.summary && <div className="text-[11px] text-text-muted line-clamp-2">{item.summary}</div>}
                               <div className="font-mono text-[10px] text-text-secondary">
                                 in: {inSummary} → out: {outSummary}
                               </div>
@@ -3976,10 +3419,7 @@ export function WorkflowCanvasView() {
                         })}
 
                         {disabledBrickItems.length > 0 && (
-                          <div
-                            data-testid="palette-disabled-bricks-section"
-                            className="space-y-1.5 pt-1"
-                          >
+                          <div data-testid="palette-disabled-bricks-section" className="space-y-1.5 pt-1">
                             <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">
                               Turn on brick to use ({disabledBrickItems.length})
                             </div>
@@ -3993,16 +3433,12 @@ export function WorkflowCanvasView() {
                                 className="w-full p-2 rounded bg-surface-base/60 hover:bg-surface-control border border-dashed border-amber-500/40 text-left transition space-y-1 disabled:opacity-40"
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className="font-bold text-xs text-text-secondary truncate">
-                                    {item.label}
-                                  </span>
+                                  <span className="font-bold text-xs text-text-secondary truncate">{item.label}</span>
                                   <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-semibold shrink-0">
                                     Turn on {item.brickId}
                                   </span>
                                 </div>
-                                <div className="font-mono text-[10px] text-text-muted">
-                                  {item.type}
-                                </div>
+                                <div className="font-mono text-[10px] text-text-muted">{item.type}</div>
                               </button>
                             ))}
                           </div>
@@ -4037,13 +3473,9 @@ export function WorkflowCanvasView() {
           className="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-4"
         >
           <div className="w-full max-w-md rounded-lg bg-surface-raised border border-rose-500/50 p-4 space-y-3 text-xs">
-            <h3 className="text-sm font-bold text-rose-300">
-              Delete Workflow "{pendingDeleteWorkflow.name}"?
-            </h3>
+            <h3 className="text-sm font-bold text-rose-300">Delete Workflow "{pendingDeleteWorkflow.name}"?</h3>
             <p className="text-text-secondary">
-              This will remove workflow{" "}
-              <span className="font-mono">{pendingDeleteWorkflow.id}</span> (
-              {pendingDeleteWorkflow.nodes.length} nodes,{" "}
+              This will remove workflow <span className="font-mono">{pendingDeleteWorkflow.id}</span> ({pendingDeleteWorkflow.nodes.length} nodes,{" "}
               {pendingDeleteWorkflow.edges.length} edges) from the blueprint.
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -4080,19 +3512,11 @@ export function WorkflowCanvasView() {
         >
           <div className="w-full max-w-md rounded-lg bg-surface-raised border border-accent p-4 space-y-3 text-xs">
             <h3 className="text-sm font-bold text-text-primary">
-              Turn on "{pendingEnableBrickFromPalette.preview.brickId}" to use{" "}
-              {pendingEnableBrickFromPalette.item.label}?
+              Turn on "{pendingEnableBrickFromPalette.preview.brickId}" to use {pendingEnableBrickFromPalette.item.label}?
             </h3>
             <p className="text-text-secondary">
-              Node{" "}
-              <span className="font-mono text-accent">
-                {pendingEnableBrickFromPalette.item.type}
-              </span>{" "}
-              belongs to brick{" "}
-              <span className="font-mono">
-                {pendingEnableBrickFromPalette.preview.brickId}
-              </span>
-              . Turning it on will enable the brick
+              Node <span className="font-mono text-accent">{pendingEnableBrickFromPalette.item.type}</span> belongs to brick{" "}
+              <span className="font-mono">{pendingEnableBrickFromPalette.preview.brickId}</span>. Turning it on will enable the brick
               {pendingEnableBrickFromPalette.preview.missingProviders.length > 0
                 ? ` (plus required ${pendingEnableBrickFromPalette.preview.missingProviders.map((p) => p.brickId).join(", ")})`
                 : ""}{" "}
@@ -4135,9 +3559,7 @@ export function WorkflowCanvasView() {
             className="w-full max-w-md rounded-lg bg-surface-raised border border-accent p-5 space-y-4 text-xs shadow-xl"
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-text-primary">
-                Connect {pendingConnectAppModal.app}
-              </h3>
+              <h3 className="text-sm font-bold text-text-primary">Connect {pendingConnectAppModal.app}</h3>
               <button
                 type="button"
                 data-testid="inline-connect-cancel-button"
@@ -4151,30 +3573,16 @@ export function WorkflowCanvasView() {
               </button>
             </div>
             <p className="text-text-secondary">
-              Integration step{" "}
-              <code className="font-mono text-accent">
-                {pendingConnectAppModal.nodeId}
-              </code>{" "}
-              requires a bound{" "}
-              <code className="font-mono text-amber-300">
-                {pendingConnectAppModal.app}
-              </code>{" "}
-              connection. Seal your credential now to bind it to this node.
+              Integration step <code className="font-mono text-accent">{pendingConnectAppModal.nodeId}</code> requires a bound{" "}
+              <code className="font-mono text-amber-300">{pendingConnectAppModal.app}</code> connection. Seal your credential now to bind it to this node.
             </p>
             {inlineConnectError && (
-              <div
-                role="alert"
-                data-testid="inline-connect-error"
-                className="p-2.5 rounded bg-rose-950/80 border border-rose-700 text-rose-200"
-              >
+              <div role="alert" data-testid="inline-connect-error" className="p-2.5 rounded bg-rose-950/80 border border-rose-700 text-rose-200">
                 {inlineConnectError}
               </div>
             )}
             <div className="space-y-1">
-              <label
-                htmlFor="inline-connect-ref-input"
-                className="block font-semibold text-text-secondary"
-              >
+              <label htmlFor="inline-connect-ref-input" className="block font-semibold text-text-secondary">
                 Connection Handle (<code className="font-mono">sec_*</code>)
               </label>
               <input
@@ -4187,10 +3595,7 @@ export function WorkflowCanvasView() {
               />
             </div>
             <div className="space-y-1">
-              <label
-                htmlFor="inline-connect-value-input"
-                className="block font-semibold text-text-secondary"
-              >
+              <label htmlFor="inline-connect-value-input" className="block font-semibold text-text-secondary">
                 {pendingConnectAppModal.authType === "oauth2"
                   ? "OAuth2 Access Token or API Key (Sealed in Vault)"
                   : "API Key / Signing Secret (Sealed in Vault)"}

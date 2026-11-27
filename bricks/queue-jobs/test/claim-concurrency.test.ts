@@ -30,9 +30,7 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
         payload: { iteration: i },
       });
 
-      const claims = await Promise.all(
-        Array.from({ length: 20 }, () => service.claimJobById(job.id, 60))
-      );
+      const claims = await Promise.all(Array.from({ length: 20 }, () => service.claimJobById(job.id, 60)));
 
       const winners = claims.filter((j): j is Job => j !== null);
       expect(winners).toHaveLength(1);
@@ -53,10 +51,7 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
       });
     }
 
-    const [batch1, batch2] = await Promise.all([
-      service.dequeueBatch("concur_batch_q", 10),
-      service.dequeueBatch("concur_batch_q", 10),
-    ]);
+    const [batch1, batch2] = await Promise.all([service.dequeueBatch("concur_batch_q", 10), service.dequeueBatch("concur_batch_q", 10)]);
 
     const ids1 = new Set(batch1.map((j) => j.id));
     const ids2 = new Set(batch2.map((j) => j.id));
@@ -100,10 +95,7 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
     expect(claim1?.attempt_count).toBe(1);
 
     // Expire the lease by updating next_run_at into the past
-    await db
-      .prepare("UPDATE job_queues SET next_run_at = datetime('now', '-10 seconds') WHERE id = ?")
-      .bind(job.id)
-      .run();
+    await db.prepare("UPDATE job_queues SET next_run_at = datetime('now', '-10 seconds') WHERE id = ?").bind(job.id).run();
 
     const claim2 = await service.claimJobById(job.id, 60);
     expect(claim2).not.toBeNull();
@@ -114,8 +106,7 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
 
   it("AC2: no code path in jobs.ts performs SELECT-then-UPDATE for a state transition", () => {
     // AC2: /SELECT[\s\S]*?\bawait\b[\s\S]*?UPDATE job_queues/ is absent within any one method
-    const methodMatches =
-      jobsSource.match(/(?:async\s+)?(?:[a-zA-Z0-9_]+)\s*\([^)]*\)[^{]*\{[\s\S]*?\n  \}/g) ?? [];
+    const methodMatches = jobsSource.match(/(?:async\s+)?(?:[a-zA-Z0-9_]+)\s*\([^)]*\)[^{]*\{[\s\S]*?\n  \}/g) ?? [];
     expect(methodMatches.length).toBeGreaterThan(0);
     for (const body of methodMatches) {
       expect(body).not.toMatch(/SELECT[\s\S]*?\bawait\b[\s\S]*?UPDATE\s+job_queues/i);
@@ -136,10 +127,7 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
     expect(lease1?.attempt_count).toBe(1);
 
     // Lease 1 expires
-    await db
-      .prepare("UPDATE job_queues SET next_run_at = datetime('now', '-10 seconds') WHERE id = ?")
-      .bind(job.id)
-      .run();
+    await db.prepare("UPDATE job_queues SET next_run_at = datetime('now', '-10 seconds') WHERE id = ?").bind(job.id).run();
 
     // Consumer 2 re-claims the job (attempt 2)
     const lease2 = await service.claimJobById(job.id, 60);
@@ -147,12 +135,7 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
     expect(lease2?.attempt_count).toBe(2);
 
     // Consumer 1 (stale, attempt 1) attempts to complete the job
-    const completedStale = await service.complete(
-      WS_A,
-      job.id,
-      { fromConsumer1: true },
-      lease1!.attempt_count
-    );
+    const completedStale = await service.complete(WS_A, job.id, { fromConsumer1: true }, lease1!.attempt_count);
     expect(completedStale).toBe(false);
 
     // Verify row in DB is still running with attempt_count 2 and lease2's state intact
@@ -163,12 +146,7 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
     expect(current?.completed_at).toBeNull();
 
     // Consumer 2 (valid, attempt 2) completes the job
-    const completedValid = await service.complete(
-      WS_A,
-      job.id,
-      { fromConsumer2: true },
-      lease2!.attempt_count
-    );
+    const completedValid = await service.complete(WS_A, job.id, { fromConsumer2: true }, lease2!.attempt_count);
     expect(completedValid).toBe(true);
 
     const finalJob = await service.getJob(WS_A, job.id);
@@ -191,10 +169,7 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
     expect(lease1?.attempt_count).toBe(1);
 
     // Lease 1 expires
-    await db
-      .prepare("UPDATE job_queues SET next_run_at = datetime('now', '-10 seconds') WHERE id = ?")
-      .bind(job.id)
-      .run();
+    await db.prepare("UPDATE job_queues SET next_run_at = datetime('now', '-10 seconds') WHERE id = ?").bind(job.id).run();
 
     // Consumer 2 re-claims the job (attempt 2)
     const lease2 = await service.claimJobById(job.id, 60);
@@ -202,12 +177,7 @@ describe("JobQueueService Atomic Claim & Concurrency (UC6.2)", () => {
     expect(lease2?.attempt_count).toBe(2);
 
     // Consumer 1 (stale, attempt 1) attempts to fail the job
-    const failStale = await service.fail(
-      WS_A,
-      job.id,
-      "Stale timeout error",
-      lease1!.attempt_count
-    );
+    const failStale = await service.fail(WS_A, job.id, "Stale timeout error", lease1!.attempt_count);
     expect(failStale).toBeNull();
 
     // Verify row in DB is still running with attempt_count 2

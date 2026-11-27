@@ -1,25 +1,14 @@
 import { env } from "cloudflare:workers";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  IntegrationManifestSchema,
-  projectIntegrationToNodes,
-} from "@poc/assembler";
+import { IntegrationManifestSchema, projectIntegrationToNodes } from "@poc/assembler";
 import type { Catalog, IntegrationManifestFile } from "@poc/assembler";
 import { catalog as baseCatalog } from "@poc/assembler/catalog";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
-import {
-  buildExecutorsFromCatalog,
-  buildRegistryFromCatalog,
-  resetConnectionRefreshLocksForTest,
-  runGraph,
-} from "@poc/runtime";
+import { buildExecutorsFromCatalog, buildRegistryFromCatalog, resetConnectionRefreshLocksForTest, runGraph } from "@poc/runtime";
 import migrationSql from "../migrations/0001_integration_connections.sql?raw";
-import {
-  createIntegrationConnectionsRoutes,
-  unsealWorkspaceCredentials,
-} from "../src/index.ts";
+import { createIntegrationConnectionsRoutes, unsealWorkspaceCredentials } from "../src/index.ts";
 import type { IntegrationConnectionsEnv } from "../src/index.ts";
 
 const googleManifest: IntegrationManifestFile = IntegrationManifestSchema.parse({
@@ -54,9 +43,7 @@ const googleManifest: IntegrationManifestFile = IntegrationManifestSchema.parse(
       params: [],
       body: {
         contentType: "application/json",
-        fields: [
-          { name: "summary", dataType: "string", required: true },
-        ],
+        fields: [{ name: "summary", dataType: "string", required: true }],
       },
       response: {
         outputs: [
@@ -197,12 +184,9 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
 
     // Step 2: Complete OAuth callback for Workspace A
     const callbackRes = await app.fetch(
-      new Request(
-        `https://app.example.test/api/integrations/google/callback?code=auth_code_991&state=${encodeURIComponent(startBody.state)}`,
-        {
-          headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
-        },
-      ),
+      new Request(`https://app.example.test/api/integrations/google/callback?code=auth_code_991&state=${encodeURIComponent(startBody.state)}`, {
+        headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
+      }),
       { DB: db, PX_CONN_KEY: pxConnKey },
     );
     expect(callbackRes.status).toBe(200);
@@ -244,10 +228,7 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
       capturedAuthHeader = headers.get("authorization");
       if (url.includes("/calendars/primary/events")) {
         const body = JSON.parse(String(init?.body ?? "{}")) as { summary?: string };
-        return Response.json(
-          { id: "evt_ws_a_101", summary: body.summary ?? "Untitled" },
-          { status: 200 },
-        );
+        return Response.json({ id: "evt_ws_a_101", summary: body.summary ?? "Untitled" }, { status: 200 });
       }
       return Response.json({ error: "not_found" }, { status: 404 });
     };
@@ -301,12 +282,9 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
 
     // Workspace B attempts to complete callback using Workspace A's state -> 400 OAUTH_STATE_MISMATCH
     const hijackRes = await app.fetch(
-      new Request(
-        `https://app.example.test/api/integrations/google/callback?code=evil_code&state=${encodeURIComponent(stateA)}`,
-        {
-          headers: { "x-test-user": "user_bob", "x-workspace-id": "ws_B" },
-        },
-      ),
+      new Request(`https://app.example.test/api/integrations/google/callback?code=evil_code&state=${encodeURIComponent(stateA)}`, {
+        headers: { "x-test-user": "user_bob", "x-workspace-id": "ws_B" },
+      }),
       { DB: db, PX_CONN_KEY: pxConnKey },
     );
     expect(hijackRes.status).toBe(400);
@@ -322,12 +300,9 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
     );
     const { state: stateA2 } = (await startA2.json()) as { state: string };
     const cbA = await app.fetch(
-      new Request(
-        `https://app.example.test/api/integrations/google/callback?code=good_code&state=${encodeURIComponent(stateA2)}`,
-        {
-          headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
-        },
-      ),
+      new Request(`https://app.example.test/api/integrations/google/callback?code=good_code&state=${encodeURIComponent(stateA2)}`, {
+        headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
+      }),
       { DB: db, PX_CONN_KEY: pxConnKey },
     );
     expect(cbA.status).toBe(200);
@@ -380,7 +355,10 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
 
     const carol = { "x-test-user": "user_carol", "x-workspace-id": "ws_A", "x-test-role": "member" };
     const states = await db.prepare("SELECT COUNT(*) AS n FROM int_oauth_states").first<{ n: number }>();
-    for (const [headers, status] of [[{ "x-workspace-id": "ws_A" }, 401], [carol, 403]] as const) {
+    for (const [headers, status] of [
+      [{ "x-workspace-id": "ws_A" }, 401],
+      [carol, 403],
+    ] as const) {
       expect((await req("/api/integrations/google/connect", headers)).status).toBe(status);
       expect((await req("/api/connect/google", headers)).status).toBe(status);
       expect((await req("/api/integrations/google/callback?code=evil&state=x", headers)).status).toBe(status);
@@ -413,12 +391,9 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
     );
     const { state: stateA } = (await startA.json()) as { state: string };
     await app.fetch(
-      new Request(
-        `https://app.example.test/api/integrations/google/callback?code=ws_a_secret_code&state=${encodeURIComponent(stateA)}`,
-        {
-          headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
-        },
-      ),
+      new Request(`https://app.example.test/api/integrations/google/callback?code=ws_a_secret_code&state=${encodeURIComponent(stateA)}`, {
+        headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
+      }),
       { DB: db, PX_CONN_KEY: pxConnKey },
     );
 
@@ -486,12 +461,9 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
     );
     const { state: stateA } = (await startA.json()) as { state: string };
     await app.fetch(
-      new Request(
-        `https://app.example.test/api/integrations/google/callback?code=transplant_test&state=${encodeURIComponent(stateA)}`,
-        {
-          headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
-        },
-      ),
+      new Request(`https://app.example.test/api/integrations/google/callback?code=transplant_test&state=${encodeURIComponent(stateA)}`, {
+        headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
+      }),
       { DB: db, PX_CONN_KEY: pxConnKey },
     );
 
@@ -503,9 +475,7 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
     // Direct crypto verification: unsealing with ws_A succeeds, unsealing with ws_B throws WORKSPACE_CREDENTIAL_INTEGRITY_ERROR
     const unsealedA = await unsealWorkspaceCredentials(rowA!.sealed_credentials, "ws_A", pxConnKey);
     expect(unsealedA.accessToken).toContain("ws_A");
-    await expect(
-      unsealWorkspaceCredentials(rowA!.sealed_credentials, "ws_B", pxConnKey),
-    ).rejects.toThrow(/WORKSPACE_CREDENTIAL_INTEGRITY_ERROR/);
+    await expect(unsealWorkspaceCredentials(rowA!.sealed_credentials, "ws_B", pxConnKey)).rejects.toThrow(/WORKSPACE_CREDENTIAL_INTEGRITY_ERROR/);
 
     // Transplant sealed_credentials into Workspace B's D1 row
     await db
@@ -581,12 +551,9 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
     );
     const { state: stateA } = (await startA.json()) as { state: string };
     await app.fetch(
-      new Request(
-        `https://app.example.test/api/integrations/google/callback?code=init_expired&state=${encodeURIComponent(stateA)}`,
-        {
-          headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
-        },
-      ),
+      new Request(`https://app.example.test/api/integrations/google/callback?code=init_expired&state=${encodeURIComponent(stateA)}`, {
+        headers: { "x-test-user": "user_alice", "x-workspace-id": "ws_A" },
+      }),
       { DB: db, PX_CONN_KEY: pxConnKey },
     );
 
@@ -612,10 +579,7 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
       const headers = new Headers(init?.headers);
       seenBearerTokens.push(headers.get("authorization") ?? "");
       const body = JSON.parse(String(init?.body ?? "{}")) as { summary?: string };
-      return Response.json(
-        { id: `evt_${seenBearerTokens.length}`, summary: body.summary ?? "Event" },
-        { status: 200 },
-      );
+      return Response.json({ id: `evt_${seenBearerTokens.length}`, summary: body.summary ?? "Event" }, { status: 200 });
     };
 
     const catalog = buildTestCatalog();
@@ -664,10 +628,7 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
 
     expect(runResult.ok).toBe(true);
     expect(oauthRefreshCallCount).toBe(1);
-    expect(seenBearerTokens).toEqual([
-      "Bearer ya29.ws_a_refreshed_token_v2",
-      "Bearer ya29.ws_a_refreshed_token_v2",
-    ]);
+    expect(seenBearerTokens).toEqual(["Bearer ya29.ws_a_refreshed_token_v2", "Bearer ya29.ws_a_refreshed_token_v2"]);
 
     // Verify the re-sealed row in int_connections is bound to ws_A AAD and holds the new token
     const updatedRow = await db
@@ -675,11 +636,7 @@ describe("Story 10.3 — Case B bricks/integration-connections Multi-Tenant OAut
       .first<{ sealed_credentials: string; status: string; refresh_lock_until: number | null }>();
     expect(updatedRow?.status).toBe("connected");
     expect(updatedRow?.refresh_lock_until).toBeNull();
-    const unsealedUpdated = await unsealWorkspaceCredentials(
-      updatedRow!.sealed_credentials,
-      "ws_A",
-      pxConnKey,
-    );
+    const unsealedUpdated = await unsealWorkspaceCredentials(updatedRow!.sealed_credentials, "ws_A", pxConnKey);
     expect(unsealedUpdated.accessToken).toBe("ya29.ws_a_refreshed_token_v2");
     expect(unsealedUpdated.refreshToken).toBe("1//ws_a_refresh_token_v2");
   });
@@ -738,7 +695,10 @@ describe("story 0.9: no fabricated OAuth success (A7, A13)", () => {
 
   it("A13: with no client id configured, connect answers 503 NOT_CONFIGURED, stores no state and sends no placeholder client id", async () => {
     const app = createBareApp();
-    const res = await app.fetch(new Request("https://app.example.test/api/integrations/google/connect", { headers: alice }), { DB: db, PX_CONN_KEY: pxConnKey });
+    const res = await app.fetch(new Request("https://app.example.test/api/integrations/google/connect", { headers: alice }), {
+      DB: db,
+      PX_CONN_KEY: pxConnKey,
+    });
     expect(res.status).toBe(503);
     const text = await res.text();
     expect(JSON.parse(text).error.code).toBe("NOT_CONFIGURED");
@@ -749,7 +709,10 @@ describe("story 0.9: no fabricated OAuth success (A7, A13)", () => {
 
   it("OAUTH_NO_EXCHANGE: with no exchange adapter, the callback fails NOT_CONFIGURED and the connection is not marked connected", async () => {
     const app = createBareApp({ adapter: { providers: { google: { clientId: "real-client-id" } } } });
-    const start = await app.fetch(new Request("https://app.example.test/api/integrations/google/connect", { headers: alice }), { DB: db, PX_CONN_KEY: pxConnKey });
+    const start = await app.fetch(new Request("https://app.example.test/api/integrations/google/connect", { headers: alice }), {
+      DB: db,
+      PX_CONN_KEY: pxConnKey,
+    });
     expect(start.status).toBe(200);
     const { state, authorizeUrl } = (await start.json()) as { state: string; authorizeUrl: string };
     expect(new URL(authorizeUrl).searchParams.get("client_id")).toBe("real-client-id");

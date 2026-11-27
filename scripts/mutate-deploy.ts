@@ -29,45 +29,150 @@ interface Case {
   to: string;
 }
 const cases: Case[] = [
-  { name: "the key is not checked", file: G, from: "if (given === null || !(await sameSecret(given, expected))) return json(401, { error: \"unauthorized\" });", to: "" },
+  {
+    name: "the key is not checked",
+    file: G,
+    from: 'if (given === null || !(await sameSecret(given, expected))) return json(401, { error: "unauthorized" });',
+    to: "",
+  },
   { name: "the key is compared by prefix", file: G, from: "!(await sameSecret(given, expected))", to: "!expected.startsWith(given)" },
-  { name: "the key is compared by its first 8 bytes only (EQUIVALENT: a 64-bit collision of two SHA-256 digests is not observable)", file: G, from: "for (let i = 0; i < a.length; i += 1)", to: "for (let i = 0; i < 8; i += 1)" },
+  {
+    name: "the key is compared by its first 8 bytes only (EQUIVALENT: a 64-bit collision of two SHA-256 digests is not observable)",
+    file: G,
+    from: "for (let i = 0; i < a.length; i += 1)",
+    to: "for (let i = 0; i < 8; i += 1)",
+  },
   { name: "every secret matches", file: G, from: "return difference === 0;", to: "return true;" },
-  { name: "anything under /demo is open", file: G, from: "request.method === \"GET\" && url.pathname === DEMO_PATH", to: "request.method === \"GET\" && url.pathname.startsWith(DEMO_PATH)" },
-  { name: "any method on /demo is open", file: G, from: "request.method === \"GET\" && url.pathname === DEMO_PATH", to: "url.pathname === DEMO_PATH" },
-  { name: "the key is also accepted in the query string", file: G, from: "const given = request.headers.get(KEY_HEADER);", to: "const given = request.headers.get(KEY_HEADER) ?? url.searchParams.get(KEY_HEADER);" },
-  { name: "the key is also accepted as a bearer token", file: G, from: "const given = request.headers.get(KEY_HEADER);", to: "const given = request.headers.get(KEY_HEADER) ?? request.headers.get(\"authorization\")?.replace(/^Bearer /, \"\") ?? null;" },
+  {
+    name: "anything under /demo is open",
+    file: G,
+    from: 'request.method === "GET" && url.pathname === DEMO_PATH',
+    to: 'request.method === "GET" && url.pathname.startsWith(DEMO_PATH)',
+  },
+  { name: "any method on /demo is open", file: G, from: 'request.method === "GET" && url.pathname === DEMO_PATH', to: "url.pathname === DEMO_PATH" },
+  {
+    name: "the key is also accepted in the query string",
+    file: G,
+    from: "const given = request.headers.get(KEY_HEADER);",
+    to: "const given = request.headers.get(KEY_HEADER) ?? url.searchParams.get(KEY_HEADER);",
+  },
+  {
+    name: "the key is also accepted as a bearer token",
+    file: G,
+    from: "const given = request.headers.get(KEY_HEADER);",
+    to: 'const given = request.headers.get(KEY_HEADER) ?? request.headers.get("authorization")?.replace(/^Bearer /, "") ?? null;',
+  },
   { name: "the key header is a different one", file: G, from: 'export const KEY_HEADER = "x-poc-key";', to: 'export const KEY_HEADER = "x-key";' },
   { name: "a short key is accepted (minimum length 0)", file: G, from: "export const MIN_KEY_LENGTH = 16;", to: "export const MIN_KEY_LENGTH = 0;" },
-  { name: "no key configured lets everyone in", file: G, from: "return json(503, { error: \"this deployment has no access key configured\" });", to: "return options.app.fetch(request, env, ctx);" },
-  { name: "a refusal echoes the key it was given", file: G, from: 'return json(401, { error: "unauthorized" });', to: 'return json(401, { error: "unauthorized", given });' },
-  { name: "the 503 echoes the configured key", file: G, from: 'return json(503, { error: "this deployment has no access key configured" });', to: 'return json(503, { error: "this deployment has no access key configured", expected });' },
-  { name: "the demo page carries the key", file: G, from: "return new Response(options.demoHtml, { status: 200, headers: DEMO_HEADERS });", to: "return new Response(options.demoHtml + String((env as GateEnv).POC_ACCESS_KEY ?? \"\"), { status: 200, headers: DEMO_HEADERS });" },
+  {
+    name: "no key configured lets everyone in",
+    file: G,
+    from: 'return json(503, { error: "this deployment has no access key configured" });',
+    to: "return options.app.fetch(request, env, ctx);",
+  },
+  {
+    name: "a refusal echoes the key it was given",
+    file: G,
+    from: 'return json(401, { error: "unauthorized" });',
+    to: 'return json(401, { error: "unauthorized", given });',
+  },
+  {
+    name: "the 503 echoes the configured key",
+    file: G,
+    from: 'return json(503, { error: "this deployment has no access key configured" });',
+    to: 'return json(503, { error: "this deployment has no access key configured", expected });',
+  },
+  {
+    name: "the demo page carries the key",
+    file: G,
+    from: "return new Response(options.demoHtml, { status: 200, headers: DEMO_HEADERS });",
+    to: 'return new Response(options.demoHtml + String((env as GateEnv).POC_ACCESS_KEY ?? ""), { status: 200, headers: DEMO_HEADERS });',
+  },
   { name: "the demo page may call anywhere (CSP connect-src opened)", file: G, from: "connect-src 'self';", to: "connect-src *;" },
-  { name: "the demo page is cached", file: G, from: '"cache-control": "no-store",\n  "x-content-type-options"', to: '"cache-control": "public, max-age=3600",\n  "x-content-type-options"' },
-  { name: "the bundle has no gate (the project is exported directly)", file: B, from: "`export default createGatedWorker({ app, demoHtml: ${JSON.stringify(demoHtml)} });`,", to: "`export default app;`," },
+  {
+    name: "the demo page is cached",
+    file: G,
+    from: '"cache-control": "no-store",\n  "x-content-type-options"',
+    to: '"cache-control": "public, max-age=3600",\n  "x-content-type-options"',
+  },
+  {
+    name: "the bundle has no gate (the project is exported directly)",
+    file: B,
+    from: "`export default createGatedWorker({ app, demoHtml: ${JSON.stringify(demoHtml)} });`,",
+    to: "`export default app;`,",
+  },
   { name: "Node-only imports are left for the runtime to find", file: B, from: 'external: ["cloudflare:*"],', to: 'external: ["cloudflare:*", "node:*"],' },
-  { name: "the bundle carries a timestamp", file: B, from: "legalComments: \"none\",\n    metafile: true,", to: "legalComments: \"none\",\n    banner: { js: `// built ${Date.now()}` },\n    metafile: true," },
+  {
+    name: "the bundle carries a timestamp",
+    file: B,
+    from: 'legalComments: "none",\n    metafile: true,',
+    to: 'legalComments: "none",\n    banner: { js: `// built ${Date.now()}` },\n    metafile: true,',
+  },
   { name: "the demo page's script is not escaped", file: B, from: 'const safe = script.replace(/<\\/script/gi, "<\\\\/script");', to: "const safe = script;" },
-  { name: "a missing project folder is not noticed", file: B, from: 'if (!existsSync(join(projectDir, "src", "index.ts"))) throw', to: 'if (false as boolean) throw' },
+  {
+    name: "a missing project folder is not noticed",
+    file: B,
+    from: 'if (!existsSync(join(projectDir, "src", "index.ts"))) throw',
+    to: "if (false as boolean) throw",
+  },
   { name: "the size limit is not enforced in the report (always within)", file: B, from: "within: bytes <= WORKER_SIZE_LIMIT_BYTES", to: "within: true" },
-  { name: "the scripted check passes everything", file: S, from: "return JSON.stringify(observations) === JSON.stringify(SCRIPTED_EXPECTED);", to: "return true;" },
-  { name: "the scripted check expects a leak (B sees A's invoice)", file: S, from: '{ step: "B lists its invoices and sees none of A\'s", status: 200, facts: { total: 0, sawAcme: false } },', to: '{ step: "B lists its invoices and sees none of A\'s", status: 200, facts: { total: 1, sawAcme: true } },' },
-  { name: "the scripted check does not ask for the foreign invoice", file: S, from: 'const readOther = await call("B reads A\'s invoice by id and is refused", "GET", `/api/invoices/${encodeURIComponent(invoiceId)}`, "bob", wsB);', to: 'const readOther = await call("B reads A\'s invoice by id and is refused", "GET", `/api/invoices/${encodeURIComponent("nothing")}`, "bob", wsB);' },
-  { name: "the demo page script makes its own network call", file: D, from: "const root = document.getElementById(\"root\");", to: "void fetch(\"/api/wallet\");\nconst root = document.getElementById(\"root\");" },
-  { name: "the bundler starts another program", file: B, from: 'import { gzipSync } from "node:zlib";', to: 'import { gzipSync } from "node:zlib";\nimport { execSync } from "node:child_process";\nvoid execSync;' },
-  { name: "the gate evaluates code", file: G, from: "const encoder = new TextEncoder();", to: "const encoder = new TextEncoder();\nvoid eval(\"1\");" },
+  {
+    name: "the scripted check passes everything",
+    file: S,
+    from: "return JSON.stringify(observations) === JSON.stringify(SCRIPTED_EXPECTED);",
+    to: "return true;",
+  },
+  {
+    name: "the scripted check expects a leak (B sees A's invoice)",
+    file: S,
+    from: '{ step: "B lists its invoices and sees none of A\'s", status: 200, facts: { total: 0, sawAcme: false } },',
+    to: '{ step: "B lists its invoices and sees none of A\'s", status: 200, facts: { total: 1, sawAcme: true } },',
+  },
+  {
+    name: "the scripted check does not ask for the foreign invoice",
+    file: S,
+    from: 'const readOther = await call("B reads A\'s invoice by id and is refused", "GET", `/api/invoices/${encodeURIComponent(invoiceId)}`, "bob", wsB);',
+    to: 'const readOther = await call("B reads A\'s invoice by id and is refused", "GET", `/api/invoices/${encodeURIComponent("nothing")}`, "bob", wsB);',
+  },
+  {
+    name: "the demo page script makes its own network call",
+    file: D,
+    from: 'const root = document.getElementById("root");',
+    to: 'void fetch("/api/wallet");\nconst root = document.getElementById("root");',
+  },
+  {
+    name: "the bundler starts another program",
+    file: B,
+    from: 'import { gzipSync } from "node:zlib";',
+    to: 'import { gzipSync } from "node:zlib";\nimport { execSync } from "node:child_process";\nvoid execSync;',
+  },
+  { name: "the gate evaluates code", file: G, from: "const encoder = new TextEncoder();", to: 'const encoder = new TextEncoder();\nvoid eval("1");' },
   { name: "orphan version is not adopted (always re-uploaded)", file: P, from: "if (orphanVersion) {", to: "if (false as boolean && orphanVersion) {" },
   { name: "active 100% deployment is not reconciled (always creates deployment)", file: P, from: "if (!isAlreadyActiveAt100) {", to: "if (true) {" },
-  { name: "bookmark failure does not block migrations", file: P, from: "const bookmark = await client.getD1Bookmark(databaseId);", to: 'const bookmark = "bypassed_bookmark";' },
+  {
+    name: "bookmark failure does not block migrations",
+    file: P,
+    from: "const bookmark = await client.getD1Bookmark(databaseId);",
+    to: 'const bookmark = "bypassed_bookmark";',
+  },
   { name: "uploadVersion failure is not recorded in deploy history", file: P, from: "status = 'upload_failed'", to: "status = 'success'" },
 ];
 
-const suites = ["packages/deploy/test/gate.test", "packages/deploy/test/scripted-check.test", "packages/deploy/test/bundle.node", "packages/deploy/test/deploy-faults.node"];
+const suites = [
+  "packages/deploy/test/gate.test",
+  "packages/deploy/test/scripted-check.test",
+  "packages/deploy/test/bundle.node",
+  "packages/deploy/test/deploy-faults.node",
+];
 function run(filter: string): string {
   const result = spawnSync(process.execPath, [join(root, "node_modules", "vitest", "vitest.mjs"), "run", filter], { cwd: root, encoding: "utf8" });
   const out = stripVTControlCharacters(result.stdout + result.stderr);
-  const tests = out.split(/\r?\n/).find((l) => /^\s+Tests /.test(l))?.trim().replace(/^Tests\s+/, "") ?? (/FAIL|Error/.test(out) ? "(did not run)" : "(no summary)");
+  const tests =
+    out
+      .split(/\r?\n/)
+      .find((l) => /^\s+Tests /.test(l))
+      ?.trim()
+      .replace(/^Tests\s+/, "") ?? (/FAIL|Error/.test(out) ? "(did not run)" : "(no summary)");
   return tests.replace(/ passed/g, "p").replace(/ failed/g, "f");
 }
 const runAll = () => suites.map((s) => `${s.split("/").pop()!.replace(".test", "")} ${run(s)}`).join(" | ");

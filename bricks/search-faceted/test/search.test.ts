@@ -4,10 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_search_faceted.sql?raw";
-import {
-  FacetedSearchService,
-  createSearchRoutes,
-} from "../src/index.ts";
+import { FacetedSearchService, createSearchRoutes } from "../src/index.ts";
 import type { SearchEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -36,7 +33,7 @@ describe("Faceted Full-Text Search Core Logic", () => {
       "art_1",
       "Getting Started with Cloudflare Workers",
       "Deploy scalable serverless edge applications running worldwide within milliseconds.",
-      { category: "engineering", status: "published" }
+      { category: "engineering", status: "published" },
     );
 
     await service.indexDocument(
@@ -45,7 +42,7 @@ describe("Faceted Full-Text Search Core Logic", () => {
       "art_2",
       "Advanced D1 Database Optimization",
       "Optimize SQLite queries and manage relational tables on edge infrastructure.",
-      { category: "database", status: "published" }
+      { category: "database", status: "published" },
     );
 
     // Search query: "serverless application"
@@ -131,17 +128,21 @@ describe("Faceted Search HTTP API", () => {
     app.route("/api", createSearchRoutes());
 
     // 1. POST /search/index
-    const idxRes = await app.request("/api/search/index", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        entityType: "kb",
-        entityId: "kb_101",
-        title: "How to configure Webhooks",
-        body: "Navigate to developer settings and add your endpoint URL with HMAC secret.",
-        facets: { topic: "developer" },
-      }),
-    }, { DB: db });
+    const idxRes = await app.request(
+      "/api/search/index",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          entityType: "kb",
+          entityId: "kb_101",
+          title: "How to configure Webhooks",
+          body: "Navigate to developer settings and add your endpoint URL with HMAC secret.",
+          facets: { topic: "developer" },
+        }),
+      },
+      { DB: db },
+    );
     expect(idxRes.status).toBe(201);
 
     // 2. GET /search?q=configure
@@ -159,10 +160,14 @@ describe("Faceted Search HTTP API", () => {
     expect(suggJson.suggestions[0]?.title).toBe("How to configure Webhooks");
 
     // 4. DELETE /search/index/kb/kb_101
-    const delRes = await app.request("/api/search/index/kb/kb_101", {
-      method: "DELETE",
-      headers: { "x-workspace-id": WS_ALPHA },
-    }, { DB: db });
+    const delRes = await app.request(
+      "/api/search/index/kb/kb_101",
+      {
+        method: "DELETE",
+        headers: { "x-workspace-id": WS_ALPHA },
+      },
+      { DB: db },
+    );
     expect(delRes.status).toBe(200);
   });
 });

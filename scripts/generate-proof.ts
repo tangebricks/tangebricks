@@ -14,10 +14,7 @@ import { LIVE_HYPOTHESES } from "./proof-inputs.ts";
 const repoRoot = resolve(import.meta.dirname, "..");
 
 export function resolveBlueprintIdentity(targetRoot: string = repoRoot, fallbackRoot: string = repoRoot): string {
-  const candidates = [
-    join(targetRoot, "test", "support", "blueprints.ts"),
-    join(fallbackRoot, "test", "support", "blueprints.ts"),
-  ];
+  const candidates = [join(targetRoot, "test", "support", "blueprints.ts"), join(fallbackRoot, "test", "support", "blueprints.ts")];
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       const text = readFileSync(candidate, "utf8");
@@ -25,18 +22,11 @@ export function resolveBlueprintIdentity(targetRoot: string = repoRoot, fallback
       if (match?.[1]) return match[1];
     }
   }
-  const bpIdentity =
-    (INVOICE_FLOW_BLUEPRINT as { identity?: string }).identity ??
-    (TWO_BRICK_BLUEPRINT as { identity?: string }).identity ??
-    "stub";
+  const bpIdentity = (INVOICE_FLOW_BLUEPRINT as { identity?: string }).identity ?? (TWO_BRICK_BLUEPRINT as { identity?: string }).identity ?? "stub";
   return bpIdentity;
 }
 
-export function renderProofMarkdown(
-  verdictsData: VerdictsFile,
-  hypotheses: ReadonlyArray<Hypothesis>,
-  blueprintIdentity: string = "stub",
-): string {
+export function renderProofMarkdown(verdictsData: VerdictsFile, hypotheses: ReadonlyArray<Hypothesis>, blueprintIdentity: string = "stub"): string {
   const decision = computeDecision(verdictsData.verdicts);
   const liveSet = new Set<string>(LIVE_HYPOTHESES);
   const totalCount = hypotheses.length;
@@ -104,9 +94,7 @@ export function renderProofMarkdown(
   const h9 = verdictsData.verdicts.H9;
   const h9StatusWord = h9 ? `${h9.verdict} (${h9.measured})` : "unmeasured";
   lines.push("1. **H9 Measurement vs. Deployed Finding**:");
-  lines.push(
-    `   H9's ${h9?.verdict ?? "result"} was measured in Node (${h9StatusWord}) and the deployed build is a separate finding.`,
-  );
+  lines.push(`   H9's ${h9?.verdict ?? "result"} was measured in Node (${h9StatusWord}) and the deployed build is a separate finding.`);
   if (h9 && h9.reasons.length > 0) {
     for (const reason of h9.reasons) {
       lines.push(`   - ${reason}`);
@@ -132,10 +120,7 @@ export function renderProofMarkdown(
     const v = verdictsData.verdicts[liveId];
     if (!v) continue;
     const startedReason = v.reasons.find((r) => r.startsWith("from the run that started "));
-    const runTimestamp =
-      liveId === "H5" && startedReason
-        ? startedReason.replace("from the run that started ", "").trim()
-        : v.recordedAt;
+    const runTimestamp = liveId === "H5" && startedReason ? startedReason.replace("from the run that started ", "").trim() : v.recordedAt;
     lines.push(`   - **${liveId}**: recorded live run ${runTimestamp}`);
     for (const reason of v.reasons) {
       lines.push(`     - ${reason}`);
@@ -156,7 +141,9 @@ export function renderProofMarkdown(
   lines.push("");
   lines.push("- `pnpm poc:verify`: Runs the test suite, computes `inputsHash`, and writes `evidence/verdicts.json`.");
   lines.push("- `pnpm proof:generate`: Regenerates `PROOF.md` from `evidence/verdicts.json` and `hypotheses.json`.");
-  lines.push("- `pnpm proof:check`: Re-runs offline verification into a temporary directory, checks `inputsHash` and `verdicts.json`, and verifies `PROOF.md` matches `proof:generate`.");
+  lines.push(
+    "- `pnpm proof:check`: Re-runs offline verification into a temporary directory, checks `inputsHash` and `verdicts.json`, and verifies `PROOF.md` matches `proof:generate`.",
+  );
   lines.push("- `pnpm poc:verdict`: Evaluates the register's decision rule after verifying `inputsHash` is fresh.");
   lines.push("");
 
@@ -173,9 +160,7 @@ export function runGenerateProofCli(argv: string[] = process.argv.slice(2)): num
   }
 
   const verdictsPath = join(targetRoot, "evidence", "verdicts.json");
-  const hypothesesPath = existsSync(join(targetRoot, "hypotheses.json"))
-    ? join(targetRoot, "hypotheses.json")
-    : join(repoRoot, "hypotheses.json");
+  const hypothesesPath = existsSync(join(targetRoot, "hypotheses.json")) ? join(targetRoot, "hypotheses.json") : join(repoRoot, "hypotheses.json");
   const proofPath = join(targetRoot, "PROOF.md");
 
   if (!existsSync(verdictsPath)) {
@@ -193,9 +178,7 @@ export function runGenerateProofCli(argv: string[] = process.argv.slice(2)): num
   return 0;
 }
 
-const isMain =
-  process.argv[1] !== undefined &&
-  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+const isMain = process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 
 if (isMain) {
   process.exit(runGenerateProofCli());

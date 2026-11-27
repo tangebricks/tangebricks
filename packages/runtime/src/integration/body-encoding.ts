@@ -3,11 +3,7 @@ import type { BlobStore } from "@poc/sdk";
 import { IntegrationCallError } from "./errors.ts";
 import { isPlainObject, trackSecretValue } from "./redaction.ts";
 
-export function encodeBracketForm(
-  prefix: string,
-  val: unknown,
-  targetPairs: [string, string][],
-): void {
+export function encodeBracketForm(prefix: string, val: unknown, targetPairs: [string, string][]): void {
   if (isPlainObject(val)) {
     for (const [k, v] of Object.entries(val)) {
       encodeBracketForm(`${prefix}[${k}]`, v, targetPairs);
@@ -51,10 +47,7 @@ export function validateVariants(name: string, val: unknown, schema?: FieldSchem
   if (!schema?.variants || schema.variants.length === 0) return;
   const matches = schema.variants.some((v) => matchesVariant(val, v));
   if (!matches) {
-    throw new IntegrationCallError(
-      `INTEGRATION_INVALID_PARAM: Value for "${name}" does not match any oneOf variant`,
-      { code: "INTEGRATION_INVALID_PARAM" },
-    );
+    throw new IntegrationCallError(`INTEGRATION_INVALID_PARAM: Value for "${name}" does not match any oneOf variant`, { code: "INTEGRATION_INVALID_PARAM" });
   }
 }
 
@@ -85,20 +78,16 @@ export async function encodeRequestBody(
       }
       if (val === undefined) {
         if (field.required) {
-          throw new IntegrationCallError(
-            `INTEGRATION_MISSING_PARAM: Missing required body field "${field.name}"`,
-            { code: "INTEGRATION_MISSING_PARAM" },
-          );
+          throw new IntegrationCallError(`INTEGRATION_MISSING_PARAM: Missing required body field "${field.name}"`, { code: "INTEGRATION_MISSING_PARAM" });
         }
         continue;
       }
       if (field.binary) {
         if (val && typeof val === "object" && "blobRef" in (val as Record<string, unknown>)) {
           if (!options.blobStore) {
-            throw new IntegrationCallError(
-              "INTEGRATION_BLOBSTORE_MISSING: blobStore is required for binary payload",
-              { code: "INTEGRATION_BLOBSTORE_MISSING" },
-            );
+            throw new IntegrationCallError("INTEGRATION_BLOBSTORE_MISSING: blobStore is required for binary payload", {
+              code: "INTEGRATION_BLOBSTORE_MISSING",
+            });
           }
           const blobRef = String((val as Record<string, unknown>).blobRef);
           const stored = await options.blobStore.get(blobRef);
@@ -117,9 +106,7 @@ export async function encodeRequestBody(
           }
           const fileType = String((val as Record<string, unknown>).contentType ?? stored.contentType ?? "application/octet-stream");
           const fileName = String((val as Record<string, unknown>).filename ?? "file");
-          const fileObj = typeof File !== "undefined"
-            ? new File([totalBytes], fileName, { type: fileType })
-            : new Blob([totalBytes], { type: fileType });
+          const fileObj = typeof File !== "undefined" ? new File([totalBytes], fileName, { type: fileType }) : new Blob([totalBytes], { type: fileType });
           formData.append(field.wireName ?? field.name, fileObj as any, fileName);
         } else if (val instanceof Blob || (typeof File !== "undefined" && val instanceof File)) {
           formData.append(field.wireName ?? field.name, val as any);
@@ -144,10 +131,7 @@ export async function encodeRequestBody(
 
     if (mediaVal && typeof mediaVal === "object" && "blobRef" in mediaVal) {
       if (!options.blobStore) {
-        throw new IntegrationCallError(
-          "INTEGRATION_BLOBSTORE_MISSING: blobStore is required for binary payload",
-          { code: "INTEGRATION_BLOBSTORE_MISSING" },
-        );
+        throw new IntegrationCallError("INTEGRATION_BLOBSTORE_MISSING: blobStore is required for binary payload", { code: "INTEGRATION_BLOBSTORE_MISSING" });
       }
       const stored = await options.blobStore.get(String(mediaVal.blobRef));
       const reader = stored.body.getReader();
@@ -185,13 +169,10 @@ export async function encodeRequestBody(
   }
 
   if (contentType === "application/octet-stream") {
-    const rootVal: unknown = args.body !== undefined ? args.body : (args.in !== undefined ? args.in : args);
+    const rootVal: unknown = args.body !== undefined ? args.body : args.in !== undefined ? args.in : args;
     if (rootVal && typeof rootVal === "object" && "blobRef" in (rootVal as Record<string, unknown>)) {
       if (!options.blobStore) {
-        throw new IntegrationCallError(
-          "INTEGRATION_BLOBSTORE_MISSING: blobStore is required for binary payload",
-          { code: "INTEGRATION_BLOBSTORE_MISSING" },
-        );
+        throw new IntegrationCallError("INTEGRATION_BLOBSTORE_MISSING: blobStore is required for binary payload", { code: "INTEGRATION_BLOBSTORE_MISSING" });
       }
       const stored = await options.blobStore.get(String((rootVal as Record<string, unknown>).blobRef));
       return stored.body;
@@ -203,7 +184,7 @@ export async function encodeRequestBody(
   }
 
   if (contentType === "text/plain") {
-    const raw = args.body !== undefined ? args.body : (args.in !== undefined ? args.in : (typeof args === "string" ? args : JSON.stringify(args)));
+    const raw = args.body !== undefined ? args.body : args.in !== undefined ? args.in : typeof args === "string" ? args : JSON.stringify(args);
     return typeof raw === "string" ? raw : String(raw);
   }
 
@@ -249,10 +230,7 @@ export async function encodeRequestBody(
     }
     if (val === undefined) {
       if (field.required) {
-        throw new IntegrationCallError(
-          `INTEGRATION_MISSING_PARAM: Missing required body field "${field.name}"`,
-          { code: "INTEGRATION_MISSING_PARAM" },
-        );
+        throw new IntegrationCallError(`INTEGRATION_MISSING_PARAM: Missing required body field "${field.name}"`, { code: "INTEGRATION_MISSING_PARAM" });
       }
       continue;
     }

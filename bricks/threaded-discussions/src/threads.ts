@@ -109,7 +109,7 @@ export class ThreadedDiscussionService {
     targetTypeRaw: string,
     targetIdRaw: string,
     initialComment: { authorId: string; authorName: string; body: string },
-    title?: string
+    title?: string,
   ): Promise<ThreadWithTree> {
     const threadId = `thrd_${crypto.randomUUID().replace(/-/g, "")}`;
     const commentId = `cmt_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -182,7 +182,7 @@ export class ThreadedDiscussionService {
     threadId: string,
     author: { authorId: string; authorName: string },
     body: string,
-    parentCommentId?: string
+    parentCommentId?: string,
   ): Promise<Comment> {
     const thread = await this.getThread(workspaceId, threadId);
     if (!thread) throw new Error("Thread not found");
@@ -228,11 +228,7 @@ export class ThreadedDiscussionService {
    */
   async getThread(workspaceId: string, threadId: string): Promise<Thread | null> {
     const s = scoped(this.db, workspaceId);
-    const row = await s.first<RawThreadRow>(
-      "cmt_threads",
-      "id = ?",
-      [threadId]
-    );
+    const row = await s.first<RawThreadRow>("cmt_threads", "id = ?", [threadId]);
 
     if (!row) return null;
     return this.parseThread(row);
@@ -246,12 +242,7 @@ export class ThreadedDiscussionService {
     if (!thread) return null;
 
     const s = scoped(this.db, workspaceId);
-    const rows = await s.select<RawCommentRow>(
-      "cmt_comments",
-      "thread_id = ?",
-      [threadId],
-      { orderBy: "created_at ASC" }
-    );
+    const rows = await s.select<RawCommentRow>("cmt_comments", "thread_id = ?", [threadId], { orderBy: "created_at ASC" });
 
     const commentsMap = new Map<string, CommentNode>();
     const rootNodes: CommentNode[] = [];
@@ -281,12 +272,7 @@ export class ThreadedDiscussionService {
   /**
    * Lists all threads attached to an entity.
    */
-  async listThreadsForTarget(
-    workspaceId: string,
-    targetType: string,
-    targetId: string,
-    resolvedFilter?: boolean
-  ): Promise<Thread[]> {
+  async listThreadsForTarget(workspaceId: string, targetType: string, targetId: string, resolvedFilter?: boolean): Promise<Thread[]> {
     const s = scoped(this.db, workspaceId);
     let where = "target_type = ? AND target_id = ?";
     const params: unknown[] = [targetType.trim().toLowerCase(), targetId.trim()];
@@ -296,12 +282,7 @@ export class ThreadedDiscussionService {
       params.push(resolvedFilter ? 1 : 0);
     }
 
-    const rows = await s.select<RawThreadRow>(
-      "cmt_threads",
-      where,
-      params,
-      { orderBy: "updated_at DESC" }
-    );
+    const rows = await s.select<RawThreadRow>("cmt_threads", where, params, { orderBy: "updated_at DESC" });
     return rows.map((r) => this.parseThread(r));
   }
 
@@ -315,7 +296,7 @@ export class ThreadedDiscussionService {
       "cmt_threads",
       { is_resolved: 1, resolved_by: resolvedBy.trim(), resolved_at: now, updated_at: now },
       "id = ? AND is_resolved = 0",
-      [threadId]
+      [threadId],
     );
 
     return (res.meta?.changes ?? 0) > 0;
@@ -327,12 +308,9 @@ export class ThreadedDiscussionService {
   async reopenThread(workspaceId: string, threadId: string): Promise<boolean> {
     const now = new Date().toISOString();
     const s = scoped(this.db, workspaceId);
-    const res = await s.update(
-      "cmt_threads",
-      { is_resolved: 0, resolved_by: null, resolved_at: null, updated_at: now },
-      "id = ? AND is_resolved = 1",
-      [threadId]
-    );
+    const res = await s.update("cmt_threads", { is_resolved: 0, resolved_by: null, resolved_at: null, updated_at: now }, "id = ? AND is_resolved = 1", [
+      threadId,
+    ]);
 
     return (res.meta?.changes ?? 0) > 0;
   }
@@ -340,12 +318,7 @@ export class ThreadedDiscussionService {
   /**
    * Edits an existing comment (author-only check).
    */
-  async editComment(
-    workspaceId: string,
-    commentId: string,
-    authorId: string,
-    newBody: string
-  ): Promise<Comment | null> {
+  async editComment(workspaceId: string, commentId: string, authorId: string, newBody: string): Promise<Comment | null> {
     const now = new Date().toISOString();
     const mentions = extractMentions(newBody);
     const s = scoped(this.db, workspaceId);
@@ -354,16 +327,12 @@ export class ThreadedDiscussionService {
       "cmt_comments",
       { body: newBody.trim(), mentions_json: JSON.stringify(mentions), is_edited: 1, updated_at: now },
       "id = ? AND author_id = ?",
-      [commentId, authorId.trim()]
+      [commentId, authorId.trim()],
     );
 
     if ((res.meta?.changes ?? 0) === 0) return null;
 
-    const row = await s.first<RawCommentRow>(
-      "cmt_comments",
-      "id = ?",
-      [commentId]
-    );
+    const row = await s.first<RawCommentRow>("cmt_comments", "id = ?", [commentId]);
 
     if (!row) return null;
     return this.parseComment(row);
@@ -374,11 +343,7 @@ export class ThreadedDiscussionService {
    */
   async deleteComment(workspaceId: string, commentId: string, authorId: string): Promise<boolean> {
     const s = scoped(this.db, workspaceId);
-    const res = await s.delete(
-      "cmt_comments",
-      "id = ? AND author_id = ?",
-      [commentId, authorId.trim()]
-    );
+    const res = await s.delete("cmt_comments", "id = ? AND author_id = ?", [commentId, authorId.trim()]);
 
     return (res.meta?.changes ?? 0) > 0;
   }

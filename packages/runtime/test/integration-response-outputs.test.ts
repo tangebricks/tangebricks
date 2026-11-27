@@ -50,11 +50,16 @@ async function run(status: number, payload: unknown): Promise<IntegrationCallErr
       headers: { "content-type": "application/json" },
     });
   try {
-    await callOperation(manifest, "createCharge", {}, {
-      connection: { apiKey: SECRET },
-      fetcher,
-      resolveHost: async () => ["93.184.216.34"],
-    });
+    await callOperation(
+      manifest,
+      "createCharge",
+      {},
+      {
+        connection: { apiKey: SECRET },
+        fetcher,
+        resolveHost: async () => ["93.184.216.34"],
+      },
+    );
   } catch (err) {
     expect(err).toBeInstanceOf(IntegrationCallError);
     return err as IntegrationCallError & { body?: unknown };

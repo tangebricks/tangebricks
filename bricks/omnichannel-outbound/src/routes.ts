@@ -208,7 +208,12 @@ export function createMessageRoutes(options: MessageRouteOptions = {}): Hono<Mes
     const result = await service.startVerification(workspace.id, channelId);
     if (!result.ok) return refusal(c, result);
     return c.json(
-      { channel: result.channel, method: result.method, verified: result.channel.verified, ...(result.codeSent !== undefined ? { codeSent: result.codeSent } : {}) },
+      {
+        channel: result.channel,
+        method: result.method,
+        verified: result.channel.verified,
+        ...(result.codeSent !== undefined ? { codeSent: result.codeSent } : {}),
+      },
       200,
     );
   });

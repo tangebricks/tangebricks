@@ -16,8 +16,9 @@ import { TOOLS, type Tool } from "../src/tools.ts";
 import mcpMigrationSql from "../migrations/0001_mcp_server.sql?raw";
 
 // Story 7.4: Session A's denominator, measured by the global setup (test/support/h9-emitted-source.ts).
-const H9_EMITTED_SOURCE_TOKENS = (Object.values(import.meta.glob("../../../out/h9-emitted-source.json", { eager: true, import: "default" }))[0] as { tokens: number }).tokens;
-
+const H9_EMITTED_SOURCE_TOKENS = (
+  Object.values(import.meta.glob("../../../out/h9-emitted-source.json", { eager: true, import: "default" }))[0] as { tokens: number }
+).tokens;
 
 const db = (env as unknown as { DB: D1Like }).DB;
 
@@ -36,13 +37,7 @@ describe("Story 7.4 — CI Token Budget Enforcement & Negative Tamper Detection 
     expect(report.violations).toEqual([]);
     expect(report.ok).toBe(true);
     expect(report.perPageMaxTokens).toBeLessThanOrEqual(PER_PAGE_TOKEN_CEILING);
-    for (const toolName of [
-      "search_bricks",
-      "search_nodes",
-      "list_runs",
-      "query_logs",
-      "get_blueprint_summary",
-    ]) {
+    for (const toolName of ["search_bricks", "search_nodes", "list_runs", "query_logs", "get_blueprint_summary"]) {
       const entry = report.perPageByTool[toolName];
       expect(entry).toBeDefined();
       expect(entry?.passed).toBe(true);
@@ -53,9 +48,7 @@ describe("Story 7.4 — CI Token Budget Enforcement & Negative Tamper Detection 
     expect(report.sessionA.ratioPct).toBeLessThanOrEqual(SESSION_A_MAX_RATIO_PCT);
     expect(report.sessionA.passed).toBe(true);
 
-    expect(report.sessionB.totalTokens).toBeLessThanOrEqual(
-      SESSION_B_MAX_TOTAL_TOKENS,
-    );
+    expect(report.sessionB.totalTokens).toBeLessThanOrEqual(SESSION_B_MAX_TOTAL_TOKENS);
     expect(report.sessionB.passed).toBe(true);
   });
 
@@ -65,9 +58,7 @@ describe("Story 7.4 — CI Token Budget Enforcement & Negative Tamper Detection 
 
     const allFortyBricks = Object.values(catalog.bricks).map((entry) => ({
       id: entry.manifest.id,
-      summary:
-        entry.manifest.ui?.summary ??
-        `Full unpaged description for ${entry.manifest.id} with capabilities ${entry.manifest.provides.join(", ")}`,
+      summary: entry.manifest.ui?.summary ?? `Full unpaged description for ${entry.manifest.id} with capabilities ${entry.manifest.provides.join(", ")}`,
       category: entry.manifest.ui?.category ?? "platform",
       maturity: entry.manifest.ui?.maturity ?? "production",
       provides: entry.manifest.provides,
@@ -110,20 +101,14 @@ describe("Story 7.4 — CI Token Budget Enforcement & Negative Tamper Detection 
     expect(report.ok).toBe(false);
     expect(report.violations.length).toBeGreaterThanOrEqual(2);
 
-    const defBloatViolation = report.violations.find(
-      (v) => v.gate === "tool_definition_bloat" && v.tool === "apply_ops",
-    );
+    const defBloatViolation = report.violations.find((v) => v.gate === "tool_definition_bloat" && v.tool === "apply_ops");
     expect(defBloatViolation).toBeDefined();
     expect(defBloatViolation?.measured).toBeGreaterThan(3000);
 
-    const unpagedViolation = report.violations.find(
-      (v) => v.gate === "per_page_ceiling" && v.tool === "search_bricks",
-    );
+    const unpagedViolation = report.violations.find((v) => v.gate === "per_page_ceiling" && v.tool === "search_bricks");
     expect(unpagedViolation).toBeDefined();
     expect(unpagedViolation?.measured).toBeGreaterThan(PER_PAGE_TOKEN_CEILING);
-    expect(report.perPageByTool["search_bricks"]?.maxItemsOnPage).toBe(
-      allFortyBricks.length,
-    );
+    expect(report.perPageByTool["search_bricks"]?.maxItemsOnPage).toBe(allFortyBricks.length);
     expect(report.perPageByTool["search_bricks"]?.passed).toBe(false);
 
     // Also verify Session A and Session B fail under the +3,000 token tool description bloat

@@ -132,7 +132,9 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
   const available = Object.keys(catalog.bricks).sort();
 
   // 1. Which bricks, once each, and are they in the catalog?
-  const requested = blueprint.bricks.map((b) => (typeof b === "string" ? { id: b, config: {} as Record<string, SettingValue> } : { id: b.id, config: b.config ?? {} }));
+  const requested = blueprint.bricks.map((b) =>
+    typeof b === "string" ? { id: b, config: {} as Record<string, SettingValue> } : { id: b.id, config: b.config ?? {} },
+  );
   const seen = new Set<string>();
   const chosen: Chosen[] = [];
   for (const { id, config } of requested) {
@@ -174,11 +176,7 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
 
   // 1c. Declared entities: checked in full, against the route names the bricks already use, and handed to a brick that
   // says it takes them. The assembler writes the tables and the declaration; it contains no code for any entity.
-  const reserved = new Set([
-    ...Object.values(catalog.bricks).flatMap((b) => b.manifest.routePrefixes),
-    "healthz",
-    "readyz",
-  ]);
+  const reserved = new Set([...Object.values(catalog.bricks).flatMap((b) => b.manifest.routePrefixes), "healthz", "readyz"]);
   const parsedEntities = parseEntities(blueprint.entities, reserved);
   if (!parsedEntities.ok) return { ok: false, errors: parsedEntities.errors };
   const entities = parsedEntities.entities;
@@ -261,9 +259,7 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
         const ackKey = `${current.id}@${newParsed.major}`;
         const ackFullKey = `${current.id}@${newVer}`;
         if (!ackSet.has(ackKey) && !ackSet.has(ackFullKey)) {
-          errors.push(
-            `UPGRADE_MAJOR_REQUIRES_ACK: brick "${current.id}" upgraded from ${oldVer} to ${newVer}; acknowledge with "${ackKey}"`,
-          );
+          errors.push(`UPGRADE_MAJOR_REQUIRES_ACK: brick "${current.id}" upgraded from ${oldVer} to ${newVer}; acknowledge with "${ackKey}"`);
         }
       }
     }
@@ -399,7 +395,11 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
   if (blueprint.identity === "stub" && environment === "production") {
     // The alternatives come from the catalog: every brick that provides identity and mounts a guard for it.
     const real = Object.values(catalog.bricks)
-      .filter((b) => b.manifest.worker.guard?.capability === IDENTITY_CAPABILITY && b.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === IDENTITY_CAPABILITY))
+      .filter(
+        (b) =>
+          b.manifest.worker.guard?.capability === IDENTITY_CAPABILITY &&
+          b.manifest.provides.some((p) => (p.includes("@") ? p.slice(0, p.indexOf("@")) : p) === IDENTITY_CAPABILITY),
+      )
       .map((b) => b.manifest.id)
       .sort();
     errors.push(`identity "stub" is for tests only; choose ${real.length > 0 ? real.join(" or ") : `a brick that provides "${IDENTITY_CAPABILITY}"`}`);
@@ -466,15 +466,8 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
   }
   // 4b. Privacy & GDPR coverage check: every tenant table must have a privacy rule
   for (const brick of ordered) {
-    const globals = new Set(
-      (brick.manifest.globalTables ?? [])
-        .filter((g) => g.reason.trim().length > 0)
-        .map((g) => g.table),
-    );
-    const coveredTables = new Set<string>([
-      ...Object.keys(brick.manifest.privacy?.tables ?? {}),
-      ...(brick.manifest.privacy?.hookTables ?? []),
-    ]);
+    const globals = new Set((brick.manifest.globalTables ?? []).filter((g) => g.reason.trim().length > 0).map((g) => g.table));
+    const coveredTables = new Set<string>([...Object.keys(brick.manifest.privacy?.tables ?? {}), ...(brick.manifest.privacy?.hookTables ?? [])]);
 
     for (const path of brick.manifest.migrations) {
       const sql = brick.files[path];
@@ -504,7 +497,13 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
       if (!info) errors.push(`${brick.id} declares workspaceData table "${entry.table}", which its migrations do not create`);
       else if (!info.hasWorkspaceId) errors.push(`${brick.id} declares workspaceData table "${entry.table}", which has no workspace_id column`);
       else if (globals.has(entry.table)) errors.push(`${brick.id} declares workspaceData table "${entry.table}", which is a global table`);
-      else rows.push({ brick: brick.id, table: entry.table, mode: entry.tombstone ? (info.hasDeletedAt ? "tombstone" : "keep") : "delete", index: position.get(entry.table)! });
+      else
+        rows.push({
+          brick: brick.id,
+          table: entry.table,
+          mode: entry.tombstone ? (info.hasDeletedAt ? "tombstone" : "keep") : "delete",
+          index: position.get(entry.table)!,
+        });
     }
     for (const row of rows.sort((a, b) => a.index - b.index)) workspaceData.push({ brick: row.brick, table: row.table, mode: row.mode });
   }
@@ -520,7 +519,8 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
     const typeOf = (name: string) => (raw && !Array.isArray(raw) ? raw[name] : undefined);
     for (const o of brick.manifest.workspaceData?.objectPrefixes ?? []) {
       // Only an R2 bucket is listed and deleted by prefix; any other binding would make every workspace delete fail.
-      if (typeOf(o.binding) !== "r2") errors.push(`${brick.id} declares workspaceData objects in binding "${o.binding}", which is not an R2 binding in its bindings`);
+      if (typeOf(o.binding) !== "r2")
+        errors.push(`${brick.id} declares workspaceData objects in binding "${o.binding}", which is not an R2 binding in its bindings`);
       else workspaceObjects.push({ brick: brick.id, binding: o.binding, prefix: o.prefix });
     }
   }
@@ -581,14 +581,8 @@ export function assemble(input: unknown, catalog: Catalog, opts?: AssembleOption
   }
   if (errors.length > 0) return { ok: false, errors };
 
-  const workflows =
-    Array.isArray(blueprint.workflows) && blueprint.workflows.length > 0
-      ? canonicalizeJson(blueprint.workflows)
-      : undefined;
-  const secretRefs =
-    Array.isArray(blueprint.secretRefs) && blueprint.secretRefs.length > 0
-      ? canonicalizeJson(blueprint.secretRefs)
-      : undefined;
+  const workflows = Array.isArray(blueprint.workflows) && blueprint.workflows.length > 0 ? canonicalizeJson(blueprint.workflows) : undefined;
+  const secretRefs = Array.isArray(blueprint.secretRefs) && blueprint.secretRefs.length > 0 ? canonicalizeJson(blueprint.secretRefs) : undefined;
 
   const brickBindings = new Set<string>();
   for (const brick of ordered) {
@@ -749,7 +743,7 @@ export interface CheckSettingsUpgradeOptions {
 export function checkSettingsUpgrade(
   previousLock?: ProjectLock | null,
   catalog?: Catalog | null,
-  options?: CheckSettingsUpgradeOptions
+  options?: CheckSettingsUpgradeOptions,
 ): SettingsUpgradeResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -771,20 +765,16 @@ export function checkSettingsUpgrade(
     // 1. Check for removed settings (present in previous saved settings, missing from current manifest)
     for (const [savedKey, savedVal] of Object.entries(savedSettings)) {
       if (!(savedKey in currentSettingsDefs)) {
-        const oldDefault = savedKey in savedDefaults
-          ? savedDefaults[savedKey]
-          : prevCatalogDefaults?.[savedKey]?.default;
+        const oldDefault = savedKey in savedDefaults ? savedDefaults[savedKey] : prevCatalogDefaults?.[savedKey]?.default;
 
         if (oldDefault !== undefined) {
           if (savedVal !== oldDefault) {
             errors.push(
-              `setting ${prevBrick.id}.${savedKey}=${JSON.stringify(savedVal)} was removed in ${newManifest.version} (differing from old default ${JSON.stringify(oldDefault)})`
+              `setting ${prevBrick.id}.${savedKey}=${JSON.stringify(savedVal)} was removed in ${newManifest.version} (differing from old default ${JSON.stringify(oldDefault)})`,
             );
           }
         } else {
-          errors.push(
-            `setting ${prevBrick.id}.${savedKey}=${JSON.stringify(savedVal)} was removed in ${newManifest.version}`
-          );
+          errors.push(`setting ${prevBrick.id}.${savedKey}=${JSON.stringify(savedVal)} was removed in ${newManifest.version}`);
         }
       }
     }
@@ -809,21 +799,15 @@ export function checkSettingsUpgrade(
         // Narrowing checks
         if (sDef.type === "integer") {
           if (typeof savedVal !== "number" || !Number.isSafeInteger(savedVal) || savedVal < sDef.min || savedVal > sDef.max) {
-            errors.push(
-              `setting ${prevBrick.id}.${sKey}=${savedVal} is outside ${sDef.min}..${sDef.max} in ${newManifest.version}`
-            );
+            errors.push(`setting ${prevBrick.id}.${sKey}=${savedVal} is outside ${sDef.min}..${sDef.max} in ${newManifest.version}`);
           }
         } else if (sDef.type === "enum") {
           if (typeof savedVal !== "string" || !sDef.values.includes(savedVal)) {
-            errors.push(
-              `setting ${prevBrick.id}.${sKey}="${savedVal}" is not one of [${sDef.values.join(", ")}] in ${newManifest.version}`
-            );
+            errors.push(`setting ${prevBrick.id}.${sKey}="${savedVal}" is not one of [${sDef.values.join(", ")}] in ${newManifest.version}`);
           }
         } else if (sDef.type === "boolean") {
           if (typeof savedVal !== "boolean") {
-            errors.push(
-              `setting ${prevBrick.id}.${sKey} must be boolean in ${newManifest.version}`
-            );
+            errors.push(`setting ${prevBrick.id}.${sKey} must be boolean in ${newManifest.version}`);
           }
         }
       } else {
@@ -841,7 +825,12 @@ export function checkSettingsUpgrade(
   return { errors, warnings, added };
 }
 
-function resolveSettings(id: string, definitions: Record<string, SettingDefinition>, config: Record<string, SettingValue>, errors: string[]): Record<string, SettingValue> {
+function resolveSettings(
+  id: string,
+  definitions: Record<string, SettingDefinition>,
+  config: Record<string, SettingValue>,
+  errors: string[],
+): Record<string, SettingValue> {
   const resolved: Record<string, SettingValue> = {};
   for (const name of Object.keys(config)) {
     if (!(name in definitions)) errors.push(`${id}: unknown setting "${name}" (known: ${Object.keys(definitions).sort().join(", ") || "none"})`);
@@ -875,7 +864,9 @@ function resolveSettings(id: string, definitions: Record<string, SettingDefiniti
       }
       // Story 1.13: a declared pattern is checked here, so a malformed value never reaches the running app.
       if (definition.pattern !== undefined && !new RegExp(definition.pattern).test(value)) {
-        errors.push(`${id}: setting "${name}" is not in the expected format${definition.example !== undefined ? ` (for example ${JSON.stringify(definition.example)})` : ""}`);
+        errors.push(
+          `${id}: setting "${name}" is not in the expected format${definition.example !== undefined ? ` (for example ${JSON.stringify(definition.example)})` : ""}`,
+        );
         continue;
       }
       if (value.length > 0 && definition.format) {
@@ -985,10 +976,7 @@ class ImportConflictError extends Error {
  * (story 2.6, `requiredWhen: "provided"`) whenever a provider is enabled, which the caller checks. Story 1.20: a
  * `$setting` option with `requiredWhen` is passed on the same rule.
  */
-function capabilityRequired(
-  value: { requiredWhen?: SettingCondition | "provided" | undefined },
-  settings: Record<string, SettingValue>,
-): boolean {
+function capabilityRequired(value: { requiredWhen?: SettingCondition | "provided" | undefined }, settings: Record<string, SettingValue>): boolean {
   if (!value.requiredWhen || value.requiredWhen === "provided") return true;
   return conditionHolds(value.requiredWhen, settings);
 }
@@ -1069,7 +1057,12 @@ function renderEntry(
   const guardOf = new Map<string, { pkg: string; export: string; suspension?: string }>();
   for (const brick of ordered) {
     const guard = brick.manifest.worker.guard;
-    if (guard) guardOf.set(guard.capability, { pkg: brick.manifest.worker.package, export: guard.export, ...(guard.suspension ? { suspension: guard.suspension } : {}) });
+    if (guard)
+      guardOf.set(guard.capability, {
+        pkg: brick.manifest.worker.package,
+        export: guard.export,
+        ...(guard.suspension ? { suspension: guard.suspension } : {}),
+      });
   }
 
   /**
@@ -1177,11 +1170,11 @@ function renderEntry(
         '  await db.prepare("DELETE FROM px_step_events WHERE created_at < ? OR run_id IN (SELECT run_id FROM px_runs WHERE started_at < ?)").bind(cutoffIso, cutoffIso).run?.().catch(() => {});',
         '  await db.prepare("DELETE FROM px_runs WHERE started_at < ?").bind(cutoffIso).run?.().catch(() => {});',
         '  const dueCandidates = (await db.prepare("SELECT id, workspace_id, brick_id, schedule_id, cron_expression, payload_json, next_run_at FROM px_schedules WHERE active = 1 AND datetime(next_run_at) <= datetime(?)").bind(nowIso).all<{ id: string; workspace_id: string; brick_id: string; schedule_id: string; cron_expression: string; payload_json: string; next_run_at: string }>()).results;',
-        '  const dueRows: typeof dueCandidates = [];',
-        '  for (const row of dueCandidates) {',
-        '    const claimed = (await db.prepare("UPDATE px_schedules SET next_run_at = datetime(?, \'+1 minute\'), last_run_at = ? WHERE id = ? AND next_run_at = ? AND active = 1 RETURNING id").bind(nowIso, nowIso, row.id, row.next_run_at).all<{ id: string }>().catch(() => ({ results: [] }))).results;',
-        '    if (claimed && claimed.length > 0) dueRows.push(row);',
-        '  }',
+        "  const dueRows: typeof dueCandidates = [];",
+        "  for (const row of dueCandidates) {",
+        "    const claimed = (await db.prepare(\"UPDATE px_schedules SET next_run_at = datetime(?, '+1 minute'), last_run_at = ? WHERE id = ? AND next_run_at = ? AND active = 1 RETURNING id\").bind(nowIso, nowIso, row.id, row.next_run_at).all<{ id: string }>().catch(() => ({ results: [] }))).results;",
+        "    if (claimed && claimed.length > 0) dueRows.push(row);",
+        "  }",
         ...schedules.map(
           (s, i) =>
             `  await ${s.handler}({ controller, env, ctx, dueRows: dueRows.filter((r) => r.brick_id === ${JSON.stringify(s.brickId)})${scheduleOptions[i]!.length > 0 ? `, options: { ${scheduleOptions[i]!.join(", ")} }` : ""} });`,
@@ -1194,11 +1187,7 @@ function renderEntry(
         "",
         "async function queue(batch: { queue: string; messages: readonly unknown[] }, env: { DB: unknown; [key: string]: unknown }, ctx?: unknown): Promise<void> {",
         "  switch (batch.queue) {",
-        ...queues.flatMap((q) => [
-          `    case ${JSON.stringify(q.id)}:`,
-          `      await ${q.handler}(batch, env, ctx);`,
-          "      return;",
-        ]),
+        ...queues.flatMap((q) => [`    case ${JSON.stringify(q.id)}:`, `      await ${q.handler}(batch, env, ctx);`, "      return;"]),
         "    default:",
         '      throw new Error(`unhandled queue "${batch.queue}"`);',
         "  }",
@@ -1236,61 +1225,61 @@ function renderEntry(
       `const BUILD_SHA = ${JSON.stringify(buildSha)};`,
       "",
       'app.get("/healthz", (c) => {',
-      '  const envObj = (c.env ?? {}) as Record<string, unknown>;',
+      "  const envObj = (c.env ?? {}) as Record<string, unknown>;",
       '  const build = typeof envObj.PX_BUILD_SHA === "string" && envObj.PX_BUILD_SHA.length > 0 ? envObj.PX_BUILD_SHA : BUILD_SHA;',
       '  return c.json({ ok: true, build }, 200, { "Cache-Control": "no-store" });',
-      '});',
+      "});",
       "",
       'app.get("/readyz", async (c) => {',
-      '  const envObj = (c.env ?? {}) as Record<string, unknown>;',
-      '  const missingBindings = REQUIRED_BINDINGS.filter((b) => envObj[b] === undefined || envObj[b] === null);',
+      "  const envObj = (c.env ?? {}) as Record<string, unknown>;",
+      "  const missingBindings = REQUIRED_BINDINGS.filter((b) => envObj[b] === undefined || envObj[b] === null);",
       '  const bindingsStatus = missingBindings.length > 0 ? `missing: ${missingBindings.join(", ")}` : "ok";',
       '  let d1Status = "ok";',
-      '  const db = envObj.DB as { prepare: (sql: string) => { run: () => Promise<unknown>; all: <T>() => Promise<{ results: T[] }> } } | undefined;',
+      "  const db = envObj.DB as { prepare: (sql: string) => { run: () => Promise<unknown>; all: <T>() => Promise<{ results: T[] }> } } | undefined;",
       '  if (!db || typeof db.prepare !== "function") {',
       '    d1Status = "missing: DB";',
-      '  } else {',
-      '    try {',
+      "  } else {",
+      "    try {",
       '      const probe = db.prepare("SELECT 1").run();',
       '      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("D1 probe timeout")), 2000));',
-      '      await Promise.race([probe, timeout]);',
-      '    } catch (err) {',
+      "      await Promise.race([probe, timeout]);",
+      "    } catch (err) {",
       '      d1Status = "error: " + (err instanceof Error ? err.message : String(err));',
-      '    }',
-      '  }',
+      "    }",
+      "  }",
       '  let migrationsStatus = "ok";',
       '  if (d1Status !== "ok") {',
       '    migrationsStatus = MIGRATIONS.length > 0 ? `pending: ${MIGRATIONS.map((m) => m.name).join(", ")}` : "ok";',
-      '  } else {',
-      '    try {',
+      "  } else {",
+      "    try {",
       '      const query = db!.prepare("SELECT name, sha256 FROM _projectx_migrations").all<{ name: string; sha256?: string }>();',
       '      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Migrations query timeout")), 2000));',
-      '      const res = await Promise.race([query, timeout]);',
-      '      // Compared without the leading counter: a migration renumbered by a later brick migration has still run.',
+      "      const res = await Promise.race([query, timeout]);",
+      "      // Compared without the leading counter: a migration renumbered by a later brick migration has still run.",
       '      const key = (name: string) => name.replace(/^\\d+_/, "");',
-      '      const applied = new Map((res.results ?? []).map((r) => [key(r.name), r.sha256]));',
-      '      const pending: string[] = [];',
-      '      const mismatched: string[] = [];',
-      '      for (const m of MIGRATIONS) {',
-      '        if (!applied.has(key(m.name))) {',
-      '          pending.push(m.name);',
-      '        } else if (applied.get(key(m.name)) && applied.get(key(m.name)) !== m.sha256) {',
-      '          mismatched.push(m.name);',
-      '        }',
-      '      }',
-      '      if (pending.length > 0) {',
+      "      const applied = new Map((res.results ?? []).map((r) => [key(r.name), r.sha256]));",
+      "      const pending: string[] = [];",
+      "      const mismatched: string[] = [];",
+      "      for (const m of MIGRATIONS) {",
+      "        if (!applied.has(key(m.name))) {",
+      "          pending.push(m.name);",
+      "        } else if (applied.get(key(m.name)) && applied.get(key(m.name)) !== m.sha256) {",
+      "          mismatched.push(m.name);",
+      "        }",
+      "      }",
+      "      if (pending.length > 0) {",
       '        migrationsStatus = `pending: ${pending.join(", ")}`;',
-      '      } else if (mismatched.length > 0) {',
+      "      } else if (mismatched.length > 0) {",
       '        migrationsStatus = `mismatched: ${mismatched.join(", ")}`;',
-      '      }',
-      '    } catch {',
+      "      }",
+      "    } catch {",
       '      migrationsStatus = MIGRATIONS.length > 0 ? `pending: ${MIGRATIONS.map((m) => m.name).join(", ")}` : "ok";',
-      '    }',
-      '  }',
+      "    }",
+      "  }",
       '  const isReady = d1Status === "ok" && bindingsStatus === "ok" && migrationsStatus === "ok";',
-      '  const checks = { d1: d1Status, bindings: bindingsStatus, migrations: migrationsStatus };',
+      "  const checks = { d1: d1Status, bindings: bindingsStatus, migrations: migrationsStatus };",
       '  return c.json({ ok: isReady, checks }, isReady ? 200 : 503, { "Cache-Control": "no-store" });',
-      '});',
+      "});",
       "// CSRF (Origin check on cookie-authenticated writes) and CORS allow-list (PX_ALLOWED_ORIGINS); signed webhook ingress is exempt.",
       `app.use(${JSON.stringify(API_PREFIX + "/*")}, createHttpGuard({ exemptPaths: ${JSON.stringify([API_PREFIX + "/webhooks/in/", API_PREFIX + "/webhooks/ingress/"])} }));`,
       ...renderIdentity(identityGuard?.export, identityAlternatives, guardedPaths),
@@ -1341,11 +1330,7 @@ function renderApprovalGates(gates: string[], paths: string[]): string[] {
 function isBinaryOperation(op: any): boolean {
   if (op.response?.binary) return true;
   const ct = op.body?.contentType;
-  if (
-    ct === "multipart/form-data" ||
-    ct === "multipart/related" ||
-    ct === "application/octet-stream"
-  ) {
+  if (ct === "multipart/form-data" || ct === "multipart/related" || ct === "application/octet-stream") {
     return true;
   }
   if (Array.isArray(op.body?.fields) && op.body.fields.some((f: any) => f.binary)) {
@@ -1380,12 +1365,7 @@ function hasBinaryPayloadOperation(workflows: unknown[] | undefined, catalog: Ca
       if (!node || typeof node !== "object") continue;
       const type = (node as any).type;
       const opId = (node as any).data?.operationId ?? (node as any).config?.operationId;
-      if (
-        (type && binaryOps.has(type)) ||
-        (opId && binaryOps.has(opId)) ||
-        (node as any).binary === true ||
-        (node as any).data?.binary === true
-      ) {
+      if ((type && binaryOps.has(type)) || (opId && binaryOps.has(opId)) || (node as any).binary === true || (node as any).data?.binary === true) {
         return true;
       }
     }
@@ -1458,11 +1438,7 @@ function renderWrangler(
 function renderIsolatedBrickWrangler(project: string, brick: Chosen): string {
   const declaredSecrets = secretNames(brick.manifest);
   const rawBindings = brick.manifest.bindings;
-  const declaredBindings = Array.isArray(rawBindings)
-    ? rawBindings
-    : rawBindings && typeof rawBindings === "object"
-      ? Object.keys(rawBindings)
-      : [];
+  const declaredBindings = Array.isArray(rawBindings) ? rawBindings : rawBindings && typeof rawBindings === "object" ? Object.keys(rawBindings) : [];
 
   const config: Record<string, unknown> = {
     name: `${project}-b-${brick.id}`,
@@ -1483,22 +1459,13 @@ function renderIsolatedBrickWrangler(project: string, brick: Chosen): string {
     }));
   }
 
-  return (
-    "// Assembled by @poc/assembler for isolated brick " +
-    brick.id +
-    "\n" +
-    json(config)
-  );
+  return "// Assembled by @poc/assembler for isolated brick " + brick.id + "\n" + json(config);
 }
 
 function renderIsolatedBrickEntry(brick: Chosen): string {
   const declaredSecrets = secretNames(brick.manifest);
   const rawBindings = brick.manifest.bindings;
-  const declaredBindings = Array.isArray(rawBindings)
-    ? rawBindings
-    : rawBindings && typeof rawBindings === "object"
-      ? Object.keys(rawBindings)
-      : [];
+  const declaredBindings = Array.isArray(rawBindings) ? rawBindings : rawBindings && typeof rawBindings === "object" ? Object.keys(rawBindings) : [];
 
   const imports: string[] = [
     'import { WorkerEntrypoint, env } from "cloudflare:workers";',
@@ -1526,54 +1493,56 @@ function renderIsolatedBrickEntry(brick: Chosen): string {
       `  ${JSON.stringify(n.type)}: (brickPkg as any)[${JSON.stringify(n.executor)}] ?? (brickPkg as any).executors?.[${JSON.stringify(n.type)}] ?? (brickPkg as any).default?.[${JSON.stringify(n.executor)}] ?? ((brickPkg as any).default && typeof (brickPkg as any).default === "function" ? (brickPkg as any).default : async () => { throw new Error(${JSON.stringify(`NOT_CONFIGURED: ${n.type}: isolated brick "${brick.id}" exports no executor "${n.executor}"; nothing was done.`)}); }),`,
   );
 
-  return [
-    `// Assembled by @poc/assembler for isolated brick "${brick.id}".`,
-    ...imports,
-    "",
-    "const app = new Hono();",
-    ...routeMounts,
-    "",
-    `const DECLARED_SECRETS: ReadonlyArray<string> = ${JSON.stringify(declaredSecrets)};`,
-    `const DECLARED_BINDINGS: ReadonlyArray<string> = ${JSON.stringify(declaredBindings)};`,
-    "",
-    "const EXECUTORS: Record<string, (ctx: any) => Promise<any> | any> = {",
-    ...executorMapLines,
-    "};",
-    "",
-    "export default class extends WorkerEntrypoint {",
-    "  async fetch(request: Request) {",
-    "    return app.fetch(request, (this as any).env ?? env, (this as any).ctx);",
-    "  }",
-    "  async execute(nodeType: string, ctxSnapshot: { nodeId: string; runId: string; workspaceId: string; data: Record<string, unknown>; inputs: Record<string, unknown>; payload: unknown; idempotencyKey?: string }) {",
-    "    const executor = EXECUTORS[nodeType] ?? (brickPkg as any)[nodeType];",
-    `    if (!executor) throw new Error(\`no executor registered for \${nodeType} in isolated brick "${brick.id}"\`);`,
-    "    const envObj = (this as any).env ?? env;",
-    "    const execCtx = {",
-    "      nodeId: ctxSnapshot.nodeId,",
-    "      runId: ctxSnapshot.runId,",
-    "      // the run's verified workspace, set by the host runtime (story 1.1)",
-    "      workspaceId: ctxSnapshot.workspaceId,",
-    "      data: ctxSnapshot.data,",
-    "      inputs: ctxSnapshot.inputs,",
-    "      payload: ctxSnapshot.payload,",
-    "      idempotencyKey: ctxSnapshot.idempotencyKey,",
-    "      secret: (name: string): string => {",
-    `        if (!DECLARED_SECRETS.includes(name)) throw new Error(\`secret "\${name}" is not declared by \${nodeType}\`);`,
-    "        const val = envObj[name];",
-    `        if (typeof val !== "string") throw new Error(\`secret "\${name}" is declared by \${nodeType} but was not provided\`);`,
-    "        return val;",
-    "      },",
-    "      binding: <T = unknown>(name: string): T => {",
-    `        if (!DECLARED_BINDINGS.includes(name)) throw new Error(\`binding "\${name}" is not declared by \${nodeType}\`);`,
-    "        const val = envObj[name];",
-    `        if (val === undefined || val === null) throw new Error(\`binding "\${name}" is declared by \${nodeType} but was not provided\`);`,
-    "        return val as T;",
-    "      },",
-    "    };",
-    "    return await executor(execCtx);",
-    "  }",
-    "}",
-  ].join("\n") + "\n";
+  return (
+    [
+      `// Assembled by @poc/assembler for isolated brick "${brick.id}".`,
+      ...imports,
+      "",
+      "const app = new Hono();",
+      ...routeMounts,
+      "",
+      `const DECLARED_SECRETS: ReadonlyArray<string> = ${JSON.stringify(declaredSecrets)};`,
+      `const DECLARED_BINDINGS: ReadonlyArray<string> = ${JSON.stringify(declaredBindings)};`,
+      "",
+      "const EXECUTORS: Record<string, (ctx: any) => Promise<any> | any> = {",
+      ...executorMapLines,
+      "};",
+      "",
+      "export default class extends WorkerEntrypoint {",
+      "  async fetch(request: Request) {",
+      "    return app.fetch(request, (this as any).env ?? env, (this as any).ctx);",
+      "  }",
+      "  async execute(nodeType: string, ctxSnapshot: { nodeId: string; runId: string; workspaceId: string; data: Record<string, unknown>; inputs: Record<string, unknown>; payload: unknown; idempotencyKey?: string }) {",
+      "    const executor = EXECUTORS[nodeType] ?? (brickPkg as any)[nodeType];",
+      `    if (!executor) throw new Error(\`no executor registered for \${nodeType} in isolated brick "${brick.id}"\`);`,
+      "    const envObj = (this as any).env ?? env;",
+      "    const execCtx = {",
+      "      nodeId: ctxSnapshot.nodeId,",
+      "      runId: ctxSnapshot.runId,",
+      "      // the run's verified workspace, set by the host runtime (story 1.1)",
+      "      workspaceId: ctxSnapshot.workspaceId,",
+      "      data: ctxSnapshot.data,",
+      "      inputs: ctxSnapshot.inputs,",
+      "      payload: ctxSnapshot.payload,",
+      "      idempotencyKey: ctxSnapshot.idempotencyKey,",
+      "      secret: (name: string): string => {",
+      `        if (!DECLARED_SECRETS.includes(name)) throw new Error(\`secret "\${name}" is not declared by \${nodeType}\`);`,
+      "        const val = envObj[name];",
+      `        if (typeof val !== "string") throw new Error(\`secret "\${name}" is declared by \${nodeType} but was not provided\`);`,
+      "        return val;",
+      "      },",
+      "      binding: <T = unknown>(name: string): T => {",
+      `        if (!DECLARED_BINDINGS.includes(name)) throw new Error(\`binding "\${name}" is not declared by \${nodeType}\`);`,
+      "        const val = envObj[name];",
+      `        if (val === undefined || val === null) throw new Error(\`binding "\${name}" is declared by \${nodeType} but was not provided\`);`,
+      "        return val as T;",
+      "      },",
+      "    };",
+      "    return await executor(execCtx);",
+      "  }",
+      "}",
+    ].join("\n") + "\n"
+  );
 }
 
 const json = (value: unknown) => JSON.stringify(value, null, 2) + "\n";
@@ -1589,9 +1558,7 @@ interface CreatedTableInfo {
 }
 
 function extractCreatedTables(sqlContent: string): CreatedTableInfo[] {
-  const stripped = sqlContent
-    .replace(/--[^\r\n]*/g, "")
-    .replace(/\/\*[\s\S]*?\*\//g, "");
+  const stripped = sqlContent.replace(/--[^\r\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
   const results: CreatedTableInfo[] = [];
   const createTableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z0-9_"]+)\s*\(([\s\S]*?)\)\s*;/gi;
   for (const match of stripped.matchAll(createTableRegex)) {
@@ -1695,7 +1662,9 @@ function renderPrivacyGenerated(ordered: Chosen[], entities: Entity[]): string {
       "",
       `const PRIVACY_TABLES: Array<{ table: string; subject: "workspace" | "user"; userColumn?: string; erase: "delete" | "anonymize" | "retain"; anonymize?: string[]; retainReason?: string; export: boolean }> = ${JSON.stringify(tables, null, 2)};`,
       ...(platformTables.length > 0
-        ? [`const PRIVACY_PLATFORM_TABLES: Array<{ table: string; userColumn: string; retainReason?: string; export: boolean }> = ${JSON.stringify(platformTables, null, 2)};`]
+        ? [
+            `const PRIVACY_PLATFORM_TABLES: Array<{ table: string; userColumn: string; retainReason?: string; export: boolean }> = ${JSON.stringify(platformTables, null, 2)};`,
+          ]
         : []),
       "",
       "export async function exportTenant(db: D1Like, subject: PrivacySubject): Promise<Record<string, unknown>> {",
@@ -1728,16 +1697,18 @@ function renderPrivacyGenerated(ordered: Chosen[], entities: Entity[]): string {
       "    }",
       "  }",
       "",
-      ...hooks.filter((h) => h.exportTenant).flatMap((h) => [
-        `  try {`,
-        `    const hookData = await ${h.exportTenant}!(sDb, subject);`,
-        `    if (hookData && typeof hookData === "object") {`,
-        `      Object.assign(result, hookData);`,
-        `    }`,
-        `  } catch (err) {`,
-        `    console.error("exportTenant hook error in ${h.brickId}:", err);`,
-        `  }`,
-      ]),
+      ...hooks
+        .filter((h) => h.exportTenant)
+        .flatMap((h) => [
+          `  try {`,
+          `    const hookData = await ${h.exportTenant}!(sDb, subject);`,
+          `    if (hookData && typeof hookData === "object") {`,
+          `      Object.assign(result, hookData);`,
+          `    }`,
+          `  } catch (err) {`,
+          `    console.error("exportTenant hook error in ${h.brickId}:", err);`,
+          `  }`,
+        ]),
       "",
       "  return result;",
       "}",
@@ -1784,17 +1755,19 @@ function renderPrivacyGenerated(ordered: Chosen[], entities: Entity[]): string {
       "    }",
       "  }",
       "",
-      ...hooks.filter((h) => h.eraseTenant).flatMap((h) => [
-        `  try {`,
-        `    const hookRes = await ${h.eraseTenant}!(sDb, subject);`,
-        `    if (hookRes && typeof hookRes === "object") {`,
-        `      if (typeof (hookRes as any).deletedCount === "number") deletedCount += (hookRes as any).deletedCount;`,
-        `      if (Array.isArray((hookRes as any).retain)) retain.push(...(hookRes as any).retain);`,
-        `    }`,
-        `  } catch (err) {`,
-        `    console.error("eraseTenant hook error in ${h.brickId}:", err);`,
-        `  }`,
-      ]),
+      ...hooks
+        .filter((h) => h.eraseTenant)
+        .flatMap((h) => [
+          `  try {`,
+          `    const hookRes = await ${h.eraseTenant}!(sDb, subject);`,
+          `    if (hookRes && typeof hookRes === "object") {`,
+          `      if (typeof (hookRes as any).deletedCount === "number") deletedCount += (hookRes as any).deletedCount;`,
+          `      if (Array.isArray((hookRes as any).retain)) retain.push(...(hookRes as any).retain);`,
+          `    }`,
+          `  } catch (err) {`,
+          `    console.error("eraseTenant hook error in ${h.brickId}:", err);`,
+          `  }`,
+        ]),
       "",
       "  return { deletedCount, retain };",
       "}",
@@ -1896,7 +1869,7 @@ function renderWorkspaceDataPurge(tables: WorkspaceDataTable[], objects: Workspa
     "const WORKSPACE_PURGE_SQL: ReadonlyArray<string> = [",
     "  ...WORKSPACE_PURGE_SHELL_SQL,",
     ...(withEntities
-      ? ["  ...[...(entities as Array<{ name: string }>)].reverse().map((entity) => `DELETE FROM \"${tableName(entity)}\" WHERE workspace_id = ?`),"]
+      ? ['  ...[...(entities as Array<{ name: string }>)].reverse().map((entity) => `DELETE FROM "${tableName(entity)}" WHERE workspace_id = ?`),']
       : []),
     "  ...WORKSPACE_PURGE_BRICK_SQL,",
     "];",

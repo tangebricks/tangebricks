@@ -61,23 +61,14 @@ async function main(): Promise<void> {
   }
 
   const vitestCli = join(root, "node_modules", "vitest", "vitest.mjs");
-  const run = spawnSync(
-    process.execPath,
-    [vitestCli, "run", "-c", "vitest.workers.config.ts", "test/boot-presets.test.ts"],
-    { cwd: root, stdio: "inherit" },
-  );
+  const run = spawnSync(process.execPath, [vitestCli, "run", "-c", "vitest.workers.config.ts", "test/boot-presets.test.ts"], { cwd: root, stdio: "inherit" });
 
   const workerdPassed = run.status === 0;
   console.log("\n=== Multi-Brick Preset Boot Summary (workerd + D1) ===");
   console.log(
-    [
-      "Preset".padEnd(20),
-      "Bricks".padStart(6),
-      "Migrations".padStart(10),
-      "BuildHash".padEnd(14),
-      "Deterministic".padEnd(13),
-      "Workerd Boot & Isolation",
-    ].join(" | "),
+    ["Preset".padEnd(20), "Bricks".padStart(6), "Migrations".padStart(10), "BuildHash".padEnd(14), "Deterministic".padEnd(13), "Workerd Boot & Isolation"].join(
+      " | ",
+    ),
   );
   console.log("-".repeat(96));
   for (const row of summaries) {

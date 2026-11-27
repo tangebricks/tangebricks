@@ -92,13 +92,7 @@ export function createMarketplaceSplitsRoutes(): Hono<SplitsEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("splitsService") || new MarketplaceSplitsService(c.env.DB);
-    const tx = await service.processSplit(
-      workspaceId,
-      parsed.data.vendorId,
-      parsed.data.orderId,
-      parsed.data.grossAmountCents,
-      parsed.data.currency
-    );
+    const tx = await service.processSplit(workspaceId, parsed.data.vendorId, parsed.data.orderId, parsed.data.grossAmountCents, parsed.data.currency);
 
     return c.json({ transaction: tx }, 201);
   });
@@ -136,12 +130,7 @@ export function createMarketplaceSplitsRoutes(): Hono<SplitsEnv> {
     const workspaceId = ctx.workspaceId;
 
     const service = c.get("splitsService") || new MarketplaceSplitsService(c.env.DB);
-    const result = await service.requestPayout(
-      workspaceId,
-      parsed.data.vendorId,
-      parsed.data.amountCents,
-      parsed.data.currency
-    );
+    const result = await service.requestPayout(workspaceId, parsed.data.vendorId, parsed.data.amountCents, parsed.data.currency);
 
     if (!result.ok) {
       return c.json({ error: result.error }, 400);

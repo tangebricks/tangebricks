@@ -22,10 +22,7 @@ test.describe("Story 2.7: Live WebSocket Sync (p95 <= 2,000 ms), Author Badges, 
 
     // Enable Follow AI toggle and open AI Change Ledger tab in Right Dock
     await page.getByTestId("follow-ai-toggle").click();
-    await expect(page.getByTestId("follow-ai-toggle")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await expect(page.getByTestId("follow-ai-toggle")).toHaveAttribute("aria-pressed", "true");
     await page.getByTestId("right-dock-tab-ledger").click();
 
     const mutations: Array<{
@@ -302,44 +299,29 @@ test.describe("Story 2.7: Live WebSocket Sync (p95 <= 2,000 ms), Author Badges, 
       expect(mcpRes.status()).toBe(200);
       const tCommit = Date.now();
 
-      await expect(page.getByTestId("topbar-revision-badge")).toHaveText(
-        `r${mut.step}`,
-        { timeout: 2_000 },
-      );
+      await expect(page.getByTestId("topbar-revision-badge")).toHaveText(`r${mut.step}`, { timeout: 2_000 });
       const deltaMs = Date.now() - tCommit;
       latenciesMs.push(deltaMs);
     }
 
     const sortedLatencies = [...latenciesMs].sort((a, b) => a - b);
-    const p95Index = Math.min(
-      sortedLatencies.length - 1,
-      Math.ceil(sortedLatencies.length * 0.95) - 1,
-    );
+    const p95Index = Math.min(sortedLatencies.length - 1, Math.ceil(sortedLatencies.length * 0.95) - 1);
     const p95Ms = sortedLatencies[p95Index]!;
     const medianMs = sortedLatencies[Math.floor(sortedLatencies.length / 2)]!;
 
-    console.log(
-      `[CP2 Live Sync] 10 mutations latencies (ms): ${latenciesMs.join(", ")} | median=${medianMs}ms | p95=${p95Ms}ms`,
-    );
+    console.log(`[CP2 Live Sync] 10 mutations latencies (ms): ${latenciesMs.join(", ")} | median=${medianMs}ms | p95=${p95Ms}ms`);
     expect(p95Ms).toBeLessThanOrEqual(2_000);
 
     // Follow AI switched active view to Workflows canvas and highlighted the latest node
     await expect(page.getByTestId("view-workflows")).toBeVisible();
     await expect(page.getByTestId("canvas-node-node-out")).toBeVisible();
-    await expect(page.getByTestId("canvas-node-node-out")).toHaveAttribute(
-      "data-highlighted",
-      "true",
-    );
-    await expect(page.getByTestId("node-author-badge-node-out")).toContainText(
-      "agent:Claude Desktop",
-    );
+    await expect(page.getByTestId("canvas-node-node-out")).toHaveAttribute("data-highlighted", "true");
+    await expect(page.getByTestId("node-author-badge-node-out")).toContainText("agent:Claude Desktop");
 
     // Verify AI Change Ledger in Right Dock has all 10 revisions with agent:Claude Desktop badge
     await page.getByTestId("right-dock-tab-ledger").click();
     await expect(page.getByTestId("right-dock-ledger-panel")).toBeVisible();
     await expect(page.getByTestId("ledger-entry-10")).toBeVisible();
-    await expect(page.getByTestId("ledger-author-badge-10")).toContainText(
-      "agent:Claude Desktop",
-    );
+    await expect(page.getByTestId("ledger-author-badge-10")).toContainText("agent:Claude Desktop");
   });
 });

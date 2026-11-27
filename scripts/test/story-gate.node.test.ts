@@ -4,11 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
-import {
-  parseTaskFileStories,
-  validateStoryFile,
-  validateTaskFileStory,
-} from "../lib/story-provenance.ts";
+import { parseTaskFileStories, validateStoryFile, validateTaskFileStory } from "../lib/story-provenance.ts";
 import { buildStoryGateRepo, type StoryGateRepo } from "./support/story-gate-repo.ts";
 
 const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -157,11 +153,7 @@ describe("UC0.8 story gate covers task file and ties provenance commits to story
     const storyC = stories.find((s) => s.id === "UC9.1" && s.title.includes("Case C"))!;
     const res = validateTaskFileStory(storyC, { repoRoot: gate.root });
     expect(res.valid).toBe(false);
-    expect(
-      res.errors.some((e) =>
-        /STORY_GATE:\s*UC9\.1:\s*commit [0-9a-f]{40} does not belong to this story/i.test(e)
-      )
-    ).toBe(true);
+    expect(res.errors.some((e) => /STORY_GATE:\s*UC9\.1:\s*commit [0-9a-f]{40} does not belong to this story/i.test(e))).toBe(true);
   });
 
   it("case (d) & AC1: review status with provenance missing model fails gate", () => {

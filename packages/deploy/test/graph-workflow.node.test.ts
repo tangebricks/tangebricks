@@ -30,12 +30,26 @@ const SIGNING_SECRET = "workflow-test-signing-secret-0123456789";
 const WS_A = "ws-a";
 const WS_B = "ws-b";
 const node = (id: string, type: string, data: Record<string, unknown> = {}) => ({ id, type, data });
-const wire = (source: string, sourceHandle: string, target: string, targetHandle: string) => ({ id: `${source}.${sourceHandle}-${target}.${targetHandle}`, source, target, sourceHandle, targetHandle });
+const wire = (source: string, sourceHandle: string, target: string, targetHandle: string) => ({
+  id: `${source}.${sourceHandle}-${target}.${targetHandle}`,
+  source,
+  target,
+  sourceHandle,
+  targetHandle,
+});
 const pick = (id: string, path: string) => node(id, "transform.pick", { path });
 
 const ADD_THEN_MULTIPLY: Graph = {
   nodes: [node("t", "trigger.manual"), pick("pa", "a"), pick("pb", "b"), pick("pc", "c"), node("add", "proof.add"), node("mul", "proof.multiply")],
-  edges: [wire("t", "out", "pa", "in"), wire("t", "out", "pb", "in"), wire("t", "out", "pc", "in"), wire("pa", "out", "add", "a"), wire("pb", "out", "add", "b"), wire("add", "out", "mul", "a"), wire("pc", "out", "mul", "b")],
+  edges: [
+    wire("t", "out", "pa", "in"),
+    wire("t", "out", "pb", "in"),
+    wire("t", "out", "pc", "in"),
+    wire("pa", "out", "add", "a"),
+    wire("pb", "out", "add", "b"),
+    wire("add", "out", "mul", "a"),
+    wire("pc", "out", "mul", "b"),
+  ],
 };
 const ADD_THEN_ADD: Graph = { ...ADD_THEN_MULTIPLY, nodes: ADD_THEN_MULTIPLY.nodes.map((n) => (n.id === "mul" ? node("mul", "proof.add") : n)) };
 const DIAMOND: Graph = {
@@ -61,9 +75,23 @@ let mf: Miniflare;
 let files: Record<string, string>;
 
 const api = async (method: string, path: string, body?: unknown, headers: Record<string, string> = { "x-poc-key": KEY }) => {
-  const response = (await mf.dispatchFetch(`http://deployed.invalid${path}`, { method, headers: { ...(body === undefined ? {} : { "content-type": "application/json" }), ...headers }, body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body) } as never)) as unknown as Response;
+  const response = (await mf.dispatchFetch(`http://deployed.invalid${path}`, {
+    method,
+    headers: { ...(body === undefined ? {} : { "content-type": "application/json" }), ...headers },
+    body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
+  } as never)) as unknown as Response;
   const text = await response.text();
-  return { status: response.status, text, json: (() => { try { return JSON.parse(text) as Record<string, unknown>; } catch { return null; } })() };
+  return {
+    status: response.status,
+    text,
+    json: (() => {
+      try {
+        return JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    })(),
+  };
 };
 /**
  * The owner's way of writing a row: straight to D1, not through the Worker (on the real account, the D1 REST query endpoint).
@@ -71,7 +99,12 @@ const api = async (method: string, path: string, body?: unknown, headers: Record
  */
 const editRow = async (id: string, graph: unknown, workspaceId: string = APP_WORKSPACE) => {
   const db = (await mf.getD1Database("DB")) as unknown as D1Like;
-  await db.prepare(`INSERT INTO ${GRAPH_TABLE} (workspace_id, id, graph, updated_at) VALUES (?1, ?2, ?3, 'edited directly') ON CONFLICT(workspace_id, id) DO UPDATE SET graph = excluded.graph, updated_at = excluded.updated_at`).bind(workspaceId, id, typeof graph === "string" ? graph : JSON.stringify(graph)).run();
+  await db
+    .prepare(
+      `INSERT INTO ${GRAPH_TABLE} (workspace_id, id, graph, updated_at) VALUES (?1, ?2, ?3, 'edited directly') ON CONFLICT(workspace_id, id) DO UPDATE SET graph = excluded.graph, updated_at = excluded.updated_at`,
+    )
+    .bind(workspaceId, id, typeof graph === "string" ? graph : JSON.stringify(graph))
+    .run();
 };
 /** Storing a graph is the same direct write: the owner's way in, as the Studio deploy path does for an app. */
 const store = editRow;
@@ -82,7 +115,11 @@ const graphRows = async () => {
 /** Starts a run the authenticated way: a body naming the verified workspace, HMAC-signed with PX_TELEMETRY_SECRET. */
 const signedRun = async (body: Record<string, unknown>, secret = SIGNING_SECRET) => {
   const text = JSON.stringify({ requestId: crypto.randomUUID(), ...body });
-  return api("POST", WORKFLOW_RUNS_PATH, text, { "x-poc-key": KEY, "content-type": "application/json", ...(await signControlPlaneRequest(secret, "POST", WORKFLOW_RUNS_PATH, text)) });
+  return api("POST", WORKFLOW_RUNS_PATH, text, {
+    "x-poc-key": KEY,
+    "content-type": "application/json",
+    ...(await signControlPlaneRequest(secret, "POST", WORKFLOW_RUNS_PATH, text)),
+  });
 };
 /** A signed GET: since story 1.1 a run's status needs the control-plane signature as well as the key. */
 const signedGet = async (path: string) => api("GET", path, undefined, { "x-poc-key": KEY, ...(await signControlPlaneRequest(SIGNING_SECRET, "GET", path)) });
@@ -125,7 +162,10 @@ beforeAll(async () => {
   );
   await mf.ready;
   const db = (await mf.getD1Database("DB")) as unknown as D1Like;
-  for (const path of Object.keys(files).filter((p) => p.startsWith("migrations/")).sort()) await applyMigration(db, files[path]!);
+  for (const path of Object.keys(files)
+    .filter((p) => p.startsWith("migrations/"))
+    .sort())
+    await applyMigration(db, files[path]!);
   for (const m of GRAPH_MIGRATIONS) await applyMigration(db, m.sql);
 }, 60_000);
 afterAll(async () => {
@@ -159,7 +199,11 @@ describe("running graphs through the engine", () => {
   });
 
   test("the same single class runs other graphs too, each matching the interpreter, including a failing one", async () => {
-    for (const [id, graph] of [["diamond", DIAMOND], ["boom", BOOM], ["sum-sum", ADD_THEN_ADD]] as const) {
+    for (const [id, graph] of [
+      ["diamond", DIAMOND],
+      ["boom", BOOM],
+      ["sum-sum", ADD_THEN_ADD],
+    ] as const) {
       await store(id, graph);
       const done = await runAndFinish(id);
       expect(done.status, id).toBe("complete");
@@ -221,7 +265,10 @@ describe("the row is the graph: an edit needs no new script", () => {
   test("the graph the Worker reports as stored is the row", async () => {
     await store("reported", ADD_THEN_MULTIPLY);
     const direct = (await mf.getD1Database("DB")) as unknown as D1Like;
-    const row = await direct.prepare(`SELECT graph FROM ${GRAPH_TABLE} WHERE workspace_id = ? AND id = ?`).bind(APP_WORKSPACE, "reported").first<{ graph: string }>();
+    const row = await direct
+      .prepare(`SELECT graph FROM ${GRAPH_TABLE} WHERE workspace_id = ? AND id = ?`)
+      .bind(APP_WORKSPACE, "reported")
+      .first<{ graph: string }>();
     expect(JSON.parse(row!.graph)).toEqual(ADD_THEN_MULTIPLY);
     const via = await api("GET", "/poc/graphs/reported");
     expect(JSON.parse(via.json!.graph as string)).toEqual(ADD_THEN_MULTIPLY);
@@ -230,7 +277,13 @@ describe("the row is the graph: an edit needs no new script", () => {
   test("a run that has already read its graph finishes with that graph, though the row is edited while it is waiting", async () => {
     const slow: Graph = {
       nodes: [node("t", "trigger.manual"), pick("pa", "a"), pick("pb", "b"), node("wait", "util.delay", { ms: 1500 }), node("add", "proof.add")],
-      edges: [wire("t", "out", "pa", "in"), wire("t", "out", "pb", "in"), wire("pa", "out", "wait", "in"), wire("wait", "out", "add", "a"), wire("pb", "out", "add", "b")],
+      edges: [
+        wire("t", "out", "pa", "in"),
+        wire("t", "out", "pb", "in"),
+        wire("pa", "out", "wait", "in"),
+        wire("wait", "out", "add", "a"),
+        wire("pb", "out", "add", "b"),
+      ],
     };
     const slowEdited: Graph = { ...slow, nodes: slow.nodes.map((n) => (n.id === "add" ? node("add", "proof.multiply") : n)) };
     await store("slow", slow);
@@ -252,7 +305,10 @@ describe("the row is the graph: an edit needs no new script", () => {
 });
 
 describe("a graph the validator rejects ends the run before any node", () => {
-  const cyclic: Graph = { nodes: [node("t", "trigger.manual"), node("x", "proof.add"), node("y", "proof.add")], edges: [wire("t", "out", "x", "a"), wire("x", "out", "y", "a"), wire("y", "out", "x", "b")] };
+  const cyclic: Graph = {
+    nodes: [node("t", "trigger.manual"), node("x", "proof.add"), node("y", "proof.add")],
+    edges: [wire("t", "out", "x", "a"), wire("x", "out", "y", "a"), wire("y", "out", "x", "b")],
+  };
   test.each([
     ["a cycle", cyclic],
     ["no trigger", { nodes: [node("x", "proof.add")], edges: [] }],
@@ -282,7 +338,14 @@ describe("a graph the validator rejects ends the run before any node", () => {
 
 describe("the routes the deploy adds", () => {
   test("every one needs the access key, and without it the Workflow is not started", async () => {
-    for (const [method, path, body] of [["PUT", "/poc/graphs/x", "{}"], ["GET", "/poc/graphs/x", undefined], ["POST", "/poc/runs", { graphId: "x" }], ["POST", WORKFLOW_RUNS_PATH, { graphId: "x", workspaceId: WS_A }], ["GET", "/poc/runs/abc", undefined], ["POST", "/poc/write-latency", undefined]] as const) {
+    for (const [method, path, body] of [
+      ["PUT", "/poc/graphs/x", "{}"],
+      ["GET", "/poc/graphs/x", undefined],
+      ["POST", "/poc/runs", { graphId: "x" }],
+      ["POST", WORKFLOW_RUNS_PATH, { graphId: "x", workspaceId: WS_A }],
+      ["GET", "/poc/runs/abc", undefined],
+      ["POST", "/poc/write-latency", undefined],
+    ] as const) {
       expect((await api(method, path, body, {})).status, `${method} ${path}`).toBe(401);
       expect((await api(method, path, body, { "x-poc-key": "wrong-key-wrong-key-wrong-key" })).status, `${method} ${path} wrong`).toBe(401);
     }
@@ -291,7 +354,11 @@ describe("the routes the deploy adds", () => {
   test("bad requests are refused with a reason, not started", async () => {
     expect((await signedRun({ graphId: "a/b", workspaceId: WS_A })).status).toBe(400);
     expect((await signedRun({ workspaceId: WS_A })).status).toBe(400);
-    const notJson = await api("POST", WORKFLOW_RUNS_PATH, "not json", { "x-poc-key": KEY, "content-type": "application/json", ...(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, "not json")) });
+    const notJson = await api("POST", WORKFLOW_RUNS_PATH, "not json", {
+      "x-poc-key": KEY,
+      "content-type": "application/json",
+      ...(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, "not json")),
+    });
     expect(notJson.status).toBe(400);
     expect((await api("PUT", "/poc/graphs/a%20b", "{}")).status).toBe(400);
     expect((await api("PUT", "/poc/graphs/x".padEnd(80, "x"), "{}")).status).toBe(400);
@@ -366,14 +433,29 @@ describe("real executors and a verified workspace", () => {
     const d = await db();
     for (const [workspaceId, balance] of Object.entries(balances)) {
       // Whole credits here; the wallet holds thousandths (credit-wallet migration 0004, story 2.5).
-      await d.prepare("INSERT INTO credit_wallets (workspace_id, balance_milli) VALUES (?1, ?2) ON CONFLICT(workspace_id) DO UPDATE SET balance_milli = excluded.balance_milli").bind(workspaceId, balance * 1000).run();
+      await d
+        .prepare(
+          "INSERT INTO credit_wallets (workspace_id, balance_milli) VALUES (?1, ?2) ON CONFLICT(workspace_id) DO UPDATE SET balance_milli = excluded.balance_milli",
+        )
+        .bind(workspaceId, balance * 1000)
+        .run();
     }
   };
   const balance = async (workspaceId: string) => {
-    const milli = (await (await db()).prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?1").bind(workspaceId).first<{ balance_milli: number }>())?.balance_milli;
+    const milli = (
+      await (await db()).prepare("SELECT balance_milli FROM credit_wallets WHERE workspace_id = ?1").bind(workspaceId).first<{ balance_milli: number }>()
+    )?.balance_milli;
     return milli === undefined ? null : milli / 1000;
   };
-  const ledger = async (workspaceId: string) => (await (await db()).prepare("SELECT workspace_id, user_id, amount_milli, balance_after_milli FROM credit_ledger WHERE workspace_id = ?1").bind(workspaceId).all()).results;
+  const ledger = async (workspaceId: string) =>
+    (
+      await (
+        await db()
+      )
+        .prepare("SELECT workspace_id, user_id, amount_milli, balance_after_milli FROM credit_ledger WHERE workspace_id = ?1")
+        .bind(workspaceId)
+        .all()
+    ).results;
 
   test("BUNDLE_REAL_DEBIT: a signed run for workspace A debits A's wallet with the real executor; B's is untouched", async () => {
     await openWallets({ [WS_A]: 50, [WS_B]: 50 });
@@ -404,7 +486,10 @@ describe("real executors and a verified workspace", () => {
     await openWallets({ [WS_A]: 50 });
     await store("debit-unverified", DEBIT);
     const ledgerBefore = await ledger(WS_A);
-    for (const body of [{ graphId: "debit-unverified", payload: { userId: "u1" } }, { graphId: "debit-unverified", workspaceId: WS_A, payload: { userId: "u1", workspaceId: WS_A } }]) {
+    for (const body of [
+      { graphId: "debit-unverified", payload: { userId: "u1" } },
+      { graphId: "debit-unverified", workspaceId: WS_A, payload: { userId: "u1", workspaceId: WS_A } },
+    ]) {
       const refused = await api("POST", "/poc/runs", body);
       expect(refused.status).toBe(403);
       expect(refused.json).toEqual({ error: expect.objectContaining({ code: "NO_VERIFIED_WORKSPACE" }) });
@@ -420,12 +505,14 @@ describe("real executors and a verified workspace", () => {
     const missing = await signedRun({ graphId: "debit" });
     expect(missing.status).toBe(400);
     expect((missing.json!.error as { code: string }).code).toBe("NO_WORKSPACE");
-    for (const workspaceId of [APP_WORKSPACE, "ws__x", "a/b", 7]) expect((await signedRun({ graphId: "debit", workspaceId })).status, String(workspaceId)).toBe(400);
+    for (const workspaceId of [APP_WORKSPACE, "ws__x", "a/b", 7])
+      expect((await signedRun({ graphId: "debit", workspaceId })).status, String(workspaceId)).toBe(400);
   });
 
   test("the run route accepts only a PX_TELEMETRY_SECRET signature: none, a wrong one, or one made with the access key is 401", async () => {
     const body = JSON.stringify({ requestId: crypto.randomUUID(), graphId: "debit", workspaceId: WS_A, payload: { userId: "u1" } });
-    const send = async (headers: Record<string, string> = {}) => api("POST", WORKFLOW_RUNS_PATH, body, { "x-poc-key": KEY, "content-type": "application/json", ...headers });
+    const send = async (headers: Record<string, string> = {}) =>
+      api("POST", WORKFLOW_RUNS_PATH, body, { "x-poc-key": KEY, "content-type": "application/json", ...headers });
     expect((await send()).status).toBe(401);
     expect((await send(await signControlPlaneRequest("some-other-secret-0123456789", "POST", WORKFLOW_RUNS_PATH, body))).status).toBe(401);
     expect((await send(await signControlPlaneRequest(KEY, "POST", WORKFLOW_RUNS_PATH, body))).status).toBe(401);
@@ -438,7 +525,11 @@ describe("real executors and a verified workspace", () => {
     await store("debit-replay", DEBIT);
     const before = (await ledger(WS_A)).length;
     const body = JSON.stringify({ requestId: crypto.randomUUID(), graphId: "debit-replay", workspaceId: WS_A, payload: { userId: "u1" } });
-    const headers = { "x-poc-key": KEY, "content-type": "application/json", ...(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, body)) };
+    const headers = {
+      "x-poc-key": KEY,
+      "content-type": "application/json",
+      ...(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, body)),
+    };
     const first = await api("POST", WORKFLOW_RUNS_PATH, body, headers);
     expect(first.status).toBe(202);
     expect((await finish(String(first.json!.id))).status).toBe("complete");
@@ -452,7 +543,8 @@ describe("real executors and a verified workspace", () => {
 
   test("a stale or future signing time is 401, and a signature made for another route's path or body does not verify", async () => {
     const body = JSON.stringify({ requestId: crypto.randomUUID(), graphId: "debit", workspaceId: WS_A, payload: { userId: "u1" } });
-    const send = async (headers: Record<string, string>) => api("POST", WORKFLOW_RUNS_PATH, body, { "x-poc-key": KEY, "content-type": "application/json", ...headers });
+    const send = async (headers: Record<string, string>) =>
+      api("POST", WORKFLOW_RUNS_PATH, body, { "x-poc-key": KEY, "content-type": "application/json", ...headers });
     expect((await send(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, body, Date.now() - 400_000))).status).toBe(401);
     expect((await send(await signControlPlaneRequest(SIGNING_SECRET, "POST", WORKFLOW_RUNS_PATH, body, Date.now() + 400_000))).status).toBe(401);
     expect((await send({ [SIGNED_AT_HEADER]: "not-a-time", [TELEMETRY_SIGNATURE_HEADER]: "sha256=00" })).status).toBe(401);
@@ -466,7 +558,10 @@ describe("real executors and a verified workspace", () => {
     const id = await start("debit-read", { userId: "u1" });
     await finish(id);
     expect((await api("GET", `/poc/runs/${id}`)).status).toBe(401);
-    expect((await api("GET", `/poc/runs/${id}`, undefined, { "x-poc-key": KEY, ...(await signControlPlaneRequest(SIGNING_SECRET, "GET", "/poc/runs/other")) })).status).toBe(401);
+    expect(
+      (await api("GET", `/poc/runs/${id}`, undefined, { "x-poc-key": KEY, ...(await signControlPlaneRequest(SIGNING_SECRET, "GET", "/poc/runs/other")) }))
+        .status,
+    ).toBe(401);
     expect((await signedGet(`/poc/runs/${id}`)).status).toBe(200);
   });
 });

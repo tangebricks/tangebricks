@@ -39,10 +39,7 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function collectConnectionSecretValues(
-  conn: Record<string, unknown>,
-  trackedSecrets: Set<string>,
-): void {
+export function collectConnectionSecretValues(conn: Record<string, unknown>, trackedSecrets: Set<string>): void {
   for (const [key, val] of Object.entries(conn)) {
     if (NON_SECRET_CONNECTION_METADATA_KEYS.has(key)) continue;
     if (typeof val === "string" && val.trim().length >= 3) {
@@ -54,10 +51,7 @@ export function collectConnectionSecretValues(
   }
 }
 
-export function collectConnectionsMapSecrets(
-  connections: Readonly<Record<string, Record<string, unknown>>> | undefined,
-  trackedSecrets: Set<string>,
-): void {
+export function collectConnectionsMapSecrets(connections: Readonly<Record<string, Record<string, unknown>>> | undefined, trackedSecrets: Set<string>): void {
   if (!connections) return;
   for (const conn of Object.values(connections)) {
     if (isPlainObject(conn)) {
@@ -66,19 +60,10 @@ export function collectConnectionsMapSecrets(
   }
 }
 
-export function trackSecretValue(
-  val: unknown,
-  trackedSecrets: Set<string>,
-): void {
+export function trackSecretValue(val: unknown, trackedSecrets: Set<string>): void {
   if (val === undefined || val === null) return;
   const strVal =
-    typeof val === "string"
-      ? val
-      : typeof val === "number" || typeof val === "boolean"
-        ? String(val)
-        : typeof val === "object"
-          ? JSON.stringify(val)
-          : null;
+    typeof val === "string" ? val : typeof val === "number" || typeof val === "boolean" ? String(val) : typeof val === "object" ? JSON.stringify(val) : null;
   if (strVal && strVal.trim().length >= 3) {
     trackedSecrets.add(strVal);
     trackedSecrets.add(strVal.trim());
@@ -86,4 +71,3 @@ export function trackSecretValue(
     collectSecretStringsFromValue(val, trackedSecrets);
   }
 }
-

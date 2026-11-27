@@ -8,6 +8,28 @@ Thanks for your interest in projectx-poc.
 2. Run the local gate: `pnpm check:changed`. It typechecks the workspace and runs the tests affected by your change. It must exit 0.
 3. Open the pull request against `main`. CI and the `Security` workflow run on every pull request into `main`.
 
+## Formatting
+
+The code is formatted with [Prettier](https://prettier.io/) (pinned in `package.json`, settings in
+`.prettierrc.json`). Format the whole repository with:
+
+```sh
+pnpm format          # rewrites files in place
+pnpm format:check    # changes nothing; fails if any file is not formatted (CI runs this)
+```
+
+`.prettierignore` lists what Prettier never touches: generated and recorded files (`evidence/`,
+`catalog.json`, fixtures and so on), JSON (scripts write it and check it byte for byte), Markdown, and
+the five H12 "no glue code" files whose sha256 the recorded live H12 run pinned. Do not format those by hand
+either.
+
+The repository was formatted in one mechanical commit, listed in `.git-blame-ignore-revs`. To keep
+`git blame` pointing at the commits that really changed each line, run once in your clone:
+
+```sh
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ## Sign your commits (DCO)
 
 This project uses the [Developer Certificate of Origin 1.1](https://developercertificate.org/).
@@ -46,6 +68,8 @@ when `CI` is set to a true value (anything but empty, `0` or `false`) or outside
 by hand, run `pnpm exec lefthook install`.
 
 - **pre-commit** runs, in this order:
+  - `prettier --write` on the staged files, with `.prettierrc.json` and `.prettierignore`. The
+    formatted files are re-staged.
   - `oxlint --fix` on the staged `.ts`, `.tsx`, `.js` and `.mjs` files, with the rules and ignore
     patterns in `.oxlintrc.json`. Its autofixes are re-staged; anything it cannot fix stops the commit.
   - `gitleaks` on the staged changes, with `.gitleaks.toml`. It uses `GITLEAKS_BIN` if set, otherwise

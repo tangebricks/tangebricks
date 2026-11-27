@@ -76,7 +76,7 @@ export class FacetedSearchService {
     entityIdRaw: string,
     titleRaw: string,
     bodyRaw: string,
-    facets: Record<string, string | number> = {}
+    facets: Record<string, string | number> = {},
   ): Promise<SearchDocument> {
     const entityType = entityTypeRaw.trim().toLowerCase();
     const entityId = entityIdRaw.trim();
@@ -87,11 +87,7 @@ export class FacetedSearchService {
     const facetsJson = JSON.stringify(facets);
 
     // 1. Check if document exists for entity
-    const existing = await scoped(this.db, workspaceId).first<RawDocRow>(
-      "search_documents",
-      "entity_type = ? AND entity_id = ?",
-      [entityType, entityId]
-    );
+    const existing = await scoped(this.db, workspaceId).first<RawDocRow>("search_documents", "entity_type = ? AND entity_id = ?", [entityType, entityId]);
 
     if (existing) {
       await scoped(this.db, workspaceId).delete("search_fts", "id = ?", [existing.id]);
@@ -104,7 +100,7 @@ export class FacetedSearchService {
           updated_at: now,
         },
         "id = ?",
-        [existing.id]
+        [existing.id],
       );
     } else {
       await scoped(this.db, workspaceId).insert("search_documents", {
@@ -144,27 +140,15 @@ export class FacetedSearchService {
   /**
    * Removes a document from the search index.
    */
-  async deleteDocument(
-    workspaceId: string,
-    entityTypeRaw: string,
-    entityIdRaw: string
-  ): Promise<boolean> {
+  async deleteDocument(workspaceId: string, entityTypeRaw: string, entityIdRaw: string): Promise<boolean> {
     const entityType = entityTypeRaw.trim().toLowerCase();
     const entityId = entityIdRaw.trim();
 
-    const existing = await scoped(this.db, workspaceId).first<RawDocRow>(
-      "search_documents",
-      "entity_type = ? AND entity_id = ?",
-      [entityType, entityId]
-    );
+    const existing = await scoped(this.db, workspaceId).first<RawDocRow>("search_documents", "entity_type = ? AND entity_id = ?", [entityType, entityId]);
     if (!existing) return false;
 
     await scoped(this.db, workspaceId).delete("search_fts", "id = ?", [existing.id]);
-    const res = await scoped(this.db, workspaceId).delete(
-      "search_documents",
-      "id = ?",
-      [existing.id]
-    );
+    const res = await scoped(this.db, workspaceId).delete("search_documents", "id = ?", [existing.id]);
 
     return res.meta.changes > 0;
   }
@@ -172,11 +156,7 @@ export class FacetedSearchService {
   /**
    * Performs full-text search with BM25 ranking, snippet extraction, and faceted counts.
    */
-  async search(
-    workspaceId: string,
-    queryRaw: string,
-    options: SearchOptions = {}
-  ): Promise<SearchResponse> {
+  async search(workspaceId: string, queryRaw: string, options: SearchOptions = {}): Promise<SearchResponse> {
     const query = queryRaw.trim();
     if (!query) {
       return { query, total: 0, results: [], facets: {} };
@@ -184,17 +164,25 @@ export class FacetedSearchService {
 
     // Escape query for FTS5 syntax safety
     const ftsQuery = query.replace(/[^\w\s]/g, " ").trim();
-    const matchExpr = ftsQuery.split(/\s+/).filter(Boolean).map((term) => `"${term}"*`).join(" OR ");
+    const matchExpr = ftsQuery
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((term) => `"${term}"*`)
+      .join(" OR ");
 
     // Query matched documents from FTS5
     interface FtsMatchRow {
       id: string;
       rank: number;
     }
-    const ftsRows = (await scoped(this.db, workspaceId).raw(
-      `SELECT id, bm25(search_fts) as rank FROM search_fts WHERE workspace_id = ? AND search_fts MATCH ? ORDER BY bm25(search_fts) ASC`,
-      [workspaceId, matchExpr]
-    ).all<FtsMatchRow>()).results;
+    const ftsRows = (
+      await scoped(this.db, workspaceId)
+        .raw(`SELECT id, bm25(search_fts) as rank FROM search_fts WHERE workspace_id = ? AND search_fts MATCH ? ORDER BY bm25(search_fts) ASC`, [
+          workspaceId,
+          matchExpr,
+        ])
+        .all<FtsMatchRow>()
+    ).results;
 
     if (!ftsRows || ftsRows.length === 0) {
       return { query, total: 0, results: [], facets: {} };
@@ -207,7 +195,7 @@ export class FacetedSearchService {
     const docRows = await scoped(this.db, workspaceId).select<RawDocRow>(
       "search_documents",
       `id IN (${docPlaceholders})`,
-      ftsRows.map((r) => r.id)
+      ftsRows.map((r) => r.id),
     );
 
     const ftsOrder = new Map(ftsRows.map((r, idx) => [r.id, idx]));
@@ -256,10 +244,12 @@ export class FacetedSearchService {
 
     const formattedFacets: Record<string, FacetBucket[]> = {};
     for (const [key, valMap] of Object.entries(facetCounts)) {
-      formattedFacets[key] = Object.entries(valMap).map(([value, count]) => ({
-        value,
-        count,
-      })).sort((a, b) => b.count - a.count);
+      formattedFacets[key] = Object.entries(valMap)
+        .map(([value, count]) => ({
+          value,
+          count,
+        }))
+        .sort((a, b) => b.count - a.count);
     }
 
     // Apply pagination
@@ -306,11 +296,6 @@ export class FacetedSearchService {
     const prefix = prefixRaw.trim().toLowerCase();
     if (!prefix) return [];
 
-    return scoped(this.db, workspaceId).select<TypeaheadItem>(
-      "search_documents",
-      "title LIKE ?",
-      [`${prefix}%`],
-      { orderBy: "title ASC", limit }
-    );
+    return scoped(this.db, workspaceId).select<TypeaheadItem>("search_documents", "title LIKE ?", [`${prefix}%`], { orderBy: "title ASC", limit });
   }
 }

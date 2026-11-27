@@ -1,13 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  DEPLOY_HISTORY_TABLE,
-  MIGRATIONS_TABLE,
-  createClient,
-  deploy,
-  memoryStore,
-  openLedger,
-  resourceNames,
-} from "../src/provisioner/index.ts";
+import { DEPLOY_HISTORY_TABLE, MIGRATIONS_TABLE, createClient, deploy, memoryStore, openLedger, resourceNames } from "../src/provisioner/index.ts";
 import type { DeployInput, Migration } from "../src/provisioner/index.ts";
 import { createFakeCloudflare } from "./support/fake-cloudflare.ts";
 import { createByocProvisioner, createHttpCloudflareApiClient } from "../src/index.ts";
@@ -32,7 +24,11 @@ function setup() {
     timeMs += 1000;
     return new Date(timeMs);
   };
-  const ledger = openLedger(store, () => SUFFIX, () => nextTime());
+  const ledger = openLedger(
+    store,
+    () => SUFFIX,
+    () => nextTime(),
+  );
   const names = resourceNames(SUFFIX);
   const input = (over: Partial<DeployInput> = {}): DeployInput => ({
     client,
@@ -53,18 +49,14 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
     const { client, ledger, names, input } = setup();
 
     // 1. Deploy v1
-    const v1Migrations: Migration[] = [
-      { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" },
-    ];
+    const v1Migrations: Migration[] = [{ name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" }];
     await deploy(input({ migrations: v1Migrations }));
 
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
 
     // Insert canary row into v1 table
-    await client.queryDatabase(databaseId, [
-      { sql: "INSERT INTO items (id, val) VALUES ('item_1', 'original');" },
-    ]);
+    await client.queryDatabase(databaseId, [{ sql: "INSERT INTO items (id, val) VALUES ('item_1', 'original');" }]);
     const [rowsV1] = await client.queryDatabase(databaseId, [{ sql: "SELECT val FROM items WHERE id = 'item_1';" }]);
     expect(rowsV1!.results[0]!.val).toBe("original");
 
@@ -92,9 +84,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
     const bookmarkCallIndex = v2Calls.findIndex((c) => c.method === "GET" && c.path.includes("/time_travel/bookmark"));
     expect(bookmarkCallIndex, "must call time_travel/bookmark").toBeGreaterThanOrEqual(0);
 
-    const firstMigrationWriteIndex = v2Calls.findIndex(
-      (c) => c.method === "POST" && c.path.includes("/query") && c.sqlKind === "write",
-    );
+    const firstMigrationWriteIndex = v2Calls.findIndex((c) => c.method === "POST" && c.path.includes("/query") && c.sqlKind === "write");
     expect(firstMigrationWriteIndex, "first migration write must happen").toBeGreaterThanOrEqual(0);
     expect(bookmarkCallIndex, "bookmark call must precede first schema write").toBeLessThan(firstMigrationWriteIndex);
 
@@ -106,9 +96,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
     expect(migRows!.results.map((r) => r.name)).toEqual(["0001_initial.sql", "0002_mutate.sql"]);
 
     // Check _projectx_deploy_history has been populated
-    const [historyRows] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT id, bookmark, status FROM ${DEPLOY_HISTORY_TABLE};` },
-    ]);
+    const [historyRows] = await client.queryDatabase(databaseId, [{ sql: `SELECT id, bookmark, status FROM ${DEPLOY_HISTORY_TABLE};` }]);
     expect(historyRows!.results.length).toBeGreaterThan(0);
     expect(historyRows!.results.some((r) => r.bookmark === v2Bookmark)).toBe(true);
 
@@ -123,9 +111,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
     expect(migAfterRestore!.results.map((r) => r.name)).toEqual(["0001_initial.sql"]);
 
     // Table items_v2 should no longer exist after restore
-    const [tableCheck] = await client.queryDatabase(databaseId, [
-      { sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'items_v2';" },
-    ]);
+    const [tableCheck] = await client.queryDatabase(databaseId, [{ sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'items_v2';" }]);
     expect(tableCheck!.results.length).toBe(0);
 
     // 4. Undoing restore with previous_bookmark brings v2 state back
@@ -137,27 +123,18 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
   test("AC2 & AC3: poc:restore script dry-run without --yes writes nothing, and --yes restores data reporting previous_bookmark", async () => {
     const { client, names, input } = setup();
 
-    const v1Migrations: Migration[] = [
-      { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" },
-    ];
+    const v1Migrations: Migration[] = [{ name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" }];
     await deploy(input({ migrations: v1Migrations }));
 
     const dbs = await client.listDatabases(names.database);
     const databaseId = dbs[0]!.uuid;
 
-    await client.queryDatabase(databaseId, [
-      { sql: "INSERT INTO items (id, val) VALUES ('item_1', 'original');" },
-    ]);
+    await client.queryDatabase(databaseId, [{ sql: "INSERT INTO items (id, val) VALUES ('item_1', 'original');" }]);
 
-    const v2Migrations: Migration[] = [
-      ...v1Migrations,
-      { name: "0002_mutate.sql", sql: "UPDATE items SET val = 'mutated' WHERE id = 'item_1';" },
-    ];
+    const v2Migrations: Migration[] = [...v1Migrations, { name: "0002_mutate.sql", sql: "UPDATE items SET val = 'mutated' WHERE id = 'item_1';" }];
     await deploy(input({ migrations: v2Migrations }));
 
-    const [historyRows] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT id, bookmark FROM ${DEPLOY_HISTORY_TABLE} ORDER BY started_at DESC;` },
-    ]);
+    const [historyRows] = await client.queryDatabase(databaseId, [{ sql: `SELECT id, bookmark FROM ${DEPLOY_HISTORY_TABLE} ORDER BY started_at DESC;` }]);
     const deployId = historyRows!.results[0]!.id as string;
     const bookmark = historyRows!.results[0]!.bookmark as string;
 
@@ -190,9 +167,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
   test("AC1 edge case: deploy with 0 pending migrations does not call getD1Bookmark", async () => {
     const { client, input } = setup();
 
-    const v1Migrations: Migration[] = [
-      { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" },
-    ];
+    const v1Migrations: Migration[] = [{ name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" }];
     await deploy(input({ migrations: v1Migrations }));
 
     const callsCount = client.calls.length;
@@ -207,9 +182,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
   test("Finding 2: lostMigrations identifies migrations applied in target deploy when started_at equals applied_at", async () => {
     const { client, names, input } = setup();
 
-    const v1Migrations: Migration[] = [
-      { name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" },
-    ];
+    const v1Migrations: Migration[] = [{ name: "0001_initial.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY, val TEXT);" }];
     await deploy(input({ migrations: v1Migrations }));
 
     const dbs = await client.listDatabases(names.database);
@@ -218,10 +191,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
     // Use a fixed timestamp for deploy v2 so started_at in _projectx_deploy_history
     // and applied_at in _projectx_migrations are identical (simulating same-batch/same-millisecond execution)
     const fixedIso = "2026-10-21T12:00:00.000Z";
-    const v2Migrations: Migration[] = [
-      ...v1Migrations,
-      { name: "0002_mutate.sql", sql: "UPDATE items SET val = 'mutated' WHERE id = 'item_1';" },
-    ];
+    const v2Migrations: Migration[] = [...v1Migrations, { name: "0002_mutate.sql", sql: "UPDATE items SET val = 'mutated' WHERE id = 'item_1';" }];
     await deploy(input({ migrations: v2Migrations, nowIso: () => fixedIso }));
 
     const [historyRows] = await client.queryDatabase(databaseId, [
@@ -232,9 +202,7 @@ describe("D1 Time Travel bookmark and restore (UC8.5)", () => {
     const startedAt = historyRows!.results[0]!.started_at as string;
 
     // Verify in database that applied_at equals started_at
-    const [migRows] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT name, applied_at FROM ${MIGRATIONS_TABLE} WHERE name = '0002_mutate.sql';` },
-    ]);
+    const [migRows] = await client.queryDatabase(databaseId, [{ sql: `SELECT name, applied_at FROM ${MIGRATIONS_TABLE} WHERE name = '0002_mutate.sql';` }]);
     expect(migRows!.results[0]!.applied_at).toBe(startedAt);
 
     // Dry-run restore targeting deployId
@@ -256,7 +224,11 @@ describe("Studio deploy path (createByocProvisioner + HTTP client): restore poin
   const m1 = { name: "0001_init.sql", sql: "CREATE TABLE items (id TEXT PRIMARY KEY);", sha256: "m1" };
   const m2 = { name: "0002_notes.sql", sql: "CREATE TABLE notes (id TEXT PRIMARY KEY);", sha256: "m2" };
   function studioSetup() {
-    const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT, tokenGroups: ["Account Settings Read", "Workers Scripts Write", "D1 Write", "Queues Write"] });
+    const fake = createFakeCloudflare({
+      token: TOKEN,
+      accountId: ACCOUNT,
+      tokenGroups: ["Account Settings Read", "Workers Scripts Write", "D1 Write", "Queues Write"],
+    });
     const cp = createHttpCloudflareApiClient({ fetch: fake.fetch, sleep: async () => {}, budgetFor: () => createRequestBudget({ sleep: async () => {} }) });
     return { fake, cp };
   }
@@ -313,7 +285,11 @@ describe("Studio deploy path (createByocProvisioner + HTTP client): restore poin
   test("when the bookmark cannot be taken the deploy stops before any migration", async () => {
     const { fake, cp } = studioSetup();
     await apply(cp, "v1", [m1]);
-    fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/time_travel/bookmark"), times: 10, respond: { status: 500, body: { success: false, errors: [{ code: 7500, message: "bookmark unavailable" }] } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/time_travel/bookmark"),
+      times: 10,
+      respond: { status: 500, body: { success: false, errors: [{ code: 7500, message: "bookmark unavailable" }] } },
+    });
     await expect(apply(cp, "v2", [m1, m2])).rejects.toThrow();
     expect(fake.state().databases.find((d) => d.name === DB)!.tables).not.toContain("notes");
     expect(fake.rows(DB, "SELECT name FROM _projectx_migrations")).toEqual([{ name: "0001_init.sql" }]);

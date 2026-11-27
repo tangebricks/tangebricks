@@ -9,7 +9,11 @@ const ACCOUNT = "0123456789abcdef0123456789abcdef";
 function setup(lockIdentity: string, environment: "dev" | "preview" | "production") {
   const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT });
   const client = createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch });
-  const ledger = openLedger(memoryStore(), () => "0a1b2c3d", () => new Date("2026-10-21T00:00:00Z"));
+  const ledger = openLedger(
+    memoryStore(),
+    () => "0a1b2c3d",
+    () => new Date("2026-10-21T00:00:00Z"),
+  );
   const input: DeployInput = {
     client,
     ledger,

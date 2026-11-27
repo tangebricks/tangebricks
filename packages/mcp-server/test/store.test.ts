@@ -56,15 +56,10 @@ describe("BlueprintClient over BlueprintDO in workerd and in-memory adapter", ()
 
     const loaded = await client.getProject(project);
     expect(loaded?.revision).toBe(1);
-    expect(loaded?.state.bricks.map((b) => b.id)).toEqual([
-      "credit-wallet",
-      "multi-workspace",
-    ]);
+    expect(loaded?.state.bricks.map((b) => b.id)).toEqual(["credit-wallet", "multi-workspace"]);
 
     // Verify mcp_projects is never touched
-    expect(
-      (await db.prepare("SELECT COUNT(*) AS n FROM mcp_projects").first<{ n: number }>())!.n,
-    ).toBe(0);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM mcp_projects").first<{ n: number }>())!.n).toBe(0);
   });
 
   it("auto-rebases non-overlapping concurrent batches and rejects overlapping ones with 409 CONFLICT", async () => {
@@ -97,11 +92,7 @@ describe("BlueprintClient over BlueprintDO in workerd and in-memory adapter", ()
     if (second.ok) {
       expect(second.data.revision).toBe(3);
       expect(second.data.rebasedFrom).toBe(1);
-      expect(second.data.state.bricks.map((b) => b.id)).toEqual([
-        "credit-wallet",
-        "dynamic-entities",
-        "multi-workspace",
-      ]);
+      expect(second.data.state.bricks.map((b) => b.id)).toEqual(["credit-wallet", "dynamic-entities", "multi-workspace"]);
     }
 
     // Overlapping edit at stale baseRevision: 1 on credit-wallet -> 409 CONFLICT
@@ -134,9 +125,7 @@ describe("BlueprintClient over BlueprintDO in workerd and in-memory adapter", ()
     });
     expect(refused.ok).toBe(false);
     expect(await client.getProject("refused-project")).toBeNull();
-    expect(
-      (await db.prepare("SELECT COUNT(*) AS n FROM mcp_projects").first<{ n: number }>())!.n,
-    ).toBe(0);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM mcp_projects").first<{ n: number }>())!.n).toBe(0);
   });
 });
 
@@ -175,16 +164,14 @@ describe("limits", () => {
 
   it("the call counter counts within a minute, starts again in the next, and forgets old windows", async () => {
     const now = Date.UTC(2026, 9, 20, 12, 0, 30);
-    expect([
-      await withinRateLimit(db, 2, now),
-      await withinRateLimit(db, 2, now + 1000),
-      await withinRateLimit(db, 2, now + 2000),
-    ]).toEqual([true, true, false]);
+    expect([await withinRateLimit(db, 2, now), await withinRateLimit(db, 2, now + 1000), await withinRateLimit(db, 2, now + 2000)]).toEqual([
+      true,
+      true,
+      false,
+    ]);
     expect(await withinRateLimit(db, 2, now + 60_000)).toBe(true);
     await withinRateLimit(db, 2, now + 2 * 3_600_000);
-    expect(
-      (await db.prepare("SELECT COUNT(*) AS n FROM mcp_rate").first<{ n: number }>())!.n,
-    ).toBe(1);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM mcp_rate").first<{ n: number }>())!.n).toBe(1);
   });
 });
 
@@ -195,26 +182,15 @@ describe("storing a build", () => {
     await storeBuild(db, "p", { "old.txt": "old", ...files });
     const summary = await storeBuild(db, "p", files);
     expect(summary).toMatchObject({ files: 2, bytes: 12 });
-    expect(
-      (
-        await db
-          .prepare("SELECT path FROM mcp_files WHERE project = 'p' ORDER BY path")
-          .all<{ path: string }>()
-      ).results.map((r) => r.path),
-    ).toEqual(["a.txt", "b/c.txt"]);
-    expect(
-      (
-        await db
-          .prepare("SELECT file_count FROM mcp_builds WHERE project = 'p'")
-          .first<{ file_count: number }>()
-      )?.file_count,
-    ).toBe(2);
+    expect((await db.prepare("SELECT path FROM mcp_files WHERE project = 'p' ORDER BY path").all<{ path: string }>()).results.map((r) => r.path)).toEqual([
+      "a.txt",
+      "b/c.txt",
+    ]);
+    expect((await db.prepare("SELECT file_count FROM mcp_builds WHERE project = 'p'").first<{ file_count: number }>())?.file_count).toBe(2);
   });
 
   it("counts bytes, not characters", async () => {
-    expect((await storeBuild(db, "p", { "u.txt": "héllo 日本" })).bytes).toBe(
-      new TextEncoder().encode("héllo 日本").length,
-    );
+    expect((await storeBuild(db, "p", { "u.txt": "héllo 日本" })).bytes).toBe(new TextEncoder().encode("héllo 日本").length);
   });
 
   it("gives the same hash for the same files whatever order they are given in, and a different one for a different file", async () => {
@@ -228,12 +204,6 @@ describe("storing a build", () => {
   it("does not let one project's files leak into another's", async () => {
     await storeBuild(db, "p", { "only-p.txt": "p" });
     await storeBuild(db, "q", { "only-q.txt": "q" });
-    expect(
-      (
-        await db
-          .prepare("SELECT path FROM mcp_files WHERE project = 'q'")
-          .all<{ path: string }>()
-      ).results.map((r) => r.path),
-    ).toEqual(["only-q.txt"]);
+    expect((await db.prepare("SELECT path FROM mcp_files WHERE project = 'q'").all<{ path: string }>()).results.map((r) => r.path)).toEqual(["only-q.txt"]);
   });
 });

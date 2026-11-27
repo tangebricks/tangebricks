@@ -1,13 +1,7 @@
 import { Hono } from "hono";
 import type { D1Like, RequestContext } from "@poc/sdk";
 import { WORKSPACE_ADMIN_ROLES, workspaceRoleRefusal } from "@poc/sdk";
-import {
-  AssetService,
-  MAX_LIST_LIMIT,
-  MAX_LIST_OFFSET,
-  contentDispositionAttachment,
-  isActiveContentType,
-} from "./assets.ts";
+import { AssetService, MAX_LIST_LIMIT, MAX_LIST_OFFSET, contentDispositionAttachment, isActiveContentType } from "./assets.ts";
 import type { R2Like } from "./assets.ts";
 
 export interface AssetEnv {
@@ -96,10 +90,7 @@ export function createAssetRoutes(options: AssetRouteOptions = {}): Hono<AssetEn
     const limit = parseBoundedInt(c.req.query("limit"), 1, MAX_LIST_LIMIT, 50);
     const offset = parseBoundedInt(c.req.query("offset"), 0, MAX_LIST_OFFSET, 0);
     if (limit === null || offset === null) {
-      return c.json(
-        { error: `limit must be a whole number from 1 to ${MAX_LIST_LIMIT}, offset from 0 to ${MAX_LIST_OFFSET}`, code: "INVALID_PAGING" },
-        400
-      );
+      return c.json({ error: `limit must be a whole number from 1 to ${MAX_LIST_LIMIT}, offset from 0 to ${MAX_LIST_OFFSET}`, code: "INVALID_PAGING" }, 400);
     }
 
     const service = newService(c.env);
@@ -180,7 +171,7 @@ export function createAssetRoutes(options: AssetRouteOptions = {}): Hono<AssetEn
           code: result.errorCode,
           ...(result.correlationId ? { correlationId: result.correlationId } : {}),
         },
-        result.code as 400 | 413 | 415 | 500
+        result.code as 400 | 413 | 415 | 500,
       );
     }
 

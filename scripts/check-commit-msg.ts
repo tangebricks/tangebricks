@@ -46,11 +46,7 @@ export function isEditorMessage(message: string, commentChar = "#"): boolean {
   return message
     .replace(/\r\n/g, "\n")
     .split("\n")
-    .some(
-      (line) =>
-        line.startsWith(commentChar) &&
-        (SCISSORS.test(line) || line.startsWith(`${commentChar} Please enter the commit message`)),
-    );
+    .some((line) => line.startsWith(commentChar) && (SCISSORS.test(line) || line.startsWith(`${commentChar} Please enter the commit message`)));
 }
 
 /**
@@ -118,9 +114,7 @@ export function main(argv: readonly string[], env: NodeJS.ProcessEnv = process.e
     console.error("commit-msg: could not determine the commit author (set git user.name and user.email).");
     return 1;
   }
-  const [failure] = checkDco([
-    { sha: "", parents: [], authorName: author.name, authorEmail: author.email, message },
-  ]);
+  const [failure] = checkDco([{ sha: "", parents: [], authorName: author.name, authorEmail: author.email, message }]);
   if (!failure) return 0;
   console.error(`commit-msg: ${failure.reason}.`);
   console.error("Fix: commit with `git commit -s`, which adds the sign-off. See CONTRIBUTING.md (Sign your commits).");

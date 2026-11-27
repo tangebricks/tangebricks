@@ -1,13 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  createClient,
-  deploy,
-  memoryStore,
-  openLedger,
-  resourceNames,
-  teardown,
-  uploadMetadata,
-} from "../src/provisioner/index.ts";
+import { createClient, deploy, memoryStore, openLedger, resourceNames, teardown, uploadMetadata } from "../src/provisioner/index.ts";
 import type { DeployInput } from "../src/provisioner/index.ts";
 import { createFakeCloudflare } from "./support/fake-cloudflare.ts";
 
@@ -21,7 +13,11 @@ describe("UC9.4 — Observability provisioner and upload metadata", () => {
     const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT });
     const client = createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch });
     const store = memoryStore();
-    const ledger = openLedger(store, () => SUFFIX, () => new Date("2026-10-21T00:00:00Z"));
+    const ledger = openLedger(
+      store,
+      () => SUFFIX,
+      () => new Date("2026-10-21T00:00:00Z"),
+    );
     const names = resourceNames(SUFFIX);
     const input: DeployInput = {
       client,

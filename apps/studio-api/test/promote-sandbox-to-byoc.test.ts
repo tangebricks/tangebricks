@@ -43,10 +43,7 @@ async function createZeroCredentialUser(
   const cookieHeader = setCookie.split(";")[0] ?? "";
   const authHeader = `Bearer ${regBody.token}`;
 
-  const req = async (
-    path: string,
-    init: RequestInit = {},
-  ): Promise<Response> => {
+  const req = async (path: string, init: RequestInit = {}): Promise<Response> => {
     const headers = new Headers(init.headers);
     if (cookieHeader && !headers.has("cookie")) {
       headers.set("cookie", cookieHeader);
@@ -122,17 +119,13 @@ describe("Story 9.3 — Zero-credential sandbox preview (<= 2 min) & one-click M
       sandbox: StudioSandboxSummary;
     };
     expect(sandboxDeploy.ok).toBe(true);
-    expect(sandboxDeploy.previewUrl).toBe(
-      `https://${sandboxDeploy.sandboxId}.sandbox.projectx.dev`,
-    );
+    expect(sandboxDeploy.previewUrl).toBe(`https://${sandboxDeploy.sandboxId}.sandbox.projectx.dev`);
     expect(sandboxDeploy.remainingDays).toBe(7);
 
     // Verify live sandbox preview responds 200 OK
     const platform = getStudioSandboxPlatform();
     const dispatcher = createSandboxDispatcher({ platform });
-    const liveHealthRes = await dispatcher.fetch(
-      new Request(`${sandboxDeploy.previewUrl}/__px/health`),
-    );
+    const liveHealthRes = await dispatcher.fetch(new Request(`${sandboxDeploy.previewUrl}/__px/health`));
     expect(liveHealthRes.status).toBe(200);
     const liveHealthBody = (await liveHealthRes.json()) as {
       ok: boolean;
@@ -162,22 +155,19 @@ describe("Story 9.3 — Zero-credential sandbox preview (<= 2 min) & one-click M
     );
     expect(insertViaDispatcherRes.status).toBe(201);
 
-    const insertViaDataBrowserRes = await req(
-      `/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: "ws_demo",
-          confirmWrite: true,
-          values: {
-            id: "sample_row_2",
-            title: "Sandbox Sample Ledger Row 2",
-            status: "active",
-          },
-        }),
-      },
-    );
+    const insertViaDataBrowserRes = await req(`/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: "ws_demo",
+        confirmWrite: true,
+        values: {
+          id: "sample_row_2",
+          title: "Sandbox Sample Ledger Row 2",
+          status: "active",
+        },
+      }),
+    });
     expect(insertViaDataBrowserRes.status).toBe(201);
 
     const assembleCountBeforePromote = getProjectAssembleCount(project);
@@ -204,19 +194,16 @@ describe("Story 9.3 — Zero-credential sandbox preview (<= 2 min) & one-click M
     expect(copyErr.error.code).toBe("COPY_SAMPLE_DATA_REMOVED");
     expect(platform.getDatabase(sandboxDeploy.sandboxId)).not.toBeNull();
 
-    const promoteRes = await req(
-      `/api/projects/${project}/sandbox/promote-to-byoc`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          orgId,
-          token: validByocToken,
-          accountId: byocAccountId,
-          accountName: "Acme BYOC Production Account",
-        }),
-      },
-    );
+    const promoteRes = await req(`/api/projects/${project}/sandbox/promote-to-byoc`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orgId,
+        token: validByocToken,
+        accountId: byocAccountId,
+        accountName: "Acme BYOC Production Account",
+      }),
+    });
     expect(promoteRes.status).toBe(200);
     const promoteBody = (await promoteRes.json()) as {
       ok: boolean;
@@ -245,9 +232,7 @@ describe("Story 9.3 — Zero-credential sandbox preview (<= 2 min) & one-click M
     expect(getProjectAssembleCount(project)).toBe(assembleCountBeforePromote);
 
     // Verify preview and production BYOC environments were created
-    expect(
-      promoteBody.environments.map((e) => e.envName).sort(),
-    ).toEqual(["preview", "production"]);
+    expect(promoteBody.environments.map((e) => e.envName).sort()).toEqual(["preview", "production"]);
 
     // Story 17: no sample rows are copied, and the response carries no copied counts
     for (const removed of ["copySampleData", "copiedSampleRows", "copiedRowsCount", "copiedTables"]) {
@@ -255,21 +240,14 @@ describe("Story 9.3 — Zero-credential sandbox preview (<= 2 min) & one-click M
     }
 
     // With the sandbox gone, preview has no data store Studio can reach: NOT_CONFIGURED, never a STUDIO_DB fallback
-    const byocRowsRes = await req(
-      `/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_demo`,
-    );
+    const byocRowsRes = await req(`/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_demo`);
     expect(byocRowsRes.status).toBe(503);
     const byocRowsErr = (await byocRowsRes.json()) as { error: { code: string } };
     expect(byocRowsErr.error.code).toBe("NOT_CONFIGURED");
 
     // Verify ephemeral HostedSandboxTarget resources were destroyed
     expect(promoteBody.sandboxDestroyed).toBe(true);
-    expect(
-      platform.getWorker(
-        sandboxDeploy.dispatchNamespace,
-        sandboxDeploy.sandboxId,
-      ),
-    ).toBeNull();
+    expect(platform.getWorker(sandboxDeploy.dispatchNamespace, sandboxDeploy.sandboxId)).toBeNull();
     expect(platform.getDatabase(sandboxDeploy.sandboxId)).toBeNull();
 
     const sbxAfterRes = await req(`/api/projects/${project}/sandbox`);
@@ -323,18 +301,15 @@ describe("Story 9.3 — Zero-credential sandbox preview (<= 2 min) & one-click M
       }),
     );
 
-    const promoteRes = await req(
-      `/api/projects/${project}/sandbox/promote-to-byoc`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          orgId,
-          token: "cf_valid_token_nocopy_0123456789",
-          accountId: "b2c3d4e5f60718293a4b5c6d7e8f90a1",
-        }),
-      },
-    );
+    const promoteRes = await req(`/api/projects/${project}/sandbox/promote-to-byoc`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orgId,
+        token: "cf_valid_token_nocopy_0123456789",
+        accountId: "b2c3d4e5f60718293a4b5c6d7e8f90a1",
+      }),
+    });
     expect(promoteRes.status).toBe(200);
     const promoteBody = (await promoteRes.json()) as {
       buildHash: string;
@@ -346,9 +321,7 @@ describe("Story 9.3 — Zero-credential sandbox preview (<= 2 min) & one-click M
     expect(promoteBody.assembleCalledDuringPromote).toBe(false);
     expect(promoteBody.sandboxDestroyed).toBe(true);
 
-    const byocRowsRes = await req(
-      `/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_ephemeral`,
-    );
+    const byocRowsRes = await req(`/api/projects/${project}/environments/preview/data/tables/usage_ledgers/rows?workspaceId=ws_ephemeral`);
     expect(byocRowsRes.status).toBe(503);
     const byocRowsErr = (await byocRowsRes.json()) as { error: { code: string } };
     expect(byocRowsErr.error.code).toBe("NOT_CONFIGURED");

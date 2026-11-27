@@ -15,7 +15,16 @@ import {
   workspaceRoleRefusal,
 } from "@poc/sdk";
 import type { WebhookVerification } from "@poc/sdk";
-import { MAX_ACTION_COST_MILLI, MAX_CHARGE_QUANTITY, chargeAction, deleteActionCost, isActionName, listActionCosts, parseDefaultActionCosts, setActionCost } from "./costs.ts";
+import {
+  MAX_ACTION_COST_MILLI,
+  MAX_CHARGE_QUANTITY,
+  chargeAction,
+  deleteActionCost,
+  isActionName,
+  listActionCosts,
+  parseDefaultActionCosts,
+  setActionCost,
+} from "./costs.ts";
 import type { PaymentGateway } from "./gateway.ts";
 import { createWallet } from "./wallet.ts";
 import type { ConfirmResult } from "./wallet.ts";
@@ -273,7 +282,13 @@ export function createWalletRoutes(options: WalletRoutesOptions): Hono<WalletEnv
       const own = await listActionCosts(c.env.DB, ctx.workspace.id);
       const priced = new Set(own.map((row) => row.action));
       return c.json({
-        costs: own.map((row) => ({ action: row.action, cost: fromMilli(row.costMilli), costMilli: row.costMilli, source: "workspace", updatedAt: row.updatedAt })),
+        costs: own.map((row) => ({
+          action: row.action,
+          cost: fromMilli(row.costMilli),
+          costMilli: row.costMilli,
+          source: "workspace",
+          updatedAt: row.updatedAt,
+        })),
         defaults: [...defaultCosts]
           .filter(([action]) => !priced.has(action))
           .map(([action, costMilli]) => ({ action, cost: fromMilli(costMilli), costMilli, source: "default" })),
@@ -550,7 +565,9 @@ export function createWalletRoutes(options: WalletRoutesOptions): Hono<WalletEnv
           return c.json({ received: true, status: "ignored", credited: false });
         case "wallet_not_found":
           // A paid order whose credit cannot land: the provider will retry, but someone has to look.
-          console.error(`credit-wallet: paid order cannot be credited, its workspace has no wallet (order ${orderId}, provider ref ${verified.providerRef ?? "none"})`);
+          console.error(
+            `credit-wallet: paid order cannot be credited, its workspace has no wallet (order ${orderId}, provider ref ${verified.providerRef ?? "none"})`,
+          );
           return c.json({ error: "Workspace not found" }, 404);
         case "gateway_error":
           return c.json({ error: "Could not verify with payment gateway" }, 502);

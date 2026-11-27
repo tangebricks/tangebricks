@@ -37,10 +37,7 @@ interface CallOptions {
   env?: Partial<StudioApiEnv>;
 }
 
-async function callStudio(
-  path: string,
-  options: CallOptions = {},
-): Promise<Response> {
+async function callStudio(path: string, options: CallOptions = {}): Promise<Response> {
   const headers = new Headers(options.headers);
   if (options.token) headers.set("authorization", `Bearer ${options.token}`);
 
@@ -319,41 +316,13 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
         )`,
       ),
       sandboxDb
-        .prepare(
-          "INSERT INTO ent_invoices (id, workspace_id, title, amount_cents, status, api_secret_token, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        )
-        .bind(
-          "inv_ws_a_1",
-          "workspace_A",
-          "Workspace A Enterprise Plan",
-          25000,
-          "paid",
-          CANARY_SECRET,
-          min10Ago,
-        ),
+        .prepare("INSERT INTO ent_invoices (id, workspace_id, title, amount_cents, status, api_secret_token, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)")
+        .bind("inv_ws_a_1", "workspace_A", "Workspace A Enterprise Plan", 25000, "paid", CANARY_SECRET, min10Ago),
       sandboxDb
-        .prepare(
-          "INSERT INTO ent_invoices (id, workspace_id, title, amount_cents, status, api_secret_token, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        )
-        .bind(
-          "inv_ws_b_1",
-          "workspace_B",
-          "Workspace B Confidential Deal",
-          99000,
-          "draft",
-          CANARY_SECRET,
-          min10Ago,
-        ),
-      sandboxDb
-        .prepare(
-          "INSERT INTO credit_wallets (workspace_id, balance, updated_at) VALUES (?1, ?2, ?3)",
-        )
-        .bind("workspace_A", 850, min10Ago),
-      sandboxDb
-        .prepare(
-          "INSERT INTO credit_wallets (workspace_id, balance, updated_at) VALUES (?1, ?2, ?3)",
-        )
-        .bind("workspace_B", 4200, min10Ago),
+        .prepare("INSERT INTO ent_invoices (id, workspace_id, title, amount_cents, status, api_secret_token, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)")
+        .bind("inv_ws_b_1", "workspace_B", "Workspace B Confidential Deal", 99000, "draft", CANARY_SECRET, min10Ago),
+      sandboxDb.prepare("INSERT INTO credit_wallets (workspace_id, balance, updated_at) VALUES (?1, ?2, ?3)").bind("workspace_A", 850, min10Ago),
+      sandboxDb.prepare("INSERT INTO credit_wallets (workspace_id, balance, updated_at) VALUES (?1, ?2, ?3)").bind("workspace_B", 4200, min10Ago),
       sandboxDb
         .prepare(
           "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -374,50 +343,20 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
         .prepare(
           "INSERT INTO credit_ledger (id, workspace_id, user_id, type, amount, balance_after, reason, metadata, idempotency_key, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         )
-        .bind(
-          "led_ws_b_1",
-          "workspace_B",
-          "usr_b",
-          "credit",
-          4200,
-          4200,
-          "topup:enterprise_b",
-          "{}",
-          "idem_b_1",
-          min10Ago,
-        ),
+        .bind("led_ws_b_1", "workspace_B", "usr_b", "credit", 4200, 4200, "topup:enterprise_b", "{}", "idem_b_1", min10Ago),
       sandboxDb
-        .prepare(
-          "INSERT INTO usage_rollups (workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?1, ?2, ?3, ?4, ?5)",
-        )
-        .bind(
-          "workspace_A",
-          "api_calls",
-          "2026-06-01T00:00:00.000Z",
-          "2026-06-30T23:59:59.000Z",
-          320,
-        ),
+        .prepare("INSERT INTO usage_rollups (workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?1, ?2, ?3, ?4, ?5)")
+        .bind("workspace_A", "api_calls", "2026-06-01T00:00:00.000Z", "2026-06-30T23:59:59.000Z", 320),
       sandboxDb
-        .prepare(
-          "INSERT INTO usage_rollups (workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?1, ?2, ?3, ?4, ?5)",
-        )
-        .bind(
-          "workspace_B",
-          "api_calls",
-          "2026-06-01T00:00:00.000Z",
-          "2026-06-30T23:59:59.000Z",
-          9999,
-        ),
+        .prepare("INSERT INTO usage_rollups (workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?1, ?2, ?3, ?4, ?5)")
+        .bind("workspace_B", "api_calls", "2026-06-01T00:00:00.000Z", "2026-06-30T23:59:59.000Z", 9999),
     ]);
 
     // 4. Criterion 1 & 2: Cross-workspace isolation & secret/connection table stripping
-    const tablesRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables?workspaceId=workspace_A`,
-      {
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const tablesRes = await callStudio(`/api/projects/${project}/environments/preview/data/tables?workspaceId=workspace_A`, {
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(tablesRes.status).toBe(200);
     const tablesBody = (await tablesRes.json()) as {
       tables: Array<{ tableName: string; columns: Array<{ name: string }> }>;
@@ -428,13 +367,10 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
     expect(tableNames).not.toContain("int_connections");
     expect(tableNames).not.toContain("_px_migrations");
 
-    const rowsARes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables/ent_invoices/rows?workspaceId=workspace_A`,
-      {
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const rowsARes = await callStudio(`/api/projects/${project}/environments/preview/data/tables/ent_invoices/rows?workspaceId=workspace_A`, {
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(rowsARes.status).toBe(200);
     const rowsABody = (await rowsARes.json()) as {
       rows: Array<Record<string, unknown>>;
@@ -447,13 +383,10 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
     expect(JSON.stringify(rowsABody)).not.toContain("Workspace B Confidential Deal");
     expect(JSON.stringify(rowsABody)).not.toContain(CANARY_SECRET);
 
-    const ledgerARes = await callStudio(
-      `/api/projects/${project}/environments/preview/ledger?workspaceId=workspace_A`,
-      {
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const ledgerARes = await callStudio(`/api/projects/${project}/environments/preview/ledger?workspaceId=workspace_A`, {
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(ledgerARes.status).toBe(200);
     const ledgerABody = (await ledgerARes.json()) as {
       wallet: { balance: number };
@@ -461,55 +394,44 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
       journalEntries: Array<{ entryId: string; workspaceId: string }>;
     };
     expect(ledgerABody.wallet.balance).toBe(850);
-    expect(ledgerABody.usageSummary).toEqual([
-      expect.objectContaining({ metricKey: "api_calls", totalQuantity: 320 }),
-    ]);
+    expect(ledgerABody.usageSummary).toEqual([expect.objectContaining({ metricKey: "api_calls", totalQuantity: 320 })]);
     expect(ledgerABody.journalEntries).toHaveLength(1);
     expect(ledgerABody.journalEntries[0]?.entryId).toBe("led_ws_a_1");
     expect(JSON.stringify(ledgerABody)).not.toContain("workspace_B");
 
     // 5. Criterion 3: Production read-only vs Preview confirmed audited writes
-    const prodWriteRes = await callStudio(
-      `/api/projects/${project}/environments/production/data/tables/ent_invoices/rows/inv_ws_a_1`,
-      {
-        method: "PATCH",
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-        body: {
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-          patch: { status: "refunded" },
-        },
+    const prodWriteRes = await callStudio(`/api/projects/${project}/environments/production/data/tables/ent_invoices/rows/inv_ws_a_1`, {
+      method: "PATCH",
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+      body: {
+        workspaceId: "workspace_A",
+        confirmWrite: true,
+        patch: { status: "refunded" },
       },
-    );
+    });
     expect(prodWriteRes.status).toBe(403);
     const prodWriteErr = (await prodWriteRes.json()) as {
       error: { code: string };
     };
     expect(prodWriteErr.error.code).toBe("PRODUCTION_DATA_WRITE_FORBIDDEN");
 
-    const previewEditRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/tables/ent_invoices/rows/inv_ws_a_1`,
-      {
-        method: "PATCH",
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-        body: {
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-          patch: { status: "settled" },
-        },
+    const previewEditRes = await callStudio(`/api/projects/${project}/environments/preview/data/tables/ent_invoices/rows/inv_ws_a_1`, {
+      method: "PATCH",
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+      body: {
+        workspaceId: "workspace_A",
+        confirmWrite: true,
+        patch: { status: "settled" },
       },
-    );
+    });
     expect(previewEditRes.status).toBe(200);
 
-    const auditRes = await callStudio(
-      `/api/projects/${project}/environments/preview/data/audit-log?workspaceId=workspace_A`,
-      {
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const auditRes = await callStudio(`/api/projects/${project}/environments/preview/data/audit-log?workspaceId=workspace_A`, {
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(auditRes.status).toBe(200);
     const auditBody = (await auditRes.json()) as {
       entries: Array<{
@@ -527,25 +449,17 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
 
     // 6. Criterion 4: Wallet & Usage Ledger tables reject all writes in both preview & production
     for (const envTarget of ["preview", "production"] as const) {
-      for (const ledgerTable of [
-        "credit_wallets",
-        "credit_ledger",
-        "usage_events",
-        "usage_rollups",
-      ] as const) {
-        const mutRes = await callStudio(
-          `/api/projects/${project}/environments/${envTarget}/data/tables/${ledgerTable}/rows`,
-          {
-            method: "POST",
-            token: ownerToken,
-            headers: { "x-org-id": orgId },
-            body: {
-              workspaceId: "workspace_A",
-              confirmWrite: true,
-              row: { workspace_id: "workspace_A", balance: 999999 },
-            },
+      for (const ledgerTable of ["credit_wallets", "credit_ledger", "usage_events", "usage_rollups"] as const) {
+        const mutRes = await callStudio(`/api/projects/${project}/environments/${envTarget}/data/tables/${ledgerTable}/rows`, {
+          method: "POST",
+          token: ownerToken,
+          headers: { "x-org-id": orgId },
+          body: {
+            workspaceId: "workspace_A",
+            confirmWrite: true,
+            row: { workspace_id: "workspace_A", balance: 999999 },
           },
-        );
+        });
         expect(mutRes.status).toBe(403);
         const mutBody = (await mutRes.json()) as { error: { code: string } };
         expect(mutBody.error.code).toBe("LEDGER_IMMUTABLE_READ_ONLY");
@@ -553,87 +467,75 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
     }
 
     // 7. Criterion 5: Run passing & failing workflow; verify structured error log correlation & secret redaction
-    const passRunRes = await callStudio(
-      `/api/projects/${project}/workflows/wf_invoice_settlement/runs`,
-      {
-        method: "POST",
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-        body: {
-          env: "preview",
-          runId: "run_cp6_pass_01",
+    const passRunRes = await callStudio(`/api/projects/${project}/workflows/wf_invoice_settlement/runs`, {
+      method: "POST",
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+      body: {
+        env: "preview",
+        runId: "run_cp6_pass_01",
+        workspaceId: "workspace_A",
+        triggerPayload: {
+          balance: 500,
           workspaceId: "workspace_A",
-          triggerPayload: {
-            balance: 500,
-            workspaceId: "workspace_A",
-            title: "INV-PASS",
-          },
+          title: "INV-PASS",
         },
       },
-    );
+    });
     expect(passRunRes.status).toBe(200);
     const passRunBody = (await passRunRes.json()) as { runStatus: string };
     expect(passRunBody.runStatus).toBe("succeeded");
 
-    const failRunRes = await callStudio(
-      `/api/projects/${project}/workflows/wf_invoice_settlement/runs`,
-      {
-        method: "POST",
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-        body: {
-          env: "preview",
-          runId: "run_cp6_fail_01",
+    const failRunRes = await callStudio(`/api/projects/${project}/workflows/wf_invoice_settlement/runs`, {
+      method: "POST",
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+      body: {
+        env: "preview",
+        runId: "run_cp6_fail_01",
+        workspaceId: "workspace_A",
+        secrets: {
+          GATEWAY_KEY: CANARY_SECRET,
+        },
+        triggerPayload: {
+          balance: 20, // < 150 => fails on node_debit
           workspaceId: "workspace_A",
-          secrets: {
-            GATEWAY_KEY: CANARY_SECRET,
-          },
-          triggerPayload: {
-            balance: 20, // < 150 => fails on node_debit
-            workspaceId: "workspace_A",
-            apiKey: CANARY_SECRET,
-          },
+          apiKey: CANARY_SECRET,
         },
       },
-    );
+    });
     expect(failRunRes.status).toBe(200);
     const failRunBody = (await failRunRes.json()) as { runStatus: string };
     expect(failRunBody.runStatus).toBe("failed");
 
     // Emit a brick-route error log correlated to run_cp6_fail_01 containing the planted canary secret
-    const ingestErrLogRes = await callStudio(
-      `/api/projects/${project}/environments/preview/logs`,
-      {
-        method: "POST",
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-        body: {
-          entries: [
-            {
-              level: "error",
-              message: `Settlement webhook failed with gateway secret ${CANARY_SECRET}`,
-              runId: "run_cp6_fail_01",
-              workflowId: "wf_invoice_settlement",
-              nodeId: "node_debit",
-              brickId: "credit-wallet",
-              workspaceId: "workspace_A",
-              fields: {
-                authorization: `Bearer ${CANARY_SECRET}`,
-              },
+    const ingestErrLogRes = await callStudio(`/api/projects/${project}/environments/preview/logs`, {
+      method: "POST",
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+      body: {
+        entries: [
+          {
+            level: "error",
+            message: `Settlement webhook failed with gateway secret ${CANARY_SECRET}`,
+            runId: "run_cp6_fail_01",
+            workflowId: "wf_invoice_settlement",
+            nodeId: "node_debit",
+            brickId: "credit-wallet",
+            workspaceId: "workspace_A",
+            fields: {
+              authorization: `Bearer ${CANARY_SECRET}`,
             },
-          ],
-        },
+          },
+        ],
       },
-    );
+    });
     expect(ingestErrLogRes.status).toBe(201);
 
-    const errorLogsRes = await callStudio(
-      `/api/projects/${project}/environments/preview/logs?level=error&runId=run_cp6_fail_01`,
-      {
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const errorLogsRes = await callStudio(`/api/projects/${project}/environments/preview/logs?level=error&runId=run_cp6_fail_01`, {
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(errorLogsRes.status).toBe(200);
     const errorLogsBody = (await errorLogsRes.json()) as {
       logs: Array<{
@@ -659,59 +561,53 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
     expect(JSON.stringify(errorLogsBody)).toContain(REDACTED_PLACEHOLDER);
 
     // 8. Criterion 6: 24h Backend Health & Metrics accuracy and drill-down resolution
-    const seedHealthRes = await callStudio(
-      `/api/projects/${project}/environments/preview/health/seed`,
-      {
-        method: "POST",
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-        env: operatorEnv,
-        body: {
-          // Story 1.4: seeded rows belong to one of the project's own workspaces (its preview workspace here).
-          workspaceId: "ws_default",
-          reset: true,
-          window: "24h",
-          samples: [
-            ...Array.from({ length: 19 }, (_, idx) => ({
-              ts: new Date(Date.now() - 5 * 60_000).toISOString(),
-              routePrefix: "/webhooks/invoices",
-              brickId: "credit-wallet",
-              status: 200,
-              latencyMs: 20 + idx * 3,
-              d1Queries: 2,
-              d1LatencyMs: 4.5,
-              d1Errors: 0,
-            })),
-            {
-              ts: new Date(Date.now() - 5 * 60_000).toISOString(),
-              routePrefix: "/webhooks/invoices",
-              brickId: "credit-wallet",
-              status: 500,
-              latencyMs: 240,
-              d1Queries: 3,
-              d1LatencyMs: 12.0,
-              d1Errors: 1,
-            },
-          ],
-          queues: [
-            {
-              queueName: "px-jobs-queue",
-              pendingCount: 7,
-              dlqCount: 1,
-            },
-          ],
-        },
+    const seedHealthRes = await callStudio(`/api/projects/${project}/environments/preview/health/seed`, {
+      method: "POST",
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+      env: operatorEnv,
+      body: {
+        // Story 1.4: seeded rows belong to one of the project's own workspaces (its preview workspace here).
+        workspaceId: "ws_default",
+        reset: true,
+        window: "24h",
+        samples: [
+          ...Array.from({ length: 19 }, (_, idx) => ({
+            ts: new Date(Date.now() - 5 * 60_000).toISOString(),
+            routePrefix: "/webhooks/invoices",
+            brickId: "credit-wallet",
+            status: 200,
+            latencyMs: 20 + idx * 3,
+            d1Queries: 2,
+            d1LatencyMs: 4.5,
+            d1Errors: 0,
+          })),
+          {
+            ts: new Date(Date.now() - 5 * 60_000).toISOString(),
+            routePrefix: "/webhooks/invoices",
+            brickId: "credit-wallet",
+            status: 500,
+            latencyMs: 240,
+            d1Queries: 3,
+            d1LatencyMs: 12.0,
+            d1Errors: 1,
+          },
+        ],
+        queues: [
+          {
+            queueName: "px-jobs-queue",
+            pendingCount: 7,
+            dlqCount: 1,
+          },
+        ],
       },
-    );
+    });
     expect(seedHealthRes.status).toBe(200);
 
-    const health24hRes = await callStudio(
-      `/api/projects/${project}/environments/preview/health?window=24h`,
-      {
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const health24hRes = await callStudio(`/api/projects/${project}/environments/preview/health?window=24h`, {
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(health24hRes.status).toBe(200);
     const health24h = (await health24hRes.json()) as EnvironmentHealthSummary;
     expect(health24h.requestCount).toBe(20);
@@ -736,13 +632,10 @@ describe("Story 6.5 — CP6 Backend Visibility End-to-End Gate", () => {
     );
 
     // Drill-down to failed runs resolves to run_cp6_fail_01
-    const failedRunsRes = await callStudio(
-      `/api/projects/${project}/runs?env=preview&status=failed&workflowId=wf_invoice_settlement`,
-      {
-        token: ownerToken,
-        headers: { "x-org-id": orgId },
-      },
-    );
+    const failedRunsRes = await callStudio(`/api/projects/${project}/runs?env=preview&status=failed&workflowId=wf_invoice_settlement`, {
+      token: ownerToken,
+      headers: { "x-org-id": orgId },
+    });
     expect(failedRunsRes.status).toBe(200);
     const failedRunsBody = (await failedRunsRes.json()) as {
       runs: Array<{ runId: string; failedNodeId: string | null }>;

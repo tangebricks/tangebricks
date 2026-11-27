@@ -21,16 +21,10 @@ export interface ReadinessResult {
 const IDENTITY_CAPABILITY = "user-identity";
 
 function takesEntities(manifest: BrickManifestFile): boolean {
-  return manifest.worker.routes.some((route) =>
-    Object.values(route.options).some((v) => typeof v === "object" && "$entities" in v),
-  );
+  return manifest.worker.routes.some((route) => Object.values(route.options).some((v) => typeof v === "object" && "$entities" in v));
 }
 
-export function computeReadiness(
-  state: BlueprintState,
-  catalog: Catalog,
-  nodeRegistry: Registry = buildCatalogNodeRegistry(catalog),
-): ReadinessResult {
+export function computeReadiness(state: BlueprintState, catalog: Catalog, nodeRegistry: Registry = buildCatalogNodeRegistry(catalog)): ReadinessResult {
   const needs: ReadinessNeed[] = [];
   const available = Object.keys(catalog.bricks).sort();
 
@@ -82,17 +76,12 @@ export function computeReadiness(
   for (const brick of chosen) {
     for (const req of brick.manifest.requires) {
       if (providerOf.has(req)) continue;
-      const offers = available.filter((id) =>
-        catalog.bricks[id]!.manifest.provides.includes(req),
-      );
+      const offers = available.filter((id) => catalog.bricks[id]!.manifest.provides.includes(req));
       needs.push({
         code: "MISSING_CAPABILITY_PROVIDER",
         path: `bricks.${brick.id}.requires.${req}`,
         message: `${brick.id} requires "${req}", which no enabled brick provides${offers.length > 0 ? ` (enable one of: ${offers.join(", ")})` : ""}`,
-        suggestedFix:
-          offers.length > 0
-            ? `Enable one of: ${offers.join(", ")}`
-            : `Enable a brick that provides "${req}"`,
+        suggestedFix: offers.length > 0 ? `Enable one of: ${offers.join(", ")}` : `Enable a brick that provides "${req}"`,
       });
     }
   }
@@ -116,10 +105,7 @@ export function computeReadiness(
         message: `identity "${state.identity}" does not provide "${IDENTITY_CAPABILITY}"`,
         suggestedFix: `Set identity to "stub", "core-auth", or a brick that provides "${IDENTITY_CAPABILITY}"`,
       });
-    } else if (
-      !enabledIdentity.manifest.worker.guard ||
-      enabledIdentity.manifest.worker.guard.capability !== IDENTITY_CAPABILITY
-    ) {
+    } else if (!enabledIdentity.manifest.worker.guard || enabledIdentity.manifest.worker.guard.capability !== IDENTITY_CAPABILITY) {
       needs.push({
         code: "INVALID_IDENTITY_BRICK",
         path: "identity",
@@ -145,10 +131,7 @@ export function computeReadiness(
         code: "MISSING_ENTITY_HANDLER",
         path: "entities",
         message: `entities are declared but no enabled brick handles them${offers.length > 0 ? ` (enable one of: ${offers.join(", ")})` : ""}`,
-        suggestedFix:
-          offers.length > 0
-            ? `Enable one of: ${offers.join(", ")}`
-            : "Enable a brick that serves dynamic entities",
+        suggestedFix: offers.length > 0 ? `Enable one of: ${offers.join(", ")}` : "Enable a brick that serves dynamic entities",
       });
     } else if (handlers.length > 1) {
       needs.push({
@@ -166,13 +149,7 @@ export function computeReadiness(
       const secretName = declared.name;
       // Story 1.19: an optional secret never blocks readiness (the brick runs without that feature).
       if (declared.optional) continue;
-      const isBound = state.secretRefs.some(
-        (s) =>
-          s.targetKind === "brick" &&
-          s.targetId === brick.id &&
-          s.secretName === secretName &&
-          s.ref.length > 0,
-      );
+      const isBound = state.secretRefs.some((s) => s.targetKind === "brick" && s.targetId === brick.id && s.secretName === secretName && s.ref.length > 0);
       if (!isBound) {
         needs.push(
           declared.generate
@@ -209,9 +186,7 @@ export function computeReadiness(
     for (const issue of issues) {
       needs.push({
         code: issue.code,
-        path: issue.nodeId
-          ? `workflows.${wf.id}.nodes.${issue.nodeId}`
-          : `workflows.${wf.id}`,
+        path: issue.nodeId ? `workflows.${wf.id}.nodes.${issue.nodeId}` : `workflows.${wf.id}`,
         message: `workflow "${wf.id}": ${issue.message}`,
         suggestedFix: `Resolve "${issue.code}" in workflow "${wf.id}"`,
       });

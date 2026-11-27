@@ -7,12 +7,7 @@ import {
   promoteEnvironmentDeployment,
   upsertProjectSecret,
 } from "../api.ts";
-import type {
-  DeployExecutionResponse,
-  DeployPlanPayload,
-  DestructiveMigrationWarningPayload,
-  ProjectDeployEnvironmentRecord,
-} from "../api.ts";
+import type { DeployExecutionResponse, DeployPlanPayload, DestructiveMigrationWarningPayload, ProjectDeployEnvironmentRecord } from "../api.ts";
 import { useStudioStore } from "../store.ts";
 
 export interface DeployPlanModalProps {
@@ -22,23 +17,10 @@ export interface DeployPlanModalProps {
   initialEnvName?: "preview" | "production";
   initialPlan?: DeployPlanPayload | null;
   onClose: () => void;
-  onDeployed?: (result: {
-    envName: "preview" | "production";
-    buildHash: string;
-    revision: number;
-    environment?: ProjectDeployEnvironmentRecord;
-  }) => void;
+  onDeployed?: (result: { envName: "preview" | "production"; buildHash: string; revision: number; environment?: ProjectDeployEnvironmentRecord }) => void;
   onSwitchIdentityOverride?: () => Promise<void> | void;
-  onAddSecretOverride?: (input: {
-    name: string;
-    requiredByBrick: string;
-    value: string;
-  }) => Promise<void> | void;
-  onDeployOverride?: (input: {
-    envName: "preview" | "production";
-    confirmDestructive: boolean;
-    confirmedMigrationNames: string[];
-  }) => Promise<void> | void;
+  onAddSecretOverride?: (input: { name: string; requiredByBrick: string; value: string }) => Promise<void> | void;
+  onDeployOverride?: (input: { envName: "preview" | "production"; confirmDestructive: boolean; confirmedMigrationNames: string[] }) => Promise<void> | void;
 }
 
 export function DeployPlanModal({
@@ -58,15 +40,11 @@ export function DeployPlanModal({
   const commitOps = useStudioStore((s) => s.commitOps);
   const loadProjectSecrets = useStudioStore((s) => s.loadProjectSecrets);
 
-  const [envName, setEnvName] = useState<"preview" | "production">(
-    initialEnvName,
-  );
+  const [envName, setEnvName] = useState<"preview" | "production">(initialEnvName);
   const [plan, setPlan] = useState<DeployPlanPayload | null>(initialPlan);
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
-  const [expandedMigrations, setExpandedMigrations] = useState<
-    Record<string, boolean>
-  >({});
+  const [expandedMigrations, setExpandedMigrations] = useState<Record<string, boolean>>({});
 
   // Inline secret inputs keyed by secret name
   const [secretInputs, setSecretInputs] = useState<Record<string, string>>({});
@@ -76,18 +54,12 @@ export function DeployPlanModal({
   const [switchingIdentity, setSwitchingIdentity] = useState(false);
 
   // Destructive Migration Guard confirmation checkbox
-  const [confirmDestructiveChecked, setConfirmDestructiveChecked] =
-    useState(false);
+  const [confirmDestructiveChecked, setConfirmDestructiveChecked] = useState(false);
 
   // Deploy execution state
   const [deploying, setDeploying] = useState(false);
-  const [deploySuccessMessage, setDeploySuccessMessage] = useState<
-    string | null
-  >(null);
-  const [lastDeployResult, setLastDeployResult] = useState<Extract<
-    DeployExecutionResponse,
-    { ok: true }
-  > | null>(null);
+  const [deploySuccessMessage, setDeploySuccessMessage] = useState<string | null>(null);
+  const [lastDeployResult, setLastDeployResult] = useState<Extract<DeployExecutionResponse, { ok: true }> | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -116,11 +88,7 @@ export function DeployPlanModal({
         }
       } catch (err) {
         if (!initialPlan) {
-          setPlanError(
-            err instanceof Error
-              ? err.message
-              : "Failed to compute Pre-deploy Plan & Diff",
-          );
+          setPlanError(err instanceof Error ? err.message : "Failed to compute Pre-deploy Plan & Diff");
         }
       } finally {
         setLoadingPlan(false);
@@ -151,34 +119,19 @@ export function DeployPlanModal({
     }
   };
 
-  const stubIdentityBlocker = useMemo(
-    () =>
-      plan?.blockers?.find(
-        (b) => b.code === "PRODUCTION_IDENTITY_STUB_FORBIDDEN",
-      ) ?? null,
-    [plan],
-  );
+  const stubIdentityBlocker = useMemo(() => plan?.blockers?.find((b) => b.code === "PRODUCTION_IDENTITY_STUB_FORBIDDEN") ?? null, [plan]);
 
-  const destructiveWarnings: DestructiveMigrationWarningPayload[] =
-    plan?.d1?.destructiveWarnings ?? [];
+  const destructiveWarnings: DestructiveMigrationWarningPayload[] = plan?.d1?.destructiveWarnings ?? [];
 
   const hasBlockers = (plan?.blockers?.length ?? 0) > 0;
   const requiresDestructiveConfirm = destructiveWarnings.length > 0;
 
-  const canConfirmDeploy =
-    Boolean(plan) &&
-    !loadingPlan &&
-    !deploying &&
-    !hasBlockers &&
-    (!requiresDestructiveConfirm || confirmDestructiveChecked);
+  const canConfirmDeploy = Boolean(plan) && !loadingPlan && !deploying && !hasBlockers && (!requiresDestructiveConfirm || confirmDestructiveChecked);
 
   const effectiveRevision = plan?.revision ?? currentRevision ?? 1;
   const shortBuildHash = (plan?.worker?.nextBuildHash ?? "sha256").slice(0, 12);
 
-  const handleInlineSaveSecret = async (
-    secretName: string,
-    requiredByBrick: string,
-  ) => {
+  const handleInlineSaveSecret = async (secretName: string, requiredByBrick: string) => {
     const rawValue = (secretInputs[secretName] ?? "").trim();
     if (!rawValue) return;
 
@@ -218,9 +171,7 @@ export function DeployPlanModal({
       setSecretInputs((prev) => ({ ...prev, [secretName]: "" }));
       await loadPlan(envName);
     } catch (err) {
-      setPlanError(
-        err instanceof Error ? err.message : `Failed to save secret ${secretName}`,
-      );
+      setPlanError(err instanceof Error ? err.message : `Failed to save secret ${secretName}`);
     } finally {
       setSavingSecretName(null);
     }
@@ -234,9 +185,7 @@ export function DeployPlanModal({
         await onSwitchIdentityOverride();
         await loadPlan(envName);
       } else {
-        const hasCoreAuthBrick = Boolean(
-          projectState?.bricks.some((b) => b.id === "core-auth"),
-        );
+        const hasCoreAuthBrick = Boolean(projectState?.bricks.some((b) => b.id === "core-auth"));
         const ops: Array<Record<string, unknown>> = [];
         if (!hasCoreAuthBrick) {
           ops.push({
@@ -255,11 +204,7 @@ export function DeployPlanModal({
         await loadPlan(envName);
       }
     } catch (err) {
-      setPlanError(
-        err instanceof Error
-          ? err.message
-          : "Failed to switch blueprint identity to core-auth",
-      );
+      setPlanError(err instanceof Error ? err.message : "Failed to switch blueprint identity to core-auth");
     } finally {
       setSwitchingIdentity(false);
     }
@@ -268,9 +213,7 @@ export function DeployPlanModal({
   const handleConfirmAndDeploy = async (usePromote?: boolean) => {
     if (!plan || !canConfirmDeploy) return;
 
-    const confirmedMigrationNames = Array.from(
-      new Set(destructiveWarnings.map((w) => w.migrationName)),
-    );
+    const confirmedMigrationNames = Array.from(new Set(destructiveWarnings.map((w) => w.migrationName)));
 
     setDeploying(true);
     setPlanError(null);
@@ -282,9 +225,7 @@ export function DeployPlanModal({
           confirmDestructive: confirmDestructiveChecked,
           confirmedMigrationNames,
         });
-        setDeploySuccessMessage(
-          `Deployed revision r${effectiveRevision} (${shortBuildHash}) to ${envName}.`,
-        );
+        setDeploySuccessMessage(`Deployed revision r${effectiveRevision} (${shortBuildHash}) to ${envName}.`);
         return;
       }
 
@@ -312,9 +253,7 @@ export function DeployPlanModal({
       setLastDeployResult(res);
       const resultHash = (res.buildHash ?? res.deployment.buildHash).slice(0, 12);
       if (res.noChanges || res.action === "noop") {
-        setDeploySuccessMessage(
-          `No changes — ${envName} is already at revision r${res.revision} (${resultHash})`,
-        );
+        setDeploySuccessMessage(`No changes — ${envName} is already at revision r${res.revision} (${resultHash})`);
       } else if (res.liveWithoutRedeploy || res.action === "hot_apply_graphs") {
         setDeploySuccessMessage(
           res.promotedFromEnv
@@ -322,13 +261,9 @@ export function DeployPlanModal({
             : `Live without redeploy — updated workflow graphs in D1 for revision r${res.revision} (${resultHash}) → ${res.deployment.url}`,
         );
       } else if (res.promotedFromEnv) {
-        setDeploySuccessMessage(
-          `Promoted revision r${res.revision} (${resultHash}) from ${res.promotedFromEnv} to ${envName} → ${res.deployment.url}`,
-        );
+        setDeploySuccessMessage(`Promoted revision r${res.revision} (${resultHash}) from ${res.promotedFromEnv} to ${envName} → ${res.deployment.url}`);
       } else {
-        setDeploySuccessMessage(
-          `Deployed revision r${res.revision} (${resultHash}) to ${envName} → ${res.deployment.url}`,
-        );
+        setDeploySuccessMessage(`Deployed revision r${res.revision} (${resultHash}) to ${envName} → ${res.deployment.url}`);
       }
       onDeployed?.({
         envName,
@@ -338,9 +273,7 @@ export function DeployPlanModal({
       });
       await loadPlan(envName);
     } catch (err) {
-      setPlanError(
-        err instanceof Error ? err.message : "Deployment execution failed",
-      );
+      setPlanError(err instanceof Error ? err.message : "Deployment execution failed");
     } finally {
       setDeploying(false);
     }
@@ -360,24 +293,14 @@ export function DeployPlanModal({
         {/* Header & Environment Switcher */}
         <div className="flex items-start justify-between gap-4 border-b border-border pb-3">
           <div>
-            <div className="text-[11px] font-mono uppercase tracking-wider text-accent">
-              Pre-deploy Plan &amp; Diff · {projectSlug}
-            </div>
-            <h3
-              id="deploy-plan-modal-title"
-              className="text-base font-bold text-text-primary mt-0.5"
-            >
-              Review Change Plan Before Deploying to{" "}
-              <span className="font-mono text-amber-300">{envName}</span>
+            <div className="text-[11px] font-mono uppercase tracking-wider text-accent">Pre-deploy Plan &amp; Diff · {projectSlug}</div>
+            <h3 id="deploy-plan-modal-title" className="text-base font-bold text-text-primary mt-0.5">
+              Review Change Plan Before Deploying to <span className="font-mono text-amber-300">{envName}</span>
             </h3>
           </div>
 
           <div className="flex items-center gap-2">
-            <div
-              role="tablist"
-              aria-label="Target Environment"
-              className="inline-flex rounded bg-surface-base border border-border p-0.5"
-            >
+            <div role="tablist" aria-label="Target Environment" className="inline-flex rounded bg-surface-base border border-border p-0.5">
               <button
                 type="button"
                 role="tab"
@@ -385,9 +308,7 @@ export function DeployPlanModal({
                 data-testid="deploy-plan-env-tab-preview"
                 onClick={() => handleSelectEnvTab("preview")}
                 className={`px-3 py-1 rounded text-xs font-mono font-semibold transition ${
-                  envName === "preview"
-                    ? "bg-accent text-text-on-accent"
-                    : "text-text-secondary hover:text-text-primary"
+                  envName === "preview" ? "bg-accent text-text-on-accent" : "text-text-secondary hover:text-text-primary"
                 }`}
               >
                 preview
@@ -399,9 +320,7 @@ export function DeployPlanModal({
                 data-testid="deploy-plan-env-tab-production"
                 onClick={() => handleSelectEnvTab("production")}
                 className={`px-3 py-1 rounded text-xs font-mono font-semibold transition ${
-                  envName === "production"
-                    ? "bg-accent text-text-on-accent"
-                    : "text-text-secondary hover:text-text-primary"
+                  envName === "production" ? "bg-accent text-text-on-accent" : "text-text-secondary hover:text-text-primary"
                 }`}
               >
                 production
@@ -430,24 +349,14 @@ export function DeployPlanModal({
               <div className="font-bold text-xs text-rose-200 flex items-center gap-2">
                 <span>⛔</span>
                 <span>
-                  Production Blocked — Stub Identity Forbidden (
-                  <code className="font-mono">
-                    PRODUCTION_IDENTITY_STUB_FORBIDDEN
-                  </code>
-                  )
+                  Production Blocked — Stub Identity Forbidden (<code className="font-mono">PRODUCTION_IDENTITY_STUB_FORBIDDEN</code>)
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded bg-rose-900 border border-rose-500 text-[10px] font-mono">
-                identity: &quot;stub&quot;
-              </span>
+              <span className="px-2 py-0.5 rounded bg-rose-900 border border-rose-500 text-[10px] font-mono">identity: &quot;stub&quot;</span>
             </div>
-            <p className="text-xs text-rose-200/90">
-              {stubIdentityBlocker.message}
-            </p>
+            <p className="text-xs text-rose-200/90">{stubIdentityBlocker.message}</p>
             <div className="flex items-center justify-between gap-3 pt-1">
-              <span className="text-[11px] text-rose-300">
-                {stubIdentityBlocker.remediation}
-              </span>
+              <span className="text-[11px] text-rose-300">{stubIdentityBlocker.remediation}</span>
               <button
                 type="button"
                 data-testid="switch-to-core-auth-button"
@@ -455,9 +364,7 @@ export function DeployPlanModal({
                 onClick={() => void handleSwitchToCoreAuth()}
                 className="px-3 py-1.5 rounded bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs shrink-0 disabled:opacity-50"
               >
-                {switchingIdentity
-                  ? "Switching…"
-                  : "Switch to Better Auth (core-auth)"}
+                {switchingIdentity ? "Switching…" : "Switch to Better Auth (core-auth)"}
               </button>
             </div>
           </div>
@@ -471,51 +378,38 @@ export function DeployPlanModal({
           >
             <div>
               <strong>
-                No changes — environment is already at revision r
-                {effectiveRevision} (build {shortBuildHash})
+                No changes — environment is already at revision r{effectiveRevision} (build {shortBuildHash})
               </strong>
             </div>
-            <span className="px-2 py-0.5 rounded bg-emerald-900/80 border border-emerald-500/40 font-mono text-[11px] text-emerald-300">
-              noop
-            </span>
+            <span className="px-2 py-0.5 rounded bg-emerald-900/80 border border-emerald-500/40 font-mono text-[11px] text-emerald-300">noop</span>
           </div>
         )}
 
         {/* Graph-Only Hot-Apply Banner when codeHash is unchanged and only graphHash changed */}
-        {plan &&
-          (plan.action === "hot_apply_graphs" ||
-            lastDeployResult?.liveWithoutRedeploy) && (
-            <div
-              data-testid="deploy-plan-hot-apply-banner"
-              className="p-3.5 rounded-md bg-sky-950/80 border border-sky-500/60 text-sky-100 text-xs flex items-center justify-between gap-3"
-            >
-              <div>
-                <strong>
-                  Live without redeploy — workflow graph changes hot-applied
-                  directly to D1 without rebuilding or re-uploading the Worker
-                  script.
-                </strong>
-              </div>
-              <span
-                data-testid="deploy-live-without-redeploy-badge"
-                className="px-2 py-0.5 rounded bg-sky-900/80 border border-sky-400/50 font-mono text-[11px] text-sky-200 shrink-0"
-              >
-                Live without redeploy
-              </span>
+        {plan && (plan.action === "hot_apply_graphs" || lastDeployResult?.liveWithoutRedeploy) && (
+          <div
+            data-testid="deploy-plan-hot-apply-banner"
+            className="p-3.5 rounded-md bg-sky-950/80 border border-sky-500/60 text-sky-100 text-xs flex items-center justify-between gap-3"
+          >
+            <div>
+              <strong>Live without redeploy — workflow graph changes hot-applied directly to D1 without rebuilding or re-uploading the Worker script.</strong>
             </div>
-          )}
+            <span
+              data-testid="deploy-live-without-redeploy-badge"
+              className="px-2 py-0.5 rounded bg-sky-900/80 border border-sky-400/50 font-mono text-[11px] text-sky-200 shrink-0"
+            >
+              Live without redeploy
+            </span>
+          </div>
+        )}
 
         {/* Preflight Checklist */}
         {plan && (
-          <div
-            data-testid="deploy-plan-preflight"
-            className="p-3.5 rounded-md bg-surface-raised border border-border space-y-2.5 text-xs"
-          >
+          <div data-testid="deploy-plan-preflight" className="p-3.5 rounded-md bg-surface-raised border border-border space-y-2.5 text-xs">
             <div className="font-semibold text-text-primary flex items-center justify-between gap-2 flex-wrap">
               <span>Preflight Checklist</span>
               <div className="flex items-center gap-2">
-                {(plan.reusedCachedBuild ||
-                  lastDeployResult?.reusedCachedBuild) && (
+                {(plan.reusedCachedBuild || lastDeployResult?.reusedCachedBuild) && (
                   <span
                     data-testid="deploy-reused-cached-build-badge"
                     className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 font-mono text-[11px] text-emerald-300"
@@ -537,40 +431,26 @@ export function DeployPlanModal({
                 data-testid="preflight-token-permissions"
                 className="p-2 rounded bg-surface-base border border-emerald-500/30 flex items-center justify-between"
               >
-                <span className="text-text-secondary">
-                  Cloudflare Token Permissions
-                </span>
-                <span className="font-mono text-emerald-400 font-bold">
-                  ✓ 4/4 Verified
-                </span>
+                <span className="text-text-secondary">Cloudflare Token Permissions</span>
+                <span className="font-mono text-emerald-400 font-bold">✓ 4/4 Verified</span>
               </div>
 
               <div
                 data-testid="preflight-readiness"
                 className={`p-2 rounded bg-surface-base border flex items-center justify-between ${
-                  plan.blockers.some((b) => b.code === "READINESS_NOT_READY")
-                    ? "border-rose-500/40 text-rose-300"
-                    : "border-emerald-500/30 text-emerald-400"
+                  plan.blockers.some((b) => b.code === "READINESS_NOT_READY") ? "border-rose-500/40 text-rose-300" : "border-emerald-500/30 text-emerald-400"
                 }`}
               >
                 <span className="text-text-secondary">Blueprint Readiness</span>
-                <span className="font-mono font-bold">
-                  {plan.blockers.some((b) => b.code === "READINESS_NOT_READY")
-                    ? "✕ Issues Found"
-                    : "✓ Ready"}
-                </span>
+                <span className="font-mono font-bold">{plan.blockers.some((b) => b.code === "READINESS_NOT_READY") ? "✕ Issues Found" : "✓ Ready"}</span>
               </div>
             </div>
 
             {/* Required Secrets List + Inline Add Secret */}
             <div data-testid="preflight-secrets" className="space-y-2 pt-1">
-              <div className="text-[11px] font-semibold text-text-secondary">
-                Required Secrets ({plan.secrets.filter((s) => !s.optional).length})
-              </div>
+              <div className="text-[11px] font-semibold text-text-secondary">Required Secrets ({plan.secrets.filter((s) => !s.optional).length})</div>
               {plan.secrets.length === 0 ? (
-                <div className="text-[11px] text-text-muted">
-                  ✓ No external brick secrets required by this blueprint.
-                </div>
+                <div className="text-[11px] text-text-muted">✓ No external brick secrets required by this blueprint.</div>
               ) : (
                 <div className="space-y-1.5">
                   {plan.secrets.map((sec) => (
@@ -588,39 +468,25 @@ export function DeployPlanModal({
                       <div className="flex items-center gap-2">
                         <span
                           className={`font-mono font-bold ${
-                            sec.status === "optional_missing"
-                              ? "text-text-muted"
-                              : sec.status === "missing"
-                                ? "text-amber-300"
-                                : "text-emerald-400"
+                            sec.status === "optional_missing" ? "text-text-muted" : sec.status === "missing" ? "text-amber-300" : "text-emerald-400"
                           }`}
                         >
                           {sec.status === "missing" ? "✕" : sec.status === "optional_missing" ? "–" : "✓"}
                         </span>
-                        <code className="font-mono font-semibold text-text-primary">
-                          {sec.name}
-                        </code>
+                        <code className="font-mono font-semibold text-text-primary">{sec.name}</code>
                         <span className="text-[11px] text-text-muted">
                           ({sec.optional ? `optional, used by ${sec.requiredByBrick}` : `required by ${sec.requiredByBrick}`})
                         </span>
                       </div>
 
                       {sec.status === "present" ? (
-                        <span className="text-[11px] font-mono text-emerald-300">
-                          present ✓
-                        </span>
+                        <span className="text-[11px] font-mono text-emerald-300">present ✓</span>
                       ) : sec.status === "will_generate" ? (
-                        <span
-                          data-testid={`preflight-secret-generate-${sec.name}`}
-                          className="text-[11px] font-mono text-emerald-300"
-                        >
+                        <span data-testid={`preflight-secret-generate-${sec.name}`} className="text-[11px] font-mono text-emerald-300">
                           will be generated on deploy
                         </span>
                       ) : sec.status === "optional_missing" ? (
-                        <span
-                          data-testid={`preflight-secret-optional-${sec.name}`}
-                          className="text-[11px] font-mono text-text-muted"
-                        >
+                        <span data-testid={`preflight-secret-optional-${sec.name}`} className="text-[11px] font-mono text-text-muted">
                           optional, not configured
                         </span>
                       ) : (
@@ -642,21 +508,11 @@ export function DeployPlanModal({
                           <button
                             type="button"
                             data-testid={`inline-secret-save-${sec.name}`}
-                            disabled={
-                              savingSecretName === sec.name ||
-                              !(secretInputs[sec.name] ?? "").trim()
-                            }
-                            onClick={() =>
-                              void handleInlineSaveSecret(
-                                sec.name,
-                                sec.requiredByBrick,
-                              )
-                            }
+                            disabled={savingSecretName === sec.name || !(secretInputs[sec.name] ?? "").trim()}
+                            onClick={() => void handleInlineSaveSecret(sec.name, sec.requiredByBrick)}
                             className="px-2.5 py-1 rounded bg-accent text-text-on-accent font-bold text-[11px] disabled:opacity-50"
                           >
-                            {savingSecretName === sec.name
-                              ? "Saving…"
-                              : "Add secret"}
+                            {savingSecretName === sec.name ? "Saving…" : "Add secret"}
                           </button>
                         </div>
                       )}
@@ -672,73 +528,43 @@ export function DeployPlanModal({
         {plan && (
           <div className="space-y-3">
             {/* Worker Bundle Diff Card */}
-            <div
-              data-testid="deploy-plan-card-worker"
-              className="p-3.5 rounded-md bg-surface-raised border border-border space-y-1.5 text-xs"
-            >
+            <div data-testid="deploy-plan-card-worker" className="p-3.5 rounded-md bg-surface-raised border border-border space-y-1.5 text-xs">
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-text-primary">
-                  1. Cloudflare Worker Bundle (
-                  <code className="font-mono text-amber-300">
-                    {plan.worker.scriptName}
-                  </code>
-                  )
+                  1. Cloudflare Worker Bundle (<code className="font-mono text-amber-300">{plan.worker.scriptName}</code>)
                 </div>
                 <span
                   data-testid="deploy-plan-worker-status"
                   className={`px-2 py-0.5 rounded font-mono text-[11px] border ${
-                    plan.worker.changed
-                      ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
-                      : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                    plan.worker.changed ? "bg-amber-500/15 border-amber-500/40 text-amber-300" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
                   }`}
                 >
-                  {plan.worker.currentBuildHash === null
-                    ? "create"
-                    : plan.worker.changed
-                      ? "update"
-                      : "unchanged"}
+                  {plan.worker.currentBuildHash === null ? "create" : plan.worker.changed ? "update" : "unchanged"}
                 </span>
               </div>
               <div className="font-mono text-[11px] text-text-secondary">
                 buildHash:{" "}
-                <span data-testid="deploy-plan-current-build-hash">
-                  {plan.worker.currentBuildHash
-                    ? plan.worker.currentBuildHash.slice(0, 12)
-                    : "(none)"}
-                </span>{" "}
+                <span data-testid="deploy-plan-current-build-hash">{plan.worker.currentBuildHash ? plan.worker.currentBuildHash.slice(0, 12) : "(none)"}</span>{" "}
                 →{" "}
-                <span
-                  data-testid="deploy-plan-next-build-hash"
-                  className="text-text-primary font-semibold"
-                >
+                <span data-testid="deploy-plan-next-build-hash" className="text-text-primary font-semibold">
                   {plan.worker.nextBuildHash.slice(0, 12)}
                 </span>
               </div>
             </div>
 
             {/* D1 Database & Migrations Diff Card */}
-            <div
-              data-testid="deploy-plan-card-d1"
-              className="p-3.5 rounded-md bg-surface-raised border border-border space-y-2 text-xs"
-            >
+            <div data-testid="deploy-plan-card-d1" className="p-3.5 rounded-md bg-surface-raised border border-border space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-text-primary">
-                  2. D1 SQLite Database &amp; Migrations (
-                  <code className="font-mono text-amber-300">
-                    {plan.d1.databaseName}
-                  </code>
-                  )
+                  2. D1 SQLite Database &amp; Migrations (<code className="font-mono text-amber-300">{plan.d1.databaseName}</code>)
                 </div>
                 <span className="px-2 py-0.5 rounded font-mono text-[11px] bg-surface-base border border-border text-text-secondary">
-                  {plan.d1.createDatabase ? "create DB" : "existing DB"} ·{" "}
-                  {plan.d1.pendingMigrations.length} pending migration(s)
+                  {plan.d1.createDatabase ? "create DB" : "existing DB"} · {plan.d1.pendingMigrations.length} pending migration(s)
                 </span>
               </div>
 
               {plan.d1.pendingMigrations.length === 0 ? (
-                <div className="text-[11px] text-text-muted">
-                  No pending D1 migrations to apply.
-                </div>
+                <div className="text-[11px] text-text-muted">No pending D1 migrations to apply.</div>
               ) : (
                 <div className="space-y-1.5">
                   {plan.d1.pendingMigrations.map((migName) => {
@@ -751,9 +577,7 @@ export function DeployPlanModal({
                         className="p-2 rounded bg-surface-base border border-border space-y-1.5"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <code className="font-mono text-[11px] text-text-primary">
-                            {migName}
-                          </code>
+                          <code className="font-mono text-[11px] text-text-primary">{migName}</code>
                           {sqlText && (
                             <button
                               type="button"
@@ -787,21 +611,13 @@ export function DeployPlanModal({
 
             {/* Queues, Cron Triggers & Workflows Summary Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <div
-                data-testid="deploy-plan-card-queues"
-                className="p-3 rounded-md bg-surface-raised border border-border space-y-1"
-              >
-                <div className="font-semibold text-text-primary">
-                  3. Queues ({plan.queues.length})
-                </div>
+              <div data-testid="deploy-plan-card-queues" className="p-3 rounded-md bg-surface-raised border border-border space-y-1">
+                <div className="font-semibold text-text-primary">3. Queues ({plan.queues.length})</div>
                 {plan.queues.length === 0 ? (
                   <div className="text-[11px] text-text-muted">None</div>
                 ) : (
                   plan.queues.map((q) => (
-                    <div
-                      key={q.queueName}
-                      className="flex items-center justify-between font-mono text-[11px]"
-                    >
+                    <div key={q.queueName} className="flex items-center justify-between font-mono text-[11px]">
                       <span className="truncate">{q.queueName}</span>
                       <span className="text-amber-300">{q.action}</span>
                     </div>
@@ -809,45 +625,27 @@ export function DeployPlanModal({
                 )}
               </div>
 
-              <div
-                data-testid="deploy-plan-card-crons"
-                className="p-3 rounded-md bg-surface-raised border border-border space-y-1"
-              >
-                <div className="font-semibold text-text-primary">
-                  4. Cron Triggers ({plan.cronTriggers.schedulesCount})
-                </div>
+              <div data-testid="deploy-plan-card-crons" className="p-3 rounded-md bg-surface-raised border border-border space-y-1">
+                <div className="font-semibold text-text-primary">4. Cron Triggers ({plan.cronTriggers.schedulesCount})</div>
                 {plan.cronTriggers.nextCrons.length === 0 ? (
                   <div className="text-[11px] text-text-muted">None</div>
                 ) : (
                   plan.cronTriggers.nextCrons.map((cron) => (
-                    <div
-                      key={cron}
-                      className="flex items-center justify-between font-mono text-[11px]"
-                    >
+                    <div key={cron} className="flex items-center justify-between font-mono text-[11px]">
                       <span>{cron}</span>
-                      <span className="text-amber-300">
-                        {plan.cronTriggers.changed ? "update" : "unchanged"}
-                      </span>
+                      <span className="text-amber-300">{plan.cronTriggers.changed ? "update" : "unchanged"}</span>
                     </div>
                   ))
                 )}
               </div>
 
-              <div
-                data-testid="deploy-plan-card-workflows"
-                className="p-3 rounded-md bg-surface-raised border border-border space-y-1"
-              >
-                <div className="font-semibold text-text-primary">
-                  5. Workflows ({plan.workflows.length})
-                </div>
+              <div data-testid="deploy-plan-card-workflows" className="p-3 rounded-md bg-surface-raised border border-border space-y-1">
+                <div className="font-semibold text-text-primary">5. Workflows ({plan.workflows.length})</div>
                 {plan.workflows.length === 0 ? (
                   <div className="text-[11px] text-text-muted">None</div>
                 ) : (
                   plan.workflows.map((wf) => (
-                    <div
-                      key={wf.workflowName}
-                      className="flex items-center justify-between font-mono text-[11px]"
-                    >
+                    <div key={wf.workflowName} className="flex items-center justify-between font-mono text-[11px]">
                       <span className="truncate">{wf.workflowName}</span>
                       <span className="text-amber-300">{wf.action}</span>
                     </div>
@@ -867,10 +665,7 @@ export function DeployPlanModal({
           >
             <div className="font-bold text-xs text-rose-200 flex items-center gap-2">
               <span>⚠️</span>
-              <span>
-                Destructive Migration Guard — {destructiveWarnings.length}{" "}
-                destructive SQL operation(s) detected
-              </span>
+              <span>Destructive Migration Guard — {destructiveWarnings.length} destructive SQL operation(s) detected</span>
             </div>
 
             <ul className="space-y-1.5 text-xs">
@@ -881,21 +676,15 @@ export function DeployPlanModal({
                   className="p-2 rounded bg-rose-900/60 border border-rose-700 font-mono text-[11px]"
                 >
                   <div>
-                    <strong className="text-amber-300">{w.kind}</strong> in{" "}
-                    <code>{w.migrationName}</code> → table{" "}
+                    <strong className="text-amber-300">{w.kind}</strong> in <code>{w.migrationName}</code> → table{" "}
                     <strong className="text-white">{w.affectedTable}</strong>
                     {w.affectedColumn ? (
                       <>
-                        , column{" "}
-                        <strong className="text-white">
-                          {w.affectedColumn}
-                        </strong>
+                        , column <strong className="text-white">{w.affectedColumn}</strong>
                       </>
                     ) : null}
                   </div>
-                  <div className="text-rose-200 mt-0.5 font-sans">
-                    {w.message}
-                  </div>
+                  <div className="text-rose-200 mt-0.5 font-sans">{w.message}</div>
                 </li>
               ))}
             </ul>
@@ -905,25 +694,18 @@ export function DeployPlanModal({
                 type="checkbox"
                 data-testid="destructive-migration-confirm-checkbox"
                 checked={confirmDestructiveChecked}
-                onChange={(e) =>
-                  setConfirmDestructiveChecked(e.target.checked)
-                }
+                onChange={(e) => setConfirmDestructiveChecked(e.target.checked)}
                 className="h-4 w-4 rounded border-rose-400"
               />
               <span>
-                I understand this migration permanently drops data in{" "}
-                <code className="font-mono text-amber-300">{envName}</code>
+                I understand this migration permanently drops data in <code className="font-mono text-amber-300">{envName}</code>
               </span>
             </label>
           </div>
         )}
 
         {planError && (
-          <div
-            data-testid="deploy-plan-error-banner"
-            role="alert"
-            className="p-3 rounded bg-rose-950/80 border border-rose-700 text-xs text-rose-100"
-          >
+          <div data-testid="deploy-plan-error-banner" role="alert" className="p-3 rounded bg-rose-950/80 border border-rose-700 text-xs text-rose-100">
             {planError}
           </div>
         )}
@@ -935,10 +717,7 @@ export function DeployPlanModal({
           >
             <div>{deploySuccessMessage}</div>
             {lastDeployResult?.steps && lastDeployResult.steps.length > 0 && (
-              <div
-                data-testid="deploy-ledger-steps"
-                className="pt-2 border-t border-emerald-700/60 space-y-1 font-normal"
-              >
+              <div data-testid="deploy-ledger-steps" className="pt-2 border-t border-emerald-700/60 space-y-1 font-normal">
                 {lastDeployResult.steps.map((step) => (
                   <div
                     key={`${step.stepOrder}-${step.stepName}`}
@@ -946,8 +725,7 @@ export function DeployPlanModal({
                     className="flex items-center justify-between gap-2 font-mono text-[11px] text-emerald-200/90"
                   >
                     <span>
-                      {step.status === "succeeded" ? "✓" : "○"} {step.stepName} ·{" "}
-                      {step.summary}
+                      {step.status === "succeeded" ? "✓" : "○"} {step.stepName} · {step.summary}
                     </span>
                     <span className="text-emerald-300">{step.action}</span>
                   </div>
@@ -981,11 +759,7 @@ export function DeployPlanModal({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 rounded bg-surface-control border border-border text-xs text-text-secondary"
-            >
+            <button type="button" onClick={onClose} className="px-3 py-1.5 rounded bg-surface-control border border-border text-xs text-text-secondary">
               Close
             </button>
             {envName === "production" && (
@@ -996,9 +770,7 @@ export function DeployPlanModal({
                 onClick={() => void handleConfirmAndDeploy(true)}
                 className="px-3.5 py-1.5 rounded bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {deploying
-                  ? "Promoting…"
-                  : `Promote Cached Build (${shortBuildHash})`}
+                {deploying ? "Promoting…" : `Promote Cached Build (${shortBuildHash})`}
               </button>
             )}
             <button

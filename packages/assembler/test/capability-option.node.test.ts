@@ -27,7 +27,7 @@ describe("llm-gateway billing wiring (story 1.13)", () => {
     expect(ai![1]).toContain("maxTokens: 4096");
   });
 
-  test("with billing \"wallet\" (the default) and no credit-wallet, assembly fails and says how to fix it", () => {
+  test('with billing "wallet" (the default) and no credit-wallet, assembly fails and says how to fix it', () => {
     for (const bricks of [AI_BRICKS, [AI_BRICKS[0], { id: "llm-gateway", config: { billingMode: "wallet" } }]]) {
       const result = assemble({ project: "ai-app", bricks }, catalog);
       expect(result.ok).toBe(false);
@@ -39,7 +39,7 @@ describe("llm-gateway billing wiring (story 1.13)", () => {
     }
   });
 
-  test("with billing \"none\" and no credit-wallet, it assembles without a charger", () => {
+  test('with billing "none" and no credit-wallet, it assembles without a charger', () => {
     const entry = entryOf({ project: "ai-app", bricks: [AI_BRICKS[0], { id: "llm-gateway", config: { billingMode: "none" } }] });
     const ai = entry.match(/createAiRoutes\(([^)]*)\)/);
     expect(ai![1]).toContain('billing: "none"');
@@ -55,7 +55,8 @@ describe("llm-gateway billing wiring (story 1.13)", () => {
   });
 
   test("a malformed models value is refused at assembly, with an example; Workers AI ids and ':' in ids are accepted", () => {
-    const withConfig = (config: Record<string, unknown>) => assemble({ project: "ai-app", bricks: [AI_BRICKS[0], { id: "llm-gateway", config }, "credit-wallet"] }, catalog);
+    const withConfig = (config: Record<string, unknown>) =>
+      assemble({ project: "ai-app", bricks: [AI_BRICKS[0], { id: "llm-gateway", config }, "credit-wallet"] }, catalog);
     for (const models of ["gpt-4o-mini", "gpt-4o-mini:1", ":1:2", "gpt-4o-mini:1:2,", "gpt-4o-mini:-1:2", "gpt 4o:1:2", "gpt-4o-mini:1000000:2"]) {
       const result = withConfig({ models });
       expect(result.ok, models).toBe(false);
@@ -67,13 +68,15 @@ describe("llm-gateway billing wiring (story 1.13)", () => {
   });
 
   test("fallbackProviders is the app's own list: at most three valid names", () => {
-    const withConfig = (config: Record<string, unknown>) => assemble({ project: "ai-app", bricks: [AI_BRICKS[0], { id: "llm-gateway", config }, "credit-wallet"] }, catalog);
+    const withConfig = (config: Record<string, unknown>) =>
+      assemble({ project: "ai-app", bricks: [AI_BRICKS[0], { id: "llm-gateway", config }, "credit-wallet"] }, catalog);
     expect(withConfig({ fallbackProviders: "openai, anthropic" }).ok).toBe(true);
-    expect(entryOf({ project: "ai-app", bricks: [AI_BRICKS[0], { id: "llm-gateway", config: { fallbackProviders: "openai" } }, "credit-wallet"] })).toContain('fallbackProviders: "openai"');
+    expect(entryOf({ project: "ai-app", bricks: [AI_BRICKS[0], { id: "llm-gateway", config: { fallbackProviders: "openai" } }, "credit-wallet"] })).toContain(
+      'fallbackProviders: "openai"',
+    );
     for (const fallbackProviders of ["a,b,c,d", "bad name", "a,,b"]) expect(withConfig({ fallbackProviders }).ok, fallbackProviders).toBe(false);
   });
 });
-
 
 describe("the $capability route option (story 1.13)", () => {
   const withOption = (option: Record<string, unknown>, patch: Record<string, unknown> = {}): Catalog => {
@@ -140,9 +143,12 @@ describe("the $capability route option (story 1.13)", () => {
     ]) {
       const result = walletApp(c);
       expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.errors.join("; ")).toMatch(/but credit-wallet does not offer "(walletCharger|createWallet)" for "credit-wallet" \(it offers: /);
+      if (!result.ok)
+        expect(result.errors.join("; ")).toMatch(/but credit-wallet does not offer "(walletCharger|createWallet)" for "credit-wallet" \(it offers: /);
     }
-    const schema = ManifestSchema.safeParse(withWallet((m) => (m.worker.capabilityExports = { "not-provided": ["walletCharger"] })).bricks["credit-wallet"]!.manifest);
+    const schema = ManifestSchema.safeParse(
+      withWallet((m) => (m.worker.capabilityExports = { "not-provided": ["walletCharger"] })).bricks["credit-wallet"]!.manifest,
+    );
     expect(schema.success).toBe(false);
     expect(JSON.stringify(schema.error?.issues)).toContain("which this brick does not provide");
   });
@@ -167,7 +173,10 @@ describe("the $capability route option (story 1.13)", () => {
     const clash = { ...c, bricks: { ...c.bricks, "llm-gateway": withOption({ $capability: "credit-wallet.createAiRoutes" }).bricks["llm-gateway"]! } };
     const result = walletApp(clash);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors).toContain('"createAiRoutes" would be imported from both @poc/llm-gateway and @poc/credit-wallet; the entry cannot bind one name twice');
+    if (!result.ok)
+      expect(result.errors).toContain(
+        '"createAiRoutes" would be imported from both @poc/llm-gateway and @poc/credit-wallet; the entry cannot bind one name twice',
+      );
   });
 
   test("a string setting's pattern must compile and match its default", () => {

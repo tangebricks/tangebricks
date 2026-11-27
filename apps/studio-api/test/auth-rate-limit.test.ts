@@ -79,14 +79,29 @@ describe("studio-api custom auth routes are rate-limited (story 0.21)", () => {
   test("the 6th signup from one IP in an hour gets 429 (default auth-signup-ip 5/3600s); another IP is not affected", async () => {
     const ip = uniqueIp();
     for (let i = 0; i < 5; i += 1) {
-      const res = await post("/api/auth/signup", { email: `rl-signup-${i}-${crypto.randomUUID().slice(0, 8)}@example.test`, password: "Password12345!", name: "RL" }, ip, defaultsEnv);
+      const res = await post(
+        "/api/auth/signup",
+        { email: `rl-signup-${i}-${crypto.randomUUID().slice(0, 8)}@example.test`, password: "Password12345!", name: "RL" },
+        ip,
+        defaultsEnv,
+      );
       expect(res.status, `signup ${i + 1}`).toBe(201);
     }
-    const sixth = await post("/api/auth/signup", { email: `rl-signup-6-${crypto.randomUUID().slice(0, 8)}@example.test`, password: "Password12345!", name: "RL" }, ip, defaultsEnv);
+    const sixth = await post(
+      "/api/auth/signup",
+      { email: `rl-signup-6-${crypto.randomUUID().slice(0, 8)}@example.test`, password: "Password12345!", name: "RL" },
+      ip,
+      defaultsEnv,
+    );
     expect(sixth.status).toBe(429);
     expect(((await sixth.json()) as { code: string }).code).toBe("RATE_LIMITED");
 
-    const elsewhere = await post("/api/auth/signup", { email: `rl-signup-x-${crypto.randomUUID().slice(0, 8)}@example.test`, password: "Password12345!", name: "RL" }, uniqueIp(), defaultsEnv);
+    const elsewhere = await post(
+      "/api/auth/signup",
+      { email: `rl-signup-x-${crypto.randomUUID().slice(0, 8)}@example.test`, password: "Password12345!", name: "RL" },
+      uniqueIp(),
+      defaultsEnv,
+    );
     expect(elsewhere.status).toBe(201);
   });
 

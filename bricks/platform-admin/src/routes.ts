@@ -61,7 +61,10 @@ export interface PlatformAuditRecorder {
   pendingAcrossWorkspaces(
     db: D1Like,
     options?: { limit?: number; after?: string },
-  ): Promise<{ rows: Array<{ id: string; workspaceId: string; action: string; targetId: string; metadata: Record<string, unknown>; createdAt: string }>; next: string | null }>;
+  ): Promise<{
+    rows: Array<{ id: string; workspaceId: string; action: string; targetId: string; metadata: Record<string, unknown>; createdAt: string }>;
+    next: string | null;
+  }>;
 }
 
 /** The credit-wallet export (`credit-wallet.walletCharger`): only what this brick calls. */
@@ -372,7 +375,10 @@ export function createPlatformAdminRoutes(options: PlatformAdminRoutesOptions = 
       if (result.reason === "no_registry") return notConfigured(c, "A workspace registry");
       if (result.reason === "deleting") return deleting(c);
       if (result.reason === "other_suspension") {
-        return c.json({ error: "This workspace is suspended for another reason, which an operator neither overwrites nor lifts", code: "SUSPENDED_OTHERWISE" }, 409);
+        return c.json(
+          { error: "This workspace is suspended for another reason, which an operator neither overwrites nor lifts", code: "SUSPENDED_OTHERWISE" },
+          409,
+        );
       }
       return notFound(c, "Workspace");
     }
@@ -394,7 +400,8 @@ export function createPlatformAdminRoutes(options: PlatformAdminRoutesOptions = 
     const json = await readJson(c);
     if (!json.ok) return invalid(c, "Invalid JSON body");
     const body = mode === "set" ? FlagSchema.safeParse(json.body) : ReasonSchema.safeParse(json.body);
-    if (!body.success) return invalid(c, mode === "set" ? "enabled (true or false) and reason (1 to 500 characters) are required" : "reason (1 to 500 characters) is required");
+    if (!body.success)
+      return invalid(c, mode === "set" ? "enabled (true or false) and reason (1 to 500 characters) are required" : "reason (1 to 500 characters) is required");
     const db = c.env.DB;
     const target = await changeableWorkspace(c, db, id.data);
     if (target instanceof Response) return target;
@@ -409,14 +416,19 @@ export function createPlatformAdminRoutes(options: PlatformAdminRoutesOptions = 
         // The write (and so its audit row) applies only while the workspace is not being deleted.
         guard: workspaceNotDeletingGuard(id.data),
         alongside: (before) => {
-          const entry = audit.statement(db, id.data, {
-            actorId: operatorOf(c),
-            actorType: "user",
-            action: mode === "set" ? "platform.flag.set" : "platform.flag.clear",
-            targetType: "flag",
-            targetId: flagKey,
-            metadata: { reason: body.data.reason, before: { enabled: before }, after: { enabled } },
-          }, { afterChange: true });
+          const entry = audit.statement(
+            db,
+            id.data,
+            {
+              actorId: operatorOf(c),
+              actorType: "user",
+              action: mode === "set" ? "platform.flag.set" : "platform.flag.clear",
+              targetType: "flag",
+              targetId: flagKey,
+              metadata: { reason: body.data.reason, before: { enabled: before }, after: { enabled } },
+            },
+            { afterChange: true },
+          );
           auditId = entry.id;
           return [entry];
         },
@@ -437,7 +449,8 @@ export function createPlatformAdminRoutes(options: PlatformAdminRoutesOptions = 
       }
       return notFound(c, "Flag");
     }
-    if (!result.changed) return c.json({ workspaceId: id.data, key: result.key, changed: false, before: result.before, after: result.after, auditId: null }, 200);
+    if (!result.changed)
+      return c.json({ workspaceId: id.data, key: result.key, changed: false, before: result.before, after: result.after, auditId: null }, 200);
     return c.json({ workspaceId: id.data, key: result.key, changed: true, before: result.before, after: result.after, auditId }, 200);
   };
   app.put("/platform/workspaces/:id/flags/:flagKey", flagChange("set"));
@@ -459,14 +472,19 @@ export function createPlatformAdminRoutes(options: PlatformAdminRoutesOptions = 
     let applied: boolean;
     try {
       const before = (await findApproval(db, uid.data))?.status ?? null;
-      const entry = audit.statement(db, PLATFORM_AUDIT_SCOPE, {
-        actorId: operatorId,
-        actorType: "user",
-        action: status === "approved" ? "platform.user.approve" : "platform.user.reject",
-        targetType: "user",
-        targetId: uid.data,
-        metadata: { reason: body.data.reason, before: { status: before }, after: { status } },
-      }, { afterChange: true });
+      const entry = audit.statement(
+        db,
+        PLATFORM_AUDIT_SCOPE,
+        {
+          actorId: operatorId,
+          actorType: "user",
+          action: status === "approved" ? "platform.user.approve" : "platform.user.reject",
+          targetType: "user",
+          targetId: uid.data,
+          metadata: { reason: body.data.reason, before: { status: before }, after: { status } },
+        },
+        { afterChange: true },
+      );
       auditId = entry.id;
       // The decision and its audit row commit in one batch. The decision is guarded by the status read above, so its
       // audit "before" is the state it acted on; if the row changed meanwhile, neither is written.

@@ -76,20 +76,20 @@ export function createStripePaymentGateway(options: StripePaymentGatewayOptions)
       // Story 0.9 (A21): only a 2xx answer that names an intent counts as created. Anything else is a provider
       // error, so the brick records no order.
       if (res.status < 200 || res.status >= 300) {
-        throw new IntegrationCallError(
-          `PROVIDER_ERROR: Stripe createPaymentIntent answered HTTP ${res.status}; no order was created`,
-          { code: "PROVIDER_ERROR", status: res.status },
-        );
+        throw new IntegrationCallError(`PROVIDER_ERROR: Stripe createPaymentIntent answered HTTP ${res.status}; no order was created`, {
+          code: "PROVIDER_ERROR",
+          status: res.status,
+        });
       }
       const body = (res.body ?? res.data ?? {}) as Record<string, unknown>;
       const nonEmpty = (v: unknown): string | null => (typeof v === "string" && v.trim().length > 0 ? v : null);
       // The intent id (`pi_...`) is the provider reference: the intent is fetched by it, never by the brick's order id.
       const intentId = nonEmpty(body.id);
       if (!intentId) {
-        throw new IntegrationCallError(
-          "PROVIDER_ERROR: Stripe createPaymentIntent returned no payment intent id or client secret; no order was created",
-          { code: "PROVIDER_ERROR", status: res.status },
-        );
+        throw new IntegrationCallError("PROVIDER_ERROR: Stripe createPaymentIntent returned no payment intent id or client secret; no order was created", {
+          code: "PROVIDER_ERROR",
+          status: res.status,
+        });
       }
       return {
         paymentSessionId: nonEmpty(body.client_secret) ?? intentId,

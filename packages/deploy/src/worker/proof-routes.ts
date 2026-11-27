@@ -89,7 +89,9 @@ const median = (values: number[]) => {
 
 async function writeScratch(db: D1Like, id: string, body: string) {
   await db
-    .prepare(`INSERT INTO ${LATENCY_TABLE} (id, body, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(id) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at`)
+    .prepare(
+      `INSERT INTO ${LATENCY_TABLE} (id, body, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(id) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at`,
+    )
     .bind(id, body, new Date().toISOString())
     .run();
 }
@@ -121,8 +123,7 @@ export { SIGNATURE_WINDOW_SECONDS, SIGNED_AT_HEADER, controlPlaneCanonical, sign
 
 /** The read routes that take the control-plane signature over method, path and query, timestamp and body (story 1.4). */
 const SIGNED_READ_ROUTES: readonly string[] = ["/__px/events", "/__px/logs", "/__px/metrics"];
-const isSignedReadRoute = (pathname: string) =>
-  SIGNED_READ_ROUTES.includes(pathname) || pathname === "/__px/data" || pathname.startsWith("/__px/data/");
+const isSignedReadRoute = (pathname: string) => SIGNED_READ_ROUTES.includes(pathname) || pathname === "/__px/data" || pathname.startsWith("/__px/data/");
 
 /** Null when the request carries a fresh, valid control-plane signature over its method, path and body; else the refusal. */
 async function refuseUnsignedControlPlane(request: Request, path: string, body: string, secret: string, nowMs: number): Promise<Response | null> {
@@ -134,7 +135,10 @@ async function refuseUnsignedControlPlane(request: Request, path: string, body: 
 async function startSignedWorkflowRun(request: Request, env: ProofEnv, nowMs: number): Promise<Response> {
   if (request.method !== "POST") return json(405, { error: { code: "METHOD_NOT_ALLOWED", message: `Expected POST ${WORKFLOW_RUNS_PATH}` } });
   const secret = controlPlaneSecret(env);
-  if (secret === null) return json(503, { error: { code: "NO_SIGNING_SECRET", message: "this deployment has no control-plane signing secret (PX_TELEMETRY_SECRET, distinct from the access key)" } });
+  if (secret === null)
+    return json(503, {
+      error: { code: "NO_SIGNING_SECRET", message: "this deployment has no control-plane signing secret (PX_TELEMETRY_SECRET, distinct from the access key)" },
+    });
   const rawBody = await request.text();
   const unsigned = await refuseUnsignedControlPlane(request, WORKFLOW_RUNS_PATH, rawBody, secret, nowMs);
   if (unsigned) return unsigned;
@@ -144,19 +148,27 @@ async function startSignedWorkflowRun(request: Request, env: ProofEnv, nowMs: nu
   } catch {
     return json(400, { error: { code: "INVALID_JSON", message: "the body must be JSON: {graphId, workspaceId, payload?}" } });
   }
-  if (body === null || typeof body !== "object" || Array.isArray(body)) return json(400, { error: { code: "INVALID_JSON", message: "the body must be a JSON object" } });
+  if (body === null || typeof body !== "object" || Array.isArray(body))
+    return json(400, { error: { code: "INVALID_JSON", message: "the body must be a JSON object" } });
   if (body.workspaceId === undefined || body.workspaceId === null || body.workspaceId === "") {
     return json(400, { error: { code: "NO_WORKSPACE", message: "the signed run names no workspaceId; a run without a verified workspace is refused" } });
   }
-  if (!isTenantWorkspaceId(body.workspaceId)) return json(400, { error: { code: "BAD_WORKSPACE", message: "workspaceId must be a tenant workspace id (letters, digits, _ and -, no double underscore)" } });
+  if (!isTenantWorkspaceId(body.workspaceId))
+    return json(400, {
+      error: { code: "BAD_WORKSPACE", message: "workspaceId must be a tenant workspace id (letters, digits, _ and -, no double underscore)" },
+    });
   if (typeof body.graphId !== "string" || !ID_PATTERN.test(body.graphId)) return json(400, { error: { code: "BAD_GRAPH_ID", message: "graphId is required" } });
-  if (typeof body.requestId !== "string" || !REQUEST_ID.test(body.requestId)) return json(400, { error: { code: "BAD_REQUEST_ID", message: "requestId (a UUID, used as the run's id) is required" } });
+  if (typeof body.requestId !== "string" || !REQUEST_ID.test(body.requestId))
+    return json(400, { error: { code: "BAD_REQUEST_ID", message: "requestId (a UUID, used as the run's id) is required" } });
   const workflow = env[WORKFLOW_BINDING] as WorkflowBindingLike | undefined;
   if (!workflow) return json(500, { error: "this deployment has no Workflow binding" });
   const requestId = body.requestId.toLowerCase();
   const duplicate = json(409, { error: { code: "DUPLICATE_REQUEST", message: "this requestId has already started a run; nothing new was started" } });
   // One requestId, one run: the id is the Workflow instance's own, so a replayed request finds it taken.
-  const existing = await workflow.get(requestId).then(() => true, () => false);
+  const existing = await workflow.get(requestId).then(
+    () => true,
+    () => false,
+  );
   if (existing) return duplicate;
   let instance: WorkflowInstanceLike;
   try {
@@ -169,11 +181,8 @@ async function startSignedWorkflowRun(request: Request, env: ProofEnv, nowMs: nu
 }
 
 /** Returns null for any path outside /poc/ and /__px/, so the project's own routes are never shadowed. */
-export function createProofRoutes(
-  nowOrOptions: (() => number) | ProofRoutesOptions = () => performance.now(),
-) {
-  const opts: ProofRoutesOptions =
-    typeof nowOrOptions === "function" ? { now: nowOrOptions } : nowOrOptions;
+export function createProofRoutes(nowOrOptions: (() => number) | ProofRoutesOptions = () => performance.now()) {
+  const opts: ProofRoutesOptions = typeof nowOrOptions === "function" ? { now: nowOrOptions } : nowOrOptions;
   const now = opts.now ?? (() => performance.now());
   const clock = opts.clock ?? (() => Date.now());
   const defaults = opts.registry && opts.executors ? null : createDeployBricks();
@@ -188,13 +197,15 @@ export function createProofRoutes(
       // shared access key is no fallback, so holding the key alone reads nothing (story 1.4).
       const telemetrySecret = controlPlaneSecret(env) ?? undefined;
       if (isSignedReadRoute(url.pathname) && telemetrySecret === undefined) {
-        return json(503, { error: { code: "NO_SIGNING_SECRET", message: "this deployment has no control-plane signing secret (PX_TELEMETRY_SECRET, distinct from the access key)" } });
+        return json(503, {
+          error: {
+            code: "NO_SIGNING_SECRET",
+            message: "this deployment has no control-plane signing secret (PX_TELEMETRY_SECRET, distinct from the access key)",
+          },
+        });
       }
       const pxEnv = env.PX_ENV === "production" ? "production" : "preview";
-      const telemetryWebhookUrl =
-        typeof env.PX_TELEMETRY_WEBHOOK_URL === "string"
-          ? env.PX_TELEMETRY_WEBHOOK_URL
-          : undefined;
+      const telemetryWebhookUrl = typeof env.PX_TELEMETRY_WEBHOOK_URL === "string" ? env.PX_TELEMETRY_WEBHOOK_URL : undefined;
 
       // The routes that execute bricks (rehearse, runs, rerun) accept only the control-plane signature made with
       // PX_TELEMETRY_SECRET itself (the project's derived control-plane secret, story 1.17), never the shared access key:
@@ -259,12 +270,8 @@ export function createProofRoutes(
       });
       if (pulledMetrics) return pulledMetrics;
 
-      const declaredEntities = Array.isArray(env.PX_DECLARED_ENTITIES)
-        ? (env.PX_DECLARED_ENTITIES as string[])
-        : undefined;
-      const secretColumns = Array.isArray(env.PX_SECRET_COLUMNS)
-        ? (env.PX_SECRET_COLUMNS as string[])
-        : undefined;
+      const declaredEntities = Array.isArray(env.PX_DECLARED_ENTITIES) ? (env.PX_DECLARED_ENTITIES as string[]) : undefined;
+      const secretColumns = Array.isArray(env.PX_SECRET_COLUMNS) ? (env.PX_SECRET_COLUMNS as string[]) : undefined;
       const browsed = await handleDataBrowserRequest(request, {
         db: env.DB,
         pxEnv,
@@ -286,7 +293,9 @@ export function createProofRoutes(
     if (area === "graphs" && parts.length === 3 && id !== undefined) {
       if (!ID_PATTERN.test(id)) return json(400, { error: "graph ids are letters, digits, _ and -, up to 64 characters" });
       if (request.method === "GET") {
-        const row = await env.DB.prepare(`SELECT graph, updated_at FROM ${GRAPH_TABLE} WHERE workspace_id = ?1 AND id = ?2`).bind(APP_WORKSPACE, id).first<{ graph: string; updated_at: string }>();
+        const row = await env.DB.prepare(`SELECT graph, updated_at FROM ${GRAPH_TABLE} WHERE workspace_id = ?1 AND id = ?2`)
+          .bind(APP_WORKSPACE, id)
+          .first<{ graph: string; updated_at: string }>();
         return row === null ? json(404, { error: "no such graph" }) : json(200, { id, graph: row.graph, updatedAt: row.updated_at });
       }
       return json(405, { error: "graphs are read-only here: use GET" });
@@ -294,13 +303,21 @@ export function createProofRoutes(
 
     if (area === "runs" && parts.length === 2 && request.method === "POST") {
       // The shared key verifies no workspace, and a run without a verified workspace is refused: nothing is started.
-      return json(403, { error: { code: "NO_VERIFIED_WORKSPACE", message: `a run without a verified workspace is refused; start it with a signed POST ${WORKFLOW_RUNS_PATH}` } });
+      return json(403, {
+        error: { code: "NO_VERIFIED_WORKSPACE", message: `a run without a verified workspace is refused; start it with a signed POST ${WORKFLOW_RUNS_PATH}` },
+      });
     }
 
     if (area === "runs" && parts.length === 3 && id !== undefined && request.method === "GET") {
       // A run's output belongs to its tenant: the shared key alone does not read it (story 1.1).
       const secret = controlPlaneSecret(env);
-      if (secret === null) return json(503, { error: { code: "NO_SIGNING_SECRET", message: "this deployment has no control-plane signing secret (PX_TELEMETRY_SECRET, distinct from the access key)" } });
+      if (secret === null)
+        return json(503, {
+          error: {
+            code: "NO_SIGNING_SECRET",
+            message: "this deployment has no control-plane signing secret (PX_TELEMETRY_SECRET, distinct from the access key)",
+          },
+        });
       const unsigned = await refuseUnsignedControlPlane(request, url.pathname, "", secret, clock());
       if (unsigned) return unsigned;
       if (!workflow) return json(500, { error: "this deployment has no Workflow binding" });

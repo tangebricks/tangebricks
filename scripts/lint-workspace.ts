@@ -121,22 +121,16 @@ export function runCli(rootDir: string = process.cwd()): number {
   const result = lintWorkspace(rootDir);
   if (!result.ok) {
     for (const dup of result.duplicates) {
-      console.error(
-        `Duplicate workspace package name "${dup.name}" found in: ${dup.dirs.join(", ")}`,
-      );
+      console.error(`Duplicate workspace package name "${dup.name}" found in: ${dup.dirs.join(", ")}`);
     }
     return 1;
   }
 
-  console.log(
-    `Workspace package names are unique (${result.checked} packages across ${result.globs.join(", ")}).`,
-  );
+  console.log(`Workspace package names are unique (${result.checked} packages across ${result.globs.join(", ")}).`);
   return 0;
 }
 
-const isMain =
-  process.argv[1] !== undefined &&
-  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+const isMain = process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 
 if (isMain) {
   const targetDir = process.argv[2] ? resolve(process.argv[2]) : process.cwd();

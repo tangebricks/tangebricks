@@ -32,9 +32,7 @@ describe("UC2.8 importer module layout", () => {
 describe("UC2.8 fidelity code registry", () => {
   it("AC3: every registry code is declared exactly once across packages and scripts", () => {
     const roots = [join(repoRoot, "packages"), join(repoRoot, "scripts")];
-    const files = roots
-      .flatMap((root) => listFiles(root, ".ts"))
-      .filter((f) => !f.includes(`${join("packages", "integrations", "test")}`));
+    const files = roots.flatMap((root) => listFiles(root, ".ts")).filter((f) => !f.includes(`${join("packages", "integrations", "test")}`));
     const sources = files.map((file) => ({ file, text: readFileSync(file, "utf8") }));
     for (const name of Object.keys(FIDELITY_CODES)) {
       const declaration = new RegExp(`^\\s*${name}:\\s*\\{\\s*code:\\s*"${name}"`, "m");
@@ -65,10 +63,7 @@ describe("UC2.8 fidelity code registry", () => {
       }
     }
     expect(seen.size).toBeGreaterThan(10);
-    const registry = FIDELITY_CODES as Record<
-      string,
-      { defaultStatus: string; blocking: boolean } | undefined
-    >;
+    const registry = FIDELITY_CODES as Record<string, { defaultStatus: string; blocking: boolean } | undefined>;
     for (const [code, slot] of seen) {
       const info = registry[code];
       expect(info, `${code} must be in FIDELITY_CODES`).toBeDefined();

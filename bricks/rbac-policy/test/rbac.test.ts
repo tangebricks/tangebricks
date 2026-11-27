@@ -39,7 +39,7 @@ describe("RBAC & ABAC Policy Engine Core Logic", () => {
         { resource: "documents", action: "read" },
         { resource: "documents", action: "write" },
       ],
-      "Can view and edit documents"
+      "Can view and edit documents",
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -135,19 +135,14 @@ describe("RBAC Route Guards & Middleware Integration", () => {
     app.route("/api", createRbacRoutes());
 
     // Protected dummy endpoint
-    app.get("/api/reports/financial", requirePermission("reports", "view_financial"), (c) =>
-      c.json({ report: "top_secret_data" }, 200)
-    );
+    app.get("/api/reports/financial", requirePermission("reports", "view_financial"), (c) => c.json({ report: "top_secret_data" }, 200));
 
     return app;
   };
 
   it("returns 403 Forbidden when caller lacks required permission", async () => {
     const app = createApp(USER_1, "member", WS_A);
-    const res = await app.fetch(
-      new Request("http://localhost/api/reports/financial"),
-      { DB: db }
-    );
+    const res = await app.fetch(new Request("http://localhost/api/reports/financial"), { DB: db });
 
     expect(res.status).toBe(403);
     const json = (await res.json()) as { error: string; required: string };
@@ -162,10 +157,7 @@ describe("RBAC Route Guards & Middleware Integration", () => {
     await rbac.assignRole(WS_A, USER_1, role.role.id);
 
     const app = createApp(USER_1, "member", WS_A);
-    const res = await app.fetch(
-      new Request("http://localhost/api/reports/financial"),
-      { DB: db }
-    );
+    const res = await app.fetch(new Request("http://localhost/api/reports/financial"), { DB: db });
 
     expect(res.status).toBe(200);
     const json = (await res.json()) as { report: string };
@@ -175,10 +167,7 @@ describe("RBAC Route Guards & Middleware Integration", () => {
   it("workspace owner automatically bypasses permission checks", async () => {
     // User is owner -> automatically allowed without explicit RBAC row
     const app = createApp(USER_1, "owner", WS_A);
-    const res = await app.fetch(
-      new Request("http://localhost/api/reports/financial"),
-      { DB: db }
-    );
+    const res = await app.fetch(new Request("http://localhost/api/reports/financial"), { DB: db });
 
     expect(res.status).toBe(200);
   });
@@ -209,7 +198,7 @@ describe("RBAC grant escalation (story 0.19)", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       }),
-      { DB: db }
+      { DB: db },
     );
     return { status: res.status, text: await res.text() };
   };
@@ -233,10 +222,7 @@ describe("RBAC grant escalation (story 0.19)", () => {
   }
 
   const assignmentCount = async (userId: string): Promise<number> =>
-    (await db
-      .prepare("SELECT COUNT(*) AS n FROM rbac_role_assignments WHERE workspace_id = ? AND user_id = ?")
-      .bind(WS_A, userId)
-      .first<{ n: number }>())!.n;
+    (await db.prepare("SELECT COUNT(*) AS n FROM rbac_role_assignments WHERE workspace_id = ? AND user_id = ?").bind(WS_A, userId).first<{ n: number }>())!.n;
   const roleCount = async (): Promise<number> =>
     (await db.prepare("SELECT COUNT(*) AS n FROM rbac_roles WHERE workspace_id = ?").bind(WS_A).first<{ n: number }>())!.n;
 
@@ -352,7 +338,10 @@ describe("RBAC grant escalation (story 0.19)", () => {
 
   it("BAD_PERMISSION_STRING: a malformed resource or an empty action is 400 INVALID_PERMISSION", async () => {
     const before = await roleCount();
-    for (const perm of [{ resource: "Docs Read!", action: "read" }, { resource: "docs", action: "" }]) {
+    for (const perm of [
+      { resource: "Docs Read!", action: "read" },
+      { resource: "docs", action: "" },
+    ]) {
       const res = await post(appFor(OWNER, "owner"), "/roles", { name: "Bad", permissions: [perm] });
       expect(res.status).toBe(400);
       expect((JSON.parse(res.text) as { code: string }).code).toBe("INVALID_PERMISSION");

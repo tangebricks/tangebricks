@@ -16,7 +16,10 @@ export const GENERATED_SECRET_KEY_HINT = "generated";
 
 /** The vault ref a generated secret is stored under: the same spelling the deploy plan's vault matching suggests. */
 export function generatedSecretRef(name: string): string {
-  return `sec_${name.toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "")}`;
+  return `sec_${name
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "")}`;
 }
 
 /** 32 random bytes from Web Crypto, base64url without padding (43 characters). */

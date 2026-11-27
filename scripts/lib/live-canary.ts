@@ -3,18 +3,10 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { catalog } from "../../packages/assembler/catalog.generated.ts";
 import type { IntegrationManifestFile } from "../../packages/assembler/src/schemas.ts";
-import {
-  buildExecutorsFromCatalog,
-  buildRegistryFromCatalog,
-  rehearseStep,
-} from "../../packages/runtime/src/index.ts";
+import { buildExecutorsFromCatalog, buildRegistryFromCatalog, rehearseStep } from "../../packages/runtime/src/index.ts";
 import type { Executors } from "../../packages/sdk/src/index.ts";
 import { redactTelemetryPayload } from "../../packages/telemetry/src/index.ts";
-import {
-  getGitSha,
-  stampEvidence,
-  writeEvidence,
-} from "./evidence-stamp.ts";
+import { getGitSha, stampEvidence, writeEvidence } from "./evidence-stamp.ts";
 
 /** The named workspace these out-of-band smoke runs use: the runtime has no default workspace (story 1.1). */
 const LIVE_SMOKE_WORKSPACE = "ws_live_smoke";
@@ -75,11 +67,7 @@ export interface IsLiveVerifiedOptions {
   policyPath?: string;
 }
 
-export const LIVE_CREDENTIAL_PATTERNS: readonly RegExp[] = [
-  /\b(?:sk|rk)_live_[A-Za-z0-9]+/i,
-  /\bwhsec_live_[A-Za-z0-9]+/i,
-  /\blive_secret_[A-Za-z0-9]+/i,
-];
+export const LIVE_CREDENTIAL_PATTERNS: readonly RegExp[] = [/\b(?:sk|rk)_live_[A-Za-z0-9]+/i, /\bwhsec_live_[A-Za-z0-9]+/i, /\blive_secret_[A-Za-z0-9]+/i];
 
 /**
  * Throws CANARY_LIVE_CREDENTIAL_REFUSED if the secret matches known live production key patterns.
@@ -88,9 +76,7 @@ export function refuseLiveCredentials(secret: string): void {
   if (!secret || typeof secret !== "string") return;
   for (const pattern of LIVE_CREDENTIAL_PATTERNS) {
     if (pattern.test(secret)) {
-      throw new Error(
-        `CANARY_LIVE_CREDENTIAL_REFUSED: Secret matches live production credential pattern (${pattern.source})`,
-      );
+      throw new Error(`CANARY_LIVE_CREDENTIAL_REFUSED: Secret matches live production credential pattern (${pattern.source})`);
     }
   }
 }
@@ -100,10 +86,7 @@ export function refuseLiveCredentials(secret: string): void {
  * - Read-only or sandbox-safe operations only.
  * - Any operation with sideEffects: "write" MUST declare sandboxOnly: true.
  */
-export function validateCanaryPlan(
-  plan: CanaryPlan,
-  manifest?: IntegrationManifestFile,
-): void {
+export function validateCanaryPlan(plan: CanaryPlan, manifest?: IntegrationManifestFile): void {
   if (!plan.app) throw new Error("CanaryPlan must define 'app'");
   if (!plan.secretEnv) throw new Error("CanaryPlan must define 'secretEnv'");
   if (!Array.isArray(plan.operations)) {
@@ -119,9 +102,7 @@ export function validateCanaryPlan(
     if (manifest) {
       const found = manifest.operations.find((o) => o.operationId === op.operationId);
       if (found) {
-        isWrite =
-          found.sideEffects === "write" ||
-          ["POST", "PUT", "PATCH", "DELETE"].includes(found.method.toUpperCase());
+        isWrite = found.sideEffects === "write" || ["POST", "PUT", "PATCH", "DELETE"].includes(found.method.toUpperCase());
       }
     } else {
       if (/^(create|update|delete|cancel|confirm|send|insert|patch|post|put)/i.test(op.operationId)) {
@@ -130,9 +111,7 @@ export function validateCanaryPlan(
     }
 
     if (isWrite && op.sandboxOnly !== true) {
-      throw new Error(
-        `Canary plan operation '${op.operationId}' has write sideEffects but lacks 'sandboxOnly: true'`,
-      );
+      throw new Error(`Canary plan operation '${op.operationId}' has write sideEffects but lacks 'sandboxOnly: true'`);
     }
   }
 }
@@ -140,11 +119,7 @@ export function validateCanaryPlan(
 /**
  * Returns true only if the app's evidence file exists, status is "pass", and verifiedAt is within the policy window.
  */
-export function isLiveVerified(
-  app: string,
-  now: Date | string = new Date(),
-  options: IsLiveVerifiedOptions = {},
-): boolean {
+export function isLiveVerified(app: string, now: Date | string = new Date(), options: IsLiveVerifiedOptions = {}): boolean {
   const evidenceDir = options.evidenceDir ?? resolve(repoRoot, "evidence/live-canary");
   const evidencePath = join(evidenceDir, `${app}.json`);
   if (!existsSync(evidencePath)) return false;
@@ -184,11 +159,7 @@ export function isLiveVerified(
   return true;
 }
 
-function saveCanaryEvidence(
-  evidenceDir: string,
-  app: string,
-  result: CanaryResult,
-): void {
+function saveCanaryEvidence(evidenceDir: string, app: string, result: CanaryResult): void {
   mkdirSync(evidenceDir, { recursive: true });
   const targetPath = join(evidenceDir, `${app}.json`);
   let prov;
@@ -210,10 +181,7 @@ function saveCanaryEvidence(
 /**
  * Runs a single integration's live canary plan.
  */
-export async function runAppCanary(
-  app: string,
-  options: CanaryRunOptions = {},
-): Promise<CanaryResult> {
+export async function runAppCanary(app: string, options: CanaryRunOptions = {}): Promise<CanaryResult> {
   const env = options.env ?? process.env;
   const evidenceDir = options.evidenceDir ?? resolve(repoRoot, "evidence/live-canary");
   const planPath = options.planPath ?? resolve(repoRoot, "integrations", app, "canary.json");
@@ -248,9 +216,7 @@ export async function runAppCanary(
   const registry = buildRegistryFromCatalog(catalog);
   const executors =
     options.executors ??
-    (options.fetcher
-      ? buildExecutorsFromCatalog(catalog, { integration: { fetcher: options.fetcher } })
-      : buildExecutorsFromCatalog(catalog));
+    (options.fetcher ? buildExecutorsFromCatalog(catalog, { integration: { fetcher: options.fetcher } }) : buildExecutorsFromCatalog(catalog));
 
   const opResults: CanaryOperationResult[] = [];
   let allPassed = true;
@@ -284,10 +250,7 @@ export async function runAppCanary(
 
       httpStatus = Number(res.output?.status ?? (res.ok ? 200 : 500));
       const expectedStatus = op.expect?.status ?? 200;
-      const statusMatches =
-        expectedStatus >= 200 && expectedStatus < 300
-          ? httpStatus >= 200 && httpStatus < 300
-          : httpStatus === expectedStatus;
+      const statusMatches = expectedStatus >= 200 && expectedStatus < 300 ? httpStatus >= 200 && httpStatus < 300 : httpStatus === expectedStatus;
 
       if (!res.ok || !statusMatches) {
         allPassed = false;
@@ -335,9 +298,7 @@ export async function runAppCanary(
 /**
  * Runs canaries for all registered integrations.
  */
-export async function runAllCanaries(
-  options: CanaryRunOptions = {},
-): Promise<Record<string, CanaryResult>> {
+export async function runAllCanaries(options: CanaryRunOptions = {}): Promise<Record<string, CanaryResult>> {
   const log = options.log ?? ((msg: string) => console.log(msg));
   const results: Record<string, CanaryResult> = {};
   const apps = Object.keys(catalog.integrations ?? {}).sort();

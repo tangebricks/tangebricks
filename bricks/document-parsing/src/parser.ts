@@ -90,7 +90,10 @@ export function estimateTokens(text: string): number {
  * | Val 1 | Val 2 |
  */
 export function parseMarkdownTable(markdown: string): Array<Record<string, string>> {
-  const lines = markdown.split("\n").map((l) => l.trim()).filter((l) => l.startsWith("|") && l.endsWith("|"));
+  const lines = markdown
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("|") && l.endsWith("|"));
   if (lines.length < 3) return [];
   // The length check above means the defaults are never used.
   const [headerLine = "", separatorLine = "", ...bodyLines] = lines;
@@ -127,7 +130,10 @@ export function parseMarkdownTable(markdown: string): Array<Record<string, strin
  * Parses simple CSV content into JSON objects
  */
 export function parseCsv(csvText: string): Array<Record<string, string>> {
-  const lines = csvText.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  const lines = csvText
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
   if (lines.length < 2) return [];
   // The length check above means the default is never used.
   const [headerLine = "", ...bodyLines] = lines;
@@ -195,11 +201,7 @@ export class DocumentParsingService {
   /**
    * Chunks a document's raw content into searchable/vectorizable fragments.
    */
-  async chunkDocument(
-    workspaceId: string,
-    documentId: string,
-    options: ChunkOptions = {}
-  ): Promise<DocumentChunk[]> {
+  async chunkDocument(workspaceId: string, documentId: string, options: ChunkOptions = {}): Promise<DocumentChunk[]> {
     const doc = await this.getDocument(workspaceId, documentId);
     if (!doc) {
       throw new Error(`Document ${documentId} not found in workspace`);
@@ -210,23 +212,14 @@ export class DocumentParsingService {
     }
 
     // Set processing status
-    await scoped(this.db, workspaceId).update(
-      "docp_documents",
-      { status: "processing" },
-      "id = ?",
-      [documentId]
-    );
+    await scoped(this.db, workspaceId).update("docp_documents", { status: "processing" }, "id = ?", [documentId]);
 
     const maxTokens = options.maxTokens ?? 250;
     const splitOnHeaders = options.splitOnHeaders ?? true;
     const raw = doc.raw_content;
 
     // Delete any existing chunks for this document
-    await scoped(this.db, workspaceId).delete(
-      "docp_chunks",
-      "document_id = ?",
-      [documentId]
-    );
+    await scoped(this.db, workspaceId).delete("docp_chunks", "document_id = ?", [documentId]);
 
     const rawSections: Array<{ heading: string | null; content: string }> = [];
 
@@ -261,7 +254,10 @@ export class DocumentParsingService {
       }
     } else {
       // Split by paragraphs
-      const paragraphs = raw.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+      const paragraphs = raw
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean);
       for (const p of paragraphs) {
         rawSections.push({ heading: null, content: p });
       }
@@ -325,12 +321,7 @@ export class DocumentParsingService {
     }
 
     // Mark document as completed
-    await scoped(this.db, workspaceId).update(
-      "docp_documents",
-      { status: "completed", completed_at: now },
-      "id = ?",
-      [documentId]
-    );
+    await scoped(this.db, workspaceId).update("docp_documents", { status: "completed", completed_at: now }, "id = ?", [documentId]);
 
     return createdChunks;
   }
@@ -342,7 +333,7 @@ export class DocumentParsingService {
     workspaceId: string,
     documentId: string,
     schemaName: "invoice" | "contact" | "tables" | "custom",
-    customRules?: Record<string, { pattern: string; type?: "string" | "number" }>
+    customRules?: Record<string, { pattern: string; type?: "string" | "number" }>,
   ): Promise<DocumentExtraction> {
     const doc = await this.getDocument(workspaceId, documentId);
     if (!doc) {
@@ -448,11 +439,7 @@ export class DocumentParsingService {
    * Retrieves document record by ID.
    */
   async getDocument(workspaceId: string, documentId: string): Promise<DocumentRecord | null> {
-    const row = await scoped(this.db, workspaceId).first<DocumentRecord>(
-      "docp_documents",
-      "id = ?",
-      [documentId]
-    );
+    const row = await scoped(this.db, workspaceId).first<DocumentRecord>("docp_documents", "id = ?", [documentId]);
 
     return row || null;
   }
@@ -461,12 +448,7 @@ export class DocumentParsingService {
    * Retrieves all chunks for a document.
    */
   async getChunks(workspaceId: string, documentId: string): Promise<DocumentChunk[]> {
-    return scoped(this.db, workspaceId).select<DocumentChunk>(
-      "docp_chunks",
-      "document_id = ?",
-      [documentId],
-      { orderBy: "chunk_index ASC" }
-    );
+    return scoped(this.db, workspaceId).select<DocumentChunk>("docp_chunks", "document_id = ?", [documentId], { orderBy: "chunk_index ASC" });
   }
 
   /**
@@ -499,10 +481,7 @@ export class DocumentParsingService {
   /**
    * Lists documents in workspace.
    */
-  async listDocuments(
-    workspaceId: string,
-    options: { status?: DocumentStatus; limit?: number; offset?: number } = {}
-  ): Promise<DocumentRecord[]> {
+  async listDocuments(workspaceId: string, options: { status?: DocumentStatus; limit?: number; offset?: number } = {}): Promise<DocumentRecord[]> {
     return scoped(this.db, workspaceId).select<DocumentRecord>(
       "docp_documents",
       options.status ? "status = ?" : undefined,
@@ -511,7 +490,7 @@ export class DocumentParsingService {
         orderBy: "created_at DESC",
         limit: options.limit || 50,
         offset: options.offset || 0,
-      }
+      },
     );
   }
 
@@ -519,11 +498,7 @@ export class DocumentParsingService {
    * Deletes document and cascading chunks/extractions.
    */
   async deleteDocument(workspaceId: string, documentId: string): Promise<boolean> {
-    const res = await scoped(this.db, workspaceId).delete(
-      "docp_documents",
-      "id = ?",
-      [documentId]
-    );
+    const res = await scoped(this.db, workspaceId).delete("docp_documents", "id = ?", [documentId]);
 
     return res.meta.changes > 0;
   }

@@ -3,12 +3,7 @@ import { describe, expect, test } from "vitest";
 import { createEmptyBlueprint, targetKey } from "@poc/blueprint";
 import type { BlueprintState } from "@poc/blueprint";
 import { app } from "../src/index.ts";
-import type {
-  AuthorAttribution,
-  ConflictErrorPayload,
-  ProjectStatePayload,
-  StudioApiEnv,
-} from "../src/index.ts";
+import type { AuthorAttribution, ConflictErrorPayload, ProjectStatePayload, StudioApiEnv } from "../src/index.ts";
 import { ensureTestProjectToken } from "./project-token.ts";
 import { postOpsWithReview } from "./human-session.ts";
 
@@ -47,9 +42,7 @@ async function postOps(
 
 describe("Story 1.3 — Optimistic concurrency: baseRevision, auto-rebase, and 409 conflict payload", () => {
   test("targetKey deterministically extracts logical targets for all op types (AC 2)", () => {
-    expect(targetKey({ opId: "1", type: "enable_brick", brickId: "credit-wallet" })).toEqual([
-      "brick:credit-wallet",
-    ]);
+    expect(targetKey({ opId: "1", type: "enable_brick", brickId: "credit-wallet" })).toEqual(["brick:credit-wallet"]);
     expect(
       targetKey({
         opId: "2",
@@ -58,12 +51,8 @@ describe("Story 1.3 — Optimistic concurrency: baseRevision, auto-rebase, and 4
         config: { creditsPerUnit: 10 },
       }),
     ).toEqual(["brick:credit-wallet"]);
-    expect(targetKey({ opId: "3", type: "remove_brick", brickId: "credit-wallet" })).toEqual([
-      "brick:credit-wallet",
-    ]);
-    expect(targetKey({ opId: "4", type: "set_identity", identity: "core-auth" })).toEqual([
-      "identity",
-    ]);
+    expect(targetKey({ opId: "3", type: "remove_brick", brickId: "credit-wallet" })).toEqual(["brick:credit-wallet"]);
+    expect(targetKey({ opId: "4", type: "set_identity", identity: "core-auth" })).toEqual(["identity"]);
     expect(
       targetKey({
         opId: "5",
@@ -84,9 +73,7 @@ describe("Story 1.3 — Optimistic concurrency: baseRevision, auto-rebase, and 4
         },
       }),
     ).toEqual(["entity:invoices"]);
-    expect(targetKey({ opId: "7", type: "remove_entity", name: "invoices" })).toEqual([
-      "entity:invoices",
-    ]);
+    expect(targetKey({ opId: "7", type: "remove_entity", name: "invoices" })).toEqual(["entity:invoices"]);
     expect(
       targetKey({
         opId: "8",
@@ -94,9 +81,7 @@ describe("Story 1.3 — Optimistic concurrency: baseRevision, auto-rebase, and 4
         workflow: { id: "wf-1", name: "WF 1", nodes: [], edges: [] },
       }),
     ).toEqual(["workflow:wf-1"]);
-    expect(targetKey({ opId: "9", type: "remove_workflow", workflowId: "wf-1" })).toEqual([
-      "workflow:wf-1",
-    ]);
+    expect(targetKey({ opId: "9", type: "remove_workflow", workflowId: "wf-1" })).toEqual(["workflow:wf-1"]);
     expect(
       targetKey({
         opId: "10",
@@ -125,41 +110,26 @@ describe("Story 1.3 — Optimistic concurrency: baseRevision, auto-rebase, and 4
             { id: "t1", type: "trigger.manual", data: {} },
             { id: "node-a", type: "transform.pick", data: { path: "a" } },
           ],
-          edges: [
-            { id: "e-1", source: "t1", target: "node-a", sourceHandle: "out", targetHandle: "in" },
-          ],
+          edges: [{ id: "e-1", source: "t1", target: "node-a", sourceHandle: "out", targetHandle: "in" }],
         },
       ],
     };
 
-    expect(
-      targetKey(
-        { opId: "12", type: "remove_node", workflowId: "wf-1", nodeId: "node-a" },
-        stateWithWf,
-      ),
-    ).toEqual(["workflow:wf-1:edge:e-1", "workflow:wf-1:node:node-a"]);
+    expect(targetKey({ opId: "12", type: "remove_node", workflowId: "wf-1", nodeId: "node-a" }, stateWithWf)).toEqual([
+      "workflow:wf-1:edge:e-1",
+      "workflow:wf-1:node:node-a",
+    ]);
 
     expect(
       targetKey({
         opId: "13",
         type: "connect_edges",
         workflowId: "wf-1",
-        edges: [
-          { id: "e-1", source: "t1", target: "node-a", sourceHandle: "out", targetHandle: "in" },
-        ],
+        edges: [{ id: "e-1", source: "t1", target: "node-a", sourceHandle: "out", targetHandle: "in" }],
       }),
-    ).toEqual([
-      "workflow:wf-1:edge:e-1",
-      "workflow:wf-1:port:node-a:in:in",
-      "workflow:wf-1:port:t1:out:out",
-    ]);
+    ).toEqual(["workflow:wf-1:edge:e-1", "workflow:wf-1:port:node-a:in:in", "workflow:wf-1:port:t1:out:out"]);
 
-    expect(
-      targetKey(
-        { opId: "14", type: "disconnect_edge", workflowId: "wf-1", edgeId: "e-1" },
-        stateWithWf,
-      ),
-    ).toEqual([
+    expect(targetKey({ opId: "14", type: "disconnect_edge", workflowId: "wf-1", edgeId: "e-1" }, stateWithWf)).toEqual([
       "workflow:wf-1:edge:e-1",
       "workflow:wf-1:port:node-a:in:in",
       "workflow:wf-1:port:t1:out:out",
@@ -336,9 +306,7 @@ describe("Story 1.3 — Optimistic concurrency: baseRevision, auto-rebase, and 4
               { id: "t1", type: "trigger.manual", data: {} },
               { id: "node-a", type: "transform.pick", label: "Initial A", data: { path: "input.value" } },
             ],
-            edges: [
-              { id: "e-1", source: "t1", target: "node-a", sourceHandle: "out", targetHandle: "in" },
-            ],
+            edges: [{ id: "e-1", source: "t1", target: "node-a", sourceHandle: "out", targetHandle: "in" }],
           },
         },
       ],
@@ -526,21 +494,13 @@ describe("Story 1.3 — Optimistic concurrency: baseRevision, auto-rebase, and 4
 
     // Verify GET /api/projects/:project is still at revision 1 (no duplicate revision 2 created)
     const { headers: authHeaders } = await ensureTestProjectToken(studioEnv, project);
-    const stateRes = await app.request(
-      `/api/projects/${project}`,
-      { method: "GET", headers: authHeaders },
-      studioEnv,
-    );
+    const stateRes = await app.request(`/api/projects/${project}`, { method: "GET", headers: authHeaders }, studioEnv);
     expect(stateRes.status).toBe(200);
     const current = (await stateRes.json()) as ProjectStatePayload;
     expect(current.revision).toBe(1);
 
     // Revision 2 does not exist
-    const rev2Res = await app.request(
-      `/api/projects/${project}/revisions/2`,
-      { method: "GET", headers: authHeaders },
-      studioEnv,
-    );
+    const rev2Res = await app.request(`/api/projects/${project}/revisions/2`, { method: "GET", headers: authHeaders }, studioEnv);
     expect(rev2Res.status).toBe(404);
   });
 });

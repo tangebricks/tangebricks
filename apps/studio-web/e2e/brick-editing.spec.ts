@@ -23,33 +23,21 @@ test.describe("Brick Catalog Enable/Disable & JSON-Schema Settings Inspector (Re
     await expect(page.getByTestId("view-bricks")).toBeVisible();
 
     // Verify experimental bricks are hidden by default (AD-S8)
-    await expect(
-      page.getByTestId("catalog-brick-card-scripting-sandbox"),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("catalog-brick-card-scripting-sandbox")).toHaveCount(0);
 
     // 1. Click Turn on on credit-wallet -> Dependency & Impact Preview modal shows multi-workspace required
     await page.getByTestId("catalog-brick-enable-credit-wallet").click();
     const enableModal = page.getByTestId("brick-enable-modal");
     await expect(enableModal).toBeVisible();
-    await expect(page.getByTestId("brick-enable-requires")).toContainText(
-      "Also turns on: multi-workspace (required)",
-    );
-    await expect(page.getByTestId("brick-enable-req-multi-workspace")).toContainText(
-      "provides workspace-context",
-    );
-    await expect(page.getByTestId("brick-enable-adds")).toContainText(
-      "migrations/0001_credit_wallet.sql",
-    );
+    await expect(page.getByTestId("brick-enable-requires")).toContainText("Also turns on: multi-workspace (required)");
+    await expect(page.getByTestId("brick-enable-req-multi-workspace")).toContainText("provides workspace-context");
+    await expect(page.getByTestId("brick-enable-adds")).toContainText("migrations/0001_credit_wallet.sql");
     await expect(page.getByTestId("brick-enable-adds")).toContainText("/api/wallet");
-    await expect(page.getByTestId("brick-enable-adds")).toContainText(
-      "credit-wallet.debit (action)",
-    );
+    await expect(page.getByTestId("brick-enable-adds")).toContainText("credit-wallet.debit (action)");
 
     // Assert computed styles on brick card and enable modal
     const modalStyles = await page.evaluate(() => {
-      const card = document.querySelector(
-        '[data-testid="catalog-brick-card-credit-wallet"]',
-      );
+      const card = document.querySelector('[data-testid="catalog-brick-card-credit-wallet"]');
       const modal = document.querySelector('[data-testid="brick-enable-modal"]');
       if (!card || !modal) return null;
       const cardStyle = window.getComputedStyle(card);
@@ -76,40 +64,28 @@ test.describe("Brick Catalog Enable/Disable & JSON-Schema Settings Inspector (Re
     // 2. Turn on subscription-plans, then verify conflict blocking on outbound-webhooks
     await page.getByTestId("catalog-brick-enable-subscription-plans").click();
     await page.getByTestId("brick-enable-confirm").click();
-    await expect(
-      page.getByTestId("enabled-brick-card-subscription-plans"),
-    ).toBeVisible();
+    await expect(page.getByTestId("enabled-brick-card-subscription-plans")).toBeVisible();
 
     await page.getByTestId("catalog-brick-enable-outbound-webhooks").click();
-    await expect(page.getByTestId("brick-enable-conflicts")).toContainText(
-      "Both mount routes under the /api/subscriptions prefix",
-    );
+    await expect(page.getByTestId("brick-enable-conflicts")).toContainText("Both mount routes under the /api/subscriptions prefix");
     await expect(page.getByTestId("brick-enable-confirm")).toBeDisabled();
     await page.getByTestId("brick-enable-cancel").click();
 
     // 3. Toggle Include experimental and verify explicit checkbox required for scripting-sandbox
     await page.getByTestId("bricks-experimental-toggle").click();
-    await expect(
-      page.getByTestId("catalog-brick-card-scripting-sandbox"),
-    ).toBeVisible();
+    await expect(page.getByTestId("catalog-brick-card-scripting-sandbox")).toBeVisible();
     await page.getByTestId("catalog-brick-enable-scripting-sandbox").click();
     await expect(page.getByTestId("brick-enable-confirm")).toBeDisabled();
-    await expect(page.getByTestId("experimental-confirm-box")).toContainText(
-      "I understand this brick is experimental:",
-    );
+    await expect(page.getByTestId("experimental-confirm-box")).toContainText("I understand this brick is experimental:");
     await page.getByTestId("experimental-confirm-checkbox").check();
     await expect(page.getByTestId("brick-enable-confirm")).toBeEnabled();
     await page.getByTestId("brick-enable-confirm").click();
-    await expect(
-      page.getByTestId("enabled-brick-card-scripting-sandbox"),
-    ).toBeVisible();
+    await expect(page.getByTestId("enabled-brick-card-scripting-sandbox")).toBeVisible();
 
     // 4. Turn on omnichannel-outbound and rbac-policy so we have 3 distinct settings shapes enabled
     await page.getByTestId("catalog-brick-enable-omnichannel-outbound").click();
     await page.getByTestId("brick-enable-confirm").click();
-    await expect(
-      page.getByTestId("enabled-brick-card-omnichannel-outbound"),
-    ).toBeVisible();
+    await expect(page.getByTestId("enabled-brick-card-omnichannel-outbound")).toBeVisible();
 
     await page.getByTestId("catalog-brick-enable-rbac-policy").click();
     await page.getByTestId("brick-enable-confirm").click();
@@ -126,9 +102,7 @@ test.describe("Brick Catalog Enable/Disable & JSON-Schema Settings Inspector (Re
 
     // Assert computed styles on Inspector form controls
     const inspectorStyles = await page.evaluate(() => {
-      const input = document.querySelector(
-        '[data-testid="setting-input-creditsPerUnit"]',
-      );
+      const input = document.querySelector('[data-testid="setting-input-creditsPerUnit"]');
       const saveBtn = document.querySelector('[data-testid="brick-settings-save"]');
       if (!input || !saveBtn) return null;
       return {
@@ -142,9 +116,7 @@ test.describe("Brick Catalog Enable/Disable & JSON-Schema Settings Inspector (Re
 
     // Out-of-range value (0 < min 1) immediately displays field error and disables Save
     await creditsInput.fill("0");
-    await expect(page.getByTestId("setting-error-creditsPerUnit")).toContainText(
-      "between 1 and 1000000",
-    );
+    await expect(page.getByTestId("setting-error-creditsPerUnit")).toContainText("between 1 and 1000000");
     await expect(page.getByTestId("brick-settings-save")).toBeDisabled();
 
     // Valid integer value (25) enables Save and commits configure_brick to BlueprintDO
@@ -178,13 +150,9 @@ test.describe("Brick Catalog Enable/Disable & JSON-Schema Settings Inspector (Re
 
     await page.getByTestId("nav-tab-bricks").click();
     await expect(page.getByTestId("enabled-brick-card-credit-wallet")).toBeVisible();
-    await expect(
-      page.getByTestId("enabled-brick-card-omnichannel-outbound"),
-    ).toBeVisible();
+    await expect(page.getByTestId("enabled-brick-card-omnichannel-outbound")).toBeVisible();
     await expect(page.getByTestId("enabled-brick-card-rbac-policy")).toBeVisible();
-    await expect(
-      page.getByTestId("enabled-brick-card-scripting-sandbox"),
-    ).toBeVisible();
+    await expect(page.getByTestId("enabled-brick-card-scripting-sandbox")).toBeVisible();
 
     // Verify persisted settings on all 3 bricks after reload
     await page.getByTestId("enabled-brick-card-credit-wallet").click();
@@ -194,16 +162,12 @@ test.describe("Brick Catalog Enable/Disable & JSON-Schema Settings Inspector (Re
     await expect(page.getByTestId("setting-select-defaultChannel")).toHaveValue("slack");
 
     await page.getByTestId("enabled-brick-card-rbac-policy").click();
-    await expect(
-      page.getByTestId("setting-toggle-allowCustomRoles"),
-    ).toHaveAttribute("aria-checked", "false");
+    await expect(page.getByTestId("setting-toggle-allowCustomRoles")).toHaveAttribute("aria-checked", "false");
 
     // 9. Turn off scripting-sandbox via Disable modal and verify removal
     await page.getByTestId("enabled-brick-disable-scripting-sandbox").click();
     await expect(page.getByTestId("brick-disable-modal")).toBeVisible();
     await page.getByTestId("brick-disable-confirm").click();
-    await expect(
-      page.getByTestId("enabled-brick-card-scripting-sandbox"),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("enabled-brick-card-scripting-sandbox")).toHaveCount(0);
   });
 });

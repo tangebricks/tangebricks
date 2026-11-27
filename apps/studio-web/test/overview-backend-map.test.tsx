@@ -89,12 +89,8 @@ describe("Story 2.3: Project Overview and generated Backend Map", () => {
     }
 
     // Data (Entities) block shows "projects" entity and active dynamic-entities handler
-    expect(screen.getByTestId("backend-map-entity-handler-status").textContent).toContain(
-      "dynamic-entities",
-    );
-    expect(screen.getByTestId("backend-map-entity-card-projects").textContent).toContain(
-      "ent_projects",
-    );
+    expect(screen.getByTestId("backend-map-entity-handler-status").textContent).toContain("dynamic-entities");
+    expect(screen.getByTestId("backend-map-entity-card-projects").textContent).toContain("ent_projects");
 
     // Workflows block shows trigger icon/type, node count, and touched bricks/entities
     const wfCard = screen.getByTestId("backend-map-workflow-card-wf-project-audit");
@@ -127,9 +123,7 @@ describe("Story 2.3: Project Overview and generated Backend Map", () => {
     fireEvent.click(screen.getByTestId("nav-tab-overview"));
     fireEvent.click(screen.getByTestId("backend-map-nav-workflow-wf-project-audit"));
     expect(screen.getByTestId("view-workflows")).toBeDefined();
-    expect(screen.getByTestId("inspector-workflow-detail").textContent).toContain(
-      "Project Audit Trail Flow",
-    );
+    expect(screen.getByTestId("inspector-workflow-detail").textContent).toContain("Project Audit Trail Flow");
   });
 
   it("3. renders Readiness & Needs issues when dependencies or secrets are missing and links each issue to the target brick (AC 3, AC 6)", () => {
@@ -159,9 +153,7 @@ describe("Story 2.3: Project Overview and generated Backend Map", () => {
 
     render(<StudioApp />);
 
-    expect(screen.getByTestId("backend-map-brick-status-rbac-policy").textContent).toContain(
-      "Needs setup",
-    );
+    expect(screen.getByTestId("backend-map-brick-status-rbac-policy").textContent).toContain("Needs setup");
     const missingCapNeed = screen.getByTestId("readiness-need-MISSING_CAPABILITY_PROVIDER");
     expect(missingCapNeed.textContent).toContain('rbac-policy requires "workspace-context"');
 
@@ -197,12 +189,7 @@ describe("Story 2.3: Project Overview and generated Backend Map", () => {
 
   it("5. renders the Empty Project onboarding state with MCP connection snippet when bricks.length === 0 and persists preset via POST /api/projects/:project/import (AC 5, AC 6)", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.includes("/api/orgs/") && url.endsWith("/projects")) {
         return new Response(
           JSON.stringify({
@@ -257,12 +244,7 @@ describe("Story 2.3: Project Overview and generated Backend Map", () => {
 
   it("6. surfaces an accessible error banner (role='alert') when POST /api/projects/:project/import fails instead of fabricating fake state", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.includes("/import")) {
         return new Response(
           JSON.stringify({

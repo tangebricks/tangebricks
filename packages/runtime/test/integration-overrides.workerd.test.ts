@@ -1,13 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { catalog } from "@poc/assembler/catalog";
 import type { ExecutionContext } from "@poc/sdk";
-import {
-  buildExecutorsFromCatalog,
-  executeIntegrationOperation,
-} from "../src/index.ts";
+import { buildExecutorsFromCatalog, executeIntegrationOperation } from "../src/index.ts";
 
 function createDummyContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
-  return { workspaceId: "ws_test",
+  return {
+    workspaceId: "ws_test",
     nodeId: "node_1",
     runId: "run_dummy",
     idempotencyKey: "run_dummy:node_1",

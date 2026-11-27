@@ -69,9 +69,7 @@ export class LimitsProbe extends (BaseEntrypoint as new (ctx: unknown, env: Limi
       }
 
       case "event": {
-        const receivedBytes = typeof payload.payload === "string"
-          ? payload.payload.length
-          : JSON.stringify(payload).length;
+        const receivedBytes = typeof payload.payload === "string" ? payload.payload.length : JSON.stringify(payload).length;
         const result = await step.do("event-step", async () => ({
           receivedBytes,
         }));
@@ -80,9 +78,7 @@ export class LimitsProbe extends (BaseEntrypoint as new (ctx: unknown, env: Limi
 
       case "subrequests": {
         return step.do("subrequests-step", async () => {
-          const targetUrl = payload.hostUrl
-            ? `${payload.hostUrl.replace(/\/$/, "")}/__px/echo`
-            : "https://cloudflare.com";
+          const targetUrl = payload.hostUrl ? `${payload.hostUrl.replace(/\/$/, "")}/__px/echo` : "https://cloudflare.com";
           const statuses: number[] = [];
           for (let i = 0; i < target; i++) {
             const resp = await fetch(targetUrl);

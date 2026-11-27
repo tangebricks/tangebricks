@@ -42,9 +42,7 @@ describe("checkDco (pure)", () => {
   });
 
   it("skips merge commits", () => {
-    expect(checkDco([commit({ parents: ["b".repeat(40), "c".repeat(40)], message: "Merge pull request #1\n" })])).toEqual(
-      [],
-    );
+    expect(checkDco([commit({ parents: ["b".repeat(40), "c".repeat(40)], message: "Merge pull request #1\n" })])).toEqual([]);
   });
 
   it("skips bot authors by email or name", () => {

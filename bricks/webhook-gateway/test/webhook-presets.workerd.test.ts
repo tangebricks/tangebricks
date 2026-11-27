@@ -88,12 +88,7 @@ describe("Story UC4.3 — Presets and known-answer vectors", () => {
             const scheme = (PRESETS as Record<string, any>)?.[testCase.preset];
             expect(scheme).toBeDefined();
 
-            const res = await verifyWithScheme(
-              scheme,
-              { rawBody: testCase.rawBody, headers: testCase.headers },
-              testCase.secret,
-              testCase.nowSeconds,
-            );
+            const res = await verifyWithScheme(scheme, { rawBody: testCase.rawBody, headers: testCase.headers }, testCase.secret, testCase.nowSeconds);
 
             if (testCase.expect === "ok") {
               expect(res.ok).toBe(true);
@@ -111,38 +106,24 @@ describe("Story UC4.3 — Presets and known-answer vectors", () => {
 
   describe("AC2: Slack docs and GitHub docs examples verify with presets", () => {
     it("Slack docs example verifies with preset slack-v0", async () => {
-      const slackScheme = (PRESETS as Record<string, any>)?.[ "slack-v0" ];
+      const slackScheme = (PRESETS as Record<string, any>)?.["slack-v0"];
       expect(slackScheme).toBeDefined();
 
-      const slackCase = (slackFixture as unknown as WebhookVectorFixture).cases?.find(
-        (c) => c.name === "valid Slack docs example",
-      );
+      const slackCase = (slackFixture as unknown as WebhookVectorFixture).cases?.find((c) => c.name === "valid Slack docs example");
       expect(slackCase).toBeDefined();
 
-      const res = await verifyWithScheme(
-        slackScheme,
-        { rawBody: slackCase!.rawBody, headers: slackCase!.headers },
-        slackCase!.secret,
-        slackCase!.nowSeconds,
-      );
+      const res = await verifyWithScheme(slackScheme, { rawBody: slackCase!.rawBody, headers: slackCase!.headers }, slackCase!.secret, slackCase!.nowSeconds);
       expect(res.ok).toBe(true);
     });
 
     it("GitHub docs example verifies with preset github-hmac-sha256", async () => {
-      const ghScheme = (PRESETS as Record<string, any>)?.[ "github-hmac-sha256" ];
+      const ghScheme = (PRESETS as Record<string, any>)?.["github-hmac-sha256"];
       expect(ghScheme).toBeDefined();
 
-      const ghCase = (githubFixture as unknown as WebhookVectorFixture).cases?.find(
-        (c) => c.name === "valid GitHub docs example",
-      );
+      const ghCase = (githubFixture as unknown as WebhookVectorFixture).cases?.find((c) => c.name === "valid GitHub docs example");
       expect(ghCase).toBeDefined();
 
-      const res = await verifyWithScheme(
-        ghScheme,
-        { rawBody: ghCase!.rawBody, headers: ghCase!.headers },
-        ghCase!.secret,
-        ghCase!.nowSeconds,
-      );
+      const res = await verifyWithScheme(ghScheme, { rawBody: ghCase!.rawBody, headers: ghCase!.headers }, ghCase!.secret, ghCase!.nowSeconds);
       expect(res.ok).toBe(true);
     });
   });

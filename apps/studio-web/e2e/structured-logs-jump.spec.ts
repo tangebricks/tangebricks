@@ -69,21 +69,18 @@ test.describe("Story 6.3 — Structured Logs & Errors Correlated to Runs & Nodes
     expect([200, 201]).toContain(sealRes.status());
 
     // 4. Trigger a real failing workflow run on wf-billing (balance 40 < amount 250 on node-charge)
-    const runRes = await page.request.post(
-      "/api/projects/acme-saas/workflows/wf-billing/runs",
-      {
-        data: {
-          env: "preview",
-          runId: "run_e2e_charge_fail_01",
+    const runRes = await page.request.post("/api/projects/acme-saas/workflows/wf-billing/runs", {
+      data: {
+        env: "preview",
+        runId: "run_e2e_charge_fail_01",
+        workspaceId: "ws_alpha",
+        triggerPayload: {
+          title: "INV-101",
+          balance: 40,
           workspaceId: "ws_alpha",
-          triggerPayload: {
-            title: "INV-101",
-            balance: 40,
-            workspaceId: "ws_alpha",
-          },
         },
       },
-    );
+    });
     expect(runRes.status()).toBe(200);
     const runBody = (await runRes.json()) as {
       ok: boolean;
@@ -94,73 +91,70 @@ test.describe("Story 6.3 — Structured Logs & Errors Correlated to Runs & Nodes
     expect(runBody.runStatus).toBe("failed");
 
     // 5. Ingest structured logs across debug, info, warn, and error (containing CANARY_SECRET)
-    const ingestRes = await page.request.post(
-      "/api/projects/acme-saas/environments/preview/logs",
-      {
-        data: {
-          entries: [
-            {
-              logId: "log_e2e_debug_01",
-              ts: "2026-10-31T12:00:00.001Z",
-              level: "debug",
-              message: "Parsed trigger payload for wf-billing",
-              runId: "run_e2e_charge_fail_01",
-              workflowId: "wf-billing",
-              revision: 3,
-              nodeId: "node-trigger",
-              brickId: "trigger",
-              workspaceId: "ws_alpha",
-              fields: { payloadKeys: ["title", "balance", "workspaceId"] },
+    const ingestRes = await page.request.post("/api/projects/acme-saas/environments/preview/logs", {
+      data: {
+        entries: [
+          {
+            logId: "log_e2e_debug_01",
+            ts: "2026-10-31T12:00:00.001Z",
+            level: "debug",
+            message: "Parsed trigger payload for wf-billing",
+            runId: "run_e2e_charge_fail_01",
+            workflowId: "wf-billing",
+            revision: 3,
+            nodeId: "node-trigger",
+            brickId: "trigger",
+            workspaceId: "ws_alpha",
+            fields: { payloadKeys: ["title", "balance", "workspaceId"] },
+          },
+          {
+            logId: "log_e2e_info_01",
+            ts: "2026-10-31T12:00:00.010Z",
+            level: "info",
+            message: "Checking credit wallet balance before debit",
+            runId: "run_e2e_charge_fail_01",
+            workflowId: "wf-billing",
+            revision: 3,
+            nodeId: "node-charge",
+            brickId: "credit-wallet",
+            workspaceId: "ws_alpha",
+            fields: { requiredCredits: 250, availableCredits: 40 },
+          },
+          {
+            logId: "log_e2e_warn_01",
+            ts: "2026-10-31T12:00:00.020Z",
+            level: "warn",
+            message: "Workspace ws_beta approaching credit quota",
+            runId: null,
+            workflowId: null,
+            revision: 3,
+            nodeId: null,
+            brickId: "credit-wallet",
+            workspaceId: "ws_beta",
+            fields: { remainingCredits: 25 },
+          },
+          {
+            logId: "log_e2e_error_01",
+            ts: "2026-10-31T12:00:00.035Z",
+            level: "error",
+            message: `Wallet debit failed using token ${CANARY_SECRET}: insufficient balance (40 < 250)`,
+            runId: "run_e2e_charge_fail_01",
+            workflowId: "wf-billing",
+            revision: 3,
+            nodeId: "node-charge",
+            brickId: "credit-wallet",
+            workspaceId: "ws_alpha",
+            fields: {
+              gatewaySecret: CANARY_SECRET,
+              authorization: "Bearer eyJ_e2e_secret_bearer_token",
+              amount: 250,
+              balance: 40,
             },
-            {
-              logId: "log_e2e_info_01",
-              ts: "2026-10-31T12:00:00.010Z",
-              level: "info",
-              message: "Checking credit wallet balance before debit",
-              runId: "run_e2e_charge_fail_01",
-              workflowId: "wf-billing",
-              revision: 3,
-              nodeId: "node-charge",
-              brickId: "credit-wallet",
-              workspaceId: "ws_alpha",
-              fields: { requiredCredits: 250, availableCredits: 40 },
-            },
-            {
-              logId: "log_e2e_warn_01",
-              ts: "2026-10-31T12:00:00.020Z",
-              level: "warn",
-              message: "Workspace ws_beta approaching credit quota",
-              runId: null,
-              workflowId: null,
-              revision: 3,
-              nodeId: null,
-              brickId: "credit-wallet",
-              workspaceId: "ws_beta",
-              fields: { remainingCredits: 25 },
-            },
-            {
-              logId: "log_e2e_error_01",
-              ts: "2026-10-31T12:00:00.035Z",
-              level: "error",
-              message: `Wallet debit failed using token ${CANARY_SECRET}: insufficient balance (40 < 250)`,
-              runId: "run_e2e_charge_fail_01",
-              workflowId: "wf-billing",
-              revision: 3,
-              nodeId: "node-charge",
-              brickId: "credit-wallet",
-              workspaceId: "ws_alpha",
-              fields: {
-                gatewaySecret: CANARY_SECRET,
-                authorization: "Bearer eyJ_e2e_secret_bearer_token",
-                amount: 250,
-                balance: 40,
-              },
-              errorStack: `Error: insufficient balance (${CANARY_SECRET})\n    at executeWalletDebit (credit-wallet.ts:42:9)`,
-            },
-          ],
-        },
+            errorStack: `Error: insufficient balance (${CANARY_SECRET})\n    at executeWalletDebit (credit-wallet.ts:42:9)`,
+          },
+        ],
       },
-    );
+    });
     expect(ingestRes.status()).toBe(201);
 
     // 6. Navigate to Workflows -> Open "Logs & Errors" panel
@@ -177,21 +171,11 @@ test.describe("Story 6.3 — Structured Logs & Errors Correlated to Runs & Nodes
     await expect(page.getByTestId("log-row-log_e2e_error_01")).toBeVisible();
 
     const badgeStyles = await page.evaluate(() => {
-      const panel = document.querySelector(
-        '[data-testid="structured-logs-panel"]',
-      );
-      const errBadge = document.querySelector(
-        '[data-testid="log-level-badge-log_e2e_error_01"]',
-      );
-      const warnBadge = document.querySelector(
-        '[data-testid="log-level-badge-log_e2e_warn_01"]',
-      );
-      const infoBadge = document.querySelector(
-        '[data-testid="log-level-badge-log_e2e_info_01"]',
-      );
-      const debugBadge = document.querySelector(
-        '[data-testid="log-level-badge-log_e2e_debug_01"]',
-      );
+      const panel = document.querySelector('[data-testid="structured-logs-panel"]');
+      const errBadge = document.querySelector('[data-testid="log-level-badge-log_e2e_error_01"]');
+      const warnBadge = document.querySelector('[data-testid="log-level-badge-log_e2e_warn_01"]');
+      const infoBadge = document.querySelector('[data-testid="log-level-badge-log_e2e_info_01"]');
+      const debugBadge = document.querySelector('[data-testid="log-level-badge-log_e2e_debug_01"]');
       if (!panel || !errBadge || !warnBadge || !infoBadge || !debugBadge) {
         return null;
       }
@@ -206,14 +190,7 @@ test.describe("Story 6.3 — Structured Logs & Errors Correlated to Runs & Nodes
     });
     expect(badgeStyles).not.toBeNull();
     expect(badgeStyles!.panelWidth).toBeGreaterThan(400);
-    expect(
-      new Set([
-        badgeStyles!.errColor,
-        badgeStyles!.warnColor,
-        badgeStyles!.infoColor,
-        badgeStyles!.debugColor,
-      ]).size,
-    ).toBe(4);
+    expect(new Set([badgeStyles!.errColor, badgeStyles!.warnColor, badgeStyles!.infoColor, badgeStyles!.debugColor]).size).toBe(4);
     expect(badgeStyles!.errBg).not.toBe("rgba(0, 0, 0, 0)");
 
     // 8. Verify secret redaction in row message and expanded JSON details / stack trace
@@ -222,18 +199,10 @@ test.describe("Story 6.3 — Structured Logs & Errors Correlated to Runs & Nodes
     await expect(errorRow).not.toContainText(CANARY_SECRET);
 
     await page.getByTestId("log-expand-button-log_e2e_error_01").click();
-    await expect(
-      page.getByTestId("log-fields-json-log_e2e_error_01"),
-    ).toContainText("[REDACTED]");
-    await expect(
-      page.getByTestId("log-fields-json-log_e2e_error_01"),
-    ).not.toContainText(CANARY_SECRET);
-    await expect(
-      page.getByTestId("log-error-stack-log_e2e_error_01"),
-    ).toContainText("[REDACTED]");
-    await expect(
-      page.getByTestId("log-error-stack-log_e2e_error_01"),
-    ).not.toContainText(CANARY_SECRET);
+    await expect(page.getByTestId("log-fields-json-log_e2e_error_01")).toContainText("[REDACTED]");
+    await expect(page.getByTestId("log-fields-json-log_e2e_error_01")).not.toContainText(CANARY_SECRET);
+    await expect(page.getByTestId("log-error-stack-log_e2e_error_01")).toContainText("[REDACTED]");
+    await expect(page.getByTestId("log-error-stack-log_e2e_error_01")).not.toContainText(CANARY_SECRET);
 
     // 9. Apply facet filters (level=error, workspaceId=ws_alpha, brickId=credit-wallet)
     await page.getByTestId("logs-level-pill-error").click();
@@ -248,12 +217,8 @@ test.describe("Story 6.3 — Structured Logs & Errors Correlated to Runs & Nodes
     await page.reload();
     await expect(page.getByTestId("studio-shell")).toBeVisible();
     await expect(page.getByTestId("structured-logs-panel")).toBeVisible();
-    await expect(page.getByTestId("logs-filter-workspace")).toHaveValue(
-      "ws_alpha",
-    );
-    await expect(page.getByTestId("logs-filter-brick")).toHaveValue(
-      "credit-wallet",
-    );
+    await expect(page.getByTestId("logs-filter-workspace")).toHaveValue("ws_alpha");
+    await expect(page.getByTestId("logs-filter-brick")).toHaveValue("credit-wallet");
     await expect(page.getByTestId("log-row-log_e2e_error_01")).toBeVisible();
     await expect(page.getByTestId("log-row-log_e2e_warn_01")).toHaveCount(0);
 
@@ -262,9 +227,7 @@ test.describe("Story 6.3 — Structured Logs & Errors Correlated to Runs & Nodes
 
     // Verify CP4 Run Replay banner is active for run_e2e_charge_fail_01 and Inspector is open for node-charge
     await expect(page.getByTestId("run-replay-banner")).toBeVisible();
-    await expect(page.getByTestId("run-replay-banner")).toContainText(
-      "run_e2e_charge_f",
-    );
+    await expect(page.getByTestId("run-replay-banner")).toContainText("run_e2e_charge_f");
     await expect(page.getByTestId("canvas-node-node-charge")).toBeVisible();
     await expect(page.getByTestId("right-dock")).toContainText("node-charge");
   });

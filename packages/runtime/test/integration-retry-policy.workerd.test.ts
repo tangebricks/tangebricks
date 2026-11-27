@@ -67,7 +67,8 @@ describe("UC1.4 / F-SEC-3: Integration Retry Policy", () => {
     },
   };
 
-  const createContext = (overrides?: Partial<ExecutionContext>): ExecutionContext => ({ workspaceId: "ws_test",
+  const createContext = (overrides?: Partial<ExecutionContext>): ExecutionContext => ({
+    workspaceId: "ws_test",
     nodeId: "test_retry_node",
     runId: "run_retry_test",
     idempotencyKey: "run_retry_test:test_retry_node",
@@ -94,11 +95,7 @@ describe("UC1.4 / F-SEC-3: Integration Retry Policy", () => {
       });
     });
     const sleepSpy = vi.fn();
-    const executor = createIntegrationOperationExecutor(
-      manifest,
-      manifest.operations[0]!,
-      { fetcher, sleep: sleepSpy },
-    );
+    const executor = createIntegrationOperationExecutor(manifest, manifest.operations[0]!, { fetcher, sleep: sleepSpy });
     let thrownError: any;
     try {
       await executor(createContext({ inputs: { amount: 100 } }));
@@ -130,11 +127,7 @@ describe("UC1.4 / F-SEC-3: Integration Retry Policy", () => {
       });
     });
     const sleepSpy = vi.fn().mockResolvedValue(undefined);
-    const executor = createIntegrationOperationExecutor(
-      manifest,
-      manifest.operations[1]!,
-      { fetcher, sleep: sleepSpy },
-    );
+    const executor = createIntegrationOperationExecutor(manifest, manifest.operations[1]!, { fetcher, sleep: sleepSpy });
     const result = await executor(createContext({ inputs: { chargeId: "ch_123" } }));
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(sleepSpy).toHaveBeenCalledTimes(1);
@@ -160,11 +153,7 @@ describe("UC1.4 / F-SEC-3: Integration Retry Policy", () => {
       });
     });
     const sleepSpy = vi.fn().mockResolvedValue(undefined);
-    const executor = createIntegrationOperationExecutor(
-      manifest,
-      manifest.operations[1]!,
-      { fetcher, sleep: sleepSpy, now: () => fixedNow },
-    );
+    const executor = createIntegrationOperationExecutor(manifest, manifest.operations[1]!, { fetcher, sleep: sleepSpy, now: () => fixedNow });
     await executor(createContext({ inputs: { chargeId: "ch_123" } }));
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(sleepSpy).toHaveBeenCalledTimes(1);
@@ -196,11 +185,7 @@ describe("UC1.4 / F-SEC-3: Integration Retry Policy", () => {
       });
     });
     const sleepSpy = vi.fn().mockResolvedValue(undefined);
-    const executor = createIntegrationOperationExecutor(
-      manifest,
-      manifest.operations[1]!,
-      { fetcher, sleep: sleepSpy, now: () => fixedNowMs },
-    );
+    const executor = createIntegrationOperationExecutor(manifest, manifest.operations[1]!, { fetcher, sleep: sleepSpy, now: () => fixedNowMs });
     await executor(createContext({ inputs: { chargeId: "ch_123" } }));
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(sleepSpy).toHaveBeenCalledTimes(1);
@@ -219,11 +204,7 @@ describe("UC1.4 / F-SEC-3: Integration Retry Policy", () => {
       });
     });
     const sleepSpy = vi.fn().mockResolvedValue(undefined);
-    const executor = createIntegrationOperationExecutor(
-      manifest,
-      manifest.operations[1]!,
-      { fetcher, sleep: sleepSpy, maxSleepMs: 30000 },
-    );
+    const executor = createIntegrationOperationExecutor(manifest, manifest.operations[1]!, { fetcher, sleep: sleepSpy, maxSleepMs: 30000 });
     let thrownError: any;
     try {
       await executor(createContext({ inputs: { chargeId: "ch_123" } }));
@@ -256,11 +237,7 @@ describe("UC1.4 / F-SEC-3: Integration Retry Policy", () => {
       });
     });
     const sleepSpy = vi.fn().mockResolvedValue(undefined);
-    const executor = createIntegrationOperationExecutor(
-      manifest,
-      manifest.operations[2]!,
-      { fetcher, sleep: sleepSpy },
-    );
+    const executor = createIntegrationOperationExecutor(manifest, manifest.operations[2]!, { fetcher, sleep: sleepSpy });
     const result = await executor(createContext({ inputs: { amount: 500 } }));
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(capturedHeaders).toHaveLength(2);
@@ -289,11 +266,7 @@ describe("UC1.4 / F-SEC-3: Integration Retry Policy", () => {
       });
     });
     const sleepSpy = vi.fn().mockResolvedValue(undefined);
-    const executor = createIntegrationOperationExecutor(
-      manifest,
-      manifest.operations[1]!,
-      { fetcher, sleep: sleepSpy },
-    );
+    const executor = createIntegrationOperationExecutor(manifest, manifest.operations[1]!, { fetcher, sleep: sleepSpy });
     await executor(createContext({ inputs: { chargeId: "ch_123" } }));
     expect(sleepSpy).toHaveBeenCalledWith(5000);
   });

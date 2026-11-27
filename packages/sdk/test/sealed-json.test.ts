@@ -51,7 +51,12 @@ describe("compatibility with integration-connections' sealing before story 2.4",
     });
     expect(opened).toEqual({ provider: "slack", accessToken: "xoxb-legacy-fixed-vector" });
     await expect(
-      unsealJson(LEGACY_ENVELOPE, { keyMaterial: "legacy-fixed-vector-key-0123456789", keyName: "PX_CONN_KEY", domain: "projectx-studio-vault-v1", associatedData: "ws_other" }),
+      unsealJson(LEGACY_ENVELOPE, {
+        keyMaterial: "legacy-fixed-vector-key-0123456789",
+        keyName: "PX_CONN_KEY",
+        domain: "projectx-studio-vault-v1",
+        associatedData: "ws_other",
+      }),
     ).rejects.toMatchObject({ code: "INTEGRITY" });
   });
 });

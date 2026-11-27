@@ -66,21 +66,18 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
     expect(opsRes.ok()).toBe(true);
 
     // 2. Execute run 1 with a = 500 -> step_trigger succeeds, step_divide fails with division by zero
-    const failRunRes = await request.post(
-      `/api/projects/${project}/workflows/wf_pin_e2e/runs`,
-      {
-        headers: authHeaders,
-        data: {
-          runId: "run_e2e_failed_1",
-          triggerType: "manual",
-          triggerPayload: {
-            orderId: "ord_e2e_99",
-            a: 500,
-            workspaceId: "ws_e2e",
-          },
+    const failRunRes = await request.post(`/api/projects/${project}/workflows/wf_pin_e2e/runs`, {
+      headers: authHeaders,
+      data: {
+        runId: "run_e2e_failed_1",
+        triggerType: "manual",
+        triggerPayload: {
+          orderId: "ord_e2e_99",
+          a: 500,
+          workspaceId: "ws_e2e",
         },
       },
-    );
+    });
     expect(failRunRes.ok()).toBe(true);
     const failRunBody = (await failRunRes.json()) as { runStatus: string; failed: Record<string, string> };
     expect(failRunBody.runStatus).toBe("failed");
@@ -147,9 +144,7 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
     await page.getByTestId("rerun-from-node-button").click();
 
     // 6. Verify `Resolved by retry` badge + computed styles on `run_e2e_failed_1` in Run History drawer
-    const resolvedBadge = page.getByTestId(
-      "run-resolved-by-retry-badge-run_e2e_failed_1",
-    );
+    const resolvedBadge = page.getByTestId("run-resolved-by-retry-badge-run_e2e_failed_1");
     await expect(resolvedBadge).toBeVisible();
     const resolvedBadgeStyles = await resolvedBadge.evaluate((el) => {
       const cs = window.getComputedStyle(el);
@@ -168,12 +163,8 @@ test.describe("Pin Step Output & Re-Run From Node (Real Workerd Backend)", () =>
     await expect(page.getByTestId("studio-shell")).toBeVisible();
     await page.getByTestId("project-selector").selectOption(project);
     await page.getByTestId("nav-tab-workflows").click();
-    await expect(
-      page.getByTestId("node-pinned-badge-step_trigger"),
-    ).toBeVisible();
+    await expect(page.getByTestId("node-pinned-badge-step_trigger")).toBeVisible();
     await page.getByTestId("toggle-run-history-drawer").click();
-    await expect(
-      page.getByTestId("run-resolved-by-retry-badge-run_e2e_failed_1"),
-    ).toBeVisible();
+    await expect(page.getByTestId("run-resolved-by-retry-badge-run_e2e_failed_1")).toBeVisible();
   });
 });

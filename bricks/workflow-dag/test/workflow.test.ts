@@ -14,10 +14,7 @@ import { WORKFLOW_SHELL_BLUEPRINT } from "../../../test/support/blueprints.ts";
 const db = env.DB as D1Like;
 // workflow-dag is quarantined (story 0.11) and so not in max-compatible; test/support/global-setup.ts assembles this
 // small shell for it instead (WORKFLOW_SHELL_BLUEPRINT).
-const shellWorker = emittedEntry<EmittedApp>(
-  import.meta.glob("../../../out/wf-shell/src/index.ts", { eager: true }),
-  "wf-shell",
-);
+const shellWorker = emittedEntry<EmittedApp>(import.meta.glob("../../../out/wf-shell/src/index.ts", { eager: true }), "wf-shell");
 const WS_A = "ws_wf_alpha";
 const WS_B = "ws_wf_beta";
 
@@ -150,7 +147,7 @@ describe("Workflow Route Handlers (/api/workflows/*, /api/runs/*)", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "API Pipeline", graph: validGraph }),
       }),
-      { DB: db }
+      { DB: db },
     );
 
     expect(res.status).toBe(201);
@@ -165,7 +162,7 @@ describe("Workflow Route Handlers (/api/workflows/*, /api/runs/*)", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user: { name: "Bob Builder" } }),
       }),
-      { DB: db }
+      { DB: db },
     );
 
     expect(runRes.status).toBe(200);
@@ -174,10 +171,7 @@ describe("Workflow Route Handlers (/api/workflows/*, /api/runs/*)", () => {
     expect(runJson.run.output.p.out).toBe("Bob Builder");
 
     // Fetch run logs via GET /api/runs/:id
-    const logsRes = await app.fetch(
-      new Request(`http://localhost/api/runs/${runJson.run.id}`),
-      { DB: db }
-    );
+    const logsRes = await app.fetch(new Request(`http://localhost/api/runs/${runJson.run.id}`), { DB: db });
     expect(logsRes.status).toBe(200);
     const logsJson = (await logsRes.json()) as { run: { id: string }; steps: unknown[] };
     expect(logsJson.run.id).toBe(runJson.run.id);
@@ -191,7 +185,16 @@ describe("Assembled Shell 2-node GraphWorkflow Execution in workerd (AC 5)", () 
     expect(assembled.ok).toBe(true);
     if (!assembled.ok) return;
 
-    for (const table of ["wf_step_logs", "wf_runs", "wf_definitions", "profile_users", "auth_sessions", "auth_users", "mw_workspace_members", "mw_workspaces"]) {
+    for (const table of [
+      "wf_step_logs",
+      "wf_runs",
+      "wf_definitions",
+      "profile_users",
+      "auth_sessions",
+      "auth_users",
+      "mw_workspace_members",
+      "mw_workspaces",
+    ]) {
       await db.prepare(`DROP TABLE IF EXISTS ${table}`).run();
     }
     const migrations = Object.entries(assembled.files)

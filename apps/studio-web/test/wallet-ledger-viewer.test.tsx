@@ -41,7 +41,10 @@ function createTestD1(sqlite: DatabaseSync): D1Like {
         return execute({ sql, params });
       },
       async all<Row>() {
-        const rows = sqlite.prepare(sql).all(...params).map((r) => ({ ...r }) as Row);
+        const rows = sqlite
+          .prepare(sql)
+          .all(...params)
+          .map((r) => ({ ...r }) as Row);
         return { results: rows, success: true, meta: { changes: 0 } };
       },
     };
@@ -97,12 +100,8 @@ describe("Story 6.2 — Studio Web Read-Only Credit Wallet & Usage Ledger Viewer
       );
     `);
 
-    sqlite
-      .prepare("INSERT INTO credit_wallets (workspace_id, balance, created_at) VALUES (?, ?, ?)")
-      .run("workspace_A", 650, "2026-04-19T10:00:00Z");
-    sqlite
-      .prepare("INSERT INTO credit_wallets (workspace_id, balance, created_at) VALUES (?, ?, ?)")
-      .run("workspace_B", 3000, "2026-04-19T11:00:00Z");
+    sqlite.prepare("INSERT INTO credit_wallets (workspace_id, balance, created_at) VALUES (?, ?, ?)").run("workspace_A", 650, "2026-04-19T10:00:00Z");
+    sqlite.prepare("INSERT INTO credit_wallets (workspace_id, balance, created_at) VALUES (?, ?, ?)").run("workspace_B", 3000, "2026-04-19T11:00:00Z");
 
     sqlite
       .prepare(
@@ -156,9 +155,7 @@ describe("Story 6.2 — Studio Web Read-Only Credit Wallet & Usage Ledger Viewer
       );
 
     sqlite
-      .prepare(
-        "INSERT INTO usage_rollups (id, workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?, ?, ?, ?, ?, ?)",
-      )
+      .prepare("INSERT INTO usage_rollups (id, workspace_id, metric_key, period_start, period_end, total_quantity) VALUES (?, ?, ?, ?, ?, ?)")
       .run("ur_a_1", "workspace_A", "workflow_executions", "2026-04-01", "2026-04-30", 18);
 
     useStudioStore.getState().resetStore({
@@ -264,10 +261,7 @@ describe("Story 6.2 — Studio Web Read-Only Credit Wallet & Usage Ledger Viewer
           );
         }
 
-        const envMatch =
-          /^\/api\/projects\/[^/]+\/environments\/(preview|production)\/(?:data\/)?(workspaces|tables|ledger.*)$/.exec(
-            url.pathname,
-          );
+        const envMatch = /^\/api\/projects\/[^/]+\/environments\/(preview|production)\/(?:data\/)?(workspaces|tables|ledger.*)$/.exec(url.pathname);
         if (envMatch) {
           const envName = envMatch[1] as "preview" | "production";
           const restPath = envMatch[2]!;
@@ -309,18 +303,10 @@ describe("Story 6.2 — Studio Web Read-Only Credit Wallet & Usage Ledger Viewer
       expect(screen.getByTestId("ledger-entry-row-led_a_2")).toBeTruthy();
     });
 
-    expect(screen.getByTestId("ledger-immutable-badge").textContent).toContain(
-      "Immutable Ledger (Read-only)",
-    );
-    expect(screen.getByTestId("ledger-current-balance-value").textContent).toContain(
-      "650",
-    );
-    expect(screen.getByTestId("ledger-net-change-30d-value").textContent).toContain(
-      "+650",
-    );
-    expect(
-      screen.getByTestId("ledger-usage-metric-workflow_executions").textContent,
-    ).toContain("18");
+    expect(screen.getByTestId("ledger-immutable-badge").textContent).toContain("Immutable Ledger (Read-only)");
+    expect(screen.getByTestId("ledger-current-balance-value").textContent).toContain("650");
+    expect(screen.getByTestId("ledger-net-change-30d-value").textContent).toContain("+650");
+    expect(screen.getByTestId("ledger-usage-metric-workflow_executions").textContent).toContain("18");
 
     // Verify positive delta (+1000) and negative delta (-350) formatting and workspace_B isolation
     expect(screen.getByTestId("ledger-entry-delta-led_a_1").textContent).toBe("+1000");
@@ -328,18 +314,14 @@ describe("Story 6.2 — Studio Web Read-Only Credit Wallet & Usage Ledger Viewer
     expect(screen.queryByTestId("ledger-entry-row-led_b_1")).toBeNull();
 
     // Switch workspace selector to workspace_B -> shows 3000 balance and led_b_1
-    const wsSelect = screen.getByTestId(
-      "ledger-workspace-select",
-    ) as HTMLSelectElement;
+    const wsSelect = screen.getByTestId("ledger-workspace-select") as HTMLSelectElement;
     fireEvent.change(wsSelect, { target: { value: "workspace_B" } });
 
     await waitFor(() => {
       expect(screen.getByTestId("ledger-entry-row-led_b_1")).toBeTruthy();
     });
     expect(screen.queryByTestId("ledger-entry-row-led_a_1")).toBeNull();
-    expect(screen.getByTestId("ledger-current-balance-value").textContent).toContain(
-      "3000",
-    );
+    expect(screen.getByTestId("ledger-current-balance-value").textContent).toContain("3000");
 
     // Switch back to workspace_A and click Run / Node correlation link on led_a_2
     fireEvent.change(wsSelect, { target: { value: "workspace_A" } });

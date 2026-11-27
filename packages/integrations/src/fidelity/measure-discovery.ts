@@ -16,9 +16,7 @@ export function measureDiscoveryOps(ctx: MeasureContext): ExtractedOps {
         for (const mv of Object.values<any>(r.methods ?? {})) {
           specOps++;
           const key = mv.id;
-          const id = sanitizeIdentifier(mv.id)
-            .replace(/_+/g, "_")
-            .replace(/^_|_$/g, "");
+          const id = sanitizeIdentifier(mv.id).replace(/_+/g, "_").replace(/^_|_$/g, "");
 
           if (seenIds.has(id)) {
             flag("op_id_collision_overwrites", key, { sanitizedId: id });
@@ -33,9 +31,7 @@ export function measureDiscoveryOps(ctx: MeasureContext): ExtractedOps {
           const rp = mv.flatPath ?? mv.path;
           const ph = [...String(rp).matchAll(/\{\+?([^}]+)\}/g)].map((x) => x[1] ?? "");
           const declared = Object.entries<any>(mv.parameters ?? {});
-          const pathDecl = declared
-            .filter(([, v]) => v.location === "path")
-            .map(([k]) => k);
+          const pathDecl = declared.filter(([, v]) => v.location === "path").map(([k]) => k);
 
           if (ph.some((x) => !pathDecl.includes(x)) || pathDecl.some((x) => !ph.includes(x))) {
             flag("path_placeholder_vs_declared_param_mismatch(flatPath)", key, {
@@ -68,9 +64,7 @@ export function measureDiscoveryOps(ctx: MeasureContext): ExtractedOps {
           if (mv.request && hm !== "GET") {
             const importedOp = extracted.get(id) ?? extracted.get(key);
             const importedFields = importedOp?.body?.fields;
-            const actualImportedCount = Array.isArray(importedFields)
-              ? importedFields.length
-              : undefined;
+            const actualImportedCount = Array.isArray(importedFields) ? importedFields.length : undefined;
             const fieldMap = new Map((importedFields ?? []).map((f: any) => [f.name, f]));
 
             const rs = mv.request.$ref ? doc.schemas?.[mv.request.$ref] : mv.request;
@@ -80,10 +74,7 @@ export function measureDiscoveryOps(ctx: MeasureContext): ExtractedOps {
                 flag("body_no_properties_dropped(free-form)", key);
               }
             }
-            const isCapped =
-              actualImportedCount !== undefined
-                ? props.length > actualImportedCount
-                : props.length > 5;
+            const isCapped = actualImportedCount !== undefined ? props.length > actualImportedCount : props.length > 5;
             if (isCapped) {
               flag("body_fields_dropped_by_5_cap", key, {
                 total: props.length,
@@ -105,15 +96,10 @@ export function measureDiscoveryOps(ctx: MeasureContext): ExtractedOps {
               }
               const it = s.items;
               const target = s.$ref ? doc.schemas?.[s.$ref] : s;
-              const hasNestedInSpec =
-                Boolean(target?.properties) ||
-                (s.type === "array" &&
-                  (it?.$ref || it?.type === "object" || Boolean(it?.properties)));
+              const hasNestedInSpec = Boolean(target?.properties) || (s.type === "array" && (it?.$ref || it?.type === "object" || Boolean(it?.properties)));
 
               if (hasNestedInSpec) {
-                const preserved =
-                  Boolean(importedField?.schema?.properties) ||
-                  Boolean(importedField?.schema?.items);
+                const preserved = Boolean(importedField?.schema?.properties) || Boolean(importedField?.schema?.items);
                 if (!preserved) {
                   flag("body_nested_structure_flattened", key, {
                     field: n,
@@ -123,9 +109,7 @@ export function measureDiscoveryOps(ctx: MeasureContext): ExtractedOps {
                 }
               }
               if (s.enum || s.default !== undefined) {
-                const preservedEnumOrDefault =
-                  importedField?.schema?.enum !== undefined ||
-                  importedField?.schema?.default !== undefined;
+                const preservedEnumOrDefault = importedField?.schema?.enum !== undefined || importedField?.schema?.default !== undefined;
                 if (!preservedEnumOrDefault) {
                   flag("enum_or_default_lost", key, { field: n });
                 }

@@ -62,20 +62,10 @@ interface RawDeliveryRow {
 /**
  * Computes standard HMAC-SHA256 signature for outgoing webhook payload.
  */
-export async function signWebhookPayload(
-  secret: string,
-  timestamp: number,
-  payloadString: string
-): Promise<string> {
+export async function signWebhookPayload(secret: string, timestamp: number, payloadString: string): Promise<string> {
   const encoder = new TextEncoder();
   const signatureData = encoder.encode(`${timestamp}.${payloadString}`);
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const signatureBuffer = await crypto.subtle.sign("HMAC", key, signatureData);
   const hashArray = Array.from(new Uint8Array(signatureBuffer));
   const hex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -92,11 +82,7 @@ export class OutboundWebhookService {
   private readonly guardedFetch: PublicUrlFetcher;
   private readonly db: D1Like;
 
-  constructor(
-    db: D1Like,
-    customFetch: Fetcher = (url, init) => fetch(url, init),
-    options: OutboundWebhookServiceOptions = {}
-  ) {
+  constructor(db: D1Like, customFetch: Fetcher = (url, init) => fetch(url, init), options: OutboundWebhookServiceOptions = {}) {
     this.db = db;
     this.guardedFetch = createPublicUrlFetch(customFetch, options.resolveHost !== undefined ? { resolveHost: options.resolveHost } : {});
   }
@@ -151,7 +137,9 @@ export class OutboundWebhookService {
     const id = `whep_${crypto.randomUUID().replace(/-/g, "")}`;
     const secretBytes = new Uint8Array(24);
     crypto.getRandomValues(secretBytes);
-    const secretHex = Array.from(secretBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+    const secretHex = Array.from(secretBytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
     const secret = `whsec_${secretHex}`;
 
     const events = input.events && input.events.length > 0 ? input.events : ["*"];
@@ -184,11 +172,7 @@ export class OutboundWebhookService {
    */
   async getEndpoint(endpointId: string, workspaceId?: string): Promise<WebhookEndpoint | null> {
     if (!workspaceId) return null;
-    const row = await scoped(this.db, workspaceId).first<RawEndpointRow>(
-      "owh_endpoints",
-      "id = ?",
-      [endpointId]
-    );
+    const row = await scoped(this.db, workspaceId).first<RawEndpointRow>("owh_endpoints", "id = ?", [endpointId]);
     if (!row) return null;
     return this.parseEndpoint(row);
   }
@@ -197,12 +181,7 @@ export class OutboundWebhookService {
    * Lists endpoints for a workspace.
    */
   async listEndpoints(workspaceId: string): Promise<WebhookEndpoint[]> {
-    const rows = await scoped(this.db, workspaceId).select<RawEndpointRow>(
-      "owh_endpoints",
-      undefined,
-      [],
-      { orderBy: "created_at DESC" }
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawEndpointRow>("owh_endpoints", undefined, [], { orderBy: "created_at DESC" });
 
     return rows.map((r) => this.parseEndpoint(r));
   }
@@ -211,11 +190,7 @@ export class OutboundWebhookService {
    * Deletes a webhook subscription endpoint.
    */
   async deleteEndpoint(endpointId: string, workspaceId: string): Promise<boolean> {
-    const res = await scoped(this.db, workspaceId).delete(
-      "owh_endpoints",
-      "id = ?",
-      [endpointId]
-    );
+    const res = await scoped(this.db, workspaceId).delete("owh_endpoints", "id = ?", [endpointId]);
 
     return res.meta.changes > 0;
   }
@@ -223,15 +198,9 @@ export class OutboundWebhookService {
   /**
    * Dispatches an event to all matching subscribed endpoints in the workspace.
    */
-  async dispatchEvent(
-    workspaceId: string,
-    eventType: string,
-    payload: Record<string, unknown>
-  ): Promise<WebhookDelivery[]> {
+  async dispatchEvent(workspaceId: string, eventType: string, payload: Record<string, unknown>): Promise<WebhookDelivery[]> {
     const endpoints = await this.listEndpoints(workspaceId);
-    const activeMatching = endpoints.filter(
-      (ep) => ep.is_active && (ep.events.includes("*") || ep.events.includes(eventType))
-    );
+    const activeMatching = endpoints.filter((ep) => ep.is_active && (ep.events.includes("*") || ep.events.includes(eventType)));
 
     const deliveries: WebhookDelivery[] = [];
     const payloadStr = JSON.stringify(payload);
@@ -252,7 +221,7 @@ export class OutboundWebhookService {
     eventType: string,
     payload: Record<string, unknown>,
     payloadStr: string,
-    attemptNumber = 1
+    attemptNumber = 1,
   ): Promise<WebhookDelivery> {
     const deliveryId = `wdel_${crypto.randomUUID().replace(/-/g, "")}`;
     const timestamp = Math.floor(Date.now() / 1000);
@@ -325,11 +294,7 @@ export class OutboundWebhookService {
    * Replays an existing delivery attempt.
    */
   async replayDelivery(deliveryId: string, workspaceId: string): Promise<WebhookDelivery | null> {
-    const row = await scoped(this.db, workspaceId).first<RawDeliveryRow>(
-      "owh_deliveries",
-      "id = ?",
-      [deliveryId]
-    );
+    const row = await scoped(this.db, workspaceId).first<RawDeliveryRow>("owh_deliveries", "id = ?", [deliveryId]);
 
     if (!row) return null;
 
@@ -350,7 +315,7 @@ export class OutboundWebhookService {
       "owh_deliveries",
       endpointId ? "endpoint_id = ?" : undefined,
       endpointId ? [endpointId] : [],
-      { orderBy: "created_at DESC", limit: 50 }
+      { orderBy: "created_at DESC", limit: 50 },
     );
     return rows.map((r) => this.parseDelivery(r));
   }

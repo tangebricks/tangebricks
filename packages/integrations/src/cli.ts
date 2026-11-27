@@ -18,10 +18,7 @@ export interface CliImportArgs {
 export function createUnifiedDiff(filename: string, oldStr: string, newStr: string): string {
   const oldLines = oldStr.split("\n");
   const newLines = newStr.split("\n");
-  const lines: string[] = [
-    `--- ${filename} (committed)`,
-    `+++ ${filename} (regenerated)`,
-  ];
+  const lines: string[] = [`--- ${filename} (committed)`, `+++ ${filename} (regenerated)`];
   const max = Math.max(oldLines.length, newLines.length);
   let diffFound = false;
   for (let i = 0; i < max; i++) {
@@ -94,24 +91,16 @@ export function runOpenApiImportFile(options: {
 
   if (
     mode === "lenient" &&
-    (resolvedOut === integrationsDir ||
-      resolvedOut.startsWith(integrationsDir + sep) ||
-      resolvedOut.startsWith(integrationsDir + "/"))
+    (resolvedOut === integrationsDir || resolvedOut.startsWith(integrationsDir + sep) || resolvedOut.startsWith(integrationsDir + "/"))
   ) {
-    throw new Error(
-      `OPENAPI_IMPORT_LENIENT_OUTPUT_FORBIDDEN: Lenient mode output is forbidden inside ${integrationsDir} (received: ${options.outPath})`,
-    );
+    throw new Error(`OPENAPI_IMPORT_LENIENT_OUTPUT_FORBIDDEN: Lenient mode output is forbidden inside ${integrationsDir} (received: ${options.outPath})`);
   }
 
   const specText = readFileSync(resolve(options.specPath), "utf8");
-  const rawCuration = JSON.parse(
-    readFileSync(resolve(options.curationPath), "utf8"),
-  );
+  const rawCuration = JSON.parse(readFileSync(resolve(options.curationPath), "utf8"));
   const curation = parseCurationConfig(rawCuration);
 
-  const format: ImportSpecFormat | undefined =
-    options.format ??
-    curation.format;
+  const format: ImportSpecFormat | undefined = options.format ?? curation.format;
 
   const result = importIntegrationSpec({
     spec: specText,
@@ -169,14 +158,8 @@ export function runOpenApiImportAll(
     const openApiJsonPath = join(appDir, "openapi.json");
     const openApiYamlPath = join(appDir, "openapi.yaml");
 
-    const specPath = existsSync(discoveryPath)
-      ? discoveryPath
-      : existsSync(openApiJsonPath)
-        ? openApiJsonPath
-        : openApiYamlPath;
-    const format: ImportSpecFormat | undefined = existsSync(discoveryPath)
-      ? "google-discovery"
-      : undefined;
+    const specPath = existsSync(discoveryPath) ? discoveryPath : existsSync(openApiJsonPath) ? openApiJsonPath : openApiYamlPath;
+    const format: ImportSpecFormat | undefined = existsSync(discoveryPath) ? "google-discovery" : undefined;
     const outPath = join(appDir, "integration.json");
 
     const res = runOpenApiImportFile({
@@ -240,14 +223,10 @@ export function runOpenApiImportCli(argv = process.argv.slice(2)): ImportIntegra
     return allResults;
   }
 
-  throw new Error(
-    "Usage: pnpm openapi:import --spec <path> --format <openapi3|google-discovery> --curation <path> --out <path> (or --all [--check])",
-  );
+  throw new Error("Usage: pnpm openapi:import --spec <path> --format <openapi3|google-discovery> --curation <path> --out <path> (or --all [--check])");
 }
 
-const isMain =
-  process.argv[1] !== undefined &&
-  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+const isMain = process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 
 if (isMain) {
   runOpenApiImportCli();

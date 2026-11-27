@@ -95,9 +95,7 @@ export async function runRollback(options: RollbackOptions): Promise<PocRollback
   // Read current deploy info
   let currentVersionId: string | null = null;
   try {
-    const [deployRow] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1` },
-    ]);
+    const [deployRow] = await client.queryDatabase(databaseId, [{ sql: `SELECT version_id, last_good_version_id FROM ${DEPLOY_TABLE} WHERE id = 1` }]);
     currentVersionId = (deployRow?.results[0] as { version_id?: string } | undefined)?.version_id ?? null;
   } catch {
     currentVersionId = null;
@@ -107,7 +105,9 @@ export async function runRollback(options: RollbackOptions): Promise<PocRollback
   let history: DeployHistoryRow[] = [];
   try {
     const [res] = await client.queryDatabase(databaseId, [
-      { sql: `SELECT id, started_at, bookmark, from_version_id, to_version_id, last_good_version_id, status FROM ${DEPLOY_HISTORY_TABLE} ORDER BY started_at DESC` },
+      {
+        sql: `SELECT id, started_at, bookmark, from_version_id, to_version_id, last_good_version_id, status FROM ${DEPLOY_HISTORY_TABLE} ORDER BY started_at DESC`,
+      },
     ]);
     history = (res?.results ?? []) as unknown as DeployHistoryRow[];
   } catch {
@@ -131,7 +131,9 @@ export async function runRollback(options: RollbackOptions): Promise<PocRollback
   if (!targetVersionId) {
     log("Deploy history:");
     for (const row of history) {
-      log(`  - deploy: ${row.id} | started: ${row.started_at} | status: ${row.status} | from: ${row.from_version_id ?? "none"} -> to: ${row.to_version_id ?? "none"}`);
+      log(
+        `  - deploy: ${row.id} | started: ${row.started_at} | status: ${row.status} | from: ${row.from_version_id ?? "none"} -> to: ${row.to_version_id ?? "none"}`,
+      );
     }
     throw new Error("no previous version found to roll back to; specify --to <version-id>");
   }
@@ -148,9 +150,7 @@ export async function runRollback(options: RollbackOptions): Promise<PocRollback
       const filterSql = firstDeployAfter
         ? `SELECT name FROM ${MIGRATIONS_TABLE} WHERE applied_at >= ?`
         : `SELECT name FROM ${MIGRATIONS_TABLE} WHERE applied_at > ?`;
-      const [appliedSince] = await client.queryDatabase(databaseId, [
-        { sql: filterSql, params: [referenceDeploy.started_at] },
-      ]);
+      const [appliedSince] = await client.queryDatabase(databaseId, [{ sql: filterSql, params: [referenceDeploy.started_at] }]);
       const migNames = (appliedSince?.results ?? []).map((r) => String(r.name));
       if (migNames.length > 0) {
         const restoreBookmark = firstDeployAfter?.bookmark || targetDeployRow?.bookmark;

@@ -12,13 +12,25 @@ const ACCOUNT = "0123456789abcdef0123456789abcdef";
 const target: DeployTarget = { type: "byoc", accountId: ACCOUNT, tokenRef: "tok_r53_reference", envName: "preview" };
 
 function setup(fakeOptions: Partial<Parameters<typeof createFakeCloudflare>[0]> = {}) {
-  const fake = createFakeCloudflare({ token: TOKEN, accountId: ACCOUNT, tokenGroups: ["Account Settings Read", "Workers Scripts Write", "D1 Write", "Queues Write"], ...fakeOptions });
+  const fake = createFakeCloudflare({
+    token: TOKEN,
+    accountId: ACCOUNT,
+    tokenGroups: ["Account Settings Read", "Workers Scripts Write", "D1 Write", "Queues Write"],
+    ...fakeOptions,
+  });
   const sleep = async () => {};
   const cp = createHttpCloudflareApiClient({ fetch: fake.fetch, sleep, budgetFor: () => createRequestBudget({ sleep }) });
   const provisioner = createByocProvisioner({ apiClient: cp, resolveToken: async () => TOKEN });
   const rest = createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: fake.fetch, sleep });
   const deployOnce = (project: string, code = "code_1") =>
-    provisioner.apply({ target, project, buildHash: "build_1", codeHash: code, graphHash: "graph_1", bundle: { code: `export default {}; // ${code}`, sha256: code } } as never);
+    provisioner.apply({
+      target,
+      project,
+      buildHash: "build_1",
+      codeHash: code,
+      graphHash: "graph_1",
+      bundle: { code: `export default {}; // ${code}`, sha256: code },
+    } as never);
   return { fake, cp, provisioner, rest, deployOnce };
 }
 
@@ -51,9 +63,24 @@ describe("the code-hash annotation, wherever the version list puts it", () => {
     // without trust, and with Studio's own ids only: the newer version is not Studio's, so the code is unknown
     expect((await cp.getScript(ACCOUNT, TOKEN, "px-r53-oob-preview"))?.codeHash).toBeUndefined();
     expect((await cp.getScript(ACCOUNT, TOKEN, "px-r53-oob-preview", { trustedVersionIds: ours }))?.codeHash).toBeUndefined();
-    const drift = await checkEnvironmentDrift(target, { project: "r53-oob", deployedRev: 1, buildHash: "build_1", codeHash: "code_1", graphHash: "graph_1", trustedVersionIds: ours }, { currentRev: 1, buildHash: "build_1", codeHash: "code_1", graphHash: "graph_1" }, cp, { token: TOKEN });
+    const drift = await checkEnvironmentDrift(
+      target,
+      { project: "r53-oob", deployedRev: 1, buildHash: "build_1", codeHash: "code_1", graphHash: "graph_1", trustedVersionIds: ours },
+      { currentRev: 1, buildHash: "build_1", codeHash: "code_1", graphHash: "graph_1" },
+      cp,
+      { token: TOKEN },
+    );
     expect(drift.outOfBandDrift.map((d) => d.resource)).toContain("worker");
-    const again = await provisioner.apply({ target, project: "r53-oob", buildHash: "build_1", codeHash: "code_1", graphHash: "graph_1", bundle: { code: "export default {}; // code_1", sha256: "code_1" }, trustedVersionIds: ours, envState: { deployedRev: 1 } } as never);
+    const again = await provisioner.apply({
+      target,
+      project: "r53-oob",
+      buildHash: "build_1",
+      codeHash: "code_1",
+      graphHash: "graph_1",
+      bundle: { code: "export default {}; // code_1", sha256: "code_1" },
+      trustedVersionIds: ours,
+      envState: { deployedRev: 1 },
+    } as never);
     expect(again.action).not.toBe("noop");
     expect(again.rebuiltWorker).toBe(true);
   });
@@ -79,22 +106,41 @@ describe("the code-hash annotation, wherever the version list puts it", () => {
 describe("lists never stop early silently", () => {
   test("a total_count larger than what was read is refused", async () => {
     const { fake, rest } = setup();
-    fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/workers/scripts"), respond: { status: 200, body: { success: true, errors: [], result: [{ id: "one" }], result_info: { page: 1, per_page: 100, count: 1, total_count: 7 } } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/workers/scripts"),
+      respond: { status: 200, body: { success: true, errors: [], result: [{ id: "one" }], result_info: { page: 1, per_page: 100, count: 1, total_count: 7 } } },
+    });
     await expect(rest.listScripts()).rejects.toThrow(/counts 7 items but only 1 were read/);
   });
 
   test("a cursor-paged answer is refused rather than read in part", async () => {
     const { fake, rest } = setup();
-    fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/queues"), respond: { status: 200, body: { success: true, errors: [], result: [{ queue_id: "q1", queue_name: "q" }], result_info: { cursor: "next-page-token" } } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/queues"),
+      respond: { status: 200, body: { success: true, errors: [], result: [{ queue_id: "q1", queue_name: "q" }], result_info: { cursor: "next-page-token" } } },
+    });
     await expect(rest.listQueues()).rejects.toThrow(/cursor-paged/);
   });
 
   test("a 400 from the queue list counts as 'no Queues' only when Cloudflare says Queues is not enabled", async () => {
     const { fake, rest } = setup();
-    const ledger = openLedger(memoryStore(), () => "a1b2c3d4", () => new Date(), STUDIO_TEST_NAME_POLICY);
-    fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/queues"), times: 1, respond: { status: 400, body: { success: false, errors: [{ code: 10001, message: "bad request: per_page out of range" }] } } });
+    const ledger = openLedger(
+      memoryStore(),
+      () => "a1b2c3d4",
+      () => new Date(),
+      STUDIO_TEST_NAME_POLICY,
+    );
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/queues"),
+      times: 1,
+      respond: { status: 400, body: { success: false, errors: [{ code: 10001, message: "bad request: per_page out of range" }] } },
+    });
     await expect(findUnledgered(rest, ledger, STUDIO_TEST_NAME_POLICY)).rejects.toThrow(/per_page out of range/);
-    fake.fail({ when: (m, p) => m === "GET" && p.endsWith("/queues"), times: 1, respond: { status: 400, body: { success: false, errors: [{ code: 11000, message: "Queues is not enabled for this account" }] } } });
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/queues"),
+      times: 1,
+      respond: { status: 400, body: { success: false, errors: [{ code: 11000, message: "Queues is not enabled for this account" }] } },
+    });
     await expect(findUnledgered(rest, ledger, STUDIO_TEST_NAME_POLICY)).resolves.toEqual([]);
   });
 });

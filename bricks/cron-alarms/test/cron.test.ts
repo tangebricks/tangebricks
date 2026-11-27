@@ -12,10 +12,7 @@ import { createScheduleRoutes, CronService, runScheduledCronAlarms, validateCron
 import type { CronEnv } from "../src/routes.ts";
 
 const db = env.DB as D1Like;
-const shellWorker = emittedEntry<EmittedWorker>(
-  import.meta.glob("../../../out/max-compatible/src/index.ts", { eager: true }),
-  "max-compatible",
-);
+const shellWorker = emittedEntry<EmittedWorker>(import.meta.glob("../../../out/max-compatible/src/index.ts", { eager: true }), "max-compatible");
 const WS_A = "ws_cron_alpha";
 const WS_B = "ws_cron_beta";
 
@@ -57,7 +54,11 @@ describe("Cron Service & Distributed Alarms Engine", () => {
     const started: Array<{ id: string }> = [];
     const service = new CronService(db, 50, {
       CRON_WORKFLOW_TARGETS: "wf_sync_123",
-      wf_sync_123: { create: async (o: { id: string }) => { started.push(o); } },
+      wf_sync_123: {
+        create: async (o: { id: string }) => {
+          started.push(o);
+        },
+      },
     });
     const created = await service.createSchedule(WS_A, "*/5 * * * *", {
       targetWorkflowId: "wf_sync_123",
@@ -154,8 +155,7 @@ describe("Cron Service & Distributed Alarms Engine", () => {
   });
 
   it("records only the status code (no upstream text) when a URL target fails", async () => {
-    const fetcher = async (): Promise<Response> =>
-      new Response("stack trace from internal service", { status: 503, statusText: "db 10.0.0.9 down" });
+    const fetcher = async (): Promise<Response> => new Response("stack trace from internal service", { status: 503, statusText: "db 10.0.0.9 down" });
     const service = new CronService(db, 50, undefined, fetcher, { resolveHost: async () => ["93.184.216.34"] });
     const created = await service.createSchedule(WS_A, "*/5 * * * *", { targetUrl: "https://example.com/tick" });
     expect(created.ok).toBe(true);
@@ -218,7 +218,7 @@ describe("Cron Route Handlers (/api/schedules/*)", () => {
           targetUrl: "https://api.test.com/task",
         }),
       }),
-      { DB: db }
+      { DB: db },
     );
 
     expect(res.status).toBe(201);
@@ -233,15 +233,12 @@ describe("Cron Route Handlers (/api/schedules/*)", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active: false }),
       }),
-      { DB: db }
+      { DB: db },
     );
     expect(patchRes.status).toBe(200);
 
     // Delete via DELETE /api/schedules/:id
-    const deleteRes = await app.fetch(
-      new Request(`http://localhost/api/schedules/${json.schedule.id}`, { method: "DELETE" }),
-      { DB: db }
-    );
+    const deleteRes = await app.fetch(new Request(`http://localhost/api/schedules/${json.schedule.id}`, { method: "DELETE" }), { DB: db });
     expect(deleteRes.status).toBe(200);
   });
 
@@ -254,10 +251,17 @@ describe("Cron Route Handlers (/api/schedules/*)", () => {
     const createReq = (body: string) =>
       new Request("http://localhost/api/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, body });
     const patchReq = () =>
-      new Request(`http://localhost/api/schedules/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: false }) });
+      new Request(`http://localhost/api/schedules/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: false }),
+      });
     const deleteReq = () => new Request(`http://localhost/api/schedules/${id}`, { method: "DELETE" });
 
-    for (const [role, status] of [[null, 401], ["member", 403]] as const) {
+    for (const [role, status] of [
+      [null, 401],
+      ["member", 403],
+    ] as const) {
       const app = createApp(WS_A, role);
       expect((await app.fetch(createReq("{not json"), { DB: db })).status).toBe(status);
       expect((await app.fetch(createReq(JSON.stringify({ cronExpression: "*/15 * * * *" })), { DB: db })).status).toBe(status);
@@ -313,10 +317,12 @@ describe("story 0.20 (B13): Workflow target allowlist (CRON_WORKFLOW_TARGETS)", 
       }),
       env,
     );
-  const scheduleCount = async (): Promise<number> =>
-    (await db.prepare("SELECT count(*) AS cnt FROM cron_schedules").first<{ cnt: number }>())?.cnt ?? 0;
+  const scheduleCount = async (): Promise<number> => (await db.prepare("SELECT count(*) AS cnt FROM cron_schedules").first<{ cnt: number }>())?.cnt ?? 0;
   const makeDue = async (id: string): Promise<void> => {
-    await db.prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?").bind(new Date(Date.now() - 60000).toISOString(), id).run();
+    await db
+      .prepare("UPDATE cron_schedules SET next_run_at = ? WHERE id = ?")
+      .bind(new Date(Date.now() - 60000).toISOString(), id)
+      .run();
   };
 
   it("CREATE_ALLOWED / CREATE_NOT_LISTED: an allowlisted name is created; any other name is 400 WORKFLOW_TARGET_NOT_ALLOWED with no row", async () => {
@@ -538,7 +544,11 @@ describe("Assembled Shell scheduled() Dispatcher in workerd (AC 3)", () => {
     const ctx = createExecutionContext();
     // A test workflow binding injected explicitly (story 0.9: a missing binding is recorded as a failure).
     const started: Array<{ id: string }> = [];
-    const wfAlphaDue = { create: async (o: { id: string }) => { started.push(o); } };
+    const wfAlphaDue = {
+      create: async (o: { id: string }) => {
+        started.push(o);
+      },
+    };
     await shellWorker.scheduled(controller, { DB: db, CRON_WORKFLOW_TARGETS: "wf_alpha_due", wf_alpha_due: wfAlphaDue }, ctx);
     await waitOnExecutionContext(ctx);
 

@@ -57,9 +57,7 @@ const db = env.DB as unknown as D1Like;
 async function resetAndMigrate(migrations: Array<[string, string]>): Promise<void> {
   for (let pass = 0; pass < 3; pass += 1) {
     const tables = await db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE '%_fts_%'",
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE '%_fts_%'")
       .all<{ name: string }>();
     if (tables.results.length === 0) break;
     for (const row of [...tables.results].reverse()) {
@@ -211,10 +209,9 @@ describe.each(BOOT_TARGETS)("preset boot in workerd: $name", ({ name, blueprint 
     // Only production-tier bricks remain in the 3 presets (Story 0.9 AC 6)
     if (name !== "max-compatible") {
       for (const brickId of first.order) {
-        expect(
-          ["production", "beta"],
-          `${name} preset brick ${brickId} must be production or beta tier`,
-        ).toContain(catalog.bricks[brickId]!.manifest.ui?.maturity);
+        expect(["production", "beta"], `${name} preset brick ${brickId} must be production or beta tier`).toContain(
+          catalog.bricks[brickId]!.manifest.ui?.maturity,
+        );
       }
     }
 
@@ -304,8 +301,7 @@ describe.each(BOOT_TARGETS)("preset boot in workerd: $name", ({ name, blueprint 
       expect(sameOrigin.status).toBe(201);
     }
 
-    const authOpts = (user: "alice" | "bob") =>
-      usesRealAuth ? { token: tokenByUser[user] } : { user };
+    const authOpts = (user: "alice" | "bob") => (usesRealAuth ? { token: tokenByUser[user] } : { user });
 
     // Seed workspace A (alice) and workspace B (bob).
     const createWsA = await sendRequest(app, "/api/workspaces", {
@@ -336,7 +332,7 @@ describe.each(BOOT_TARGETS)("preset boot in workerd: $name", ({ name, blueprint 
         const probe: { method?: string; path: string; body?: unknown; notConfigured?: boolean } =
           brickId === "subscription-plans" && prefix === "subscriptions"
             ? { path: "/api/subscriptions/current" }
-            : AUTH_ROUTE_BY_PREFIX[prefix] ?? { path: `/api/${prefix}` };
+            : (AUTH_ROUTE_BY_PREFIX[prefix] ?? { path: `/api/${prefix}` });
         const authRes = await sendRequest(app, probe.path, {
           method: probe.method,
           ...authOpts("alice"),
@@ -355,9 +351,7 @@ describe.each(BOOT_TARGETS)("preset boot in workerd: $name", ({ name, blueprint 
 
       const unauthProbe = getUnauthenticatedProbe(brickId, entityName);
       const unauthRes = await sendRequest(app, unauthProbe.path, { method: unauthProbe.method });
-      expect([401, 403], `${name} -> ${brickId} unauthenticated ${unauthProbe.path} returned ${unauthRes.status}`).toContain(
-        unauthRes.status,
-      );
+      expect([401, 403], `${name} -> ${brickId} unauthenticated ${unauthProbe.path} returned ${unauthRes.status}`).toContain(unauthRes.status);
     }
 
     // 5. Cross-workspace isolation smoke test: workspace A creates a record through a tenant-scoped brick;

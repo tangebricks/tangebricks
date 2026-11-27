@@ -1,12 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import {
-  createStudioApiApp,
-  getStudioControlPlane,
-  getStudioFakeControlPlane,
-  getStudioVerificationClient,
-  studioDeployClientMode,
-} from "../src/index.ts";
+import { createStudioApiApp, getStudioControlPlane, getStudioFakeControlPlane, getStudioVerificationClient, studioDeployClientMode } from "../src/index.ts";
 import type { StudioApiEnv } from "../src/index.ts";
 import { MockCloudflareControlPlane } from "../../../packages/deploy/src/target.ts";
 
@@ -44,7 +38,8 @@ describe("which Cloudflare client Studio uses", () => {
 
   it("Cloudflare unreachable at verify-and-save is 502, and a recheck never marks the token revoked on an unreachable answer", async () => {
     let mode: "ok" | "down" = "ok";
-    const envelope = (result: unknown) => new Response(JSON.stringify({ success: true, errors: [], messages: [], result }), { status: 200, headers: { "content-type": "application/json" } });
+    const envelope = (result: unknown) =>
+      new Response(JSON.stringify({ success: true, errors: [], messages: [], result }), { status: 200, headers: { "content-type": "application/json" } });
     const app = createStudioApiApp({
       deploy: {
         sleep: async () => {},
@@ -55,7 +50,8 @@ describe("which Cloudflare client Studio uses", () => {
               ? new Response(JSON.stringify({ success: false, errors: [{ code: 10013, message: "unavailable" }] }), { status: 503 })
               : envelope({ id: "user-token", status: "active" });
           }
-          if (path.endsWith("/tokens/verify")) return new Response(JSON.stringify({ success: false, errors: [{ code: 1000, message: "Invalid API Token" }] }), { status: 401 });
+          if (path.endsWith("/tokens/verify"))
+            return new Response(JSON.stringify({ success: false, errors: [{ code: 1000, message: "Invalid API Token" }] }), { status: 401 });
           if (path === `/client/v4/accounts/${ACCOUNT}`) return envelope({ id: ACCOUNT, name: "Owner" });
           if (path.endsWith("/workers/subdomain")) return envelope({ subdomain: "owner" });
           return envelope([]);
@@ -64,21 +60,36 @@ describe("which Cloudflare client Studio uses", () => {
     });
     const liveEnv: StudioApiEnv = { ...rawEnv, PX_DEPLOY_CLIENT: undefined };
     const call = (path: string, body: unknown, token?: string) =>
-      app.fetch(new Request(`https://studio.test${path}`, { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) }), liveEnv);
+      app.fetch(
+        new Request(`https://studio.test${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify(body),
+        }),
+        liveEnv,
+      );
     const signup = await call("/api/auth/signup", { email: `r53u-${crypto.randomUUID().slice(0, 8)}@example.test`, password: "Password12345!", name: "R53 U" });
     const { token: session } = (await signup.json()) as { token: string };
     const org = await call("/api/orgs", { name: "R53 U", slug: `r53u-${crypto.randomUUID().slice(0, 8)}` }, session);
     const { id: orgId } = (await org.json()) as { id: string };
 
     // a user token, checked with reads: accepted, with the Edit scopes left to the first deploy
-    const saved = await call(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, { token: "cfut_user_token_r53_0123456789abcdef", accountId: ACCOUNT }, session);
+    const saved = await call(
+      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
+      { token: "cfut_user_token_r53_0123456789abcdef", accountId: ACCOUNT },
+      session,
+    );
     expect(saved.status).toBe(201);
     const savedBody = (await saved.json()) as { tokenRef: string; verification: { verifiedBy: string; summaryMessage: string } };
     expect(savedBody.verification.verifiedBy).toBe("read-probe");
     expect(savedBody.verification.summaryMessage).toMatch(/confirmed by the first deploy/);
 
     mode = "down";
-    const unreachable = await call(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, { token: "cfut_user_token_r53_0123456789abcdef", accountId: ACCOUNT }, session);
+    const unreachable = await call(
+      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
+      { token: "cfut_user_token_r53_0123456789abcdef", accountId: ACCOUNT },
+      session,
+    );
     expect(unreachable.status).toBe(502);
     expect(((await unreachable.json()) as { error: { code: string } }).error.code).toBe("CLOUDFLARE_UNREACHABLE");
 
@@ -94,7 +105,10 @@ describe("which Cloudflare client Studio uses", () => {
       deploy: {
         fetch: async (request) => {
           seen.push({ method: request.method, url: request.url, auth: request.headers.get("authorization") });
-          return new Response(JSON.stringify({ success: false, errors: [{ code: 1000, message: "Invalid API Token" }], messages: [], result: null }), { status: 401, headers: { "content-type": "application/json" } });
+          return new Response(JSON.stringify({ success: false, errors: [{ code: 1000, message: "Invalid API Token" }], messages: [], result: null }), {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          });
         },
       },
     });
@@ -108,7 +122,11 @@ describe("which Cloudflare client Studio uses", () => {
         }),
         liveEnv,
       );
-    const signup = await call("/api/auth/signup", { email: `r53-${crypto.randomUUID().slice(0, 8)}@example.test`, password: "Password12345!", name: "R53 Owner" });
+    const signup = await call("/api/auth/signup", {
+      email: `r53-${crypto.randomUUID().slice(0, 8)}@example.test`,
+      password: "Password12345!",
+      name: "R53 Owner",
+    });
     expect(signup.status).toBe(201);
     const { token: session } = (await signup.json()) as { token: string };
     const org = await call("/api/orgs", { name: "R53 Org", slug: `r53-${crypto.randomUUID().slice(0, 8)}` }, session);
@@ -119,13 +137,20 @@ describe("which Cloudflare client Studio uses", () => {
     expect(((await noAccount.json()) as { error: { code: string } }).error.code).toBe("ACCOUNT_ID_REQUIRED");
     expect(seen).toHaveLength(0);
 
-    const res = await call(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, { token: "cf_scoped_valid_token_least_privilege", accountId: ACCOUNT }, session);
+    const res = await call(
+      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
+      { token: "cf_scoped_valid_token_least_privilege", accountId: ACCOUNT },
+      session,
+    );
     expect(res.status).toBe(422);
     const body = (await res.json()) as { error: { code: string }; verification: { status: string } };
     expect(body.error.code).toBe("INVALID_OR_EXPIRED_TOKEN");
     expect(body.verification.status).toBe("invalid");
     // account endpoint first, then the user-token endpoint; both refuse
-    expect(seen.map((s) => `${s.method} ${new URL(s.url).pathname}`)).toEqual([`GET /client/v4/accounts/${ACCOUNT}/tokens/verify`, "GET /client/v4/user/tokens/verify"]);
+    expect(seen.map((s) => `${s.method} ${new URL(s.url).pathname}`)).toEqual([
+      `GET /client/v4/accounts/${ACCOUNT}/tokens/verify`,
+      "GET /client/v4/user/tokens/verify",
+    ]);
     expect(seen[0]!.auth).toBe("Bearer cf_scoped_valid_token_least_privilege");
   });
 });

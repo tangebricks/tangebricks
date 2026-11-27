@@ -23,9 +23,7 @@ test.describe("CP2 Read-Only Studio Views End-to-End Verification", () => {
     await page.goto("/");
 
     // Verify compiled Tailwind CSS base background token (#020617 -> rgb(2, 6, 23))
-    const bodyBg = await page.evaluate(
-      () => window.getComputedStyle(document.body).backgroundColor,
-    );
+    const bodyBg = await page.evaluate(() => window.getComputedStyle(document.body).backgroundColor);
     expect(bodyBg).toBe("rgb(2, 6, 23)");
 
     // Sign in as owner
@@ -73,34 +71,22 @@ test.describe("CP2 Read-Only Studio Views End-to-End Verification", () => {
 
     // Toggle Accessible Outline View on Backend Map
     await page.getByTestId("backend-map-outline-toggle").click();
-    await expect(
-      page.getByRole("region", { name: "Backend Map Outline" }),
-    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "Backend Map Outline" })).toBeVisible();
 
     // 2. Bricks View & Maturity Badges (Production, Beta, Experimental)
     await page.getByTestId("nav-tab-bricks").click();
     await expect(page.getByTestId("view-bricks")).toBeVisible();
     // One enabled brick of each honest tier present on acme-saas: dynamic-entities (Production), credit-wallet (Beta)
     expect(tierBadge("dynamic-entities")).toBe("Production ✓");
-    await expect(
-      page.getByTestId("enabled-brick-maturity-dynamic-entities"),
-    ).toHaveText(tierBadge("dynamic-entities"));
-    await expect(
-      page.getByTestId("enabled-brick-maturity-credit-wallet"),
-    ).toHaveText(tierBadge("credit-wallet"));
-    await expect(
-      page.getByTestId("catalog-brick-maturity-document-parsing"),
-    ).toHaveText(tierBadge("document-parsing"));
+    await expect(page.getByTestId("enabled-brick-maturity-dynamic-entities")).toHaveText(tierBadge("dynamic-entities"));
+    await expect(page.getByTestId("enabled-brick-maturity-credit-wallet")).toHaveText(tierBadge("credit-wallet"));
+    await expect(page.getByTestId("catalog-brick-maturity-document-parsing")).toHaveText(tierBadge("document-parsing"));
 
     // Experimental bricks hidden by default until toggled
-    await expect(
-      page.getByTestId("catalog-brick-card-scripting-sandbox"),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("catalog-brick-card-scripting-sandbox")).toHaveCount(0);
     await page.getByTestId("bricks-experimental-toggle").click();
     expect(tierBadge("scripting-sandbox")).toBe("Experimental ⚠");
-    await expect(
-      page.getByTestId("catalog-brick-maturity-scripting-sandbox"),
-    ).toHaveText(tierBadge("scripting-sandbox"));
+    await expect(page.getByTestId("catalog-brick-maturity-scripting-sandbox")).toHaveText(tierBadge("scripting-sandbox"));
 
     // Clicking a brick opens its read-only Inspector
     await page.getByTestId("enabled-brick-card-credit-wallet").click();
@@ -110,9 +96,7 @@ test.describe("CP2 Read-Only Studio Views End-to-End Verification", () => {
     await page.getByTestId("nav-tab-data").click();
     await expect(page.getByTestId("view-data")).toBeVisible();
     await expect(page.getByTestId("entity-list-item-invoices")).toBeVisible();
-    await expect(page.getByTestId("entity-sql-ddl-code")).toContainText(
-      'CREATE TABLE IF NOT EXISTS "ent_invoices"',
-    );
+    await expect(page.getByTestId("entity-sql-ddl-code")).toContainText('CREATE TABLE IF NOT EXISTS "ent_invoices"');
 
     // 4. Workflows Canvas View
     await page.getByTestId("nav-tab-workflows").click();

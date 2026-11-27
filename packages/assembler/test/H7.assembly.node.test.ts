@@ -78,11 +78,13 @@ describe("two cold runs that differ in folder, time zone and clock", () => {
   });
 
   test("and the same files this process makes in memory, three times over", async () => {
-    const runs = await Promise.all([1, 2, 3].map(async () => {
-      const result = assemble(TWO_BRICK_BLUEPRINT, catalog);
-      if (!result.ok) throw new Error(result.errors.join("; "));
-      return hashFiles(result.files);
-    }));
+    const runs = await Promise.all(
+      [1, 2, 3].map(async () => {
+        const result = assemble(TWO_BRICK_BLUEPRINT, catalog);
+        if (!result.ok) throw new Error(result.errors.join("; "));
+        return hashFiles(result.files);
+      }),
+    );
     for (const hashes of runs) expect(hashes).toEqual(first.report.hashes);
   });
 

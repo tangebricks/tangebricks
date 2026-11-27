@@ -8,19 +8,16 @@ describe("sandbox lightweight D1: WHERE filter clauses", () => {
   async function seeded() {
     const platform = new SandboxDispatchPlatform();
     const { d1Binding: db } = await platform.ensureDatabase("sbx-where-filters");
-    await db.prepare(
-      `CREATE TABLE IF NOT EXISTS ent_invoices (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, title TEXT NOT NULL, amount_cents INTEGER NOT NULL)`,
-    ).run();
+    await db
+      .prepare(`CREATE TABLE IF NOT EXISTS ent_invoices (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, title TEXT NOT NULL, amount_cents INTEGER NOT NULL)`)
+      .run();
     for (const [id, ws, title, amount] of [
       ["inv_a_1", "ws_a", "Alpha", 100],
       ["inv_a_9", "ws_a", "Gamma", 900],
       ["inv_a_10", "ws_a", "alphabet", 1000],
       ["inv_b_1", "ws_b", "Alpha", 5000],
     ] as const) {
-      await db
-        .prepare(`INSERT INTO ent_invoices (id, workspace_id, title, amount_cents) VALUES (?1, ?2, ?3, ?4)`)
-        .bind(id, ws, title, amount)
-        .run();
+      await db.prepare(`INSERT INTO ent_invoices (id, workspace_id, title, amount_cents) VALUES (?1, ?2, ?3, ?4)`).bind(id, ws, title, amount).run();
     }
     return db;
   }
@@ -76,10 +73,7 @@ describe("sandbox lightweight D1: WHERE filter clauses", () => {
     expect(byId.get("inv_a_9")).toMatchObject({ title: "Gamma", amount_cents: 900 });
 
     // The same id in another workspace is not touched
-    await db
-      .prepare(`UPDATE "ent_invoices" SET "title" = ?3 WHERE "workspace_id" = ?1 AND "id" = ?2`)
-      .bind("ws_b", "inv_a_9", "Cross")
-      .run();
+    await db.prepare(`UPDATE "ent_invoices" SET "title" = ?3 WHERE "workspace_id" = ?1 AND "id" = ?2`).bind("ws_b", "inv_a_9", "Cross").run();
     const after = await db.prepare(`SELECT * FROM "ent_invoices" WHERE "id" = ?1`).bind("inv_a_9").first<Record<string, unknown>>();
     expect(after?.title).toBe("Gamma");
   });

@@ -48,7 +48,10 @@ describe("what local D1 does, pinned (the design of the bricks depends on both f
     await Promise.all(
       Array.from({ length: 50 }, async () => {
         const row = await db.prepare("SELECT bal FROM pin_c WHERE id = 'a'").first<{ bal: number }>();
-        await db.prepare("UPDATE pin_c SET bal = ? WHERE id = 'a'").bind(row!.bal + 1).run();
+        await db
+          .prepare("UPDATE pin_c SET bal = ? WHERE id = 'a'")
+          .bind(row!.bal + 1)
+          .run();
       }),
     );
     const end = await db.prepare("SELECT bal FROM pin_c WHERE id = 'a'").first<{ bal: number }>();
@@ -58,16 +61,26 @@ describe("what local D1 does, pinned (the design of the bricks depends on both f
 
 /** Writes a small known-good world into the control tables so the checker can be shown to accept it and to reject damage. */
 async function cleanWorld(): Promise<{ start: number; outcomes: Outcome[] }> {
-  const w: Workload = { start: 10, ops: [{ kind: "topup", amount: 5, orderId: "o1" }, { kind: "deduct", amount: 3 }] };
+  const w: Workload = {
+    start: 10,
+    ops: [
+      { kind: "topup", amount: 5, orderId: "o1" },
+      { kind: "deduct", amount: 3 },
+    ],
+  };
   await setupControl(db);
   await seedControl(db, WS, 10, w.ops);
   await db.batch([
     db.prepare("UPDATE workspaces SET current_balance = 12 WHERE id = ?").bind(WS),
     db
-      .prepare("INSERT INTO ledgers (id, workspace_id, user_id, type, amount, balance_after, description, metadata) VALUES ('l1', ?, 'u', 'topup', 5, 15, 't', ?)")
+      .prepare(
+        "INSERT INTO ledgers (id, workspace_id, user_id, type, amount, balance_after, description, metadata) VALUES ('l1', ?, 'u', 'topup', 5, 15, 't', ?)",
+      )
       .bind(WS, JSON.stringify({ order_id: "o1" })),
     db
-      .prepare("INSERT INTO ledgers (id, workspace_id, user_id, type, amount, balance_after, description, metadata) VALUES ('l2', ?, 'u', 'deduction', -3, 12, 'd', '{}')")
+      .prepare(
+        "INSERT INTO ledgers (id, workspace_id, user_id, type, amount, balance_after, description, metadata) VALUES ('l2', ?, 'u', 'deduction', -3, 12, 'd', '{}')",
+      )
       .bind(WS),
   ]);
   return { start: 10, outcomes: w.ops.map((op) => ({ op, accepted: true })) };
@@ -95,7 +108,9 @@ describe("the violation checker can tell a clean run from each kind of damage", 
     const { start, outcomes } = await cleanWorld();
     const refused: Outcome = { op: { kind: "deduct", amount: 99 }, accepted: false };
     await db
-      .prepare("INSERT INTO ledgers (id, workspace_id, user_id, type, amount, balance_after, description, metadata) VALUES ('l3', ?, 'u', 'deduction', 0, 12, 'd', '{}')")
+      .prepare(
+        "INSERT INTO ledgers (id, workspace_id, user_id, type, amount, balance_after, description, metadata) VALUES ('l3', ?, 'u', 'deduction', 0, 12, 'd', '{}')",
+      )
       .bind(WS)
       .run();
     expect((await violations(db, WS, start, [...outcomes, refused])).join("|")).toMatch(/ledger has 3 rows for 2 accepted/);
@@ -116,7 +131,9 @@ describe("the violation checker can tell a clean run from each kind of damage", 
   test("flags an order credited twice", async () => {
     const { start, outcomes } = await cleanWorld();
     await db
-      .prepare("INSERT INTO ledgers (id, workspace_id, user_id, type, amount, balance_after, description, metadata) VALUES ('l4', ?, 'u', 'topup', 5, 17, 't', ?)")
+      .prepare(
+        "INSERT INTO ledgers (id, workspace_id, user_id, type, amount, balance_after, description, metadata) VALUES ('l4', ?, 'u', 'topup', 5, 17, 't', ?)",
+      )
       .bind(WS, JSON.stringify({ order_id: "o1" }))
       .run();
     expect((await violations(db, WS, start, outcomes)).join("|")).toMatch(/1 orders credited more than once/);

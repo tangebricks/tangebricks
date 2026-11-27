@@ -7,11 +7,22 @@ import type { Graph } from "../src/index.ts";
 import { branchOnly, BRANCH_MS, chainGraph, chainPayload, diamondGraph } from "./graphs.ts";
 
 // Every source file of the packages that make up the runtime path, as text, to scan for dynamic evaluation.
-const sources = import.meta.glob(["../src/**/*.ts", "../../sdk/src/**/*.ts", "../../../bricks/credit-wallet/src/**/*.ts", "../../../bricks/multi-workspace/src/**/*.ts", "../../assembler/src/**/*.ts", "../../../bricks/dynamic-entities/src/**/*.ts", "../../mcp-server/src/**/*.ts"], {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
+const sources = import.meta.glob(
+  [
+    "../src/**/*.ts",
+    "../../sdk/src/**/*.ts",
+    "../../../bricks/credit-wallet/src/**/*.ts",
+    "../../../bricks/multi-workspace/src/**/*.ts",
+    "../../assembler/src/**/*.ts",
+    "../../../bricks/dynamic-entities/src/**/*.ts",
+    "../../mcp-server/src/**/*.ts",
+  ],
+  {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  },
+) as Record<string, string>;
 
 const timed = async (graph: Graph) => {
   const start = performance.now();
@@ -26,9 +37,7 @@ describe("H2 inputs", () => {
   });
 
   test("no runtime or sdk source builds or evaluates code", () => {
-    const hits = Object.entries(sources).flatMap(([path, text]) =>
-      findDynamicEvaluation(text).map((h) => `${path}:${h.line} ${h.rule}`),
-    );
+    const hits = Object.entries(sources).flatMap(([path, text]) => findDynamicEvaluation(text).map((h) => `${path}:${h.line} ${h.rule}`));
     expect(hits).toEqual([]);
   });
 
@@ -68,9 +77,7 @@ test("H2 report", async ({ task }) => {
     measured: Math.round((diamond.ms / (a.ms + b.ms)) * 1000) / 1000,
     checks: {
       chainPasses: chain.ok && chain.outputs.p2?.out === 5,
-      diamondPasses:
-        diamond.result.ok &&
-        JSON.stringify(diamond.result.outputs.j?.out) === JSON.stringify({ a: { value: 7 }, b: { value: 7 } }),
+      diamondPasses: diamond.result.ok && JSON.stringify(diamond.result.outputs.j?.out) === JSON.stringify({ a: { value: 7 }, b: { value: 7 } }),
       noDynamicEvaluation: scanned && hits.length === 0,
     },
   });

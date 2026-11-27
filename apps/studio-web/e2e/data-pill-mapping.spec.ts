@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Data-Pill Expression Mode Validation & Dynamic Placeholder Ports (Real Backend)", () => {
-  test("exposes ph-* template placeholder ports, validates raw step expressions against upstream ancestors, and removes pill chips", async ({
-    page,
-  }) => {
+  test("exposes ph-* template placeholder ports, validates raw step expressions against upstream ancestors, and removes pill chips", async ({ page }) => {
     await page.goto("/");
 
     await page.getByTestId("auth-email-input").fill("alice@example.com");
@@ -30,19 +28,13 @@ test.describe("Data-Pill Expression Mode Validation & Dynamic Placeholder Ports 
 
     // Connect webhook -> format_template
     await page.getByTestId("wire-source-select").selectOption("node-webhook-1::out");
-    await page
-      .getByTestId("wire-target-select")
-      .selectOption("node-format-template-2::in");
+    await page.getByTestId("wire-target-select").selectOption("node-format-template-2::in");
     await page.getByTestId("wire-connect-button").click();
 
     // Select format_template and verify dynamic ph-* placeholder port when typing a placeholder
     await page.getByTestId("canvas-node-node-format-template-2").click();
-    await page
-      .getByTestId("node-config-input-template")
-      .fill("Hello {{customer_name}}");
-    await expect(
-      page.getByTestId("dynamic-port-in-ph-customer_name"),
-    ).toContainText("ph-customer_name:string");
+    await page.getByTestId("node-config-input-template").fill("Hello {{customer_name}}");
+    await expect(page.getByTestId("dynamic-port-in-ph-customer_name")).toContainText("ph-customer_name:string");
 
     // Pick `out` from `node-webhook-1` via Data-Pill Picker
     await page.getByTestId("open-pill-picker-to").click();
@@ -53,9 +45,7 @@ test.describe("Data-Pill Expression Mode Validation & Dynamic Placeholder Ports 
     await page.getByTestId("toggle-raw-expression-to").click();
     const rawInput = page.getByTestId("raw-expression-input-to");
     await rawInput.fill("{{steps.unknown_step.output.email}}");
-    await expect(
-      page.getByTestId("expression-validation-error-to"),
-    ).toContainText("Node 'unknown_step' is not an upstream ancestor");
+    await expect(page.getByTestId("expression-validation-error-to")).toContainText("Node 'unknown_step' is not an upstream ancestor");
 
     // Restore valid pill via raw mode and save
     await rawInput.fill("{{steps.node-webhook-1.output.out}}");

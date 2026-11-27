@@ -4,11 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_threaded_discussions.sql?raw";
-import {
-  ThreadedDiscussionService,
-  extractMentions,
-  createThreadRoutes,
-} from "../src/index.ts";
+import { ThreadedDiscussionService, extractMentions, createThreadRoutes } from "../src/index.ts";
 import type { ThreadEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -46,7 +42,7 @@ describe("Threaded Discussions Core Logic", () => {
       "invoice",
       "inv_9001",
       { authorId: "usr_alice", authorName: "Alice", body: "Please check line item 3" },
-      "Billing Discrepancy"
+      "Billing Discrepancy",
     );
 
     expect(thread.id).toMatch(/^thrd_[a-f0-9]{32}$/);
@@ -61,17 +57,11 @@ describe("Threaded Discussions Core Logic", () => {
       thread.id,
       { authorId: "usr_bob", authorName: "Bob" },
       "Looks like a 10% discount was omitted",
-      rootCommentId
+      rootCommentId,
     );
 
     // 3. Nested Reply to Bob's Reply
-    await service.addComment(
-      WS_ALPHA,
-      thread.id,
-      { authorId: "usr_alice", authorName: "Alice" },
-      "Fixed now, thanks @bob!",
-      reply1.id
-    );
+    await service.addComment(WS_ALPHA, thread.id, { authorId: "usr_alice", authorName: "Alice" }, "Fixed now, thanks @bob!", reply1.id);
 
     // Retrieve full hierarchical tree
     const tree = await service.getThreadTree(WS_ALPHA, thread.id);
@@ -89,12 +79,7 @@ describe("Threaded Discussions Core Logic", () => {
 
   it("handles thread resolution and reopening workflows", async () => {
     const service = new ThreadedDiscussionService(db);
-    const thread = await service.createThread(
-      WS_ALPHA,
-      "deal",
-      "deal_123",
-      { authorId: "usr_a", authorName: "A", body: "Issue opened" }
-    );
+    const thread = await service.createThread(WS_ALPHA, "deal", "deal_123", { authorId: "usr_a", authorName: "A", body: "Issue opened" });
 
     expect(thread.is_resolved).toBe(false);
 
@@ -116,12 +101,7 @@ describe("Threaded Discussions Core Logic", () => {
 
   it("allows authors to edit and delete comments with permission checks", async () => {
     const service = new ThreadedDiscussionService(db);
-    const thread = await service.createThread(
-      WS_ALPHA,
-      "page",
-      "p1",
-      { authorId: "usr_author", authorName: "Author", body: "Original typo here" }
-    );
+    const thread = await service.createThread(WS_ALPHA, "page", "p1", { authorId: "usr_author", authorName: "Author", body: "Original typo here" });
 
     const firstComment = thread.comments[0];
     if (!firstComment) throw new Error("the new thread has no comment");
@@ -161,32 +141,40 @@ describe("Threaded Discussions HTTP API", () => {
     app.route("/api", createThreadRoutes());
 
     // 1. POST /threads
-    const createRes = await app.request("/api/threads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        targetType: "deal",
-        targetId: "deal_99",
-        title: "Contract Pricing Query",
-        body: "Can we offer a 15% discount for annual upfront?",
-        authorId: "usr_sales_rep",
-        authorName: "Jim Halpert",
-      }),
-    }, { DB: db });
+    const createRes = await app.request(
+      "/api/threads",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          targetType: "deal",
+          targetId: "deal_99",
+          title: "Contract Pricing Query",
+          body: "Can we offer a 15% discount for annual upfront?",
+          authorId: "usr_sales_rep",
+          authorName: "Jim Halpert",
+        }),
+      },
+      { DB: db },
+    );
     expect(createRes.status).toBe(201);
     const createJson = (await createRes.json()) as { thread: { id: string } };
     const threadId = createJson.thread.id;
 
     // 2. POST /threads/:id/comments (reply)
-    const replyRes = await app.request(`/api/threads/${threadId}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        body: "Approved @jim!",
-        authorId: "usr_vp_sales",
-        authorName: "Michael Scott",
-      }),
-    }, { DB: db });
+    const replyRes = await app.request(
+      `/api/threads/${threadId}/comments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          body: "Approved @jim!",
+          authorId: "usr_vp_sales",
+          authorName: "Michael Scott",
+        }),
+      },
+      { DB: db },
+    );
     expect(replyRes.status).toBe(201);
 
     // 3. GET /threads/:id
@@ -196,10 +184,14 @@ describe("Threaded Discussions HTTP API", () => {
     expect(treeJson.thread.comments).toHaveLength(2); // 2 root/linear comments
 
     // 4. PATCH /threads/:id/resolve
-    const resolveRes = await app.request(`/api/threads/${threadId}/resolve`, {
-      method: "PATCH",
-      headers: { "x-workspace-id": WS_ALPHA },
-    }, { DB: db });
+    const resolveRes = await app.request(
+      `/api/threads/${threadId}/resolve`,
+      {
+        method: "PATCH",
+        headers: { "x-workspace-id": WS_ALPHA },
+      },
+      { DB: db },
+    );
     expect(resolveRes.status).toBe(200);
 
     // 5. GET /threads (filter resolved)

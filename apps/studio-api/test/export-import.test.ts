@@ -25,11 +25,7 @@ function scopedEnv(scope: string): StudioApiEnv {
   };
 }
 
-async function studioReq(
-  path: string,
-  init: RequestInit = {},
-  targetEnv: StudioApiEnv = studioEnv,
-): Promise<Response> {
+async function studioReq(path: string, init: RequestInit = {}, targetEnv: StudioApiEnv = studioEnv): Promise<Response> {
   const { headers: authHeaders } = await ensureTestAuthForPath(targetEnv, path);
   const headers = new Headers(init.headers);
   for (const [k, v] of Object.entries(authHeaders)) {
@@ -45,11 +41,7 @@ async function studioReq(
   return studioApp.request(path, { ...init, headers }, targetEnv);
 }
 
-async function postOps(
-  project: string,
-  ops: unknown[],
-  targetEnv: StudioApiEnv = studioEnv,
-) {
+async function postOps(project: string, ops: unknown[], targetEnv: StudioApiEnv = studioEnv) {
   // AD-V8: the token's edit applies when preview-safe; otherwise it is proposed and the owner accepts it in Studio.
   const { headers: authHeaders } = await ensureTestAuthForPath(targetEnv, `/api/projects/${project}/ops`);
   return postOpsWithReview(targetEnv, project, authHeaders, { author: { type: "human", id: "alice" }, ops });
@@ -156,11 +148,7 @@ describe("Story 1.6 — Deterministic saas.blueprint.json export and import roun
     expect(stateA.revision).toBe(1);
 
     // Export from project-a
-    const exportARes = await studioReq(
-      `/api/projects/${projectA}/export`,
-      { method: "GET" },
-      studioEnv,
-    );
+    const exportARes = await studioReq(`/api/projects/${projectA}/export`, { method: "GET" }, studioEnv);
     expect(exportARes.status).toBe(200);
     const bundleA = (await exportARes.json()) as BlueprintBundle;
     expect(bundleA.schemaVersion).toBe(2);
@@ -213,16 +201,8 @@ describe("Story 1.6 — Deterministic saas.blueprint.json export and import roun
     const stateSameSlug = (await importSameSlugRes.json()) as ProjectStatePayload;
     expect(stateSameSlug.semanticHash).toBe(stateA.semanticHash);
 
-    const buildARes = await studioReq(
-      `/api/projects/${projectA}/build`,
-      { method: "POST" },
-      studioEnv,
-    );
-    const buildSameSlugRes = await studioReq(
-      `/api/projects/${projectA}/build`,
-      { method: "POST" },
-      targetIsoEnv,
-    );
+    const buildARes = await studioReq(`/api/projects/${projectA}/build`, { method: "POST" }, studioEnv);
+    const buildSameSlugRes = await studioReq(`/api/projects/${projectA}/build`, { method: "POST" }, targetIsoEnv);
     expect(buildARes.status).toBe(200);
     expect(buildSameSlugRes.status).toBe(200);
     const buildA = (await buildARes.json()) as { buildHash: string; files: number; bytes: number };
@@ -301,15 +281,9 @@ describe("Story 1.6 — Deterministic saas.blueprint.json export and import roun
       expect(importRes.status, `import(${preset.slug}) should succeed with 200`).toBe(200);
       const imported = (await importRes.json()) as ProjectStatePayload;
       expect(imported.revision).toBe(1);
-      expect(
-        imported.readiness.needs.filter((n) => n.code !== "UNBOUND_BRICK_SECRET"),
-      ).toEqual([]);
+      expect(imported.readiness.needs.filter((n) => n.code !== "UNBOUND_BRICK_SECRET")).toEqual([]);
 
-      const buildRes = await studioReq(
-        `/api/projects/${preset.slug}/build`,
-        { method: "POST" },
-        studioEnv,
-      );
+      const buildRes = await studioReq(`/api/projects/${preset.slug}/build`, { method: "POST" }, studioEnv);
       expect(buildRes.status).toBe(200);
       const built = (await buildRes.json()) as {
         project: string;
@@ -338,17 +312,11 @@ describe("Story 1.6 — Deterministic saas.blueprint.json export and import roun
     ]);
     expect(seed.status).toBe(200);
 
-    const exportRes = await studioReq(
-      `/api/projects/${project}/export`,
-      { method: "GET" },
-      studioEnv,
-    );
+    const exportRes = await studioReq(`/api/projects/${project}/export`, { method: "GET" }, studioEnv);
     expect(exportRes.status).toBe(200);
     const exportedText = await exportRes.text();
     expect(exportedText).toContain("sec_cashfree_webhook_secret");
-    expect(exportedText).not.toMatch(
-      /sk_live_|sk_test_|whsec_|ghp_|AKIA[0-9A-Z]{8,}|Bearer\s|-----BEGIN/i,
-    );
+    expect(exportedText).not.toMatch(/sk_live_|sk_test_|whsec_|ghp_|AKIA[0-9A-Z]{8,}|Bearer\s|-----BEGIN/i);
 
     // Planted raw secret fixtures in import payload must be rejected with 422 VALIDATION_FAILED
     const plantedFixtures = [

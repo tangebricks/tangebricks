@@ -152,9 +152,21 @@ describe("Cashfree adapter: fetch order", () => {
 
   it("maps the amount, currency, customer and order id from the response", async () => {
     const { gateway } = adapter(() =>
-      json({ ...paidFixture, order_id: "order_other", order_amount: 999, order_currency: "USD", customer_details: { ...paidFixture.customer_details, customer_id: "user-999" } }),
+      json({
+        ...paidFixture,
+        order_id: "order_other",
+        order_amount: 999,
+        order_currency: "USD",
+        customer_details: { ...paidFixture.customer_details, customer_id: "user-999" },
+      }),
     );
-    expect(await gateway.fetchOrder("order_0123456789abcdef", undefined)).toEqual({ orderId: "order_other", status: "PAID", amountMinor: 99900, currency: "USD", customerId: "user-999" });
+    expect(await gateway.fetchOrder("order_0123456789abcdef", undefined)).toEqual({
+      orderId: "order_other",
+      status: "PAID",
+      amountMinor: 99900,
+      currency: "USD",
+      customerId: "user-999",
+    });
   });
 
   it.each([
@@ -199,7 +211,11 @@ describe("Cashfree adapter: webhook", () => {
 
   it("a timestamp in seconds is accepted too", async () => {
     const { gateway } = adapter(() => json({}));
-    expect(await gateway.verifyWebhook(body, await signed(body, String(Math.floor(NOW / 1000))))).toEqual({ kind: "order", orderId: "order_0123456789abcdef", providerRef: "2149460581" });
+    expect(await gateway.verifyWebhook(body, await signed(body, String(Math.floor(NOW / 1000))))).toEqual({
+      kind: "order",
+      orderId: "order_0123456789abcdef",
+      providerRef: "2149460581",
+    });
   });
 
   it("a forged signature (another key) is refused", async () => {
@@ -317,13 +333,26 @@ describe("Cashfree adapter: notifyUrl (one adapter per brick, each notifying its
 
   it("is required: an adapter without it would let another brick's webhook acknowledge and drop these payments", () => {
     expect(() =>
-      createCashfreePaymentGateway({ environment: "sandbox", clientId: "id", clientSecret: "s", apiVersion: "2023-08-01", customerDetails: () => ({ customer_phone: "1" }) } as never),
+      createCashfreePaymentGateway({
+        environment: "sandbox",
+        clientId: "id",
+        clientSecret: "s",
+        apiVersion: "2023-08-01",
+        customerDetails: () => ({ customer_phone: "1" }),
+      } as never),
     ).toThrow(/notifyUrl/);
   });
 
   it.each(["http://app.example.com/hook", "not a url", "https://user:pw@app.example.com/hook", ""])("refuses %s at construction", (notifyUrl) => {
     expect(() =>
-      createCashfreePaymentGateway({ environment: "sandbox", clientId: "id", clientSecret: "s", apiVersion: "2023-08-01", customerDetails: () => ({ customer_phone: "1" }), notifyUrl }),
+      createCashfreePaymentGateway({
+        environment: "sandbox",
+        clientId: "id",
+        clientSecret: "s",
+        apiVersion: "2023-08-01",
+        customerDetails: () => ({ customer_phone: "1" }),
+        notifyUrl,
+      }),
     ).toThrow(/notifyUrl/);
   });
 });

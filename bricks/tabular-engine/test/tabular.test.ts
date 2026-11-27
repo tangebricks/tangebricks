@@ -4,11 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_tabular_engine.sql?raw";
-import {
-  TabularService,
-  parseCsv,
-  createTabularRoutes,
-} from "../src/index.ts";
+import { TabularService, parseCsv, createTabularRoutes } from "../src/index.ts";
 import type { TabularEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -106,15 +102,10 @@ describe("Tabular Service Core Logic", () => {
         { key: "amount", label: "Amount ($)", width: 120, visible: true },
       ],
       [{ field: "amount", operator: ">", value: 10000 }],
-      [{ field: "amount", direction: "desc" }]
+      [{ field: "amount", direction: "desc" }],
     );
 
-    await service.createGridView(
-      WS_BETA,
-      "deals",
-      "Beta Pipeline",
-      [{ key: "deal_name", label: "Deal" }]
-    );
+    await service.createGridView(WS_BETA, "deals", "Beta Pipeline", [{ key: "deal_name", label: "Deal" }]);
 
     const alphaViews = await service.listGridViews(WS_ALPHA, "deals");
     const betaViews = await service.listGridViews(WS_BETA, "deals");
@@ -133,40 +124,52 @@ describe("Tabular HTTP API", () => {
     app.route("/api", createTabularRoutes());
 
     // 1. POST /tabular/infer
-    const inferRes = await app.request("/api/tabular/infer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ csvText: "id,title\n1,Alpha\n2,Beta" }),
-    }, { DB: db });
+    const inferRes = await app.request(
+      "/api/tabular/infer",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csvText: "id,title\n1,Alpha\n2,Beta" }),
+      },
+      { DB: db },
+    );
     expect(inferRes.status).toBe(200);
     const inferJson = (await inferRes.json()) as { headers: string[] };
     expect(inferJson.headers).toEqual(["id", "title"]);
 
     // 2. POST /tabular/imports
-    const jobRes = await app.request("/api/tabular/imports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        targetEntityType: "products",
-        filename: "catalog.csv",
-      }),
-    }, { DB: db });
+    const jobRes = await app.request(
+      "/api/tabular/imports",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          targetEntityType: "products",
+          filename: "catalog.csv",
+        }),
+      },
+      { DB: db },
+    );
     expect(jobRes.status).toBe(201);
     const jobJson = (await jobRes.json()) as { job: { id: string } };
     const jobId = jobJson.job.id;
 
     // 3. POST /tabular/imports/:id/execute
-    const execRes = await app.request(`/api/tabular/imports/${jobId}/execute`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        csvText: "Product Name,Unit Price\nWidget A,29.99\nWidget B,49.99",
-        mappings: [
-          { csvColumn: "Product Name", targetField: "name", type: "string" },
-          { csvColumn: "Unit Price", targetField: "price", type: "number" },
-        ],
-      }),
-    }, { DB: db });
+    const execRes = await app.request(
+      `/api/tabular/imports/${jobId}/execute`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          csvText: "Product Name,Unit Price\nWidget A,29.99\nWidget B,49.99",
+          mappings: [
+            { csvColumn: "Product Name", targetField: "name", type: "string" },
+            { csvColumn: "Unit Price", targetField: "price", type: "number" },
+          ],
+        }),
+      },
+      { DB: db },
+    );
     expect(execRes.status).toBe(200);
     const execJson = (await execRes.json()) as { ok: boolean; records: Array<{ name: string; price: number }> };
     expect(execJson.ok).toBe(true);
@@ -174,15 +177,22 @@ describe("Tabular HTTP API", () => {
     expect(execJson.records[0]?.price).toBe(29.99);
 
     // 4. POST /tabular/views
-    const viewRes = await app.request("/api/tabular/views", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        entityType: "products",
-        name: "Standard Catalog View",
-        columns: [{ key: "name", label: "Name" }, { key: "price", label: "Price" }],
-      }),
-    }, { DB: db });
+    const viewRes = await app.request(
+      "/api/tabular/views",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          entityType: "products",
+          name: "Standard Catalog View",
+          columns: [
+            { key: "name", label: "Name" },
+            { key: "price", label: "Price" },
+          ],
+        }),
+      },
+      { DB: db },
+    );
     expect(viewRes.status).toBe(201);
 
     // 5. GET /tabular/views
@@ -203,11 +213,15 @@ describe("Tabular HTTP API", () => {
     const asAlpha = { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA };
 
     expect((await app.request(`/api/tabular/imports/${betaJob.id}`, { headers: asAlpha }, { DB: db })).status).toBe(404);
-    const exec = await app.request(`/api/tabular/imports/${betaJob.id}/execute`, {
-      method: "POST",
-      headers: asAlpha,
-      body: JSON.stringify({ csvText: "Name\nMallory", mappings: [{ csvColumn: "Name", targetField: "name", type: "string" }] }),
-    }, { DB: db });
+    const exec = await app.request(
+      `/api/tabular/imports/${betaJob.id}/execute`,
+      {
+        method: "POST",
+        headers: asAlpha,
+        body: JSON.stringify({ csvText: "Name\nMallory", mappings: [{ csvColumn: "Name", targetField: "name", type: "string" }] }),
+      },
+      { DB: db },
+    );
     expect(exec.status).toBe(404);
 
     // Beta's job is untouched and still readable by Beta.

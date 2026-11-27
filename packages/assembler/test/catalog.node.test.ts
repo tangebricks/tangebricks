@@ -63,7 +63,12 @@ describe("each manifest tells the truth about its package", () => {
 
     // every migration in the brick's folder is listed, and every listed one exists with the catalog's text (a brick may have none)
     const migrationsDir = join(root, "bricks", dir, "migrations");
-    const onDisk = existsSync(migrationsDir) ? readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).map((f) => `migrations/${f}`).sort() : [];
+    const onDisk = existsSync(migrationsDir)
+      ? readdirSync(migrationsDir)
+          .filter((f) => f.endsWith(".sql"))
+          .map((f) => `migrations/${f}`)
+          .sort()
+      : [];
     expect([...manifest.migrations].sort()).toEqual(onDisk);
     for (const file of manifest.migrations) expect(files[file]).toBe(read("bricks", dir, file).replace(/\r\n/g, "\n"));
   });
@@ -75,7 +80,8 @@ describe("each manifest tells the truth about its package", () => {
         continue;
       }
       const referenced = new Set<string>();
-      for (const route of manifest.worker.routes) for (const value of Object.values(route.options)) if (typeof value === "object" && "$setting" in value) referenced.add(value.$setting);
+      for (const route of manifest.worker.routes)
+        for (const value of Object.values(route.options)) if (typeof value === "object" && "$setting" in value) referenced.add(value.$setting);
       expect([...referenced].sort(), manifest.id).toEqual(Object.keys(manifest.settings).sort());
     }
   });
@@ -83,7 +89,9 @@ describe("each manifest tells the truth about its package", () => {
 
 describe("the assembler knows no brick", () => {
   const sourceDir = join(root, "packages", "assembler", "src");
-  const sources = readdirSync(sourceDir).filter((f) => f.endsWith(".ts")).map((f) => ({ file: f, text: readFileSync(join(sourceDir, f), "utf8") }));
+  const sources = readdirSync(sourceDir)
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => ({ file: f, text: readFileSync(join(sourceDir, f), "utf8") }));
 
   // Everything a brick could be called: its id, its package, and every function the emitted code imports from it.
   const names = new Set<string>();
@@ -105,7 +113,18 @@ describe("the assembler knows no brick", () => {
     expect(names.size).toBeGreaterThan(10);
     expect(names.has("credit-wallet")).toBe(true);
     expect(names.has("createWalletRoutes")).toBe(true);
-    expect(sources.map((s) => s.file).sort()).toEqual(["assemble.ts", "hash.ts", "identity-stub.ts", "index.ts", "integration-fidelity-codes.ts", "openapi.ts", "schedules.ts", "schemas.ts", "semver.ts", "tail-worker.ts"]);
+    expect(sources.map((s) => s.file).sort()).toEqual([
+      "assemble.ts",
+      "hash.ts",
+      "identity-stub.ts",
+      "index.ts",
+      "integration-fidelity-codes.ts",
+      "openapi.ts",
+      "schedules.ts",
+      "schemas.ts",
+      "semver.ts",
+      "tail-worker.ts",
+    ]);
   });
 
   test("no brick id, package, export, capability or setting name appears in the assembler's source", () => {

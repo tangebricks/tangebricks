@@ -54,9 +54,7 @@ export function createSendOutboundMessageExecutor(options: SendOutboundMessageEx
   if (!options || !options.adapters || Object.keys(options.adapters).length === 0) {
     throw new NotConfiguredError("createSendOutboundMessageExecutor needs at least one delivery adapter");
   }
-  return async (
-    ctx: Pick<ExecutionContext, "nodeId" | "workspaceId" | "data" | "inputs" | "secret" | "binding">,
-  ): Promise<Record<string, unknown>> => {
+  return async (ctx: Pick<ExecutionContext, "nodeId" | "workspaceId" | "data" | "inputs" | "secret" | "binding">): Promise<Record<string, unknown>> => {
     const input = ctx.inputs.in && typeof ctx.inputs.in === "object" ? (ctx.inputs.in as Record<string, unknown>) : {};
     const channel =
       typeof input.channel === "string" && input.channel.length > 0 ? input.channel : typeof ctx.data.channel === "string" ? ctx.data.channel : "email";
@@ -76,12 +74,15 @@ export function createSendOutboundMessageExecutor(options: SendOutboundMessageEx
       viaWorkflow: true,
     });
     if (!result.ok) {
-      if (result.errorCode === "NOT_CONFIGURED") throw new NotConfiguredError(`omnichannel-outbound.send_message (${ctx.nodeId}): ${result.error.replace(/^NOT_CONFIGURED: /, "")}`);
+      if (result.errorCode === "NOT_CONFIGURED")
+        throw new NotConfiguredError(`omnichannel-outbound.send_message (${ctx.nodeId}): ${result.error.replace(/^NOT_CONFIGURED: /, "")}`);
       throw new Error(`omnichannel-outbound.send_message (${ctx.nodeId}): ${result.errorCode ?? "REFUSED"}: ${result.error}`);
     }
     const dispatch = result.dispatch;
     if (dispatch.status !== "sent") {
-      throw new Error(`omnichannel-outbound.send_message (${ctx.nodeId}): delivery failed (${dispatch.error_text ?? "unknown"}) after ${dispatch.attempts} attempt(s); dispatch ${dispatch.id}`);
+      throw new Error(
+        `omnichannel-outbound.send_message (${ctx.nodeId}): delivery failed (${dispatch.error_text ?? "unknown"}) after ${dispatch.attempts} attempt(s); dispatch ${dispatch.id}`,
+      );
     }
     return { out: { dispatched: true, dispatchId: dispatch.id, externalId: dispatch.external_id, attempts: dispatch.attempts } };
   };

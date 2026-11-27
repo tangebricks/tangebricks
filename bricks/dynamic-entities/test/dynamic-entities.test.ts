@@ -67,7 +67,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Mechanical Keyboard", price: 120 }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(postRes.status).toBe(201);
     const postBody = (await postRes.json()) as any;
@@ -77,11 +77,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
     expect(postBody.item.price).toBe(120);
 
     // 2. List items
-    const listRes = await app.request(
-      "http://localhost/api/items",
-      { method: "GET" },
-      { DB: db }
-    );
+    const listRes = await app.request("http://localhost/api/items", { method: "GET" }, { DB: db });
     expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as any;
     expect(listBody.items).toHaveLength(1);
@@ -100,7 +96,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Valid Title", price: "not-a-number" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(typeMismatchRes.status).toBe(400);
     const typeMismatchBody = (await typeMismatchRes.json()) as any;
@@ -119,7 +115,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ price: 50 }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(missingFieldRes.status).toBe(400);
     const missingBody = (await missingFieldRes.json()) as any;
@@ -133,7 +129,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
         method: "GET",
         headers: { "x-user-id": "anonymous" },
       },
-      { DB: db }
+      { DB: db },
     );
     expect(unauthRes.status).toBe(401);
     const unauthBody = (await unauthRes.json()) as any;
@@ -153,7 +149,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Confidential Alpha Document", price: 999 }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(createRes.status).toBe(201);
     const itemAlpha = ((await createRes.json()) as any).item;
@@ -161,11 +157,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
     const alphaId = itemAlpha.id;
 
     // 1. Tenant Beta attempts GET on Tenant Alpha's item -> 404 Not Found
-    const getRes = await appBeta.request(
-      `http://localhost/api/items/${alphaId}`,
-      { method: "GET" },
-      { DB: db }
-    );
+    const getRes = await appBeta.request(`http://localhost/api/items/${alphaId}`, { method: "GET" }, { DB: db });
     expect(getRes.status).toBe(404);
     const getBody = (await getRes.json()) as any;
     expect(JSON.stringify(getBody)).not.toContain("Confidential Alpha Document");
@@ -178,24 +170,16 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Tampered by Beta" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(patchRes.status).toBe(404);
 
     // 3. Tenant Beta attempts DELETE on Tenant Alpha's item -> 404 Not Found
-    const deleteRes = await appBeta.request(
-      `http://localhost/api/items/${alphaId}`,
-      { method: "DELETE" },
-      { DB: db }
-    );
+    const deleteRes = await appBeta.request(`http://localhost/api/items/${alphaId}`, { method: "DELETE" }, { DB: db });
     expect(deleteRes.status).toBe(404);
 
     // 4. Verify Alpha's item remains unmodified in database
-    const verifyRes = await appAlpha.request(
-      `http://localhost/api/items/${alphaId}`,
-      { method: "GET" },
-      { DB: db }
-    );
+    const verifyRes = await appAlpha.request(`http://localhost/api/items/${alphaId}`, { method: "GET" }, { DB: db });
     expect(verifyRes.status).toBe(200);
     const verifyBody = (await verifyRes.json()) as any;
     expect(verifyBody.item.title).toBe("Confidential Alpha Document");
@@ -214,7 +198,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: `Item ${String(i).padStart(2, "0")}`, price: i * 10 }),
         },
-        { DB: db }
+        { DB: db },
       );
       expect(res.status).toBe(201);
     }
@@ -261,29 +245,17 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
     const app = createDynamicApp("ws_inject_test", "usr_alice");
 
     // 1. SQL Injection in limit query parameter
-    const injectLimitRes = await app.request(
-      "http://localhost/api/items?limit=5;%20DROP%20TABLE%20items;%20--",
-      { method: "GET" },
-      { DB: db }
-    );
+    const injectLimitRes = await app.request("http://localhost/api/items?limit=5;%20DROP%20TABLE%20items;%20--", { method: "GET" }, { DB: db });
     expect(injectLimitRes.status).toBe(400);
     const injectLimitBody = (await injectLimitRes.json()) as any;
     expect(injectLimitBody.error).toBeDefined();
 
     // 2. Negative offset rejected
-    const negativeOffsetRes = await app.request(
-      "http://localhost/api/items?offset=-1",
-      { method: "GET" },
-      { DB: db }
-    );
+    const negativeOffsetRes = await app.request("http://localhost/api/items?offset=-1", { method: "GET" }, { DB: db });
     expect(negativeOffsetRes.status).toBe(400);
 
     // 3. SQL Injection in path id parameter (' OR '1'='1)
-    const injectIdRes = await app.request(
-      "http://localhost/api/items/'%20OR%20'1'='1",
-      { method: "GET" },
-      { DB: db }
-    );
+    const injectIdRes = await app.request("http://localhost/api/items/'%20OR%20'1'='1", { method: "GET" }, { DB: db });
     expect(injectIdRes.status).toBe(404);
 
     // 4. Injected tenant id in POST payload is ignored (workspace is bound from context)
@@ -299,17 +271,14 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
           id: "custom-id-injection",
         }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(spoofPostRes.status).toBe(201);
     const spoofPostItem = ((await spoofPostRes.json()) as any).item;
     expect(spoofPostItem.id).not.toBe("custom-id-injection");
 
     // Verify row in DB belongs to caller workspace ws_inject_test
-    const rowInDb = await db
-      .prepare("SELECT workspace_id FROM ent_items WHERE id = ?")
-      .bind(spoofPostItem.id)
-      .first<{ workspace_id: string }>();
+    const rowInDb = await db.prepare("SELECT workspace_id FROM ent_items WHERE id = ?").bind(spoofPostItem.id).first<{ workspace_id: string }>();
     expect(rowInDb?.workspace_id).toBe("ws_inject_test");
   });
 
@@ -324,7 +293,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Legacy Item", price: 45 }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(insertRes.status).toBe(201);
     const legacyItem = ((await insertRes.json()) as any).item;
@@ -347,11 +316,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
     const app2 = createDynamicApp("ws_schema_test", "usr_alice", evolvedDeclarations);
 
     // 4. Fetch legacy row under evolved schema (sku should be null)
-    const readLegacyRes = await app2.request(
-      `http://localhost/api/items/${legacyId}`,
-      { method: "GET" },
-      { DB: db }
-    );
+    const readLegacyRes = await app2.request(`http://localhost/api/items/${legacyId}`, { method: "GET" }, { DB: db });
     expect(readLegacyRes.status).toBe(200);
     const readLegacyBody = (await readLegacyRes.json()) as any;
     expect(readLegacyBody.item.title).toBe("Legacy Item");
@@ -365,7 +330,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sku: "SKU-LEGACY-001" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(patchRes.status).toBe(200);
     const patchedBody = (await patchRes.json()) as any;
@@ -379,7 +344,7 @@ describe("Dynamic Entities Brick Behaviour Suite", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Modern Item", price: 90, sku: "SKU-MODERN-999" }),
       },
-      { DB: db }
+      { DB: db },
     );
     expect(newRowRes.status).toBe(201);
     const newRowBody = (await newRowRes.json()) as any;
@@ -488,7 +453,10 @@ describe("relations, dates, money and long text (story 1.18)", () => {
   it("money can be changed and cleared; clearing empties both columns", async () => {
     const customerId = await newCustomer("ws_rel_a");
     const id = (await send("ws_rel_a", "POST", "/invoice", { customer_id: customerId, total: { amount: 100, currency: "INR" } })).body.item.id as string;
-    expect((await send("ws_rel_a", "PATCH", `/invoice/${id}`, { total: { amount: 250, currency: "INR" } })).body.item.total).toEqual({ amount: 250, currency: "INR" });
+    expect((await send("ws_rel_a", "PATCH", `/invoice/${id}`, { total: { amount: 250, currency: "INR" } })).body.item.total).toEqual({
+      amount: 250,
+      currency: "INR",
+    });
     expect((await send("ws_rel_a", "PATCH", `/invoice/${id}`, { total: null })).body.item.total).toBeNull();
     const row = await db.prepare('SELECT "total", "total__currency" FROM "ent_invoice" WHERE "id" = ?').bind(id).first<any>();
     expect(row).toEqual({ total: null, total__currency: null });

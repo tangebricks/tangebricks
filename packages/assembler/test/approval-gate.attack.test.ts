@@ -76,7 +76,9 @@ describe("user approval gate in an assembled app (story 2.6)", () => {
     expect(await viaKey()).toEqual({ status: 403, code: "USER_NOT_APPROVED" });
 
     const decisions = (
-      await db.prepare("SELECT actor_id, action, target_id FROM audit_events WHERE workspace_id = '_platform' ORDER BY rowid").all<{ actor_id: string; action: string; target_id: string }>()
+      await db
+        .prepare("SELECT actor_id, action, target_id FROM audit_events WHERE workspace_id = '_platform' ORDER BY rowid")
+        .all<{ actor_id: string; action: string; target_id: string }>()
     ).results;
     expect(decisions).toEqual([
       { actor_id: OPERATOR, action: "platform.user.approve", target_id: "alice" },

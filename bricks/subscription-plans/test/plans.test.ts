@@ -126,9 +126,7 @@ describe("Subscription Route Handlers & requireFeature Guard", () => {
     app.route("/api", createPlanRoutes());
 
     // Protected feature endpoint
-    app.get("/api/ai/deep-analysis", requireFeature("deep_ai"), (c) =>
-      c.json({ result: "deep_ai_analysis_complete" }, 200)
-    );
+    app.get("/api/ai/deep-analysis", requireFeature("deep_ai"), (c) => c.json({ result: "deep_ai_analysis_complete" }, 200));
 
     return app;
   };
@@ -139,10 +137,7 @@ describe("Subscription Route Handlers & requireFeature Guard", () => {
     await service.subscribe(WS_ALPHA, "free");
 
     const app = createApp(WS_ALPHA);
-    const res = await app.fetch(
-      new Request("http://localhost/api/ai/deep-analysis"),
-      { DB: db }
-    );
+    const res = await app.fetch(new Request("http://localhost/api/ai/deep-analysis"), { DB: db });
 
     expect(res.status).toBe(403);
     const json = (await res.json()) as { error: string; requiredFeature: string };
@@ -168,15 +163,12 @@ describe("Subscription Route Handlers & requireFeature Guard", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ planId: "ai_pro" }),
       }),
-      { DB: db }
+      { DB: db },
     );
     expect(upgradeRes.status).toBe(200);
 
     // Call protected endpoint now -> 200 OK
-    const res = await app.fetch(
-      new Request("http://localhost/api/ai/deep-analysis"),
-      { DB: db }
-    );
+    const res = await app.fetch(new Request("http://localhost/api/ai/deep-analysis"), { DB: db });
     expect(res.status).toBe(200);
     const json = (await res.json()) as { result: string };
     expect(json.result).toBe("deep_ai_analysis_complete");
@@ -263,7 +255,10 @@ describe("Subscription Route Handlers & requireFeature Guard", () => {
       await service.createPlan("starter", "Starter", 900, "month", {});
       await service.createPlan("pro", "Pro", 4900, "month", {});
       await service.subscribe(WS_ALPHA, "pro");
-      await db.prepare("UPDATE sub_subscriptions SET current_period_end = ? WHERE workspace_id = ?").bind(new Date(Date.now() - 1000).toISOString(), WS_ALPHA).run();
+      await db
+        .prepare("UPDATE sub_subscriptions SET current_period_end = ? WHERE workspace_id = ?")
+        .bind(new Date(Date.now() - 1000).toISOString(), WS_ALPHA)
+        .run();
       expect(await service.isPaid(WS_ALPHA)).toBe(false);
       const res = await createApp(WS_ALPHA, "owner").fetch(post(JSON.stringify({ planId: "starter" })), { DB: db });
       expect(res.status).toBe(402);

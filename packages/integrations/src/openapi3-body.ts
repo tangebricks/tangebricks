@@ -1,21 +1,12 @@
 import { FIDELITY_CODES } from "@poc/assembler";
 import { escapeJsonPointer } from "./report.ts";
 import { mapSchema } from "./schema-map.ts";
-import {
-  derefObject,
-  isPlainObject,
-  sanitizeIdentifier,
-  truncateText,
-} from "./util.ts";
+import { derefObject, isPlainObject, sanitizeIdentifier, truncateText } from "./util.ts";
 import type { IntegrationOperationBody, IntegrationOperationBodyField } from "@poc/assembler";
 import type { OpenApiOpContext } from "./openapi3-params.ts";
 
 /** Maps the JSON / form-urlencoded request body of one operation (see report codes BODY_*). */
-export function extractOpenApiBody(
-  ctx: OpenApiOpContext,
-  opRaw: Record<string, unknown>,
-  usedCleanNames: Set<string>,
-): IntegrationOperationBody | undefined {
+export function extractOpenApiBody(ctx: OpenApiOpContext, opRaw: Record<string, unknown>, usedCleanNames: Set<string>): IntegrationOperationBody | undefined {
   const { spec, report, operationId, rawPath, methodLower } = ctx;
   let body: IntegrationOperationBody | undefined;
   if (!isPlainObject(opRaw.requestBody)) {
@@ -188,9 +179,7 @@ export function extractOpenApiBody(
           report?.approximated({
             op: operationId,
             element: "body",
-            code: code === "SCHEMA_DEPTH_LIMIT"
-              ? FIDELITY_CODES.SCHEMA_DEPTH_LIMIT.code
-              : FIDELITY_CODES.SCHEMA_NODE_LIMIT.code,
+            code: code === "SCHEMA_DEPTH_LIMIT" ? FIDELITY_CODES.SCHEMA_DEPTH_LIMIT.code : FIDELITY_CODES.SCHEMA_NODE_LIMIT.code,
             pointer: bodySchemaPointer,
             blocking: false,
           });
@@ -211,10 +200,7 @@ export function extractOpenApiBody(
   }
 
   // oneOf / anyOf composed root body
-  if (
-    (Array.isArray(bodySchema.oneOf) && bodySchema.oneOf.length > 0) ||
-    (Array.isArray(bodySchema.anyOf) && bodySchema.anyOf.length > 0)
-  ) {
+  if ((Array.isArray(bodySchema.oneOf) && bodySchema.oneOf.length > 0) || (Array.isArray(bodySchema.anyOf) && bodySchema.anyOf.length > 0)) {
     const rootSchema = mapSchema(spec, bodySchema, {
       pointer: bodySchemaPointer,
       onLoss: (code) => {
@@ -222,9 +208,7 @@ export function extractOpenApiBody(
           report?.approximated({
             op: operationId,
             element: "body",
-            code: code === "SCHEMA_DEPTH_LIMIT"
-              ? FIDELITY_CODES.SCHEMA_DEPTH_LIMIT.code
-              : FIDELITY_CODES.SCHEMA_NODE_LIMIT.code,
+            code: code === "SCHEMA_DEPTH_LIMIT" ? FIDELITY_CODES.SCHEMA_DEPTH_LIMIT.code : FIDELITY_CODES.SCHEMA_NODE_LIMIT.code,
             pointer: bodySchemaPointer,
             blocking: false,
           });
@@ -248,11 +232,7 @@ export function extractOpenApiBody(
   const propEntries = Object.entries(props);
 
   // Free-form body: no properties and additionalProperties !== false, or additionalProperties === true
-  if (
-    propEntries.length === 0 &&
-    cts.length > 0 &&
-    bodySchema.additionalProperties !== false
-  ) {
+  if (propEntries.length === 0 && cts.length > 0 && bodySchema.additionalProperties !== false) {
     report?.mapped({
       op: operationId,
       element: "body",
@@ -266,11 +246,7 @@ export function extractOpenApiBody(
     };
   }
 
-  const requiredSet = new Set<string>(
-    Array.isArray(bodySchema.required)
-      ? bodySchema.required.filter((r): r is string => typeof r === "string")
-      : [],
-  );
+  const requiredSet = new Set<string>(Array.isArray(bodySchema.required) ? bodySchema.required.filter((r): r is string => typeof r === "string") : []);
 
   // Order required-first, keeping spec order within each group
   const reqProps: [string, unknown][] = [];
@@ -343,9 +319,7 @@ export function extractOpenApiBody(
           report?.approximated({
             op: operationId,
             element: "bodyField",
-            code: code === "SCHEMA_DEPTH_LIMIT"
-              ? FIDELITY_CODES.SCHEMA_DEPTH_LIMIT.code
-              : FIDELITY_CODES.SCHEMA_NODE_LIMIT.code,
+            code: code === "SCHEMA_DEPTH_LIMIT" ? FIDELITY_CODES.SCHEMA_DEPTH_LIMIT.code : FIDELITY_CODES.SCHEMA_NODE_LIMIT.code,
             pointer: propPointer,
             blocking: false,
           });
@@ -361,9 +335,7 @@ export function extractOpenApiBody(
       blocking: false,
     });
 
-    const isBinary =
-      propSchema.format === "binary" ||
-      (isPlainObject(propRaw) && (propRaw as Record<string, unknown>).format === "binary");
+    const isBinary = propSchema.format === "binary" || (isPlainObject(propRaw) && (propRaw as Record<string, unknown>).format === "binary");
 
     fields.push({
       name: cleanFieldName,

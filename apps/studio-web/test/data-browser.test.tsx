@@ -1,11 +1,5 @@
 // @vitest-environment jsdom
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { signedDataBrowserRequest } from "../../studio-api/src/telemetry-reads.ts";
 import { handleDataBrowserRequest } from "../../../packages/deploy/src/worker/data-browser.ts";
@@ -96,48 +90,12 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
        VALUES (?, ?, ?, ?, ?)`,
     );
 
-    insertInv.run(
-      "inv_A_01",
-      "workspace_A",
-      "INV-A-01",
-      150,
-      "open",
-      "sec_A_1",
-      "hash_A_1",
-    );
-    insertInv.run(
-      "inv_A_02",
-      "workspace_A",
-      "INV-A-02",
-      450,
-      "paid",
-      "sec_A_2",
-      "hash_A_2",
-    );
-    insertInv.run(
-      "inv_B_01",
-      "workspace_B",
-      "INV-B-01",
-      900,
-      "void",
-      "sec_B_1",
-      "hash_B_1",
-    );
+    insertInv.run("inv_A_01", "workspace_A", "INV-A-01", 150, "open", "sec_A_1", "hash_A_1");
+    insertInv.run("inv_A_02", "workspace_A", "INV-A-02", 450, "paid", "sec_A_2", "hash_A_2");
+    insertInv.run("inv_B_01", "workspace_B", "INV-B-01", 900, "void", "sec_B_1", "hash_B_1");
 
-    insertWh.run(
-      "wh_A_01",
-      "workspace_A",
-      "https://a.example.com/hook",
-      "invoice.paid",
-      "whsec_A",
-    );
-    insertWh.run(
-      "wh_B_01",
-      "workspace_B",
-      "https://b.example.com/hook",
-      "invoice.void",
-      "whsec_B",
-    );
+    insertWh.run("wh_A_01", "workspace_A", "https://a.example.com/hook", "invoice.paid", "whsec_A");
+    insertWh.run("wh_B_01", "workspace_B", "https://b.example.com/hook", "invoice.void", "whsec_B");
 
     useStudioStore.setState({
       user: {
@@ -199,19 +157,11 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
       secrets: [],
     });
 
-    globalThis.fetch = vi.fn(trackInflight(
-      async (input: RequestInfo | URL, init?: RequestInit) => {
-        const rawUrl =
-          typeof input === "string"
-            ? input
-            : input instanceof URL
-              ? input.toString()
-              : input.url;
+    globalThis.fetch = vi.fn(
+      trackInflight(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
         const parsedUrl = new URL(rawUrl, "http://localhost");
-        const m =
-          /^\/api\/projects\/([^/]+)\/environments\/(preview|production)\/data\/(.*)$/.exec(
-            parsedUrl.pathname,
-          );
+        const m = /^\/api\/projects\/([^/]+)\/environments\/(preview|production)\/data\/(.*)$/.exec(parsedUrl.pathname);
         if (m) {
           const projectId = decodeURIComponent(m[1]!);
           const envName = m[2] as "preview" | "production";
@@ -223,9 +173,7 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
               .prepare(
                 `SELECT * FROM data_browser_audit_log WHERE project_id = ? AND env_name = ? ${ws ? "AND workspace_id = ?" : ""} ORDER BY created_at DESC`,
               )
-              .all(
-                ...(ws ? [projectId, envName, ws] : [projectId, envName]),
-              ) as Array<Record<string, unknown>>;
+              .all(...(ws ? [projectId, envName, ws] : [projectId, envName])) as Array<Record<string, unknown>>;
             return new Response(
               JSON.stringify({
                 ok: true,
@@ -239,12 +187,8 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
                   rowId: r.row_id,
                   operation: r.operation,
                   actor: r.actor,
-                  beforeSnapshot: r.before_snapshot
-                    ? JSON.parse(String(r.before_snapshot))
-                    : null,
-                  afterSnapshot: r.after_snapshot
-                    ? JSON.parse(String(r.after_snapshot))
-                    : null,
+                  beforeSnapshot: r.before_snapshot ? JSON.parse(String(r.before_snapshot)) : null,
+                  afterSnapshot: r.after_snapshot ? JSON.parse(String(r.after_snapshot)) : null,
                   createdAt: r.created_at,
                 })),
               }),
@@ -253,8 +197,7 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
           }
 
           const method = init?.method ?? "GET";
-          const bodyText =
-            typeof init?.body === "string" ? init.body : undefined;
+          const bodyText = typeof init?.body === "string" ? init.body : undefined;
           // The request studio-api's data browser forwarder builds (workspace into the signed query, signed).
           const workerRes = await handleDataBrowserRequest(
             await signedDataBrowserRequest({
@@ -275,10 +218,7 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
               status: 404,
             });
           }
-          if (
-            (method === "POST" || method === "PATCH" || method === "DELETE") &&
-            (workerRes.status === 200 || workerRes.status === 201)
-          ) {
+          if ((method === "POST" || method === "PATCH" || method === "DELETE") && (workerRes.status === 200 || workerRes.status === 201)) {
             const payload = (await workerRes.json()) as Record<string, unknown>;
             const auditId = `dba_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
             world.db
@@ -296,12 +236,8 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
                 String(payload.rowId),
                 String(payload.operation),
                 "user_owner",
-                payload.beforeSnapshot
-                  ? JSON.stringify(payload.beforeSnapshot)
-                  : null,
-                payload.afterSnapshot
-                  ? JSON.stringify(payload.afterSnapshot)
-                  : null,
+                payload.beforeSnapshot ? JSON.stringify(payload.beforeSnapshot) : null,
+                payload.afterSnapshot ? JSON.stringify(payload.afterSnapshot) : null,
                 new Date().toISOString(),
               );
             return new Response(JSON.stringify({ ...payload, auditId }), {
@@ -312,8 +248,8 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
           return workerRes;
         }
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      },
-    )) as unknown as typeof fetch;
+      }),
+    ) as unknown as typeof fetch;
   });
 
   afterEach(() => {
@@ -382,9 +318,7 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
       expect(screen.getByTestId("data-browser-inline-input-amount")).toBeDefined();
     });
 
-    const amountInput = screen.getByTestId(
-      "data-browser-inline-input-amount",
-    ) as HTMLInputElement;
+    const amountInput = screen.getByTestId("data-browser-inline-input-amount") as HTMLInputElement;
     fireEvent.change(amountInput, { target: { value: "275" } });
     const saveBtn = await screen.findByTestId("data-browser-save-edit-inv_A_01");
     fireEvent.click(saveBtn);
@@ -397,19 +331,13 @@ describe("Story 6.1 — Studio Web Workspace-Scoped Data Browser (Data -> Data B
 
     await waitFor(() => {
       expect(screen.queryByTestId("data-browser-confirm-modal")).toBeNull();
-      expect(
-        screen.getByTestId("data-browser-cell-inv_A_01-amount").textContent,
-      ).toBe("275");
+      expect(screen.getByTestId("data-browser-cell-inv_A_01-amount").textContent).toBe("275");
     });
 
     // Audit log panel shows the recorded update mutation
     await waitFor(() => {
-      expect(
-        screen.getByTestId("data-browser-audit-panel").textContent,
-      ).toContain("update");
-      expect(
-        screen.getByTestId("data-browser-audit-panel").textContent,
-      ).toContain("invoices/inv_A_01");
+      expect(screen.getByTestId("data-browser-audit-panel").textContent).toContain("update");
+      expect(screen.getByTestId("data-browser-audit-panel").textContent).toContain("invoices/inv_A_01");
     });
   });
 });

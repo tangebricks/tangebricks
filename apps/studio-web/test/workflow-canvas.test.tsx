@@ -1,10 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { StudioApp } from "../src/App.tsx";
-import {
-  computeDeterministicDagLayout,
-  createSynthetic200NodeBlueprint,
-} from "../src/components/WorkflowCanvasView.tsx";
+import { computeDeterministicDagLayout, createSynthetic200NodeBlueprint } from "../src/components/WorkflowCanvasView.tsx";
 import { useStudioStore } from "../src/store.ts";
 import type { BlueprintState } from "../src/types.ts";
 
@@ -47,9 +44,7 @@ const multiWorkflowBlueprint: BlueprintState = {
         { id: "n-cron", type: "trigger.manual", label: "2AM Cron Trigger", data: {} },
         { id: "n-send", type: "in-app-notifications.send", label: "Send Digest", data: {} },
       ],
-      edges: [
-        { id: "e-digest-1", source: "n-cron", target: "n-send" },
-      ],
+      edges: [{ id: "e-digest-1", source: "n-cron", target: "n-send" }],
     },
   ],
   secretRefs: [],
@@ -100,9 +95,7 @@ describe("Story 2.5: Read-only @xyflow/react Workflow Canvas", () => {
     expect(screen.getByTestId("canvas-node-n-credit")).toBeDefined();
     expect(screen.getByTestId("node-port-in-n-credit").textContent).toContain("col:record");
     expect(screen.getByTestId("node-port-out-n-credit").textContent).toContain("res:record");
-    expect(screen.getByTestId("node-author-badge-n-credit").textContent).toContain(
-      "agent:claude-desktop",
-    );
+    expect(screen.getByTestId("node-author-badge-n-credit").textContent).toContain("agent:claude-desktop");
 
     // Switch to wf-digest via selector card
     fireEvent.click(screen.getByTestId("workflow-selector-card-wf-digest"));
@@ -135,8 +128,6 @@ describe("Story 2.5: Read-only @xyflow/react Workflow Canvas", () => {
     fireEvent.click(screen.getByTestId("workflow-outline-toggle"));
     const outline = screen.getByRole("region", { name: "Workflow Outline" });
     expect(outline).toBeDefined();
-    expect(screen.getByTestId("workflow-outline-step-n-transform").textContent).toContain(
-      "Upstream: n-start · Downstream: n-credit",
-    );
+    expect(screen.getByTestId("workflow-outline-step-n-transform").textContent).toContain("Upstream: n-start · Downstream: n-credit");
   });
 });

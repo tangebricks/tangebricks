@@ -2,11 +2,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  loadLegacyStories,
-  validateStoryGate,
-  validateTaskFile,
-} from "./lib/story-provenance.ts";
+import { loadLegacyStories, validateStoryGate, validateTaskFile } from "./lib/story-provenance.ts";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const bmadOutputDir = resolve(repoRoot, "_bmad-output");
@@ -70,19 +66,17 @@ export function runStoryGate(options: { taskFilePath?: string } = {}): number {
     }
   }
 
-  const taskSummary = taskResult
-    ? `task file: ${taskResult.checked} checked, ${taskResult.failed} failed`
-    : "task file: skipped (file absent)";
+  const taskSummary = taskResult ? `task file: ${taskResult.checked} checked, ${taskResult.failed} failed` : "task file: skipped (file absent)";
 
   if (totalFailed > 0) {
     console.error(
-      `Story gate failed: ticket files: ${ticketResult.total} (${ticketResult.grandfathered} grandfathered, ${ticketResult.passed} passed, ${ticketResult.failed} failed) · ${taskSummary}`
+      `Story gate failed: ticket files: ${ticketResult.total} (${ticketResult.grandfathered} grandfathered, ${ticketResult.passed} passed, ${ticketResult.failed} failed) · ${taskSummary}`,
     );
     return 1;
   }
 
   console.log(
-    `Story gate passed: ticket files: ${ticketResult.total} (${ticketResult.grandfathered} grandfathered, ${ticketResult.passed} passed) · ${taskSummary}`
+    `Story gate passed: ticket files: ${ticketResult.total} (${ticketResult.grandfathered} grandfathered, ${ticketResult.passed} passed) · ${taskSummary}`,
   );
   return 0;
 }

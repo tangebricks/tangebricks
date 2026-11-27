@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  IntegrationManifestSchema,
-  projectIntegrationToNodes,
-} from "@poc/assembler";
+import { IntegrationManifestSchema, projectIntegrationToNodes } from "@poc/assembler";
 import type { Catalog, IntegrationManifestFile } from "@poc/assembler";
 import { applyOp, createEmptyBlueprint } from "@poc/blueprint";
 import type { BlueprintState } from "@poc/blueprint";
@@ -44,9 +41,7 @@ const testManifestWithBlockingOp: IntegrationManifestFile = IntegrationManifestS
         ],
       },
       response: {
-        outputs: [
-          { id: "url", dataType: "string" },
-        ],
+        outputs: [{ id: "url", dataType: "string" }],
       },
     },
     {
@@ -56,9 +51,7 @@ const testManifestWithBlockingOp: IntegrationManifestFile = IntegrationManifestS
       method: "GET",
       path: "/v1/balance",
       response: {
-        outputs: [
-          { id: "available", dataType: "object" },
-        ],
+        outputs: [{ id: "available", dataType: "object" }],
       },
     },
   ],
@@ -88,13 +81,10 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
     const mockFetcher = vi.fn();
     const mockConnection = vi.fn();
 
-    const executor = createIntegrationOperationExecutor(
-      testManifestWithBlockingOp,
-      testManifestWithBlockingOp.operations[0]!,
-      { fetcher: mockFetcher as any },
-    );
+    const executor = createIntegrationOperationExecutor(testManifestWithBlockingOp, testManifestWithBlockingOp.operations[0]!, { fetcher: mockFetcher as any });
 
-    const ctx: ExecutionContext = { workspaceId: "ws_test",
+    const ctx: ExecutionContext = {
+      workspaceId: "ws_test",
       nodeId: "n_create_link",
       runId: "run_test",
       idempotencyKey: "run_test:n_create_link",
@@ -107,7 +97,7 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
       },
       payload: {},
       secret: () => "",
-      binding: () => ({} as any),
+      binding: () => ({}) as any,
       connection: mockConnection as any,
     };
 
@@ -120,20 +110,15 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
   });
 
   it("AC3: non-blocking approximated/unsupported entries execute normally", async () => {
-    const mockFetcher = vi.fn().mockResolvedValue(
-      Response.json({ available: [{ amount: 5000, currency: "usd" }] }, { status: 200 }),
-    );
+    const mockFetcher = vi.fn().mockResolvedValue(Response.json({ available: [{ amount: 5000, currency: "usd" }] }, { status: 200 }));
     const mockConnection = vi.fn().mockReturnValue({
       apiKey: "sk_test_mock_stripe_key",
     });
 
-    const executor = createIntegrationOperationExecutor(
-      testManifestWithBlockingOp,
-      testManifestWithBlockingOp.operations[1]!,
-      { fetcher: mockFetcher as any },
-    );
+    const executor = createIntegrationOperationExecutor(testManifestWithBlockingOp, testManifestWithBlockingOp.operations[1]!, { fetcher: mockFetcher as any });
 
-    const ctx: ExecutionContext = { workspaceId: "ws_test",
+    const ctx: ExecutionContext = {
+      workspaceId: "ws_test",
       nodeId: "n_get_balance",
       runId: "run_test",
       idempotencyKey: "run_test:n_get_balance",
@@ -143,7 +128,7 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
       inputs: {},
       payload: {},
       secret: () => "",
-      binding: () => ({} as any),
+      binding: () => ({}) as any,
       connection: mockConnection as any,
     };
 
@@ -173,13 +158,10 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
     const mockFetcher = vi.fn();
     const mockConnection = vi.fn();
 
-    const executor = createIntegrationOperationExecutor(
-      docLevelBlockingManifest,
-      docLevelBlockingManifest.operations[1]!,
-      { fetcher: mockFetcher as any },
-    );
+    const executor = createIntegrationOperationExecutor(docLevelBlockingManifest, docLevelBlockingManifest.operations[1]!, { fetcher: mockFetcher as any });
 
-    const ctx: ExecutionContext = { workspaceId: "ws_test",
+    const ctx: ExecutionContext = {
+      workspaceId: "ws_test",
       nodeId: "n_balance",
       runId: "run_test",
       idempotencyKey: "run_test:n_balance",
@@ -187,7 +169,7 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
       inputs: {},
       payload: {},
       secret: () => "",
-      binding: () => ({} as any),
+      binding: () => ({}) as any,
       connection: mockConnection as any,
     };
 
@@ -222,12 +204,10 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
       },
     });
 
-    const executor = createIntegrationOperationExecutor(
-      multiBlockingManifest,
-      multiBlockingManifest.operations[0]!,
-    );
+    const executor = createIntegrationOperationExecutor(multiBlockingManifest, multiBlockingManifest.operations[0]!);
 
-    const ctx: ExecutionContext = { workspaceId: "ws_test",
+    const ctx: ExecutionContext = {
+      workspaceId: "ws_test",
       nodeId: "n_multi",
       runId: "run_test",
       idempotencyKey: "run_test:n_multi",
@@ -235,7 +215,7 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
       inputs: {},
       payload: {},
       secret: () => "",
-      binding: () => ({} as any),
+      binding: () => ({}) as any,
     };
 
     await expect(executor(ctx)).rejects.toThrow(
@@ -272,9 +252,7 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
         {
           id: "wf-1",
           name: "Workflow 1",
-          nodes: [
-            { id: "trigger", type: "trigger.manual", data: {} },
-          ],
+          nodes: [{ id: "trigger", type: "trigger.manual", data: {} }],
           edges: [],
         },
       ],
@@ -343,9 +321,12 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
     const getNodeTool = TOOLS.find((t) => t.name === "get_node");
     expect(getNodeTool).toBeDefined();
 
-    const getNodeRes = (await (getNodeTool!.run as any)({ catalog }, {
-      type: "int:stripe.createLink",
-    })) as { text: string; isError?: boolean };
+    const getNodeRes = (await (getNodeTool!.run as any)(
+      { catalog },
+      {
+        type: "int:stripe.createLink",
+      },
+    )) as { text: string; isError?: boolean };
 
     expect(getNodeRes.isError).toBeFalsy();
     const nodeData = JSON.parse(getNodeRes.text);
@@ -355,19 +336,25 @@ describe("UC2.6 — Runtime refusal of unsupported operations and multi-layer en
     expect(searchNodesTool).toBeDefined();
 
     // Default search excludes unsupported nodes
-    const searchDefaultRes = (await (searchNodesTool!.run as any)({ catalog }, {
-      query: "createLink",
-    })) as { text: string; isError?: boolean };
+    const searchDefaultRes = (await (searchNodesTool!.run as any)(
+      { catalog },
+      {
+        query: "createLink",
+      },
+    )) as { text: string; isError?: boolean };
 
     expect(searchDefaultRes.isError).toBeFalsy();
     const defaultData = JSON.parse(searchDefaultRes.text);
     expect(defaultData.items).toHaveLength(0);
 
     // search with includeUnsupported: true returns unsupported nodes
-    const searchAllRes = (await (searchNodesTool!.run as any)({ catalog }, {
-      query: "createLink",
-      includeUnsupported: true,
-    })) as { text: string; isError?: boolean };
+    const searchAllRes = (await (searchNodesTool!.run as any)(
+      { catalog },
+      {
+        query: "createLink",
+        includeUnsupported: true,
+      },
+    )) as { text: string; isError?: boolean };
 
     expect(searchAllRes.isError).toBeFalsy();
     const allData = JSON.parse(searchAllRes.text);

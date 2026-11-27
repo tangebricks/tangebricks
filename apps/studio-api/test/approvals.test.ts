@@ -228,7 +228,11 @@ describe("AD-V8: MCP edits are proposals by default", () => {
   it.each([
     ["a money brick", [{ opId: "r-money", type: "enable_brick", brickId: "credit-wallet" }], /money setting: enable_brick:credit-wallet/],
     ["a destructive op", [{ opId: "r-del", type: "remove_entity", name: "invoices" }], /destructive: remove_entity/],
-    ["a brick upgrade (catalogVersion)", [{ opId: "r-up", type: "set_metadata", metadata: { catalogVersion: "2.0.0" } }], /brick upgrade: set_metadata\.catalogVersion/],
+    [
+      "a brick upgrade (catalogVersion)",
+      [{ opId: "r-up", type: "set_metadata", metadata: { catalogVersion: "2.0.0" } }],
+      /brick upgrade: set_metadata\.catalogVersion/,
+    ],
   ])("mode apply with %s is refused with PROPOSAL_REQUIRED and nothing is applied, over MCP and over HTTP", async (_label, ops, reason) => {
     const w = await world();
     const before = await revision(w);
@@ -387,7 +391,14 @@ describe("AD-V8: destructive actions need a Studio approval", () => {
     expect(JSON.stringify(cross.body)).not.toContain(w.project);
 
     // The blueprint changes after approval: the plan and revision no longer match what was approved.
-    expect((await call(`/api/projects/${w.project}/ops`, { token: w.owner.token, body: { ops: [{ opId: "chg", type: "set_metadata", metadata: { displayName: "Changed" } }] } })).status).toBe(200);
+    expect(
+      (
+        await call(`/api/projects/${w.project}/ops`, {
+          token: w.owner.token,
+          body: { ops: [{ opId: "chg", type: "set_metadata", metadata: { displayName: "Changed" } }] },
+        })
+      ).status,
+    ).toBe(200);
     const stale = await call(`/api/projects/${w.project}/environments/preview/deploy`, { token: w.agent.token, body: { approvalId } });
     expect(stale.status).toBe(409);
     expect(stale.body.error.code).toBe("APPROVAL_STALE");
@@ -515,9 +526,7 @@ describe("AD-V8: approval binding, release on failure, and the other gated route
     const id = first.body.error.approvalId as string;
     const row = await approvalRow(w, id);
     const migrations = row?.summary.migrations as Array<{ name: string; sha256: string; bytes: number; destructive: boolean }> | undefined;
-    const custom = migrations?.find(
-      (m) => m.name === "9001_custom.sql",
-    );
+    const custom = migrations?.find((m) => m.name === "9001_custom.sql");
     expect(custom).toMatchObject({ destructive: false });
     expect(custom!.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(custom!.bytes).toBeGreaterThan(0);
@@ -532,7 +541,9 @@ describe("AD-V8: approval binding, release on failure, and the other gated route
 
   it("an MCP promotion needs an approval; the approved retry promotes once", async () => {
     const w = await world("core-auth");
-    expect((await call(`/api/projects/${w.project}/environments/preview/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} })).status).toBe(200);
+    expect(
+      (await call(`/api/projects/${w.project}/environments/preview/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} })).status,
+    ).toBe(200);
     const first = await call(`/api/projects/${w.project}/environments/production/promote`, { token: w.agent.token, body: {} });
     expect(first.status, JSON.stringify(first.body)).toBe(403);
     expect(first.body.error.code).toBe("APPROVAL_REQUIRED");
@@ -550,7 +561,9 @@ describe("AD-V8: approval binding, release on failure, and the other gated route
     expect(d1.status).toBe(200);
     const firstDeployId = d1.body.deployId ?? d1.body.deploymentId ?? d1.body.environment?.lastDeploymentId;
     await call(`/api/projects/${w.project}/ops`, { token: w.owner.token, body: { ops: [{ opId: "rb-1", type: "enable_brick", brickId: "feature-flags" }] } });
-    expect((await call(`/api/projects/${w.project}/environments/preview/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} })).status).toBe(200);
+    expect(
+      (await call(`/api/projects/${w.project}/environments/preview/deploy`, { token: w.owner.token, headers: { "x-org-id": w.orgId }, body: {} })).status,
+    ).toBe(200);
     const body = { targetDeploymentId: firstDeployId, confirmDestructive: true };
     const first = await call(`/api/projects/${w.project}/environments/preview/rollback`, { token: w.agent.token, body });
     expect(first.body.error?.code, JSON.stringify(first.body)).toBe("APPROVAL_REQUIRED");
@@ -590,7 +603,10 @@ describe("AD-V8: approval binding, release on failure, and the other gated route
     expect(withRestore.body.error?.code, JSON.stringify(withRestore.body)).toBe("APPROVAL_STALE");
     // nothing ran: no rollback deployment, and the approval is still unused
     expect((await approvalRow(w, id))?.status).toBe("approved");
-    const rows = await studioDb.prepare("SELECT COUNT(*) AS n FROM deployments WHERE project_id = ? AND action = 'rollback'").bind(w.project).first<{ n: number }>();
+    const rows = await studioDb
+      .prepare("SELECT COUNT(*) AS n FROM deployments WHERE project_id = ? AND action = 'rollback'")
+      .bind(w.project)
+      .first<{ n: number }>();
     expect(Number(rows?.n)).toBe(0);
   });
 
@@ -609,7 +625,9 @@ describe("AD-V8: approval binding, release on failure, and the other gated route
     await approve(w, sbxId);
     const deployed = await call(`/api/projects/${w.project}/sandbox/deploy`, { token: w.agent.token, body: { approvalId: sbxId } });
     expect(deployed.status, JSON.stringify(deployed.body)).toBe(200);
-    expect((await call(`/api/projects/${w.project}/sandbox/deploy`, { token: w.agent.token, body: { approvalId: sbxId } })).body.error.code).toBe("APPROVAL_USED");
+    expect((await call(`/api/projects/${w.project}/sandbox/deploy`, { token: w.agent.token, body: { approvalId: sbxId } })).body.error.code).toBe(
+      "APPROVAL_USED",
+    );
 
     const account = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
     const promoteBody = { token: "cf_valid_token_promote_sbx_to_byoc_0123456789", accountId: account };
@@ -644,7 +662,10 @@ describe("AD-V8: approval binding, release on failure, and the other gated route
     expect(row).toMatchObject({ action: "import" });
     expect(row?.summary.diff).toBeDefined();
     await approve(other, id);
-    const imported = await call(`/api/projects/${other.project}/import`, { token: other.agent.token, body: { bundle: exported.body, mode: "replace", approvalId: id } });
+    const imported = await call(`/api/projects/${other.project}/import`, {
+      token: other.agent.token,
+      body: { bundle: exported.body, mode: "replace", approvalId: id },
+    });
     expect(imported.status, JSON.stringify(imported.body)).toBe(200);
     const bySession = await call(`/api/projects/${other.project}/import`, { token: other.owner.token, body: { bundle: exported.body, mode: "replace" } });
     expect(bySession.status).toBe(200);

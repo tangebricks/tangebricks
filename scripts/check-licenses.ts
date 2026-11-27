@@ -83,9 +83,7 @@ export const LICENSE_EXCEPTIONS: readonly LicenseException[] = [
 ];
 
 function findException(name: string, license: string): LicenseException | undefined {
-  return LICENSE_EXCEPTIONS.find(
-    (e) => e.license === license && (e.prefix ? name.startsWith(e.match) : name === e.match),
-  );
+  return LICENSE_EXCEPTIONS.find((e) => e.license === license && (e.prefix ? name.startsWith(e.match) : name === e.match));
 }
 
 /**

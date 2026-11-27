@@ -35,34 +35,19 @@ export interface R2BlobStoreOptions {
  *   R2 buckets holding integration blobs should configure a lifecycle rule
  *   expiring prefix `int-blobs/` after 7 days to prevent unbounded storage growth.
  */
-export function createR2BlobStore(
-  bucket: R2BucketLike,
-  options: R2BlobStoreOptions,
-): BlobStore {
+export function createR2BlobStore(bucket: R2BucketLike, options: R2BlobStoreOptions): BlobStore {
   const { workspaceId } = options;
 
   return {
-    async put(
-      body: ReadableStream | ArrayBuffer,
-      meta: BlobStorePutMeta,
-    ): Promise<BlobStorePutResult> {
-      const uuid =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : Math.random().toString(36).slice(2, 12);
+    async put(body: ReadableStream | ArrayBuffer, meta: BlobStorePutMeta): Promise<BlobStorePutResult> {
+      const uuid = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 12);
       const key = `int-blobs/${workspaceId}/${uuid}`;
 
       let bytes: Uint8Array;
       if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
-        const u8 =
-          body instanceof ArrayBuffer
-            ? new Uint8Array(body)
-            : new Uint8Array(body.buffer, body.byteOffset, body.byteLength);
+        const u8 = body instanceof ArrayBuffer ? new Uint8Array(body) : new Uint8Array(body.buffer, body.byteOffset, body.byteLength);
         if (u8.byteLength > meta.maxBytes) {
-          throw new BlobStoreError(
-            `INTEGRATION_PAYLOAD_TOO_LARGE: payload exceeded limit of ${meta.maxBytes} bytes`,
-            "INTEGRATION_PAYLOAD_TOO_LARGE",
-          );
+          throw new BlobStoreError(`INTEGRATION_PAYLOAD_TOO_LARGE: payload exceeded limit of ${meta.maxBytes} bytes`, "INTEGRATION_PAYLOAD_TOO_LARGE");
         }
         bytes = new Uint8Array(u8);
       } else {
@@ -77,10 +62,7 @@ export function createR2BlobStore(
             total += value.byteLength;
             if (total > meta.maxBytes) {
               await reader.cancel();
-              throw new BlobStoreError(
-                `INTEGRATION_PAYLOAD_TOO_LARGE: payload exceeded limit of ${meta.maxBytes} bytes`,
-                "INTEGRATION_PAYLOAD_TOO_LARGE",
-              );
+              throw new BlobStoreError(`INTEGRATION_PAYLOAD_TOO_LARGE: payload exceeded limit of ${meta.maxBytes} bytes`, "INTEGRATION_PAYLOAD_TOO_LARGE");
             }
           }
         } finally {
@@ -113,10 +95,7 @@ export function createR2BlobStore(
     async get(ref: string): Promise<BlobStoreGetResult> {
       const obj = await bucket.get(ref);
       if (!obj) {
-        throw new BlobStoreError(
-          `INTEGRATION_BLOB_NOT_FOUND: blob ref "${ref}" not found in R2`,
-          "INTEGRATION_BLOB_NOT_FOUND",
-        );
+        throw new BlobStoreError(`INTEGRATION_BLOB_NOT_FOUND: blob ref "${ref}" not found in R2`, "INTEGRATION_BLOB_NOT_FOUND");
       }
       return {
         body: obj.body,

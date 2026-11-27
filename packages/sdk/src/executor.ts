@@ -14,10 +14,7 @@ export interface StructuredLogger {
   debug(message: string, fields?: Record<string, unknown>): void | Promise<unknown>;
   info(message: string, fields?: Record<string, unknown>): void | Promise<unknown>;
   warn(message: string, fields?: Record<string, unknown>): void | Promise<unknown>;
-  error(
-    message: string,
-    fields?: Record<string, unknown> & { errorStack?: string | null; error?: unknown },
-  ): void | Promise<unknown>;
+  error(message: string, fields?: Record<string, unknown> & { errorStack?: string | null; error?: unknown }): void | Promise<unknown>;
   withContext?(extra: Partial<StructuredLogContext>): StructuredLogger;
 }
 
@@ -60,9 +57,7 @@ export interface ExecutionContext {
    * Supports both synchronous in-memory connections and asynchronous D1 `px_connections` unsealing + OAuth2 auto-refresh.
    * Any string values inside the returned connection are automatically tracked for telemetry redaction.
    */
-  connection?<T = Record<string, unknown>>(
-    nameOrSelector: string | ConnectionLookupSelector,
-  ): T;
+  connection?<T = Record<string, unknown>>(nameOrSelector: string | ConnectionLookupSelector): T;
   /**
    * Structured, secret-redacted logger automatically correlated to the active runId, workflowId,
    * revision, nodeId, brickId, workspaceId, and requestId.

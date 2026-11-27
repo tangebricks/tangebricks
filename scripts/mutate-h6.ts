@@ -15,8 +15,15 @@ function h6(): string {
   const out = stripVTControlCharacters(run.stdout + run.stderr);
   const lines = out.split(/\r?\n/);
   const row = lines.find((l) => l.startsWith("H6 "))?.replace(/\s{2,}/g, " ") ?? "(no H6 row)";
-  const reasons = lines.filter((l) => /^\s+- /.test(l)).map((l) => l.trim().replace(/^- /, "")).join("; ");
-  const extra = lines.filter((l) => /^(assembler names a brick|denial tests:)/.test(l)).map((l) => l.slice(0, 90)).slice(0, 2).join(" / ");
+  const reasons = lines
+    .filter((l) => /^\s+- /.test(l))
+    .map((l) => l.trim().replace(/^- /, ""))
+    .join("; ");
+  const extra = lines
+    .filter((l) => /^(assembler names a brick|denial tests:)/.test(l))
+    .map((l) => l.slice(0, 90))
+    .slice(0, 2)
+    .join(" / ");
   const tests = lines.find((l) => l.startsWith("Tests:"))?.replace(/\. Verdicts.*/, "") ?? "";
   return `exit ${run.status} | ${row.slice(0, 40)} | ${tests} | ${reasons.slice(0, 150)}${extra ? " | " + extra : ""}`;
 }
@@ -36,22 +43,101 @@ interface Case {
   also?: Array<{ file: string; from: string; to: string }>;
 }
 const cases: Case[] = [
-  { name: "the guard is never mounted", file: ASM, from: "for (const path of route.guardPaths) body.push(`app.use(${JSON.stringify(path)}, ${guard.export});`);", to: "" },
-  { name: "the guard is mounted on the wallet only, not its sub-paths", file: WALLET_MANIFEST, from: '"guardPaths": ["/api/wallet", "/api/wallet/*", "/api/payments/create-order"]', to: '"guardPaths": ["/api/wallet"]' },
-  { name: "the guard is mounted on a path that matches nothing", file: WALLET_MANIFEST, from: '"guardPaths": ["/api/wallet", "/api/wallet/*", "/api/payments/create-order"]', to: '"guardPaths": ["/api/other"]' },
-  { name: "the guard does not check membership (any identified user passes)", file: MW, from: "WHERE m.workspace_id = ? AND m.user_id = ?", to: "WHERE m.workspace_id = ? AND ? IS NOT NULL" },
-  { name: "the guard trusts a workspace from the request body (reads the raw body)", file: ROUTES, from: "    const body = DeductSchema.safeParse(await c.req.json().catch(() => ({})));\n    if (!body.success) return c.json({ error: \"Invalid amount (a whole number above zero)\" }, 400);", to: "    const rawBody = (await c.req.json().catch(() => ({}))) as { workspaceId?: string };\n    const body = DeductSchema.safeParse(rawBody);\n    if (!body.success) return c.json({ error: \"Invalid amount (a whole number above zero)\" }, 400);", also: [{ file: ROUTES, from: "workspaceId: ctx.workspace.id,\n        userId: ctx.user.uid,\n        amount: body.data.amount,", to: "workspaceId: rawBody.workspaceId ?? ctx.workspace.id,\n        userId: ctx.user.uid,\n        amount: body.data.amount," }] },
+  {
+    name: "the guard is never mounted",
+    file: ASM,
+    from: "for (const path of route.guardPaths) body.push(`app.use(${JSON.stringify(path)}, ${guard.export});`);",
+    to: "",
+  },
+  {
+    name: "the guard is mounted on the wallet only, not its sub-paths",
+    file: WALLET_MANIFEST,
+    from: '"guardPaths": ["/api/wallet", "/api/wallet/*", "/api/payments/create-order"]',
+    to: '"guardPaths": ["/api/wallet"]',
+  },
+  {
+    name: "the guard is mounted on a path that matches nothing",
+    file: WALLET_MANIFEST,
+    from: '"guardPaths": ["/api/wallet", "/api/wallet/*", "/api/payments/create-order"]',
+    to: '"guardPaths": ["/api/other"]',
+  },
+  {
+    name: "the guard does not check membership (any identified user passes)",
+    file: MW,
+    from: "WHERE m.workspace_id = ? AND m.user_id = ?",
+    to: "WHERE m.workspace_id = ? AND ? IS NOT NULL",
+  },
+  {
+    name: "the guard trusts a workspace from the request body (reads the raw body)",
+    file: ROUTES,
+    from: '    const body = DeductSchema.safeParse(await c.req.json().catch(() => ({})));\n    if (!body.success) return c.json({ error: "Invalid amount (a whole number above zero)" }, 400);',
+    to: '    const rawBody = (await c.req.json().catch(() => ({}))) as { workspaceId?: string };\n    const body = DeductSchema.safeParse(rawBody);\n    if (!body.success) return c.json({ error: "Invalid amount (a whole number above zero)" }, 400);',
+    also: [
+      {
+        file: ROUTES,
+        from: "workspaceId: ctx.workspace.id,\n        userId: ctx.user.uid,\n        amount: body.data.amount,",
+        to: "workspaceId: rawBody.workspaceId ?? ctx.workspace.id,\n        userId: ctx.user.uid,\n        amount: body.data.amount,",
+      },
+    ],
+  },
   { name: "the identity stub is not mounted", file: ASM, from: '`app.use(${JSON.stringify(API_PREFIX + "/*")}, stubIdentity);`,', to: '"",' },
-  { name: "the assembler special-cases a brick by id", file: ASM, from: "const chosen: Chosen[] = [];", to: "const chosen: Chosen[] = [];\n  void 'credit-wallet';" },
-  { name: "the assembler names a brick's export", file: ASM, from: "const API_PREFIX = \"/api\";", to: "const API_PREFIX = \"/api\"; // createWalletRoutes" },
-  { name: "the assembler emits a test file into the project", file: ASM, from: "files[\"src/identity.stub.ts\"] = IDENTITY_STUB_SOURCE;", to: "files[\"src/identity.stub.ts\"] = IDENTITY_STUB_SOURCE;\n  files[\"test/denial.test.ts\"] = 'export {}';" },
-  { name: "the assembler emits test code inside a source file", file: ASM, from: "files[\"src/identity.stub.ts\"] = IDENTITY_STUB_SOURCE;", to: "files[\"src/identity.stub.ts\"] = IDENTITY_STUB_SOURCE + 'expect(1).toBe(1);\\n';" },
-  { name: "the repo's denial test file is deleted from the run", file: DENIAL, from: 'test("H6 report", async ({ task }) => {', to: 'test.skip("H6 report", async ({ task }) => {' },
-  { name: "the report is hard-coded to true AND the guard is never mounted", file: DENIAL, from: "crossTenantDenied: denied.every(Boolean), ownWalletWorks: mine.every(Boolean)", to: "crossTenantDenied: true, ownWalletWorks: true", also: [{ file: ASM, from: "for (const path of route.guardPaths) body.push(`app.use(${JSON.stringify(path)}, ${guard.export});`);", to: "" }] },
-  { name: "the report is hard-coded to true AND the guard ignores which user asks", file: DENIAL, from: "crossTenantDenied: denied.every(Boolean), ownWalletWorks: mine.every(Boolean)", to: "crossTenantDenied: true, ownWalletWorks: true", also: [{ file: MW, from: "WHERE m.workspace_id = ? AND m.user_id = ?", to: "WHERE m.workspace_id = ? AND ? IS NOT NULL" }] },
-  { name: "one named attack is renamed in the test file (its listed title disappears)", file: DENIAL, from: `test("spending B's credits"`, to: `test("spending B's credit"` },
-  { name: "one named attack is skipped", file: DENIAL, from: `test("naming both workspaces in one header"`, to: `test.skip("naming both workspaces in one header"` },
-  { name: "the denial tests stop checking the wallet read (no 403 assertion)", file: DENIAL, from: "    const reply = await call(\"/api/wallet\", \"alice\", w.b);\n    expect(reply.status).toBe(403);", to: "    const reply = await call(\"/api/wallet\", \"alice\", w.b);\n    expect(reply.status).toBeGreaterThan(0);" },
+  {
+    name: "the assembler special-cases a brick by id",
+    file: ASM,
+    from: "const chosen: Chosen[] = [];",
+    to: "const chosen: Chosen[] = [];\n  void 'credit-wallet';",
+  },
+  { name: "the assembler names a brick's export", file: ASM, from: 'const API_PREFIX = "/api";', to: 'const API_PREFIX = "/api"; // createWalletRoutes' },
+  {
+    name: "the assembler emits a test file into the project",
+    file: ASM,
+    from: 'files["src/identity.stub.ts"] = IDENTITY_STUB_SOURCE;',
+    to: 'files["src/identity.stub.ts"] = IDENTITY_STUB_SOURCE;\n  files["test/denial.test.ts"] = \'export {}\';',
+  },
+  {
+    name: "the assembler emits test code inside a source file",
+    file: ASM,
+    from: 'files["src/identity.stub.ts"] = IDENTITY_STUB_SOURCE;',
+    to: "files[\"src/identity.stub.ts\"] = IDENTITY_STUB_SOURCE + 'expect(1).toBe(1);\\n';",
+  },
+  {
+    name: "the repo's denial test file is deleted from the run",
+    file: DENIAL,
+    from: 'test("H6 report", async ({ task }) => {',
+    to: 'test.skip("H6 report", async ({ task }) => {',
+  },
+  {
+    name: "the report is hard-coded to true AND the guard is never mounted",
+    file: DENIAL,
+    from: "crossTenantDenied: denied.every(Boolean), ownWalletWorks: mine.every(Boolean)",
+    to: "crossTenantDenied: true, ownWalletWorks: true",
+    also: [{ file: ASM, from: "for (const path of route.guardPaths) body.push(`app.use(${JSON.stringify(path)}, ${guard.export});`);", to: "" }],
+  },
+  {
+    name: "the report is hard-coded to true AND the guard ignores which user asks",
+    file: DENIAL,
+    from: "crossTenantDenied: denied.every(Boolean), ownWalletWorks: mine.every(Boolean)",
+    to: "crossTenantDenied: true, ownWalletWorks: true",
+    also: [{ file: MW, from: "WHERE m.workspace_id = ? AND m.user_id = ?", to: "WHERE m.workspace_id = ? AND ? IS NOT NULL" }],
+  },
+  {
+    name: "one named attack is renamed in the test file (its listed title disappears)",
+    file: DENIAL,
+    from: `test("spending B's credits"`,
+    to: `test("spending B's credit"`,
+  },
+  {
+    name: "one named attack is skipped",
+    file: DENIAL,
+    from: `test("naming both workspaces in one header"`,
+    to: `test.skip("naming both workspaces in one header"`,
+  },
+  {
+    name: "the denial tests stop checking the wallet read (no 403 assertion)",
+    file: DENIAL,
+    from: '    const reply = await call("/api/wallet", "alice", w.b);\n    expect(reply.status).toBe(403);',
+    to: '    const reply = await call("/api/wallet", "alice", w.b);\n    expect(reply.status).toBeGreaterThan(0);',
+  },
 ];
 
 console.log(`baseline                                                    -> ${h6()}`);

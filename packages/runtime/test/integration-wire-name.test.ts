@@ -110,13 +110,10 @@ describe("UC2.3 runtime executor wireName handling", () => {
       });
     });
 
-    const executor = createIntegrationOperationExecutor(
-      cashfreeManifest,
-      cashfreeManifest.operations[0]!,
-      { fetcher, resolveHost: undefined },
-    );
+    const executor = createIntegrationOperationExecutor(cashfreeManifest, cashfreeManifest.operations[0]!, { fetcher, resolveHost: undefined });
 
-    const ctx: ExecutionContext = { workspaceId: "ws_test",
+    const ctx: ExecutionContext = {
+      workspaceId: "ws_test",
       nodeId: "test_node_cashfree",
       runId: "run_cashfree_test",
       idempotencyKey: "run_cashfree_test:test_node_cashfree",
@@ -127,8 +124,12 @@ describe("UC2.3 runtime executor wireName handling", () => {
         billing_address: "123 Market St, Suite 400",
       },
       payload: {},
-      secret: () => { throw new Error("not configured"); },
-      binding: () => { throw new Error("not configured"); },
+      secret: () => {
+        throw new Error("not configured");
+      },
+      binding: () => {
+        throw new Error("not configured");
+      },
       connection: (() => ({})) as ExecutionContext["connection"],
       log: {
         debug: async () => {},
@@ -166,13 +167,10 @@ describe("UC2.3 runtime executor wireName handling", () => {
       });
     });
 
-    const executor = createIntegrationOperationExecutor(
-      cashfreeManifest,
-      cashfreeManifest.operations[1]!,
-      { fetcher, resolveHost: undefined },
-    );
+    const executor = createIntegrationOperationExecutor(cashfreeManifest, cashfreeManifest.operations[1]!, { fetcher, resolveHost: undefined });
 
-    const ctx: ExecutionContext = { workspaceId: "ws_test",
+    const ctx: ExecutionContext = {
+      workspaceId: "ws_test",
       nodeId: "test_node_cashfree_form",
       runId: "run_cashfree_test",
       idempotencyKey: "run_cashfree_test:test_node_cashfree_form",
@@ -181,8 +179,12 @@ describe("UC2.3 runtime executor wireName handling", () => {
         billing_address: "123 Market St",
       },
       payload: {},
-      secret: () => { throw new Error("not configured"); },
-      binding: () => { throw new Error("not configured"); },
+      secret: () => {
+        throw new Error("not configured");
+      },
+      binding: () => {
+        throw new Error("not configured");
+      },
       connection: (() => ({})) as ExecutionContext["connection"],
       log: {
         debug: async () => {},

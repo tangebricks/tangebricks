@@ -67,10 +67,7 @@ function buildAllCanaryVariants(canaries: readonly string[]): string[] {
 function assertZeroCanaryMatches(surfaceName: string, content: string): void {
   const variants = buildAllCanaryVariants(ALL_CANARY_SECRETS);
   for (const variant of variants) {
-    expect(
-      content.includes(variant),
-      `[SECURITY LEAK] Surface "${surfaceName}" contained canary secret variant "${variant}"`,
-    ).toBe(false);
+    expect(content.includes(variant), `[SECURITY LEAK] Surface "${surfaceName}" contained canary secret variant "${variant}"`).toBe(false);
   }
 }
 
@@ -93,10 +90,7 @@ function renderReplayInspectorDomSnapshot(events: StepEvent[]): string {
 describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frames, HTTP Responses, and Replay DOM", () => {
   beforeEach(async () => {
     await ensureTelemetryTables(db);
-    await db.batch([
-      db.prepare("DELETE FROM px_step_events"),
-      db.prepare("DELETE FROM px_runs"),
-    ]);
+    await db.batch([db.prepare("DELETE FROM px_step_events"), db.prepare("DELETE FROM px_runs")]);
   });
 
   test("plants canary secrets across ctx.secret(), widget:'secret' manifest settings, ctx.connection() bearer tokens, and HTTP Authorization/Cookie/X-Api-Key headers, executes passing + failing workflows and Test Step rehearsal, and proves 0 canary matches across D1, WebSocket broadcasts, HTTP API responses, and Replay DOM", async () => {
@@ -179,10 +173,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
       },
     };
 
-    const webhookFetcher = async (
-      _input: string | URL | Request,
-      init?: RequestInit,
-    ): Promise<Response> => {
+    const webhookFetcher = async (_input: string | URL | Request, init?: RequestInit): Promise<Response> => {
       const bodyText = typeof init?.body === "string" ? init.body : "";
       recordedWebhookBodies.push(bodyText);
       const parsed = JSON.parse(bodyText) as TelemetryWebhookPayload;
@@ -270,8 +261,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
         env: workerEnv,
         connections: workerConnections,
         telemetrySecret,
-        telemetryWebhookUrl:
-          "http://studio-api.local/api/projects/cp4-canary-proj/telemetry/webhook",
+        telemetryWebhookUrl: "http://studio-api.local/api/projects/cp4-canary-proj/telemetry/webhook",
         telemetryWebhookFetcher: webhookFetcher,
       },
     );
@@ -327,8 +317,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
         env: workerEnv,
         connections: workerConnections,
         telemetrySecret,
-        telemetryWebhookUrl:
-          "http://studio-api.local/api/projects/cp4-canary-proj/telemetry/webhook",
+        telemetryWebhookUrl: "http://studio-api.local/api/projects/cp4-canary-proj/telemetry/webhook",
         telemetryWebhookFetcher: webhookFetcher,
       },
     );
@@ -452,8 +441,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
         env: workerEnv,
         connections: workerConnections,
         telemetrySecret,
-        telemetryWebhookUrl:
-          "http://studio-api.local/api/projects/cp4-canary-proj/telemetry/webhook",
+        telemetryWebhookUrl: "http://studio-api.local/api/projects/cp4-canary-proj/telemetry/webhook",
         telemetryWebhookFetcher: webhookFetcher,
       },
     );
@@ -492,14 +480,7 @@ describe("CP4 End-to-End Canary Secret-Redaction Scan across D1, WebSocket Frame
     assertZeroCanaryMatches("WebSocket broadcast frames & webhook payloads", wsDumpText);
 
     // 8. Scan all HTTP API responses
-    const combinedHttpResponses = [
-      passingHttpText,
-      failingHttpText,
-      rehearsePassHttpText,
-      rehearseFailHttpText,
-      rerunHttpText,
-      pullEventsHttpText,
-    ].join("\n");
+    const combinedHttpResponses = [passingHttpText, failingHttpText, rehearsePassHttpText, rehearseFailHttpText, rerunHttpText, pullEventsHttpText].join("\n");
     assertZeroCanaryMatches("HTTP API responses", combinedHttpResponses);
     expect(combinedHttpResponses).toContain(REDACTED_PLACEHOLDER);
 

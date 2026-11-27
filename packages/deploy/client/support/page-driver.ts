@@ -15,7 +15,8 @@ export function jsdomPageDriver(send: (request: Request) => Promise<Response>): 
         runScripts: "dangerously",
         pretendToBeVisual: true,
         beforeParse(window) {
-          (window as unknown as { fetch: unknown }).fetch = (input: string | URL | Request, init?: RequestInit) => send(new Request(typeof input === "string" || input instanceof URL ? String(input) : input.url, init));
+          (window as unknown as { fetch: unknown }).fetch = (input: string | URL | Request, init?: RequestInit) =>
+            send(new Request(typeof input === "string" || input instanceof URL ? String(input) : input.url, init));
         },
       });
       try {

@@ -2,12 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  isLiveVerified,
-  runAppCanary,
-  validateCanaryPlan,
-  type CanaryPlan,
-} from "../lib/live-canary.ts";
+import { isLiveVerified, runAppCanary, validateCanaryPlan, type CanaryPlan } from "../lib/live-canary.ts";
 
 describe("Live canary harness against provider sandboxes (UC5.5)", () => {
   let tempDir: string;

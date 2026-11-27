@@ -18,18 +18,14 @@ export function reportOpenApiAuth(
   const { schemes, requirements: rootRequirements } = security;
   const opSec = Array.isArray(opRaw.security) ? opRaw.security : undefined;
   const opHasSecurityOverride = opSec !== undefined;
-  const effectiveRequirements = opHasSecurityOverride
-    ? parseSecurityRequirements(opSec)
-    : rootRequirements;
+  const effectiveRequirements = opHasSecurityOverride ? parseSecurityRequirements(opSec) : rootRequirements;
 
   let opSecurityValue: Array<Array<{ scheme: string; scopes?: string[] }>> | undefined = undefined;
   if (opHasSecurityOverride) {
     opSecurityValue = effectiveRequirements;
   }
 
-  const authPointer = opHasSecurityOverride
-    ? `#/paths/${escapeJsonPointer(rawPath)}/${methodLower}/security`
-    : `#/security`;
+  const authPointer = opHasSecurityOverride ? `#/paths/${escapeJsonPointer(rawPath)}/${methodLower}/security` : `#/security`;
 
   if (opHasSecurityOverride && opSec.length === 0) {
     report?.mapped({
@@ -61,9 +57,7 @@ export function reportOpenApiAuth(
       });
     }
   } else {
-    const satisfiesAny = effectiveRequirements.some((req) =>
-      satisfiesRequirement(req, curationAuth, schemes),
-    );
+    const satisfiesAny = effectiveRequirements.some((req) => satisfiesRequirement(req, curationAuth, schemes));
 
     if (satisfiesAny) {
       report?.mapped({
@@ -74,9 +68,7 @@ export function reportOpenApiAuth(
         blocking: false,
       });
     } else {
-      const hasUnsupported = effectiveRequirements.some((req) =>
-        hasUnsupportedScheme(req, schemes),
-      );
+      const hasUnsupported = effectiveRequirements.some((req) => hasUnsupportedScheme(req, schemes));
       if (hasUnsupported) {
         report?.unsupported({
           op: operationId,
@@ -87,9 +79,7 @@ export function reportOpenApiAuth(
           blocking: true,
         });
       } else {
-        const specSchemes = [
-          ...new Set(effectiveRequirements.flatMap((req) => req.map((i) => i.scheme))),
-        ];
+        const specSchemes = [...new Set(effectiveRequirements.flatMap((req) => req.map((i) => i.scheme)))];
         const authType = typeof curationAuth === "string" ? curationAuth : curationAuth?.type;
         report?.curated({
           op: operationId,

@@ -35,8 +35,15 @@ describe("subscription-plans plan credits wiring (story 1.20)", () => {
     const manifest = structuredClone(base.manifest);
     manifest.migrations = manifest.migrations.filter((m) => !m.endsWith("0002_plan_credits.sql"));
     const without = { ...catalog, bricks: { ...catalog.bricks, "subscription-plans": { ...base, manifest } } };
-    const migrationsOf = (files: Record<string, string>) => Object.keys(files).filter((f) => f.startsWith("migrations/")).map((f) => f.replace(/^migrations\/\d+_/, "")).sort();
-    for (const bricks of [["multi-workspace", "subscription-plans"], ["multi-workspace", "credit-wallet", "subscription-plans"]]) {
+    const migrationsOf = (files: Record<string, string>) =>
+      Object.keys(files)
+        .filter((f) => f.startsWith("migrations/"))
+        .map((f) => f.replace(/^migrations\/\d+_/, ""))
+        .sort();
+    for (const bricks of [
+      ["multi-workspace", "subscription-plans"],
+      ["multi-workspace", "credit-wallet", "subscription-plans"],
+    ]) {
       const now = filesOf({ project: "pc", bricks });
       const before = filesOf({ project: "pc", bricks }, without);
       const added = migrationsOf(now).filter((m) => !migrationsOf(before).includes(m));
@@ -78,7 +85,15 @@ describe("subscription-plans plan credits wiring (story 1.20)", () => {
   });
 
   test("a malformed planCredits or creditPeriod is refused with the expected format", () => {
-    for (const planCredits of ["free", "free:-1", "free:1.5", "Free:100", "free:100,", "free:100 ,pro:1", Array.from({ length: 21 }, (_, i) => `t${i}:1`).join(",")]) {
+    for (const planCredits of [
+      "free",
+      "free:-1",
+      "free:1.5",
+      "Free:100",
+      "free:100,",
+      "free:100 ,pro:1",
+      Array.from({ length: 21 }, (_, i) => `t${i}:1`).join(","),
+    ]) {
       const result = assemble({ project: "pc", bricks: ["multi-workspace", "credit-wallet", plans({ planCredits })] }, catalog);
       expect(result.ok, planCredits).toBe(false);
       if (!result.ok) expect(result.errors.join("; ")).toContain('setting "planCredits" is not in the expected format (for example "free:100,pro:1000")');
@@ -105,14 +120,29 @@ describe("schedule options and enabledWhen (story 1.20)", () => {
     expect(files["src/index.ts"]).toContain(
       '  await runScheduledCronAlarms({ controller, env, ctx, dueRows: dueRows.filter((r) => r.brick_id === "cron-alarms") });\n',
     );
-    expect(filesOf(cronApp, withCron((m) => (m.triggers!.schedules![0]!.options = {})))).toEqual(files);
+    expect(
+      filesOf(
+        cronApp,
+        withCron((m) => (m.triggers!.schedules![0]!.options = {})),
+      ),
+    ).toEqual(files);
     // An enabledWhen that holds changes nothing either.
-    expect(filesOf(cronApp, withCron((m) => (m.triggers!.schedules![0]!.enabledWhen = { setting: "maxSchedulesPerWorkspace", notEquals: 0 })))).toEqual(files);
+    expect(
+      filesOf(
+        cronApp,
+        withCron((m) => (m.triggers!.schedules![0]!.enabledWhen = { setting: "maxSchedulesPerWorkspace", notEquals: 0 })),
+      ),
+    ).toEqual(files);
   });
 
   test("schedule options resolve settings and capabilities like route options", () => {
     const c = withCron((m) => {
-      m.triggers!.schedules![0]!.options = { max: { $setting: "maxSchedulesPerWorkspace" }, label: "x", on: true, charger: { $capability: "credit-wallet.walletCharger" } };
+      m.triggers!.schedules![0]!.options = {
+        max: { $setting: "maxSchedulesPerWorkspace" },
+        label: "x",
+        on: true,
+        charger: { $capability: "credit-wallet.walletCharger" },
+      };
     });
     const entry = filesOf({ ...cronApp, bricks: [...cronApp.bricks, "credit-wallet"] }, c)["src/index.ts"]!;
     expect(entry).toContain('options: { max: 50, label: "x", on: true, charger: walletCharger } });');
@@ -138,9 +168,15 @@ describe("schedule options and enabledWhen (story 1.20)", () => {
   test("a $setting option with requiredWhen is passed only while the condition holds", () => {
     const base = catalog.bricks["llm-gateway"]!;
     const manifest = structuredClone(base.manifest);
-    manifest.worker.routes[0]!.options = { ...manifest.worker.routes[0]!.options, maxTokens: { $setting: "maxTokens", requiredWhen: { setting: "billingMode", notEquals: "none" } } };
+    manifest.worker.routes[0]!.options = {
+      ...manifest.worker.routes[0]!.options,
+      maxTokens: { $setting: "maxTokens", requiredWhen: { setting: "billingMode", notEquals: "none" } },
+    };
     const c = { ...catalog, bricks: { ...catalog.bricks, "llm-gateway": { ...base, manifest } } };
-    const ai = (billingMode: string) => filesOf({ project: "ai", bricks: ["multi-workspace", "credit-wallet", { id: "llm-gateway", config: { billingMode } }] }, c)["src/index.ts"]!.match(/createAiRoutes\(([^)]*)\)/)![1]!;
+    const ai = (billingMode: string) =>
+      filesOf({ project: "ai", bricks: ["multi-workspace", "credit-wallet", { id: "llm-gateway", config: { billingMode } }] }, c)["src/index.ts"]!.match(
+        /createAiRoutes\(([^)]*)\)/,
+      )![1]!;
     expect(ai("wallet")).toContain("maxTokens: 4096");
     expect(ai("none")).not.toContain("maxTokens");
   });
@@ -152,7 +188,10 @@ describe("schedule options and enabledWhen (story 1.20)", () => {
     });
     const result = assemble({ ...cronApp, bricks: [...cronApp.bricks, "credit-wallet"] }, c);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors.join("; ")).toContain('option "charger" of schedule due-schedules names "credit-wallet.walletCharger", which an isolated brick cannot take');
+    if (!result.ok)
+      expect(result.errors.join("; ")).toContain(
+        'option "charger" of schedule due-schedules names "credit-wallet.walletCharger", which an isolated brick cannot take',
+      );
   });
 
   test("the manifest schema checks schedule options, enabledWhen and the notEquals form", () => {
@@ -165,9 +204,15 @@ describe("schedule options and enabledWhen (story 1.20)", () => {
     const unknownWhen = parse((m) => (m.triggers!.schedules![0]!.enabledWhen = { setting: "nope", notEquals: "" }));
     expect(unknownWhen.success).toBe(false);
     expect(JSON.stringify(unknownWhen.error?.issues)).toContain('schedule due-schedules is enabled when unknown setting \\"nope\\" is set');
-    const unknownRequired = parse((m) => (m.triggers!.schedules![0]!.options = { c: { $capability: "credit-wallet.walletCharger", requiredWhen: { setting: "nope", notEquals: "" } } }));
+    const unknownRequired = parse(
+      (m) => (m.triggers!.schedules![0]!.options = { c: { $capability: "credit-wallet.walletCharger", requiredWhen: { setting: "nope", notEquals: "" } } }),
+    );
     expect(unknownRequired.success).toBe(false);
-    for (const bad of [{ setting: "maxSchedulesPerWorkspace" }, { setting: "maxSchedulesPerWorkspace", equals: 1, notEquals: 2 }, { setting: "maxSchedulesPerWorkspace", differs: 1 }]) {
+    for (const bad of [
+      { setting: "maxSchedulesPerWorkspace" },
+      { setting: "maxSchedulesPerWorkspace", equals: 1, notEquals: 2 },
+      { setting: "maxSchedulesPerWorkspace", differs: 1 },
+    ]) {
       expect(parse((m) => (m.triggers!.schedules![0]!.enabledWhen = bad as never)).success, JSON.stringify(bad)).toBe(false);
     }
     expect(ManifestSchema.safeParse(catalog.bricks["subscription-plans"]!.manifest).success).toBe(true);

@@ -16,10 +16,7 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { getEvidenceDir, stampEvidence, writeEvidence } from "./lib/evidence-stamp.ts";
 import { catalog } from "../packages/assembler/catalog.generated.ts";
-import {
-  formatMcpTokenBudgetSummary,
-  runMcpTokenBudgetSuite,
-} from "../packages/mcp-server/src/token-budget.ts";
+import { formatMcpTokenBudgetSummary, runMcpTokenBudgetSuite } from "../packages/mcp-server/src/token-budget.ts";
 import { applyMigration } from "../packages/sdk/src/index.ts";
 import type { D1Like, D1Result, D1Statement } from "../packages/sdk/src/index.ts";
 import { measureH9EmittedSourceTokens } from "../test/support/h9-emitted-source.ts";
@@ -76,13 +73,7 @@ function createSqliteD1(): D1Like {
 
 async function main() {
   const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  const migrationPath = resolve(
-    rootDir,
-    "packages",
-    "mcp-server",
-    "migrations",
-    "0001_mcp_server.sql",
-  );
+  const migrationPath = resolve(rootDir, "packages", "mcp-server", "migrations", "0001_mcp_server.sql");
   const migrationSql = readFileSync(migrationPath, "utf8");
 
   const db = createSqliteD1();

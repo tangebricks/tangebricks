@@ -149,11 +149,7 @@ export class TabularService {
   /**
    * Initializes a new import job.
    */
-  async createImportJob(
-    workspaceId: string,
-    targetEntityType: string,
-    filename: string
-  ): Promise<ImportJob> {
+  async createImportJob(workspaceId: string, targetEntityType: string, filename: string): Promise<ImportJob> {
     const id = `imp_${crypto.randomUUID().replace(/-/g, "")}`;
     const now = new Date().toISOString();
 
@@ -191,7 +187,7 @@ export class TabularService {
     workspaceId: string,
     jobId: string,
     csvText: string,
-    mappings: FieldMapping[]
+    mappings: FieldMapping[],
   ): Promise<{
     ok: boolean;
     job: ImportJob;
@@ -365,7 +361,7 @@ export class TabularService {
     name: string,
     columns: GridView["columns"],
     filters: GridView["filters"] = [],
-    sort: GridView["sort"] = []
+    sort: GridView["sort"] = [],
   ): Promise<GridView> {
     const id = `grid_${crypto.randomUUID().replace(/-/g, "")}`;
     const now = new Date().toISOString();

@@ -49,7 +49,10 @@ export async function rehearsalWorld(breaks: Breaks = {}) {
   app.use("/api/wallet/*", workspaceMiddleware);
   app.use("/api/payments/create-order", workspaceMiddleware);
   app.route("/api", createWalletRoutes({ gateway: createFakeGateway(), currency: "INR", creditsPerUnit: 1, minOrderAmount: 1 }));
-  const gated = createGatedWorker({ app: app as never, demoHtml: existsSync(DEMO_PAGE_FILE) ? readFileSync(DEMO_PAGE_FILE, "utf8") : "<!doctype html><title>stand-in</title>" });
+  const gated = createGatedWorker({
+    app: app as never,
+    demoHtml: existsSync(DEMO_PAGE_FILE) ? readFileSync(DEMO_PAGE_FILE, "utf8") : "<!doctype html><title>stand-in</title>",
+  });
   const env = { DB: db, POC_ACCESS_KEY: KEY };
   const requestsToWorker: Array<{ method: string; path: string }> = [];
   let workerCalls = 0;
@@ -61,7 +64,11 @@ export async function rehearsalWorld(breaks: Breaks = {}) {
     if (broken === "drop") return new Response("bad gateway", { status: 502 });
     // built field by field: copying a Request object into another drops its headers in this environment
     const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
-    const answer = await gated.fetch(new Request(`http://deployed.invalid${url.pathname}${url.search}`, { method: request.method, headers: Object.fromEntries(request.headers), body }), env, {});
+    const answer = await gated.fetch(
+      new Request(`http://deployed.invalid${url.pathname}${url.search}`, { method: request.method, headers: Object.fromEntries(request.headers), body }),
+      env,
+      {},
+    );
     return broken === "lose" ? new Response("bad gateway", { status: 502 }) : answer;
   };
 
@@ -74,23 +81,40 @@ export async function rehearsalWorld(breaks: Breaks = {}) {
       restCalls += 1;
       const body = (await request.json()) as { sql?: string; params?: unknown[]; batch?: Array<{ sql: string; params?: unknown[] }> };
       const statements = body.batch ?? [{ sql: body.sql!, params: body.params }];
-      const brokenRest = breaks.rest?.({ n: restCalls, sql: statements.map((s) => s.sql).join(" ; "), params: JSON.stringify(statements.map((s) => s.params ?? [])) });
+      const brokenRest = breaks.rest?.({
+        n: restCalls,
+        sql: statements.map((s) => s.sql).join(" ; "),
+        params: JSON.stringify(statements.map((s) => s.params ?? [])),
+      });
       if (brokenRest === "drop") throw new TypeError("fetch failed (simulated dropped connection)");
       const prepared = statements.map((s) => db.prepare(s.sql).bind(...(s.params ?? [])));
       try {
         let result;
-        if (statements.every((s) => /^\s*select/i.test(s.sql))) result = await Promise.all(prepared.map(async (p) => ({ results: (await p.all()).results, success: true, meta: {} })));
+        if (statements.every((s) => /^\s*select/i.test(s.sql)))
+          result = await Promise.all(prepared.map(async (p) => ({ results: (await p.all()).results, success: true, meta: {} })));
         else result = (await db.batch(prepared)).map((r) => ({ results: [], success: true, meta: { changes: r.meta.changes } }));
         if (brokenRest === "lose") throw new TypeError("fetch failed (simulated: the work was done and the answer lost)");
-        return new Response(JSON.stringify({ success: true, errors: [], messages: [], result }), { status: 200, headers: { "content-type": "application/json" } });
+        return new Response(JSON.stringify({ success: true, errors: [], messages: [], result }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
       } catch (error) {
         if (error instanceof TypeError) throw error;
         // like the real endpoint: a failed statement is a 400 carrying the database's own message, and the batch was rolled back
-        return new Response(JSON.stringify({ success: false, errors: [{ code: 7500, message: `D1_ERROR: ${error instanceof Error ? error.message : String(error)}: SQLITE_ERROR` }], messages: [], result: null }), { status: 400, headers: { "content-type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            success: false,
+            errors: [{ code: 7500, message: `D1_ERROR: ${error instanceof Error ? error.message : String(error)}: SQLITE_ERROR` }],
+            messages: [],
+            result: null,
+          }),
+          { status: 400, headers: { "content-type": "application/json" } },
+        );
       }
     }
     return fake.fetch(request);
   };
-  const cloudflareClient = (now: () => number) => createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: bridge, now, sleep: async () => undefined, alsoHide: [KEY] });
+  const cloudflareClient = (now: () => number) =>
+    createClient({ credentials: { token: TOKEN, accountId: ACCOUNT }, fetch: bridge, now, sleep: async () => undefined, alsoHide: [KEY] });
   return { db, fetchUrl, requestsToWorker, fake, cloudflareClient };
 }

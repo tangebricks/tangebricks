@@ -10,12 +10,7 @@ export interface AuditEnv {
     /** The verified workspace, set by the workspace middleware. Handlers read the workspace from here only. */
     ctx?: RequestContext;
     auditService?: AuditTrailService;
-    auditLog?: (
-      action: string,
-      targetType: string,
-      targetId: string,
-      metadata?: Record<string, unknown>
-    ) => Promise<void>;
+    auditLog?: (action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) => Promise<void>;
   };
 }
 

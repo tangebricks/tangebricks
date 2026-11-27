@@ -177,7 +177,7 @@ export function boundNames(condition: string): Set<string> {
     const j = conjunct.match(JOIN_EQUALITY);
     if (j) joins.push([(j[1] ?? ANY_TABLE).toLowerCase(), (j[2] ?? ANY_TABLE).toLowerCase()]);
   }
-  for (let changed = true; changed; ) {
+  for (let changed = true; changed;) {
     changed = false;
     for (const [a, b] of joins) {
       if (bound.has(a) && !bound.has(b)) {
@@ -435,10 +435,7 @@ function whereHasPredicate(node: ts.Expression | undefined, table: string): bool
   return bound.has(table.toLowerCase()) || bound.has(ANY_TABLE);
 }
 
-export function lintTenantQueries(options?: {
-  bricksDir?: string;
-  allowlistPath?: string;
-}): TenantLintResult {
+export function lintTenantQueries(options?: { bricksDir?: string; allowlistPath?: string }): TenantLintResult {
   const bricksDir = options?.bricksDir ?? join(ROOT, "bricks");
   const allowlistPath = options?.allowlistPath ?? DEFAULT_ALLOWLIST_PATH;
 
@@ -527,12 +524,7 @@ export function lintTenantQueries(options?: {
             const sql = looksLikeSql(text) || (isCallArgument && /\b(SELECT|FROM)\b/.test(text));
             for (const f of sql ? findUnscopedTableRefs(text, tenantTables) : []) {
               const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
-              report(
-                node,
-                f.table,
-                line,
-                f.kind === "insert" ? "(INSERT without a workspace_id column)" : "(no workspace_id predicate in WHERE)",
-              );
+              report(node, f.table, line, f.kind === "insert" ? "(INSERT without a workspace_id column)" : "(no workspace_id predicate in WHERE)");
             }
             return; // the pieces of a concatenation are covered by its root
           }

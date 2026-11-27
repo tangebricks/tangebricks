@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Epic 5 Story 5.5 — Environment Drift Detection & One-Click Rollback E2E", () => {
-  test("deploys v1 and v2, detects out-of-band Worker script hash drift, and rolls back to v1 creating v3 without rebuilding", async ({
-    page,
-  }) => {
+  test("deploys v1 and v2, detects out-of-band Worker script hash drift, and rolls back to v1 creating v3 without rebuilding", async ({ page }) => {
     const VALID_TOKEN = "cf_scoped_valid_token_e2e_story55_8899";
     const pageErrors: string[] = [];
     page.on("pageerror", (err) => {
@@ -128,11 +126,7 @@ test.describe("Epic 5 Story 5.5 — Environment Drift Detection & One-Click Roll
           }),
         });
 
-        for (const secName of [
-          "BETTER_AUTH_SECRET",
-          "GITHUB_CLIENT_ID",
-          "GITHUB_CLIENT_SECRET",
-        ]) {
+        for (const secName of ["BETTER_AUTH_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"]) {
           await fetch(`/api/projects/${slug}/secrets`, {
             method: "POST",
             headers: {
@@ -167,18 +161,15 @@ test.describe("Epic 5 Story 5.5 — Environment Drift Detection & One-Click Roll
         });
 
         // Deploy v1
-        const dep1Res = await fetch(
-          `/api/projects/${slug}/environments/preview/deploy`,
-          {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-org-id": orgId,
-            },
-            credentials: "include",
-            body: JSON.stringify({}),
+        const dep1Res = await fetch(`/api/projects/${slug}/environments/preview/deploy`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-org-id": orgId,
           },
-        );
+          credentials: "include",
+          body: JSON.stringify({}),
+        });
         const dep1 = (await dep1Res.json()) as {
           deployId: string;
           revision: number;
@@ -208,18 +199,15 @@ test.describe("Epic 5 Story 5.5 — Environment Drift Detection & One-Click Roll
           }),
         });
 
-        const dep2Res = await fetch(
-          `/api/projects/${slug}/environments/preview/deploy`,
-          {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-org-id": orgId,
-            },
-            credentials: "include",
-            body: JSON.stringify({}),
+        const dep2Res = await fetch(`/api/projects/${slug}/environments/preview/deploy`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-org-id": orgId,
           },
-        );
+          credentials: "include",
+          body: JSON.stringify({}),
+        });
         const dep2 = (await dep2Res.json()) as {
           deployId: string;
           revision: number;
@@ -245,12 +233,8 @@ test.describe("Epic 5 Story 5.5 — Environment Drift Detection & One-Click Roll
     await expect(page.getByTestId("view-connections")).toBeVisible();
 
     await expect(page.getByTestId("env-drift-card-preview")).toBeVisible();
-    await expect(page.getByTestId("env-drift-status-preview")).toContainText(
-      "In Sync",
-    );
-    await expect(page.getByTestId("env-badge")).toHaveText(
-      `Preview r${dep2.revision}`,
-    );
+    await expect(page.getByTestId("env-drift-status-preview")).toContainText("In Sync");
+    await expect(page.getByTestId("env-badge")).toHaveText(`Preview r${dep2.revision}`);
 
     // 4. Simulate an out-of-band Worker script hash change on the mock control plane
     await page.evaluate(
@@ -276,25 +260,19 @@ test.describe("Epic 5 Story 5.5 — Environment Drift Detection & One-Click Roll
     await page.getByTestId("check-drift-button-preview").click();
 
     // Verify the Drift warning badge in top bar and out-of-band drift details in ConnectionsView
-    await expect(page.getByTestId("env-drift-status-preview")).toContainText(
-      "Drift Detected",
-    );
+    await expect(page.getByTestId("env-drift-status-preview")).toContainText("Drift Detected");
     await expect(page.getByTestId("topbar-drift-badge")).toBeVisible();
-    const driftBadgeStyle = await page
-      .getByTestId("topbar-drift-badge")
-      .evaluate((el) => {
-        const s = window.getComputedStyle(el);
-        return {
-          fontWeight: s.fontWeight,
-          borderRadius: s.borderRadius,
-        };
-      });
+    const driftBadgeStyle = await page.getByTestId("topbar-drift-badge").evaluate((el) => {
+      const s = window.getComputedStyle(el);
+      return {
+        fontWeight: s.fontWeight,
+        borderRadius: s.borderRadius,
+      };
+    });
     expect(driftBadgeStyle.fontWeight).toBe("700");
     expect(driftBadgeStyle.borderRadius).toBe("4px");
 
-    await expect(
-      page.getByTestId("out-of-band-drift-item-preview-0"),
-    ).toContainText("oob_tampered");
+    await expect(page.getByTestId("out-of-band-drift-item-preview-0")).toContainText("oob_tampered");
 
     // 5. Click Roll back on v1 in deployment history
     const rollbackV1Btn = page.getByTestId(`rollback-button-${dep1.deployId}`);
@@ -313,49 +291,27 @@ test.describe("Epic 5 Story 5.5 — Environment Drift Detection & One-Click Roll
     expect(modalStyle.display).toBe("flex");
     expect(modalStyle.flexDirection).toBe("row");
 
-    await expect(modal.getByTestId("rollback-target-summary")).toContainText(
-      `v1 · r${dep1.revision} (${dep1.buildHash.slice(0, 10)})`,
-    );
-    await expect(modal.getByTestId("rollback-worker-diff-card")).toContainText(
-      "Cached Build Reused",
-    );
+    await expect(modal.getByTestId("rollback-target-summary")).toContainText(`v1 · r${dep1.revision} (${dep1.buildHash.slice(0, 10)})`);
+    await expect(modal.getByTestId("rollback-worker-diff-card")).toContainText("Cached Build Reused");
 
     // 6. Confirm rollback in modal
     await modal.getByTestId("confirm-rollback-button").click();
-    await expect(modal.getByTestId("rollback-success-banner")).toContainText(
-      `Rolled back to r${dep1.revision}`,
-    );
+    await expect(modal.getByTestId("rollback-success-banner")).toContainText(`Rolled back to r${dep1.revision}`);
     await modal.getByTestId("cancel-rollback-button").click();
 
     // 7. Verify v3 deployment is recorded with rollbackFromDeploymentId: v2, topbar badge returns to Preview r<dep1.revision>, and v1 buildHash is active
-    await expect(page.getByTestId("env-badge")).toHaveText(
-      `Preview r${dep1.revision}`,
-    );
-    await expect(
-      page.getByTestId("deployment-version-preview-v3"),
-    ).toBeVisible();
-    await expect(page.getByTestId("deployment-history-preview")).toContainText(
-      `rolled back from ${dep2.deployId.slice(0, 12)}`,
-    );
-    await expect(
-      page.getByTestId("cloudflare-env-badge-preview"),
-    ).toHaveAttribute("data-build-hash", dep1.buildHash);
+    await expect(page.getByTestId("env-badge")).toHaveText(`Preview r${dep1.revision}`);
+    await expect(page.getByTestId("deployment-version-preview-v3")).toBeVisible();
+    await expect(page.getByTestId("deployment-history-preview")).toContainText(`rolled back from ${dep2.deployId.slice(0, 12)}`);
+    await expect(page.getByTestId("cloudflare-env-badge-preview")).toHaveAttribute("data-build-hash", dep1.buildHash);
 
     // 8. Reload (F5) and verify persistence of rolled-back deployment state and history
     await page.reload();
-    await expect(page.getByTestId("env-badge")).toHaveText(
-      `Preview r${dep1.revision}`,
-    );
+    await expect(page.getByTestId("env-badge")).toHaveText(`Preview r${dep1.revision}`);
     await page.getByTestId("nav-tab-connections").click();
-    await expect(
-      page.getByTestId("deployment-version-preview-v3"),
-    ).toBeVisible();
-    await expect(page.getByTestId("deployment-history-preview")).toContainText(
-      `rolled back from ${dep2.deployId.slice(0, 12)}`,
-    );
-    await expect(
-      page.getByTestId("cloudflare-env-badge-preview"),
-    ).toHaveAttribute("data-build-hash", dep1.buildHash);
+    await expect(page.getByTestId("deployment-version-preview-v3")).toBeVisible();
+    await expect(page.getByTestId("deployment-history-preview")).toContainText(`rolled back from ${dep2.deployId.slice(0, 12)}`);
+    await expect(page.getByTestId("cloudflare-env-badge-preview")).toHaveAttribute("data-build-hash", dep1.buildHash);
 
     expect(pageErrors).toEqual([]);
   });

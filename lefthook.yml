@@ -3,9 +3,17 @@
 # Commands are node scripts, not shell syntax, so the hooks behave the same from Git Bash and PowerShell.
 
 pre-commit:
-  # In order, not in parallel: gitleaks must scan the index after oxlint's autofixes are re-staged.
+  # In order, not in parallel: oxlint must lint what Prettier wrote, and gitleaks must scan the index after the
+  # Prettier and oxlint fixes are re-staged.
   piped: true
   jobs:
+    # Formats staged files with the repo's .prettierrc.json and re-stages the result. Prettier skips explicit paths
+    # listed in .prettierignore (generated, recorded, pinned, JSON and Markdown files); --ignore-unknown skips file
+    # types it has no parser for, and --no-error-on-unmatched-pattern keeps an all-ignored set from failing.
+    - name: prettier
+      glob: "*.{ts,tsx,js,mjs,cjs,css,html,yaml,yml}"
+      run: node node_modules/prettier/bin/prettier.cjs --write --ignore-unknown --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
     # Lints staged sources with the repo's .oxlintrc.json and re-stages any autofixes. oxlint applies the config's
     # ignorePatterns to explicit paths too; --no-error-on-unmatched-pattern keeps a commit whose staged sources are
     # all ignored from failing with "No files found to lint".

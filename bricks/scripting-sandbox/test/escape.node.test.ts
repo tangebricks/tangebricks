@@ -6,10 +6,7 @@ import { createSqliteD1 } from "../../credit-wallet/client/test/support/sqlite-d
 import { ScriptingSandboxService } from "../src/sandbox.ts";
 
 const repoRoot = process.cwd();
-const migrationSql = readFileSync(
-  join(repoRoot, "bricks/scripting-sandbox/migrations/0001_scripting_sandbox.sql"),
-  "utf8"
-);
+const migrationSql = readFileSync(join(repoRoot, "bricks/scripting-sandbox/migrations/0001_scripting_sandbox.sql"), "utf8");
 
 describe("Scripting Sandbox Escape Suite (UC6.6 Task 2)", () => {
   let db: ReturnType<typeof createSqliteD1>;

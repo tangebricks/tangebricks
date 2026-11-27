@@ -5,12 +5,7 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import migration from "../migrations/0001_metered_usage.sql?raw";
 import migration0002 from "../migrations/0002_workspace_scoped_idempotency.sql?raw";
-import {
-  MeteringService,
-  createMeteringRoutes,
-  meterRoute,
-  getCurrentWindow,
-} from "../src/index.ts";
+import { MeteringService, createMeteringRoutes, meterRoute, getCurrentWindow } from "../src/index.ts";
 import type { MeterEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
@@ -240,11 +235,15 @@ describe("Metering correctness (story 1.9)", () => {
     const app = new Hono<MeterEnv>();
     app.use("/api/*", stubWorkspaceContext);
     app.route("/api", createMeteringRoutes());
-    const res = await app.request("/api/events", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({ meterKey: "credits_used", value: -5 }),
-    }, { DB: db });
+    const res = await app.request(
+      "/api/events",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({ meterKey: "credits_used", value: -5 }),
+      },
+      { DB: db },
+    );
     expect(res.status).toBe(400);
     expect((await service.getUsage(WS_ALPHA, "credits_used")).total_value).toBe(0);
   });
@@ -257,27 +256,35 @@ describe("Metering HTTP API & Route Middleware", () => {
     app.route("/api", createMeteringRoutes());
 
     // 1. Define meter
-    const defineRes = await app.request("/api/meters", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA, "x-test-user": "op_meters" },
-      body: JSON.stringify({
-        key: "webhook_dispatches",
-        name: "Webhook Outbound Dispatches",
-        aggregation: "sum",
-      }),
-    }, { DB: db, PX_PLATFORM_OPERATORS: "op_meters" });
+    const defineRes = await app.request(
+      "/api/meters",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA, "x-test-user": "op_meters" },
+        body: JSON.stringify({
+          key: "webhook_dispatches",
+          name: "Webhook Outbound Dispatches",
+          aggregation: "sum",
+        }),
+      },
+      { DB: db, PX_PLATFORM_OPERATORS: "op_meters" },
+    );
     expect(defineRes.status).toBe(201);
 
     // 2. Ingest event
-    const ingestRes = await app.request("/api/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        meterKey: "webhook_dispatches",
-        value: 12,
-        idempotencyKey: "evt_test_101",
-      }),
-    }, { DB: db });
+    const ingestRes = await app.request(
+      "/api/events",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          meterKey: "webhook_dispatches",
+          value: 12,
+          idempotencyKey: "evt_test_101",
+        }),
+      },
+      { DB: db },
+    );
     expect(ingestRes.status).toBe(201);
 
     // 3. Query usage
@@ -330,13 +337,19 @@ describe("Metering authorisation (story 0.6)", () => {
   }
 
   it("OPERATOR_WRITE: a listed operator defines a meter (201)", async () => {
-    const res = await app().request("/api/meters", define({ "x-workspace-id": WS_ALPHA, "x-test-user": "op_1", "x-test-role": "member" }), { DB: db, PX_PLATFORM_OPERATORS: "op_1" });
+    const res = await app().request("/api/meters", define({ "x-workspace-id": WS_ALPHA, "x-test-user": "op_1", "x-test-role": "member" }), {
+      DB: db,
+      PX_PLATFORM_OPERATORS: "op_1",
+    });
     expect(res.status).toBe(201);
     expect(await meterCount()).toBe(1);
   });
 
   it("NON_OPERATOR_WRITE: a workspace owner not in the list is refused (403)", async () => {
-    const res = await app().request("/api/meters", define({ "x-workspace-id": WS_ALPHA, "x-test-user": "owner_1", "x-test-role": "owner" }), { DB: db, PX_PLATFORM_OPERATORS: "op_1" });
+    const res = await app().request("/api/meters", define({ "x-workspace-id": WS_ALPHA, "x-test-user": "owner_1", "x-test-role": "owner" }), {
+      DB: db,
+      PX_PLATFORM_OPERATORS: "op_1",
+    });
     expect(res.status).toBe(403);
     expect(await meterCount()).toBe(0);
   });

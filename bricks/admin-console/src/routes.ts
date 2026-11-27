@@ -44,9 +44,7 @@ export function createAdminRoutes(): Hono<AdminEnv> {
   // check runs before the body is read, so nobody can register themselves (audit risk 4).
   app.post("/admin/super-admins", async (c) => {
     const service = c.get("adminService") || new AdminConsoleService(c.env.DB);
-    const denied = await platformOperatorRefusal(c.env, c.get("user"), c.get("ctx"), (userId) =>
-      service.verifyAdminAccess(userId, "super_admin"),
-    );
+    const denied = await platformOperatorRefusal(c.env, c.get("user"), c.get("ctx"), (userId) => service.verifyAdminAccess(userId, "super_admin"));
     if (denied) return c.json(denied.body, denied.status);
 
     let body: unknown;
@@ -61,11 +59,7 @@ export function createAdminRoutes(): Hono<AdminEnv> {
       return c.json({ error: parsed.error.issues.map((i) => i.message).join(", ") }, 400);
     }
 
-    const admin = await service.addSuperAdmin(
-      parsed.data.userId,
-      parsed.data.email,
-      (parsed.data.role as SuperAdminRole) || "support_agent"
-    );
+    const admin = await service.addSuperAdmin(parsed.data.userId, parsed.data.email, (parsed.data.role as SuperAdminRole) || "support_agent");
 
     return c.json(admin, 201);
   });
@@ -89,12 +83,7 @@ export function createAdminRoutes(): Hono<AdminEnv> {
 
     const service = c.get("adminService") || new AdminConsoleService(c.env.DB);
     try {
-      const updated = await service.setTenantStatus(
-        user.uid,
-        workspaceId,
-        parsed.data.status as TenantStatus,
-        parsed.data.reason
-      );
+      const updated = await service.setTenantStatus(user.uid, workspaceId, parsed.data.status as TenantStatus, parsed.data.reason);
       return c.json(updated);
     } catch (e: any) {
       return c.json({ error: e.message || "Failed to update tenant status" }, 400);

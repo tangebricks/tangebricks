@@ -56,13 +56,12 @@ describe("UC7.5 — Queue-backed batch/chunk primitive for bulk sends", () => {
           },
         },
       ],
-      edges: [
-        { id: "e1", source: "trig", target: "bulk_send", sourceHandle: "out", targetHandle: "in" },
-      ],
+      edges: [{ id: "e1", source: "trig", target: "bulk_send", sourceHandle: "out", targetHandle: "in" }],
     };
 
     // 1. Run the graph with core.batch
-    const runResult = await runGraph(graph, coreNodeRegistry, coreNodeExecutors, { workspaceId: WS_TEST,
+    const runResult = await runGraph(graph, coreNodeRegistry, coreNodeExecutors, {
+      workspaceId: WS_TEST,
       payload: {},
       runId: "run_bulk_123",
       env: {
@@ -170,12 +169,14 @@ describe("UC7.5 — Queue-backed batch/chunk primitive for bulk sends", () => {
     const consumerResult = await consumeJobQueueBatch(
       {
         queue: "batch",
-        messages: [{
-          id: "msg_poison",
-          body: { jobId: job.id },
-          ack: () => {},
-          retry: () => {},
-        }],
+        messages: [
+          {
+            id: "msg_poison",
+            body: { jobId: job.id },
+            ack: () => {},
+            retry: () => {},
+          },
+        ],
       },
       {
         DB: db,
@@ -191,7 +192,10 @@ describe("UC7.5 — Queue-backed batch/chunk primitive for bulk sends", () => {
     expect(consumerResult.completed).toContain(job.id);
 
     // Verify item statuses in job_batch_items
-    const itemRows = await db.prepare("SELECT item_index, status, error_message FROM job_batch_items WHERE job_id = ? ORDER BY item_index ASC").bind(job.id).all<{ item_index: number; status: string; error_message: string | null }>();
+    const itemRows = await db
+      .prepare("SELECT item_index, status, error_message FROM job_batch_items WHERE job_id = ? ORDER BY item_index ASC")
+      .bind(job.id)
+      .all<{ item_index: number; status: string; error_message: string | null }>();
     expect(itemRows.results).toHaveLength(3);
     expect(itemRows.results[0]!.status).toBe("succeeded");
     expect(itemRows.results[1]!.status).toBe("dead_letter");
@@ -211,9 +215,7 @@ describe("UC7.5 — Queue-backed batch/chunk primitive for bulk sends", () => {
         },
       },
     ];
-    const edgesRefused: GraphEdge[] = [
-      { id: "e1", source: "trig", target: "bulk_search", sourceHandle: "out", targetHandle: "in" },
-    ];
+    const edgesRefused: GraphEdge[] = [{ id: "e1", source: "trig", target: "bulk_search", sourceHandle: "out", targetHandle: "in" }];
 
     const refusedIssues = checkGraphBudget({ nodes: nodesRefused, edges: edgesRefused }, coreNodeRegistry, "free");
     expect(refusedIssues.some((i) => i.code === "BUDGET_SUBREQUESTS_EXCEEDED")).toBe(true);
@@ -231,9 +233,7 @@ describe("UC7.5 — Queue-backed batch/chunk primitive for bulk sends", () => {
         },
       },
     ];
-    const edgesPassing: GraphEdge[] = [
-      { id: "e1", source: "trig", target: "bulk_send", sourceHandle: "out", targetHandle: "in" },
-    ];
+    const edgesPassing: GraphEdge[] = [{ id: "e1", source: "trig", target: "bulk_send", sourceHandle: "out", targetHandle: "in" }];
 
     const passingIssues = checkGraphBudget({ nodes: nodesPassing, edges: edgesPassing }, coreNodeRegistry, "free");
     expect(passingIssues.filter((i) => i.code === "BUDGET_SUBREQUESTS_EXCEEDED")).toHaveLength(0);

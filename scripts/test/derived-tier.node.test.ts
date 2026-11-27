@@ -3,9 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deriveTier } from "../lib/derive-tier.ts";
-import {
-  checkBrickConformance,
-} from "../check-manifests.ts";
+import { checkBrickConformance } from "../check-manifests.ts";
 import type { TierPolicy } from "../lib/derive-tier.ts";
 
 const defaultPolicy: TierPolicy = {
@@ -472,10 +470,7 @@ describe("UC5.6 check-manifests conformance gate integration", () => {
       ...(options.tierEvidence.skipped !== undefined ? { skipped: options.tierEvidence.skipped } : {}),
     };
 
-    writeFileSync(
-      join(evidenceDir, "tier-evidence.json"),
-      JSON.stringify({ data: [tierEvidenceRow] }, null, 2),
-    );
+    writeFileSync(join(evidenceDir, "tier-evidence.json"), JSON.stringify({ data: [tierEvidenceRow] }, null, 2));
 
     const scriptsDir = join(root, "scripts");
     mkdirSync(scriptsDir, { recursive: true });

@@ -36,22 +36,15 @@ export function AuthScreen() {
   };
 
   return (
-    <div
-      data-testid="auth-screen"
-      className="min-h-screen bg-surface-base text-text-primary flex items-center justify-center p-6"
-    >
+    <div data-testid="auth-screen" className="min-h-screen bg-surface-base text-text-primary flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-surface-raised border border-border rounded-lg p-6 shadow-xl">
         <div className="mb-6">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-surface-control text-accent text-xs font-bold tracking-wider uppercase mb-3">
             <span>◆</span>
             <span>ProjectX Studio</span>
           </div>
-          <h1 className="text-lg font-bold text-text-primary">
-            {mode === "signin" ? "Sign in to ProjectX Studio" : "Create your Studio account"}
-          </h1>
-          <p className="text-xs text-text-muted mt-1">
-            Visual + AI builder for full-stack Cloudflare SaaS backends.
-          </p>
+          <h1 className="text-lg font-bold text-text-primary">{mode === "signin" ? "Sign in to ProjectX Studio" : "Create your Studio account"}</h1>
+          <p className="text-xs text-text-muted mt-1">Visual + AI builder for full-stack Cloudflare SaaS backends.</p>
         </div>
 
         <div className="flex gap-2 mb-4 bg-surface-base p-1 rounded-md border border-border">
@@ -63,9 +56,7 @@ export function AuthScreen() {
               setError(null);
             }}
             className={`flex-1 py-1.5 px-3 rounded text-xs font-semibold transition ${
-              mode === "signin"
-                ? "bg-surface-control text-text-primary"
-                : "text-text-muted hover:text-text-secondary"
+              mode === "signin" ? "bg-surface-control text-text-primary" : "text-text-muted hover:text-text-secondary"
             }`}
           >
             Sign in
@@ -78,9 +69,7 @@ export function AuthScreen() {
               setError(null);
             }}
             className={`flex-1 py-1.5 px-3 rounded text-xs font-semibold transition ${
-              mode === "signup"
-                ? "bg-surface-control text-text-primary"
-                : "text-text-muted hover:text-text-secondary"
+              mode === "signup" ? "bg-surface-control text-text-primary" : "text-text-muted hover:text-text-secondary"
             }`}
           >
             Sign up
@@ -88,11 +77,7 @@ export function AuthScreen() {
         </div>
 
         {error && (
-          <div
-            role="alert"
-            data-testid="auth-error"
-            className="mb-4 p-3 rounded bg-red-950/60 border border-red-700 text-red-200 text-xs"
-          >
+          <div role="alert" data-testid="auth-error" className="mb-4 p-3 rounded bg-red-950/60 border border-red-700 text-red-200 text-xs">
             ✕ {error}
           </div>
         )}
@@ -154,11 +139,7 @@ export function AuthScreen() {
             data-testid="auth-submit-button"
             className="w-full py-2 px-4 rounded-md bg-accent hover:bg-accent-hover text-text-on-accent font-bold text-xs transition disabled:opacity-50"
           >
-            {submitting
-              ? "Authenticating…"
-              : mode === "signin"
-                ? "Sign in with Email"
-                : "Create Account"}
+            {submitting ? "Authenticating…" : mode === "signin" ? "Sign in with Email" : "Create Account"}
           </button>
         </form>
 

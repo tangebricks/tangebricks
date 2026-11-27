@@ -93,10 +93,7 @@ export const VALUE_PATTERNS: readonly ValuePattern[] = [
   }),
 ];
 
-export function scrubValuePatterns(
-  input: string,
-  customPatterns?: Iterable<ValuePattern | { kind: string; regex?: RegExp; pattern?: RegExp }>,
-): string {
+export function scrubValuePatterns(input: string, customPatterns?: Iterable<ValuePattern | { kind: string; regex?: RegExp; pattern?: RegExp }>): string {
   if (!input || typeof input !== "string") return input;
   let out = input;
 
@@ -105,10 +102,7 @@ export function scrubValuePatterns(
     if (p.fastCheck && !out.includes(p.fastCheck)) {
       continue;
     }
-    const re = new RegExp(
-      p.regex.source,
-      p.regex.flags.includes("g") ? p.regex.flags : `${p.regex.flags}g`,
-    );
+    const re = new RegExp(p.regex.source, p.regex.flags.includes("g") ? p.regex.flags : `${p.regex.flags}g`);
     if (p.replace) {
       out = out.replace(re, p.replace);
     } else {
@@ -121,10 +115,7 @@ export function scrubValuePatterns(
     for (const cp of customPatterns) {
       const reg = cp.regex ?? (cp as { pattern?: RegExp }).pattern;
       if (reg) {
-        const re = new RegExp(
-          reg.source,
-          reg.flags.includes("g") ? reg.flags : `${reg.flags}g`,
-        );
+        const re = new RegExp(reg.source, reg.flags.includes("g") ? reg.flags : `${reg.flags}g`);
         const replacer = (cp as { replace?: (m: string, ...args: any[]) => string }).replace;
         if (replacer) {
           out = out.replace(re, replacer);

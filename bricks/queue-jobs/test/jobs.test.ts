@@ -8,18 +8,12 @@ import { applyMigration } from "@poc/sdk";
 import type { D1Like } from "@poc/sdk";
 import { emittedEntry, type EmittedWorker } from "../../../test/support/emitted-worker.ts";
 import migration from "../migrations/0001_queue_jobs.sql?raw";
-import {
-  JobQueueService,
-  createJobQueueRoutes,
-} from "../src/index.ts";
+import { JobQueueService, createJobQueueRoutes } from "../src/index.ts";
 import type { JobEnv } from "../src/middleware.ts";
 import { stubWorkspaceContext } from "../../multi-workspace/test/support/stub-workspace-context.ts";
 
 const db = env.DB as D1Like;
-const shellWorker = emittedEntry<EmittedWorker>(
-  import.meta.glob("../../../out/max-compatible/src/index.ts", { eager: true }),
-  "max-compatible",
-);
+const shellWorker = emittedEntry<EmittedWorker>(import.meta.glob("../../../out/max-compatible/src/index.ts", { eager: true }), "max-compatible");
 const WS_ALPHA = "ws_job_alpha";
 const WS_BETA = "ws_job_beta";
 
@@ -137,35 +131,47 @@ describe("Background Job HTTP API", () => {
     app.route("/api", createJobQueueRoutes());
 
     // 1. POST /jobs/enqueue
-    const enqRes = await app.request("/api/jobs/enqueue", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
-      body: JSON.stringify({
-        queueName: "reports",
-        taskType: "generate_csv",
-        payload: { filter: "2026-Q1" },
-        priority: 5,
-      }),
-    }, { DB: db });
+    const enqRes = await app.request(
+      "/api/jobs/enqueue",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": WS_ALPHA },
+        body: JSON.stringify({
+          queueName: "reports",
+          taskType: "generate_csv",
+          payload: { filter: "2026-Q1" },
+          priority: 5,
+        }),
+      },
+      { DB: db },
+    );
     expect(enqRes.status).toBe(201);
     const enqJson = (await enqRes.json()) as { job: { id: string } };
     const jobId = enqJson.job.id;
 
     // 2. GET /jobs/:id
-    const getRes = await app.request(`/api/jobs/${jobId}`, {
-      headers: { "x-workspace-id": WS_ALPHA },
-    }, { DB: db });
+    const getRes = await app.request(
+      `/api/jobs/${jobId}`,
+      {
+        headers: { "x-workspace-id": WS_ALPHA },
+      },
+      { DB: db },
+    );
     expect(getRes.status).toBe(200);
 
     // 3. POST /jobs/:id/complete
-    const compRes = await app.request(`/api/jobs/${jobId}/complete`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-workspace-id": WS_ALPHA,
+    const compRes = await app.request(
+      `/api/jobs/${jobId}/complete`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-workspace-id": WS_ALPHA,
+        },
+        body: JSON.stringify({ result: { status: "success" } }),
       },
-      body: JSON.stringify({ result: { status: "success" } }),
-    }, { DB: db });
+      { DB: db },
+    );
     expect(compRes.status).toBe(200);
 
     // 4. GET /jobs
@@ -302,9 +308,7 @@ describe("Assembled Shell queue() Dispatcher in workerd (AC 4)", () => {
     expect(failAfterAttempt1.error_message).toBe("502 Bad Gateway");
 
     // 5. Deliver second batch for the failing job (attempt 2 reaches maxRetries = 2 -> dead_letter)
-    const batch2 = createMessageBatch("job-queue", [
-      { id: "msg_3", timestamp: new Date(), attempts: 2, body: { jobId: failJobId } },
-    ]);
+    const batch2 = createMessageBatch("job-queue", [{ id: "msg_3", timestamp: new Date(), attempts: 2, body: { jobId: failJobId } }]);
     const ctx2 = createExecutionContext();
     await shellWorker.queue(batch2, { DB: db }, ctx2);
     const qResult2 = await getQueueResult(batch2, ctx2);

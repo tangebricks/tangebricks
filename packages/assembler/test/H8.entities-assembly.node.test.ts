@@ -16,7 +16,13 @@ const refused = (input: unknown, c: Catalog = catalog) => {
   return result.errors.join(" | ");
 };
 const bricks = ["multi-workspace", "credit-wallet", "dynamic-entities"];
-const widgets = { name: "widgets", fields: [{ name: "label", type: "text", required: true }, { name: "done", type: "boolean" }] };
+const widgets = {
+  name: "widgets",
+  fields: [
+    { name: "label", type: "text", required: true },
+    { name: "done", type: "boolean" },
+  ],
+};
 
 describe("a blueprint that declares entities", () => {
   const result = ok(INVOICE_FLOW_BLUEPRINT);
@@ -88,7 +94,11 @@ describe("a blueprint that declares entities", () => {
 
   test("two entities get two tables and guards for both, in name order", () => {
     const both = ok({ project: "p", bricks, entities: [widgets, INVOICE_FLOW_BLUEPRINT.entities[0]] });
-    expect(Object.keys(both.files).filter((f) => f.startsWith("migrations/")).slice(5)).toEqual(["migrations/0006_entity__invoices.sql", "migrations/0007_entity__widgets.sql", "migrations/0008_shell__px_rate_limits.sql"]);
+    expect(
+      Object.keys(both.files)
+        .filter((f) => f.startsWith("migrations/"))
+        .slice(5),
+    ).toEqual(["migrations/0006_entity__invoices.sql", "migrations/0007_entity__widgets.sql", "migrations/0008_shell__px_rate_limits.sql"]);
     const entry = both.files["src/index.ts"]!;
     expect(entry.indexOf('"/api/invoices"')).toBeLessThan(entry.indexOf('"/api/widgets"'));
     expect(both.files["migrations/0007_entity__widgets.sql"]).toContain('"done" INTEGER CHECK ("done" IN (0, 1))');
@@ -113,15 +123,21 @@ describe("the entity brick on its own, with no entities", () => {
 
 describe("a blueprint whose entities cannot be assembled is refused with a reason", () => {
   test("entities declared, no brick to serve them", () => {
-    expect(refused({ project: "p", bricks: ["multi-workspace", "credit-wallet"], entities: [widgets] })).toMatch(/entities are declared but no enabled brick handles them \(enable one of: dynamic-entities\)/);
+    expect(refused({ project: "p", bricks: ["multi-workspace", "credit-wallet"], entities: [widgets] })).toMatch(
+      /entities are declared but no enabled brick handles them \(enable one of: dynamic-entities\)/,
+    );
   });
 
   test("the entity brick without a workspace guard to sit behind", () => {
-    expect(refused({ project: "p", bricks: ["dynamic-entities"], entities: [widgets] })).toMatch(/dynamic-entities requires "workspace-context", which no enabled brick provides \(enable one of: multi-workspace\)/);
+    expect(refused({ project: "p", bricks: ["dynamic-entities"], entities: [widgets] })).toMatch(
+      /dynamic-entities requires "workspace-context", which no enabled brick provides \(enable one of: multi-workspace\)/,
+    );
   });
 
   test.each(["wallet", "payments", "workspaces"])("an entity named %s, which a brick's routes already use, even when that brick is not enabled", (name) => {
-    expect(refused({ project: "p", bricks: ["multi-workspace", "dynamic-entities"], entities: [{ ...widgets, name }] })).toMatch(new RegExp(`entity "${name}" uses a name that a brick's routes already use`));
+    expect(refused({ project: "p", bricks: ["multi-workspace", "dynamic-entities"], entities: [{ ...widgets, name }] })).toMatch(
+      new RegExp(`entity "${name}" uses a name that a brick's routes already use`),
+    );
   });
 
   test("an entity declared twice", () => {
@@ -129,7 +145,19 @@ describe("a blueprint whose entities cannot be assembled is refused with a reaso
   });
 
   test("a bad declaration is reported with where it is wrong", () => {
-    const message = refused({ project: "p", bricks, entities: [{ name: "widgets", fields: [{ name: "label", type: "text" }, { name: "Bad Name", type: "text" }] }] });
+    const message = refused({
+      project: "p",
+      bricks,
+      entities: [
+        {
+          name: "widgets",
+          fields: [
+            { name: "label", type: "text" },
+            { name: "Bad Name", type: "text" },
+          ],
+        },
+      ],
+    });
     expect(message).toMatch(/entities\.0\.fields\.1\.name/);
   });
 
@@ -145,9 +173,27 @@ describe("a blueprint whose entities cannot be assembled is refused with a reaso
 
 describe("with synthetic bricks", () => {
   const brick = (id: string, extra: Record<string, unknown> = {}) =>
-    ({ manifest: { manifestVersion: 2, kind: "brick", id, version: "1.0.0", trust: "first-party", isolation: "none", provides: [], requires: [], migrations: [], routePrefixes: [], npmDependencies: {}, settings: {}, worker: { package: `@x/${id}`, routes: [] }, ...extra }, files: {} }) as Catalog["bricks"][string];
+    ({
+      manifest: {
+        manifestVersion: 2,
+        kind: "brick",
+        id,
+        version: "1.0.0",
+        trust: "first-party",
+        isolation: "none",
+        provides: [],
+        requires: [],
+        migrations: [],
+        routePrefixes: [],
+        npmDependencies: {},
+        settings: {},
+        worker: { package: `@x/${id}`, routes: [] },
+        ...extra,
+      },
+      files: {},
+    }) as Catalog["bricks"][string];
   const taker = (id: string) =>
-    brick(id, { worker: { package: `@x/${id}`, routes: [{ factory: "serve", mountAt: "/api", options: { things: { $entities: true } }, guardPaths: [], }] } });
+    brick(id, { worker: { package: `@x/${id}`, routes: [{ factory: "serve", mountAt: "/api", options: { things: { $entities: true } }, guardPaths: [] }] } });
 
   test("two bricks that both take entities are refused", () => {
     const c: Catalog = { bricks: { one: taker("one"), two: taker("two") } };
@@ -163,7 +209,7 @@ describe("with synthetic bricks", () => {
     const c: Catalog = { bricks: { taker: taker("taker") } };
     const r = ok({ project: "p", bricks: ["taker"], entities: [widgets] }, c);
     expect(r.files["src/index.ts"]).toContain("serve({ things: entities })");
-    expect(r.files["src/index.ts"]).not.toContain("app.use(\"/api/widgets\"");
+    expect(r.files["src/index.ts"]).not.toContain('app.use("/api/widgets"');
   });
 });
 
@@ -197,7 +243,9 @@ describe("relations, date, money and longtext (story 1.18)", () => {
   });
 
   test("a relation to an entity the blueprint does not declare is refused", () => {
-    expect(refused({ project: "p", bricks: ["multi-workspace", "dynamic-entities"], entities: [orders] })).toMatch(/field "customer_id" relates to entity "customers", which is not declared/);
+    expect(refused({ project: "p", bricks: ["multi-workspace", "dynamic-entities"], entities: [orders] })).toMatch(
+      /field "customer_id" relates to entity "customers", which is not declared/,
+    );
   });
 
   test("the OpenAPI document describes each new type", () => {

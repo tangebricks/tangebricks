@@ -12,12 +12,7 @@
  */
 import { pathToFileURL } from "node:url";
 import { OP_TYPES } from "../packages/blueprint/src/ops.ts";
-import {
-  OP_SAFETY_METADATA,
-  TOOLS,
-  type OpSafetyMetadata,
-  type ToolAnnotations,
-} from "../packages/mcp-server/src/index.ts";
+import { OP_SAFETY_METADATA, TOOLS, type OpSafetyMetadata, type ToolAnnotations } from "../packages/mcp-server/src/index.ts";
 import { createStudioApiApp } from "../apps/studio-api/src/index.ts";
 
 export interface StudioRouteDescriptor {
@@ -163,8 +158,7 @@ export const STUDIO_ROUTE_PARITY_RULES: ReadonlyArray<UIRouteParityRule> = [
     method: "POST",
     path: "/api/projects/:project/proposals/:proposalId/reject",
     category: "human_only_custody_or_transport",
-    rationale:
-      "Human-in-the-loop rejection of draft proposals in Studio Review Bar; AD-V8: an MCP token is refused with APPROVAL_SESSION_REQUIRED",
+    rationale: "Human-in-the-loop rejection of draft proposals in Studio Review Bar; AD-V8: an MCP token is refused with APPROVAL_SESSION_REQUIRED",
   },
   // AD-V8: approval requests for destructive actions an MCP agent asked for
   {
@@ -172,22 +166,19 @@ export const STUDIO_ROUTE_PARITY_RULES: ReadonlyArray<UIRouteParityRule> = [
     path: "/api/projects/:project/approvals",
     category: "mapped",
     mappedTools: ["deploy_apply"],
-    rationale:
-      "Approval requests created by deploy_apply (and revert) refusals; the agent sees each one's state in the APPROVAL_* error it gets on retry",
+    rationale: "Approval requests created by deploy_apply (and revert) refusals; the agent sees each one's state in the APPROVAL_* error it gets on retry",
   },
   {
     method: "POST",
     path: "/api/projects/:project/approvals/:approvalId/approve",
     category: "human_only_custody_or_transport",
-    rationale:
-      "AD-V8: only a Studio session user with editor+ approves a destructive action; an MCP token is refused with APPROVAL_SESSION_REQUIRED",
+    rationale: "AD-V8: only a Studio session user with editor+ approves a destructive action; an MCP token is refused with APPROVAL_SESSION_REQUIRED",
   },
   {
     method: "POST",
     path: "/api/projects/:project/approvals/:approvalId/reject",
     category: "human_only_custody_or_transport",
-    rationale:
-      "AD-V8: only a Studio session user with editor+ rejects a destructive action; an MCP token is refused with APPROVAL_SESSION_REQUIRED",
+    rationale: "AD-V8: only a Studio session user with editor+ rejects a destructive action; an MCP token is refused with APPROVAL_SESSION_REQUIRED",
   },
   {
     method: "GET",
@@ -677,11 +668,7 @@ export const MCP_TOOL_PARITY_MAPPINGS: ReadonlyArray<McpToolParityMapping> = [
   {
     toolName: "apply_ops",
     surfaceKind: "mutation",
-    sharedTargets: [
-      "POST /api/projects/:project/ops",
-      "POST /api/projects/:project/revert",
-      ...OP_TYPES.map((op) => `Op:${op}`),
-    ],
+    sharedTargets: ["POST /api/projects/:project/ops", "POST /api/projects/:project/revert", ...OP_TYPES.map((op) => `Op:${op}`)],
   },
   {
     toolName: "request_connection",
@@ -696,10 +683,7 @@ export const MCP_TOOL_PARITY_MAPPINGS: ReadonlyArray<McpToolParityMapping> = [
   {
     toolName: "test_workflow",
     surfaceKind: "mutation",
-    sharedTargets: [
-      "POST /api/projects/:project/workflows/:workflowId/runs",
-      "POST /api/projects/:project/workflows/:workflowId/nodes/:nodeId/test-step",
-    ],
+    sharedTargets: ["POST /api/projects/:project/workflows/:workflowId/runs", "POST /api/projects/:project/workflows/:workflowId/nodes/:nodeId/test-step"],
   },
   {
     toolName: "list_runs",
@@ -729,18 +713,11 @@ export const MCP_TOOL_PARITY_MAPPINGS: ReadonlyArray<McpToolParityMapping> = [
 ];
 
 function isHumanCustodyPrefixRoute(_method: string, path: string): boolean {
-  if (
-    path === "/api/auth" ||
-    path.startsWith("/api/auth/") ||
-    path === "/api/orgs" ||
-    path.startsWith("/api/orgs/")
-  ) {
+  if (path === "/api/auth" || path.startsWith("/api/auth/") || path === "/api/orgs" || path.startsWith("/api/orgs/")) {
     return true;
   }
   if (
-    /^\/api\/projects\/:project\/environments\/:envName\/(data|ledger)(\/|$)/.test(
-      path,
-    ) &&
+    /^\/api\/projects\/:project\/environments\/:envName\/(data|ledger)(\/|$)/.test(path) &&
     path !== "/api/projects/:project/environments/:envName/data/logs"
   ) {
     return true;
@@ -785,13 +762,9 @@ export function extractStudioApiRoutes(): StudioRouteDescriptor[] {
   return descriptors;
 }
 
-export function verifyMcpParity(
-  options: VerifyMcpParityOptions = {},
-): VerifyMcpParityResult {
+export function verifyMcpParity(options: VerifyMcpParityOptions = {}): VerifyMcpParityResult {
   const opTypes = options.opTypes ?? OP_TYPES;
-  const opSafety =
-    options.opSafetyMetadata ??
-    (OP_SAFETY_METADATA as Readonly<Record<string, OpSafetyMetadata>>);
+  const opSafety = options.opSafetyMetadata ?? (OP_SAFETY_METADATA as Readonly<Record<string, OpSafetyMetadata>>);
   const studioRoutes = options.studioRoutes ?? extractStudioApiRoutes();
   const tools: ReadonlyArray<McpToolDescriptor> =
     options.tools ??
@@ -805,9 +778,7 @@ export function verifyMcpParity(
 
   const registeredToolNames = new Set(tools.map((t) => t.name));
   const toolMappingByName = new Map(toolMappings.map((m) => [m.toolName, m]));
-  const routeRuleByKey = new Map(
-    routeRules.map((r) => [`${r.method.toUpperCase()} ${r.path}`, r]),
-  );
+  const routeRuleByKey = new Map(routeRules.map((r) => [`${r.method.toUpperCase()} ${r.path}`, r]));
 
   const orphanOps: string[] = [];
   const orphanStudioRoutes: string[] = [];
@@ -820,16 +791,9 @@ export function verifyMcpParity(
   const applyOpsTargets = new Set(applyOpsMapping?.sharedTargets ?? []);
   for (const opKind of opTypes) {
     const safety = opSafety[opKind];
-    if (
-      !safety ||
-      safety.tool !== "apply_ops" ||
-      !registeredToolNames.has("apply_ops") ||
-      !applyOpsTargets.has(`Op:${opKind}`)
-    ) {
+    if (!safety || safety.tool !== "apply_ops" || !registeredToolNames.has("apply_ops") || !applyOpsTargets.has(`Op:${opKind}`)) {
       orphanOps.push(opKind);
-      errors.push(
-        `Orphan Op kind "${opKind}": not mapped to an MCP tool with safety metadata in packages/mcp-server`,
-      );
+      errors.push(`Orphan Op kind "${opKind}": not mapped to an MCP tool with safety metadata in packages/mcp-server`);
     }
   }
 
@@ -844,22 +808,15 @@ export function verifyMcpParity(
         continue;
       }
       orphanStudioRoutes.push(key);
-      errors.push(
-        `Orphan UI route "${key}": exposed in apps/studio-api with no mapped MCP tool in packages/mcp-server`,
-      );
+      errors.push(`Orphan UI route "${key}": exposed in apps/studio-api with no mapped MCP tool in packages/mcp-server`);
       continue;
     }
 
     if (rule.category === "mapped") {
       const mapped = rule.mappedTools ?? [];
-      if (
-        mapped.length === 0 ||
-        mapped.some((toolName) => !registeredToolNames.has(toolName))
-      ) {
+      if (mapped.length === 0 || mapped.some((toolName) => !registeredToolNames.has(toolName))) {
         orphanStudioRoutes.push(key);
-        errors.push(
-          `Orphan UI route "${key}": mapped MCP tool (${mapped.join(", ") || "none"}) is not registered in packages/mcp-server`,
-        );
+        errors.push(`Orphan UI route "${key}": mapped MCP tool (${mapped.join(", ") || "none"}) is not registered in packages/mcp-server`);
       }
     }
   }
@@ -873,17 +830,13 @@ export function verifyMcpParity(
       typeof tool.annotations.idempotentHint !== "boolean"
     ) {
       missingAnnotationTools.push(tool.name);
-      errors.push(
-        `MCP tool "${tool.name}" is missing required MCP safety annotations (readOnlyHint, destructiveHint, idempotentHint)`,
-      );
+      errors.push(`MCP tool "${tool.name}" is missing required MCP safety annotations (readOnlyHint, destructiveHint, idempotentHint)`);
     }
 
     const mapping = toolMappingByName.get(tool.name);
     if (!mapping || mapping.sharedTargets.length === 0) {
       orphanMcpTools.push(tool.name);
-      errors.push(
-        `Orphan MCP tool "${tool.name}": registered in packages/mcp-server without a mapped Op or studio-api command`,
-      );
+      errors.push(`Orphan MCP tool "${tool.name}": registered in packages/mcp-server without a mapped Op or studio-api command`);
     }
   }
 
@@ -900,9 +853,7 @@ export function verifyMcpParity(
   };
 }
 
-const isMain =
-  process.argv[1] !== undefined &&
-  pathToFileURL(process.argv[1]).href === import.meta.url;
+const isMain = process.argv[1] !== undefined && pathToFileURL(process.argv[1]).href === import.meta.url;
 
 if (isMain) {
   const args = process.argv.slice(2);

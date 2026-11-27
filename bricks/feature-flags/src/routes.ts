@@ -39,7 +39,7 @@ export function createFlagRoutes(options: FlagRouteOptions = {}): Hono<FlagEnv> 
           workspaceId: workspace?.id,
           userId: user?.uid,
         }),
-      }))
+      })),
     );
 
     return c.json({ flags: evaluated }, 200);
@@ -64,12 +64,7 @@ export function createFlagRoutes(options: FlagRouteOptions = {}): Hono<FlagEnv> 
     }
 
     const service = new FeatureFlagService(c.env.DB, options.allowOverrides);
-    const flag = await service.defineFlag(
-      parsed.data.key,
-      parsed.data.description,
-      parsed.data.enabledDefault,
-      parsed.data.percentageRollout
-    );
+    const flag = await service.defineFlag(parsed.data.key, parsed.data.description, parsed.data.enabledDefault, parsed.data.percentageRollout);
 
     return c.json({ flag }, 201);
   });

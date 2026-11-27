@@ -44,8 +44,15 @@ app.route("/api", createEntityRoutes({ entities: declarations }));
 
 type Reply = { status: number; body: Record<string, any> | null };
 async function call(method: string, path: string, user: string | null, workspace: string | null, body?: unknown): Promise<Reply> {
-  const headers: Record<string, string> = { ...(user ? { "x-test-user": user } : {}), ...(workspace ? { "x-workspace-id": workspace } : {}), ...(body === undefined ? {} : { "content-type": "application/json" }) };
-  const response = await app.fetch(new Request(`http://localhost${path}`, { method, headers, body: body === undefined ? null : typeof body === "string" ? body : JSON.stringify(body) }), { DB: db });
+  const headers: Record<string, string> = {
+    ...(user ? { "x-test-user": user } : {}),
+    ...(workspace ? { "x-workspace-id": workspace } : {}),
+    ...(body === undefined ? {} : { "content-type": "application/json" }),
+  };
+  const response = await app.fetch(
+    new Request(`http://localhost${path}`, { method, headers, body: body === undefined ? null : typeof body === "string" ? body : JSON.stringify(body) }),
+    { DB: db },
+  );
   return { status: response.status, body: (await response.json().catch(() => null)) as Record<string, any> | null };
 }
 const create = (path: string, user: string, ws: string, body: unknown) => call("POST", path, user, ws, body);
@@ -55,7 +62,10 @@ beforeEach(async () => {
   for (const table of ["ent_invoices", "ent_tasks", "mw_members", "mw_workspaces"]) await db.prepare(`DROP TABLE IF EXISTS "${table}"`).run();
   await applyMigration(db, mwMigration);
   for (const e of parsed.entities) await applyMigration(db, entityDdl(e));
-  for (const [ws, owner] of [["ws-a", "alice"], ["ws-b", "bob"]] as const) {
+  for (const [ws, owner] of [
+    ["ws-a", "alice"],
+    ["ws-b", "bob"],
+  ] as const) {
     await db.prepare("INSERT INTO mw_workspaces (id, name, owner_id) VALUES (?, ?, ?)").bind(ws, ws, owner).run();
     await db.prepare("INSERT INTO mw_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')").bind(ws, owner).run();
   }
@@ -191,7 +201,13 @@ describe("the declaration is the only source of names", () => {
 describe("fails closed and says little", () => {
   it("no identity is 401 and no workspace is 400, on every route", async () => {
     const id = "00000000-0000-4000-8000-000000000000";
-    for (const [method, path, body] of [["POST", "/api/invoices", { client_name: "a" }], ["GET", "/api/invoices", undefined], ["GET", `/api/invoices/${id}`, undefined], ["PATCH", `/api/invoices/${id}`, { amount: 1 }], ["DELETE", `/api/invoices/${id}`, undefined]] as const) {
+    for (const [method, path, body] of [
+      ["POST", "/api/invoices", { client_name: "a" }],
+      ["GET", "/api/invoices", undefined],
+      ["GET", `/api/invoices/${id}`, undefined],
+      ["PATCH", `/api/invoices/${id}`, { amount: 1 }],
+      ["DELETE", `/api/invoices/${id}`, undefined],
+    ] as const) {
       expect((await call(method, path, null, "ws-a", body)).status, `${method} ${path} without identity`).toBe(401);
       expect((await call(method, path, "alice", null, body)).status, `${method} ${path} without workspace`).toBe(400);
     }
@@ -201,7 +217,9 @@ describe("fails closed and says little", () => {
     const unguarded = new Hono<WorkspaceEnv>();
     unguarded.use("/api/*", stubIdentity);
     unguarded.route("/api", createEntityRoutes({ entities: declarations }));
-    const res = await unguarded.fetch(new Request("http://localhost/api/invoices", { headers: { "x-test-user": "alice", "x-workspace-id": "ws-a" } }), { DB: db });
+    const res = await unguarded.fetch(new Request("http://localhost/api/invoices", { headers: { "x-test-user": "alice", "x-workspace-id": "ws-a" } }), {
+      DB: db,
+    });
     expect(res.status).toBe(400);
   });
 

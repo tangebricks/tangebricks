@@ -1,8 +1,6 @@
 import type { IntegrationOperation } from "@poc/assembler";
 
-export function isRetryable(
-  operation: Pick<IntegrationOperation, "method" | "sideEffects" | "idempotency">,
-): boolean {
+export function isRetryable(operation: Pick<IntegrationOperation, "method" | "sideEffects" | "idempotency">): boolean {
   const method = operation.method.toUpperCase();
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
     return true;
@@ -30,8 +28,7 @@ export function parseRetryDelayMs(
   now: () => number = Date.now,
 ): ParseRetryDelayResult {
   const respectRetryAfter = rateLimit?.respectRetryAfter ?? true;
-  const headerName =
-    rateLimit?.retryAfterHeader ?? fallbackRetryAfterHeader ?? "retry-after";
+  const headerName = rateLimit?.retryAfterHeader ?? fallbackRetryAfterHeader ?? "retry-after";
 
   let headerDelayMs: number | undefined;
 

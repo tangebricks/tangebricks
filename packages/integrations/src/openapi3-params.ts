@@ -1,12 +1,7 @@
 import { FIDELITY_CODES } from "@poc/assembler";
 import { escapeJsonPointer } from "./report.ts";
 import type { ReportCollector } from "./report.ts";
-import {
-  derefObject,
-  mapSchemaTypeToPortType,
-  sanitizeIdentifier,
-  truncateText,
-} from "./util.ts";
+import { derefObject, mapSchemaTypeToPortType, sanitizeIdentifier, truncateText } from "./util.ts";
 import type { IntegrationOperationParam } from "@poc/assembler";
 
 export interface OpenApiOpContext {
@@ -29,10 +24,7 @@ export interface ExtractedParams {
 }
 
 /** Maps every path/query/header/cookie parameter of one operation (see report codes PARAM_*). */
-export function extractOpenApiParams(
-  ctx: OpenApiOpContext,
-  combinedParams: RawParam[],
-): ExtractedParams {
+export function extractOpenApiParams(ctx: OpenApiOpContext, combinedParams: RawParam[]): ExtractedParams {
   const { spec, report, operationId } = ctx;
   const params: IntegrationOperationParam[] = [];
   const usedCleanNames = new Set<string>();
@@ -138,10 +130,7 @@ export function extractOpenApiParams(
         blocking: true,
       });
       paramLoss = true;
-    } else if (
-      styleVal === "deepObject" &&
-      (schema.type === "array" || mapping.dataType === "array")
-    ) {
+    } else if (styleVal === "deepObject" && (schema.type === "array" || mapping.dataType === "array")) {
       report?.normalized({
         op: operationId,
         element: "param",
@@ -153,11 +142,7 @@ export function extractOpenApiParams(
       });
     }
 
-    const rawEnum = Array.isArray(schema.enum)
-      ? schema.enum
-      : Array.isArray(p.enum)
-        ? p.enum
-        : undefined;
+    const rawEnum = Array.isArray(schema.enum) ? schema.enum : Array.isArray(p.enum) ? p.enum : undefined;
     let cleanEnum: (string | number | boolean)[] | undefined;
     if (rawEnum) {
       if (rawEnum.length > 256) {
@@ -178,16 +163,11 @@ export function extractOpenApiParams(
     const rawDefault = schema.default !== undefined ? schema.default : p.default;
 
     let itemsVal: { dataType: any; enum?: (string | number | boolean)[] } | undefined;
-    if (
-      (schema.type === "array" || p.type === "array" || mapping.dataType === "array") &&
-      (schema.items !== undefined || p.items !== undefined)
-    ) {
+    if ((schema.type === "array" || p.type === "array" || mapping.dataType === "array") && (schema.items !== undefined || p.items !== undefined)) {
       const rawItems = schema.items !== undefined ? schema.items : p.items;
       const itemsDeref = derefObject(spec, rawItems);
       const itemsMapping = mapSchemaTypeToPortType(itemsDeref.target);
-      const rawItemsEnum = Array.isArray(itemsDeref.target.enum)
-        ? itemsDeref.target.enum
-        : undefined;
+      const rawItemsEnum = Array.isArray(itemsDeref.target.enum) ? itemsDeref.target.enum : undefined;
       let itemsEnum: (string | number | boolean)[] | undefined;
       if (rawItemsEnum) {
         if (rawItemsEnum.length > 256) {
@@ -210,8 +190,7 @@ export function extractOpenApiParams(
       };
     }
 
-    const allowReservedVal =
-      typeof p.allowReserved === "boolean" ? p.allowReserved : undefined;
+    const allowReservedVal = typeof p.allowReserved === "boolean" ? p.allowReserved : undefined;
 
     if (mapping.loss === "SCHEMA_COMPOSITION_ERASED") {
       report?.approximated({
@@ -253,11 +232,7 @@ export function extractOpenApiParams(
 }
 
 /** Swagger 2 `in: body|formData` parameters are never mapped; report the dropped body. */
-export function reportSwagger2Body(
-  ctx: OpenApiOpContext,
-  combinedParams: RawParam[],
-  hasSwagger2Body: boolean,
-): void {
+export function reportSwagger2Body(ctx: OpenApiOpContext, combinedParams: RawParam[], hasSwagger2Body: boolean): void {
   const { spec, report, operationId, rawPath, methodLower } = ctx;
   if (hasSwagger2Body) {
     report?.unsupported({
@@ -284,11 +259,7 @@ export function reportSwagger2Body(
 }
 
 /** Every `{param}` in the path template must exist as a path param. */
-export function backfillPathParams(
-  ctx: OpenApiOpContext,
-  params: IntegrationOperationParam[],
-  usedCleanNames: Set<string>,
-): void {
+export function backfillPathParams(ctx: OpenApiOpContext, params: IntegrationOperationParam[], usedCleanNames: Set<string>): void {
   const { report, operationId, rawPath } = ctx;
   // Ensure any {param} in path is represented in params
   for (const match of rawPath.matchAll(/\{([A-Za-z0-9_]+)\}/g)) {

@@ -1,12 +1,7 @@
 import { FIDELITY_CODES } from "@poc/assembler";
 import { escapeJsonPointer } from "./report.ts";
 import type { ReportCollector } from "./report.ts";
-import {
-  derefObject,
-  isPlainObject,
-  mapSchemaTypeToPortType,
-  resolveJsonPointerRef,
-} from "./util.ts";
+import { derefObject, isPlainObject, mapSchemaTypeToPortType, resolveJsonPointerRef } from "./util.ts";
 import type { IntegrationOperationResponse, NodePortDefinition } from "@poc/assembler";
 export const OUTPUT_PORT_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 export const RESERVED_OUTPUT_PORTS = new Set(["out", "status", "body", "data"]);
@@ -21,12 +16,7 @@ export interface FlatResponseSchema {
  * Deref a schema and merge `allOf` members (cycle-safe via a visited `$ref` set,
  * bounded by MAX_OUTPUT_SCHEMA_DEPTH) into one ordered property list.
  */
-export function flattenResponseSchema(
-  root: Record<string, unknown>,
-  schema: unknown,
-  visited: Set<string> = new Set(),
-  depth = 0,
-): FlatResponseSchema {
+export function flattenResponseSchema(root: Record<string, unknown>, schema: unknown, visited: Set<string> = new Set(), depth = 0): FlatResponseSchema {
   const properties = new Map<string, unknown>();
   const required = new Set<string>();
   if (!isPlainObject(schema) || depth > MAX_OUTPUT_SCHEMA_DEPTH) {
@@ -47,11 +37,7 @@ export function flattenResponseSchema(
       for (const r of flat.required) required.add(r);
     }
   }
-  const variants = Array.isArray(current.oneOf)
-    ? current.oneOf
-    : Array.isArray(current.anyOf)
-      ? current.anyOf
-      : undefined;
+  const variants = Array.isArray(current.oneOf) ? current.oneOf : Array.isArray(current.anyOf) ? current.anyOf : undefined;
   if (variants && variants.length > 0) {
     // Top-level oneOf/anyOf: keep the properties every variant declares. Mixed types become `any`.
     const flats = variants.map((v) => flattenResponseSchema(root, v, new Set(visited), depth + 1));
@@ -59,9 +45,7 @@ export function flattenResponseSchema(
     for (const [name, value] of first) {
       const maps = flats.map((f) => new Map(f.properties));
       if (!maps.every((m) => m.has(name))) continue;
-      const types = maps.map(
-        (m) => mapSchemaTypeToPortType(derefObject(root, m.get(name)).target).dataType,
-      );
+      const types = maps.map((m) => mapSchemaTypeToPortType(derefObject(root, m.get(name)).target).dataType);
       properties.set(name, types.every((t) => t === types[0]) ? value : { "x-port-type": "any" });
       if (flats.every((f) => f.required.has(name))) required.add(name);
     }
@@ -75,10 +59,7 @@ export function flattenResponseSchema(
   return { properties: [...properties.entries()], required };
 }
 
-export function mapResponseOutputs(
-  root: Record<string, unknown>,
-  flat: FlatResponseSchema,
-): { outputs: NodePortDefinition[]; renamed: string[] } {
+export function mapResponseOutputs(root: Record<string, unknown>, flat: FlatResponseSchema): { outputs: NodePortDefinition[]; renamed: string[] } {
   const entries = flat.properties.map(([name, value], index) => ({ name, value, index }));
   entries.sort((a, b) => {
     const ar = flat.required.has(a.name) ? 0 : 1;
@@ -95,10 +76,7 @@ export function mapResponseOutputs(
     const resolved = derefObject(root, value).target;
     outputs.push({
       id: name,
-      dataType:
-        isPlainObject(resolved) && resolved["x-port-type"] === "any"
-          ? "any"
-          : mapSchemaTypeToPortType(resolved).dataType,
+      dataType: isPlainObject(resolved) && resolved["x-port-type"] === "any" ? "any" : mapSchemaTypeToPortType(resolved).dataType,
     });
   }
   return { outputs, renamed };
@@ -110,18 +88,13 @@ export const ERROR_CODE_NAMES = ["code", "error"] as const;
 export const ERROR_MESSAGE_NAMES = ["message", "error_description"] as const;
 export const ERROR_TYPE_NAMES = ["type"] as const;
 
-export function errorShapeAtLevel(
-  root: Record<string, unknown>,
-  flat: FlatResponseSchema,
-  prefix: string,
-): ErrorShape | undefined {
+export function errorShapeAtLevel(root: Record<string, unknown>, flat: FlatResponseSchema, prefix: string): ErrorShape | undefined {
   const props = new Map(flat.properties);
   const isObjectProp = (name: string): boolean => {
     const t = derefObject(root, props.get(name)).target;
     return mapSchemaTypeToPortType(t).dataType === "object";
   };
-  const pick = (names: readonly string[]): string | undefined =>
-    names.find((n) => props.has(n) && !isObjectProp(n));
+  const pick = (names: readonly string[]): string | undefined => names.find((n) => props.has(n) && !isObjectProp(n));
   const code = pick(ERROR_CODE_NAMES);
   const message = pick(ERROR_MESSAGE_NAMES);
   const type = pick(ERROR_TYPE_NAMES);
@@ -138,9 +111,7 @@ export function deriveErrorShape(root: Record<string, unknown>, schema: unknown)
   const top = errorShapeAtLevel(root, flat, "");
   if (top) return top;
   // Depth 2: look inside object-valued properties, `error` first, then spec order.
-  const nested = [...flat.properties].sort(([a], [b]) =>
-    a === "error" ? -1 : b === "error" ? 1 : 0,
-  );
+  const nested = [...flat.properties].sort(([a], [b]) => (a === "error" ? -1 : b === "error" ? 1 : 0));
   for (const [name, value] of nested) {
     if (!OUTPUT_PORT_IDENTIFIER.test(name)) continue;
     const resolved = derefObject(root, value).target;
@@ -151,11 +122,8 @@ export function deriveErrorShape(root: Record<string, unknown>, schema: unknown)
   return undefined;
 }
 
-export function jsonSchemaOfResponse(
-  respObj: Record<string, unknown>,
-): { schema: unknown; nonJsonOnly: boolean; contentType?: string } | undefined {
-  const hasSchema = (c: unknown): boolean =>
-    isPlainObject(c) && (isPlainObject(c.schema) || typeof c.$ref === "string");
+export function jsonSchemaOfResponse(respObj: Record<string, unknown>): { schema: unknown; nonJsonOnly: boolean; contentType?: string } | undefined {
+  const hasSchema = (c: unknown): boolean => isPlainObject(c) && (isPlainObject(c.schema) || typeof c.$ref === "string");
   if (isPlainObject(respObj.content)) {
     const entries = Object.entries(respObj.content).filter(([, c]) => isPlainObject(c));
     const json = entries.find(([mt]) => /json/i.test(mt));
@@ -189,8 +157,7 @@ export function extractOpenApiResponse(
 ): IntegrationOperationResponse {
   const responses = isPlainObject(responsesRaw) ? responsesRaw : {};
   const keys = Object.keys(responses);
-  const resolveResp = (key: string): Record<string, unknown> =>
-    derefObject(root, responses[key]).target;
+  const resolveResp = (key: string): Record<string, unknown> => derefObject(root, responses[key]).target;
   const ptr = (key: string): string => `${pointerBase}/${escapeJsonPointer(key)}`;
   const result: IntegrationOperationResponse = {};
 
@@ -245,17 +212,13 @@ export function extractOpenApiResponse(
         code: FIDELITY_CODES.RESPONSE_PROPERTY_NOT_PORT.code,
         pointer: ptr(successKey),
         from: renamed,
-        reason:
-          "properties whose name is not a port identifier or is a reserved port stay reachable under `out`",
+        reason: "properties whose name is not a port identifier or is a reserved port stay reachable under `out`",
         blocking: false,
       });
     }
 
     const respObj = resolveResp(successKey);
-    const hasLinkHeader =
-      isPlainObject(respObj) &&
-      isPlainObject(respObj.headers) &&
-      Object.keys(respObj.headers).some((h) => h.toLowerCase() === "link");
+    const hasLinkHeader = isPlainObject(respObj) && isPlainObject(respObj.headers) && Object.keys(respObj.headers).some((h) => h.toLowerCase() === "link");
     checkResponseSemanticsFidelity(root, flat, ptr(successKey), operationId, report, hasPredicate, hasPagination, hasLinkHeader);
   } else if (nonJsonKey && nonJsonFound) {
     const ct = nonJsonFound.contentType ?? "application/octet-stream";
@@ -345,8 +308,13 @@ export function extractDiscoveryResponse(
   report?.mapped({ op: operationId, element: "response", code: FIDELITY_CODES.RESPONSE_SCHEMA.code, pointer, blocking: false });
   if (renamed.length > 0) {
     report?.normalized({
-      op: operationId, element: "response", code: FIDELITY_CODES.RESPONSE_PROPERTY_NOT_PORT.code,
-      pointer, from: renamed, reason: "properties whose name is not a port identifier or is a reserved port stay reachable under `out`", blocking: false,
+      op: operationId,
+      element: "response",
+      code: FIDELITY_CODES.RESPONSE_PROPERTY_NOT_PORT.code,
+      pointer,
+      from: renamed,
+      reason: "properties whose name is not a port identifier or is a reserved port stay reachable under `out`",
+      blocking: false,
     });
   }
   checkResponseSemanticsFidelity(root, flat, pointer, operationId, report, hasPredicate, hasPagination);
@@ -363,21 +331,32 @@ function checkResponseSemanticsFidelity(
   hasPagination: boolean,
   hasLinkHeader = false,
 ): void {
-  if (!hasPredicate && flat.properties.some(([name, val]) => {
-    if (name !== "ok") return false;
-    const t = derefObject(root, val).target;
-    return isPlainObject(t) && (t.type === "boolean" || (Array.isArray(t.type) && t.type.includes("boolean")));
-  })) {
+  if (
+    !hasPredicate &&
+    flat.properties.some(([name, val]) => {
+      if (name !== "ok") return false;
+      const t = derefObject(root, val).target;
+      return isPlainObject(t) && (t.type === "boolean" || (Array.isArray(t.type) && t.type.includes("boolean")));
+    })
+  ) {
     report?.approximated({
-      op: operationId, element: "response", code: FIDELITY_CODES.SUCCESS_ENVELOPE_UNCHECKED.code,
-      pointer, reason: "200 response schema has boolean 'ok' property with no errorWhen/successWhen predicate", blocking: false,
+      op: operationId,
+      element: "response",
+      code: FIDELITY_CODES.SUCCESS_ENVELOPE_UNCHECKED.code,
+      pointer,
+      reason: "200 response schema has boolean 'ok' property with no errorWhen/successWhen predicate",
+      blocking: false,
     });
   }
   const PAGINATION_PROPS = new Set(["has_more", "next_cursor", "nextPageToken", "next"]);
   if (!hasPagination && (hasLinkHeader || flat.properties.some(([name]) => PAGINATION_PROPS.has(name)))) {
     report?.approximated({
-      op: operationId, element: "pagination", code: FIDELITY_CODES.PAGINATION_UNMODELLED.code,
-      pointer, reason: "Response declares pagination signals (has_more, next_cursor, nextPageToken, next, Link) but pagination is not modelled", blocking: false,
+      op: operationId,
+      element: "pagination",
+      code: FIDELITY_CODES.PAGINATION_UNMODELLED.code,
+      pointer,
+      reason: "Response declares pagination signals (has_more, next_cursor, nextPageToken, next, Link) but pagination is not modelled",
+      blocking: false,
     });
   }
 }

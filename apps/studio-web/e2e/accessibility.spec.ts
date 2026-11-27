@@ -31,22 +31,15 @@ async function signInAsAlice(page: Page) {
   });
 }
 
-async function assertZeroCriticalOrSeriousAxeViolations(
-  page: Page,
-  viewLabel: string,
-) {
+async function assertZeroCriticalOrSeriousAxeViolations(page: Page, viewLabel: string) {
   // Disable CSS transitions & animations to ensure resting computed styles without mid-flight color interpolation
   await page.addStyleTag({
     content: `*, *::before, *::after { transition: none !important; animation: none !important; }`,
   });
   await page.waitForTimeout(200);
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .analyze();
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
 
-  const criticalOrSerious = results.violations.filter(
-    (v) => v.impact === "critical" || v.impact === "serious",
-  );
+  const criticalOrSerious = results.violations.filter((v) => v.impact === "critical" || v.impact === "serious");
 
   expect(
     criticalOrSerious,
@@ -70,36 +63,23 @@ test.describe("Story 8.3 — WCAG 2.1 AA Accessibility Audit (axe-core) & Live R
     await signInAsAlice(page);
 
     // Non-color status indicators check (icon + text label on readiness & sync pills)
-    await expect(page.getByTestId("sync-status-chip")).toContainText(
-      /Live|Connecting|Offline/,
-    );
-    await expect(page.getByTestId("readiness-badge")).toContainText(
-      /Ready|issue/i,
-    );
+    await expect(page.getByTestId("sync-status-chip")).toContainText(/Live|Connecting|Offline/);
+    await expect(page.getByTestId("readiness-badge")).toContainText(/Ready|issue/i);
 
     // 1. Overview (Backend Map)
     await page.getByTestId("nav-tab-overview").click();
     await expect(page.getByTestId("view-overview")).toBeVisible();
-    await assertZeroCriticalOrSeriousAxeViolations(
-      page,
-      "1. Overview (Backend Map)",
-    );
+    await assertZeroCriticalOrSeriousAxeViolations(page, "1. Overview (Backend Map)");
 
     // 2. Overview (Accessible Outline View)
     await page.getByTestId("backend-map-outline-toggle").click();
     await expect(page.getByTestId("backend-map-outline-region")).toBeVisible();
-    await assertZeroCriticalOrSeriousAxeViolations(
-      page,
-      "2. Overview (Outline View)",
-    );
+    await assertZeroCriticalOrSeriousAxeViolations(page, "2. Overview (Outline View)");
 
     // 3. Bricks Catalog & Inspector
     await page.getByTestId("nav-tab-bricks").click();
     await expect(page.getByTestId("view-bricks")).toBeVisible();
-    await assertZeroCriticalOrSeriousAxeViolations(
-      page,
-      "3. Bricks Catalog & Inspector",
-    );
+    await assertZeroCriticalOrSeriousAxeViolations(page, "3. Bricks Catalog & Inspector");
 
     // 4. Data (Entities & Tables)
     await page.getByTestId("nav-tab-data").click();
@@ -108,48 +88,31 @@ test.describe("Story 8.3 — WCAG 2.1 AA Accessibility Audit (axe-core) & Live R
     if (await schemaTab.isVisible()) {
       await schemaTab.click();
     }
-    await assertZeroCriticalOrSeriousAxeViolations(
-      page,
-      "4. Data (Entities & Tables)",
-    );
+    await assertZeroCriticalOrSeriousAxeViolations(page, "4. Data (Entities & Tables)");
 
     // 5. Workflows (Spatial Graph Canvas)
     await page.getByTestId("nav-tab-workflows").click();
     await expect(page.getByTestId("view-workflows")).toBeVisible();
     await expect(page.getByTestId("workflow-reactflow-canvas")).toBeVisible();
-    await assertZeroCriticalOrSeriousAxeViolations(
-      page,
-      "5. Workflows (Spatial Graph Canvas)",
-    );
+    await assertZeroCriticalOrSeriousAxeViolations(page, "5. Workflows (Spatial Graph Canvas)");
 
     // 6. Workflows (Accessible Outline View)
     await page.getByTestId("workflow-outline-toggle").click();
     await expect(page.getByTestId("workflow-outline-region")).toBeVisible();
-    await assertZeroCriticalOrSeriousAxeViolations(
-      page,
-      "6. Workflows (Outline View)",
-    );
+    await assertZeroCriticalOrSeriousAxeViolations(page, "6. Workflows (Outline View)");
 
     // 7. Connections & Secrets Vault
     await page.getByTestId("nav-tab-connections").click();
     await expect(page.getByTestId("view-connections")).toBeVisible();
-    await assertZeroCriticalOrSeriousAxeViolations(
-      page,
-      "7. Connections & Secrets Vault",
-    );
+    await assertZeroCriticalOrSeriousAxeViolations(page, "7. Connections & Secrets Vault");
 
     // 8. History, Revisions & AI Change Ledger
     await page.getByTestId("nav-tab-history").click();
     await expect(page.getByTestId("view-history")).toBeVisible();
-    await assertZeroCriticalOrSeriousAxeViolations(
-      page,
-      "8. History & AI Change Ledger",
-    );
+    await assertZeroCriticalOrSeriousAxeViolations(page, "8. History & AI Change Ledger");
   });
 
-  test("AC 4: batched aria-live='polite' announces AI/MCP changes without stealing keyboard focus and respects prefers-reduced-motion", async ({
-    page,
-  }) => {
+  test("AC 4: batched aria-live='polite' announces AI/MCP changes without stealing keyboard focus and respects prefers-reduced-motion", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await signInAsAlice(page);
 

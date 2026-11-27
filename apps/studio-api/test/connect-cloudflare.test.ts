@@ -142,46 +142,31 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
   });
 
   test("GET /api/orgs/:orgId/cloudflare-tokens/template-url returns pre-filled Cloudflare scoped token creation link and permission list", async () => {
-    const res = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/template-url`,
-      {
-        method: "GET",
-        token: ownerSessionToken,
-      },
-    );
+    const res = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/template-url`, {
+      method: "GET",
+      token: ownerSessionToken,
+    });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       templateUrl: string;
       explanation: string;
       permissions: Array<{ id: string; label: string }>;
     };
-    expect(body.templateUrl).toContain(
-      "https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=",
-    );
+    expect(body.templateUrl).toContain("https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=");
     expect(body.templateUrl).toContain("name=ProjectX+Studio+Deploy");
-    expect(body.explanation).toBe(
-      "Your backend runs in your own Cloudflare account. We never host it.",
-    );
-    expect(body.permissions.map((p) => p.label)).toEqual([
-      "Account Settings: Read",
-      "Workers Scripts: Edit",
-      "D1: Edit",
-      "Queues: Edit",
-    ]);
+    expect(body.explanation).toBe("Your backend runs in your own Cloudflare account. We never host it.");
+    expect(body.permissions.map((p) => p.label)).toEqual(["Account Settings: Read", "Workers Scripts: Edit", "D1: Edit", "Queues: Edit"]);
   });
 
   test("rejects MCP agent bearer token on verify-and-save with HTTP 403 HUMAN_CONSENT_REQUIRED (AD-S12)", async () => {
-    const res = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        method: "POST",
-        token: mcpAgentToken,
-        body: {
-          token: "cf_valid_least_privilege_token_9988",
-          projectId: "acme-billing",
-        },
+    const res = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      method: "POST",
+      token: mcpAgentToken,
+      body: {
+        token: "cf_valid_least_privilege_token_9988",
+        projectId: "acme-billing",
       },
-    );
+    });
     expect(res.status).toBe(403);
     const body = (await res.json()) as {
       error: { code: string; studioUrl?: string };
@@ -189,25 +174,19 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
     expect(body.error.code).toBe("HUMAN_CONSENT_REQUIRED");
     expect(body.error.studioUrl).toContain("connect-cloudflare");
 
-    const countRow = await studioDb
-      .prepare("SELECT COUNT(*) as cnt FROM deploy_tokens WHERE org_id = ?")
-      .bind(orgId)
-      .first<{ cnt: number }>();
+    const countRow = await studioDb.prepare("SELECT COUNT(*) as cnt FROM deploy_tokens WHERE org_id = ?").bind(orgId).first<{ cnt: number }>();
     expect(Number(countRow?.cnt ?? 0)).toBe(0);
   });
 
   test("rejects token missing Workers Scripts: Edit or D1: Edit with HTTP 422, exact missing permission name, remediation URL, and 0 rows stored in deploy_tokens", async () => {
-    const missingWorkersRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        method: "POST",
-        token: ownerSessionToken,
-        body: {
-          token: "cf_missing_workers_edit_token_1234",
-          projectId: "acme-billing",
-        },
+    const missingWorkersRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      method: "POST",
+      token: ownerSessionToken,
+      body: {
+        token: "cf_missing_workers_edit_token_1234",
+        projectId: "acme-billing",
       },
-    );
+    });
     expect(missingWorkersRes.status).toBe(422);
     const missingWorkersBody = (await missingWorkersRes.json()) as {
       ok: boolean;
@@ -226,29 +205,20 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
     };
     expect(missingWorkersBody.ok).toBe(false);
     expect(missingWorkersBody.error.code).toBe("MISSING_REQUIRED_PERMISSIONS");
-    expect(missingWorkersBody.missingPermissionLabels).toContain(
-      "Workers Scripts: Edit",
-    );
-    const workersRow = missingWorkersBody.permissions.find(
-      (p) => p.label === "Workers Scripts: Edit",
-    );
+    expect(missingWorkersBody.missingPermissionLabels).toContain("Workers Scripts: Edit");
+    const workersRow = missingWorkersBody.permissions.find((p) => p.label === "Workers Scripts: Edit");
     expect(workersRow?.granted).toBe(false);
     expect(workersRow?.plainError).toContain("Workers Scripts: Edit missing ✕");
-    expect(workersRow?.remediationUrl).toContain(
-      "https://dash.cloudflare.com/profile/api-tokens",
-    );
+    expect(workersRow?.remediationUrl).toContain("https://dash.cloudflare.com/profile/api-tokens");
 
-    const missingD1Res = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        method: "POST",
-        token: ownerSessionToken,
-        body: {
-          token: "cf_missing_d1_edit_token_1234",
-          projectId: "acme-billing",
-        },
+    const missingD1Res = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      method: "POST",
+      token: ownerSessionToken,
+      body: {
+        token: "cf_missing_d1_edit_token_1234",
+        projectId: "acme-billing",
       },
-    );
+    });
     expect(missingD1Res.status).toBe(422);
     const missingD1Body = (await missingD1Res.json()) as {
       missingPermissionLabels: string[];
@@ -256,41 +226,30 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
     expect(missingD1Body.missingPermissionLabels).toContain("D1: Edit");
 
     // Revoked / invalid token -> returns clear "Token is invalid or expired — Reconnect" diagnostic
-    const revokedRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        method: "POST",
-        token: ownerSessionToken,
-        body: {
-          token: "cf_revoked_token_1234",
-          projectId: "acme-billing",
-        },
+    const revokedRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      method: "POST",
+      token: ownerSessionToken,
+      body: {
+        token: "cf_revoked_token_1234",
+        projectId: "acme-billing",
       },
-    );
+    });
     expect(revokedRes.status).toBe(422);
     const revokedBody = (await revokedRes.json()) as {
       summaryMessage: string;
       error: { code: string; message: string };
     };
-    expect(revokedBody.summaryMessage).toContain(
-      "Token is invalid or expired — Reconnect",
-    );
+    expect(revokedBody.summaryMessage).toContain("Token is invalid or expired — Reconnect");
 
     // Nothing stored in deploy_tokens
-    const countRow = await studioDb
-      .prepare("SELECT COUNT(*) as cnt FROM deploy_tokens WHERE org_id = ?")
-      .bind(orgId)
-      .first<{ cnt: number }>();
+    const countRow = await studioDb.prepare("SELECT COUNT(*) as cnt FROM deploy_tokens WHERE org_id = ?").bind(orgId).first<{ cnt: number }>();
     expect(Number(countRow?.cnt ?? 0)).toBe(0);
 
     // Funnel telemetry recorded verification_failed with missing permission IDs
-    const funnelRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/funnel-events?step=verification_failed`,
-      {
-        method: "GET",
-        token: ownerSessionToken,
-      },
-    );
+    const funnelRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/funnel-events?step=verification_failed`, {
+      method: "GET",
+      token: ownerSessionToken,
+    });
     expect(funnelRes.status).toBe(200);
     const funnelBody = (await funnelRes.json()) as {
       events: Array<{
@@ -299,12 +258,8 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
       }>;
     };
     expect(funnelBody.events.length).toBeGreaterThanOrEqual(3);
-    expect(funnelBody.events[0]?.metadata.missingPermissionIds).toContain(
-      "workers_scripts_edit",
-    );
-    expect(funnelBody.events[1]?.metadata.missingPermissionIds).toContain(
-      "d1_edit",
-    );
+    expect(funnelBody.events[0]?.metadata.missingPermissionIds).toContain("workers_scripts_edit");
+    expect(funnelBody.events[1]?.metadata.missingPermissionIds).toContain("d1_edit");
   });
 
   test("valid least-privilege token -> all permissions green -> token sealed -> preview & production environments created -> recheck & funnel events recorded", async () => {
@@ -319,18 +274,15 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
     });
 
     const validToken = "cf_valid_least_privilege_token_5544";
-    const verifySaveRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        token: ownerSessionToken,
-        body: {
-          token: validToken,
-          accountId: "abcdef0123456789abcdef0123456789",
-          accountName: "Acme BYOC Production",
-          projectId: "acme-billing",
-        },
+    const verifySaveRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      token: ownerSessionToken,
+      body: {
+        token: validToken,
+        accountId: "abcdef0123456789abcdef0123456789",
+        accountName: "Acme BYOC Production",
+        projectId: "acme-billing",
       },
-    );
+    });
     expect(verifySaveRes.status).toBe(201);
     const savedBody = (await verifySaveRes.json()) as {
       ok: boolean;
@@ -362,18 +314,11 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
     expect(savedBody.tokenRef).toMatch(/^tok_/);
     expect(savedBody.token.tokenLast4).toBe("5544");
     expect(savedBody.verification.ok).toBe(true);
-    expect(savedBody.verification.permissions.every((p) => p.granted)).toBe(
-      true,
-    );
+    expect(savedBody.verification.permissions.every((p) => p.granted)).toBe(true);
     expect(JSON.stringify(savedBody)).not.toContain(validToken);
 
-    const billingEnvs = savedBody.environments.filter(
-      (e) => e.projectId === "acme-billing",
-    );
-    expect(billingEnvs.map((e) => e.envName).sort()).toEqual([
-      "preview",
-      "production",
-    ]);
+    const billingEnvs = savedBody.environments.filter((e) => e.projectId === "acme-billing");
+    expect(billingEnvs.map((e) => e.envName).sort()).toEqual(["preview", "production"]);
     expect(billingEnvs[0]?.target).toEqual({
       type: "byoc",
       accountId: "abcdef0123456789abcdef0123456789",
@@ -382,14 +327,11 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
     });
 
     // Re-check endpoint updates lastVerifiedAt or marks expired when simulated
-    const recheckOkRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/${savedBody.tokenRef}/recheck`,
-      {
-        method: "POST",
-        token: ownerSessionToken,
-        body: {},
-      },
-    );
+    const recheckOkRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/${savedBody.tokenRef}/recheck`, {
+      method: "POST",
+      token: ownerSessionToken,
+      body: {},
+    });
     expect(recheckOkRes.status).toBe(200);
     const recheckOkBody = (await recheckOkRes.json()) as {
       ok: boolean;
@@ -398,14 +340,11 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
     expect(recheckOkBody.ok).toBe(true);
     expect(recheckOkBody.token.status).toBe("active");
 
-    const recheckExpiredRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/${savedBody.tokenRef}/recheck`,
-      {
-        method: "POST",
-        token: ownerSessionToken,
-        body: { simulatedStatus: "expired" },
-      },
-    );
+    const recheckExpiredRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/${savedBody.tokenRef}/recheck`, {
+      method: "POST",
+      token: ownerSessionToken,
+      body: { simulatedStatus: "expired" },
+    });
     expect(recheckExpiredRes.status).toBe(200);
     const recheckExpiredBody = (await recheckExpiredRes.json()) as {
       ok: boolean;
@@ -414,26 +353,18 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
     };
     expect(recheckExpiredBody.ok).toBe(false);
     expect(recheckExpiredBody.token.status).toBe("expired");
-    expect(recheckExpiredBody.verification.summaryMessage).toContain(
-      "Token is invalid or expired — Reconnect",
-    );
+    expect(recheckExpiredBody.verification.summaryMessage).toContain("Token is invalid or expired — Reconnect");
 
     // Disconnect token and verify full funnel sequence
-    await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/${savedBody.tokenRef}`,
-      {
-        method: "DELETE",
-        token: ownerSessionToken,
-      },
-    );
+    await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/${savedBody.tokenRef}`, {
+      method: "DELETE",
+      token: ownerSessionToken,
+    });
 
-    const allFunnelRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/funnel-events`,
-      {
-        method: "GET",
-        token: ownerSessionToken,
-      },
-    );
+    const allFunnelRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/funnel-events`, {
+      method: "GET",
+      token: ownerSessionToken,
+    });
     const allFunnelBody = (await allFunnelRes.json()) as {
       events: Array<{ step: string }>;
     };
@@ -446,13 +377,10 @@ describe("Story 5.2 — Connect Cloudflare API, Per-Permission Verifier, Environ
     ]);
 
     // Viewer cannot call verify-and-save
-    const viewerRes = await callStudio(
-      `/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`,
-      {
-        token: viewerSessionToken,
-        body: { token: validToken, projectId: "acme-billing" },
-      },
-    );
+    const viewerRes = await callStudio(`/api/orgs/${orgId}/cloudflare-tokens/verify-and-save`, {
+      token: viewerSessionToken,
+      body: { token: validToken, projectId: "acme-billing" },
+    });
     expect(viewerRes.status).toBe(403);
   });
 });

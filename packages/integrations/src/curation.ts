@@ -63,12 +63,7 @@ export const CurationConfigSchema = z.strictObject({
   baseUrl: z.string().min(1),
   allowedHosts: z.array(z.string()),
   includeOperations: z.array(z.string()).optional(),
-  operations: z
-    .union([
-      z.record(z.string(), CurationOperationOverlaySchema),
-      z.array(CurationOperationOverlaySchema),
-    ])
-    .optional(),
+  operations: z.union([z.record(z.string(), CurationOperationOverlaySchema), z.array(CurationOperationOverlaySchema)]).optional(),
   defaultRateLimit: IntegrationRateLimitSchema.optional(),
   triggers: z.array(IntegrationTriggerSchema).optional(),
   errorWhen: PredicateSchema.optional(),
@@ -84,9 +79,7 @@ export function parseCurationConfig(raw: unknown): CurationConfig {
   if (!parsed.success) {
     const issues = formatIssues(parsed.error);
     const appName = typeof (raw as any)?.app === "string" ? (raw as any).app : "unknown";
-    throw new Error(
-      `OPENAPI_IMPORT_CURATION_INVALID (${appName}): Invalid curation configuration:\n  ${issues.join("\n  ")}`,
-    );
+    throw new Error(`OPENAPI_IMPORT_CURATION_INVALID (${appName}): Invalid curation configuration:\n  ${issues.join("\n  ")}`);
   }
   return parsed.data;
 }

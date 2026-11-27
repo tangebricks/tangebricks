@@ -18,10 +18,7 @@ export function extractGoogleDiscoveryOperations(
   const operations = new Map<string, IntegrationOperation>();
 
   const collectFromDoc = (doc: Record<string, unknown>) => {
-    const servicePath =
-      typeof doc.servicePath === "string"
-        ? doc.servicePath.replace(/^\/+|\/+$/g, "")
-        : "";
+    const servicePath = typeof doc.servicePath === "string" ? doc.servicePath.replace(/^\/+|\/+$/g, "") : "";
 
     const visitResources = (resourcesObj: unknown) => {
       if (!isPlainObject(resourcesObj)) return;
@@ -32,26 +29,15 @@ export function extractGoogleDiscoveryOperations(
           for (const [methodKey, methodVal] of Object.entries(resourceVal.methods)) {
             if (!isPlainObject(methodVal)) continue;
 
-            const rawId =
-              typeof methodVal.id === "string" && methodVal.id.trim().length > 0
-                ? methodVal.id
-                : methodKey;
+            const rawId = typeof methodVal.id === "string" && methodVal.id.trim().length > 0 ? methodVal.id : methodKey;
             const baseCleanOpId = sanitizeOperationId(rawId);
             const methodIdStr = typeof methodVal.id === "string" ? methodVal.id : baseCleanOpId;
             const opPointer = `#/methods/${escapeJsonPointer(methodIdStr)}`;
             let operationId = baseCleanOpId;
 
-            const httpMethodRaw =
-              typeof methodVal.httpMethod === "string"
-                ? methodVal.httpMethod.toUpperCase()
-                : "GET";
+            const httpMethodRaw = typeof methodVal.httpMethod === "string" ? methodVal.httpMethod.toUpperCase() : "GET";
             const method: IntegrationOperation["method"] =
-              httpMethodRaw === "POST" ||
-              httpMethodRaw === "PUT" ||
-              httpMethodRaw === "PATCH" ||
-              httpMethodRaw === "DELETE"
-                ? httpMethodRaw
-                : "GET";
+              httpMethodRaw === "POST" || httpMethodRaw === "PUT" || httpMethodRaw === "PATCH" || httpMethodRaw === "DELETE" ? httpMethodRaw : "GET";
 
             if (operations.has(operationId)) {
               let candidate = `${baseCleanOpId}__${method.toLowerCase()}`;
@@ -89,31 +75,20 @@ export function extractGoogleDiscoveryOperations(
               }
             }
 
-            const cleanedRelPath = rawFlatPath
-              .replace(/^\//, "")
-              .replace(/\{\+([A-Za-z0-9_]+)\}/g, "{$1}");
-            const fullPath = servicePath
-              ? `/${servicePath}/${cleanedRelPath}`.replace(/\/+/g, "/")
-              : `/${cleanedRelPath}`.replace(/\/+/g, "/");
+            const cleanedRelPath = rawFlatPath.replace(/^\//, "").replace(/\{\+([A-Za-z0-9_]+)\}/g, "{$1}");
+            const fullPath = servicePath ? `/${servicePath}/${cleanedRelPath}`.replace(/\/+/g, "/") : `/${cleanedRelPath}`.replace(/\/+/g, "/");
 
             const ctx: DiscoveryMethodContext = { report, operationId, methodIdStr };
-            const { params, usedCleanNames } = extractDiscoveryParams(
-              ctx,
-              methodVal,
-              reservedPathParams,
-            );
+            const { params, usedCleanNames } = extractDiscoveryParams(ctx, methodVal, reservedPathParams);
             backfillDiscoveryPathParams(ctx, fullPath, params, usedCleanNames, reservedPathParams);
             const body = extractDiscoveryBody(ctx, doc, methodVal, method, usedCleanNames);
 
-            const label =
-              truncateText(methodVal.summary ?? methodVal.description, 45) ?? operationId;
-            const summary =
-              truncateText(methodVal.description ?? methodVal.summary, 100) ?? label;
+            const label = truncateText(methodVal.summary ?? methodVal.description, 45) ?? operationId;
+            const summary = truncateText(methodVal.description ?? methodVal.summary, 100) ?? label;
 
             let autoPagination: IntegrationPagination | undefined = undefined;
             const hasPageTokenParam =
-              params.some((p) => p.name === "pageToken") ||
-              (isPlainObject(methodVal.parameters) && Boolean(methodVal.parameters.pageToken));
+              params.some((p) => p.name === "pageToken") || (isPlainObject(methodVal.parameters) && Boolean(methodVal.parameters.pageToken));
 
             let hasNextPageToken = false;
             let responseArrayProp: string | undefined = undefined;
@@ -151,15 +126,8 @@ export function extractGoogleDiscoveryOperations(
               });
             }
 
-            const opCuration =
-              (curation?.operations as any)?.[operationId] ??
-              (curation?.operations as any)?.[baseCleanOpId];
-            const hasPredicate = Boolean(
-              curation?.errorWhen ||
-                curation?.successWhen ||
-                opCuration?.errorWhen ||
-                opCuration?.successWhen,
-            );
+            const opCuration = (curation?.operations as any)?.[operationId] ?? (curation?.operations as any)?.[baseCleanOpId];
+            const hasPredicate = Boolean(curation?.errorWhen || curation?.successWhen || opCuration?.errorWhen || opCuration?.successWhen);
             const hasPagination = Boolean(autoPagination || opCuration?.pagination);
 
             const discoveryResponse = extractDiscoveryResponse(
@@ -188,9 +156,7 @@ export function extractGoogleDiscoveryOperations(
               summary,
               method,
               path: fullPath,
-              ...(scopes.length > 0
-                ? { security: [[{ scheme: "oauth2", scopes }]] }
-                : {}),
+              ...(scopes.length > 0 ? { security: [[{ scheme: "oauth2", scopes }]] } : {}),
               ...(params.length > 0 ? { params } : {}),
               ...(body ? { body } : {}),
               response: discoveryResponse,
@@ -198,17 +164,11 @@ export function extractGoogleDiscoveryOperations(
               sideEffects: method === "GET" ? "read" : "write",
             });
 
-            const mediaUpload = isPlainObject(methodVal.mediaUpload)
-              ? (methodVal.mediaUpload as Record<string, unknown>)
-              : undefined;
-            const uploadProtocols = isPlainObject(mediaUpload?.protocols)
-              ? (mediaUpload!.protocols as Record<string, unknown>)
-              : undefined;
+            const mediaUpload = isPlainObject(methodVal.mediaUpload) ? (methodVal.mediaUpload as Record<string, unknown>) : undefined;
+            const uploadProtocols = isPlainObject(mediaUpload?.protocols) ? (mediaUpload!.protocols as Record<string, unknown>) : undefined;
             const hasProtocols =
-              (isPlainObject(uploadProtocols?.simple) &&
-                typeof (uploadProtocols!.simple as Record<string, unknown>).path === "string") ||
-              (isPlainObject(uploadProtocols?.multipart) &&
-                typeof (uploadProtocols!.multipart as Record<string, unknown>).path === "string");
+              (isPlainObject(uploadProtocols?.simple) && typeof (uploadProtocols!.simple as Record<string, unknown>).path === "string") ||
+              (isPlainObject(uploadProtocols?.multipart) && typeof (uploadProtocols!.multipart as Record<string, unknown>).path === "string");
 
             if (hasProtocols) {
               let uploadPath =
@@ -233,9 +193,7 @@ export function extractGoogleDiscoveryOperations(
                 summary: truncateText(summary, 100) ?? label,
                 method,
                 path: uploadPath,
-                ...(scopes.length > 0
-                  ? { security: [[{ scheme: "oauth2", scopes }]] }
-                  : {}),
+                ...(scopes.length > 0 ? { security: [[{ scheme: "oauth2", scopes }]] } : {}),
                 ...(params.length > 0 ? { params } : {}),
                 body: {
                   contentType: "multipart/related",

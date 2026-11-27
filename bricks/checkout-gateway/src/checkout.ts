@@ -142,30 +142,35 @@ export class CheckoutService {
     const checkoutUrl = paymentGateway ? "" : `https://checkout.projectx.dev/${gateway}/${sessionId}`;
 
     try {
-      await this.db.prepare(`
+      await this.db
+        .prepare(
+          `
         INSERT INTO pay_checkout_sessions (
           id, workspace_id, gateway, amount_cents, currency, tax_cents, total_cents,
           status, customer_email, checkout_url, metadata_json, created_at,
           customer_id, payment_session_id, provider_ref, line_items_json
         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        sessionId,
-        input.workspaceId,
-        gateway,
-        amountCents,
-        currency,
-        taxCents,
-        totalCents,
-        input.customerEmail || null,
-        checkoutUrl,
-        JSON.stringify(meta),
-        now,
-        customerId,
-        paymentSessionId,
-        providerRef,
-        // Only a gateway session's line items are kept (for its invoice); a session without one stores none, as before.
-        paymentGateway ? JSON.stringify(input.lineItems) : null
-      ).run();
+      `,
+        )
+        .bind(
+          sessionId,
+          input.workspaceId,
+          gateway,
+          amountCents,
+          currency,
+          taxCents,
+          totalCents,
+          input.customerEmail || null,
+          checkoutUrl,
+          JSON.stringify(meta),
+          now,
+          customerId,
+          paymentSessionId,
+          providerRef,
+          // Only a gateway session's line items are kept (for its invoice); a session without one stores none, as before.
+          paymentGateway ? JSON.stringify(input.lineItems) : null,
+        )
+        .run();
     } catch (error) {
       if (paymentGateway) {
         // The provider has an order this brick has no session for: say which, so it can be found and cancelled.
@@ -296,11 +301,7 @@ export class CheckoutService {
       created_at: string;
     }
 
-    const row = await scoped(this.db, workspaceId).first<RawInvoice>(
-      "pay_invoices",
-      "session_id = ?",
-      [sessionId]
-    );
+    const row = await scoped(this.db, workspaceId).first<RawInvoice>("pay_invoices", "session_id = ?", [sessionId]);
 
     if (!row) return null;
 
@@ -330,11 +331,7 @@ export class CheckoutService {
       created_at: string;
     }
 
-    const row = await scoped(this.db, workspaceId).first<RawInvoice>(
-      "pay_invoices",
-      "id = ?",
-      [invoiceId]
-    );
+    const row = await scoped(this.db, workspaceId).first<RawInvoice>("pay_invoices", "id = ?", [invoiceId]);
 
     if (!row) return null;
 
@@ -364,12 +361,7 @@ export class CheckoutService {
       created_at: string;
     }
 
-    const rows = await scoped(this.db, workspaceId).select<RawInvoice>(
-      "pay_invoices",
-      undefined,
-      [],
-      { orderBy: "created_at DESC" }
-    );
+    const rows = await scoped(this.db, workspaceId).select<RawInvoice>("pay_invoices", undefined, [], { orderBy: "created_at DESC" });
 
     return rows.map((r) => ({
       ...r,

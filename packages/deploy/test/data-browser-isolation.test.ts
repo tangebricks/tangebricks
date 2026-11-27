@@ -8,14 +8,7 @@ import { createProofRoutes } from "../src/worker/proof-routes.ts";
 const TELEMETRY_SECRET = "px_test_data_browser_secret_key_0123456789";
 const db = env.DB as D1Like;
 
-const TEST_TABLES = [
-  "ent_invoices",
-  "webhooks",
-  "credit_ledger",
-  "px_connections",
-  "int_connections",
-  "_px_migrations",
-];
+const TEST_TABLES = ["ent_invoices", "webhooks", "credit_ledger", "px_connections", "int_connections", "_px_migrations"];
 
 describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isolation, secret stripping & write guardrails", () => {
   const routes = createProofRoutes();
@@ -121,27 +114,13 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
             `INSERT INTO webhooks (id, workspace_id, target_url, event_type, signing_secret, active)
              VALUES (?, ?, ?, ?, ?, ?)`,
           )
-          .bind(
-            `wh_A_${padded}`,
-            "workspace_A",
-            `https://a.example.com/hook/${padded}`,
-            "invoice.paid",
-            `whsec_secret_A_${padded}`,
-            1,
-          ),
+          .bind(`wh_A_${padded}`, "workspace_A", `https://a.example.com/hook/${padded}`, "invoice.paid", `whsec_secret_A_${padded}`, 1),
         db
           .prepare(
             `INSERT INTO webhooks (id, workspace_id, target_url, event_type, signing_secret, active)
              VALUES (?, ?, ?, ?, ?, ?)`,
           )
-          .bind(
-            `wh_B_${padded}`,
-            "workspace_B",
-            `https://b.example.com/hook/${padded}`,
-            "invoice.void",
-            `whsec_secret_B_${padded}`,
-            1,
-          ),
+          .bind(`wh_B_${padded}`, "workspace_B", `https://b.example.com/hook/${padded}`, "invoice.void", `whsec_secret_B_${padded}`, 1),
       );
     }
 
@@ -151,19 +130,9 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
           `INSERT INTO credit_ledger (id, workspace_id, delta, balance_after, reason, idempotency_key, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
         )
-        .bind(
-          "led_A_01",
-          "workspace_A",
-          500,
-          500,
-          "Initial grant",
-          "idem_A_01",
-          "2026-10-01T00:00:00.000Z",
-        ),
+        .bind("led_A_01", "workspace_A", 500, 500, "Initial grant", "idem_A_01", "2026-10-01T00:00:00.000Z"),
       db
-        .prepare(
-          `INSERT INTO px_connections (id, workspace_id, provider, ciphertext) VALUES (?, ?, ?, ?)`,
-        )
+        .prepare(`INSERT INTO px_connections (id, workspace_id, provider, ciphertext) VALUES (?, ?, ?, ?)`)
         .bind("conn_1", "workspace_A", "stripe", "super_secret_cipher_xyz"),
     );
 
@@ -226,9 +195,7 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
     expect(wsJson.workspaces).toContain("workspace_A");
     expect(wsJson.workspaces).toContain("workspace_B");
 
-    const tablesRes = await callDataRoute(
-      "/__px/data/tables?workspaceId=workspace_A",
-    );
+    const tablesRes = await callDataRoute("/__px/data/tables?workspaceId=workspace_A");
     expect(tablesRes.status).toBe(200);
     const tablesJson = (await tablesRes.json()) as {
       tables: Array<{
@@ -269,14 +236,10 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
     const webhooksTable = tablesJson.tables.find((t) => t.name === "webhooks")!;
     expect(webhooksTable.category).toBe("brick");
     expect(webhooksTable.readOnly).toBe(true);
-    expect(webhooksTable.columns.map((c) => c.name)).not.toContain(
-      "signing_secret",
-    );
+    expect(webhooksTable.columns.map((c) => c.name)).not.toContain("signing_secret");
 
     // Direct query to px_connections is forbidden
-    const forbiddenRes = await callDataRoute(
-      "/__px/data/tables/px_connections/rows?workspaceId=workspace_A",
-    );
+    const forbiddenRes = await callDataRoute("/__px/data/tables/px_connections/rows?workspaceId=workspace_A");
     expect(forbiddenRes.status).toBe(403);
   });
 
@@ -289,9 +252,7 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
     expect(missingWsBody.error.code).toBe("WORKSPACE_ID_REQUIRED");
 
     // Query workspace_A across dynamic entity `invoices`
-    const rowsARes = await callDataRoute(
-      "/__px/data/tables/invoices/rows?workspaceId=workspace_A&limit=50",
-    );
+    const rowsARes = await callDataRoute("/__px/data/tables/invoices/rows?workspaceId=workspace_A&limit=50");
     expect(rowsARes.status).toBe(200);
     const rowsABody = (await rowsARes.json()) as {
       rows: Array<Record<string, unknown>>;
@@ -300,12 +261,8 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
     };
     expect(rowsABody.totalCount).toBe(10);
     expect(rowsABody.rows).toHaveLength(10);
-    expect(
-      rowsABody.rows.every((r) => r.workspace_id === "workspace_A"),
-    ).toBe(true);
-    expect(
-      rowsABody.rows.some((r) => r.workspace_id === "workspace_B"),
-    ).toBe(false);
+    expect(rowsABody.rows.every((r) => r.workspace_id === "workspace_A")).toBe(true);
+    expect(rowsABody.rows.some((r) => r.workspace_id === "workspace_B")).toBe(false);
     expect(rowsABody.compiledSql).toContain('WHERE "workspace_id" = ?1');
     expect(rowsABody.compiledSql).not.toContain("secret_token");
     expect(rowsABody.compiledSql).not.toContain("password_hash");
@@ -315,17 +272,13 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
     }
 
     // Query workspace_A across brick table `webhooks`
-    const whARes = await callDataRoute(
-      "/__px/data/tables/webhooks/rows?workspaceId=workspace_A",
-    );
+    const whARes = await callDataRoute("/__px/data/tables/webhooks/rows?workspaceId=workspace_A");
     expect(whARes.status).toBe(200);
     const whABody = (await whARes.json()) as {
       rows: Array<Record<string, unknown>>;
     };
     expect(whABody.rows).toHaveLength(10);
-    expect(whABody.rows.every((r) => r.workspace_id === "workspace_A")).toBe(
-      true,
-    );
+    expect(whABody.rows.every((r) => r.workspace_id === "workspace_A")).toBe(true);
     for (const row of whABody.rows) {
       expect(row).not.toHaveProperty("signing_secret");
     }
@@ -338,9 +291,7 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
     const advBody1 = (await advRes1.json()) as {
       rows: Array<Record<string, unknown>>;
     };
-    expect(
-      advBody1.rows.some((r) => r.workspace_id === "workspace_B"),
-    ).toBe(false);
+    expect(advBody1.rows.some((r) => r.workspace_id === "workspace_B")).toBe(false);
     expect(advBody1.rows).toHaveLength(0);
 
     // Adversarial filter 2: attempting to override workspace_id via filter parameter (`workspace_id != 'workspace_A'`)
@@ -352,9 +303,7 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
       rows: Array<Record<string, unknown>>;
     };
     expect(advBody2.rows).toHaveLength(10);
-    expect(
-      advBody2.rows.every((r) => r.workspace_id === "workspace_A"),
-    ).toBe(true);
+    expect(advBody2.rows.every((r) => r.workspace_id === "workspace_A")).toBe(true);
 
     // Valid allowlisted filter + sort + pagination
     const filteredRes = await callDataRoute(
@@ -392,94 +341,71 @@ describe("Story 6.1 — Worker Data Browser (/__px/data/*) cross-workspace isola
     }
 
     // 2. Preview rejects writes to brick tables (403 TABLE_READ_ONLY) and wallet ledger tables (403 LEDGER_IMMUTABLE_READ_ONLY)
-    const brickWriteRes = await callDataRoute(
-      "/__px/data/tables/webhooks/rows",
-      {
-        method: "POST",
-        pxEnv: "preview",
-        body: {
-          workspaceId: "workspace_A",
-          confirmWrite: true,
-          row: { target_url: "https://evil.example.com", event_type: "all" },
-        },
+    const brickWriteRes = await callDataRoute("/__px/data/tables/webhooks/rows", {
+      method: "POST",
+      pxEnv: "preview",
+      body: {
+        workspaceId: "workspace_A",
+        confirmWrite: true,
+        row: { target_url: "https://evil.example.com", event_type: "all" },
       },
-    );
+    });
     expect(brickWriteRes.status).toBe(403);
-    expect(
-      ((await brickWriteRes.json()) as { error: { code: string } }).error.code,
-    ).toBe("TABLE_READ_ONLY");
+    expect(((await brickWriteRes.json()) as { error: { code: string } }).error.code).toBe("TABLE_READ_ONLY");
 
-    const ledgerWriteRes = await callDataRoute(
-      "/__px/data/tables/credit_ledger/rows",
-      {
-        method: "PATCH",
-        pxEnv: "preview",
-        body: {
-          workspaceId: "workspace_A",
-          rowId: "led_A_01",
-          confirmWrite: true,
-          patch: { balance_after: 999999 },
-        },
+    const ledgerWriteRes = await callDataRoute("/__px/data/tables/credit_ledger/rows", {
+      method: "PATCH",
+      pxEnv: "preview",
+      body: {
+        workspaceId: "workspace_A",
+        rowId: "led_A_01",
+        confirmWrite: true,
+        patch: { balance_after: 999999 },
       },
-    );
+    });
     expect(ledgerWriteRes.status).toBe(403);
-    expect(
-      ((await ledgerWriteRes.json()) as { error: { code: string } }).error.code,
-    ).toBe("LEDGER_IMMUTABLE_READ_ONLY");
+    expect(((await ledgerWriteRes.json()) as { error: { code: string } }).error.code).toBe("LEDGER_IMMUTABLE_READ_ONLY");
 
     // 3. Preview entity write without confirmWrite: true fails with 422 CONFIRM_WRITE_REQUIRED
-    const unconfirmedRes = await callDataRoute(
-      "/__px/data/tables/invoices/rows",
-      {
-        method: "PATCH",
-        pxEnv: "preview",
-        body: {
-          workspaceId: "workspace_A",
-          rowId: "inv_A_01",
-          confirmWrite: false,
-          patch: { status: "paid" },
-        },
+    const unconfirmedRes = await callDataRoute("/__px/data/tables/invoices/rows", {
+      method: "PATCH",
+      pxEnv: "preview",
+      body: {
+        workspaceId: "workspace_A",
+        rowId: "inv_A_01",
+        confirmWrite: false,
+        patch: { status: "paid" },
       },
-    );
+    });
     expect(unconfirmedRes.status).toBe(422);
-    expect(
-      ((await unconfirmedRes.json()) as { error: { code: string } }).error.code,
-    ).toBe("CONFIRM_WRITE_REQUIRED");
+    expect(((await unconfirmedRes.json()) as { error: { code: string } }).error.code).toBe("CONFIRM_WRITE_REQUIRED");
 
     // 4. Cross-workspace write isolation: attempting to PATCH or DELETE workspace_B row while scoped to workspace_A returns 404 and modifies 0 rows
-    const crossPatchRes = await callDataRoute(
-      "/__px/data/tables/invoices/rows",
-      {
-        method: "PATCH",
-        pxEnv: "preview",
-        body: {
-          workspaceId: "workspace_A",
-          rowId: "inv_B_01",
-          confirmWrite: true,
-          patch: { amount: 0, status: "hacked" },
-        },
+    const crossPatchRes = await callDataRoute("/__px/data/tables/invoices/rows", {
+      method: "PATCH",
+      pxEnv: "preview",
+      body: {
+        workspaceId: "workspace_A",
+        rowId: "inv_B_01",
+        confirmWrite: true,
+        patch: { amount: 0, status: "hacked" },
       },
-    );
+    });
     expect(crossPatchRes.status).toBe(404);
 
-    const crossDeleteRes = await callDataRoute(
-      "/__px/data/tables/invoices/rows",
-      {
-        method: "DELETE",
-        pxEnv: "preview",
-        body: {
-          workspaceId: "workspace_A",
-          rowId: "inv_B_01",
-          confirmWrite: true,
-        },
+    const crossDeleteRes = await callDataRoute("/__px/data/tables/invoices/rows", {
+      method: "DELETE",
+      pxEnv: "preview",
+      body: {
+        workspaceId: "workspace_A",
+        rowId: "inv_B_01",
+        confirmWrite: true,
       },
-    );
+    });
     expect(crossDeleteRes.status).toBe(404);
 
     // Verify inv_B_01 in workspace_B is completely untouched
-    const verifyBRes = await callDataRoute(
-      "/__px/data/tables/invoices/rows?workspaceId=workspace_B&filterCol=id&filterOp=eq&filterVal=inv_B_01",
-    );
+    const verifyBRes = await callDataRoute("/__px/data/tables/invoices/rows?workspaceId=workspace_B&filterCol=id&filterOp=eq&filterVal=inv_B_01");
     const verifyBBody = (await verifyBRes.json()) as {
       rows: Array<{ id: string; amount: number; status: string }>;
     };
