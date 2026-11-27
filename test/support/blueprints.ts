@@ -52,3 +52,48 @@ export const PLAN_CREDITS_BLUEPRINT = {
   project: "plan-credits",
   bricks: ["multi-workspace", "credit-wallet", { id: "subscription-plans", config: { planCredits: "free:100,pro:1000" } }],
 } as const;
+
+/**
+ * Story 1.32: an entity graph with required relations (lease -> unit and tenant) and the story 1.18 types (money, date,
+ * enum, longtext), plus an entity whose relation is optional (application). The workerd test builds every create from
+ * the app's own /openapi.json alone (packages/assembler/src/openapi-sample.ts).
+ */
+export const ENTITY_GRAPH_BLUEPRINT = {
+  project: "entity-graph",
+  bricks: ["multi-workspace", "dynamic-entities"],
+  entities: [
+    {
+      name: "unit",
+      fields: [
+        { name: "label", type: "text", required: true, maxLength: 40 },
+        { name: "rent", type: "money", currencies: ["INR"], required: true },
+      ],
+    },
+    {
+      name: "tenant",
+      fields: [
+        { name: "full_name", type: "text", required: true },
+        { name: "notes", type: "longtext" },
+      ],
+    },
+    {
+      name: "lease",
+      fields: [
+        { name: "unit_id", type: "relation", relation: "unit", required: true },
+        { name: "tenant_id", type: "relation", relation: "tenant", required: true },
+        { name: "deposit", type: "money", currencies: ["INR"], required: true },
+        { name: "starts_on", type: "date", required: true },
+        { name: "status", type: "enum", values: ["draft", "active", "ended"], required: true },
+      ],
+    },
+    {
+      name: "application",
+      fields: [
+        { name: "lease_id", type: "relation", relation: "lease" },
+        { name: "amount", type: "money", currencies: ["INR", "USD"], required: true },
+        { name: "stage", type: "enum", values: ["new", "review", "won"], required: true },
+        { name: "due_on", type: "date" },
+      ],
+    },
+  ],
+} as const;

@@ -40,6 +40,9 @@ import {
 import type { LedgerStore, RequestBudget } from "../packages/deploy/src/provisioner/index.ts";
 import { KEY_HEADER } from "../packages/deploy/src/worker/gate.ts";
 import { catalog as defaultCatalog } from "../packages/assembler/catalog.generated.ts";
+import { generateOpenApiSpec } from "../packages/assembler/src/openapi.ts";
+import { createFromOpenApi, entityRoutes, updateFieldOf, updatedValue } from "../packages/assembler/src/openapi-sample.ts";
+import type { BuiltCreate, OpenApiLike } from "../packages/assembler/src/openapi-sample.ts";
 import { secretDeclarations } from "../packages/assembler/src/schemas.ts";
 import { OP_TYPES } from "../packages/blueprint/src/ops.ts";
 import type { Catalog } from "../packages/assembler/src/schemas.ts";
@@ -73,8 +76,8 @@ const APPLICABLE_SHARE_NEEDED = 0.75;
 export const KILL_RULE_VERSION = "v0-applicable-lines (owner decision 2026-11-26)";
 /** The debit the change-live-app task asks for, in credits. */
 export const CHANGE_DEBIT_CREDITS = 5;
-export const FREE_PLAN_UNSUPPORTED_REASON =
-  "subscription-plans has no link from a plan to a credit grant: no op, brick setting or node sets the credits a plan gives, so 'set the free plan to 100 credits' cannot be expressed in a ProjectX blueprint";
+/** change-live-app part 2: the free plan grants this many credits (story 1.20 made it expressible: subscription-plans planCredits). */
+export const FREE_PLAN_CREDITS = 100;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Briefs
@@ -1308,70 +1311,7 @@ function readRun(outPath: string, runId: string): RunRecord {
 // ---------------------------------------------------------------------------------------------------------------------
 // Scoring (the harness's own reads; never the agent's word)
 
-type EntityField = FieldLike & { name: string; type: string; required?: boolean; values?: unknown[] };
-type Entity = { name: string; fields: EntityField[] };
-
-/** A value a field accepts, from its blueprint type. */
-/** A field as the blueprint (min, max, maxLength) or the OpenAPI schema (minimum, maximum, maxLength) describes it. */
-export type FieldLike = {
-  type?: unknown;
-  values?: unknown;
-  enum?: unknown;
-  format?: unknown;
-  min?: unknown;
-  max?: unknown;
-  minimum?: unknown;
-  maximum?: unknown;
-  maxLength?: unknown;
-};
-
-const numberOr = (...vs: unknown[]) => vs.find((v): v is number => typeof v === "number" && Number.isFinite(v));
-/** An integer inside the field's [min, max]. */
-function fitNumber(want: number, field: FieldLike): number {
-  const min = numberOr(field.min, field.minimum);
-  const max = numberOr(field.max, field.maximum);
-  let v = Math.round(want);
-  if (min !== undefined && v < min) v = Math.ceil(min);
-  if (max !== undefined && v > max) v = Math.floor(max);
-  return v;
-}
-/** Text cut to the field's maxLength (never below one character). */
-function fitText(text: string, field: FieldLike): string {
-  const maxLength = numberOr(field.maxLength);
-  return maxLength === undefined ? text : text.slice(0, Math.max(1, Math.floor(maxLength)));
-}
-const isNumeric = (field: FieldLike) => field.type === "number" || field.type === "integer";
-
-/** A value a field accepts, from its type and constraints. */
-export function sampleValue(field: FieldLike, label: string): unknown {
-  const values = Array.isArray(field.values) ? field.values : Array.isArray(field.enum) ? field.enum : null;
-  if (values && values.length > 0) return values[0];
-  if (isNumeric(field)) return fitNumber(Math.max(1, numberOr(field.min, field.minimum) ?? 1), field);
-  switch (field.type) {
-    case "boolean":
-      return true;
-    case "datetime":
-      return new Date().toISOString();
-    case "json":
-    case "object":
-      return {};
-    case "string":
-      return field.format === "date-time" ? new Date().toISOString() : fitText(label, field);
-    default:
-      return fitText(label, field);
-  }
-}
-
-/** A different value for an update, still inside the field's constraints (the same value when the range has only one). */
-export function updatedValue(field: FieldLike, current: unknown): unknown {
-  if (isNumeric(field)) {
-    const base = typeof current === "number" ? current : 0;
-    const up = fitNumber(base + 1, field);
-    return up !== base ? up : fitNumber(base - 1, field);
-  }
-  const next = fitText("updated", field);
-  return next !== current ? next : fitText("z", field);
-}
+type Entity = { name: string; fields: unknown[] };
 
 const NOT_APPLICABLE: Record<number, { name: string; reason: string }> = {
   1: {
@@ -1496,6 +1436,82 @@ async function ownerTool(ctx: Pick<ScoreContext, "call" | "session" | "orgId" | 
   return { isError: result?.isError === true || res.body.error !== undefined, body };
 }
 
+/** One request to the preview Worker, with the access key, as a stub user (x-test-user) in a workspace. */
+export type WorkerCall = (
+  method: string,
+  path: string,
+  user: string | null,
+  workspace: string | null,
+  body?: unknown,
+) => Promise<{ status: number; body: Record<string, unknown> }>;
+
+function workerCaller(ctx: Pick<ScoreContext, "workerFetch" | "accessKey">, url: string | null): WorkerCall {
+  return async (method, path, user, workspace, body) => {
+    const headers: Record<string, string> = {
+      [KEY_HEADER]: ctx.accessKey,
+      ...(user ? { "x-test-user": user } : {}),
+      ...(workspace ? { "x-workspace-id": workspace } : {}),
+      ...(body !== undefined ? { "content-type": "application/json" } : {}),
+    };
+    try {
+      const res = await ctx.workerFetch(new Request(`${url}${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }));
+      return { status: res.status, body: await readJson(res) };
+    } catch (error) {
+      return { status: 0, body: { error: error instanceof Error ? error.message : String(error) } };
+    }
+  };
+}
+
+/**
+ * Lines 4 and 9: create, read, list, update and delete a row of `entity` in `workspace`, then read it again (404). The
+ * create is built from the OpenAPI document alone (packages/assembler/src/openapi-sample.ts): every field gets a value
+ * its schema accepts, and each relation's target (`x-relation`) is created first. The update changes one non-relation
+ * field of any type. All five is `pass`; create and read only is `partial`; otherwise `fail`.
+ */
+export async function entityCrudCheck(
+  worker: WorkerCall,
+  spec: OpenApiLike,
+  entity: string,
+  workspace: string,
+  user = "bench-owner",
+): Promise<{ outcome: Check["outcome"]; evidence: string }> {
+  const head = `entity "${entity}" in workspace as stub user`;
+  let built: BuiltCreate;
+  try {
+    built = await createFromOpenApi(spec, entity, (path, body) => worker("POST", path, user, workspace, body), { label: "bench" });
+  } catch (error) {
+    return { outcome: "fail", evidence: `${head}: ${error instanceof Error ? error.message : String(error)}` };
+  }
+  const steps: string[] = [];
+  if (built.prerequisites.length > 0) steps.push(`related ${built.prerequisites.map((p) => `${p.entity} ${p.status}`).join(", ")} first`);
+  const base = built.path;
+  const id = built.id;
+  steps.push(`create ${built.status}`);
+  const ok = { create: built.status === 201 && typeof id === "string", read: false, list: false, update: false, remove: false };
+  if (ok.create) {
+    const item = `${base}/${encodeURIComponent(String(id))}`;
+    const read = await worker("GET", item, user, workspace);
+    ok.read = read.status === 200 && (read.body.item as { id?: unknown } | undefined)?.id === id;
+    steps.push(`read ${read.status}`);
+    const list = await worker("GET", base, user, workspace);
+    ok.list = list.status === 200 && ((list.body.items as Array<{ id?: unknown }> | undefined) ?? []).some((i) => i.id === id);
+    steps.push(`list ${list.status}`);
+    const field = updateFieldOf(Object.entries(entityRoutes(spec).get(entity)?.create.properties ?? {}));
+    if (field) {
+      const [name, schema] = field;
+      const patched = await worker("PATCH", item, user, workspace, { [name]: updatedValue(schema, built.row[name]) });
+      ok.update = patched.status === 200;
+      steps.push(`update ${name} ${patched.status}`);
+    } else steps.push("no field an update can change");
+    const removed = await worker("DELETE", item, user, workspace);
+    const gone = await worker("GET", item, user, workspace);
+    ok.remove = (removed.status === 200 || removed.status === 204) && gone.status === 404;
+    steps.push(`delete ${removed.status}, read after delete ${gone.status}`);
+  }
+  const all = ok.create && ok.read && ok.list && ok.update && ok.remove;
+  return { outcome: all ? "pass" : ok.create && ok.read ? "partial" : "fail", evidence: `${head}: ${steps.join(", ")}` };
+}
+
 async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promise<Check[]> {
   const checks = new Map<number, Check>();
   const set = (line: number, outcome: Check["outcome"], evidence: string) => checks.set(line, { line, name: CHECK_NAMES[line]!, outcome, evidence });
@@ -1520,22 +1536,7 @@ async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promise<Check
   else set(10, healthz === 200 ? "pass" : "fail", `GET /healthz with the access key answered ${healthz}`);
 
   // ---- 4, 9 and 2: dynamic-entities CRUD on the preview Worker as a stub user in a fresh workspace
-  const worker = async (method: string, path: string, user: string | null, workspace: string | null, body?: unknown) => {
-    const headers: Record<string, string> = {
-      [KEY_HEADER]: ctx.accessKey,
-      ...(user ? { "x-test-user": user } : {}),
-      ...(workspace ? { "x-workspace-id": workspace } : {}),
-      ...(body !== undefined ? { "content-type": "application/json" } : {}),
-    };
-    try {
-      const res = await ctx.workerFetch(
-        new Request(`${preview.url}${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
-      );
-      return { status: res.status, body: await readJson(res) };
-    } catch (error) {
-      return { status: 0, body: { error: error instanceof Error ? error.message : String(error) } };
-    }
-  };
+  const worker = workerCaller(ctx, preview.url);
   // The stub-identity probe (line 2) is sent whenever the preview answers, whatever the blueprint holds.
   const answers = Boolean(preview.url) && healthz === 200;
   const ws = answers ? await worker("POST", "/api/workspaces", "bench-owner", null, { name: "Benchmark" }) : null;
@@ -1552,41 +1553,10 @@ async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promise<Check
       set(4, "fail", `creating a workspace as a stub user answered ${ws!.status}`);
       set(9, "fail", `creating a workspace as a stub user answered ${ws!.status}`);
     } else {
-      const entity = entities[0]!;
-      const row: Record<string, unknown> = {};
-      for (const f of entity.fields) if (f.required) row[f.name] = sampleValue(f, `bench ${f.name}`);
-      const editable =
-        entity.fields.find((f) => ["text", "string"].includes(f.type) && !(Array.isArray(f.values) && f.values.length > 0)) ??
-        entity.fields.find((f) => ["number", "integer"].includes(f.type));
-      if (editable && !(editable.name in row)) row[editable.name] = sampleValue(editable, `bench ${editable.name}`);
-      const base = `/api/${entity.name}`;
-      const steps: string[] = [];
-      const created = await worker("POST", base, "bench-owner", wsId as string, row);
-      const id = (created.body.item as { id?: unknown } | undefined)?.id;
-      steps.push(`create ${created.status}`);
-      const ok = { create: created.status === 201 && typeof id === "string", read: false, list: false, update: false, remove: false };
-      if (ok.create) {
-        const read = await worker("GET", `${base}/${encodeURIComponent(String(id))}`, "bench-owner", wsId as string);
-        ok.read = read.status === 200 && (read.body.item as { id?: unknown } | undefined)?.id === id;
-        steps.push(`read ${read.status}`);
-        const list = await worker("GET", base, "bench-owner", wsId as string);
-        ok.list = list.status === 200 && ((list.body.items as Array<{ id?: unknown }> | undefined) ?? []).some((i) => i.id === id);
-        steps.push(`list ${list.status}`);
-        if (editable) {
-          const patched = await worker("PATCH", `${base}/${encodeURIComponent(String(id))}`, "bench-owner", wsId as string, {
-            [editable.name]: updatedValue(editable, row[editable.name]),
-          });
-          ok.update = patched.status === 200;
-          steps.push(`update ${patched.status}`);
-        }
-        const removed = await worker("DELETE", `${base}/${encodeURIComponent(String(id))}`, "bench-owner", wsId as string);
-        const gone = await worker("GET", `${base}/${encodeURIComponent(String(id))}`, "bench-owner", wsId as string);
-        ok.remove = (removed.status === 200 || removed.status === 204) && gone.status === 404;
-        steps.push(`delete ${removed.status}, read after delete ${gone.status}`);
-      }
-      const all = ok.create && ok.read && ok.list && ok.update && ok.remove;
-      const outcome: Check["outcome"] = all ? "pass" : ok.create && ok.read ? "partial" : "fail";
-      const evidence = `entity "${entity.name}" in workspace as stub user: ${steps.join(", ")}`;
+      // The payloads come from the same OpenAPI document the app publishes: generated from the blueprint's bricks (so the
+      // entity routes are at the entity brick's mount) and entities, with the catalog (story 1.32).
+      const spec = generateOpenApiSpec({ project: ctx.project, bricks: state.bricks ?? [], entities } as never, defaultCatalog);
+      const { outcome, evidence } = await entityCrudCheck(worker, spec, entities[0]!.name, wsId as string);
       set(4, outcome, evidence);
       set(9, outcome, evidence);
     }
@@ -1680,26 +1650,27 @@ async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promise<Check
   if (!preview.url || healthz !== 200) set(12, "fail", "the preview does not answer");
   else {
     const spec = await worker("GET", "/openapi.json", null, null);
-    const paths = (spec.body.paths ?? {}) as Record<
-      string,
-      Record<string, { operationId?: string; requestBody?: { content?: Record<string, { schema?: { $ref?: string } }> } }>
-    >;
-    const schemas =
-      (spec.body.components as { schemas?: Record<string, { properties?: Record<string, Record<string, unknown>>; required?: string[] }> } | undefined)
-        ?.schemas ?? {};
-    const createPath = Object.keys(paths).find((p) => paths[p]?.post?.operationId?.startsWith("create_") && paths[`${p}/{id}`]?.get);
-    if (spec.status !== 200 || !createPath)
+    // The first entity create route the document lists, built from the document alone (story 1.32: x-relation targets first).
+    const route = spec.status === 200 ? [...entityRoutes(spec.body as OpenApiLike).values()][0] : undefined;
+    const createPath = route?.collectionPath;
+    if (spec.status !== 200 || !route || !createPath)
       set(12, "fail", `GET /openapi.json answered ${spec.status}; ${createPath ? "" : "no entity create route found"}`.trim());
     else {
-      const ref = paths[createPath]!.post!.requestBody?.content?.["application/json"]?.schema?.$ref ?? "";
-      const schema = schemas[ref.split("/").pop() ?? ""] ?? {};
-      const row: Record<string, unknown> = {};
-      for (const name of schema.required ?? []) row[name] = sampleValue(schema.properties?.[name] ?? {}, `second agent ${name}`);
       const ws = await worker("POST", "/api/workspaces", "second-agent", null, { name: "Second agent" });
       const wsId = (ws.body.workspace as { id?: unknown } | undefined)?.id;
-      const created =
-        typeof wsId === "string" ? await worker("POST", createPath, "second-agent", wsId, row) : { status: 0, body: {} as Record<string, unknown> };
-      const id = (created.body.item as { id?: unknown } | undefined)?.id;
+      let created: { status: number; id: string | null; note: string } = { status: 0, id: null, note: "" };
+      if (typeof wsId === "string") {
+        try {
+          const built = await createFromOpenApi(spec.body as OpenApiLike, route.entity, (path, body) => worker("POST", path, "second-agent", wsId, body), {
+            label: "second agent",
+          });
+          const related = built.prerequisites.map((p) => `${p.entity} ${p.status}`).join(", ");
+          created = { status: built.status, id: built.id, note: related ? ` (related ${related} first)` : "" };
+        } catch (error) {
+          created = { status: 0, id: null, note: ` (${error instanceof Error ? error.message : String(error)})` };
+        }
+      }
+      const id = created.id;
       const read =
         typeof id === "string"
           ? await worker("GET", `${createPath}/${encodeURIComponent(id)}`, "second-agent", wsId as string)
@@ -1708,7 +1679,7 @@ async function scoreRun(ctx: ScoreContext, preview: PreviewState): Promise<Check
       set(
         12,
         readBack ? "partial" : "fail",
-        `openapi.json lists ${createPath}; workspace ${ws.status}, create ${created.status}, read back ${read.status}${readBack ? " (same id). Partial: a plain HTTP client with the access key and stub identity, not a second agent over the app's own MCP server" : ""}`,
+        `openapi.json lists ${createPath}; workspace ${ws.status}, create ${created.status}${created.note}, read back ${read.status}${readBack ? " (same id). Partial: a plain HTTP client with the access key and stub identity, not a second agent over the app's own MCP server" : ""}`,
       );
     }
   }
@@ -2179,6 +2150,7 @@ async function evaluateChange(
 ): Promise<Omit<NonNullable<RunRecord["change"]>, "agentFlaggedUnsupported">> {
   const stateRes = await ctx.call("GET", `/api/projects/${ctx.project}`, undefined, ctx.session, ctx.orgId);
   const state = (stateRes.body.state ?? {}) as {
+    bricks?: unknown[];
     workflows?: Array<{ id?: string; name?: string; nodes?: Array<{ type?: string; data?: { amount?: unknown } }> }>;
   };
   const revision = Number(stateRes.body.revision ?? 0);
@@ -2229,9 +2201,72 @@ async function evaluateChange(
               ? `workflow ${withDebit.map((w) => w.id ?? w.name).join(", ")} has the debit and preview runs r${revision}`
               : `the debit is in r${revision} but preview runs r${String(preview.deployedRev)}`,
       },
-      { part: "free plan 100 credits", outcome: "unsupported", reason: FREE_PLAN_UNSUPPORTED_REASON },
+      await judgeFreePlanCredits({
+        bricks: state.bricks ?? [],
+        revision,
+        deployedRev: preview.deployedRev,
+        worker: preview.url ? workerCaller(ctx, preview.url) : null,
+      }),
     ],
   };
+}
+
+/** The free tier's whole credits in a `planCredits` setting ("free:100,pro:1000"; the first entry for a tier wins), or null. */
+function freeTierCredits(planCredits: unknown): number | null {
+  if (typeof planCredits !== "string") return null;
+  for (const entry of planCredits.split(",")) {
+    const colon = entry.lastIndexOf(":");
+    if (colon > 0 && entry.slice(0, colon).trim() === "free") {
+      const credits = Number(entry.slice(colon + 1));
+      return Number.isInteger(credits) ? credits : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * change-live-app part 2, "set the free plan to 100 credits", judged the way the debit is: by the blueprint and the
+ * live preview, never the agent's word. Story 1.20 made it expressible (subscription-plans `planCredits`), so it is no
+ * longer recorded `unsupported`. `done` needs all three:
+ *   1. the blueprint's subscription-plans `planCredits` gives the free tier FREE_PLAN_CREDITS;
+ *   2. preview runs that revision;
+ *   3. behaviour: on the preview Worker a new stub user's new workspace, read twice on GET /api/subscriptions/current
+ *      (the free plan), has exactly FREE_PLAN_CREDITS credits on GET /api/wallet: granted, and granted once.
+ * Anything else is `not-done`, with the reason.
+ */
+export async function judgeFreePlanCredits(params: {
+  bricks: unknown[];
+  revision: number;
+  deployedRev: number | null;
+  worker: WorkerCall | null;
+}): Promise<{ part: string; outcome: "done" | "not-done"; reason: string }> {
+  const part = `free plan ${FREE_PLAN_CREDITS} credits`;
+  const notDone = (reason: string) => ({ part, outcome: "not-done" as const, reason });
+  const plans = params.bricks.find((b) => (typeof b === "string" ? b : (b as { id?: unknown } | null)?.id) === "subscription-plans");
+  if (plans === undefined) return notDone("subscription-plans is not enabled, so no plan grants credits");
+  const planCredits = typeof plans === "string" ? undefined : (plans as { config?: { planCredits?: unknown } }).config?.planCredits;
+  const free = freeTierCredits(planCredits);
+  if (free !== FREE_PLAN_CREDITS)
+    return notDone(
+      `subscription-plans planCredits is ${planCredits === undefined ? "not set" : JSON.stringify(planCredits)}: the free tier ${free === null ? "has no credits" : `gets ${free}`}, not ${FREE_PLAN_CREDITS}`,
+    );
+  if (params.deployedRev !== params.revision)
+    return notDone(`planCredits gives free ${FREE_PLAN_CREDITS} in r${params.revision} but preview runs r${String(params.deployedRev)}`);
+  if (!params.worker) return notDone("planCredits is set and deployed, but the preview has no address to check it on");
+  const user = "bench-credits";
+  const ws = await params.worker("POST", "/api/workspaces", user, null, { name: "Free plan check" });
+  const wsId = (ws.body.workspace as { id?: unknown } | undefined)?.id;
+  if (ws.status !== 201 || typeof wsId !== "string") return notDone(`planCredits is live, but creating a workspace answered ${ws.status}`);
+  const reads = [await params.worker("GET", "/api/subscriptions/current", user, wsId), await params.worker("GET", "/api/subscriptions/current", user, wsId)];
+  const planIds = reads.map((r) => (r.body.subscription as { plan_id?: unknown } | undefined)?.plan_id);
+  const plan = planIds.map(String).join(", ");
+  const wallet = await params.worker("GET", "/api/wallet", user, wsId);
+  const milli = wallet.body.currentBalanceMilli;
+  const evidence = `a new workspace on plan ${plan}: subscription reads ${reads.map((r) => r.status).join(", ")}, wallet ${wallet.status} with ${typeof milli === "number" ? `${milli / 1000} credits` : "no balance"}`;
+  const granted = reads.every((r) => r.status === 200) && planIds.every((p) => p === "free") && wallet.status === 200 && milli === FREE_PLAN_CREDITS * 1000;
+  return granted
+    ? { part, outcome: "done", reason: `planCredits gives free ${FREE_PLAN_CREDITS}, preview runs r${params.revision}; ${evidence}` }
+    : notDone(evidence);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

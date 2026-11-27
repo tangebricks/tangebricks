@@ -13,6 +13,7 @@ import { catalog } from "../../packages/assembler/catalog.generated.ts";
 import { computeMaxCompatible } from "../../scripts/max-compatible.ts";
 import {
   APPROVAL_GATE_BLUEPRINT,
+  ENTITY_GRAPH_BLUEPRINT,
   INVOICE_FLOW_BLUEPRINT,
   PLAN_CREDITS_BLUEPRINT,
   PRIVACY_PRESENCE_BLUEPRINT,
@@ -68,7 +69,14 @@ export default async function setup(): Promise<() => Promise<void>> {
     written.push({ project, dir, expected: Object.keys(result.files).length });
   }
 
-  for (const blueprint of [...getBootBlueprints(), WORKFLOW_SHELL_BLUEPRINT, PRIVACY_PRESENCE_BLUEPRINT, APPROVAL_GATE_BLUEPRINT, PLAN_CREDITS_BLUEPRINT]) {
+  for (const blueprint of [
+    ...getBootBlueprints(),
+    WORKFLOW_SHELL_BLUEPRINT,
+    PRIVACY_PRESENCE_BLUEPRINT,
+    APPROVAL_GATE_BLUEPRINT,
+    PLAN_CREDITS_BLUEPRINT,
+    ENTITY_GRAPH_BLUEPRINT,
+  ]) {
     const project = blueprint.project;
     const result = assemble(blueprint, catalog);
     if (!result.ok) throw new Error(`the ${project} blueprint did not assemble:\n  ${result.errors.join("\n  ")}`);

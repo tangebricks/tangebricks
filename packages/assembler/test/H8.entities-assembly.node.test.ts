@@ -250,7 +250,12 @@ describe("relations, date, money and longtext (story 1.18)", () => {
 
   test("the OpenAPI document describes each new type", () => {
     const schema = JSON.parse(result.files["openapi.json"]!).components.schemas.OrdersCreate.properties;
-    expect(schema.customer_id).toMatchObject({ type: "string", format: "uuid" });
+    expect(schema.customer_id).toEqual({
+      type: "string",
+      format: "uuid",
+      description: "Relation to customers: the id of a customers in the same workspace",
+      "x-relation": "customers",
+    });
     expect(schema.due_on).toEqual({ type: "string", format: "date" });
     expect(schema.notes).toEqual({ type: "string", maxLength: 50_000 });
     expect(schema.total).toMatchObject({

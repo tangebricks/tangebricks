@@ -36,8 +36,15 @@ The harness evaluates the rule from the recorded numbers, judged as the owner de
 owner, then asks the agent to add a 5-credit debit to the app's report workflow and to set the free plan to 100 credits.
 The recorded run is `--from-run <run id>`, or, without it, the latest deployed run of the brief named by
 `CHANGE_LIVE_APP_BRIEF` (one of the default briefs). The owner reviews the change's proposals against that brief's review
-file. The record keeps the time to live, the agent's redeploys and hot-applies, and each part's outcome. The free-plan
-part is recorded `unsupported`: subscription-plans has no link from a plan to a credit grant.
+file. The record keeps the time to live, the agent's redeploys and hot-applies, and each part's outcome. Both parts are
+judged from what exists, never from the agent's word:
+
+- **The debit** is `done` when a workflow has a `credit-wallet.debit` of 5 and preview runs that revision.
+- **The free plan's 100 credits** (expressible since subscription-plans `planCredits`, story 1.20) is `done` when the
+  blueprint's subscription-plans `planCredits` gives the `free` tier 100, preview runs that revision, and the live app
+  behaves: on the preview Worker a new stub user's new workspace, after two reads of `GET /api/subscriptions/current`
+  (plan `free`), has exactly 100 credits on `GET /api/wallet` (granted, and granted once). Not configured, another
+  amount, an older preview, or any other balance is `not-done`, with the reason.
 
 ## The scripted owner
 
@@ -170,14 +177,36 @@ MVP usable. The harness scores every line itself, from what exists, never from t
 | 1 | landing copy | A first page that says what the product is. `n/a`: ProjectX deploys an API Worker and writes no page or copy. |
 | 2 | sign up / sign in | A new person can get in. `partial` at best: the preview runs the stub identity (`x-test-user`), so there is no real sign-up. The probe (a stub user creating a workspace) is sent whenever the preview answers, whether or not the app has an entity. |
 | 3 | password-reset mail | A person who forgot their password can get back in. `n/a`: the stub identity has no password and the preview sends no mail. |
-| 4, 9 | entity end to end | A record the product is about can be created, read, listed, changed and deleted. On the preview Worker, with the access key, a stub user and a new workspace: create, read, list, update and delete a row of the blueprint's first entity, then read it again (404). All of them is `pass`; create and read only is `partial`. |
+| 4, 9 | entity end to end | A record the product is about can be created, read, listed, changed and deleted. On the preview Worker, with the access key, a stub user and a new workspace: create, read, list, update and delete a row of the blueprint's first entity, then read it again (404). The payloads come from the [payload builder](#the-payload-builder): related rows are created first, and the update changes one non-relation field of any type. All of them is `pass`; create and read only is `partial`. |
 | 5 | check and seed twice | The build checks itself, and running it again changes nothing. `validate_blueprint` reports ready, and a second preview deploy by the owner reports `noop` with no write calls. When preview runs an older revision than the blueprint's latest, no redeploy is sent (it would ship the agent's undeployed changes) and the line fails with "latest revision never deployed". |
 | 6 | commit per stage, nothing pushed | Work is saved step by step and nothing reaches production unasked. At least one revision for each stage the blueprint has (bricks, entities, workflows), read across every page of the revision history, and production never deployed. |
 | 7 | build log | There is a trail of what was done and who approved it. Studio's activity has the revisions and every proposal the owner reviewed (accepted or rejected), and its audit log has the agent's tool calls, a row for each approval the owner gave and a row for each proposal it rejected. |
 | 8 | interview read-back | The builder confirms what it understood before building. `n/a`: ProjectX has no interview; the answers are in the prompt. |
 | 10 | preview answers | The app is live somewhere a person can reach. `GET /healthz` with the access key answers 200. |
 | 11 | audit CLI | The built app can be audited from the command line. `n/a`: ProjectX ships no command-line tool for the apps it builds; its build log is line 7. |
-| 12 | second agent via MCP | Another agent can use the app. `partial` at best: a second plain HTTP client finds an entity's create route in the preview's `/openapi.json`, creates a row in its own workspace and reads it back. The app has no MCP server of its own. |
+| 12 | second agent via MCP | Another agent can use the app. `partial` at best: a second plain HTTP client finds an entity's create route in the preview's `/openapi.json`, creates a row in its own workspace (built from that document alone by the [payload builder](#the-payload-builder)) and reads it back. The app has no MCP server of its own. |
+
+## The payload builder
+
+Lines 4, 9 and 12 build their rows with `packages/assembler/src/openapi-sample.ts` (story 1.32), the same module the
+assembler's workerd test uses on a real assembled app, so the harness and the product cannot disagree about a valid
+payload. It reads only an OpenAPI document: the preview's own `/openapi.json` for line 12, and for lines 4 and 9 the
+document the assembler generates from the blueprint's bricks and entities with the catalog (the same function and
+inputs that write the app's `openapi.json`, so the entity routes are at the entity brick's mount).
+
+- Every property of the entity's create schema gets a value its schema accepts: text cut to `maxLength`, numbers inside
+  their bounds, the first enum value, a `YYYY-MM-DD` date, money as `{ amount, currency }` with a declared currency.
+- A relation property names its target entity in `x-relation`. The builder creates one target row first, through the
+  target's own create route (recursively, one row per target entity), and sends its id. A required relation in a cycle,
+  deeper than 3 relations, or whose target create is refused stops the build with an error naming the chain; an optional
+  one in that position is left out.
+- The update step changes one non-relation field that can take a different value: text first, then a number, money, a
+  date, an enum, a date-time, a boolean, a uuid or JSON. A one-value enum or a number whose bounds allow one value is
+  never chosen. An entity with no such field has no update step, so it cannot pass lines 4 and 9.
+- Only a property with `x-relation` is a relation; a plain `format: uuid` string gets a fresh uuid.
+- An optional relation whose target cannot be made (a cycle or a refused create anywhere below it) is left out.
+
+No check is loosened: each line passes or fails exactly as before; only the payloads are valid for every field type.
 
 ## Judging the kill rule
 
@@ -203,6 +232,9 @@ Rule version `v0-applicable-lines (owner decision 2026-11-26)`, recorded in the 
 client against Studio's real `/mcp`), the fake Cloudflare API, and a simulated preview Worker. Nothing leaves the
 machine: global `fetch` refuses every address but the loopback one. The tests cover the owner's review (an on-brief
 proposal accepted, a stray probe rejected with its reason, a refused reject retried, no review file), the reply order,
-a named secret bound once and the stop after two identical replies, and the upgrade of older records. They also check
+a named secret bound once and the stop after two identical replies, and the upgrade of older records. Story 1.32 adds
+the payload builder against a strict simulated app (an entity with required relations is created after its targets; an
+entity of only relation, money, enum and date fields gets an update step) and the free-plan credits judgement (done when
+the app grants the configured 100 once; not done when it grants nothing, grants twice, or is not configured or live). They also check
 that nothing under the private folder is tracked and that no tracked file holds a private brief's, answers' or review
 file's text.
