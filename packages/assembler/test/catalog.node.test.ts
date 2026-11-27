@@ -119,6 +119,7 @@ describe("the assembler knows no brick", () => {
       "identity-stub.ts",
       "index.ts",
       "integration-fidelity-codes.ts",
+      "openapi-sample.ts",
       "openapi.ts",
       "schedules.ts",
       "schemas.ts",

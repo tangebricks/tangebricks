@@ -8,6 +8,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { catalog } from "../../packages/assembler/catalog.generated.ts";
 import { generateOpenApiSpec } from "../../packages/assembler/src/openapi.ts";
+import { sampleValue, updatedValue } from "../../packages/assembler/src/openapi-sample.ts";
 import { KEY_HEADER } from "../../packages/deploy/src/worker/gate.ts";
 import { memoryStore } from "../../packages/deploy/src/provisioner/index.ts";
 import { createFakeCloudflare } from "../../packages/deploy/test/support/fake-cloudflare.ts";
@@ -31,7 +32,9 @@ import {
   startOwnerLoop,
   upgradeRunRecord,
   CHANGE_DEBIT_CREDITS,
-  FREE_PLAN_UNSUPPORTED_REASON,
+  FREE_PLAN_CREDITS,
+  entityCrudCheck,
+  judgeFreePlanCredits,
   KILL_RULE_VERSION,
   RunRecordSchema,
   GENERIC_OWNER_REPLY,
@@ -48,11 +51,9 @@ import {
   privatePathRefusal,
   saveRun,
   runAgentBench,
-  sampleValue,
-  updatedValue,
   writeBenchmarkResult,
 } from "../agent-bench.ts";
-import type { AgentBenchDeps, ClaudeRunInput, ClaudeRunner, ReviewFile, RunRecord } from "../agent-bench.ts";
+import type { AgentBenchDeps, ClaudeRunInput, ClaudeRunner, ReviewFile, RunRecord, WorkerCall } from "../agent-bench.ts";
 
 // Story R55: the benchmark harness, offline. Cloudflare's API is the fake (real SQLite D1, documented shapes); the deployed
 // preview Worker is a small simulator (access key, stub identity, workspaces, generic entity CRUD, the project's
@@ -88,9 +89,14 @@ afterEach(() => {
   for (const r of roots.splice(0)) rmSync(r, { recursive: true, force: true });
 });
 
-/** The deployed preview Worker, simulated: the gate's key check, the stub identity, workspaces and entity CRUD. */
-function workerSimulator(fake: FakeCloudflare) {
+/**
+ * The deployed preview Worker, simulated: the gate's key check, the stub identity, workspaces and entity CRUD. With
+ * `freeCredits`, also subscription-plans and credit-wallet: a workspace's first subscription read (plan free) grants
+ * that many credits once, and GET /api/wallet answers the balance.
+ */
+function workerSimulator(fake: FakeCloudflare, options: { freeCredits?: number } = {}) {
   const workspaces = new Map<string, string>();
+  const balances = new Map<string, number>();
   const rows = new Map<string, Map<string, Record<string, unknown>>>();
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
@@ -108,9 +114,15 @@ function workerSimulator(fake: FakeCloudflare) {
       workspaces.set(id, user);
       return json(201, { workspace: { id } });
     }
+    const ws = request.headers.get("x-workspace-id") ?? "";
+    if (options.freeCredits !== undefined && (url.pathname === "/api/subscriptions/current" || url.pathname === "/api/wallet")) {
+      if (workspaces.get(ws) !== user) return json(403, { error: "workspace" });
+      if (url.pathname === "/api/wallet") return json(200, { currentBalanceMilli: balances.get(ws) ?? 0 });
+      if (!balances.has(ws)) balances.set(ws, options.freeCredits * 1000);
+      return json(200, { subscription: { workspace_id: ws, plan_id: "free", status: "active" } });
+    }
     const m = url.pathname.match(/^\/api\/([a-z_]+)(?:\/([^/]+))?$/);
     if (!m || m[1] !== ENTITY.name) return json(404, {});
-    const ws = request.headers.get("x-workspace-id") ?? "";
     if (workspaces.get(ws) !== user) return json(403, { error: "workspace" });
     const table = rows.get(ws) ?? new Map<string, Record<string, unknown>>();
     rows.set(ws, table);
@@ -855,7 +867,7 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
   });
 
   test(
-    "change a live app: the recorded app is stood up again, the agent adds the 5-credit debit and makes it live; the free-plan part is recorded unsupported",
+    "change a live app: the recorded app is stood up again, the agent adds the 5-credit debit and makes it live; the free-plan part, not configured, is not done",
     { timeout: 180_000 },
     async () => {
       const first = world();
@@ -909,11 +921,69 @@ describe("scripts/agent-bench.ts, offline with a fake CLI and a fake Cloudflare"
       expect(record.fromRunId).toBe(built.runId);
       expect(record.checks).toBeNull();
       expect(record.change!.parts[0]).toMatchObject({ part: `debit ${CHANGE_DEBIT_CREDITS} credits in the report workflow`, outcome: "done" });
-      expect(record.change!.parts[1]).toEqual({ part: "free plan 100 credits", outcome: "unsupported", reason: FREE_PLAN_UNSUPPORTED_REASON });
+      // story 1.32: judged by behaviour now that subscription-plans can grant plan credits; this agent did not configure it
+      expect(record.change!.parts[1]).toEqual({
+        part: `free plan ${FREE_PLAN_CREDITS} credits`,
+        outcome: "not-done",
+        reason: "subscription-plans is not enabled, so no plan grants credits",
+      });
       expect(record.change!.agentFlaggedUnsupported).toBe(true);
       // a graph-only change goes live without a redeploy
       expect(record.change!).toMatchObject({ hotApplies: 1, redeploys: 0 });
       expect(record.change!.timeToLiveMs).not.toBeNull();
+      expectNothingLeft(fake, record);
+    },
+  );
+});
+
+describe("story 1.32: change-live-app free-plan credits, end to end", () => {
+  test(
+    "the agent sets subscription-plans planCredits free:100 and deploys it; the live app grants 100 once, so the part is done",
+    { timeout: 180_000 },
+    async () => {
+      const first = world();
+      const built = await runAgentBench(
+        first.deps(
+          fakeCli(async (agent) => {
+            await build(agent);
+            await deployPreview(agent);
+          }),
+        ),
+      );
+      expect(built.status).toBe("complete");
+
+      const { fake, deps } = world();
+      const cli = fakeCli(async (agent) => {
+        const changed = await agent.tool("apply_ops", {
+          ops: [
+            { opId: "debit-5", type: "update_node", workflowId: "wf-report", nodeId: "debit", data: { amount: CHANGE_DEBIT_CREDITS } },
+            { opId: "plans", type: "enable_brick", brickId: "subscription-plans", config: { planCredits: "free:100" } },
+          ],
+        });
+        expect(changed.isError, JSON.stringify(changed.body)).toBe(false);
+        await waitFor(
+          async () => (JSON.stringify((await agent.tool("get_blueprint_summary", {})).body).includes("subscription-plans") ? true : null),
+          "the plan credits to be in the blueprint",
+        );
+        const deployed = await deployPreview(agent);
+        expect(deployed.isError, JSON.stringify(deployed.body)).toBe(false);
+      });
+      const record = await runAgentBench(
+        deps(cli, {
+          task: "change-live-app",
+          fromRun: built,
+          brief: { id: built.briefId, briefSha256: built.briefSha256 },
+          workerFetch: workerSimulator(fake, { freeCredits: FREE_PLAN_CREDITS }),
+        }),
+      );
+      expect(record.incompleteReason).toBeNull();
+      expect(record.change!.parts[1]).toMatchObject({
+        part: `free plan ${FREE_PLAN_CREDITS} credits`,
+        outcome: "done",
+        reason: expect.stringMatching(
+          /^planCredits gives free 100, preview runs r\d+; a new workspace on plan free, free: subscription reads 200, 200, wallet 200 with 100 credits$/,
+        ),
+      });
       expectNothingLeft(fake, record);
     },
   );
@@ -1739,6 +1809,187 @@ describe("story 1.22: the scripted owner behaves like a person", () => {
     ];
     expect(latestDeployedRun(runs, CHANGE_LIVE_APP_BRIEF)?.runId).toBe("c");
     expect(latestDeployedRun([], CHANGE_LIVE_APP_BRIEF)).toBeUndefined();
+  });
+});
+
+describe("story 1.32: payloads built from the published schema; full CRUD for every field type; free-plan credits by behaviour", () => {
+  const LEASE_GRAPH = [
+    { name: "unit", fields: [{ name: "label", type: "text", required: true, maxLength: 40 }] },
+    { name: "tenant", fields: [{ name: "full_name", type: "text", required: true }] },
+    {
+      name: "lease",
+      fields: [
+        { name: "unit_id", type: "relation", relation: "unit", required: true },
+        { name: "tenant_id", type: "relation", relation: "tenant", required: true },
+        { name: "monthly_rent", type: "number", min: 1 },
+      ],
+    },
+  ];
+  /** Only story 1.18 types: an optional relation, money, enum and date (no text or number field to fall back on). */
+  const APPLICATION = [
+    { name: "funder", fields: [{ name: "label", type: "text", required: true }] },
+    {
+      name: "application",
+      fields: [
+        { name: "funder_id", type: "relation", relation: "funder" },
+        { name: "amount", type: "money", currencies: ["INR"], required: true },
+        { name: "stage", type: "enum", values: ["draft", "submitted"], required: true },
+        { name: "due_on", type: "date", required: true },
+      ],
+    },
+  ];
+
+  type Field = { name: string; type: string; required?: boolean; relation?: string; values?: string[]; currencies?: string[] };
+  /** A preview Worker that validates like dynamic-entities: required fields, each type's shape, and relation ids of the workspace. */
+  function strictWorker(entities: Array<{ name: string; fields: Field[] }>) {
+    const tables = new Map<string, Map<string, Record<string, unknown>>>();
+    const posts: string[] = [];
+    const table = (ws: string, entity: string) => {
+      const key = `${ws}/${entity}`;
+      if (!tables.has(key)) tables.set(key, new Map());
+      return tables.get(key)!;
+    };
+    const problem = (ws: string, field: Field, value: unknown): string | null => {
+      if (value === undefined || value === null) return null;
+      switch (field.type) {
+        case "relation":
+          return typeof value === "string" && table(ws, field.relation!).has(value) ? null : `${field.name}: no ${field.relation} with this id`;
+        case "money": {
+          const m = value as { amount?: unknown; currency?: unknown };
+          return Number.isInteger(m.amount) && field.currencies!.includes(String(m.currency)) && Object.keys(m).length === 2 ? null : `${field.name}: money`;
+        }
+        case "enum":
+          return field.values!.includes(String(value)) ? null : `${field.name}: enum`;
+        case "date":
+          return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? null : `${field.name}: date`;
+        case "number":
+          return Number.isInteger(value) ? null : `${field.name}: number`;
+        default:
+          return typeof value === "string" ? null : `${field.name}: text`;
+      }
+    };
+    const call: WorkerCall = async (method, path, _user, ws, body) => {
+      const [, , name, id] = path.split("/");
+      const entity = entities.find((e) => e.name === name);
+      if (!entity || !ws) return { status: 404, body: {} };
+      const rows = table(ws, entity.name);
+      const data = (body ?? {}) as Record<string, unknown>;
+      const invalid = (create: boolean) =>
+        entity.fields.map((f) => (create && f.required && data[f.name] === undefined ? `${f.name}: required` : problem(ws, f, data[f.name]))).filter(Boolean);
+      if (method === "POST" && !id) {
+        posts.push(entity.name);
+        const errors = invalid(true);
+        if (errors.length > 0) return { status: 400, body: { error: { code: "VALIDATION_ERROR", message: errors.join("; ") } } };
+        const item = { id: randomBytes(8).toString("hex"), ...data };
+        rows.set(item.id, item);
+        return { status: 201, body: { item } };
+      }
+      if (method === "GET" && !id) return { status: 200, body: { items: [...rows.values()] } };
+      const item = rows.get(id ?? "");
+      if (!item) return { status: 404, body: {} };
+      if (method === "GET") return { status: 200, body: { item } };
+      if (method === "PATCH") {
+        const errors = invalid(false);
+        if (errors.length > 0 || Object.keys(data).length === 0) return { status: 400, body: { error: errors.join("; ") } };
+        Object.assign(item, data);
+        return { status: 200, body: { item } };
+      }
+      if (method === "DELETE") {
+        rows.delete(id!);
+        return { status: 200, body: { deleted: true } };
+      }
+      return { status: 405, body: {} };
+    };
+    return { call, posts };
+  }
+
+  test("an entity with required relations is created after its targets, and its CRUD check passes", async () => {
+    const app = strictWorker(LEASE_GRAPH);
+    const spec = generateOpenApiSpec({ project: "p", entities: LEASE_GRAPH } as never);
+    const result = await entityCrudCheck(app.call, spec, "lease", "ws-1");
+    expect(result.outcome, result.evidence).toBe("pass");
+    expect(app.posts).toEqual(["tenant", "unit", "lease"]);
+    expect(result.evidence).toBe(
+      'entity "lease" in workspace as stub user: related tenant 201, unit 201 first, create 201, read 200, list 200, update monthly_rent 200, delete 200, read after delete 404',
+    );
+  });
+
+  test("an entity of only relation, money, enum and date fields gets an update step, and the check passes", async () => {
+    const app = strictWorker(APPLICATION);
+    const spec = generateOpenApiSpec({ project: "p", entities: APPLICATION } as never);
+    const result = await entityCrudCheck(app.call, spec, "application", "ws-1");
+    expect(result.outcome, result.evidence).toBe("pass");
+    expect(result.evidence).toMatch(/related funder 201 first, create 201, read 200, list 200, update amount 200, delete 200, read after delete 404$/);
+  });
+
+  test("the checks stay as strict: a refused update is partial, a refused target create fails", async () => {
+    const app = strictWorker(APPLICATION);
+    const spec = generateOpenApiSpec({ project: "p", entities: APPLICATION } as never);
+    const noPatch: WorkerCall = (method, ...rest) => (method === "PATCH" ? Promise.resolve({ status: 400, body: {} }) : app.call(method, ...rest));
+    expect((await entityCrudCheck(noPatch, spec, "application", "ws-1")).outcome).toBe("partial");
+    const lease = strictWorker(LEASE_GRAPH);
+    const lost: WorkerCall = (method, path, ...rest) =>
+      method === "POST" && path === "/api/unit" ? Promise.resolve({ status: 500, body: {} }) : lease.call(method, path, ...rest);
+    const failed = await entityCrudCheck(lost, generateOpenApiSpec({ project: "p", entities: LEASE_GRAPH } as never), "lease", "ws-1");
+    expect(failed.outcome).toBe("fail");
+    expect(failed.evidence).toMatch(/creating the unit that lease\.unit_id needs answered 500/);
+  });
+
+  test("an entity whose only field allows one value has no update step, so the line is partial", async () => {
+    const FIXED = [{ name: "flag", fields: [{ name: "kind", type: "enum", values: ["only"], required: true }] }];
+    const result = await entityCrudCheck(strictWorker(FIXED).call, generateOpenApiSpec({ project: "p", entities: FIXED } as never), "flag", "ws-1");
+    expect(result.outcome).toBe("partial");
+    expect(result.evidence).toMatch(/list 200, no field an update can change, delete 200/);
+  });
+
+  /** A preview Worker with subscription-plans and credit-wallet: `grant` says how a new free workspace is credited. */
+  function creditsWorker(grant: "once" | "every-read" | "never"): WorkerCall {
+    const balance = new Map<string, number>();
+    return async (method, path, _user, ws) => {
+      if (method === "POST" && path === "/api/workspaces") {
+        const id = `ws_${randomBytes(4).toString("hex")}`;
+        balance.set(id, 0);
+        return { status: 201, body: { workspace: { id } } };
+      }
+      if (!ws || !balance.has(ws)) return { status: 403, body: {} };
+      if (path === "/api/subscriptions/current") {
+        if (grant === "every-read" || (grant === "once" && balance.get(ws) === 0)) balance.set(ws, balance.get(ws)! + 100_000);
+        return { status: 200, body: { subscription: { workspace_id: ws, plan_id: "free", status: "active" } } };
+      }
+      if (path === "/api/wallet") return { status: 200, body: { currentBalanceMilli: balance.get(ws) } };
+      return { status: 404, body: {} };
+    };
+  }
+  const configured = ["multi-workspace", { id: "credit-wallet", config: {} }, { id: "subscription-plans", config: { planCredits: "free:100,pro:1000" } }];
+
+  test("free-plan credits: done when the live app grants the configured 100 once; not done when it does not", async () => {
+    const done = await judgeFreePlanCredits({ bricks: configured, revision: 4, deployedRev: 4, worker: creditsWorker("once") });
+    expect(done).toEqual({
+      part: "free plan 100 credits",
+      outcome: "done",
+      reason: "planCredits gives free 100, preview runs r4; a new workspace on plan free, free: subscription reads 200, 200, wallet 200 with 100 credits",
+    });
+    const never = await judgeFreePlanCredits({ bricks: configured, revision: 4, deployedRev: 4, worker: creditsWorker("never") });
+    expect(never).toMatchObject({ outcome: "not-done", reason: expect.stringMatching(/wallet 200 with 0 credits$/) });
+    const twice = await judgeFreePlanCredits({ bricks: configured, revision: 4, deployedRev: 4, worker: creditsWorker("every-read") });
+    expect(twice).toMatchObject({ outcome: "not-done", reason: expect.stringMatching(/wallet 200 with 200 credits$/) });
+  });
+
+  test("free-plan credits: not configured, the wrong amount, or not live on preview is never done", async () => {
+    const worker = creditsWorker("once");
+    const judge = (bricks: unknown[], deployedRev: number | null = 4) => judgeFreePlanCredits({ bricks, revision: 4, deployedRev, worker });
+    expect(await judge(["multi-workspace", "credit-wallet"])).toMatchObject({
+      outcome: "not-done",
+      reason: "subscription-plans is not enabled, so no plan grants credits",
+    });
+    expect(await judge(["subscription-plans"])).toMatchObject({ outcome: "not-done", reason: expect.stringMatching(/planCredits is not set/) });
+    expect(await judge([{ id: "subscription-plans", config: { planCredits: "free:50" } }])).toMatchObject({
+      outcome: "not-done",
+      reason: expect.stringMatching(/the free tier gets 50, not 100/),
+    });
+    expect(await judge([{ id: "subscription-plans", config: { planCredits: "pro:100" } }])).toMatchObject({ outcome: "not-done" });
+    expect(await judge(configured, 3)).toMatchObject({ outcome: "not-done", reason: "planCredits gives free 100 in r4 but preview runs r3" });
+    expect(await judgeFreePlanCredits({ bricks: configured, revision: 4, deployedRev: 4, worker: null })).toMatchObject({ outcome: "not-done" });
   });
 });
 

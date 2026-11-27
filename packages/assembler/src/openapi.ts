@@ -115,6 +115,9 @@ function mapFieldToJsonSchema(field: RawFieldShape | EntityField): Record<string
         type: "string",
         format: "uuid",
         description: typeof target === "string" ? `Relation to ${target}: the id of a ${target} in the same workspace` : "Relation identifier",
+        // Story 1.32: the target entity, machine-readable (an OpenAPI vendor extension), so a client that has only this
+        // document can create the target row first (see openapi-sample.ts).
+        ...(typeof target === "string" ? { "x-relation": target } : {}),
       };
     }
     case "date":
