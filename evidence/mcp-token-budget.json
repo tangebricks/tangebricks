@@ -78,8 +78,8 @@
   "sessionB": {
     "calls": 7,
     "toolDefTokens": 1364,
-    "ioTokens": 5965,
-    "totalTokens": 7329,
+    "ioTokens": 5944,
+    "totalTokens": 7308,
     "maxTotalTokens": 8000,
     "passed": true,
     "byCall": [
@@ -122,15 +122,15 @@
       {
         "tool": "test_workflow",
         "requestTokens": 37,
-        "responseTokens": 1978,
-        "totalTokens": 2015
+        "responseTokens": 1957,
+        "totalTokens": 1994
       }
     ]
   },
   "violations": [],
   "provenance": {
-    "generatedAt": "2026-11-26T23:43:26.604Z",
-    "gitSha": "c7d65ca8d44580aebdbc186e4ae969de59ae142b",
+    "generatedAt": "2026-11-26T23:59:53.965Z",
+    "gitSha": "82cf7b71aaeac8bc3aa936cd7e73f0d2ec155904",
     "gitDirty": false,
     "generator": "scripts/mcp-budget.ts",
     "inputKind": "measured"

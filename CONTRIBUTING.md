@@ -18,6 +18,26 @@ or otherwise have the right to submit it under this project's licence. Add it wi
 git commit -s
 ```
 
+The `DCO` workflow checks this on every pull request into `main`. It fails when any commit in the
+pull request (merge commits and `[bot]` authors excepted) lacks a `Signed-off-by: <Name> <email>`
+line matching that commit's author name and email. Commits already on `main` are not checked.
+
+The sign-off must name the commit's **author**. The commands below sign as the committer (your
+`user.name` / `user.email`), so they fix only commits you authored. If a commit's author and
+committer differ, the author must sign it off, or the commit must be re-authored
+(`git commit --amend --reset-author -s --no-edit`). To fix your own commits and force-push:
+
+```sh
+git commit --amend -s --no-edit      # only the last commit
+git rebase --signoff origin/main     # every commit on the branch
+git push --force-with-lease
+```
+
+You can run the same check locally: `node scripts/check-dco.ts origin/main HEAD`.
+
+Maintainers: add the `dco` check (shown as "DCO / dco") to the required status checks in the
+`main` branch protection rule, so an unsigned pull request cannot be merged.
+
 ## Licence of contributions
 
 By contributing, you agree that your contributions are licensed under the

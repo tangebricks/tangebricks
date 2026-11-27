@@ -1,0 +1,39 @@
+name: DCO
+
+# Every non-merge, non-bot commit in a pull request must carry a Signed-off-by trailer matching its author
+# (see CONTRIBUTING.md). Only the pull request's own range is checked, never commits already on main.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request cancels the run still in progress.
+concurrency:
+  group: dco-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dco:
+    name: dco
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (full history)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The checker uses only node: modules, so no dependency install is needed.
+      - name: Setup Node.js >= 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      # The default pull_request checkout is the merge ref: HEAD^1 is main's tip, HEAD^2 the PR head. HEAD^1..HEAD^2
+      # is exactly the PR's own commits, even when main moved past the event's base.sha (reopened, stale base).
+      - name: Check Signed-off-by on every commit in the pull request
+        run: |
+          git rev-parse -q --verify 'HEAD^2' >/dev/null || { echo "expected the pull request merge ref (HEAD is not a merge)"; exit 1; }
+          node scripts/check-dco.ts 'HEAD^1' 'HEAD^2'
