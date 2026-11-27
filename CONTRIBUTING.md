@@ -38,6 +38,28 @@ You can run the same check locally: `node scripts/check-dco.ts origin/main HEAD`
 Maintainers: add the `dco` check (shown as "DCO / dco") to the required status checks in the
 `main` branch protection rule, so an unsigned pull request cannot be merged.
 
+## Git hooks
+
+`pnpm install` installs local git hooks with [lefthook](https://github.com/evilmartians/lefthook)
+(`lefthook.yml`), through the `prepare` script (`scripts/install-hooks.mjs`). The script does nothing
+when `CI` is set to a true value (anything but empty, `0` or `false`) or outside a git work tree, and never fails the install. To install the hooks again
+by hand, run `pnpm exec lefthook install`.
+
+- **pre-commit** runs, in this order:
+  - `oxlint --fix` on the staged `.ts`, `.tsx`, `.js` and `.mjs` files, with the rules and ignore
+    patterns in `.oxlintrc.json`. Its autofixes are re-staged; anything it cannot fix stops the commit.
+  - `gitleaks` on the staged changes, with `.gitleaks.toml`. It uses `GITLEAKS_BIN` if set, otherwise
+    `gitleaks` on your `PATH`. If gitleaks is not installed, the hook prints a warning and passes.
+    The `Security` workflow's gitleaks job scans every pull request either way.
+- **commit-msg** refuses a message without a `Signed-off-by` trailer naming the commit's author
+  (`scripts/check-commit-msg.ts`, using the same rules as the `DCO` workflow). Fix it with `git commit -s`.
+  Merge commits and `fixup!` / `squash!` / `amend!` commits are skipped locally, but the `DCO` check
+  on the pull request still requires a sign-off on any `fixup!` / `squash!` / `amend!` commit you push
+  without squashing it first.
+
+Do not bypass the hooks with `--no-verify` (or `LEFTHOOK=0`). CI runs the same checks on every pull
+request and is the real gate, so a skipped hook only moves the failure to CI.
+
 ## Licence of contributions
 
 By contributing, you agree that your contributions are licensed under the

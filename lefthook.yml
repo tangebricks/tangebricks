@@ -1,0 +1,24 @@
+# Local git hooks, installed by `pnpm install` through the `prepare` script (scripts/install-hooks.mjs).
+# They never run in CI: CI runs the same checks as the real gate. See CONTRIBUTING.md (Git hooks).
+# Commands are node scripts, not shell syntax, so the hooks behave the same from Git Bash and PowerShell.
+
+pre-commit:
+  # In order, not in parallel: gitleaks must scan the index after oxlint's autofixes are re-staged.
+  piped: true
+  jobs:
+    # Lints staged sources with the repo's .oxlintrc.json and re-stages any autofixes. oxlint applies the config's
+    # ignorePatterns to explicit paths too; --no-error-on-unmatched-pattern keeps a commit whose staged sources are
+    # all ignored from failing with "No files found to lint".
+    - name: oxlint
+      glob: "*.{ts,tsx,js,mjs}"
+      run: node node_modules/oxlint/bin/oxlint --deny-warnings --no-error-on-unmatched-pattern --fix {staged_files}
+      stage_fixed: true
+    # Scans the staged content for secrets with .gitleaks.toml. Warns and passes when gitleaks is not installed.
+    - name: gitleaks
+      run: node scripts/run-gitleaks-staged.ts
+
+commit-msg:
+  jobs:
+    # Requires a Signed-off-by trailer naming the commit author, using scripts/check-dco.ts's rules.
+    - name: dco
+      run: node scripts/check-commit-msg.ts {1}
