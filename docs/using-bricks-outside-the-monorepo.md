@@ -1,7 +1,7 @@
 # Using bricks outside the monorepo
 
 A project that is not part of this repository can install bricks, mount their routers on its own Hono app, and run
-their migrations on its own D1 database. No assembler, Studio or generated code is involved. Five packages support
+their migrations on its own D1 database. No assembler, Studio or generated code is involved. Eight packages support
 this today:
 
 | Package | What it gives you | README |
@@ -11,6 +11,11 @@ this today:
 | `@poc/credit-wallet` | Per-workspace credit ledger and payment routes. | [bricks/credit-wallet](../bricks/credit-wallet/README.md#using-outside-the-monorepo) |
 | `@poc/audit-trail` | Per-workspace audit log and CSV export. | [bricks/audit-trail](../bricks/audit-trail/README.md#using-outside-the-monorepo) |
 | `@poc/edge-traffic-armor` | A rate-limit and IP-rule middleware for any route, with a log of refused requests. | [bricks/edge-traffic-armor](../bricks/edge-traffic-armor/README.md#using-outside-the-monorepo) |
+| `@poc/oidc-verify` | Bearer-token verification for any OIDC provider (JWKS or HS256), setting `user` with id and email. | [bricks/oidc-verify](../bricks/oidc-verify/README.md#using-outside-the-monorepo) |
+| `@poc/rbac-policy` | Custom roles and permissions inside a workspace, and `requirePermission`. | [bricks/rbac-policy](../bricks/rbac-policy/README.md#using-outside-the-monorepo) |
+| `@poc/platform-admin` | Operator routes across workspaces: credit grants, suspension, flag overrides, user approvals. | [bricks/platform-admin](../bricks/platform-admin/README.md#using-outside-the-monorepo) |
+
+An app that already has its own workspace tables can keep them: see [Adopting existing tables](adopting-existing-tables.md).
 
 ## 1. Pack and install
 
@@ -22,21 +27,26 @@ pnpm --dir bricks/multi-workspace pack --pack-destination /path/to/my-app/vendor
 pnpm --dir bricks/credit-wallet pack --pack-destination /path/to/my-app/vendor
 pnpm --dir bricks/audit-trail pack --pack-destination /path/to/my-app/vendor
 pnpm --dir bricks/edge-traffic-armor pack --pack-destination /path/to/my-app/vendor
+pnpm --dir bricks/oidc-verify pack --pack-destination /path/to/my-app/vendor
+pnpm --dir bricks/rbac-policy pack --pack-destination /path/to/my-app/vendor
+pnpm --dir bricks/platform-admin pack --pack-destination /path/to/my-app/vendor
 ```
 
-Each brick's tarball holds `src/`, `migrations/`, `brick.manifest.json`, the README, CHANGELOG, `LICENSE` and `NOTICE`.
+Each brick's tarball holds `src/`, `migrations/` (none for oidc-verify, which owns no tables), `brick.manifest.json`,
+the README, CHANGELOG, `LICENSE` and `NOTICE`.
 The `@poc/sdk` tarball holds only `src/`, the README, `LICENSE` and `NOTICE`: no migrations and no manifest. Every
-tarball's `package.json` has its `workspace:*` dependencies rewritten to versions by pack. All five are Apache-2.0.
+tarball's `package.json` has its `workspace:*` dependencies rewritten to versions by pack. All eight are Apache-2.0.
 In your project:
 
 ```json
 {
   "dependencies": {
     "@poc/sdk": "file:./vendor/poc-sdk-0.0.0.tgz",
-    "@poc/multi-workspace": "file:./vendor/poc-multi-workspace-1.0.0.tgz",
+    "@poc/multi-workspace": "file:./vendor/poc-multi-workspace-1.1.0.tgz",
     "@poc/credit-wallet": "file:./vendor/poc-credit-wallet-1.0.0.tgz",
     "@poc/audit-trail": "file:./vendor/poc-audit-trail-1.0.0.tgz",
     "@poc/edge-traffic-armor": "file:./vendor/poc-edge-traffic-armor-1.1.0.tgz",
+    "@poc/oidc-verify": "file:./vendor/poc-oidc-verify-2.1.0.tgz",
     "hono": "4.13.20"
   },
   "pnpm": { "overrides": { "@poc/sdk": "file:./vendor/poc-sdk-0.0.0.tgz" } }
@@ -120,15 +130,19 @@ EXISTS`), so with armor installed the separate step is a no-op.
 
 ## 5. Identity
 
-No brick authenticates anyone. Your app verifies the caller (session, JWT, API key) and sets `user` on the Hono
-context before any brick route runs. `workspaceMiddleware` then resolves the workspace from the `x-workspace-id`
-header and refuses callers who are not members.
+No brick authenticates anyone on its own. Your app verifies the caller (session, JWT, API key) and sets `user` on the
+Hono context before any brick route runs, or mounts oidc-verify's `createOidcMiddleware({ issuer, audience, jwksUri,
+algorithms })` to do it from a bearer token. `workspaceMiddleware` then resolves the workspace from the
+`x-workspace-id` header and refuses callers who are not members. Emailed invites trust `user.email`, so set it only from
+a verified source.
 
 ## The proof
 
-`fixtures/external-app/` is a project that does all of the above with a stub identity.
-`test/external-app.node.test.ts` packs the five packages, copies the fixture to a temp directory outside the repo,
+`fixtures/external-app/` is a project that does all of the above with a stub identity (and oidc-verify on one path).
+`test/external-app.node.test.ts` packs the eight packages, copies the fixture to a temp directory outside the repo,
 installs the tarballs with `pnpm install --ignore-workspace`, bundles the entry with esbuild, runs it in workerd
 through Miniflare with a D1 binding, applies the shipped migrations, and checks that one user's wallet and audit log
 work, that a user in another workspace cannot see them, that the rate limits count, that armor's user-keyed bucket
-answers 429 per user and logs an incident, and that a suspended workspace cannot spend. It also typechecks the fixture against what it installed. It runs in CI with the node test project.
+answers 429 per user and logs an incident, that a suspended workspace cannot spend, that oidc-verify sets the user
+from an HS256 token, that emailed invites, the member list, role changes and rename work, that rbac-policy answers
+behind the guard, and that platform-admin refuses a non-operator. It also typechecks the fixture against what it installed. It runs in CI with the node test project.

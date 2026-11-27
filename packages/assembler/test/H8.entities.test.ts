@@ -54,7 +54,7 @@ interface World {
   aIds: string[];
   bIds: string[];
 }
-const ALL_TABLES = ["credit_ledger", "credit_orders", "credit_wallets", "mw_members", "mw_workspaces", "ent_invoices"];
+const ALL_TABLES = ["credit_ledger", "credit_orders", "credit_wallets", "mw_invites", "mw_members", "mw_workspaces", "ent_invoices"];
 const snapshot = async (workspace: string) =>
   JSON.stringify((await db.prepare('SELECT * FROM "ent_invoices" WHERE workspace_id = ? ORDER BY id').bind(workspace).all()).results);
 const countRows = async (workspace: string) =>

@@ -148,3 +148,21 @@ non-quarantined brick may declare a `platformWide` table, and only one of its ow
 - `audit-logging` (audit-trail), required: no audit row, no change.
 - Optional: credit-wallet for grants, and feature-flags for overrides. Each is wired when it is enabled. The routes that
   need one that is missing answer 503 `NOT_CONFIGURED`.
+
+## Using outside the monorepo
+
+See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-monorepo.md) for the whole flow.
+
+- **Install from a tarball.** Nothing is published to a registry. Run `pnpm pack` here and in `packages/sdk`, then
+  depend on both tarballs (`file:` paths) and override `@poc/sdk` to the sdk tarball. Runtime dependencies: `@poc/sdk`,
+  `hono` and `zod`. audit-trail, credit-wallet and feature-flags are not dependencies: you pass their exports in.
+- **TypeScript sources.** `exports` point at `src/index.ts`; bundle with wrangler or esbuild.
+- **Mount.** Not behind the workspace guard (operators act across workspaces), after your identity middleware:
+  `app.route("/v1", createPlatformAdminRoutes({ auditRecorder, charger, flagOverrides, flagOverridesAllowed }))`, with
+  audit-trail's `auditRecorder`, credit-wallet's `walletCharger` and feature-flags' `flagOverrides`, as the manifest's
+  `$capability` options say. Set `PX_PLATFORM_OPERATORS`. With the approval gate on, mount `requireApprovedUser` after
+  identity and before the workspace guard on every workspace-guarded path.
+- **Migrate.** Apply the files listed under `migrations` in `brick.manifest.json`, in that order, to the D1 database
+  bound as `DB`, after multi-workspace's and audit-trail's.
+- **Through views.** If your workspace tables are `mw_*` views (docs/adopting-existing-tables.md), note that the sdk's
+  `setWorkspaceSuspended` decides "changed" from the update's change count, which a view does not report reliably.

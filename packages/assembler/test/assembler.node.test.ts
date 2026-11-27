@@ -22,14 +22,16 @@ describe("the two-brick blueprint", () => {
     const result = files(twoBricks);
     expect(Object.keys(result.files)).toEqual([
       "migrations/0001_multi-workspace__0001_multi_workspace.sql",
-      "migrations/0002_credit-wallet__0001_credit_wallet.sql",
-      "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
+      // Story 2.8: multi-workspace's invite email and expiry columns.
+      "migrations/0002_multi-workspace__0002_invite_email_expiry.sql",
+      "migrations/0003_credit-wallet__0001_credit_wallet.sql",
+      "migrations/0004_credit-wallet__0002_workspace_scoped_idempotency.sql",
       // Story 2.3: credit-wallet's order currency column.
-      "migrations/0004_credit-wallet__0003_order_currency.sql",
+      "migrations/0005_credit-wallet__0003_order_currency.sql",
       // Story 2.5: credit-wallet's milli-credit migration.
-      "migrations/0005_credit-wallet__0004_milli_credits.sql",
+      "migrations/0006_credit-wallet__0004_milli_credits.sql",
       // Story 0.21: credit-wallet declares rate-limited routes, so the shared limiter's table comes with it.
-      "migrations/0006_shell__px_rate_limits.sql",
+      "migrations/0007_shell__px_rate_limits.sql",
       "openapi.json",
       "package.json",
       "project.json",
@@ -71,8 +73,9 @@ describe("the two-brick blueprint", () => {
   test("the migrations are in dependency order and are the bricks' own text", () => {
     const result = files(twoBricks);
     expect(result.files["migrations/0001_multi-workspace__0001_multi_workspace.sql"]).toContain("CREATE TABLE IF NOT EXISTS mw_workspaces");
-    expect(result.files["migrations/0002_credit-wallet__0001_credit_wallet.sql"]).toContain("CREATE TABLE IF NOT EXISTS credit_wallets");
-    expect(result.files["migrations/0002_credit-wallet__0001_credit_wallet.sql"]).toBe(
+    expect(result.files["migrations/0002_multi-workspace__0002_invite_email_expiry.sql"]).toContain("ALTER TABLE mw_invites ADD COLUMN email");
+    expect(result.files["migrations/0003_credit-wallet__0001_credit_wallet.sql"]).toContain("CREATE TABLE IF NOT EXISTS credit_wallets");
+    expect(result.files["migrations/0003_credit-wallet__0001_credit_wallet.sql"]).toBe(
       catalog.bricks["credit-wallet"]!.files["migrations/0001_credit_wallet.sql"],
     );
   });
@@ -102,7 +105,7 @@ describe("the two-brick blueprint", () => {
       name: "invoice-flow",
       dependencies: { "@poc/credit-wallet": "workspace:*", "@poc/multi-workspace": "workspace:*", hono: "4.13.20", zod: "4.6.7" },
     });
-    expect(JSON.parse(result.files["project.json"]!).migrations).toHaveLength(6);
+    expect(JSON.parse(result.files["project.json"]!).migrations).toHaveLength(7);
   });
 
   test("the identity stub is in the project and says it is a stub", () => {
@@ -112,7 +115,7 @@ describe("the two-brick blueprint", () => {
 
   test("one brick on its own assembles when it needs nothing", () => {
     const result = files({ project: "p", bricks: ["multi-workspace"] });
-    expect(Object.keys(result.files).filter((f) => f.startsWith("migrations/"))).toHaveLength(1);
+    expect(Object.keys(result.files).filter((f) => f.startsWith("migrations/"))).toHaveLength(2);
     expect(result.files["src/index.ts"]).not.toContain("createWalletRoutes");
   });
 });
@@ -464,25 +467,28 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
     const twoBrickHashes = await hashFiles(files(TWO_BRICK_BLUEPRINT).files);
     expect(twoBrickHashes).toEqual({
       "migrations/0001_multi-workspace__0001_multi_workspace.sql": "44330d96d93fc7c48c859437e2f78c3ec8daea0381cfab30c94fa80cb0bcaaef",
-      "migrations/0002_credit-wallet__0001_credit_wallet.sql": "29c4056af349d76717f8a1777b58e5bfc09838af60e676f96051a811e3571bfc",
-      "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql": "6274abf0fb0de6ab68cf97d00ccf245cbb67fa0f7a319b5012e60cbec682bead",
+      // Story 2.8: multi-workspace's 0002 (new) moves every later migration up by one; project.json and the entry name
+      // the migrations, so their hashes changed too. Every other file is as before.
+      "migrations/0002_multi-workspace__0002_invite_email_expiry.sql": "be985aaf4823c0f7740b127cd87b318f37e56cb20cbd904bd98f37858748ff55",
+      "migrations/0003_credit-wallet__0001_credit_wallet.sql": "29c4056af349d76717f8a1777b58e5bfc09838af60e676f96051a811e3571bfc",
+      "migrations/0004_credit-wallet__0002_workspace_scoped_idempotency.sql": "6274abf0fb0de6ab68cf97d00ccf245cbb67fa0f7a319b5012e60cbec682bead",
       // Story 0.21: credit-wallet declares rate limits, so three hashes changed: the limiter's table (new), project.json
       // (which lists it) and the entry (the app.on(..., rateLimit(...)) lines). Every other file is as before.
       // Story 2.3: credit-wallet's migration 0003 (new, so the limiter's table moves to 0005), project.json (which lists
       // it and the paymentCurrency setting) and the entry (the currency option and the webhook's rate limit) changed.
-      "migrations/0004_credit-wallet__0003_order_currency.sql": "93a348efbe24eeccf8e252308153a3499c6ac1265a4677707af13f3b7a5f91e0",
+      "migrations/0005_credit-wallet__0003_order_currency.sql": "93a348efbe24eeccf8e252308153a3499c6ac1265a4677707af13f3b7a5f91e0",
       // Story 2.5: credit-wallet's migration 0004 (new, so the limiter's table moves to 0006), project.json (which lists
       // it and the defaultActionCosts setting), the entry (the new option and the charge and transfer rate limits) and the
       // privacy manifest (credit_action_costs, and credit_ledger now retained on user erasure) changed. Every other file
       // is as before.
-      "migrations/0005_credit-wallet__0004_milli_credits.sql": "64881c99f808c5139e20c16415f289f51a746e4bca84e7c5150116d0e02ad57e",
-      "migrations/0006_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
+      "migrations/0006_credit-wallet__0004_milli_credits.sql": "64881c99f808c5139e20c16415f289f51a746e4bca84e7c5150116d0e02ad57e",
+      "migrations/0007_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "c77c2e7c33606f6a369cf1b1a90809da38adaa3a5145d15159f30fb704c49487",
       "package.json": "c9446d18c11331be16e33709dfedeaa73710f0da02f82d5392b71a330699ffbc",
-      "project.json": "2c047e5cfba75453158a721eae9c374d34db8e5aa0e5a230268587316500ae2b",
+      "project.json": "a05bf39943d027b8323cff9db0f7a6296f4687101f1dfa0de35a9b553ce4180e",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       // Story 1.10: only the entry changed (the workspace-data purge, the suspension check and its app.use lines).
-      "src/index.ts": "fe5f4fb27fd5a28b587d756d0d10da15fc1b3fd20b27df62ddd3a3340c173ace",
+      "src/index.ts": "45328830317cdfdff0cb6f6172e8143eb3f8e1903a99154f61dfe14d5143e835",
       "src/privacy.generated.ts": "ba26b34aa0ccb0c17252bd363257922513fec8cd5e9f0524960cab369667d1cb",
       "wrangler.jsonc": "d678c83f4dd70ff4bfc1dc7e2e75953a9a8d0e0216061d82308bd562c1f4625b",
     });
@@ -490,21 +496,23 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
     const invoiceFlowHashes = await hashFiles(files(INVOICE_FLOW_BLUEPRINT).files);
     expect(invoiceFlowHashes).toEqual({
       "migrations/0001_multi-workspace__0001_multi_workspace.sql": "44330d96d93fc7c48c859437e2f78c3ec8daea0381cfab30c94fa80cb0bcaaef",
-      "migrations/0002_credit-wallet__0001_credit_wallet.sql": "29c4056af349d76717f8a1777b58e5bfc09838af60e676f96051a811e3571bfc",
-      "migrations/0003_credit-wallet__0002_workspace_scoped_idempotency.sql": "6274abf0fb0de6ab68cf97d00ccf245cbb67fa0f7a319b5012e60cbec682bead",
+      // Story 2.8: multi-workspace's 0002 moves every later migration up by one.
+      "migrations/0002_multi-workspace__0002_invite_email_expiry.sql": "be985aaf4823c0f7740b127cd87b318f37e56cb20cbd904bd98f37858748ff55",
+      "migrations/0003_credit-wallet__0001_credit_wallet.sql": "29c4056af349d76717f8a1777b58e5bfc09838af60e676f96051a811e3571bfc",
+      "migrations/0004_credit-wallet__0002_workspace_scoped_idempotency.sql": "6274abf0fb0de6ab68cf97d00ccf245cbb67fa0f7a319b5012e60cbec682bead",
       // Story 2.3: as in the two-brick blueprint, credit-wallet's 0003 moves the later migrations up by one.
-      "migrations/0004_credit-wallet__0003_order_currency.sql": "93a348efbe24eeccf8e252308153a3499c6ac1265a4677707af13f3b7a5f91e0",
+      "migrations/0005_credit-wallet__0003_order_currency.sql": "93a348efbe24eeccf8e252308153a3499c6ac1265a4677707af13f3b7a5f91e0",
       // Story 2.5: credit-wallet's 0004 moves the later migrations up by one again.
-      "migrations/0005_credit-wallet__0004_milli_credits.sql": "64881c99f808c5139e20c16415f289f51a746e4bca84e7c5150116d0e02ad57e",
-      "migrations/0006_entity__invoices.sql": "43c67676212cbfd376e0479b1fe3e955c054eb127b09e84ad0922012e1a445ff",
-      "migrations/0007_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
+      "migrations/0006_credit-wallet__0004_milli_credits.sql": "64881c99f808c5139e20c16415f289f51a746e4bca84e7c5150116d0e02ad57e",
+      "migrations/0007_entity__invoices.sql": "43c67676212cbfd376e0479b1fe3e955c054eb127b09e84ad0922012e1a445ff",
+      "migrations/0008_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "fc78a27cbc505836cef15723d4c63e5feed04a53f4071a2ef1f7868d8a7fe902",
       "package.json": "58b30a29bfd0e01247373021a5a6073c63b86dbd13d1c34355c4324abb134c50",
-      "project.json": "6fc5cffb58586d141228f9f75d0fc5cdbab7bc0861d924810511c706d8fd8afc",
+      "project.json": "dd41cf62f1a006e8cf6149acf6a23a901d4f288367369e2e2b53dd1eb2adeb7a",
       "src/entities.json": "5b153446783e693c0ada62b9c2626071e38f3e3e9bb047dd5a3a39c24179ba0a",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       // Story 1.10: only the entry changed (purge, including the declared entity's table, and the suspension check).
-      "src/index.ts": "ecf983fe1c4886596560834d2d5dbd1a8c5bd3144c8c5dc3c8bbf87faec2b4f3",
+      "src/index.ts": "6fb4f9049e0909b8a6fb7bc2409c982aad86c4e1085a1b5b7bb2a79cc0413fa2",
       "src/privacy.generated.ts": "bc55b8ec274212576be78816651cd415ba40a3bc82e750fd25267acc576917dd",
       "wrangler.jsonc": "d7c0046626c2da81eca662bc64f38619da75b0d48f4978b1dc37ecf5eb8c3c0b",
     });
@@ -515,21 +523,23 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
     // (edge-traffic-armor is left out: since story 0.21 it ships the px_rate_limits table as its own migration.)
     // Story 2.6: audit-trail adds migration 0002 (capability marker and dedupe key). The migrations after it are
     // renumbered, and the entry's MIGRATIONS list and project.json name them; every other file is as before.
+    // Story 2.8: multi-workspace adds migration 0002 (invite email and expiry), with the same effect.
     const noRules = files({ project: "no-rules", bricks: ["multi-workspace", "audit-trail", "cron-alarms"] });
     expect(noRules.files["src/index.ts"]).not.toContain("rateLimit");
     expect(Object.keys(noRules.files).some((f) => f.includes("px_rate_limits"))).toBe(false);
     expect(await hashFiles(noRules.files)).toEqual({
       "migrations/0001_multi-workspace__0001_multi_workspace.sql": "44330d96d93fc7c48c859437e2f78c3ec8daea0381cfab30c94fa80cb0bcaaef",
-      "migrations/0002_audit-trail__0001_audit_trail.sql": "d1d8192cea9a17cc12dde86feb5288e361625590e2c0db652a74edfba10a73a2",
-      "migrations/0003_audit-trail__0002_capability_rows.sql": "b1eb19ad77def858554ce31dc5850dc4f0a9a36fb2aa8897e1ad2b12bf7af782",
-      "migrations/0004_cron-alarms__0001_cron_alarms.sql": "95631dcb80615aee290bfe058373b28e21881d6409b339709670e034ae062926",
-      "migrations/0005_cron-alarms__0002_catch_up.sql": "4d7aa86c89511f06dbf65e841ce31bb7f84d825da41d3317bb84a21921f52011",
-      "migrations/0006_shell__px_schedules.sql": "5876bb9226cf588bb29d757b10c46b24ed970f60e1d0964964b734285e11e752",
+      "migrations/0002_multi-workspace__0002_invite_email_expiry.sql": "be985aaf4823c0f7740b127cd87b318f37e56cb20cbd904bd98f37858748ff55",
+      "migrations/0003_audit-trail__0001_audit_trail.sql": "d1d8192cea9a17cc12dde86feb5288e361625590e2c0db652a74edfba10a73a2",
+      "migrations/0004_audit-trail__0002_capability_rows.sql": "b1eb19ad77def858554ce31dc5850dc4f0a9a36fb2aa8897e1ad2b12bf7af782",
+      "migrations/0005_cron-alarms__0001_cron_alarms.sql": "95631dcb80615aee290bfe058373b28e21881d6409b339709670e034ae062926",
+      "migrations/0006_cron-alarms__0002_catch_up.sql": "4d7aa86c89511f06dbf65e841ce31bb7f84d825da41d3317bb84a21921f52011",
+      "migrations/0007_shell__px_schedules.sql": "5876bb9226cf588bb29d757b10c46b24ed970f60e1d0964964b734285e11e752",
       "openapi.json": "c3964d819bb933d81d0c6e576db76ab8e01a0c3ff8ce7ebc94b36d87b7f8956c",
       "package.json": "44606884d6a042dad2cb29c771257621676d21cb0e390e8b1ef12ba833426bef",
-      "project.json": "49e454fa2cd49ee9bc81e40ff2ddbac38a88773d934ea1850a27292c938d2753",
+      "project.json": "8c1e776eabccdaf678debcf8e4af3cf112fbe57bad9e3c7629a4276fff0ebae2",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
-      "src/index.ts": "02ec458aebf4212dac60bef961b279847cb5dd17f52c3f9a5d93fb2a7a3faae1",
+      "src/index.ts": "09540ad54f1cf0ef4570fc392dea4bb625407ab6646a4e890dc805b17ac40b05",
       "src/privacy.generated.ts": "7f4322f58ee6a55f3804d2083a792725f779a951b2694709249a8e20159bfe3d",
       "wrangler.jsonc": "85a0ab37dcde7ee01d8eba1e1549a27580973cbc6620000388435027176f298c",
     });
@@ -1074,7 +1084,7 @@ describe("story 1.10: workspace delete cascade and suspension enforcement", () =
     const entry = files(INVOICE_FLOW_BLUEPRINT).files["src/index.ts"]!;
     // Only guard lines and the readiness manifest's migration names may name an entity (as test/support/scan.ts checks).
     const named = entry.split("\n").filter((line) => line.includes("invoices"));
-    expect(named.every((line) => line.startsWith('app.use("/api/invoices') || line.includes('"name": "0006_entity__invoices.sql"'))).toBe(true);
+    expect(named.every((line) => line.startsWith('app.use("/api/invoices') || line.includes('"name": "0007_entity__invoices.sql"'))).toBe(true);
     expect(entry).not.toContain("ent_invoices");
     expect(entry).toContain("tableName(entity)");
     expect(entry).toContain('import entities from "./entities.json";');

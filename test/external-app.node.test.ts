@@ -21,17 +21,34 @@ const PACKAGES = {
   "@poc/credit-wallet": join(root, "bricks", "credit-wallet"),
   "@poc/audit-trail": join(root, "bricks", "audit-trail"),
   "@poc/edge-traffic-armor": join(root, "bricks", "edge-traffic-armor"),
+  "@poc/oidc-verify": join(root, "bricks", "oidc-verify"),
+  "@poc/rbac-policy": join(root, "bricks", "rbac-policy"),
+  "@poc/platform-admin": join(root, "bricks", "platform-admin"),
 } as const;
 type PackageName = keyof typeof PACKAGES;
-const BRICKS = ["@poc/multi-workspace", "@poc/credit-wallet", "@poc/audit-trail", "@poc/edge-traffic-armor"] as const;
-const SETUP_TIMEOUT = 600_000;
+const BRICKS = [
+  "@poc/multi-workspace",
+  "@poc/credit-wallet",
+  "@poc/audit-trail",
+  "@poc/edge-traffic-armor",
+  "@poc/oidc-verify",
+  "@poc/rbac-policy",
+  "@poc/platform-admin",
+] as const;
+/** Packages whose tarball ships no migrations (they own no tables). */
+const NO_MIGRATIONS = new Set<string>(["@poc/sdk", "@poc/oidc-verify"]);
+/** Each package's runtime dependencies: only what its src imports at runtime. */
+const RUNTIME_DEPS: Record<string, string[]> = { "@poc/sdk": ["zod"], "@poc/oidc-verify": ["@poc/sdk", "hono"] };
+/** A test-only HS256 secret for the fixture's oidc-verify mount (a Miniflare binding, never a real secret). */
+const OIDC_SECRET = "test-only-external-app-hs256-secret-0123456789";
+const SETUP_TIMEOUT = 900_000;
 
 const isInside = (path: string, dir: string) => {
   const rel = relative(dir, path);
   return rel !== "" && !rel.startsWith("..") && !rel.startsWith(sep) && !/^[A-Za-z]:/.test(rel);
 };
 
-// Child budgets, all well inside SETUP_TIMEOUT: 5 packs + install + typecheck = 5*45 + 240 + 90 = 555 s. The children
+// Child budgets, all well inside SETUP_TIMEOUT: 8 packs + install + typecheck = 8*45 + 240 + 90 = 690 s. The children
 // run asynchronously, so each one's own timeout fires (with its clear message) before the hook's.
 const PACK_TIMEOUT = 45_000;
 const INSTALL_TIMEOUT = 240_000;
@@ -220,7 +237,15 @@ beforeAll(async () => {
   bundleInputs = Object.keys(result.metafile!.inputs);
 
   // 6. Run it in workerd with a D1 binding.
-  mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: result.outputFiles[0]!.text, compatibilityDate: "2026-10-01", d1Databases: ["DB"] }));
+  mf = new Miniflare(
+    convertV4MiniflareOptions({
+      modules: true,
+      script: result.outputFiles[0]!.text,
+      compatibilityDate: "2026-10-01",
+      d1Databases: ["DB"],
+      bindings: { OIDC_HS256_SECRET: OIDC_SECRET },
+    }),
+  );
   await mf.ready;
 
   // 7. Apply the migrations the installed packages ship, in the order each manifest lists them.
@@ -265,13 +290,11 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       expect(files, name).toContain("src/index.ts");
       expect(files, name).toContain("README.md");
       expect(files, name).toContain("package.json");
-      if (name !== "@poc/sdk") {
-        expect(files, name).toContain("brick.manifest.json");
-        expect(
-          files.some((f) => f.startsWith("migrations/") && f.endsWith(".sql")),
-          name,
-        ).toBe(true);
-      }
+      if (name !== "@poc/sdk") expect(files, name).toContain("brick.manifest.json");
+      expect(
+        files.some((f) => f.startsWith("migrations/") && f.endsWith(".sql")),
+        name,
+      ).toBe(!NO_MIGRATIONS.has(name));
       const stray = files.filter((f) => /^(test|client|fixtures)\//.test(f) || /\.test\.tsx?$/.test(f));
       expect(stray, name).toEqual([]);
       const pkg = JSON.parse(readFileSync(join(installed(name), "package.json"), "utf8")) as {
@@ -289,7 +312,7 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       // pack rewrote workspace:* to concrete versions
       expect(JSON.stringify(pkg), name).not.toContain("workspace:");
       // runtime dependencies are only what src imports at runtime
-      const allowed = name === "@poc/sdk" ? ["zod"] : ["@poc/sdk", "hono", "zod"];
+      const allowed = RUNTIME_DEPS[name] ?? ["@poc/sdk", "hono", "zod"];
       expect(Object.keys(pkg.dependencies ?? {}).sort(), name).toEqual(allowed.sort());
     }
   });
@@ -314,6 +337,7 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
   test("the shipped migrations apply to a fresh D1 and create every brick table", async () => {
     expect(migrated).toEqual([
       "@poc/multi-workspace/migrations/0001_multi_workspace.sql",
+      "@poc/multi-workspace/migrations/0002_invite_email_expiry.sql",
       "@poc/credit-wallet/migrations/0001_credit_wallet.sql",
       "@poc/credit-wallet/migrations/0002_workspace_scoped_idempotency.sql",
       "@poc/credit-wallet/migrations/0003_order_currency.sql",
@@ -322,6 +346,8 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       "@poc/audit-trail/migrations/0002_capability_rows.sql",
       "@poc/edge-traffic-armor/migrations/0001_edge_traffic_armor.sql",
       "@poc/edge-traffic-armor/migrations/0002_px_rate_limits.sql",
+      "@poc/rbac-policy/migrations/0001_rbac_policy.sql",
+      "@poc/platform-admin/migrations/0001_platform_admin.sql",
     ]);
     const db = (await mf!.getD1Database("DB")) as unknown as D1Like;
     const { results } = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all<{ name: string }>();
@@ -338,6 +364,9 @@ describe("story 2.2: the packed packages install outside the monorepo", () => {
       "arm_ip_rules",
       "arm_blocked_requests",
       "px_rate_limits",
+      "rbac_roles",
+      "rbac_role_assignments",
+      "pa_user_approvals",
     ]) {
       expect(tables).toContain(table);
     }
@@ -478,5 +507,72 @@ describe("story 2.2: smoke test of the mounted bricks in workerd", () => {
     expect(deduct.json.code).toBe("WORKSPACE_SUSPENDED");
     await db.prepare("UPDATE mw_workspaces SET suspended = 0 WHERE id = ?").bind(wsA).run();
     expect((await call("GET", "/v1/wallet", { user: A, ws: wsA })).json.currentBalance).toBe(42.75);
+  });
+});
+
+/** Signs an HS256 JWT with the fixture's test secret. */
+async function hs256(payload: Record<string, unknown>, secret = OIDC_SECRET): Promise<string> {
+  const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64url");
+  const head = b64(new TextEncoder().encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
+  const body = b64(new TextEncoder().encode(JSON.stringify(payload)));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${head}.${body}`)));
+  return `${head}.${body}.${b64(sig)}`;
+}
+
+describe("story 2.8: oidc-verify, rbac-policy, platform-admin and the new workspace routes, installed from tarballs", () => {
+  const OWNER = "user-c";
+  const JOINER = "user-d";
+  let ws: string;
+
+  test("oidc-verify verifies an HS256 token and sets the user's id and email; a bad token is 401", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = await hs256({ iss: "https://idp.external-app.test", aud: "external-app", sub: "oidc-user", email: "Oidc@Example.test", exp: now + 600 });
+    const me = (await mf!.dispatchFetch("https://external-app.test/oidc/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    } as never)) as unknown as Response;
+    expect(me.status).toBe(200);
+    expect(await me.json()).toEqual({ uid: "oidc-user", email: "Oidc@Example.test" });
+    const forged = await hs256({ iss: "https://idp.external-app.test", aud: "external-app", sub: "oidc-user", exp: now + 600 }, "another-secret-0123456789");
+    const bad = (await mf!.dispatchFetch("https://external-app.test/oidc/me", {
+      headers: { Authorization: `Bearer ${forged}` },
+    } as never)) as unknown as Response;
+    expect(bad.status).toBe(401);
+  });
+
+  test("multi-workspace 1.1.0: emailed invite, the invitee's pending list, accept, members, role and rename", async () => {
+    const created = await call("POST", "/v1/workspaces", { user: OWNER, body: { name: "Workspace C" } });
+    expect(created.status, created.text).toBe(201);
+    ws = created.json.workspace.id;
+    const invite = await call("POST", `/v1/workspaces/${ws}/invites`, {
+      user: OWNER,
+      body: { role: "member", email: `${JOINER}@example.test`, expiresInSeconds: 3600 },
+    });
+    expect(invite.status, invite.text).toBe(201);
+    const mine = await call("GET", "/v1/workspaces/invites/mine", { user: JOINER });
+    expect(mine.json.invites).toEqual([expect.objectContaining({ token: invite.json.token, workspace: { id: ws, name: "Workspace C" } })]);
+    expect((await call("POST", `/v1/workspaces/invites/${invite.json.token}/accept`, { user: "user-e" })).status).toBe(403);
+    const accepted = await call("POST", `/v1/workspaces/invites/${invite.json.token}/accept`, { user: JOINER });
+    expect(accepted.status, accepted.text).toBe(200);
+    const members = await call("GET", `/v1/workspaces/${ws}/members`, { user: JOINER });
+    expect(members.json.members.map((m: { userId: string }) => m.userId).sort()).toEqual([OWNER, JOINER].sort());
+    expect((await call("PATCH", `/v1/workspaces/${ws}/members/${JOINER}`, { user: OWNER, body: { role: "admin" } })).status).toBe(200);
+    const renamed = await call("PATCH", `/v1/workspaces/${ws}`, { user: JOINER, body: { name: "Workspace C2" } });
+    expect(renamed.status, renamed.text).toBe(200);
+    expect(renamed.json.workspace.name).toBe("Workspace C2");
+  });
+
+  test("rbac-policy answers behind the workspace guard; platform-admin refuses a non-operator", async () => {
+    const owner = await call("GET", "/v1/policies/check?resource=docs&action=read", { user: OWNER, ws });
+    expect(owner.status, owner.text).toBe(200);
+    expect(owner.json).toEqual({ allowed: true, reason: "workspace_owner" });
+    const admin = await call("GET", "/v1/policies/check?resource=docs&action=read", { user: JOINER, ws });
+    expect(admin.json).toEqual({ allowed: false });
+    expect((await call("GET", "/v1/policies/check?resource=docs&action=read", { user: "user-e", ws })).status).toBe(403);
+
+    const platform = await call("GET", "/v1/platform/workspaces", { user: OWNER });
+    expect(platform.status, platform.text).toBe(403);
+    expect(platform.json.code).toBe("NOT_PLATFORM_OPERATOR");
+    expect((await call("GET", "/v1/platform/workspaces")).status).toBe(401);
   });
 });

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- README: a "Using outside the monorepo" section; the external-app test packs and installs the package. No behaviour
+  change.
+
 ## 1.0.0 — initial versioned release (story 2.6)
 
 - Platform operator routes under `/api/platform/*`, for the user ids in `PX_PLATFORM_OPERATORS` only (fail closed);

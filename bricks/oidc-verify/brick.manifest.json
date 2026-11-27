@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "kind": "brick",
   "id": "oidc-verify",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "trust": "first-party",
   "isolation": "none",
   "provides": [
@@ -21,7 +21,7 @@
     "issuer": {
       "type": "string",
       "format": "url",
-      "default": "https://auth.example.com"
+      "default": ""
     },
     "audience": {
       "type": "string",
@@ -33,12 +33,10 @@
       "default": ""
     },
     "algorithms": {
-      "type": "enum",
-      "values": [
-        "RS256",
-        "ES256",
-        "EdDSA"
-      ],
+      "type": "string",
+      "pattern": "^(RS256|ES256|EdDSA|HS256)(,(RS256|ES256|EdDSA|HS256))*$",
+      "example": "ES256,HS256",
+      "maxLength": 64,
       "default": "RS256"
     },
     "clockSkewSec": {
@@ -61,6 +59,12 @@
       "type": "string",
       "format": "claim-path",
       "default": ""
+    },
+    "emailClaim": {
+      "type": "string",
+      "format": "claim-path",
+      "default": "email",
+      "since": "2.1.0"
     },
     "audienceClaim": {
       "type": "string",

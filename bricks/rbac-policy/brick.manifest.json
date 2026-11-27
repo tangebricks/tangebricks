@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "kind": "brick",
   "id": "rbac-policy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "trust": "first-party",
   "provides": [
     "policy-guard"

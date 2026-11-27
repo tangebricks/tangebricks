@@ -1,11 +1,20 @@
 {
   "name": "@poc/oidc-verify",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "files": [
+    "src",
+    "brick.manifest.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
   "dependencies": {
     "@poc/sdk": "workspace:*",
     "hono": "4.13.20"

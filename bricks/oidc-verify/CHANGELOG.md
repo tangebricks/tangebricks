@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.0 — email, explicit issuer, algorithm lists, packable (story 2.8)
+
+- `user.email` is set from the `emailClaim` setting (default `email`) when the claim is a string; `verifyJwt` returns it
+  as `email`.
+- No default issuer: with none configured (setting or `createOidcMiddleware` config) the middleware answers 500
+  `{ error: "oidc_not_configured" }` to every request, instead of checking tokens against a placeholder issuer.
+- The `algorithms` setting is a comma-separated list and may include `HS256` (for example `ES256,HS256`); HS256 still
+  needs the secret named by `hs256SecretName`.
+- `hs256SecretName` passed to `createOidcMiddleware(config)` is honoured; before, only the env setting was read.
+- The package can be packed and installed outside the monorepo: a `files` list, `license` Apache-2.0 with `LICENSE` and
+  `NOTICE`, and a README with a "Using outside the monorepo" section.
+
 ## 2.0.0
 
 Breaking changes (story 0.14, session hardening):

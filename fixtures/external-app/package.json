@@ -11,6 +11,9 @@
     "@poc/credit-wallet": "TARBALL:@poc/credit-wallet",
     "@poc/audit-trail": "TARBALL:@poc/audit-trail",
     "@poc/edge-traffic-armor": "TARBALL:@poc/edge-traffic-armor",
+    "@poc/oidc-verify": "TARBALL:@poc/oidc-verify",
+    "@poc/rbac-policy": "TARBALL:@poc/rbac-policy",
+    "@poc/platform-admin": "TARBALL:@poc/platform-admin",
     "hono": "4.13.20"
   },
   "pnpm": {

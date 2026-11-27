@@ -72,8 +72,8 @@ describe("two cold runs that differ in folder, time zone and clock", () => {
   test("make the same files: every path and every SHA-256 equal", () => {
     // 11 since story 0.21 (credit-wallet's rate limits bring the px_rate_limits migration); 12 since story 2.3
     // (credit-wallet's order currency migration); 13 since story 2.5 (its milli-credit migration).
-    expect(second.report.files).toBe(13);
-    expect(Object.keys(first.report.hashes)).toHaveLength(13);
+    expect(second.report.files).toBe(14);
+    expect(Object.keys(first.report.hashes)).toHaveLength(14);
     expect(second.report.hashes).toEqual(first.report.hashes);
   });
 

@@ -173,12 +173,13 @@ describe("a first deploy to an empty account", () => {
     const migrations = migrationsFrom(assembled.files);
     expect(migrations.map((m) => m.name)).toEqual([
       "0001_multi-workspace__0001_multi_workspace.sql",
-      "0002_credit-wallet__0001_credit_wallet.sql",
-      "0003_credit-wallet__0002_workspace_scoped_idempotency.sql",
-      "0004_credit-wallet__0003_order_currency.sql",
-      "0005_credit-wallet__0004_milli_credits.sql",
-      "0006_entity__invoices.sql",
-      "0007_shell__px_rate_limits.sql",
+      "0002_multi-workspace__0002_invite_email_expiry.sql",
+      "0003_credit-wallet__0001_credit_wallet.sql",
+      "0004_credit-wallet__0002_workspace_scoped_idempotency.sql",
+      "0005_credit-wallet__0003_order_currency.sql",
+      "0006_credit-wallet__0004_milli_credits.sql",
+      "0007_entity__invoices.sql",
+      "0008_shell__px_rate_limits.sql",
     ]);
     const w = world();
     await deploy(w.input({ migrations }));

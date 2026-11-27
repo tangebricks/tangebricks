@@ -38,6 +38,8 @@ export interface OidcVerifyConfig {
   workspaceClaim?: string;
   /** Dot-path for roles in token payload. */
   rolesClaim?: string;
+  /** Dot-path for the user's email in the token payload. Defaults to "email". Used only when the claim is a string. */
+  emailClaim?: string;
   /** Dot-path or claim name for audience validation. Defaults to "aud". */
   audienceClaim?: string;
   /** Binding/environment variable name containing symmetric secret for HS256 legacy verification. */
@@ -48,6 +50,8 @@ export interface OidcVerifyConfig {
 
 export interface OidcUserContext {
   userId: string;
+  /** The email claim (`emailClaim`, default `email`) when the token carries it as a string. */
+  email?: string;
   workspaceId?: string;
   roles: string[];
   claims: Record<string, unknown>;

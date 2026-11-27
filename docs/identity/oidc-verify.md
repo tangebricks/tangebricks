@@ -1,6 +1,6 @@
 # Generic OIDC Verification (`oidc-verify`)
 
-The `oidc-verify` brick enables bringing any external OpenID Connect (OIDC) identity provider to a ProjectX application without provider-specific code. Bearer JWTs are cryptographically verified against the issuer's JWKS and their claims (`exp` required, `iss`, `aud`, `nbf`, `iat`) checked, then mapped to `{userId, workspaceId, roles}` for downstream authorization guards (`multi-workspace`, RBAC). A workspace named by the token is honoured only when the subject is a member of it in the `multi-workspace` membership table; the workspace role comes from that membership row, never from the token. The brick therefore requires `workspace-context` (the `multi-workspace` brick) since version 2.0.0.
+The `oidc-verify` brick enables bringing any external OpenID Connect (OIDC) identity provider to a ProjectX application without provider-specific code. Bearer JWTs are cryptographically verified against the issuer's JWKS and their claims (`exp` required, `iss`, `aud`, `nbf`, `iat`) checked, then mapped to `{userId, email, workspaceId, roles}` for downstream authorization guards (`multi-workspace`, RBAC). A workspace named by the token is honoured only when the subject is a member of it in the `multi-workspace` membership table; the workspace role comes from that membership row, never from the token. The brick therefore requires `workspace-context` (the `multi-workspace` brick) since version 2.0.0.
 
 ---
 
@@ -22,7 +22,7 @@ The `workspaceClaim` column names where a provider puts the workspace id; the id
 
 1. **Algorithm Pinning**: Token `alg` is pinned to the matching JWK `kty` and `crv` (e.g. `RS256` requires `kty: "RSA"`, `ES256` requires `kty: "EC"` + `crv: "P-256"`). Tokens declaring `alg: "none"` or attempting algorithm confusion (e.g. HMAC with RSA public key) are refused immediately with `alg_not_allowed`.
 2. **Key Rotation & Caching**: JWKS keys are cached with `Cache-Control: max-age` (clamped between 60s and 24h). When a token presents an unknown `kid`, JWKS is refetched at most once per 30 seconds to prevent denial of service. If the remote JWKS endpoint is temporarily down, stale cached keys are served up to `max-age * 2`.
-3. **Required Time Claims**: `exp` is required; a token without a numeric `exp`, or past `exp` by more than `clockSkewSec` (default 60), is refused. `nbf` or `iat` in the future by more than the skew is refused. An empty configured `issuer` or `audience` refuses every token.
+3. **Required Time Claims**: `exp` is required; a token without a numeric `exp`, or past `exp` by more than `clockSkewSec` (default 60), is refused. `nbf` or `iat` in the future by more than the skew is refused. An empty configured `issuer` or `audience` refuses every token; since 2.1.0 there is no default issuer, and the middleware answers 500 `oidc_not_configured` to every request until one is set.
 4. **Workspace Membership**: when `workspaceClaim` maps the token to a workspace, the subject must be a member of it (`mw_members`), otherwise HTTP 403 `not_workspace_member`. The `workspace` context carries the membership row's role and suspended flag. If the membership table cannot be read (no `DB` binding, or `multi-workspace` not migrated), the request fails with HTTP 500 `workspace_membership_unavailable` and the cause is logged; it is never treated as a member.
 5. **Fail-Closed Diagnostics**: Any token validation failure returns HTTP 401 with an explicit machine-readable error code (`missing_exp`, `token_expired`, `token_not_yet_valid`, `token_issued_in_future`, `issuer_mismatch`, `audience_mismatch`, `alg_not_allowed`, `kid_unknown`, `jwks_unavailable`, `malformed_token`); a valid token for a workspace the subject does not belong to returns HTTP 403 `not_workspace_member`. No error payload or log leaks raw tokens or cryptographic keys.
 
@@ -64,3 +64,9 @@ A project whose identity is `stub` cannot reach production by any path:
 - **Assembly:** `assemble(blueprint, catalog, { environment: "production" })` returns `ok: false` with `identity "stub" is for tests only; choose core-auth or oidc-verify`. The environment (`dev` by default, `preview` or `production`) is recorded in `project.json`.
 - **Provisioner:** `deploy({ ..., environment: "production", lock })` throws `DeployError` before any write call when `lock.identity` is `stub`. `scripts/poc-deploy.ts` and `scripts/poc-deploy-mcp.ts` take `--env dev|preview|production`.
 - **Runtime:** the provisioner binds `PX_ENVIRONMENT` as a plain-text binding, and the emitted `src/identity.stub.ts` answers 503 when it is `production`.
+
+## Email and algorithm lists (2.1.0)
+
+`user.email` is copied from the `emailClaim` claim (default `email`) when it is a string. The `algorithms` setting is a
+comma-separated list from `RS256`, `ES256`, `EdDSA` and `HS256`; a provider that signs with both a JWKS key and a shared
+secret (for example ES256 and HS256) lists both, and names the secret's env binding with `hs256SecretName`.

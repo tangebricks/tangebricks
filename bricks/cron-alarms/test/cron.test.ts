@@ -473,7 +473,8 @@ describe("Assembled Shell scheduled() Dispatcher in workerd (AC 3)", () => {
     const migrations = Object.entries(assembled.files)
       .filter(([p]) => p.startsWith("migrations/"))
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-    expect(migrations.map(([p]) => p)).toContain("migrations/0004_shell__px_schedules.sql");
+    // The shell's px_schedules migration comes after every brick's (multi-workspace has two since 1.1.0).
+    expect(migrations.map(([p]) => p)).toContain("migrations/0005_shell__px_schedules.sql");
     for (const [, sql] of migrations) {
       await applyMigration(db, sql);
     }
