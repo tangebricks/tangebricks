@@ -113,6 +113,16 @@ describe("lists never stop early silently", () => {
     await expect(rest.listScripts()).rejects.toThrow(/counts 7 items but only 1 were read/);
   });
 
+  test("a total_count that briefly lags a delete is re-read, and the settled list is returned", async () => {
+    const { fake, rest } = setup();
+    fake.fail({
+      when: (m, p) => m === "GET" && p.endsWith("/workers/scripts"),
+      times: 2,
+      respond: { status: 200, body: { success: true, errors: [], result: [], result_info: { page: 1, per_page: 100, count: 0, total_count: 1 } } },
+    });
+    await expect(rest.listScripts()).resolves.toEqual([]);
+  });
+
   test("a cursor-paged answer is refused rather than read in part", async () => {
     const { fake, rest } = setup();
     fake.fail({
