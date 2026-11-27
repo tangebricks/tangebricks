@@ -56,6 +56,7 @@ function manifestNamedExports(): Map<string, Set<string>> {
         routes?: { factory: string; options?: Record<string, unknown> }[];
         guard?: { export: string; suspension?: string };
         approvalGuard?: { export: string };
+        identityAlternative?: { export: string };
         capabilityExports?: Record<string, string[]>;
       };
       triggers?: { schedules?: { handler: string }[]; queues?: { handler: string }[] };
@@ -64,13 +65,12 @@ function manifestNamedExports(): Map<string, Set<string>> {
     const names = new Set<string>();
     for (const route of m.worker?.routes ?? []) {
       names.add(route.factory);
-      for (const value of Object.values(route.options ?? {})) {
-        if (value && typeof value === "object" && "$call" in value) names.add(String((value as { $call: unknown }).$call));
-      }
     }
     if (m.worker?.guard) names.add(m.worker.guard.export);
     if (m.worker?.guard?.suspension) names.add(m.worker.guard.suspension);
     if (m.worker?.approvalGuard) names.add(m.worker.approvalGuard.export);
+    // The assembler imports this by name from the brick package (assemble.ts, identityAlternative), e.g. apiKeyIdentity.
+    if (m.worker?.identityAlternative) names.add(m.worker.identityAlternative.export);
     for (const list of Object.values(m.worker?.capabilityExports ?? {})) for (const name of list) names.add(name);
     for (const s of m.triggers?.schedules ?? []) names.add(s.handler);
     for (const q of m.triggers?.queues ?? []) names.add(q.handler);
