@@ -132,3 +132,137 @@ the app's error handler as before.
 A query such as `SELECT blob1 AS grp, blob2 AS handler, blob3 AS status, SUM(_sample_interval) AS requests FROM
 my_app_route_handlers WHERE timestamp > NOW() - INTERVAL '1' DAY GROUP BY grp, handler, status` shows how much traffic
 each group sends to each handler.
+
+## Project status endpoint
+
+Studio shows an app that uses bricks as a connected project: which bricks it runs, where each route group's switch
+stands, and how its shadow comparisons look. It gets these from a small read-only endpoint the app mounts from
+`@poc/sdk`, so Studio never reads the app's code or database. The endpoint is opt-in and off until a key is set.
+
+### Mounting
+
+`projectStatus` is middleware. Mount it with `app.use` at its path, `DEFAULT_STATUS_PATH` (`/_tangebricks/status`),
+anywhere in the app: it answers only `GET` on that exact path with the right key, and passes every other request on
+with `next()`, so the app's own routes, catch-all and not-found handler answer them as if nothing were mounted. If you
+mount it in a sub-app, pass the full request path as `path`.
+
+```ts
+import { Hono } from "hono";
+import { DEFAULT_STATUS_PATH, projectStatus } from "@poc/sdk";
+import type { ProjectShadowReport } from "@poc/sdk";
+import { reconcileWallets, walletShadowReport } from "@poc/credit-wallet";
+import type { ReconcileRow } from "@poc/credit-wallet";
+
+type Bindings = { DB: D1Database; STATUS: KVNamespace; TANGEBRICKS_STATUS_KEY?: string; ROUTE_SWITCH?: string };
+
+// The app's own: the balances it holds, to compare with the brick's.
+declare function hostBalances(env: Bindings): Promise<ReconcileRow[]>;
+
+const app = new Hono<{ Bindings: Bindings }>();
+
+app.use(
+  DEFAULT_STATUS_PATH,
+  projectStatus<Bindings>({
+    project: "my-app",
+    bricks: [
+      { id: "credit-wallet", version: "1.2.0" },
+      { id: "core-auth", version: "1.0.0" },
+    ],
+    shadow: [
+      {
+        group: "wallet",
+        // Reads the last comparison; it never reconciles on the request path.
+        report: async (env) => {
+          const stored = await env.STATUS.get<ProjectShadowReport>("shadow:wallet", "json");
+          if (!stored) throw new Error("no wallet comparison yet");
+          return stored;
+        },
+      },
+    ],
+  }),
+);
+
+export default {
+  fetch: app.fetch,
+  // A cron trigger compares the two sides and stores the report where the app owns it.
+  async scheduled(_controller: ScheduledController, env: Bindings) {
+    const report = walletShadowReport("wallet", await reconcileWallets(env.DB, await hostBalances(env)));
+    await env.STATUS.put("shadow:wallet", JSON.stringify(report));
+  },
+};
+```
+
+Options:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `path` | `/_tangebricks/status` (`DEFAULT_STATUS_PATH`) | the full request path it answers on |
+| `keyVariable` | `TANGEBRICKS_STATUS_KEY` (`DEFAULT_STATUS_KEY_VARIABLE`) | the env var holding the key |
+| `switchVariable` | `ROUTE_SWITCH` | the env var holding the route switch |
+| `project` | none | a display name |
+| `bricks` | `[]` | `{ id, version }` entries, or a function of the env returning them |
+| `shadow` | `[]` | `{ group, report(env, { signal }) }` reporters returning a `ShadowReport`, optionally with `exactSince` |
+| `shadowTimeoutMs` | `2000` | how long each reporter may take, at most `30000` (`MAX_SHADOW_TIMEOUT_MS`) |
+| `shadowCacheMs` | `60000` (`DEFAULT_SHADOW_CACHE_MS`) | how long a reporter's result is reused; `0` disables the cache |
+
+`projectStatus<Bindings>(...)` types the `env` its functions receive.
+
+The brick list is whatever the app passes: literals as above, or build-time constants the app already has. An entry
+whose `id` does not match `^[a-z0-9][a-z0-9-]*$` or whose `version` is not semver-like (`1.2.0`, `2.0.1-beta.1`) is
+dropped.
+
+### The key
+
+Create a long random key and store it as a secret, never in `vars`:
+
+```sh
+wrangler secret put TANGEBRICKS_STATUS_KEY
+```
+
+Give the same key to Studio for this project. Callers send it as `Authorization: Bearer <key>`. The endpoint hashes the
+sent key and the configured key with SHA-256 and compares the digests in constant time; the key never appears in a log
+or a response. To turn the endpoint off, delete the secret (`wrangler secret delete TANGEBRICKS_STATUS_KEY`).
+
+A bearer longer than 512 bytes (`MAX_STATUS_KEY_BYTES`) is treated as no bearer, so a key must be at most 512 bytes.
+
+With the key unset or empty, a missing or wrong key, or any method other than `GET`, the middleware calls `next()` and
+the app answers as it would for a path where nothing is mounted (its catch-all, its fallback, or its 404). A prober
+cannot tell the endpoint exists.
+
+### The response
+
+```json
+{
+  "version": 1,
+  "project": "my-app",
+  "generatedAt": "2026-11-28T10:00:00.000Z",
+  "bricks": [{ "id": "credit-wallet", "version": "1.2.0" }],
+  "switch": { "variable": "ROUTE_SWITCH", "groups": { "health": "brick", "wallet": "shadow" } },
+  "shadow": [
+    { "group": "wallet", "exact": true, "compared": 120, "differing": 0, "checkedAt": "2026-11-28T09:55:00.000Z" }
+  ]
+}
+```
+
+with `Cache-Control: no-store`, `Content-Type: application/json` and `X-Content-Type-Options: nosniff`.
+
+- `switch.groups` is the switch value parsed the same way `routeSwitch` parses it; bad pairs are left out.
+- Reporters run in parallel. Only `exact`, `compared`, `differing`, `checkedAt` and `exactSince` are copied from a
+  report, under the group named in the options; any other field a reporter returns is dropped. `checkedAt` and
+  `exactSince` must be ISO-8601 UTC timestamps (`2026-11-28T09:55:00.000Z`), and `exactSince` is kept only when `exact`
+  is true. A reporter that throws, returns something malformed (a bad `checkedAt` included) or takes longer than
+  `shadowTimeoutMs` shows as `{ "group": "wallet", "error": true }`, and the endpoint still answers 200. On a timeout
+  the reporter's `signal` is aborted; pass it to any fetch or query that accepts one.
+- Each reporter runs at most once at a time: concurrent requests share one run. Its result, or its error, is reused for
+  `shadowCacheMs` (60 s by default), so a poller or a leaked key cannot pile up runs. Still keep reporters cheap: read a
+  stored result, as above, rather than reconcile on the request path.
+
+### What is never exposed
+
+No tenant, workspace or user id, email, traffic count, key, or env value other than the parsed switch. Traffic per
+group comes from Analytics Engine (see [Counting who answered](#counting-who-answered)), not from this endpoint.
+
+### No CORS
+
+The endpoint sets no CORS headers. Studio fetches it server-side with the key, so a browser never calls it and the
+key never reaches a browser. Do not add CORS for it.
