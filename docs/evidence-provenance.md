@@ -137,3 +137,20 @@ Per story **UC0.7**, running automated tests (`pnpm test` or `vitest run`) does 
 - `pnpm evidence:refresh` enforces that the working tree is clean (`git status --porcelain` must be empty, otherwise exits 1 with `EVIDENCE_REFRESH_DIRTY_TREE`). It stamps all files once with the clean commit SHA and `gitDirty: false`, runs all generators into the staging directory, copies them into `evidence/` in a single pass, and verifies them with `pnpm evidence:check`.
 - Tracked evidence changes must be committed with an explanation of why the evidence was refreshed.
 
+### Refreshed by CI on pull requests
+
+Contributors do not need to run the refresh themselves. On every push to a pull request from this repository, the
+`Evidence refresh` workflow (`.github/workflows/evidence-refresh.yml`):
+
+1. Checks staleness with `pnpm evidence:stale`. It compares `evidence/verdicts.json`'s `inputsHash` with the current proof
+   inputs, the same comparison `pnpm proof:check` makes, without running any tests.
+2. If the evidence is stale, it runs `pnpm evidence:refresh`. When anything changed, it commits the result as
+   `github-actions[bot]` with the message "Evidence refresh", signed off, and pushes it to the branch.
+3. Starts the CI workflow on the branch. A push made with the workflow's own token starts no workflows, and the `cp0`
+   gate must run on the commit that merges.
+
+The recorded `gitSha` is the code commit, which is the parent of the bot's commit; `pnpm evidence:check` only requires
+that it is a commit in the repository. Commits authored by `github-actions[bot]` are never refreshed again, which
+prevents loops. Pull requests from forks get a read-only token and are skipped, so their authors run
+`pnpm evidence:refresh` locally and commit the result.
+
