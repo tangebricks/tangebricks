@@ -1,0 +1,111 @@
+name: Evidence refresh
+
+# Regenerates the committed evidence on a pull request branch, so nobody runs `pnpm evidence:refresh` locally.
+#
+# On each push to a pull request from this repository, it checks whether evidence/verdicts.json's inputsHash still
+# matches the code (`pnpm evidence:stale`, no tests run). If it is stale, it runs `pnpm evidence:refresh`, commits the
+# result as github-actions[bot] ("Evidence refresh", signed off; the DCO check exempts [bot] authors), pushes it to the
+# branch, and starts the CI workflow on that branch: a push made with GITHUB_TOKEN does not start workflows by itself,
+# and the CI gate (`cp0`) must run on the commit that merges.
+#
+# Loop guard: a head commit authored by github-actions[bot] is never refreshed again.
+# Pull requests from forks get a read-only token, so they are skipped; their authors run `pnpm evidence:refresh`
+# locally (CONTRIBUTING.md).
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write # push the evidence commit to the pull request branch
+  actions: write # start the CI workflow on that branch
+
+# A newer push to the same pull request cancels a refresh still running; the new push gets its own run.
+concurrency:
+  group: evidence-refresh-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+    steps:
+      - name: Checkout the pull request branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Skip commits made by this workflow
+        id: guard
+        run: |
+          skip=false
+          if [ "$(git log -1 --format=%an)" = "github-actions[bot]" ]; then skip=true; fi
+          # The checked-out head must be the commit this event is about; a newer push gets its own run.
+          if [ "$(git rev-parse HEAD)" != "${{ github.event.pull_request.head.sha }}" ]; then skip=true; fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm 10.18.0
+        if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.0
+
+      - name: Setup Node.js >= 24
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies (frozen lockfile)
+        if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Is the evidence stale?
+        if: steps.guard.outputs.skip != 'true'
+        id: stale
+        run: pnpm evidence:stale
+
+      - name: Cache real-spec corpus
+        if: steps.stale.outputs.stale == 'true'
+        uses: actions/cache@v6
+        with:
+          path: corpus/real-specs/.cache
+          key: corpus-real-specs-${{ hashFiles('corpus/real-specs/manifest.json') }}
+
+      - name: Fetch and verify corpus
+        if: steps.stale.outputs.stale == 'true'
+        run: pnpm fidelity:fetch
+
+      - name: Refresh evidence
+        if: steps.stale.outputs.stale == 'true'
+        run: |
+          # evidence:refresh needs a clean tree; the corpus cache is gitignored.
+          git status --porcelain
+          pnpm evidence:refresh
+
+      - name: Commit and push
+        if: steps.stale.outputs.stale == 'true'
+        id: push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898569+github-actions[bot]@users.noreply.github.com"
+          git add PROOF.md README.md evidence
+          if git diff --cached --quiet; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing changed."
+            exit 0
+          fi
+          git commit -s -m "Evidence refresh"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Start CI on the refreshed commit
+        if: steps.push.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref "${{ github.event.pull_request.head.ref }}"

@@ -91,7 +91,7 @@ The project started as a measured proof of concept. Each architectural claim is 
 - **Live results are recorded, not re-run.** H10, H11, H12, the hosted half of H5 and the deployed half of H9 rest on recorded live runs in `evidence/deployed/`. The verifier only re-reads those files.
 - **Live evidence integrity.** `evidence/deployed/integrity.json` holds the sha256 and run timestamp of every live result file. `pnpm proof:check` fails when a result file changes while its run timestamp does not (an edit without a re-run), or when a result file has no entry. After a genuine live re-run, record it with `pnpm evidence:record-live`, then run `pnpm readme:generate`. One past hand edit is recorded rather than hidden: H12's result file was edited on 2026-10-28 without a re-run, and it is marked "hand-edited, unverified" above.
 - **Releases.** `pnpm release:check --ref <commit>` fails when live evidence predates the release commit and the README does not label it stale. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
-- **Refreshing evidence.** `pnpm evidence:refresh` regenerates the local evidence, `PROOF.md` and the section above in one pass on a clean tree, then runs the checks. It never touches `evidence/deployed/`.
+- **Refreshing evidence.** `pnpm evidence:refresh` regenerates the local evidence, `PROOF.md` and the section above in one pass on a clean tree, then runs the checks. It never touches `evidence/deployed/`. On pull requests from this repository, CI runs it for you and commits the result ([evidence provenance](docs/evidence-provenance.md#refreshed-by-ci-on-pull-requests)).
 
 ## Repository layout
 
