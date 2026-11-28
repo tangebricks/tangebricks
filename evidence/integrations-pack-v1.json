@@ -1,7 +1,7 @@
 {
   "suite": "integrations-pack-v1",
   "story": "story-openapi-discovery-importer-and-curated-pack-v1",
-  "generatedAt": "2026-11-28T11:20:26.132Z",
+  "generatedAt": "2026-11-28T13:26:38.987Z",
   "ok": true,
   "totalApps": 5,
   "totalOperations": 61,
@@ -95,8 +95,8 @@
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-28T11:20:26.132Z",
-    "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+    "generatedAt": "2026-11-28T13:26:38.987Z",
+    "gitSha": "d2586197aaf9d7d4e34203c1a71593d12d4d2cb6",
     "gitDirty": false,
     "generator": "scripts/integrations-live-smoke.ts",
     "inputKind": "measured"
