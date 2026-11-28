@@ -3,6 +3,28 @@
 `@poc/sdk` stays at 0.0.0: it is consumed from this repository or as a packed tarball, never from a registry. Notable
 changes are listed here.
 
+## Story 2.12 — project status endpoint
+
+New module `project-status`, exported from the package root: an opt-in, read-only status endpoint any brick-using app
+can mount so Studio can show it as a connected project (docs/migrating-an-existing-app.md). New exports:
+
+- `projectStatus<E>(options)`: Hono middleware, mounted with `app.use(DEFAULT_STATUS_PATH, ...)`, answering `GET` on
+  its own path with `Authorization: Bearer <key>` with `{ version: 1, project?, generatedAt, bricks, switch, shadow }`.
+  With no key configured, a missing, wrong or over-long key, any other method or any other path, it calls `next()`, so
+  the app answers as if nothing were mounted. Options: `path`, `keyVariable`, `switchVariable`, `project`, `bricks` (a
+  list or a function of the env), `shadow` (reporters `report(env, { signal })`, run in parallel, single-flight, cached
+  for `shadowCacheMs` and aborted after `shadowTimeoutMs`), `shadowTimeoutMs` (default 2000, at most 30000) and
+  `shadowCacheMs` (default 60000, 0 disables). `checkedAt` and `exactSince` must be ISO-8601 UTC timestamps.
+- `constantTimeEqual(a, b)`: SHA-256 hashes both strings and compares the digests without an early exit.
+- `DEFAULT_STATUS_PATH`: `"/_tangebricks/status"`.
+- `DEFAULT_STATUS_KEY_VARIABLE`: `"TANGEBRICKS_STATUS_KEY"`.
+- `DEFAULT_SHADOW_TIMEOUT_MS` (2000), `MAX_SHADOW_TIMEOUT_MS` (30000), `DEFAULT_SHADOW_CACHE_MS` (60000) and
+  `MAX_STATUS_KEY_BYTES` (512).
+- Types `ProjectStatusOptions`, `BrickInfo`, `ProjectShadowReporter`, `ProjectShadowReport`, `ProjectStatusBody` and
+  `ProjectStatusShadowEntry`.
+
+No existing export changes.
+
 ## Story 2.11 — migration switch
 
 New module `migration-switch`, exported from the package root, for any app moving onto bricks one route group at a time

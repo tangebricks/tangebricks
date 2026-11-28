@@ -185,3 +185,21 @@ export type {
   RouteTarget,
   ShadowReport,
 } from "./migration-switch.ts";
+export {
+  DEFAULT_SHADOW_CACHE_MS,
+  DEFAULT_SHADOW_TIMEOUT_MS,
+  DEFAULT_STATUS_KEY_VARIABLE,
+  DEFAULT_STATUS_PATH,
+  MAX_SHADOW_TIMEOUT_MS,
+  MAX_STATUS_KEY_BYTES,
+  constantTimeEqual,
+  projectStatus,
+} from "./project-status.ts";
+export type {
+  BrickInfo,
+  ProjectShadowReport,
+  ProjectShadowReporter,
+  ProjectStatusBody,
+  ProjectStatusOptions,
+  ProjectStatusShadowEntry,
+} from "./project-status.ts";
