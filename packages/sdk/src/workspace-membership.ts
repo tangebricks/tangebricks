@@ -1,4 +1,4 @@
-import { auditStatementsOnly } from "./audit-statement.ts";
+import { auditStatementWhen, auditStatementsOnly } from "./audit-statement.ts";
 import type { AuditStatement } from "./audit-statement.ts";
 import type { D1Like } from "./d1.ts";
 import { systemScope } from "./scoped.ts";
@@ -117,8 +117,10 @@ export type SetWorkspaceSuspendedResult =
  *
  * `alongside` takes audit statements made by `auditStatement` with `afterChange`, for this workspace (checked at run
  * time; anything else throws), or a function that builds them from the state this call read (pass one, so the audit
- * row's "before" is the state the update acted on). They run in the same D1 batch right after the update, which repeats the rule in its
- * WHERE, so an audit row commits only if the update changed the row.
+ * row's "before" is the state the update acted on). They run in the same D1 batch as the update, under the rule the update
+ * repeats in its WHERE, so an audit row commits only if the update changed the row. The outcome (`changed`) is read
+ * back, never taken from a change count, so a registry that is a view over an app's own table (story 2.8) reports it
+ * correctly.
  */
 export async function setWorkspaceSuspended(
   db: D1Like,
@@ -139,23 +141,38 @@ export async function setWorkspaceSuspended(
   if (state.suspended && state.reason !== OPERATOR_SUSPENSION_REASON) return { ok: false, reason: "other_suspension" };
   if (state.suspended === suspended) return { ok: true, changed: false, before };
   // Built from the state read here, the one the guarded update below acts on, so the audit "before" matches it.
-  const extra = auditStatementsOnly(typeof alongside === "function" ? alongside(before) : alongside, workspaceId);
+  const made: readonly AuditStatement[] = (typeof alongside === "function" ? alongside(before) : alongside) ?? [];
+  auditStatementsOnly(made, workspaceId);
   // The registry is a global table (its id is the workspace id), so the statements are written out here, bound by id.
+  // The rule the update repeats in its WHERE, as a condition of its own: the audit rows run first in the batch (one
+  // transaction) under that same condition, so they are written exactly when the update applies. Story 2.8: not after
+  // it under `changes() > 0`, because a registry that is a view (docs/adopting-existing-tables.md) reports no changes.
+  const guard = suspended
+    ? { sql: "EXISTS (SELECT 1 FROM mw_workspaces WHERE id = ? AND suspended = 0)", params: [workspaceId] }
+    : {
+        sql: "EXISTS (SELECT 1 FROM mw_workspaces WHERE id = ? AND suspended = 1 AND suspended_reason = ?)",
+        params: [workspaceId, OPERATOR_SUSPENSION_REASON],
+      };
   const update = suspended
     ? db.prepare("UPDATE mw_workspaces SET suspended = 1, suspended_reason = ? WHERE id = ? AND suspended = 0").bind(OPERATOR_SUSPENSION_REASON, workspaceId)
     : db
         .prepare("UPDATE mw_workspaces SET suspended = 0, suspended_reason = NULL WHERE id = ? AND suspended = 1 AND suspended_reason = ?")
         .bind(workspaceId, OPERATOR_SUSPENSION_REASON);
-  const [result] = await db.batch([update, ...extra]);
-  if (!result || result.meta.changes === 0) {
-    // Changed by someone else between the read and the batch; nothing of ours (no audit row either) was written.
-    const now = await findWorkspaceState(db, workspaceId);
-    if (!now) return { ok: false, reason: "not_found" };
-    if (now.deleting) return { ok: false, reason: "deleting" };
-    if (now.suspended === suspended && (!now.suspended || now.reason === OPERATOR_SUSPENSION_REASON)) return { ok: true, changed: false, before };
-    return { ok: false, reason: "other_suspension" };
-  }
-  return { ok: true, changed: true, before };
+  await db.batch([...made.map((entry) => auditStatementWhen(db, entry, guard)), update]);
+  // Story 2.8: the outcome is read back, never taken from a change count (a view reports none in plain SQLite, and the
+  // trigger's own writes in D1). With audit rows, the first one exists exactly when the update applied; without, the
+  // row is in the asked state now.
+  const now = await findWorkspaceState(db, workspaceId);
+  const first = made[0];
+  const applied = first
+    ? Boolean(await db.prepare("SELECT 1 AS present FROM audit_events WHERE id = ?").bind(first.id).first<{ present: number }>())
+    : now !== null && now.suspended === suspended && (!suspended || now.reason === OPERATOR_SUSPENSION_REASON);
+  if (applied) return { ok: true, changed: true, before };
+  // Changed by someone else between the read and the batch; nothing of ours (no audit row either) was written.
+  if (!now) return { ok: false, reason: "not_found" };
+  if (now.deleting) return { ok: false, reason: "deleting" };
+  if (now.suspended === suspended && (!now.suspended || now.reason === OPERATOR_SUSPENSION_REASON)) return { ok: true, changed: false, before };
+  return { ok: false, reason: "other_suspension" };
 }
 
 /** Story 2.6: one workspace as the registry stores it, for operator tools. Never any of the workspace's own data. */

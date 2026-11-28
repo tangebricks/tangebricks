@@ -55,8 +55,9 @@ export function loadTierEvidenceMap(rootDir = ROOT): Map<string, any> {
 
 const HTTP_METHODS = new Set(["get", "post", "put", "patch", "delete", "all", "options"]);
 // Route-factory options a host passes in code, not manifest settings. `knownPermissions` (rbac-policy, story 0.19) is
-// a string[] allowlist a host sets for its own app; manifest settings have no list type.
-const DI_OPTION_KEYS = new Set(["adapter", "adapters", "gateway", "publicBaseUrl", "knownPermissions"]);
+// a string[] allowlist a host sets for its own app; manifest settings have no list type. `isOperator` (platform-admin,
+// story 2.8) is a function a host passes to back operator identity with its own store; settings hold no functions.
+const DI_OPTION_KEYS = new Set(["adapter", "adapters", "gateway", "publicBaseUrl", "knownPermissions", "isOperator"]);
 // Optional app-config env vars a host sets for its own app, not bindings or secrets a brick needs to boot,
 // keyed by the one brick allowed to read each, so rule 8 stays strict for every other brick.
 // `CRON_WORKFLOW_TARGETS` (cron-alarms, story 0.20) is the comma-separated Workflow binding allowlist; unset fails closed.

@@ -9,7 +9,7 @@ import type { D1Like, D1Statement } from "./d1.ts";
 // an outcome) can ignore rows a workspace member posted. The result is branded (a WeakMap here), and consumers check the
 // brand and the target workspace at run time.
 
-const issued = new WeakMap<object, { workspaceId: string; afterChange: boolean; deduplicated: boolean }>();
+const issued = new WeakMap<object, { workspaceId: string; afterChange: boolean; deduplicated: boolean; params: readonly unknown[] }>();
 const guards = new WeakSet<object>();
 
 /** The actor types a capability-written audit row may name. Never anyone acting as someone else. */
@@ -84,11 +84,45 @@ export function auditStatement(db: D1Like, input: AuditStatementInput, options: 
   ];
   const head = options.dedupeKey !== undefined ? "INSERT OR IGNORE INTO" : "INSERT INTO";
   const sql =
-    `${head} audit_events (id, workspace_id, actor_id, actor_type, actor_email, action, target_type, target_id, metadata_json, created_at, dedupe_key, via_capability) ` +
-    (options.afterChange ? "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1 WHERE changes() > 0" : "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
+    `${head} ${AUDIT_INSERT_COLUMNS} ` + (options.afterChange ? `${AUDIT_INSERT_SELECT} WHERE changes() > 0` : "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
   const made: AuditStatement = Object.freeze({ id, workspaceId, statement: db.prepare(sql).bind(...params) });
-  issued.set(made, { workspaceId, afterChange: options.afterChange === true, deduplicated: options.dedupeKey !== undefined });
+  issued.set(made, { workspaceId, afterChange: options.afterChange === true, deduplicated: options.dedupeKey !== undefined, params: Object.freeze(params) });
   return made;
+}
+
+const AUDIT_INSERT_COLUMNS =
+  "audit_events (id, workspace_id, actor_id, actor_type, actor_email, action, target_type, target_id, metadata_json, created_at, dedupe_key, via_capability)";
+const AUDIT_INSERT_SELECT = "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1";
+
+/** A condition a write's own guard is made of: SQL with `?` placeholders and their values. */
+export interface AuditCondition {
+  readonly sql: string;
+  readonly params: readonly unknown[];
+}
+
+/**
+ * Story 2.8: the same audit row as `made`, written only if `condition` holds when the insert runs, instead of only if the
+ * statement before it changed a row.
+ *
+ * For a write whose change count cannot be trusted: a write through an `INSTEAD OF` trigger on a view (an app that
+ * exposes its own tables to the bricks as views, docs/adopting-existing-tables.md) reports no change to `changes()`,
+ * in plain SQLite and in D1 alike, so an `afterChange` row after it would never be written. The writer runs this insert
+ * BEFORE its write, in the same batch (one transaction), with the write's own guard (the WHERE it repeats) as
+ * `condition`: the row is written exactly when the write applies.
+ *
+ * `made` must come from `auditStatement` with `afterChange` and without `dedupeKey` (a conditional row by intent; the
+ * same rules as `auditStatementsOnly`); anything else throws TypeError. The row's content stays the one `made` holds;
+ * the condition is the writer's own SQL, so only the code that runs the write calls this, never a capability consumer.
+ */
+export function auditStatementWhen(db: D1Like, made: AuditStatement, condition: AuditCondition): D1Statement {
+  const brand = typeof made === "object" && made !== null ? issued.get(made) : undefined;
+  if (!brand) throw new TypeError("auditStatementWhen accepts only audit statements made by auditStatement");
+  if (!brand.afterChange) throw new TypeError("a conditional audit statement must be made with afterChange");
+  if (brand.deduplicated) throw new TypeError("a conditional audit statement must not carry a dedupeKey");
+  if (typeof condition?.sql !== "string" || condition.sql.trim().length === 0 || !Array.isArray(condition.params)) {
+    throw new TypeError("condition must be { sql, params }");
+  }
+  return db.prepare(`INSERT INTO ${AUDIT_INSERT_COLUMNS} ${AUDIT_INSERT_SELECT} WHERE ${condition.sql}`).bind(...brand.params, ...condition.params);
 }
 
 /** True only for objects made by `auditStatement`. */

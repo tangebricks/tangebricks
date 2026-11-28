@@ -3,21 +3,21 @@ import type { Context } from "hono";
 import { z } from "zod";
 import type { AuditStatement, AuthUser, D1Like, WorkspaceGuard } from "@poc/sdk";
 import {
+  auditStatementWhen,
   authUserId,
   findWorkspaceRecord,
   findWorkspaceState,
   formatMilli,
   fromMilli,
   hasWorkspaceRegistry,
-  isPlatformOperator,
   listWorkspaces,
   parseMilli,
   refuseApiKeyCaller,
   setWorkspaceSuspended,
   workspaceNotDeletingGuard,
 } from "@poc/sdk";
-import { APPROVAL_STATUSES, decisionStatement, findApproval, listApprovals } from "./approvals.ts";
-import type { ApprovalStatus } from "./approvals.ts";
+import { APPROVAL_STATUSES, decisionGuard, decisionStatement, findApproval, listApprovals, resolveOperator } from "./approvals.ts";
+import type { ApprovalStatus, OperatorResolver } from "./approvals.ts";
 
 // Story 2.6: the platform operator console. Every route here is for platform operators only (the user ids listed in
 // PX_PLATFORM_OPERATORS, see isPlatformOperator in @poc/sdk): no workspace role, header or body field makes anyone an
@@ -96,6 +96,13 @@ export interface PlatformFlagOverrides {
 }
 
 export interface PlatformAdminRoutesOptions {
+  /**
+   * Story 2.8: who is a platform operator, for a host that keeps its own operator list (a table, a directory). Called
+   * with the request's env and the signed-in user's id, before any input is read. Default: the ids in
+   * `PX_PLATFORM_OPERATORS` (`isPlatformOperator` from @poc/sdk). Only `true` admits; a resolver that throws or rejects
+   * admits nobody (500 OPERATOR_CHECK_FAILED, logged).
+   */
+  isOperator?: OperatorResolver;
   /** The largest grant, in whole credits (setting `maxGrantCredits`, default 1,000,000). */
   maxGrantCredits?: number;
   /** Whether the approval gate is on (setting `requireUserApproval`); reported by the user listing. */
@@ -173,14 +180,17 @@ export function createPlatformAdminRoutes(options: PlatformAdminRoutesOptions = 
   const overridesAllowed = options.flagOverridesAllowed;
   const gateOn = options.requireUserApproval === true;
 
-  // Operators only, before any input is read: no session is 401, an API key is 403 API_KEY_FORBIDDEN, anyone not in
-  // PX_PLATFORM_OPERATORS (a workspace owner included) is 403 NOT_PLATFORM_OPERATOR.
+  // Operators only, before any input is read: no session is 401, an API key is 403 API_KEY_FORBIDDEN, anyone not an
+  // operator (PX_PLATFORM_OPERATORS, or the host's isOperator; a workspace owner included) is 403 NOT_PLATFORM_OPERATOR,
+  // and a resolver that fails is 500 OPERATOR_CHECK_FAILED (never admitted).
   app.use("/platform/*", async (c, next) => {
     const userId = authUserId(c.get("user"));
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
     const keyRefusal = refuseApiKeyCaller(c);
     if (keyRefusal) return keyRefusal;
-    if (!isPlatformOperator(c.env, userId)) return c.json({ error: "Platform operators only", code: "NOT_PLATFORM_OPERATOR" }, 403);
+    const operator = await resolveOperator(options.isOperator, c.env, userId);
+    if (operator === "failed") return c.json({ error: "The operator check failed", code: "OPERATOR_CHECK_FAILED" }, 500);
+    if (!operator) return c.json({ error: "Platform operators only", code: "NOT_PLATFORM_OPERATOR" }, 403);
     c.set("operatorId", userId);
     return await next();
   });
@@ -487,9 +497,17 @@ export function createPlatformAdminRoutes(options: PlatformAdminRoutesOptions = 
       );
       auditId = entry.id;
       // The decision and its audit row commit in one batch. The decision is guarded by the status read above, so its
-      // audit "before" is the state it acted on; if the row changed meanwhile, neither is written.
-      const [decision] = await db.batch([decisionStatement(db, uid.data, status, operatorId, body.data.reason, before), entry.statement]);
-      applied = Boolean(decision && decision.meta.changes > 0);
+      // audit "before" is the state it acted on; if the row changed meanwhile, neither is written. The audit row runs
+      // first, under the decision's own guard, rather than after it under `changes() > 0`, and the outcome is read back
+      // rather than taken from a change count: story 2.8, a host's pa_user_approvals may be a view over its own table,
+      // which reports no changes.
+      const decidedAt = new Date().toISOString();
+      await db.batch([
+        auditStatementWhen(db, entry, decisionGuard(uid.data, before)),
+        decisionStatement(db, uid.data, status, operatorId, body.data.reason, before, decidedAt),
+      ]);
+      const now = await findApproval(db, uid.data);
+      applied = now !== null && now.status === status && now.decidedBy === operatorId && now.decidedAt === decidedAt;
     } catch (error) {
       return notApplied(c, `user ${status}`, error);
     }

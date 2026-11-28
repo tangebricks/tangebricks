@@ -62,9 +62,13 @@ views later leaves the app's tables (and every row written through the views) as
   use none of these.
 - **`sqlite_master`.** A view is listed with `type = 'view'`. The sdk's `hasWorkspaceRegistry` accepts a view, so
   suspension checks in other bricks (credit-wallet, platform-admin) find the registry.
-- **Still counting.** The sdk's `setWorkspaceSuspended` (used by platform-admin) reports `changed` from the update's
-  change count. Through views on plain SQLite it reports `changed: false` for a change it made; the row itself is
-  written correctly. Adopt platform-admin's suspension routes with that in mind.
+- **`changes()` in the next statement.** A write through a view leaves the SQL function `changes()` at 0, in D1 as in
+  plain SQLite, so an audit insert guarded by `WHERE changes() > 0` after it would never be written. The sdk's
+  `setWorkspaceSuspended` (used by platform-admin) and platform-admin's user decisions (1.1.0) therefore run their audit
+  insert just before the write, in the same batch, under the write's own rule (`auditStatementWhen` in `@poc/sdk`), and
+  read the outcome back. Through views they report `changed` correctly and write their audit row atomically
+  (`packages/sdk/test/workspace-suspended-views.node.test.ts` under plain SQLite and D1-shaped change counts,
+  `bricks/platform-admin/test/adoption-views.test.ts` in workerd's D1).
 
 ## Rolling back
 

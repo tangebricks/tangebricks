@@ -8,8 +8,13 @@ It replaces the safe functions of `admin-console`, which stays quarantined (stor
 themselves a super-admin, had impersonation routes with no role check, and its "suspend" wrote a status column the
 assembled app never reads.
 
-Exports: `createPlatformAdminRoutes`, `requireApprovedUser` (the approval gate), `PLATFORM_AUDIT_SCOPE`, the approval
-helpers (`findApproval`, `listApprovals`, `approvalStatusFor`) and the option types.
+Exports: `createPlatformAdminRoutes`, `requireApprovedUser` (the approval gate) and `createApprovalGate` (the same gate
+with your own operator check), `PLATFORM_AUDIT_SCOPE`, the approval helpers (`findApproval`, `listApprovals`,
+`approvalStatusFor`) and the option types, plus:
+
+- `decisionGuard(userId, before)`: the condition an operator's decision is guarded by (the status read before), as `{ sql, params }`.
+- `resolveOperator(resolver, env, userId)`: whether a user is an operator, by `isOperator` or `PX_PLATFORM_OPERATORS`; `"failed"` when the resolver throws.
+- `OperatorResolver`: the type of `isOperator`, `(env, userId) => boolean | Promise<boolean>`.
 
 ## Who is an operator
 
@@ -19,15 +24,35 @@ An operator is a user whose id is listed in the `PX_PLATFORM_OPERATORS` env var,
 wrangler secret put PX_PLATFORM_OPERATORS   # e.g. usr_8f2c41,usr_77ab09
 ```
 
-- The list is the only source. No workspace role (an owner included), request header or body field makes anyone an
-  operator.
+- The list is the only source, unless the host passes its own `isOperator` (below). No workspace role (an owner
+  included), request header or body field makes anyone an operator.
 - No value or an empty value means nobody is an operator, so every route here answers 403 (fail closed).
-- The check (`isPlatformOperator` from `@poc/sdk`) runs before any input is read, on every route.
+- The check (`isPlatformOperator` from `@poc/sdk`, or `isOperator`) runs before any input is read, on every route.
 - A request with no session answers 401, and anyone not on the list gets 403 `NOT_PLATFORM_OPERATOR`.
 - API keys are refused: 403 `API_KEY_FORBIDDEN` inside the brick. In an assembled app a key is never even an identity on
   these routes, because they are outside the workspace-guarded paths, so a key alone gets 401.
 - The routes are not behind the workspace guard, because operators act across workspaces. Each one still needs the
   signed-in session identity.
+
+### Your own operator list (`isOperator`)
+
+A host that already keeps its operators somewhere (a table, a directory) passes a resolver instead of setting the env
+var:
+
+```ts
+createPlatformAdminRoutes({
+  auditRecorder,
+  isOperator: async (env, userId) => Boolean(await lookUpOperator(env, userId)),
+});
+```
+
+- It is called with the request's env and the signed-in user's id, after the session and API-key checks and before any
+  input is read. `PX_PLATFORM_OPERATORS` is then not read at all.
+- Only `true` admits. Any other answer is 403 `NOT_PLATFORM_OPERATOR`.
+- A resolver that throws or rejects admits nobody: the answer is 500 `OPERATOR_CHECK_FAILED` (the cause is logged, never
+  sent), and nothing is read or written.
+- With the approval gate on, mount `createApprovalGate({ isOperator })` in place of `requireApprovedUser`, so the gate
+  exempts the same operators. A resolver that fails there exempts nobody: the request is judged like anyone else's.
 
 ## Actions
 
@@ -40,7 +65,7 @@ in its audit row. Every change is rate-limited per operator (bucket `platform-ad
 | `GET /workspaces?limit=&after=` | Lists the workspace registry in id order, in pages of at most 100 rows. |
 | `GET /workspaces/:id` | Shows one workspace's registry row, wallet balance and flag overrides. It never shows the workspace's data. |
 | `POST /workspaces/:id/credits` `{ amount, reason, idempotencyKey }` | Grants credits. `amount` has up to 3 decimals, must be above zero and is capped by the `maxGrantCredits` setting (default 1,000,000). It goes through credit-wallet's `walletCharger.grant`, a top-up tagged `op: "grant"` under the wallet key `platform-grant:<idempotencyKey>`. A retry with the same key and amount is a duplicate; the same key with another amount is 409 `IDEMPOTENCY_KEY_REUSED`. The prefix reserves nothing: the workspace's own routes share the key space (story 2.5), so if a tenant already used that wallet key the grant is 409 `IDEMPOTENCY_KEY_REUSED` too; retry with another key. A workspace with no wallet gets one only while it is live (registered and not suspended); otherwise the answer is 404 `WALLET_NOT_FOUND`. Without credit-wallet the route answers 503 `NOT_CONFIGURED`. |
-| `POST /workspaces/:id/suspend` `{ reason }` | A workspace that is not suspended gets `mw_workspaces.suspended = 1` with `suspended_reason = "operator"`, through the sdk's `setWorkspaceSuspended`; the assembled app enforces the flag (story 1.10). Its members then get 403 `WORKSPACE_SUSPENDED` on every brick route behind the workspace guard. Already suspended by an operator: 200 `{ changed: false }`, no audit row. Suspended for any other reason, or with none: 409 `SUSPENDED_OTHERWISE` (an operator never takes over someone else's suspension). The delete route (story 1.10) only retries its own `"deleting"` fence, and its fence never overwrites a suspension, so the owner cannot delete a workspace an operator suspended. |
+| `POST /workspaces/:id/suspend` `{ reason }` | A workspace that is not suspended gets `mw_workspaces.suspended = 1` with `suspended_reason = "operator"`, through the sdk's `setWorkspaceSuspended`, which reads its outcome back (so `changed` is right through views too); the assembled app enforces the flag (story 1.10). Its members then get 403 `WORKSPACE_SUSPENDED` on every brick route behind the workspace guard. Already suspended by an operator: 200 `{ changed: false }`, no audit row. Suspended for any other reason, or with none: 409 `SUSPENDED_OTHERWISE` (an operator never takes over someone else's suspension). The delete route (story 1.10) only retries its own `"deleting"` fence, and its fence never overwrites a suspension, so the owner cannot delete a workspace an operator suspended. |
 | `POST /workspaces/:id/unsuspend` `{ reason }` | Clears only an operator suspension, which restores access. Not suspended: 200 `{ changed: false }`, no audit row. Any other reason, or none: 409 `SUSPENDED_OTHERWISE`. |
 | `GET /audit/pending?limit=&after=` | Lists operator audit rows still waiting for an outcome (a grant whose outcome row could not be written), across every workspace, in pages of at most 100. |
 | `PUT /workspaces/:id/flags/:flagKey` `{ enabled, reason }` | Sets the workspace's override through feature-flags' `flagOverrides`. Setting the current value is a no-op (200 `{ changed: false }`, no audit row); if the override or the workspace's delete fence changes while the request runs, nothing is written and the answer is 409 (`CHANGED_CONCURRENTLY` or `WORKSPACE_DELETING`). It obeys feature-flags' `allowWorkspaceOverrides` setting (story 1.12): when that is off the answer is 409 `OVERRIDES_DISABLED`. An unknown flag is 404. |
@@ -74,9 +99,11 @@ A change whose audit row cannot be written is not applied, and the log stays app
 
 - **Suspension, flag overrides and user decisions** run the change and the audit insert in one D1 batch. Both commit,
   or neither does. The change repeats its rule in its own WHERE (for flags: the value read before, and that the
-  workspace is not being deleted), and the audit insert right after it is written only if the change changed a row
-  (`changes() > 0`), so a no-op, a vanished workspace or a lost race leaves no row. The audit `before` records the
-  previous state, including the suspension reason.
+  workspace is not being deleted), so a no-op, a vanished workspace or a lost race leaves no row. For flags the audit
+  insert runs right after the change and is written only if it changed a row (`changes() > 0`). For suspension and user
+  decisions it runs just before the change, under that same rule (the sdk's `auditStatementWhen`), and the outcome is
+  read back: these two write tables a host may expose as views, which report no change counts. The audit `before`
+  records the previous state, including the suspension reason.
 - **Credit grants** use the wallet's own batch, so a row is written first with `status: "pending"` and the request's
   idempotency key, at most once per workspace and key (a unique dedupe key, so concurrent first attempts and retries
   share one row). The wallet changes only after that row exists; if it cannot be written, the answer is 503
@@ -164,5 +191,10 @@ See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-mono
   identity and before the workspace guard on every workspace-guarded path.
 - **Migrate.** Apply the files listed under `migrations` in `brick.manifest.json`, in that order, to the D1 database
   bound as `DB`, after multi-workspace's and audit-trail's.
-- **Through views.** If your workspace tables are `mw_*` views (docs/adopting-existing-tables.md), note that the sdk's
-  `setWorkspaceSuspended` decides "changed" from the update's change count, which a view does not report reliably.
+- **Through views.** Your workspace tables may be `mw_*` views (docs/adopting-existing-tables.md), and
+  `pa_user_approvals` may be a view over your own users table: the columns are `user_id`, `status` (`pending`,
+  `approved` or `rejected`), `decided_by`, `decided_at` (returned exactly as written), `reason` and `created_at`, with
+  `INSTEAD OF INSERT` and `INSTEAD OF UPDATE` triggers. Suspension and user decisions read their outcome back and write
+  their audit row under the change's own rule, so neither depends on change counts
+  (`bricks/platform-admin/test/adoption-views.test.ts`). Flag overrides and grants go through the `flagOverrides` and
+  `charger` you pass, which write their own tables.
