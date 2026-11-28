@@ -11,7 +11,7 @@ import { auditRecorder } from "@poc/audit-trail";
 import { flagOverrides } from "@poc/feature-flags";
 import { walletCharger } from "@poc/credit-wallet";
 import * as platformAdmin from "../src/index.ts";
-import { PLATFORM_AUDIT_SCOPE, createPlatformAdminRoutes, requireApprovedUser } from "../src/index.ts";
+import { PLATFORM_AUDIT_SCOPE, createApprovalGate, createPlatformAdminRoutes, requireApprovedUser } from "../src/index.ts";
 import type { PlatformAdminRoutesOptions } from "../src/index.ts";
 import paMigration from "../migrations/0001_platform_admin.sql?raw";
 import mwMigration from "../../multi-workspace/migrations/0001_multi_workspace.sql?raw";
@@ -187,6 +187,52 @@ describe("operator gate", () => {
       }
     }
     expect(await suspendedFlag(WS_A)).toBe(0);
+  });
+
+  test("story 2.8: a host's isOperator decides who is an operator, in place of PX_PLATFORM_OPERATORS", async () => {
+    const seen: Array<[unknown, string]> = [];
+    const app = appWith({
+      ...FULL,
+      isOperator: async (e, userId) => {
+        seen.push([(e as { HOST_TAG?: string }).HOST_TAG, userId]);
+        return userId === "host-op";
+      },
+    });
+    const env = { DB: db, HOST_TAG: "host", PX_PLATFORM_OPERATORS: OPERATOR };
+    const ok = await call(app, "POST", `/api/platform/workspaces/${WS_A}/suspend`, { user: "host-op", body: { reason: "abuse" }, env });
+    expect(ok.status, JSON.stringify(ok.json)).toBe(200);
+    expect(ok.json).toMatchObject({ changed: true });
+    expect((await auditRows(WS_A)).map((r) => [r.action, r.actor_id])).toEqual([["platform.workspace.suspend", "host-op"]]);
+    // The env list no longer counts once a resolver is given, and a truthy non-true answer admits nobody.
+    const envListed = await call(app, "GET", "/api/platform/workspaces", { user: OPERATOR, env });
+    expect([envListed.status, envListed.json.code]).toEqual([403, "NOT_PLATFORM_OPERATOR"]);
+    const truthy = appWith({ ...FULL, isOperator: () => "yes" as never });
+    expect((await call(truthy, "GET", "/api/platform/workspaces", { user: "host-op", env })).status).toBe(403);
+    expect(seen).toEqual([
+      ["host", "host-op"],
+      ["host", OPERATOR],
+    ]);
+  });
+
+  test("story 2.8: an isOperator that throws or rejects admits nobody (500 OPERATOR_CHECK_FAILED), before any input is read", async () => {
+    for (const isOperator of [
+      () => {
+        throw new Error("operator store down");
+      },
+      () => Promise.reject(new Error("operator store down")),
+    ]) {
+      const app = appWith({ ...FULL, isOperator });
+      for (const r of ROUTES) {
+        const res = await call(app, r.method, r.path, { user: OPERATOR, body: r.body });
+        expect(res.status, `${r.method} ${r.path}`).toBe(500);
+        expect(res.json).toEqual({ error: "The operator check failed", code: "OPERATOR_CHECK_FAILED" });
+      }
+      expect((await call(app, "POST", `/api/platform/workspaces/${WS_A}/suspend`, { user: OPERATOR, body: "{not json" })).status).toBe(500);
+    }
+    expect(await suspendedFlag(WS_A)).toBe(0);
+    expect(await auditRows(WS_A)).toEqual([]);
+    expect(await auditRows(PLATFORM_AUDIT_SCOPE)).toEqual([]);
+    expect((await db.prepare("SELECT COUNT(*) AS n FROM credit_ledger").first<{ n: number }>())?.n).toBe(0);
   });
 
   test("no session is 401; an API-key request is 403 API_KEY_FORBIDDEN even for an operator's id", async () => {
@@ -720,6 +766,28 @@ describe("user approval gate", () => {
 
     expect((await call(app, "POST", "/api/platform/users/dave/approve", { user: OPERATOR, body: { reason: "pre-approved" } })).status).toBe(200);
     expect((await call(app, "GET", "/api/things", { user: "dave" })).status).toBe(200);
+  });
+
+  test("story 2.8: createApprovalGate exempts the operators of the host's isOperator; one that throws exempts nobody", async () => {
+    const gate = (isOperator: NonNullable<PlatformAdminRoutesOptions["isOperator"]>) => {
+      const app = new Hono();
+      app.use("/api/*", async (c, next) => {
+        const uid = c.req.header("x-test-user");
+        if (uid) c.set("user" as never, { uid } as never);
+        await next();
+      });
+      app.use("/api/things", createApprovalGate({ isOperator }) as never);
+      app.get("/api/things", (c) => c.json({ ok: true }));
+      return app;
+    };
+    const hostOps = gate((_e, userId) => userId === "host-op");
+    expect((await call(hostOps, "GET", "/api/things", { user: "host-op", env: { DB: db } })).status).toBe(200);
+    expect((await call(hostOps, "GET", "/api/things", { user: OPERATOR })).status).toBe(403);
+    const broken = gate(() => {
+      throw new Error("down");
+    });
+    const res = await call(broken, "GET", "/api/things", { user: "host-op", env: { DB: db } });
+    expect([res.status, res.json.code]).toEqual([403, "USER_NOT_APPROVED"]);
   });
 
   test("a decision guarded by a status that changed meanwhile is refused with 409 and writes neither row", async () => {

@@ -66,9 +66,20 @@ export async function listApprovals(
 }
 
 /**
- * The write recording an operator's decision, to run in one batch with its audit row (made with `afterChange`). It is
- * guarded by the status read before (`before`, null when the user has no row): if the row changed meanwhile it writes
- * nothing, and neither does the audit row after it.
+ * The rule an operator's decision is guarded by, as a condition of its own: the user's status is still the one read
+ * before (`before`, null when the user has no row). The decision repeats it in its WHERE, and its audit row is written
+ * under it (`auditStatementWhen`), so both are written, or neither.
+ */
+export function decisionGuard(userId: string, before: ApprovalStatus | null): { sql: string; params: unknown[] } {
+  return before === null
+    ? { sql: "NOT EXISTS (SELECT 1 FROM pa_user_approvals WHERE user_id = ?)", params: [userId] }
+    : { sql: "EXISTS (SELECT 1 FROM pa_user_approvals WHERE user_id = ? AND status = ?)", params: [userId, before] };
+}
+
+/**
+ * The write recording an operator's decision, to run in one batch with its audit row. It is guarded by the status read
+ * before (`before`, null when the user has no row): if the row changed meanwhile it writes nothing. No upsert clause, so
+ * a host's `pa_user_approvals` may be a view with INSTEAD OF triggers (story 2.8; SQLite refuses an upsert on a view).
  */
 export function decisionStatement(
   db: D1Like,
@@ -77,13 +88,13 @@ export function decisionStatement(
   operatorId: string,
   reason: string,
   before: ApprovalStatus | null,
+  now: string = new Date().toISOString(),
 ): D1Statement {
-  const now = new Date().toISOString();
   if (before === null) {
     return db
       .prepare(
         "INSERT INTO pa_user_approvals (user_id, status, decided_by, decided_at, reason) SELECT ?, ?, ?, ?, ? " +
-          "WHERE NOT EXISTS (SELECT 1 FROM pa_user_approvals WHERE user_id = ?) ON CONFLICT (user_id) DO NOTHING",
+          "WHERE NOT EXISTS (SELECT 1 FROM pa_user_approvals WHERE user_id = ?)",
       )
       .bind(userId, status, operatorId, now, reason, userId);
   }
@@ -99,8 +110,29 @@ export function decisionStatement(
 export async function approvalStatusFor(db: D1Like, userId: string): Promise<ApprovalStatus> {
   const existing = await findApproval(db, userId);
   if (existing) return existing.status;
-  await db.prepare("INSERT INTO pa_user_approvals (user_id, status) VALUES (?, 'pending') ON CONFLICT (user_id) DO NOTHING").bind(userId).run();
+  // No upsert clause, so pa_user_approvals may be a view (story 2.8).
+  await db
+    .prepare("INSERT INTO pa_user_approvals (user_id, status) SELECT ?, 'pending' WHERE NOT EXISTS (SELECT 1 FROM pa_user_approvals WHERE user_id = ?)")
+    .bind(userId, userId)
+    .run();
   return (await findApproval(db, userId))?.status ?? "pending";
+}
+
+/** Story 2.8: a host's own operator check (`isOperator`): true admits; anything else, a throw included, does not. */
+export type OperatorResolver = (env: unknown, userId: string) => boolean | Promise<boolean>;
+
+/**
+ * Whether `userId` is a platform operator: the host's resolver when one is given, otherwise `PX_PLATFORM_OPERATORS`.
+ * Only `true` admits. A resolver that throws or rejects answers "failed" (logged), which every caller refuses.
+ */
+export async function resolveOperator(resolver: OperatorResolver | undefined, env: unknown, userId: string): Promise<boolean | "failed"> {
+  if (!resolver) return isPlatformOperator(env, userId);
+  try {
+    return (await resolver(env, userId)) === true;
+  } catch (error) {
+    console.error("platform-admin isOperator:", error instanceof Error ? error.message : error);
+    return "failed";
+  }
 }
 
 interface GateEnv {
@@ -118,23 +150,32 @@ interface GateEnv {
  * creator is not approved gets 403 USER_NOT_APPROVED, and so does a key whose creator is not known (fail closed).
  * A database failure refuses the request (500), never lets it through.
  */
-export const requireApprovedUser: MiddlewareHandler<GateEnv> = async (c, next) => {
-  const viaKey = isApiKeyRequest(c);
-  const userId = viaKey ? apiKeyCreatorId(c) : authUserId(c.get("user"));
-  if (!userId) {
-    if (viaKey) return c.json({ error: "This API key's creator has not been approved", code: "USER_NOT_APPROVED" }, 403);
+export const requireApprovedUser: MiddlewareHandler<GateEnv> = createApprovalGate();
+
+/**
+ * Story 2.8: the approval gate with the host's own operator check (the same `isOperator` given to
+ * `createPlatformAdminRoutes`), so the operators it exempts are the ones the routes admit. A resolver that fails exempts
+ * nobody: the request is judged like anyone else's.
+ */
+export function createApprovalGate(options: { isOperator?: OperatorResolver } = {}): MiddlewareHandler<GateEnv> {
+  return async (c, next) => {
+    const viaKey = isApiKeyRequest(c);
+    const userId = viaKey ? apiKeyCreatorId(c) : authUserId(c.get("user"));
+    if (!userId) {
+      if (viaKey) return c.json({ error: "This API key's creator has not been approved", code: "USER_NOT_APPROVED" }, 403);
+      return await next();
+    }
+    if ((await resolveOperator(options.isOperator, c.env, userId)) === true) return await next();
+    let status: ApprovalStatus;
+    try {
+      status = await approvalStatusFor(c.env.DB, userId);
+    } catch (error) {
+      console.error("requireApprovedUser:", error instanceof Error ? error.message : error);
+      return c.json({ error: "Internal error" }, 500);
+    }
+    if (status !== "approved") {
+      return c.json({ error: "This account has not been approved yet", code: "USER_NOT_APPROVED", status }, 403);
+    }
     return await next();
-  }
-  if (isPlatformOperator(c.env, userId)) return await next();
-  let status: ApprovalStatus;
-  try {
-    status = await approvalStatusFor(c.env.DB, userId);
-  } catch (error) {
-    console.error("requireApprovedUser:", error instanceof Error ? error.message : error);
-    return c.json({ error: "Internal error" }, 500);
-  }
-  if (status !== "approved") {
-    return c.json({ error: "This account has not been approved yet", code: "USER_NOT_APPROVED", status }, 403);
-  }
-  return await next();
-};
+  };
+}

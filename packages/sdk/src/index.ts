@@ -155,9 +155,10 @@ export {
   AUDIT_ACTOR_TYPES,
   MAX_AUDIT_METADATA_CHARS,
   auditStatement,
+  auditStatementWhen,
   auditStatementsOnly,
   isAuditStatement,
   workspaceGuardParts,
   workspaceNotDeletingGuard,
 } from "./audit-statement.ts";
-export type { AuditActorType, AuditStatement, AuditStatementInput, AuditStatementOptions, WorkspaceGuard } from "./audit-statement.ts";
+export type { AuditActorType, AuditCondition, AuditStatement, AuditStatementInput, AuditStatementOptions, WorkspaceGuard } from "./audit-statement.ts";

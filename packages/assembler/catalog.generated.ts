@@ -2,7 +2,7 @@
 import type { Catalog } from "./src/schemas.ts";
 
 export const catalog: Catalog = {
-  "catalogVersion": "e04e210e3ee4d305ecce7af8e8e42f65b170cb64e1bf7e557dec6114e3a20d1e",
+  "catalogVersion": "23961141d6664e34e7a4e18d5a1f464b07cd1e0fab79fc888e3004a211814fe2",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -3027,7 +3027,7 @@ export const catalog: Catalog = {
         "manifestVersion": 2,
         "kind": "brick",
         "id": "platform-admin",
-        "version": "1.0.1",
+        "version": "1.1.0",
         "trust": "first-party",
         "isolation": "none",
         "provides": [
