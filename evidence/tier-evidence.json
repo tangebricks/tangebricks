@@ -300,9 +300,9 @@
       "behaviourTest": "bricks/platform-admin/test/platform-admin.test.ts",
       "executed": true,
       "passed": true,
-      "testsRun": 27,
+      "testsRun": 30,
       "testsSkipped": 0,
-      "assertionCount": 395
+      "assertionCount": 454
     },
     {
       "id": "product-analytics",
@@ -506,8 +506,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-27T10:25:04.673Z",
-    "gitSha": "8bac107869a09fa6b43deafc6f342d905afdfee2",
+    "generatedAt": "2026-11-28T09:52:03.826Z",
+    "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

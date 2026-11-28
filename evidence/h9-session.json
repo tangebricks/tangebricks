@@ -8,8 +8,8 @@
   "scored": {
     "session": "the whole invoices project (workspaces, wallet, entities)",
     "toolCalls": 4,
-    "conversationTokens": 2783,
-    "modelVisibleTokens": 2381,
+    "conversationTokens": 2785,
+    "modelVisibleTokens": 2383,
     "firstPartySourceTokens": 55499,
     "generatedFilesOnlyTokens": 11466,
     "ratioPercent": 5,
@@ -36,7 +36,7 @@
       {
         "what": "tools/call list_bricks",
         "requestTokens": 31,
-        "responseTokens": 348
+        "responseTokens": 350
       },
       {
         "what": "tools/call apply_ops",
@@ -238,7 +238,7 @@
     "tenBricks": {
       "session": "ten bricks and the invoices table in four calls",
       "toolCalls": 4,
-      "conversationTokens": 3097,
+      "conversationTokens": 3099,
       "firstPartySourceTokens": 106132,
       "filesBuilt": 26,
       "ratioPercent": 2.9
@@ -246,30 +246,30 @@
     "smallerProject": {
       "session": "workspaces and invoices without the wallet",
       "toolCalls": 4,
-      "conversationTokens": 2328,
+      "conversationTokens": 2330,
       "firstPartySourceTokens": 22325,
       "ratioPercent": 10.4
     },
     "eightTables": {
       "session": "three bricks and eight tables: in four calls with lists, and one item per call",
       "listsToolCalls": 4,
-      "listsConversationTokens": 3103,
+      "listsConversationTokens": 3105,
       "oneItemPerCallToolCalls": 13,
-      "oneItemPerCallConversationTokens": 3962,
+      "oneItemPerCallConversationTokens": 3964,
       "tokensSavedByLists": 859,
       "filesBuilt": 23
     },
     "oneBrickPerCall": {
       "session": "the same project built one brick per call, the way the first version of the tools required",
       "toolCalls": 6,
-      "conversationTokens": 2911,
+      "conversationTokens": 2913,
       "toolListTokens": 1397,
       "ratioPercent": 5.2
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-27T10:25:04.673Z",
-    "gitSha": "8bac107869a09fa6b43deafc6f342d905afdfee2",
+    "generatedAt": "2026-11-28T09:52:03.826Z",
+    "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"
