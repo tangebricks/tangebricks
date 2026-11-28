@@ -4,9 +4,14 @@ name: Evidence refresh
 #
 # On each push to a pull request from this repository, it checks whether evidence/verdicts.json's inputsHash still
 # matches the code (`pnpm evidence:stale`, no tests run). If it is stale, it runs `pnpm evidence:refresh`, commits the
-# result as github-actions[bot] ("Evidence refresh", signed off; the DCO check exempts [bot] authors), pushes it to the
-# branch, and starts the CI workflow on that branch: a push made with GITHUB_TOKEN does not start workflows by itself,
-# and the CI gate (`cp0`) must run on the commit that merges.
+# result as github-actions[bot] ("Evidence refresh", signed off; the DCO check exempts [bot] authors) and pushes it to the
+# branch.
+#
+# The push uses the repository secret EVIDENCE_PUSH_TOKEN: a fine-grained personal access token (or a GitHub App token)
+# limited to this repository with Contents: read and write. A push made with it starts the pull request's workflows
+# normally, so CI, Security and DCO run on the commit that merges. Without the secret the job falls back to GITHUB_TOKEN;
+# GitHub then holds the pull request's runs for approval ("Approve workflows to run" in the merge box), so the job also
+# starts CI and Security on the branch itself.
 #
 # Loop guard: a head commit authored by github-actions[bot] is never refreshed again.
 # Pull requests from forks get a read-only token, so they are skipped; their authors run `pnpm evidence:refresh`
@@ -19,7 +24,7 @@ on:
 
 permissions:
   contents: write # push the evidence commit to the pull request branch
-  actions: write # start the CI workflow on that branch
+  actions: write # without EVIDENCE_PUSH_TOKEN: start the CI and Security workflows on that branch
 
 # A newer push to the same pull request cancels a refresh still running; the new push gets its own run.
 concurrency:
@@ -32,12 +37,15 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CI: "true"
+      HAS_PUSH_TOKEN: ${{ secrets.EVIDENCE_PUSH_TOKEN != '' }}
     steps:
       - name: Checkout the pull request branch
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
+          # The token the push below uses; see the header.
+          token: ${{ secrets.EVIDENCE_PUSH_TOKEN || github.token }}
 
       - name: Skip commits made by this workflow
         id: guard
@@ -104,8 +112,11 @@ jobs:
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Start CI on the refreshed commit
-        if: steps.push.outputs.pushed == 'true'
+      - name: Start CI and Security on the refreshed commit (only without EVIDENCE_PUSH_TOKEN)
+        if: steps.push.outputs.pushed == 'true' && env.HAS_PUSH_TOKEN != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run ci.yml --ref "${{ github.event.pull_request.head.ref }}"
+        run: |
+          gh workflow run ci.yml --ref "${{ github.event.pull_request.head.ref }}"
+          gh workflow run security.yml --ref "${{ github.event.pull_request.head.ref }}"
+          echo "::warning::EVIDENCE_PUSH_TOKEN is not set: approve the held pull request runs in the merge box, or add the secret."
