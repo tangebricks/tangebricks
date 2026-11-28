@@ -174,7 +174,9 @@ See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-mono
   `toMilli` or `toMilliRounded` from `@poc/sdk`), reads this brick's balances and reports each difference, the
   totals and `exact`. It writes nothing, and reads the brick's balances in one query per chunk of at most 90
   workspaces, so a host pages its own workspace list (a few hundred per call) rather than querying one by one. The brick refuses an overdraw that a host without such a check accepts; that
-  shows up as a difference, which is what reconciliation is for.
+  shows up as a difference, which is what reconciliation is for. `walletShadowReport(group, result, checkedAt?)` turns
+  that result into the sdk's `ShadowReport` (`{ group, exact, compared, differing, checkedAt }`) for a host reporting
+  its migration per route group (story 2.11, docs/migrating-an-existing-app.md).
 - **Erasure.** `credit_ledger` is retained when a user or a workspace is erased (`erase: "retain"`): it is the financial record every
   balance is the sum of, and a transfer is two rows in two workspaces, so deleting one user's rows would leave half a
   transfer. `user_id` cannot be anonymized because the ledger requires it. This follows the owner's

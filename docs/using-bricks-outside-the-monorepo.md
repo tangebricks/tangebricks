@@ -16,6 +16,8 @@ this today:
 | `@poc/platform-admin` | Operator routes across workspaces: credit grants, suspension, flag overrides, user approvals. | [bricks/platform-admin](../bricks/platform-admin/README.md#using-outside-the-monorepo) |
 
 An app that already has its own workspace tables can keep them: see [Adopting existing tables](adopting-existing-tables.md).
+An app already in production can move onto bricks one route group at a time: see
+[Migrating an existing app](migrating-an-existing-app.md).
 
 ## 1. Pack and install
 

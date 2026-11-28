@@ -162,3 +162,26 @@ export {
   workspaceNotDeletingGuard,
 } from "./audit-statement.ts";
 export type { AuditActorType, AuditCondition, AuditStatement, AuditStatementInput, AuditStatementOptions, WorkspaceGuard } from "./audit-statement.ts";
+export {
+  DEFAULT_ROUTE_SWITCH_VARIABLE,
+  MAX_ROUTE_GROUP_LENGTH,
+  ROUTE_HANDLER_HEADER,
+  ROUTE_HANDLERS_VAR,
+  isRouteGroupName,
+  migrationTelemetry,
+  notedRouteHandlers,
+  noteRouteHandler,
+  parseRouteSwitch,
+  resolveRouteTarget,
+  routeSwitch,
+} from "./migration-switch.ts";
+export type {
+  AnalyticsEngineLike,
+  BrickRouter,
+  MigrationTelemetryOptions,
+  ResolveRouteOptions,
+  RouteStatusClass,
+  RouteSwitchOptions,
+  RouteTarget,
+  ShadowReport,
+} from "./migration-switch.ts";

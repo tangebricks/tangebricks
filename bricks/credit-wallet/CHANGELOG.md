@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — shadow report
+
+### Story 2.11: migration switch
+
+- `walletShadowReport(group, result, checkedAt?)`: turns a `reconcileWallets` result into the sdk's generic
+  `ShadowReport` `{ group, exact, compared, differing, checkedAt }`. `compared` is every row given, `differing` counts
+  mismatched and refused rows, `exact` is the result's own, and `checkedAt` (a `Date` or ISO string) defaults to now.
+  Nothing else changes.
+
 ## 1.1.0 — milli credits, transfers, real payment adapters, operator grants, shadow reconciliation
 
 Everything below ships together in the 1.1.0 tarball. Stories 2.3, 2.5 and 2.6 were released under this version; they
