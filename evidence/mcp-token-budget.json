@@ -28,7 +28,7 @@
     "search_bricks": {
       "tool": "search_bricks",
       "pagesChecked": 4,
-      "maxPageTokens": 348,
+      "maxPageTokens": 347,
       "maxItemsOnPage": 10,
       "ceiling": 400,
       "passed": true
@@ -69,17 +69,17 @@
   "sessionA": {
     "calls": 4,
     "maxCalls": 5,
-    "tokens": 2788,
-    "emittedTokens": 55499,
-    "ratioPct": 5,
+    "tokens": 2786,
+    "emittedTokens": 57083,
+    "ratioPct": 4.9,
     "maxRatioPct": 15,
     "passed": true
   },
   "sessionB": {
     "calls": 7,
     "toolDefTokens": 1364,
-    "ioTokens": 5902,
-    "totalTokens": 7266,
+    "ioTokens": 5944,
+    "totalTokens": 7308,
     "maxTotalTokens": 8000,
     "passed": true,
     "byCall": [
@@ -122,15 +122,15 @@
       {
         "tool": "test_workflow",
         "requestTokens": 37,
-        "responseTokens": 1915,
-        "totalTokens": 1952
+        "responseTokens": 1957,
+        "totalTokens": 1994
       }
     ]
   },
   "violations": [],
   "provenance": {
-    "generatedAt": "2026-11-28T09:52:03.826Z",
-    "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
+    "generatedAt": "2026-11-28T11:20:26.132Z",
+    "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
     "gitDirty": false,
     "generator": "scripts/mcp-budget.ts",
     "inputKind": "measured"

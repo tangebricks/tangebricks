@@ -8,14 +8,14 @@
   "scored": {
     "session": "the whole invoices project (workspaces, wallet, entities)",
     "toolCalls": 4,
-    "conversationTokens": 2785,
-    "modelVisibleTokens": 2383,
-    "firstPartySourceTokens": 55499,
-    "generatedFilesOnlyTokens": 11466,
-    "ratioPercent": 5,
+    "conversationTokens": 2783,
+    "modelVisibleTokens": 2381,
+    "firstPartySourceTokens": 57083,
+    "generatedFilesOnlyTokens": 11464,
+    "ratioPercent": 4.9,
     "ratioAgainstGeneratedFilesOnlyPercent": 24.3,
-    "modelVisibleRatioPercent": 4.3,
-    "projectHash": "9226725ee4722e0f6cc31ebb797f71d17bcb262c03169df18ec177ca28f707f5",
+    "modelVisibleRatioPercent": 4.2,
+    "projectHash": "349fab936e18861357f9b8851f854f4d7957048d5977227727878159dc9cd6a3",
     "files": 16,
     "byMessage": [
       {
@@ -36,7 +36,7 @@
       {
         "what": "tools/call list_bricks",
         "requestTokens": 31,
-        "responseTokens": 350
+        "responseTokens": 349
       },
       {
         "what": "tools/call apply_ops",
@@ -51,7 +51,7 @@
       {
         "what": "tools/call build_project",
         "requestTokens": 33,
-        "responseTokens": 109
+        "responseTokens": 108
       }
     ],
     "sourceByFile": [
@@ -89,7 +89,7 @@
       },
       {
         "path": "bricks/credit-wallet/src/charger.ts",
-        "tokens": 2614
+        "tokens": 3001
       },
       {
         "path": "bricks/credit-wallet/src/costs.ts",
@@ -105,11 +105,11 @@
       },
       {
         "path": "bricks/credit-wallet/src/import-balances.ts",
-        "tokens": 4211
+        "tokens": 5393
       },
       {
         "path": "bricks/credit-wallet/src/index.ts",
-        "tokens": 566
+        "tokens": 583
       },
       {
         "path": "bricks/credit-wallet/src/migrate.ts",
@@ -215,7 +215,7 @@
       },
       {
         "path": "generated:src/index.ts",
-        "tokens": 2962
+        "tokens": 2960
       },
       {
         "path": "generated:src/privacy.generated.ts",
@@ -231,22 +231,22 @@
     "filteredDiscovery": {
       "session": "the whole invoices project with filtered list_bricks ({ query: 'workspace' })",
       "toolCalls": 4,
-      "conversationTokens": 2663,
-      "firstPartySourceTokens": 55499,
-      "ratioPercent": 4.8
+      "conversationTokens": 2662,
+      "firstPartySourceTokens": 57083,
+      "ratioPercent": 4.7
     },
     "tenBricks": {
       "session": "ten bricks and the invoices table in four calls",
       "toolCalls": 4,
       "conversationTokens": 3099,
-      "firstPartySourceTokens": 106132,
+      "firstPartySourceTokens": 107717,
       "filesBuilt": 26,
       "ratioPercent": 2.9
     },
     "smallerProject": {
       "session": "workspaces and invoices without the wallet",
       "toolCalls": 4,
-      "conversationTokens": 2330,
+      "conversationTokens": 2329,
       "firstPartySourceTokens": 22325,
       "ratioPercent": 10.4
     },
@@ -262,14 +262,14 @@
     "oneBrickPerCall": {
       "session": "the same project built one brick per call, the way the first version of the tools required",
       "toolCalls": 6,
-      "conversationTokens": 2913,
+      "conversationTokens": 2911,
       "toolListTokens": 1397,
-      "ratioPercent": 5.2
+      "ratioPercent": 5.1
     }
   },
   "provenance": {
-    "generatedAt": "2026-11-28T09:52:03.826Z",
-    "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
+    "generatedAt": "2026-11-28T11:20:26.132Z",
+    "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
     "gitDirty": false,
     "generator": "reporters/evidence-reporter.ts",
     "inputKind": "measured"

@@ -60,8 +60,8 @@
       "reason": "QUARANTINED: impersonation verify/end routes have no workspace-role check, so any member reaches them (attack suite ROLE_ESCALATION); super-admin powers sit inside a tenant app (risk 4)",
       "behaviourTest": "bricks/admin-console/test/admin.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 0
       }
     },
@@ -77,8 +77,8 @@
       "reason": "QUARANTINED: stub; only four built-in handlers run, inline_js, http_webhook and workflow_call tools fail NOT_CONFIGURED, and there is no isolate sandbox",
       "behaviourTest": "bricks/agent-sandbox/test/agent.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 0
       }
     },
@@ -91,8 +91,8 @@
       "reason": null,
       "behaviourTest": "bricks/audit-trail/test/audit.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 29
       }
     },
@@ -107,8 +107,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/binary-assets/test/assets.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 32
       }
     },
@@ -123,8 +123,8 @@
       "reason": "Sessions, tax and invoices persist in D1. Provider orders go through a passed PaymentGateway (Stripe, Cashfree adapters exist); none is wired by default, so a session gets a synthetic placeholder URL",
       "behaviourTest": "bricks/checkout-gateway/test/checkout.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 42
       }
     },
@@ -139,8 +139,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/core-auth/test/better-auth.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 126
       }
     },
@@ -155,8 +155,8 @@
       "reason": "NO_DEFAULT_ADAPTER: Provider adapters exist (@poc/gateway-adapters) but none is wired by default; payment routes answer 503 NOT_CONFIGURED until a host passes a gateway and a currency.",
       "behaviourTest": "bricks/credit-wallet/test/credit-wallet.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 235
       }
     },
@@ -171,8 +171,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/cron-alarms/test/cron.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 135
       }
     },
@@ -188,8 +188,8 @@
       "reason": "QUARANTINED: stub; verifyDomain() reports DNS verified and SSL active without any DNS-over-HTTPS or Cloudflare Custom Hostnames call (fabricated success)",
       "behaviourTest": "bricks/custom-domains/test/domains.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 0
       }
     },
@@ -204,8 +204,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/data-privacy-gdpr/test/privacy.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 72
       }
     },
@@ -220,8 +220,8 @@
       "reason": "Ingests plain text, Markdown, and CSV into D1 chunks with regex field extraction, but binary PDF, DOCX, and OCR parsing are not implemented",
       "behaviourTest": "bricks/document-parsing/test/document-parsing.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 56
       }
     },
@@ -237,8 +237,8 @@
       "reason": "QUARANTINED: stub; writes template text, HTML tags included, as plain lines on a single PDF page with no layout or pagination, and conflicts with document-parsing",
       "behaviourTest": "bricks/document-pdf/test/document.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 0
       }
     },
@@ -251,8 +251,8 @@
       "reason": null,
       "behaviourTest": "bricks/dynamic-entities/test/dynamic-entities.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 119
       }
     },
@@ -267,8 +267,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/edge-traffic-armor/test/armor.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 49
       }
     },
@@ -283,8 +283,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/feature-flags/test/flags.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 59
       }
     },
@@ -299,8 +299,8 @@
       "reason": "OIDC SSO wired via oidc-verify; SAML not supported",
       "behaviourTest": "bricks/identity-federation/test/federation.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 60
       }
     },
@@ -315,8 +315,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/in-app-notifications/test/notifications.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 46
       }
     },
@@ -331,8 +331,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/integration-connections/test/isolation.workerd.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 74
       }
     },
@@ -347,8 +347,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/live-chat/test/chat.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 48
       }
     },
@@ -363,8 +363,8 @@
       "reason": "Persists prompt templates and token usage logs in D1; registers no provider adapter by default (generate answers 503 NOT_CONFIGURED); no built-in OpenAI, Anthropic, Gemini or Workers AI adapters",
       "behaviourTest": "bricks/llm-gateway/test/gateway.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 48
       }
     },
@@ -380,8 +380,8 @@
       "reason": "QUARANTINED: payouts can double-spend (threat-model risk 6) and contracts/balances answer 200 for any vendor id from another workspace (attack suite ID_GUESS)",
       "behaviourTest": "bricks/marketplace-splits/test/splits.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 0
       }
     },
@@ -396,8 +396,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/metered-usage/test/metering.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 76
       }
     },
@@ -410,8 +410,8 @@
       "reason": null,
       "behaviourTest": "bricks/multi-workspace/test/multi-workspace.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 111
       }
     },
@@ -427,8 +427,8 @@
       "reason": "QUARANTINED: stub; issues access tokens that no other brick accepts (only its own introspect route reads them); its authorize route issued codes for any user named in the body until 0.6 (risk 13)",
       "behaviourTest": "bricks/oauth-server/test/oauth.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 0
       }
     },
@@ -443,8 +443,8 @@
       "reason": "Beta until verified with live canary against production identity issuer (UC5).",
       "behaviourTest": "bricks/oidc-verify/test/conformance.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 87
       }
     },
@@ -459,8 +459,8 @@
       "reason": "Verified senders, sealed credentials, dispatch logs and delivery status in D1; no delivery adapter by default (send answers 503 NOT_CONFIGURED); a host wires provider adapters",
       "behaviourTest": "bricks/omnichannel-outbound/test/dispatcher.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 307
       }
     },
@@ -475,8 +475,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/outbound-webhooks/test/outbound.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 62
       }
     },
@@ -491,8 +491,8 @@
       "reason": "NEW_BRICK: Operator routes are covered by the attack suite; promotion to production needs the shared conformance kit (UC5.3).",
       "behaviourTest": "bricks/platform-admin/test/platform-admin.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 454
       }
     },
@@ -507,8 +507,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/product-analytics/test/analytics.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 26
       }
     },
@@ -523,8 +523,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/public-api-keys/test/keys.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 92
       }
     },
@@ -539,8 +539,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/queue-jobs/test/jobs.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 51
       }
     },
@@ -555,8 +555,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/rbac-policy/test/rbac.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 78
       }
     },
@@ -572,8 +572,8 @@
       "reason": "QUARANTINED: room and user lookups answer 200 for a room name or user id from another workspace (attack suite ID_GUESS); HTTP polling in D1, no WebSocket push",
       "behaviourTest": "bricks/realtime-presence/test/presence.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 0
       }
     },
@@ -589,8 +589,8 @@
       "reason": "Executes in isolated Worker (Worker Loader/Dispatch) with CPU and wall limits; experimental pending live platform binding rollout per AC5",
       "behaviourTest": "bricks/scripting-sandbox/test/sandbox.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 0
       }
     },
@@ -605,8 +605,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/search-faceted/test/search.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 28
       }
     },
@@ -621,8 +621,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/subscription-plans/test/plans.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 75
       }
     },
@@ -637,8 +637,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/tabular-engine/test/tabular.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 36
       }
     },
@@ -653,8 +653,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/threaded-discussions/test/threads.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 34
       }
     },
@@ -669,8 +669,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/user-onboarding/test/onboarding.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 31
       }
     },
@@ -685,8 +685,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/user-profile/test/profile.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 39
       }
     },
@@ -701,8 +701,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/vector-memory/test/vectors.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 33
       }
     },
@@ -717,8 +717,8 @@
       "reason": "CONFORMANCE_KIT_MISSING: Missing shared brick conformance kit suite (UC5.3); promotion to production requires passing conformance kit.",
       "behaviourTest": "bricks/webhook-gateway/test/gateway.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 76
       }
     },
@@ -734,8 +734,8 @@
       "reason": "QUARANTINED: overlaps blueprint workflows (architecture Open question 12) and runs in-process with toy executors rather than durable Cloudflare Workflows",
       "behaviourTest": "bricks/workflow-dag/test/workflow.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.940Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.666Z",
         "assertionCount": 0
       }
     }
@@ -752,8 +752,8 @@
       "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
       "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.983Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.702Z",
         "assertionCount": 167,
         "liveVerifiedAt": null,
         "fidelity": {
@@ -775,8 +775,8 @@
       "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
       "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.983Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.702Z",
         "assertionCount": 167,
         "liveVerifiedAt": null,
         "fidelity": {
@@ -798,8 +798,8 @@
       "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
       "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.983Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.702Z",
         "assertionCount": 167,
         "liveVerifiedAt": null,
         "fidelity": {
@@ -821,8 +821,8 @@
       "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
       "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.983Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.702Z",
         "assertionCount": 167,
         "liveVerifiedAt": null,
         "fidelity": {
@@ -851,8 +851,8 @@
       "reason": "Verified only against recorded fixtures; promotion requires a passing live canary within the freshness window (UC5.5) and fidelity gate (UC2).",
       "behaviourTest": "packages/integrations/test/pack-v1-contract.workerd.test.ts",
       "evidence": {
-        "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
-        "runAt": "2026-11-28T09:57:52.983Z",
+        "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
+        "runAt": "2026-11-28T11:26:15.702Z",
         "assertionCount": 167,
         "liveVerifiedAt": null,
         "fidelity": {
@@ -865,8 +865,8 @@
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-28T09:52:03.826Z",
-    "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
+    "generatedAt": "2026-11-28T11:20:26.132Z",
+    "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
     "gitDirty": false,
     "generator": "scripts/catalog-tiers.ts",
     "inputKind": "measured"

@@ -1,17 +1,17 @@
 {
   "tokenizer": "gpt-tokenizer 4.1.0, o200k_base",
-  "timestamp": "2026-11-28T09:52:08.845Z",
+  "timestamp": "2026-11-28T11:20:30.883Z",
   "tenBrickSessionRatioPercent": 2.9,
   "tenBrickSession": {
     "tier": "Tier 3: 10-Brick App (10 Bricks, 2 Tables)",
     "bricksCount": 10,
     "entitiesCount": 2,
     "filesCount": 27,
-    "conversationTokens": 3139,
-    "firstPartySourceTokens": 108579,
-    "generatedFilesOnlyTokens": 24271,
+    "conversationTokens": 3143,
+    "firstPartySourceTokens": 110158,
+    "generatedFilesOnlyTokens": 24264,
     "ratioPercent": 2.9,
-    "projectHash": "54621c8068d35fb85e85aecb35c4ee369205071fea667914883bd2dc2eabb9f7",
+    "projectHash": "17923040d91a84ca44db20eefcf9e1cd756ddae019f58aaabf7246a34f7182dc",
     "status": "SUB-4% REACHED"
   },
   "results": [
@@ -20,11 +20,11 @@
       "bricksCount": 3,
       "entitiesCount": 1,
       "filesCount": 16,
-      "conversationTokens": 2784,
-      "firstPartySourceTokens": 55301,
+      "conversationTokens": 2785,
+      "firstPartySourceTokens": 56887,
       "generatedFilesOnlyTokens": 11268,
-      "ratioPercent": 5,
-      "projectHash": "56741ea8687f1d562b3935bb6a7741f98c755b7ee4055d4472f17ccc195967d7",
+      "ratioPercent": 4.9,
+      "projectHash": "492df73ebb9a0e746aba959b2b3b82b64a7ef56d012949e2f1ec92249e9cddbb",
       "status": "PASS"
     },
     {
@@ -32,11 +32,11 @@
       "bricksCount": 7,
       "entitiesCount": 2,
       "filesCount": 23,
-      "conversationTokens": 3010,
-      "firstPartySourceTokens": 86559,
-      "generatedFilesOnlyTokens": 19693,
-      "ratioPercent": 3.5,
-      "projectHash": "a779e94401c1d18c2a82b991c4dc78c99e3f019386aca4829a3e6c95652cd2a8",
+      "conversationTokens": 3006,
+      "firstPartySourceTokens": 88140,
+      "generatedFilesOnlyTokens": 19688,
+      "ratioPercent": 3.4,
+      "projectHash": "b718667235023f13f520da56f4e78c60e89380c07d96415ddf5d10a718c09257",
       "status": "SUB-4% REACHED"
     },
     {
@@ -44,11 +44,11 @@
       "bricksCount": 10,
       "entitiesCount": 2,
       "filesCount": 27,
-      "conversationTokens": 3139,
-      "firstPartySourceTokens": 108579,
-      "generatedFilesOnlyTokens": 24271,
+      "conversationTokens": 3143,
+      "firstPartySourceTokens": 110158,
+      "generatedFilesOnlyTokens": 24264,
       "ratioPercent": 2.9,
-      "projectHash": "54621c8068d35fb85e85aecb35c4ee369205071fea667914883bd2dc2eabb9f7",
+      "projectHash": "17923040d91a84ca44db20eefcf9e1cd756ddae019f58aaabf7246a34f7182dc",
       "status": "SUB-4% REACHED"
     },
     {
@@ -56,11 +56,11 @@
       "bricksCount": 12,
       "entitiesCount": 4,
       "filesCount": 32,
-      "conversationTokens": 3318,
-      "firstPartySourceTokens": 139312,
+      "conversationTokens": 3322,
+      "firstPartySourceTokens": 140898,
       "generatedFilesOnlyTokens": 33609,
       "ratioPercent": 2.4,
-      "projectHash": "d806e173d808b541cdc333617cd8658a974668ef37f40e756c306a9e191de1c7",
+      "projectHash": "2d380fec5a738a7773b835e4098ac49cf37d7f34d1d8daa31cf7a983749c6ef6",
       "status": "SUB-4% REACHED"
     },
     {
@@ -68,11 +68,11 @@
       "bricksCount": 16,
       "entitiesCount": 4,
       "filesCount": 39,
-      "conversationTokens": 3528,
-      "firstPartySourceTokens": 188493,
-      "generatedFilesOnlyTokens": 42212,
+      "conversationTokens": 3530,
+      "firstPartySourceTokens": 190077,
+      "generatedFilesOnlyTokens": 42210,
       "ratioPercent": 1.9,
-      "projectHash": "679fd1b1571ef50698103080c9a8ab16e612db8b5792cabad654b3dc936832ab",
+      "projectHash": "abebe0ebece9f56afe51fa0802688851fb07be77b1cb3a56bf3cddfa2222574c",
       "status": "SUB-4% REACHED"
     },
     {
@@ -80,11 +80,11 @@
       "bricksCount": 25,
       "entitiesCount": 4,
       "filesCount": 52,
-      "conversationTokens": 4506,
-      "firstPartySourceTokens": 251030,
-      "generatedFilesOnlyTokens": 56650,
+      "conversationTokens": 4505,
+      "firstPartySourceTokens": 252614,
+      "generatedFilesOnlyTokens": 56648,
       "ratioPercent": 1.8,
-      "projectHash": "58d6922ab02f0b0878c05fc36fbe0db496ff73dea2eda3560d8b428f20155ae4",
+      "projectHash": "0fcdadf246a5d56c5cb645a424b6e84e8b40459d603d4508234aa2867e6ce6e1",
       "status": "SUB-4% REACHED"
     },
     {
@@ -92,17 +92,17 @@
       "bricksCount": 39,
       "entitiesCount": 4,
       "filesCount": 67,
-      "conversationTokens": 5589,
-      "firstPartySourceTokens": 343597,
-      "generatedFilesOnlyTokens": 74869,
+      "conversationTokens": 5593,
+      "firstPartySourceTokens": 345179,
+      "generatedFilesOnlyTokens": 74865,
       "ratioPercent": 1.6,
-      "projectHash": "927d0026b46c47344d9f7ecef46e047269fff40e890f02dfccd61c2f3f53b692",
+      "projectHash": "adf6c50fb927dffa4597a0392b7e8d5e77fc35d7599562fb4e0b3fb93a76a1fd",
       "status": "SUB-4% REACHED"
     }
   ],
   "provenance": {
-    "generatedAt": "2026-11-28T09:52:03.826Z",
-    "gitSha": "fad9de99b5e792a720e0c7ba2a7977378299dcb3",
+    "generatedAt": "2026-11-28T11:20:26.132Z",
+    "gitSha": "714eab4acaef171a199d37035b00c77b4235195d",
     "gitDirty": false,
     "generator": "scripts/benchmark-mcp-scale.ts",
     "inputKind": "measured"

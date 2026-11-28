@@ -385,3 +385,116 @@ export async function importWalletBalances(db: D1Like, rows: BalanceImportRow[],
     reconciled: sourceTotal === importedTotal && refusedRows === 0 && mismatchedRows === 0 && ledgerMismatches === 0 && balanceMismatches === 0,
   };
 }
+
+// Story 2.9: compare a host's own balances with this brick's, read-only. A host that keeps its own wallet and mirrors
+// every change into credit-wallet ("shadow mode") uses this to show that the two ledgers agree before it switches over.
+
+export interface ReconcileRow {
+  workspaceId: string;
+  /** The host's balance for this workspace, in thousandths (the host converts its own units first). */
+  balanceMilli: number;
+}
+
+export interface ReconcileRowReport {
+  workspaceId: string;
+  /** The host's balance as given. */
+  hostMilli: number;
+  /** This brick's balance, or null when the workspace has no wallet here (compared as 0). */
+  brickMilli: number | null;
+  /** `brickMilli` (0 when null) minus `hostMilli`: positive when the brick holds more. */
+  diffMilli: number;
+  /** True when this row was refused (a bad id, a balance that is not a safe integer, or a repeated workspace). */
+  refused: boolean;
+  error?: string;
+}
+
+export interface ReconcileReport {
+  rows: ReconcileRowReport[];
+  hostTotalMilli: number;
+  brickTotalMilli: number;
+  /** brickTotalMilli minus hostTotalMilli. */
+  diffTotalMilli: number;
+  /** Rows whose diff is not 0. */
+  mismatchedRows: number;
+  /** Rows with no wallet here (they still match when the host's balance is 0). */
+  missingWallets: number;
+  refusedRows: number;
+  /** True only when every row was read and every diff is 0. */
+  exact: boolean;
+}
+
+/** Story 2.9: at most this many workspace ids go into one `IN (...)` list (D1 binds at most 100 parameters). */
+const RECONCILE_CHUNK = 90;
+
+/**
+ * Reads this brick's balance for each `{ workspaceId, balanceMilli }` row and reports the difference per workspace and
+ * in total. Writes nothing. A workspace with no wallet counts as 0 (and is counted in `missingWallets`). Throws only
+ * when the totals would not be exact integers.
+ */
+export async function reconcileWallets(db: D1Like, rows: ReconcileRow[]): Promise<ReconcileReport> {
+  const seen = new Set<string>();
+  const reports: ReconcileRowReport[] = [];
+  const toRead: ReconcileRowReport[] = [];
+  for (const row of rows) {
+    const workspaceId = typeof row?.workspaceId === "string" ? row.workspaceId : "";
+    const hostMilli = row?.balanceMilli;
+    const report: ReconcileRowReport = {
+      workspaceId,
+      hostMilli: Number.isSafeInteger(hostMilli) ? hostMilli : 0,
+      brickMilli: null,
+      diffMilli: 0,
+      refused: false,
+    };
+    reports.push(report);
+    const refuse = (error: string) => {
+      report.refused = true;
+      report.error = error;
+    };
+    if (!WORKSPACE_ID.test(workspaceId)) {
+      refuse("workspaceId is missing or not a workspace id");
+      continue;
+    }
+    if (!Number.isSafeInteger(hostMilli)) {
+      refuse("balanceMilli must be a whole number of thousandths");
+      continue;
+    }
+    if (seen.has(workspaceId)) {
+      refuse("this workspace is listed more than once");
+      continue;
+    }
+    seen.add(workspaceId);
+    toRead.push(report);
+  }
+  // One query per chunk of at most RECONCILE_CHUNK workspaces, never one per workspace.
+  const balances = new Map<string, number>();
+  for (let i = 0; i < toRead.length; i += RECONCILE_CHUNK) {
+    const ids = toRead.slice(i, i + RECONCILE_CHUNK).map((r) => r.workspaceId);
+    // tenant-lint: allow read-only reconciliation reads the listed workspaces' balances in one IN query
+    const result = await db
+      .prepare(`SELECT workspace_id, balance_milli FROM credit_wallets WHERE workspace_id IN (${ids.map(() => "?").join(", ")})`)
+      .bind(...ids)
+      .all<{ workspace_id: string; balance_milli: number }>();
+    for (const r of result.results ?? []) balances.set(r.workspace_id, r.balance_milli);
+  }
+  let hostTotalMilli = 0;
+  let brickTotalMilli = 0;
+  for (const report of toRead) {
+    report.brickMilli = balances.has(report.workspaceId) ? balances.get(report.workspaceId)! : null;
+    report.diffMilli = (report.brickMilli ?? 0) - report.hostMilli;
+    hostTotalMilli += report.hostMilli;
+    brickTotalMilli += report.brickMilli ?? 0;
+  }
+  if (!Number.isSafeInteger(hostTotalMilli) || !Number.isSafeInteger(brickTotalMilli)) throw new RangeError("the totals are too large to be exact");
+  const mismatchedRows = reports.filter((r) => !r.refused && r.diffMilli !== 0).length;
+  const refusedRows = reports.filter((r) => r.refused).length;
+  return {
+    rows: reports,
+    hostTotalMilli,
+    brickTotalMilli,
+    diffTotalMilli: brickTotalMilli - hostTotalMilli,
+    mismatchedRows,
+    missingWallets: reports.filter((r) => !r.refused && r.brickMilli === null).length,
+    refusedRows,
+    exact: mismatchedRows === 0 && refusedRows === 0,
+  };
+}

@@ -43,14 +43,36 @@ export interface ChargeActionOptions {
 export interface WalletCharger {
   /** The workspace's balance in thousandths of a credit; 0 when it has no wallet yet. */
   balanceMilli(db: D1Like, workspaceId: string): Promise<number>;
-  /** Takes `milli` (a positive whole number of thousandths) once for `idempotencyKey`; `userId` is recorded on the ledger row. */
-  debit(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId?: string): Promise<ChargeResult>;
+  /**
+   * Takes `milli` (a positive whole number of thousandths) once for `idempotencyKey`; `userId` is recorded on the ledger row.
+   * Story 2.9: `metadata` (a plain JSON object) is merged into the row's metadata. The operation tag wins over a key of the
+   * same name, and metadata plays no part in deciding whether a retry is the same operation.
+   */
+  debit(
+    db: D1Like,
+    workspaceId: string,
+    milli: number,
+    idempotencyKey: string,
+    reason: string,
+    userId?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<ChargeResult>;
   /**
    * Gives back up to `milli` of the deduction recorded under `againstKey`, once for `idempotencyKey` (a key of its own).
    * Nothing is refunded (`NOTHING_TO_REFUND`) unless that deduction is on the ledger, and never more than it took, so
    * it is safe to call when it is unknown whether the deduction committed.
    */
-  refund(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, againstKey: string, reason: string, userId?: string): Promise<RefundResult>;
+  refund(
+    db: D1Like,
+    workspaceId: string,
+    milli: number,
+    idempotencyKey: string,
+    againstKey: string,
+    reason: string,
+    userId?: string,
+    /** Story 2.9: merged into the row's metadata; `refunds` (the deduction's key) wins over a key of the same name. */
+    metadata?: Record<string, unknown>,
+  ): Promise<RefundResult>;
   /** The ledger entry recorded under a key in this workspace, as thousandths moved, or null if none. */
   settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ milli: number; type: "deduction" | "topup" } | null>;
   /**
@@ -71,15 +93,32 @@ export interface WalletCharger {
    * as a top-up tagged `op: "grant"`. A retry is `duplicate: true` only when the row under the key is a grant of the
    * same amount; a key used for anything else is `IDEMPOTENCY_KEY_REUSED`. A workspace with no wallet gets one opened
    * only when it is live (in the workspace registry and not suspended); otherwise, and with no registry, the answer is
-   * `WALLET_NOT_FOUND`.
+   * `WALLET_NOT_FOUND`. Story 2.9: `metadata` is merged into the row's metadata as for `debit` (the `op` tag wins).
    */
-  grant(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId?: string): Promise<GrantResult>;
+  grant(
+    db: D1Like,
+    workspaceId: string,
+    milli: number,
+    idempotencyKey: string,
+    reason: string,
+    userId?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<GrantResult>;
 }
 
 function checkKey(idempotencyKey: string): void {
   if (typeof idempotencyKey !== "string" || idempotencyKey.length === 0 || idempotencyKey.length > 200) {
     throw new RangeError("idempotencyKey must be 1 to 200 characters");
   }
+}
+
+/** Story 2.9: the caller's extra ledger metadata, checked to be a plain JSON object (or absent). */
+function checkMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (metadata === undefined) return {};
+  if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) throw new RangeError("metadata must be a plain object");
+  const text = JSON.stringify(metadata);
+  if (text.length > 2000) throw new RangeError("metadata must be at most 2000 characters as JSON");
+  return JSON.parse(text) as Record<string, unknown>;
 }
 
 async function settled(db: D1Like, workspaceId: string, idempotencyKey: string): Promise<{ milli: number; type: "deduction" | "topup" } | null> {
@@ -94,8 +133,17 @@ export const walletCharger: WalletCharger = Object.freeze({
     return (await createWallet(db, undefined).getBalanceMilli(workspaceId)) ?? 0;
   },
 
-  async debit(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId = "system"): Promise<ChargeResult> {
+  async debit(
+    db: D1Like,
+    workspaceId: string,
+    milli: number,
+    idempotencyKey: string,
+    reason: string,
+    userId = "system",
+    metadata?: Record<string, unknown>,
+  ): Promise<ChargeResult> {
     checkKey(idempotencyKey);
+    const extra = checkMetadata(metadata);
     const wallet = createWallet(db, undefined);
     // createWallet().deduct refuses an amount that is not a positive whole number of thousandths (RangeError).
     const result = await wallet.deduct({
@@ -103,6 +151,7 @@ export const walletCharger: WalletCharger = Object.freeze({
       userId,
       amountMilli: milli,
       reason: reason.slice(0, 200) || "usage",
+      metadata: extra,
       idempotencyKey,
       match: { op: "charger" },
     });
@@ -129,8 +178,10 @@ export const walletCharger: WalletCharger = Object.freeze({
     againstKey: string,
     reason: string,
     userId = "system",
+    metadata?: Record<string, unknown>,
   ): Promise<RefundResult> {
     checkKey(idempotencyKey);
+    const extra = checkMetadata(metadata);
     if (!Number.isSafeInteger(milli) || milli <= 0) throw new RangeError("milli must be a positive whole number of thousandths");
     const debited = await settled(db, workspaceId, againstKey);
     if (!debited || debited.type !== "deduction") return { ok: false, code: "NOTHING_TO_REFUND", balanceMilli: 0 };
@@ -140,7 +191,7 @@ export const walletCharger: WalletCharger = Object.freeze({
       userId,
       amountMilli,
       reason: reason.slice(0, 200) || "refund",
-      metadata: { refunds: againstKey },
+      metadata: { ...extra, refunds: againstKey },
       idempotencyKey,
     });
     if (result.ok) return { ok: true, balanceAfterMilli: result.balanceAfterMilli, duplicate: result.duplicate, milli: amountMilli };
@@ -150,8 +201,17 @@ export const walletCharger: WalletCharger = Object.freeze({
 
   settled,
 
-  async grant(db: D1Like, workspaceId: string, milli: number, idempotencyKey: string, reason: string, userId = "system"): Promise<GrantResult> {
+  async grant(
+    db: D1Like,
+    workspaceId: string,
+    milli: number,
+    idempotencyKey: string,
+    reason: string,
+    userId = "system",
+    metadata?: Record<string, unknown>,
+  ): Promise<GrantResult> {
     checkKey(idempotencyKey);
+    const extra = checkMetadata(metadata);
     if (!Number.isSafeInteger(milli) || milli <= 0) throw new RangeError("milli must be a positive whole number of thousandths");
     const wallet = createWallet(db, undefined);
     let opened = false;
@@ -168,6 +228,7 @@ export const walletCharger: WalletCharger = Object.freeze({
       userId,
       amountMilli: milli,
       reason: reason.slice(0, 200) || "grant",
+      metadata: extra,
       idempotencyKey,
       match: { op: "grant" },
     });

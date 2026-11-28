@@ -165,6 +165,16 @@ See [Using bricks outside the monorepo](../../docs/using-bricks-outside-the-mono
   call `importWalletBalances` with a `D1Like` over the D1 REST endpoint against the live database (as
   `packages/deploy/src/h5-hosted.ts` does with `restD1`), or quiesce the wallet before reloading a copy. A row that fails
   while writing is reported and the rest go on; `reconciled` is true only with no refused row.
+- **Running as a shadow of a host's wallet (story 2.9).** A host that keeps its own balances can mirror each change
+  into this brick before switching to it: `walletCharger.debit` / `grant` under a key derived from its own ledger row
+  (so a replay is a no-op), with that row's id in the optional trailing `metadata` argument, and, for a transfer, a
+  `debit` on the source and a `grant` on the destination, each keyed by its own ledger row. Seed the brick's wallets
+  once with `importWalletBalances` (dry run first, `createWallets` for workspaces with no wallet). Then
+  `reconcileWallets(db, rows)` takes the host's `{ workspaceId, balanceMilli }` rows (converted to thousandths with
+  `toMilli` or `toMilliRounded` from `@poc/sdk`), reads this brick's balances and reports each difference, the
+  totals and `exact`. It writes nothing, and reads the brick's balances in one query per chunk of at most 90
+  workspaces, so a host pages its own workspace list (a few hundred per call) rather than querying one by one. The brick refuses an overdraw that a host without such a check accepts; that
+  shows up as a difference, which is what reconciliation is for.
 - **Erasure.** `credit_ledger` is retained when a user or a workspace is erased (`erase: "retain"`): it is the financial record every
   balance is the sum of, and a transfer is two rows in two workspaces, so deleting one user's rows would leave half a
   transfer. `user_id` cannot be anonymized because the ledger requires it. This follows the owner's
