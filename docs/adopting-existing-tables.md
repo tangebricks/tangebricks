@@ -74,3 +74,6 @@ views later leaves the app's tables (and every row written through the views) as
 
 Because the data never moves, switching an app back to its own code is dropping nothing: its code reads the same
 tables it always did, including rows written through the views. Keep the views in place if any brick is still in use.
+
+To move an app's routes onto the bricks one group at a time, with a switch to flip each group back, see
+[Migrating an existing app](migrating-an-existing-app.md).

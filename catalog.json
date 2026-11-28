@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "12ec898a02f3ce8dc5cad6b1084f2844f01bbb41a79814265fae07871b4739b4",
+  "catalogVersion": "32213f17d01c8da3ea647a7ad3752c776d89bec1ae34a2e65ba6b8918f22fc94",
   "bricks": {
     "admin-console": {
       "manifest": {
@@ -688,7 +688,7 @@
         "manifestVersion": 2,
         "kind": "brick",
         "id": "credit-wallet",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "trust": "first-party",
         "isolation": "none",
         "provides": [

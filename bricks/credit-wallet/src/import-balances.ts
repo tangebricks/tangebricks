@@ -1,5 +1,5 @@
 import { findWorkspaceState, formatMilli, toMilli, toMilliRounded } from "@poc/sdk";
-import type { CreditRounding } from "@poc/sdk";
+import type { CreditRounding, ShadowReport } from "@poc/sdk";
 import type { D1Like } from "./d1.ts";
 import { createWallet } from "./wallet.ts";
 
@@ -496,5 +496,20 @@ export async function reconcileWallets(db: D1Like, rows: ReconcileRow[]): Promis
     missingWallets: reports.filter((r) => !r.refused && r.brickMilli === null).length,
     refusedRows,
     exact: mismatchedRows === 0 && refusedRows === 0,
+  };
+}
+
+/**
+ * Story 2.11: a `reconcileWallets` result as the sdk's generic `ShadowReport`, for a host that reports its migration
+ * status per route group. `compared` is every row given, `differing` the rows that differ or were refused (a refused row
+ * was not shown to match), and `exact` is the reconciliation's own. `checkedAt` defaults to now.
+ */
+export function walletShadowReport(group: string, result: ReconcileReport, checkedAt: Date | string = new Date()): ShadowReport {
+  return {
+    group,
+    exact: result.exact,
+    compared: result.rows.length,
+    differing: result.mismatchedRows + result.refusedRows,
+    checkedAt: typeof checkedAt === "string" ? checkedAt : checkedAt.toISOString(),
   };
 }

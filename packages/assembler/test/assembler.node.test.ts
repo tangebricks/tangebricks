@@ -485,11 +485,12 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "migrations/0007_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "c77c2e7c33606f6a369cf1b1a90809da38adaa3a5145d15159f30fb704c49487",
       "package.json": "c9446d18c11331be16e33709dfedeaa73710f0da02f82d5392b71a330699ffbc",
-      // Story 2.9: credit-wallet 1.1.0 (version bump) changes project.json (which records brick versions) and the entry.
-      "project.json": "49e2159a054f6e2d33edf03493432b8f0c70301442f3d6de47b9a8875dfab1ca",
+      // Stories 2.9 and 2.11: credit-wallet 1.1.0, then 1.2.0 (version bumps) change project.json (which records brick
+      // versions) and the entry (its BUILD_SHA).
+      "project.json": "e6039b6fab8d62751b955f51d5ce3df8bba7aae403759462e896f907500ade89",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       // Story 1.10: only the entry changed (the workspace-data purge, the suspension check and its app.use lines).
-      "src/index.ts": "1e3247b4dbab0d2d93f7cf0311709905a2796b863e96a305cf106c58f8c0e026",
+      "src/index.ts": "d16f9acfcc8ce81e3a8389d0d26510d12f36366b1b3c40ad1626407d85fc0b98",
       "src/privacy.generated.ts": "ba26b34aa0ccb0c17252bd363257922513fec8cd5e9f0524960cab369667d1cb",
       "wrangler.jsonc": "d678c83f4dd70ff4bfc1dc7e2e75953a9a8d0e0216061d82308bd562c1f4625b",
     });
@@ -509,11 +510,12 @@ describe("triggers emission and byte-identical baseline when no triggers are dec
       "migrations/0008_shell__px_rate_limits.sql": "6828c5012c0036c30563305d8200214fbdccf995ed59506bcaf9464195d63e3a",
       "openapi.json": "fc78a27cbc505836cef15723d4c63e5feed04a53f4071a2ef1f7868d8a7fe902",
       "package.json": "58b30a29bfd0e01247373021a5a6073c63b86dbd13d1c34355c4324abb134c50",
-      "project.json": "9bd682722139514ea6c3c6f97e9c6bead9ae62daefa1e10adcdaddb51bd70dcb",
+      // Story 2.11: credit-wallet 1.2.0 changes project.json and the entry (BUILD_SHA), as above.
+      "project.json": "796177b0f0e733915f65284c93261984e3d729fab186b6d39c24f8577593c299",
       "src/entities.json": "5b153446783e693c0ada62b9c2626071e38f3e3e9bb047dd5a3a39c24179ba0a",
       "src/identity.stub.ts": "f6f7e26885eca9904d03068a7f72620808ab584ee1a66c8b41af7e04fd3907f3",
       // Story 1.10: only the entry changed (purge, including the declared entity's table, and the suspension check).
-      "src/index.ts": "8ce9aa4a066f16ab4855d0735d1c1296f5ece046c1be601f83559e636704d41b",
+      "src/index.ts": "322f6361b4d23a2d552cc30c73b3c2ba10843682122845f9163a7ee1dd7001df",
       "src/privacy.generated.ts": "bc55b8ec274212576be78816651cd415ba40a3bc82e750fd25267acc576917dd",
       "wrangler.jsonc": "d7c0046626c2da81eca662bc64f38619da75b0d48f4978b1dc37ecf5eb8c3c0b",
     });
