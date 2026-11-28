@@ -20,8 +20,8 @@ export {
   setActionCost,
 } from "./costs.ts";
 export type { ActionCost, ChargeActionInput, ChargeActionResult } from "./costs.ts";
-export { importWalletBalances, parseBalanceFile } from "./import-balances.ts";
-export type { BalanceImportReport, BalanceImportRow, ImportBalancesOptions } from "./import-balances.ts";
+export { importWalletBalances, parseBalanceFile, reconcileWallets } from "./import-balances.ts";
+export type { BalanceImportReport, BalanceImportRow, ImportBalancesOptions, ReconcileReport, ReconcileRow, ReconcileRowReport } from "./import-balances.ts";
 export type { ConfirmResult, DeductResult, IdempotencyMatch, OrderRow, TransferResult, Wallet, WalletOptions } from "./wallet.ts";
 import { NotConfiguredError, type Executor } from "@poc/sdk";
 import { deductCreditsExecutor } from "./brick.ts";

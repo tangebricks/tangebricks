@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased (story 2.6: operator grants)
+## 1.1.0 — milli credits, transfers, real payment adapters, operator grants, shadow reconciliation
+
+Everything below ships together in the 1.1.0 tarball. Stories 2.3, 2.5 and 2.6 were released under this version; they
+are no longer "Unreleased".
+
+### Story 2.9: shadow reconciliation and ledger metadata
+
+- `walletCharger.debit`, `grant` and `refund` take an optional trailing `metadata` (a plain JSON object, at most 2000
+  characters as JSON), merged into the ledger row's metadata. The operation tag (`op`, and `refunds` on a refund) wins
+  over a key of the same name, and metadata plays no part in deciding whether a retry is the same operation. Without
+  it, behaviour is unchanged. A host mirroring its own ledger records its row id here.
+- `reconcileWallets(db, [{ workspaceId, balanceMilli }])`: compares a host's balances (in thousandths) with this
+  brick's, read-only. Per row `{ workspaceId, hostMilli, brickMilli, diffMilli, refused }` (a workspace with no wallet
+  has `brickMilli: null` and is compared as 0), the totals, `mismatchedRows`, `missingWallets`, `refusedRows`, and
+  `exact`, true only when every row was read and every difference is 0. It reads the brick's balances in one query per
+  chunk of at most 90 workspaces (never one query per workspace), so a host can page through thousands of workspaces
+  within D1's limits.
+
+### Story 2.6: operator grants
 
 - `walletCharger.grant(db, ws, milli, key, reason, userId?)`: an idempotent top-up tagged `op: "grant"`, for
   platform-admin's credit grants. A retry is a duplicate only when the row under the key is a grant of the same amount;
@@ -9,7 +27,7 @@
 - `createWallet().refund` takes an optional `match` (tags recorded on the top-up and required of a duplicate), as
   `deduct` already did. Without it, behaviour is unchanged.
 
-## Unreleased (story 2.5: fractional credits, action costs, transfers)
+### Story 2.5: fractional credits, action costs, transfers
 
 - **Breaking: credits are thousandths.** Migration 0004 stores every credit amount as a whole number of thousandths
   (`credit_wallets.balance_milli`, `credit_ledger.amount_milli`, `credit_ledger.balance_after_milli`), renaming the
@@ -43,7 +61,7 @@
   hold credits or an import (unless `--allow-existing`) and JSON number balances, and reconciles resulting balances.
 - The client reads the new fields; the widget shows credits to the thousandth (unchanged code: `toLocaleString`).
 
-## Unreleased (story 2.3: real payment adapters)
+### Story 2.3: real payment adapters
 
 - **Breaking for host-written gateways: the unit rule.** Every amount on `PaymentGateway` is now a whole number in the
   currency's minor unit (paise, cents), and the field is renamed so an adapter written for the old contract fails to
