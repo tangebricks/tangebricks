@@ -423,14 +423,14 @@ export interface ReconcileReport {
   exact: boolean;
 }
 
+/** Story 2.9: at most this many workspace ids go into one `IN (...)` list (D1 binds at most 100 parameters). */
+const RECONCILE_CHUNK = 90;
+
 /**
  * Reads this brick's balance for each `{ workspaceId, balanceMilli }` row and reports the difference per workspace and
  * in total. Writes nothing. A workspace with no wallet counts as 0 (and is counted in `missingWallets`). Throws only
  * when the totals would not be exact integers.
  */
-/** Story 2.9: at most this many workspace ids go into one `IN (...)` list (D1 binds at most 100 parameters). */
-const RECONCILE_CHUNK = 90;
-
 export async function reconcileWallets(db: D1Like, rows: ReconcileRow[]): Promise<ReconcileReport> {
   const seen = new Set<string>();
   const reports: ReconcileRowReport[] = [];
