@@ -73,6 +73,7 @@
     "proof:check": "node scripts/proof-check.ts",
     "evidence:check": "node scripts/check-evidence.ts",
     "evidence:refresh": "node scripts/refresh-evidence.ts",
+    "evidence:stale": "node scripts/evidence-stale.ts",
     "evidence:record-live": "node scripts/record-live-evidence.ts",
     "readme:generate": "node scripts/generate-readme.ts",
     "readme:check": "node scripts/generate-readme.ts --check",
