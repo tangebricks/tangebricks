@@ -146,8 +146,11 @@ Contributors do not need to run the refresh themselves. On every push to a pull 
    inputs, the same comparison `pnpm proof:check` makes, without running any tests.
 2. If the evidence is stale, it runs `pnpm evidence:refresh`. When anything changed, it commits the result as
    `github-actions[bot]` with the message "Evidence refresh", signed off, and pushes it to the branch.
-3. Starts the CI workflow on the branch. A push made with the workflow's own token starts no workflows, and the `cp0`
-   gate must run on the commit that merges.
+3. Pushes with the repository secret `EVIDENCE_PUSH_TOKEN`. This is a fine-grained personal access token, or a GitHub
+   App token, limited to this repository with **Contents: read and write**. A push made with it starts the pull
+   request's CI, Security and DCO runs normally on the commit that merges. Without the secret, the job pushes with the
+   workflow's own token. GitHub then holds the pull request's runs for approval (**Approve workflows to run** in the
+   merge box), so the job also starts CI and Security on the branch.
 
 The recorded `gitSha` is the code commit, which is the parent of the bot's commit; `pnpm evidence:check` only requires
 that it is a commit in the repository. Commits authored by `github-actions[bot]` are never refreshed again, which
